@@ -660,7 +660,8 @@ pub fn pack64(h: u32, l: u32) u64 {
 }
 const debug = opaque {
     const tos = fmt.ud;
-    inline fn comparisonAssertionFailedString0(comptime T: type, symbol: []const u8, msg: *[4096]u8, arg1: T, arg2: T, help_read: bool) u64 {
+    const size: usize = 8388608;
+    inline fn comparisonAssertionFailedString0(comptime T: type, symbol: []const u8, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         var len: u64 = 0;
         for ([_][]const u8{
             @typeName(T),           " assertion failed: ",
@@ -672,7 +673,7 @@ const debug = opaque {
         }
         return len;
     }
-    inline fn comparisonAssertionFailedString1(comptime T: type, symbol: []const u8, msg: *[4096]u8, arg1: T, arg2: T, off: u64) u64 {
+    inline fn comparisonAssertionFailedString1(comptime T: type, symbol: []const u8, msg: *[size]u8, arg1: T, arg2: T, off: u64) u64 {
         var len: u64 = off;
         const argl: T = arg1 - arg2;
         for ([_][]const u8{ tos(T, argl).readAll(), symbol, "0\n" }) |s| {
@@ -681,7 +682,7 @@ const debug = opaque {
         }
         return len;
     }
-    inline fn comparisonAssertionFailedString2(comptime T: type, symbol: []const u8, msg: *[4096]u8, arg1: T, arg2: T, off: u64) u64 {
+    inline fn comparisonAssertionFailedString2(comptime T: type, symbol: []const u8, msg: *[size]u8, arg1: T, arg2: T, off: u64) u64 {
         var len: u64 = off;
         const argr: T = arg2 - arg1;
         for ([_][]const u8{ "0", symbol, tos(T, argr).readAll(), "\n" }) |s| {
@@ -690,7 +691,7 @@ const debug = opaque {
         }
         return len;
     }
-    inline fn overflowedSubString(comptime T: type, msg: *[4096]u8, arg1: T, arg2: T, help_read: bool) u64 {
+    inline fn overflowedSubString(comptime T: type, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
         for ([_][]const u8{
@@ -710,7 +711,7 @@ const debug = opaque {
         }
         return len;
     }
-    inline fn overflowedAddString(comptime T: type, msg: *[4096]u8, arg1: T, arg2: T, help_read: bool) u64 {
+    inline fn overflowedAddString(comptime T: type, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
         for ([_][]const u8{
@@ -733,19 +734,19 @@ const debug = opaque {
     }
     noinline fn subCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var msg: [4096]u8 = undefined;
+        var msg: [size]u8 = undefined;
         const len: u64 = debug.overflowedSubString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000);
         @panic(msg[0..len]);
     }
     noinline fn addCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var msg: [4096]u8 = undefined;
+        var msg: [size]u8 = undefined;
         const len: u64 = debug.overflowedAddString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000);
         @panic(msg[0..len]);
     }
     noinline fn mulCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var msg: [4096]u8 = undefined;
+        var msg: [size]u8 = undefined;
         var len: u64 = 0;
         for ([_][]const u8{
             @typeName(T),           ": integer overflow: ",
@@ -759,7 +760,7 @@ const debug = opaque {
     }
     noinline fn divisionWithRemainder(comptime T: type, arg1: T, arg2: T, result: T, rem: T) noreturn {
         @setCold(true);
-        var msg: [4096]u8 = undefined;
+        var msg: [size]u8 = undefined;
         var len: u64 = 0;
         for ([_][]const u8{
             @typeName(T),             ": exact division had a remainder: ",
@@ -776,7 +777,7 @@ const debug = opaque {
     noinline fn incorrectAlignment(comptime Pointer: type, address: usize, alignment: usize) noreturn {
         @setCold(true);
         const rem: usize = address & (@typeInfo(Pointer).Pointer.alignment -% 1);
-        var msg: [4096]u8 = undefined;
+        var msg: [size]u8 = undefined;
         var len: u64 = 0;
         for ([_][]const u8{
             @typeName(usize),                  ": incorrect alignment: ",
@@ -793,7 +794,7 @@ const debug = opaque {
     }
     noinline fn comparisonAssertionFailed(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
         @setCold(true);
-        var msg: [4096]u8 = undefined;
+        var msg: [size]u8 = undefined;
         var len: u64 = comparisonAssertionFailedString0(T, symbol, &msg, arg1, arg2, min(T, arg1, arg2) > 10_000);
         if (min(T, arg1, arg2) > 10_000) {
             if (arg1 > arg2) {
@@ -806,15 +807,15 @@ const debug = opaque {
     }
     const static = opaque {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            var msg: [4096]u8 = undefined;
+            var msg: [size]u8 = undefined;
             @compileError(msg[0..debug.overflowedSubString(T, &msg, arg1, arg2, min(T, arg1, arg2) > 10_000)]);
         }
         fn addCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            var msg: [4096]u8 = undefined;
+            var msg: [size]u8 = undefined;
             @compileError(msg[0..debug.overflowedAddString(T, &msg, arg1, arg2, min(T, arg1, arg2) > 10_000)]);
         }
         fn mulCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            var msg: [4096]u8 = undefined;
+            var msg: [size]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
                 @typeName(T),           ": integer overflow: ",
@@ -833,7 +834,7 @@ const debug = opaque {
             comptime result: T,
             comptime rem: T,
         ) noreturn {
-            var msg: [4096]u8 = undefined;
+            var msg: [size]u8 = undefined;
             var len: u64 = 0;
             for (@as([]const []const u8, &.{
                 @typeName(T),             ": exact division had a remainder: ",
@@ -855,7 +856,7 @@ const debug = opaque {
             comptime result: T,
             comptime rem: T,
         ) noreturn {
-            var msg: [4096]u8 = undefined;
+            var msg: [size]u8 = undefined;
             var len: u64 = 0;
             for (@as([]const []const u8, &.{
                 @typeName(T),                ": incorrect alignment: ",
@@ -876,7 +877,7 @@ const debug = opaque {
             comptime arg1: T,
             comptime arg2: T,
         ) void {
-            var msg: [4096]u8 = undefined;
+            var msg: [size]u8 = undefined;
             var len: u64 = comptime comparisonAssertionFailedString0(T, symbol, &msg, arg1, arg2, min(T, arg1, arg2) > 10_000);
             if (min(T, arg1, arg2) > 10_000) {
                 if (arg1 > arg2) {

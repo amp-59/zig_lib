@@ -86,7 +86,11 @@ pub fn main() !void {
             }
         }
     }
-    _ = builtin.lib_build_root;
+    {
+        var i: i64 = 0;
+        var j: i64 = -9;
+        builtin.assertBelowOrEqual(i64, i, j);
+    }
     uint = 0;
     while (uint != 0x10000) : (uint += 1) {
         builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
@@ -106,6 +110,7 @@ pub fn main() !void {
         builtin.assertEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
         builtin.assertEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
+    _ = builtin.lib_build_root;
     // Testing compilation
     comptime {
         var static_arg1: T = 0;
