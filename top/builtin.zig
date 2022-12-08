@@ -660,75 +660,54 @@ pub fn pack64(h: u32, l: u32) u64 {
 }
 const debug = opaque {
     const tos = fmt.ud;
-    const size: usize = 8388608;
-    inline fn comparisonAssertionFailedString0(comptime T: type, symbol: []const u8, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
+    const size: usize = 4096;
+
+    fn write(msg: []u8, ss: []const []const u8) u64 {
         var len: u64 = 0;
-        for ([_][]const u8{
+        for (ss) |s| {
+            for (s) |c, i| msg[len +% i] = c;
+            len +%= s.len;
+        }
+        return len;
+    }
+    inline fn comparisonAssertionFailedString0(comptime T: type, symbol: []const u8, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
+        return write(msg, &[_][]const u8{
             @typeName(T),           " assertion failed: ",
             tos(T, arg1).readAll(), symbol,
             tos(T, arg2).readAll(), if (help_read) ", i.e. " else "\n",
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
-        return len;
+        });
     }
     inline fn comparisonAssertionFailedString1(comptime T: type, symbol: []const u8, msg: *[size]u8, arg1: T, arg2: T, off: u64) u64 {
-        var len: u64 = off;
-        const argl: T = arg1 - arg2;
-        for ([_][]const u8{ tos(T, argl).readAll(), symbol, "0\n" }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
-        return len;
+        return off + write(msg[off..], &[_][]const u8{ tos(T, arg1 - arg2).readAll(), symbol, "0\n" });
     }
     inline fn comparisonAssertionFailedString2(comptime T: type, symbol: []const u8, msg: *[size]u8, arg1: T, arg2: T, off: u64) u64 {
-        var len: u64 = off;
-        const argr: T = arg2 - arg1;
-        for ([_][]const u8{ "0", symbol, tos(T, argr).readAll(), "\n" }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
-        return len;
+        return off + write(msg[off..], &[_][]const u8{ "0", symbol, tos(T, arg2 - arg1).readAll(), "\n" });
     }
     inline fn overflowedSubString(comptime T: type, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        for ([_][]const u8{
+        len += write(msg, &[_][]const u8{
             @typeName(T),           " integer overflow: ",
             tos(T, arg1).readAll(), " - ",
             tos(T, arg2).readAll(), endl,
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
+        });
         if (help_read) {
-            const argr: T = arg2 - arg1;
-            for ([_][]const u8{ "0 - ", tos(T, argr).readAll(), "\n" }) |s| {
-                for (s) |c, i| msg[len +% i] = c;
-                len +%= s.len;
-            }
+            len += write(msg[len..], &[_][]const u8{ "0 - ", tos(T, arg2 - arg1).readAll(), "\n" });
         }
         return len;
     }
     inline fn overflowedAddString(comptime T: type, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        for ([_][]const u8{
+        len += write(msg, &[_][]const u8{
             @typeName(T),           " integer overflow: ",
             tos(T, arg1).readAll(), " + ",
             tos(T, arg2).readAll(), endl,
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
+        });
         if (help_read) {
             const argl: T = ~@as(T, 0);
             const argr: T = (arg2 +% arg1) -% argl;
-            for ([_][]const u8{ tos(T, argl).readAll(), " + ", tos(T, argr).readAll(), "\n" }) |s| {
-                for (s) |c, i| msg[len +% i] = c;
-                len +%= s.len;
-            }
+            len += write(msg[len..], &[_][]const u8{ tos(T, argl).readAll(), " + ", tos(T, argr).readAll(), "\n" });
         }
         return len;
     }
@@ -747,49 +726,37 @@ const debug = opaque {
     noinline fn mulCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var msg: [size]u8 = undefined;
-        var len: u64 = 0;
-        for ([_][]const u8{
+        const len: u64 = write(&msg, &[_][]const u8{
             @typeName(T),           ": integer overflow: ",
             tos(T, arg1).readAll(), " * ",
             tos(T, arg2).readAll(), "\n",
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
+        });
         @panic(msg[0..len]);
     }
     noinline fn divisionWithRemainder(comptime T: type, arg1: T, arg2: T, result: T, rem: T) noreturn {
         @setCold(true);
         var msg: [size]u8 = undefined;
-        var len: u64 = 0;
-        for ([_][]const u8{
+        const len: u64 = write(&msg, &[_][]const u8{
             @typeName(T),             ": exact division had a remainder: ",
             tos(T, arg1).readAll(),   "/",
             tos(T, arg2).readAll(),   " == ",
             tos(T, result).readAll(), "r",
             tos(T, rem).readAll(),    "\n",
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
+        });
         @panic(msg[0..len]);
     }
     noinline fn incorrectAlignment(comptime Pointer: type, address: usize, alignment: usize) noreturn {
         @setCold(true);
         const rem: usize = address & (@typeInfo(Pointer).Pointer.alignment -% 1);
         var msg: [size]u8 = undefined;
-        var len: u64 = 0;
-        for ([_][]const u8{
+        const len: u64 = write(&msg, &[_][]const u8{
             @typeName(usize),                  ": incorrect alignment: ",
             @typeName(Pointer),                " align(",
             tos(u64, alignment).readAll(),     "): ",
             tos(u64, address).readAll(),       " == ",
             tos(u64, address - rem).readAll(), "+",
             tos(u64, rem).readAll(),           "\n",
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
+        });
         @panic(msg[0..len]);
     }
     noinline fn comparisonAssertionFailed(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
