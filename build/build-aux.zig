@@ -95,4 +95,6 @@ pub fn main(builder: *build.Builder) !void {
     Context.builder.reference_trace = 100;
     Context.test_step = builder.step("test", "Run tests");
     Context.run_step = builder.step("run", "Run programs");
+
+    _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .need_build_root = true });
 }
