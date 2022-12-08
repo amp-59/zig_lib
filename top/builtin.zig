@@ -119,11 +119,7 @@ fn ArithWithOverflowReturn(comptime T: type) type {
     };
 }
 inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
-    const result: ArithWithOverflowReturn(T) = overflowingAddReturn(T, arg1.*, arg2);
-    if (is_debug and result.overflowed) {
-        debug.addCausedOverflow(T, arg1.*, arg2);
-    }
-    arg1.* = result.value;
+    arg1.* = normalAddReturn(T, arg1.*, arg2);
 }
 inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: ArithWithOverflowReturn(T) = overflowingAddReturn(T, arg1, arg2);
@@ -133,11 +129,7 @@ inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
     return result.value;
 }
 inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
-    const result: ArithWithOverflowReturn(T) = overflowingSubReturn(T, arg1.*, arg2);
-    if (is_debug and arg1.* < arg2) {
-        debug.subCausedOverflow(T, arg1.*, arg2);
-    }
-    arg1.* = result.value;
+    arg1.* = normalSubReturn(T, arg1.*, arg2);
 }
 inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: ArithWithOverflowReturn(T) = overflowingSubReturn(T, arg1, arg2);
@@ -147,11 +139,7 @@ inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
     return result.value;
 }
 inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
-    const result: ArithWithOverflowReturn(T) = overflowingMulReturn(T, arg1.*, arg2);
-    if (is_debug and result.overflowed) {
-        debug.mulCausedOverflow(T, arg1.*, arg2);
-    }
-    arg1.* = result.value;
+    arg1.* = normalMulReturn(T, arg1.*, arg2);
 }
 inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: ArithWithOverflowReturn(T) = overflowingMulReturn(T, arg1, arg2);
@@ -161,12 +149,7 @@ inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
     return result.value;
 }
 inline fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
-    const result: T = arg1.* / arg2;
-    const rem: T = normalSubReturn(T, arg1.*, (result * arg2));
-    if (is_debug and rem != 0) {
-        debug.divisionWithRemainder(T, arg1.*, arg2, result, rem);
-    }
-    arg1.* = result;
+    arg1.* = exactDivisionReturn(T, arg1.*, arg2);
 }
 inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
@@ -466,6 +449,17 @@ pub fn min(comptime T: type, arg1: T, arg2: T) T {
 pub fn max(comptime T: type, arg1: T, arg2: T) T {
     return @max(arg1, arg2);
 }
+
+pub fn assert(b: bool) void {
+    if (!b) {
+        @panic("assertion failed");
+    }
+}
+pub fn expect(b: bool) !void {
+    if (!b) {
+        return error.Unexpected;
+    }
+}
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
     const result: bool = arg1 < arg2;
     if (is_correct and !result) {
@@ -502,11 +496,7 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
         debug.comparisonAssertionFailed(T, " > ", arg1, arg2);
     }
 }
-pub fn assert(b: bool) void {
-    if (!b) {
-        @panic("assertion failed");
-    }
-}
+
 pub fn intToPtr(comptime Pointer: type, address: u64) Pointer {
     if (is_correct) {
         const alignment: u64 = @typeInfo(Pointer).Pointer.alignment;
