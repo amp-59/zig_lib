@@ -507,6 +507,16 @@ pub fn intToPtr(comptime Pointer: type, address: u64) Pointer {
     return @intToPtr(Pointer, address);
 }
 pub const static = opaque {
+    pub fn assert(comptime b: bool) void {
+        if (!b) {
+            @compileError("assertion failed");
+        }
+    }
+    pub fn expect(b: bool) !void {
+        if (!b) {
+            return error.Unexpected;
+        }
+    }
     inline fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: ArithWithOverflowReturn(T) = overflowingAddReturn(T, arg1.*, arg2);
         if (is_debug and result.overflowed) {
@@ -625,11 +635,6 @@ pub const static = opaque {
             debug.static.comparisonAssertionFailed(T, " > ", arg1, arg2);
         }
     }
-    pub fn assert(comptime b: bool) void {
-        if (!b) {
-            @compileError("assertion failed");
-        }
-    }
 };
 pub fn shrA(comptime T: type, comptime U: type, value: T, comptime shift_amt: comptime_int) U {
     return @truncate(U, value >> shift_amt);
@@ -705,7 +710,7 @@ const debug = opaque {
         }
         return len;
     }
-    noinline fn overflowedAddString(comptime T: type, msg: *[4096]u8, arg1: T, arg2: T, help_read: bool) u64 {
+    inline fn overflowedAddString(comptime T: type, msg: *[4096]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
         for ([_][]const u8{
@@ -726,19 +731,19 @@ const debug = opaque {
         }
         return len;
     }
-    inline fn subCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
+    noinline fn subCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var msg: [4096]u8 = undefined;
         const len: u64 = debug.overflowedSubString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000);
         @panic(msg[0..len]);
     }
-    inline fn addCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
+    noinline fn addCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var msg: [4096]u8 = undefined;
         const len: u64 = debug.overflowedAddString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000);
         @panic(msg[0..len]);
     }
-    inline fn mulCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
+    noinline fn mulCausedOverflow(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var msg: [4096]u8 = undefined;
         var len: u64 = 0;
@@ -752,7 +757,7 @@ const debug = opaque {
         }
         @panic(msg[0..len]);
     }
-    inline fn divisionWithRemainder(comptime T: type, arg1: T, arg2: T, result: T, rem: T) noreturn {
+    noinline fn divisionWithRemainder(comptime T: type, arg1: T, arg2: T, result: T, rem: T) noreturn {
         @setCold(true);
         var msg: [4096]u8 = undefined;
         var len: u64 = 0;
@@ -768,7 +773,7 @@ const debug = opaque {
         }
         @panic(msg[0..len]);
     }
-    inline fn incorrectAlignment(comptime Pointer: type, address: usize, alignment: usize) noreturn {
+    noinline fn incorrectAlignment(comptime Pointer: type, address: usize, alignment: usize) noreturn {
         @setCold(true);
         const rem: usize = address & (@typeInfo(Pointer).Pointer.alignment -% 1);
         var msg: [4096]u8 = undefined;
@@ -786,7 +791,7 @@ const debug = opaque {
         }
         @panic(msg[0..len]);
     }
-    inline fn comparisonAssertionFailed(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+    noinline fn comparisonAssertionFailed(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
         @setCold(true);
         var msg: [4096]u8 = undefined;
         var len: u64 = comparisonAssertionFailedString0(T, symbol, &msg, arg1, arg2, min(T, arg1, arg2) > 10_000);
@@ -800,15 +805,15 @@ const debug = opaque {
         @panic(msg[0..len]);
     }
     const static = opaque {
-        inline fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
+        fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             var msg: [4096]u8 = undefined;
             @compileError(msg[0..debug.overflowedSubString(T, &msg, arg1, arg2, min(T, arg1, arg2) > 10_000)]);
         }
-        inline fn addCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
+        fn addCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             var msg: [4096]u8 = undefined;
             @compileError(msg[0..debug.overflowedAddString(T, &msg, arg1, arg2, min(T, arg1, arg2) > 10_000)]);
         }
-        inline fn mulCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
+        fn mulCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             var msg: [4096]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
@@ -865,7 +870,7 @@ const debug = opaque {
             }
             @compileError(msg[0..len]);
         }
-        noinline fn comparisonAssertionFailed(
+        fn comparisonAssertionFailed(
             comptime T: type,
             comptime symbol: []const u8,
             comptime arg1: T,

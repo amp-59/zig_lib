@@ -106,7 +106,6 @@ pub fn main() !void {
         builtin.assertEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
         builtin.assertEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
-    if (b) return;
     // Testing compilation
     comptime {
         var static_arg1: T = 0;
@@ -129,6 +128,8 @@ pub fn main() !void {
         builtin.static.assertAbove(T, static_arg1, static_arg2);
         builtin.static.assert(static_b);
     }
+
+    if (b) return;
     arg2 = builtin.add(T, arg1, arg2);
     arg2 = builtin.addSat(T, arg1, arg2);
     arg2 = builtin.addWrap(T, arg1, arg2);
