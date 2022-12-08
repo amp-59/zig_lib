@@ -3,7 +3,7 @@ const builtin = @import("./builtin.zig");
 pub const is_verbose: bool = true;
 pub const is_correct: bool = true;
 
-fn _start() callconv(.Naked) noreturn {
+pub export fn _start() callconv(.Naked) noreturn {
     asm volatile (
         \\xor %%rbp, %%rbp
     );
@@ -57,6 +57,27 @@ fn printArrayOfChars(s: []const u8) struct { buf: [4096]u8, len: u64 } {
     len += 3;
     return .{ .buf = buf, .len = len };
 }
+
+// TODO: Tests to show all error messages.
+export fn showAssertionFailedAbove(arg1: u64, arg2: u64) void {
+    builtin.assertAbove(u64, arg1, arg2);
+}
+export fn showAssertionFailedAboveOrEqual(arg1: u64, arg2: u64) void {
+    builtin.assertAboveOrEqual(u64, arg1, arg2);
+}
+export fn showAssertionFailedEqual(arg1: u64, arg2: u64) void {
+    builtin.assertEqual(u64, arg1, arg2);
+}
+export fn showAssertionFailedBelow(arg1: u64, arg2: u64) void {
+    builtin.assertBelow(u64, arg1, arg2);
+}
+export fn showAssertionFailedBelowOrEqual(arg1: u64, arg2: u64) void {
+    builtin.assertBelowOrEqual(u64, arg1, arg2);
+}
+export fn showAssertionFailedNotEqual(arg1: u64, arg2: u64) void {
+    builtin.assertNotEqual(u64, arg1, arg2);
+}
+
 pub fn main() !void {
     const T: type = u64;
     var arg1: T = 0;
@@ -85,11 +106,6 @@ pub fn main() !void {
                 builtin.assertEqual(u64, @boolToInt(b_0 and b_1 and b_2), builtin.int3a(u64, b_0, b_1, b_2));
             }
         }
-    }
-    {
-        var i: i64 = 0;
-        var j: i64 = -9;
-        builtin.assertBelowOrEqual(i64, i, j);
     }
     uint = 0;
     while (uint != 0x10000) : (uint += 1) {
