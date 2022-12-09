@@ -111,7 +111,7 @@ pub const MapSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mmap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_debug,
+    logging: bool = builtin.is_verbose,
     const Specification = @This();
     const Options = struct {
         anonymous: bool,
@@ -167,7 +167,7 @@ pub const RemapSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mremap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_debug,
+    logging: bool = builtin.is_verbose,
     const Options = struct {
         resize: bool,
         no_unmap: bool,
@@ -191,14 +191,14 @@ pub const RemapSpec = struct {
 pub const UnmapSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.munmap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_debug,
+    logging: bool = builtin.is_verbose,
     pub usingnamespace sys.FunctionInterfaceSpec(UnmapSpec);
 };
 pub const AdviseSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.madvise_errors,
     return_type: type = void,
-    logging: bool = builtin.is_debug,
+    logging: bool = builtin.is_verbose,
     const Options = struct {
         usage: ?Usage = null,
         action: ?Action = null,
