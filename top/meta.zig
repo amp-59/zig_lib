@@ -59,6 +59,32 @@ pub fn isFunction(comptime T: type) bool {
 pub fn isContainer(comptime T: type) bool {
     return isTypeType(T, container_types);
 }
+/// If the input is a union return the active field else return the input.
+pub fn resolve(comptime any: anytype) if (@typeInfo(@TypeOf(any)) == .Union)
+    @TypeOf(comptime @field(any, @tagName(any)))
+else
+    @TypeOf(any) {
+    if (@typeInfo(@TypeOf(any)) == .Union) {
+        return @field(any, @tagName(any));
+    } else {
+        return any;
+    }
+}
+/// A parceled value can be concatenated using `++`
+pub fn parcel(any: anytype) []const @TypeOf(any) {
+    return &[1]@TypeOf(any){any};
+}
+/// A wrapped value can be unwrapped using `try`
+pub fn wrap(any: anytype) blk: {
+    const T: type = @TypeOf(any);
+    if (@typeInfo(T) == .ErrorUnion) {
+        break :blk T;
+    }
+    break :blk error{}!T;
+} {
+    return any;
+}
+
 /// Align `count` below to bitSizeOf smallest real word bit count
 pub fn alignBW(comptime count: comptime_int) u16 {
     return switch (count) {
@@ -277,15 +303,21 @@ pub fn Element(comptime T: type) type {
             return array_info.child;
         },
         .Pointer => |pointer_info| {
-            if (pointer_info.size == .Slice) {
+            if (pointer_info.size == .Slice or pointer_info.size == .Many) {
                 return pointer_info.child;
             }
-            const child_type_info: Type = @typeInfo(pointer_info.child);
-            if (child_type_info == .Array) {
-                return child_type_info.Array.child;
+            switch (@typeInfo(pointer_info.child)) {
+                .Array => |array_info| {
+                    return array_info.child;
+                },
+                else => |child_type_info| {
+                    debug.unexpectedTypeTypeError(T, child_type_info, .Array);
+                },
             }
         },
-        else => |type_info| debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer }),
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+        },
     }
 }
 pub fn sentinel(comptime T: type) ?Element(T) {
@@ -301,8 +333,216 @@ pub fn sentinel(comptime T: type) ?Element(T) {
                 return ret;
             }
         },
-        else => |type_info| debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer }),
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+        },
     }
+}
+fn equalBytes(arg1: anytype, arg2: anytype) bool {
+    const bytes1: []const u8 = &toBytes(arg1);
+    const bytes2: []const u8 = &toBytes(arg2);
+    if (bytes1.len != bytes2.len) {
+        return false;
+    }
+    var i: u64 = 0;
+    while (i != bytes1.len) : (i += 1) {
+        if (bytes1[i] != bytes2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
+    return @ptrCast(*const [@sizeOf(@TypeOf(any))]u8, &any).*;
+}
+pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
+    const T: type = @TypeOf(any);
+    const type_info: Type = @typeInfo(T);
+    const len: u64 = switch (@typeInfo(type_info.Pointer.child)) {
+        .Pointer => blk: {
+            var len: u64 = 0;
+            while (@ptrToInt(any[len]) != 0) {
+                len += 1;
+            }
+            break :blk len;
+        },
+        else => blk: {
+            if (type_info == .Array) {
+                return type_info.Array.len;
+            }
+            if (type_info == .Pointer) {
+                var len: u64 = 0;
+                while (!equalBytes(any[len], comptime sentinel(T).?)) {
+                    len += 1;
+                }
+                break :blk len;
+            }
+        },
+    };
+    return @ptrCast(ManyToSlice(T), any[0..len :comptime sentinel(T).?]);
+}
+pub fn ManyToSlice(comptime T: type) type {
+    var type_info: Type = @typeInfo(T);
+    type_info.Pointer.size = .Slice;
+    return @Type(type_info);
+}
+
+/// A useful meta type for representing bit fields with uncertain values.
+/// Properly rendered by `fmt.any`.
+pub fn EnumBitField(comptime E: type) type {
+    return packed union {
+        tag: Tag,
+        val: Int,
+        const BitField = @This();
+        pub const Tag = E;
+        pub const Int = @typeInfo(Tag).Enum.tag_type;
+        pub fn value(tag: Tag) Int {
+            return @enumToInt(tag);
+        }
+        pub fn check(bit_field: *const BitField, tag: Tag) bool {
+            return bit_field.val & @enumToInt(tag) == @enumToInt(tag);
+        }
+        pub fn set(bit_field: *BitField, tag: Tag) void {
+            bit_field.val |= @enumToInt(tag);
+        }
+        pub fn unset(bit_field: *BitField, tag: Tag) void {
+            bit_field.val &= ~@enumToInt(tag);
+        }
+    };
+}
+/// Return the error part of a function error union return type.
+pub fn ReturnErrorSet(comptime any_function: anytype) type {
+    const T: type = @TypeOf(any_function);
+    switch (@typeInfo(T)) {
+        .Fn => {
+            return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.error_set;
+        },
+        .BoundFn => {
+            return @typeInfo(@typeInfo(@TypeOf(any_function)).BoundFn.return_type.?).ErrorUnion.error_set;
+        },
+        .Struct => {
+            var errors: type = error{};
+            for (any_function) |arg| {
+                errors = errors || ReturnErrorSet(arg);
+            }
+            return errors;
+        },
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .BoundFn, .Struct });
+        },
+    }
+}
+/// Return the value part of a function error union return type.
+pub fn ReturnPayload(comptime any_function: anytype) type {
+    const T: type = @TypeOf(any_function);
+    switch (@typeInfo(T)) {
+        .Fn => {
+            return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.payload;
+        },
+        .BoundFn => {
+            return @typeInfo(@typeInfo(@TypeOf(any_function)).BoundFn.return_type.?).ErrorUnion.payload;
+        },
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .BoundFn });
+        },
+    }
+}
+/// Attempts mimics the structure of an error union. Experimental.
+pub fn ErrorUnion(comptime any_function: anytype) type {
+    const return_type_info: Type =
+        @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?);
+    switch (return_type_info) {
+        .ErrorUnion => |error_set_info| {
+            return union(enum) {
+                err: Error,
+                val: Value,
+
+                const Error: type = error_set_info.error_set;
+                const Value: type = error_set_info.payload;
+
+                fn unwrap(u: @This()) Error!Value {
+                    return switch (u) {
+                        .err => |err| err,
+                        .val => |val| val,
+                    };
+                }
+            };
+        },
+        else => {
+            return @Type(return_type_info);
+        },
+    }
+}
+/// Return the length of the longest field name in a container type
+pub fn maxNameLength(comptime T: type) u64 {
+    var len: u64 = 0;
+    switch (@typeInfo(T)) {
+        .ErrorSet => |error_set_info| {
+            if (error_set_info) |error_set| {
+                for (error_set) |e| {
+                    len = @max(len, e.name.len);
+                }
+            }
+        },
+        .Struct => |struct_info| {
+            for (struct_info.fields) |field| {
+                len = @max(len, field.name.len);
+            }
+        },
+        .Enum => |enum_info| {
+            for (enum_info.fields) |field| {
+                len = @max(len, field.name.len);
+            }
+        },
+        .Union => |union_info| {
+            for (union_info.fields) |field| {
+                len = @max(len, field.name.len);
+            }
+        },
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .ErrorSet, .Struct, .Enum, .Union });
+        },
+    }
+    return len;
+}
+/// Returns whether values of this type can be compared for equality.
+pub fn isTriviallyComparable(comptime T: type) bool {
+    const type_info = @typeInfo(T);
+    return switch (type_info) {
+        .Type => true,
+        .Void => true,
+        .Bool => true,
+        .Int => true,
+        .Float => true,
+        .ComptimeFloat => true,
+        .ComptimeInt => true,
+        .Null => true,
+        .ErrorSet => true,
+        .Enum => true,
+        .Fn => true,
+        .Opaque => true,
+        .AnyFrame => true,
+        .EnumLiteral => true,
+        .NoReturn => false,
+        .Array => false,
+        .Struct => false,
+        .ErrorUnion => false,
+        .Union => false,
+        .Frame => false,
+        .Vector => false,
+        .Pointer => |pointer_info| pointer_info.size != .Slice,
+        .Optional => |optional_info| @typeInfo(optional_info.child) == .Pointer and
+            @typeInfo(optional_info.child).Pointer.size != .Slice and
+            @typeInfo(optional_info.child).Pointer.size != .C,
+        .BoundFn => unreachable,
+        .Undefined => unreachable,
+    };
+}
+pub inline fn analysisBegin(comptime name: []const u8) void {
+    asm volatile ("# LLVM-MCA-BEGIN " ++ name);
+}
+pub inline fn analysisEnd(comptime name: []const u8) void {
+    asm volatile ("# LLVM-MCA-END " ++ name);
 }
 
 const debug = opaque {
@@ -368,11 +608,13 @@ const debug = opaque {
     }
     fn fieldList(comptime type_info: Type) []const u8 {
         var msg: []const u8 = empty;
-        const container_info = switch (type_info) {
+        const container_info: Type = switch (type_info) {
             .Enum => |enum_info| enum_info,
             .Struct => |struct_info| struct_info,
             .Union => |union_info| union_info,
-            else => unexpectedTypeTypesError(type_info, &[_]TypeId{ .Enum, .Struct, .Union }),
+            else => {
+                unexpectedTypeTypesError(type_info, &[_]TypeId{ .Enum, .Struct, .Union });
+            },
         };
         var last: u64 = 0;
         var i: u64 = 0;

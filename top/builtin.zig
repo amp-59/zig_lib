@@ -994,10 +994,18 @@ pub const parse = opaque {
         var idx: u64 = int(u64, signed);
         idx += int(u64, str[idx] == '0');
         return switch (str[idx]) {
-            'b' => try parseValidate(T, str[idx + 1 ..], 2),
-            'o' => try parseValidate(T, str[idx + 1 ..], 8),
-            'x' => try parseValidate(T, str[idx + 1 ..], 16),
-            else => try parseValidate(T, str[idx..], 10),
+            'b' => {
+                try parseValidate(T, str[idx + 1 ..], 2);
+            },
+            'o' => {
+                try parseValidate(T, str[idx + 1 ..], 8);
+            },
+            'x' => {
+                try parseValidate(T, str[idx + 1 ..], 16);
+            },
+            else => {
+                try parseValidate(T, str[idx..], 10);
+            },
         };
     }
     fn parseValidate(comptime T: type, str: []const u8, comptime radix: u16) !T {

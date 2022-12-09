@@ -54,19 +54,20 @@ fn bitCastTests() !void {
     try builtin.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
 }
 fn memoryTests() !void {
-    comptime {
-        const T = [8]u8;
-        const E = meta.Element(T);
-        const U = meta.ArrayPointerToSlice(*T);
-        try builtin.expect([]u8 == U);
-        builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, 8));
-        var t: T = T{ 0, 1, 2, 3, 4, 5, 6, 7 };
-        var u: U = &t;
-        builtin.assertEqual(type, meta.Element(T), E);
-        builtin.assertEqual(type, meta.Element(*T), E);
-        for (meta.arrayPointerToSlice(&t)) |e, i| builtin.assertEqual(E, e, u[i]);
-        for (meta.sliceToArrayPointer(u)) |e, i| builtin.assertEqual(E, e, t[i]);
-    }
+    const Element = u3;
+    const T = [16:0]Element;
+    const E = meta.Element(T);
+    const U = meta.ArrayPointerToSlice(*T);
+    try builtin.expect([:0]Element == U);
+    builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, @typeInfo(T).Array.len));
+    comptime var t: T = T{ 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 0 };
+    comptime var u: U = &t;
+    builtin.assertEqual(type, meta.Element(T), E);
+    builtin.assertEqual(type, meta.Element(*T), E);
+    for (meta.arrayPointerToSlice(&t)) |e, i| builtin.assertEqual(E, e, u[i]);
+    for (meta.sliceToArrayPointer(u)) |e, i| builtin.assertEqual(E, e, t[i]);
+    const m: [:0]Element = meta.manyToSlice(u.ptr);
+    builtin.assertEqual(u64, 4, m.len);
 }
 pub fn main() !void {
     try basicTests();
