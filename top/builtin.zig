@@ -1294,10 +1294,19 @@ pub const fmt = opaque {
         while (value != 0) : (len += 1) value /= radix;
         return len;
     }
-    fn Absolute(comptime T: type) type {
-        return @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
+    fn Absolute(comptime Int: type) type {
+        return @Type(.{ .Int = .{
+            .bits = @max(@bitSizeOf(Int), 8),
+            .signedness = .unsigned,
+        } });
     }
-    pub fn absoluteValue(comptime Int: type, comptime Abs: type, i: Int) Abs {
+    fn Real(comptime Int: type) type {
+        return @Type(.{ .Int = .{
+            .bits = @max(@bitSizeOf(Int), 8),
+            .signedness = @typeInfo(Int).Int.signedness,
+        } });
+    }
+    pub fn absoluteValue(comptime Int: type, comptime Abs: type, i: Real(Int)) Abs {
         return if (i < 0) 1 +% ~@bitCast(Abs, i) else @bitCast(Abs, i);
     }
 };
