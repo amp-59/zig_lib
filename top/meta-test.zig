@@ -3,6 +3,7 @@ const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 
 pub usingnamespace proc.start;
+pub usingnamespace proc.exception;
 
 pub const is_verbose: bool = true;
 pub const is_correct: bool = true;
@@ -31,4 +32,7 @@ pub fn main() !void {
     try builtin.expect(meta.isFunction(@TypeOf(struct {
         fn other(_: *@This()) void {}
     }.other)));
+    try builtin.expect(32 == comptime meta.alignCX(-964392));
+    try builtin.expect(8 == comptime meta.alignCX(-128));
+    try builtin.expect(16 == comptime meta.alignCX(-129));
 }

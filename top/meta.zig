@@ -86,3 +86,52 @@ pub fn alignAW(comptime count: comptime_int) u16 {
     };
 }
 
+pub fn extrema(comptime I: type) struct { min: comptime_int, max: comptime_int } {
+    const U = @Type(.{ .Int = .{
+        .signedness = .unsigned,
+        .bits = @bitSizeOf(I),
+    } });
+    const umax: U = ~@as(U, 0);
+    if (@typeInfo(I).Int.signedness == .unsigned) {
+        return .{ .min = 0, .max = umax };
+    } else {
+        const imax: U = umax >> 1;
+        return .{
+            .min = @bitCast(I, ~imax),
+            .max = @bitCast(I, imax),
+        };
+    }
+}
+/// Convert comptime value to bitSizeOf smallest real word bit count
+pub fn alignCX(comptime value: comptime_int) u16 {
+    if (value > 0) {
+        return switch (value) {
+            0...~@as(u8, 0) => 8,
+            @as(u9, 1) << 8...~@as(u16, 0) => 16,
+            @as(u17, 1) << 16...~@as(u32, 0) => 32,
+            @as(u33, 1) << 32...~@as(u64, 0) => 64,
+            @as(u65, 1) << 64...~@as(u128, 0) => 128,
+            @as(u129, 1) << 128...~@as(u256, 0) => 256,
+            @as(u257, 1) << 256...~@as(u512, 0) => 512,
+            else => @compileLog(value),
+        };
+    } else {
+        const xi8 = extrema(i8);
+        const xi16 = extrema(i16);
+        const xi32 = extrema(i32);
+        const xi64 = extrema(i64);
+        const xi128 = extrema(i128);
+        const xi256 = extrema(i256);
+        const xi512 = extrema(i512);
+        return switch (value) {
+            xi8.min...xi8.max => 8,
+            xi16.min...xi8.min - 1, xi8.max + 1...xi16.max => 16,
+            xi32.min...xi16.min - 1, xi16.max + 1...xi32.max => 32,
+            xi64.min...xi32.min - 1, xi32.max + 1...xi64.max => 64,
+            xi128.min...xi64.min - 1, xi64.max + 1...xi128.max => 128,
+            xi256.min...xi128.min - 1, xi128.max + 1...xi256.max => 128,
+            xi512.min...xi256.min - 1, xi256.max + 1...xi512.max => 128,
+            else => @compileLog(value),
+        };
+    }
+}

@@ -811,7 +811,6 @@ const debug = opaque {
             return @intCast(u64, rc);
         }
     }
-
     fn zigErrorReturnedByMain(buf: []u8, symbol: []const u8) void {
         var len: u64 = 0;
         for (about_error_s) |c, i| buf[len + i] = c;
@@ -824,7 +823,6 @@ const debug = opaque {
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
     }
-
     fn forkError(fork_error: anytype) void {
         var buf: [16 + 32 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
