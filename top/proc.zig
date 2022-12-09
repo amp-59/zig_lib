@@ -169,7 +169,7 @@ pub const CloneArgs = extern struct {
     flags: Clone,
     /// Where to store PID file descriptor
     /// (int *)
-    pidfd: u64,
+    pidfd: u64 = 0,
     /// Where to store child TID,
     /// in child's memory (pid_t *)
     child_tid: u64,
@@ -178,22 +178,22 @@ pub const CloneArgs = extern struct {
     parent_tid: u64,
     /// Signal to deliver to parent on
     /// child termination
-    exit_signal: u64,
+    exit_signal: u64 = 0,
     /// Pointer to lowest byte of stack
     stack: u64,
     /// Size of stack
-    stack_size: u64,
+    stack_size: u64 = 4096,
     /// Location of new TLS
     tls: u64,
     /// Pointer to a pid_t array
     /// (since Linux 5.5)
-    set_tid: u64,
+    set_tid: u64 = 0,
     /// Number of elements in set_tid
     /// (since Linux 5.5)
-    set_tid_size: u64,
+    set_tid_size: u64 = 0,
     /// File descriptor for target cgroup
     /// of child (since Linux 5.7)
-    cgroup: u64,
+    cgroup: u64 = 0,
 };
 pub const WaitSpec = struct {
     options: Options = .{},
@@ -351,16 +351,11 @@ pub const CloneSpec = struct {
     pub inline fn args(comptime spec: CloneSpec, stack_addr: u64) CloneArgs {
         return .{
             .flags = spec.flags(),
-            .pidfd = 0,
             .child_tid = stack_addr + 0x1000 - 0x10,
             .parent_tid = stack_addr + 0x1000 - 0x8,
-            .exit_signal = 0,
             .stack = stack_addr,
             .stack_size = 4096,
             .tls = stack_addr + 0x8,
-            .set_tid = 0,
-            .set_tid_size = 0,
-            .cgroup = 0,
         };
     }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
@@ -493,19 +488,16 @@ pub const start = opaque {
         sys.noexcept.write(2, @ptrToInt(msg.ptr), msg.len);
         sys.exit(2);
     }
-    pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
-        @compileError("error is discarded");
-    }
     pub noinline fn panicOutOfBounds(max_len: u64, idx: u64) noreturn {
         @setCold(true);
-        var msg: [1024]u8 = undefined;
+        var buf: [1024]u8 = undefined;
         if (max_len == 0) {
-            debug.print(&msg, &[_][]const u8{
+            debug.print(&buf, &[_][]const u8{
                 debug.about_error_s,             "indexing (",
                 builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
             });
         } else {
-            debug.print(&msg, &[_][]const u8{
+            debug.print(&buf, &[_][]const u8{
                 debug.about_error_s,                      "index ",
                 builtin.fmt.ud64(idx).readAll(),          " above maximum ",
                 builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
@@ -513,25 +505,20 @@ pub const start = opaque {
         }
         sys.exit(2);
     }
-    //pub fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
-    //    @setCold(true);
-    //    var msg: [1024]u8 = undefined;
-    //    var len: u64 = 0;
-    //    for ([_][]const u8{
-    //        debug.about_error_s, "sentinel mismatch: expected ",
-    //        expected,            ", found ",
-    //        actual,              "\n",
-    //    }) |s| {
-    //        for (s) |c, i| msg[len +% i] = c;
-    //        len +%= s.len;
-    //    }
-    //    sys.noexcept.write(2, @ptrToInt(&msg), len);
-    //    sys.exit(2);
-    //}
-    pub fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
+    pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
-        var msg: [1024]u8 = undefined;
-        debug.print(&msg, [_][]const u8{
+        var buf: [1024]u8 = undefined;
+        debug.print(&buf, [_][]const u8{
+            debug.about_error_s,                 "sentinel mismatch: expected ",
+            builtin.fmt.int(expected).readAll(), ", found ",
+            builtin.fmt.int(actual).readAll(),   "\n",
+        });
+        sys.exit(2);
+    }
+    pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
+        @setCold(true);
+        var buf: [1024]u8 = undefined;
+        debug.print(&buf, [_][]const u8{
             debug.about_error_s,               "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
@@ -540,34 +527,37 @@ pub const start = opaque {
     }
     pub fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
-        var msg: [1024]u8 = undefined;
-        debug.print(&msg, &[_][]const u8{
+        var buf: [1024]u8 = undefined;
+        debug.print(&buf, &[_][]const u8{
             debug.about_error_s, "access of union field '",
             @tagName(wanted),    "' while field '",
             @tagName(active),    "' is active",
         });
         sys.exit(2);
     }
+    pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
+        @compileError("error is discarded");
+    }
 };
 pub const exception = opaque {
     fn updateExceptionHandlers(act: *const SignalAction) void {
-        setSignalAction(sys.SIG.SEGV, act, null);
-        setSignalAction(sys.SIG.ILL, act, null);
-        setSignalAction(sys.SIG.BUS, act, null);
-        setSignalAction(sys.SIG.FPE, act, null);
+        setSignalAction(SIG.SEGV, act, null);
+        setSignalAction(SIG.ILL, act, null);
+        setSignalAction(SIG.BUS, act, null);
+        setSignalAction(SIG.FPE, act, null);
     }
     pub fn enableExceptionHandlers() void {
         var act = SignalAction{
             .handler = @ptrToInt(&exceptionHandler),
-            .flags = (sys.SA.SIGINFO | sys.SA.RESTART | sys.SA.RESETHAND | sys.SA.RESTORER),
+            .flags = (SA.SIGINFO | SA.RESTART | SA.RESETHAND | SA.RESTORER),
             .restorer = @ptrToInt(&restoreRunTime),
         };
         updateExceptionHandlers(&act);
     }
     pub fn disableExceptionHandlers() void {
         var act = SignalAction{
-            .handler = sys.SIG.DFL,
-            .flags = sys.SA.RESTORER,
+            .handler = SIG.DFL,
+            .flags = SA.RESTORER,
             .restorer = @ptrToInt(&restoreRunTime),
         };
         updateExceptionHandlers(&act);
@@ -584,10 +574,10 @@ pub const exception = opaque {
     pub fn exceptionHandler(sig: u32, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
         resetExceptionHandlers();
         debug.exceptionFaultAtAddress(switch (sig) {
-            sys.SIG.SEGV => "SIGSEGV",
-            sys.SIG.ILL => "SIGILL",
-            sys.SIG.BUS => "SIGBUS",
-            sys.SIG.FPE => "SIGFPE",
+            SIG.SEGV => "SIGSEGV",
+            SIG.ILL => "SIGILL",
+            SIG.BUS => "SIGBUS",
+            SIG.FPE => "SIGFPE",
             else => unreachable,
         }, info.fields.fault.addr);
         sys.exit(2);
@@ -609,6 +599,8 @@ pub const exception = opaque {
             ),
         }
     }
+    const SA = sys.SA;
+    const SIG = sys.SIG;
 };
 fn exitWithError(any_error: anytype) void {
     @setCold(true);

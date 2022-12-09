@@ -1076,6 +1076,9 @@ pub const fmt = opaque {
             }
         };
     }
+    pub fn int(any: anytype) StaticString(@TypeOf(any), 10) {
+        return d(@TypeOf(any), any);
+    }
     inline fn b(comptime Int: type, value: Int) StaticString(Int, 2) {
         const Array = StaticString(Int, 2);
         const Abs = Absolute(Int);
