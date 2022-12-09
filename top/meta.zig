@@ -129,7 +129,6 @@ pub fn extrema(comptime I: type) Extrema {
         };
     }
 }
-
 /// Return the smallest real bitSizeOf the integer type required to store the
 /// comptime integer.
 pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
@@ -338,7 +337,7 @@ pub fn sentinel(comptime T: type) ?Element(T) {
         },
     }
 }
-fn equalBytes(arg1: anytype, arg2: anytype) bool {
+fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     const bytes1: []const u8 = &toBytes(arg1);
     const bytes2: []const u8 = &toBytes(arg2);
     if (bytes1.len != bytes2.len) {
@@ -372,7 +371,7 @@ pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
             }
             if (type_info == .Pointer) {
                 var len: u64 = 0;
-                while (!equalBytes(any[len], comptime sentinel(T).?)) {
+                while (!testEqualBytes(any[len], comptime sentinel(T).?)) {
                     len += 1;
                 }
                 break :blk len;
@@ -386,7 +385,6 @@ pub fn ManyToSlice(comptime T: type) type {
     type_info.Pointer.size = .Slice;
     return @Type(type_info);
 }
-
 /// A useful meta type for representing bit fields with uncertain values.
 /// Properly rendered by `fmt.any`.
 pub fn EnumBitField(comptime E: type) type {
@@ -447,7 +445,7 @@ pub fn ReturnPayload(comptime any_function: anytype) type {
         },
     }
 }
-/// Attempts mimics the structure of an error union. Experimental.
+/// Attempts to replicate the structure of an error union. Experimental.
 pub fn ErrorUnion(comptime any_function: anytype) type {
     const return_type_info: Type =
         @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?);
