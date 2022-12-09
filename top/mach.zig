@@ -4,6 +4,7 @@
 // For operations with no comptime operands and register-sized integers prefer
 // the following four functions. These reference the assembly directly below,
 // so no truncation is needed to circumvent Zig's requirements for shift_amt.
+// (UB?)
 pub inline fn shlx64(value: u64, shift_amt: u64) u64 {
     return shlx(u64, value, shift_amt);
 }

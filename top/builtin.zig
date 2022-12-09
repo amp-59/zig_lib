@@ -803,13 +803,13 @@ const debug = opaque {
         ) noreturn {
             var msg: [size]u8 = undefined;
             var len: u64 = 0;
-            for (@as([]const []const u8, &.{
+            for ([_][]const u8{
                 @typeName(T),             ": exact division had a remainder: ",
                 tos(T, arg1).readAll(),   "/",
                 tos(T, arg2).readAll(),   " == ",
                 tos(T, result).readAll(), "r",
                 tos(T, rem).readAll(),    "\n",
-            })) |s| {
+            }) |s| {
                 for (s) |c, i| msg[len +% i] = c;
                 len +%= s.len;
             }
@@ -825,14 +825,14 @@ const debug = opaque {
         ) noreturn {
             var msg: [size]u8 = undefined;
             var len: u64 = 0;
-            for (@as([]const []const u8, &.{
+            for ([_][]const u8{
                 @typeName(T),                ": incorrect alignment: ",
                 type_name,                   " align(",
                 tos(T, alignment).readAll(), "): ",
                 tos(T, address).readAll(),   " == ",
                 tos(T, result).readAll(),    "+",
                 tos(T, rem).readAll(),       "\n",
-            })) |s| {
+            }) |s| {
                 for (s) |c, i| msg[len +% i] = c;
                 len +%= s.len;
             }

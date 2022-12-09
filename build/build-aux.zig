@@ -1,8 +1,6 @@
 const std = @import("std");
 const build = std.build;
-
 const srg: std.build.Pkg = .{ .name = "zig_lib", .source = .{ .path = "zig_lib.zig" } };
-
 const Context = opaque {
     var build_mode: std.builtin.Mode = undefined;
     var output_mode: std.builtin.OutputMode = undefined;
@@ -12,7 +10,27 @@ const Context = opaque {
     var install_step: *build.Step = undefined;
     var fmt_step: *build.Step = undefined;
     var always_strip: bool = true;
+    fn init() void {
+        Context.builder.reference_trace = 100;
+        Context.build_mode = builder.standardReleaseOptions();
+        Context.test_step = builder.step("test", "Run tests");
+        Context.run_step = builder.step("run", "Run programs");
+    }
 };
+
+// PROGRAM FILES ///////////////////////////////////////////////////////////////
+
+pub fn main(builder: *build.Builder) !void {
+    Context.builder = builder;
+    Context.init();
+
+    _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .need_build_root = true });
+    _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{});
+    _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{});
+}
+
+// BOILERPLATE ////////////////////////////////////////////////////////////////
+
 const Utility = opaque {
     fn endsWith(end: anytype, seq: anytype) bool {
         if (end.len > seq.len) {
@@ -49,7 +67,12 @@ pub fn Args(comptime name: [:0]const u8) type {
         need_build_root: bool = false,
     };
 }
-fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8, comptime path: [:0]const u8, args: Args(name)) *build.LibExeObjStep {
+fn addProjectExecutable(
+    builder: *build.Builder,
+    comptime name: [:0]const u8,
+    comptime path: [:0]const u8,
+    args: Args(name),
+) *build.LibExeObjStep {
     const ret: *build.LibExeObjStep = builder.addExecutableSource(name, build.FileSource.relative(path));
 
     ret.build_mode = Context.build_mode;
@@ -65,37 +88,20 @@ fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8, co
 
     const make_step: *build.Step = builder.step(args.make_step_name, args.make_step_desc);
     const run_step: *build.Step = builder.step(args.run_step_name, args.run_step_desc);
-
     if (args.need_build_root) {
         defineBuildRoot(builder, ret);
     }
-
     ret.addPackage(srg);
     ret.install();
-
     make_step.dependOn(&ret.step);
     make_step.dependOn(&ret.install_step.?.step);
-
     run_step.dependOn(make_step);
     run_step.dependOn(&ret.run().step);
-
     if (args.is_support orelse Utility.endsWith("-aux.zig", path)) {
         Context.run_step.dependOn(&ret.run().step);
     }
-
     if (args.is_test orelse Utility.endsWith("-test.zig", path)) {
         Context.test_step.dependOn(&ret.run().step);
     }
-
     return ret;
-}
-pub fn main(builder: *build.Builder) !void {
-    Context.builder = builder;
-    Context.build_mode = builder.standardReleaseOptions();
-    Context.builder.reference_trace = 100;
-    Context.test_step = builder.step("test", "Run tests");
-    Context.run_step = builder.step("run", "Run programs");
-
-    _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .need_build_root = true });
-    _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{});
 }

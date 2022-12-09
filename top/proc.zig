@@ -167,14 +167,11 @@ pub const Wait = meta.EnumBitField(enum(u64) {
 pub const CloneArgs = extern struct {
     /// Flags bit mask
     flags: Clone,
-    /// Where to store PID file descriptor
-    /// (int *)
+    /// Where to store PID file descriptor (int *)
     pidfd: u64 = 0,
-    /// Where to store child TID,
-    /// in child's memory (pid_t *)
+    /// Where to store child TID in child's memory (pid_t *)
     child_tid: u64,
-    /// Where to store child TID,
-    /// in parent's memory (pid_t *)
+    /// Where to store child TID in parent's memory (pid_t *)
     parent_tid: u64,
     /// Signal to deliver to parent on
     /// child termination
@@ -186,13 +183,10 @@ pub const CloneArgs = extern struct {
     /// Location of new TLS
     tls: u64,
     /// Pointer to a pid_t array
-    /// (since Linux 5.5)
     set_tid: u64 = 0,
     /// Number of elements in set_tid
-    /// (since Linux 5.5)
     set_tid_size: u64 = 0,
     /// File descriptor for target cgroup
-    /// of child (since Linux 5.7)
     cgroup: u64 = 0,
 };
 pub const WaitSpec = struct {

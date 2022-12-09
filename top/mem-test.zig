@@ -6,11 +6,9 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_correct: bool = false;
+pub const is_correct: bool = true;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
-const logging = true;
-const errors = null;
 
 const move_spec = if (default_errors) .{
     .options = mem.move_opts,
@@ -38,7 +36,6 @@ const resize_spec = if (default_errors)
     .logging = logging,
     .errors = builtin.root.errors,
 };
-
 const unmap_spec = if (default_errors)
 .{
     .logging = logging,
@@ -46,16 +43,19 @@ const unmap_spec = if (default_errors)
     .logging = logging,
     .errors = builtin.root.errors,
 };
-
+const advice_opts = .{ .property = .{ .dump = true } };
 const advise_spec = if (default_errors)
 .{
-    .options = .{ .property = .{ .dump = true } },
+    .options = advice_opts,
     .logging = logging,
 } else .{
-    .options = .{ .property = .{ .dump = true } },
+    .options = advice_opts,
     .logging = logging,
     .errors = builtin.root.errors,
 };
+
+const logging = true;
+const errors = null;
 
 fn testLowSystemMemoryOperations() !void {
     var addr: u64 = 0x7000000;
