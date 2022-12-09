@@ -59,6 +59,7 @@ pub fn isFunction(comptime T: type) bool {
 pub fn isContainer(comptime T: type) bool {
     return isTypeType(T, container_types);
 }
+
 /// If the input is a union return the active field else return the input.
 pub fn resolve(comptime any: anytype) if (@typeInfo(@TypeOf(any)) == .Union)
     @TypeOf(comptime @field(any, @tagName(any)))
@@ -83,6 +84,31 @@ pub fn wrap(any: anytype) blk: {
     break :blk error{}!T;
 } {
     return any;
+}
+
+/// Attempts to return the type of a field without matching strings to field
+/// names.
+pub fn Field(comptime T: type, comptime field_name: []const u8) type {
+    return @TypeOf(@field(@as(T, undefined), field_name));
+}
+/// Return a simple struct field
+pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value: ?T) StructField {
+    const default_value_ptr: ?*const anyopaque = if (default_value) |value| &value else null;
+    return .{ .name = field_name, .field_type = T, .default_value = default_value_ptr, .is_comptime = false, .alignment = 0 };
+}
+/// Assist creation of struct types
+pub fn structInfo(comptime fields: []const StructField) Type {
+    return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = false } };
+}
+/// Assist creation of tuple types
+pub fn tupleInfo(comptime fields: []const StructField) Type {
+    return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = true } };
+}
+pub fn defaultValue(comptime struct_field: StructField) ?struct_field.field_type {
+    if (struct_field.default_value) |default_value_ptr| {
+        return @ptrCast(*const struct_field.field_type, @alignCast(@alignOf(struct_field.field_type), default_value_ptr)).*;
+    }
+    return null;
 }
 
 /// Align `count` below to bitSizeOf smallest real word bit count
@@ -407,6 +433,32 @@ pub fn EnumBitField(comptime E: type) type {
             bit_field.val &= ~@enumToInt(tag);
         }
     };
+}
+
+pub fn fnParams(comptime function: anytype) []const FnParam {
+    return @typeInfo(@TypeOf(function)).Fn.args;
+}
+pub fn FnParam0(comptime function: anytype) type {
+    return fnParams(function)[0].arg_type.?;
+}
+pub fn FnParam1(comptime function: anytype) type {
+    return fnParams(function)[1].arg_type.?;
+}
+pub fn FnParam2(comptime function: anytype) type {
+    return fnParams(function)[2].arg_type.?;
+}
+pub fn FnParam3(comptime function: anytype) type {
+    return fnParams(function)[3].arg_type.?;
+}
+pub fn FnParamN(comptime function: anytype, comptime index: u64) type {
+    return fnParams(function)[index].arg_type.?;
+}
+pub fn Return(comptime function: anytype) type {
+    if (@TypeOf(function) == type) {
+        return @typeInfo(function).Fn.return_type.?;
+    } else {
+        return @typeInfo(@TypeOf(function)).Fn.return_type.?;
+    }
 }
 /// Return the error part of a function error union return type.
 pub fn ReturnErrorSet(comptime any_function: anytype) type {
