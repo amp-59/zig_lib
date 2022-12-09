@@ -1,40 +1,11 @@
 const builtin = @import("./builtin.zig");
+const proc = @import("./proc.zig");
+
+pub usingnamespace proc.start;
 
 pub const is_verbose: bool = true;
 pub const is_correct: bool = true;
 
-pub export fn _start() callconv(.Naked) noreturn {
-    asm volatile (
-        \\xor %%rbp, %%rbp
-    );
-    callMain() catch |thrown| {
-        @panic(@errorName(thrown));
-    };
-    asm volatile (
-        \\movq $60, %%rax
-        \\movq $0,  %%rdi
-        \\syscall
-    );
-    unreachable;
-}
-pub fn callMain() !void {
-    @setAlignStack(16);
-    return @call(.{ .modifier = .always_inline }, main, .{});
-}
-pub fn panic(str: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?u64) noreturn {
-    asm volatile (
-        \\syscall
-        \\movq $60, %%rax
-        \\movq $2,  %%rdi
-        \\syscall
-        :
-        : [sysno] "{rax}" (1),
-          [arg1] "{rdi}" (2),
-          [arg2] "{rsi}" (@ptrToInt(str.ptr)),
-          [arg3] "{rdx}" (str.len),
-    );
-    unreachable;
-}
 fn printArrayOfChars(s: []const u8) struct { buf: [4096]u8, len: u64 } {
     var buf: [4096]u8 = undefined;
     var len: u64 = 0;
@@ -125,7 +96,27 @@ pub fn main() !void {
         builtin.assertEqual(u8, @truncate(u8, uint), builtin.parse.uo(u8, builtin.fmt.uo8(@truncate(u8, uint)).readAll()));
         builtin.assertEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
         builtin.assertEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.ud(u64, builtin.fmt.ud64(uint).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.ux(u64, builtin.fmt.ux64(uint).readAll()));
+        try builtin.expectEqual(u32, @truncate(u32, uint), builtin.parse.ub(u32, builtin.fmt.ub32(@truncate(u32, uint)).readAll()));
+        try builtin.expectEqual(u32, @truncate(u32, uint), builtin.parse.uo(u32, builtin.fmt.uo32(@truncate(u32, uint)).readAll()));
+        try builtin.expectEqual(u32, @truncate(u32, uint), builtin.parse.ud(u32, builtin.fmt.ud32(@truncate(u32, uint)).readAll()));
+        try builtin.expectEqual(u32, @truncate(u32, uint), builtin.parse.ux(u32, builtin.fmt.ux32(@truncate(u32, uint)).readAll()));
+        try builtin.expectEqual(u16, @truncate(u16, uint), builtin.parse.ub(u16, builtin.fmt.ub16(@truncate(u16, uint)).readAll()));
+        try builtin.expectEqual(u16, @truncate(u16, uint), builtin.parse.uo(u16, builtin.fmt.uo16(@truncate(u16, uint)).readAll()));
+        try builtin.expectEqual(u16, @truncate(u16, uint), builtin.parse.ud(u16, builtin.fmt.ud16(@truncate(u16, uint)).readAll()));
+        try builtin.expectEqual(u16, @truncate(u16, uint), builtin.parse.ux(u16, builtin.fmt.ux16(@truncate(u16, uint)).readAll()));
+        try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ub(u8, builtin.fmt.ub8(@truncate(u8, uint)).readAll()));
+        try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.uo(u8, builtin.fmt.uo8(@truncate(u8, uint)).readAll()));
+        try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
+        try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
+    builtin.expectEqual(u64, 0, 2) catch |err| {
+        try builtin.expect(err == error.UnexpectedValue);
+    };
+
     _ = builtin.lib_build_root;
     // Testing compilation
     comptime {
