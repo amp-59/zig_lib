@@ -626,26 +626,26 @@ const debug = opaque {
         };
     }
     fn genericTypeList(comptime kind: TypeKind, any: anytype) []const u8 {
-        var msg: []const u8 = empty;
+        var buf: []const u8 = empty;
         var last: u64 = 0;
         var i: u64 = 0;
         while (i < any.len) : (i += 1) {
-            last = msg.len;
+            last = buf.len;
             switch (kind) {
                 .type => {
-                    msg = msg ++ ", " ++ @typeName(any[i]);
+                    buf = buf ++ ", " ++ @typeName(any[i]);
                 },
                 .type_type => {
-                    msg = msg ++ ", " ++ typeTypeName(any[i]);
+                    buf = buf ++ ", " ++ typeTypeName(any[i]);
                 },
             }
         }
         if (i > 2) {
-            return msg[2 .. last + 1] ++ " or " ++ msg[last + 2 ..];
+            return buf[2 .. last + 1] ++ " or " ++ buf[last + 2 ..];
         } else if (i == 2) {
-            return msg[2..last] ++ " or " ++ msg[last + 2 ..];
+            return buf[2..last] ++ " or " ++ buf[last + 2 ..];
         } else if (i == 1) {
-            return msg[2..];
+            return buf[2..];
         } else {
             return "(none)";
         }
@@ -657,7 +657,7 @@ const debug = opaque {
         return genericTypeList(.type_type, any);
     }
     fn fieldList(comptime type_info: Type) []const u8 {
-        var msg: []const u8 = empty;
+        var buf: []const u8 = empty;
         const container_info: Type = switch (type_info) {
             .Enum => |enum_info| enum_info,
             .Struct => |struct_info| struct_info,
@@ -669,24 +669,24 @@ const debug = opaque {
         var last: u64 = 0;
         var i: u64 = 0;
         inline for (container_info.fields) |field| {
-            last = msg.len;
-            msg = msg ++ ", '" ++ field.name ++ "'";
+            last = buf.len;
+            buf = buf ++ ", '" ++ field.name ++ "'";
         }
-        return terminateAndList(msg, i, last);
+        return terminateAndList(buf, i, last);
     }
-    fn terminateAndList(comptime msg: []const u8, n: u64, len: u64) []const u8 {
-        if (msg.len > 2) {
+    fn terminateAndList(comptime buf: []const u8, n: u64, len: u64) []const u8 {
+        if (buf.len > 2) {
             return if (n >= 3 and n < 150)
-                msg[2 .. len + 1] ++ " and " ++ msg[len + 2 ..]
+                buf[2 .. len + 1] ++ " and " ++ buf[len + 2 ..]
             else if (n > 1)
-                msg[2..len] ++ " and " ++ msg[len + 2 ..]
+                buf[2..len] ++ " and " ++ buf[len + 2 ..]
             else
-                msg[2..];
+                buf[2..];
         } else {
-            return msg;
+            return buf;
         }
     }
-    fn declList(comptime msg: []const u8, comptime type_info: Type) []const u8 {
+    fn declList(comptime buf: []const u8, comptime type_info: Type) []const u8 {
         var pub_str: []const u8 = "";
         var pub_num: u64 = 0;
         const container_info = switch (type_info) {
@@ -702,9 +702,9 @@ const debug = opaque {
             }
         }
         if (pub_num == 1) {
-            return msg[0 .. msg.len - 3] ++ ": " ++ pub_str[2..pub_str.len] ++ "'";
+            return buf[0 .. buf.len - 3] ++ ": " ++ pub_str[2..pub_str.len] ++ "'";
         } else {
-            return msg ++ pub_str[2..pub_str.len] ++ "'";
+            return buf ++ pub_str[2..pub_str.len] ++ "'";
         }
     }
     fn unexpectedTypesError(comptime T: type, comptime any: []const type) noreturn {
