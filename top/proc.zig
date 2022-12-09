@@ -405,7 +405,6 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
         return execve_error;
     }
 }
-
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) spec.Unwrapped(.wait4) {
     var status: u64 = 0;
     if (spec.call(.wait4, .{ WaitSpec.pid(id), @ptrToInt(&status), 0, 0 })) |pid| {
@@ -500,27 +499,18 @@ pub const start = opaque {
     pub noinline fn panicOutOfBounds(max_len: u64, idx: u64) noreturn {
         @setCold(true);
         var msg: [1024]u8 = undefined;
-        var len: u64 = 0;
         if (max_len == 0) {
-            for ([_][]const u8{
+            debug.print(&msg, &[_][]const u8{
                 debug.about_error_s,             "indexing (",
                 builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
-            }) |s| {
-                for (s) |c, i| msg[len +% i] = c;
-                len +%= s.len;
-            }
+            });
         } else {
-            const max_idx: u64 = max_len -% 1;
-            for ([_][]const u8{
-                debug.about_error_s,                 "index ",
-                builtin.fmt.ud64(idx).readAll(),     " above maximum ",
-                builtin.fmt.ud64(max_idx).readAll(), "\n",
-            }) |s| {
-                for (s) |c, i| msg[len +% i] = c;
-                len +%= s.len;
-            }
+            debug.print(&msg, &[_][]const u8{
+                debug.about_error_s,                      "index ",
+                builtin.fmt.ud64(idx).readAll(),          " above maximum ",
+                builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
+            });
         }
-        sys.noexcept.write(2, @ptrToInt(&msg), len);
         sys.exit(2);
     }
     //pub fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
@@ -541,31 +531,21 @@ pub const start = opaque {
     pub fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
         var msg: [1024]u8 = undefined;
-        var len: u64 = 0;
-        for ([_][]const u8{
+        debug.print(&msg, [_][]const u8{
             debug.about_error_s,               "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
-        sys.noexcept.write(2, @ptrToInt(&msg), len);
+        });
         sys.exit(2);
     }
     pub fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
         var msg: [1024]u8 = undefined;
-        var len: u64 = 0;
-        for ([_][]const u8{
+        debug.print(&msg, &[_][]const u8{
             debug.about_error_s, "access of union field '",
             @tagName(wanted),    "' while field '",
             @tagName(active),    "' is active",
-        }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
-        sys.noexcept.write(2, @ptrToInt(&msg), len);
+        });
         sys.exit(2);
     }
 };
@@ -603,20 +583,13 @@ pub const exception = opaque {
     }
     pub fn exceptionHandler(sig: u32, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
         resetExceptionHandlers();
-        const addr: u64 = info.fields.fault.addr;
-        var msg: [4096]u8 = undefined;
-        var len: u64 = 0;
-        for ([_][]const u8{ switch (sig) {
+        debug.exceptionFaultAtAddress(switch (sig) {
             sys.SIG.SEGV => "SIGSEGV",
             sys.SIG.ILL => "SIGILL",
             sys.SIG.BUS => "SIGBUS",
             sys.SIG.FPE => "SIGFPE",
             else => unreachable,
-        }, " at address ", builtin.fmt.ux64(addr).readAll(), "\n" }) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
-        sys.noexcept.write(2, @ptrToInt(&msg), len);
+        }, info.fields.fault.addr);
         sys.exit(2);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
@@ -637,23 +610,11 @@ pub const exception = opaque {
         }
     }
 };
-fn exePathName(msg: anytype, len: u64) u64 {
-    const rc: i64 = sys.noexcept.readlink(@ptrToInt("/proc/self/exe"), @ptrToInt(msg[len..].ptr), msg.*.len - len);
-    return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
-}
-fn exitWithError(any_error: anyerror) void {
+fn exitWithError(any_error: anytype) void {
     @setCold(true);
-    const max_len: u64 = 16 + 4096 + 512 + 1;
-    var msg: [max_len]u8 = undefined;
-    var len: u64 = 0;
-    for (debug.about_error_s) |c, i| msg[len + i] = c;
-    len +%= 16;
-    len +%= exePathName(&msg, len);
-    for ([_][]const u8{ " (", @errorName(any_error), ")\n" }) |s| {
-        for (s) |c, i| msg[len + i] = c;
-        len += s.len;
-    }
-    sys.noexcept.write(2, @ptrToInt(&msg), len);
+    var buf: [16 + 4096 + 512 + 1]u8 = undefined;
+    debug.zigErrorReturnedByMain(&buf, @errorName(any_error));
+    sys.exit(2);
 }
 pub noinline fn callMain(stack_addr: u64) noreturn {
     @setAlignStack(16);
@@ -801,7 +762,6 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
     }
     unreachable;
 }
-
 fn Args(comptime Fn: type) type {
     var fields: []const meta.StructField = meta.empty;
     inline for (@typeInfo(Fn).Fn.args) |arg, i| {
@@ -828,7 +788,7 @@ const debug = opaque {
     const about_execve_1_s: []const u8 = "execve-error:   ";
     const about_execveat_1_s: []const u8 = "execveat-error: ";
 
-    fn write(buf: []u8, ss: []const []const u8) void {
+    fn write(buf: []u8, ss: []const []const u8) u64 {
         var len: u64 = 0;
         for (ss) |s| {
             for (s) |c, i| buf[len + i] = c;
@@ -839,6 +799,32 @@ const debug = opaque {
     fn print(buf: []u8, ss: []const []const u8) void {
         sys.noexcept.write(2, @ptrToInt(buf.ptr), write(buf, ss));
     }
+    fn writeExecutablePathname(buf: []u8) u64 {
+        const rc: i64 = sys.noexcept.readlink(
+            @ptrToInt("/proc/self/exe"),
+            @ptrToInt(buf.ptr),
+            buf.len,
+        );
+        if (rc < 0) {
+            return ~@as(u64, 0);
+        } else {
+            return @intCast(u64, rc);
+        }
+    }
+
+    fn zigErrorReturnedByMain(buf: []u8, symbol: []const u8) void {
+        var len: u64 = 0;
+        for (about_error_s) |c, i| buf[len + i] = c;
+        len +%= about_error_s.len;
+        len +%= writeExecutablePathname(buf[len..]);
+        len +%= write(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
+        sys.noexcept.write(2, @ptrToInt(buf.ptr), len);
+    }
+    fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
+        var buf: [4096]u8 = undefined;
+        print(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+    }
+
     fn forkError(fork_error: anytype) void {
         var buf: [16 + 32 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
@@ -853,7 +839,7 @@ const debug = opaque {
         while (s[len] != 0) len += 1;
         return len;
     }
-    // TODO: Try to make these two less original
+    // Try to make these two less original
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
         const max_len: u64 = 4096 + 128;
         var buf: [max_len]u8 = undefined;
