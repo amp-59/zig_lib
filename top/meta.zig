@@ -85,8 +85,9 @@ pub fn alignAW(comptime count: comptime_int) u16 {
         else => 512,
     };
 }
-
-pub fn extrema(comptime I: type) struct { min: comptime_int, max: comptime_int } {
+const Extrema = struct { min: comptime_int, max: comptime_int };
+/// Find the maximum and minimum arithmetical values for an integer type.
+pub fn extrema(comptime I: type) Extrema {
     const U = @Type(.{ .Int = .{
         .signedness = .unsigned,
         .bits = @bitSizeOf(I),
@@ -102,8 +103,10 @@ pub fn extrema(comptime I: type) struct { min: comptime_int, max: comptime_int }
         };
     }
 }
-/// Convert comptime value to bitSizeOf smallest real word bit count
-pub fn alignCX(comptime value: comptime_int) u16 {
+
+/// Return the smallest real bitSizeOf the integer type required to store the
+/// comptime integer.
+pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
     if (value > 0) {
         return switch (value) {
             0...~@as(u8, 0) => 8,
@@ -116,13 +119,13 @@ pub fn alignCX(comptime value: comptime_int) u16 {
             else => @compileLog(value),
         };
     } else {
-        const xi8 = extrema(i8);
-        const xi16 = extrema(i16);
-        const xi32 = extrema(i32);
-        const xi64 = extrema(i64);
-        const xi128 = extrema(i128);
-        const xi256 = extrema(i256);
-        const xi512 = extrema(i512);
+        const xi8: Extrema = extrema(i8);
+        const xi16: Extrema = extrema(i16);
+        const xi32: Extrema = extrema(i32);
+        const xi64: Extrema = extrema(i64);
+        const xi128: Extrema = extrema(i128);
+        const xi256: Extrema = extrema(i256);
+        const xi512: Extrema = extrema(i512);
         return switch (value) {
             xi8.min...xi8.max => 8,
             xi16.min...xi8.min - 1, xi8.max + 1...xi16.max => 16,
@@ -135,3 +138,337 @@ pub fn alignCX(comptime value: comptime_int) u16 {
         };
     }
 }
+pub fn alignSizeBW(comptime T: type) u16 { // Needs a better name
+    const bits: u16 = @bitSizeOf(T);
+    return alignBW(bits);
+}
+pub fn alignSizeAW(comptime T: type) u16 { // Needs a better name
+    const bits: u16 = @bitSizeOf(T);
+    return alignAW(bits);
+}
+pub fn AlignSizeAW(comptime T: type) type { // Needs a better name
+    var int_type_info: Type.Int = @typeInfo(T).Int;
+    int_type_info.bits = alignAW(int_type_info.bits);
+    return @Type(.{ .Int = int_type_info });
+}
+pub fn AlignSizeBW(comptime T: type) type { // Needs a better name
+    var int_type_info: Type.Int = @typeInfo(T).Int;
+    int_type_info.bits = alignBW(int_type_info.bits);
+    return @Type(.{ .Int = int_type_info });
+}
+
+pub fn LeastBitSize(comptime any: anytype) type {
+    const T: type = @TypeOf(any);
+    if (@sizeOf(T) == 0) {
+        if (any < 0) {
+            var U: type = i1;
+            while (any < @truncate(U, any)) {
+                U = @Type(.{ .Int = .{
+                    .bits = @bitSizeOf(U) + 1,
+                    .signedness = .signed,
+                } });
+            }
+            return U;
+        } else {
+            var U: type = u1;
+            while (any > @truncate(U, any)) {
+                U = @Type(.{ .Int = .{
+                    .bits = @bitSizeOf(U) + 1,
+                    .signedness = .unsigned,
+                } });
+            }
+            return U;
+        }
+    }
+    return @Type(.{
+        .Int = .{
+            .bits = @bitSizeOf(T) - @clz(any),
+            .signedness = .unsigned,
+        },
+    });
+}
+pub fn LeastRealBitSize(comptime any: anytype) type {
+    const T: type = @TypeOf(any);
+    if (@sizeOf(T) == 0) {
+        if (any < 0) {
+            var U: type = i8;
+            while (any < @truncate(U, any)) {
+                U = @Type(.{ .Int = .{
+                    .bits = @bitSizeOf(U) << 1,
+                    .signedness = .signed,
+                } });
+            }
+            return U;
+        } else {
+            var U: type = u8;
+            while (any > @truncate(U, any)) {
+                U = @Type(.{ .Int = .{
+                    .bits = @bitSizeOf(U) << 1,
+                    .signedness = .unsigned,
+                } });
+            }
+            return U;
+        }
+    }
+    return @Type(.{
+        .Int = .{
+            .bits = alignAW(@bitSizeOf(T) - @clz(any)),
+            .signedness = .unsigned,
+        },
+    });
+}
+pub fn leastBitCast(any: anytype) @Type(.{ .Int = .{
+    .bits = @bitSizeOf(@TypeOf(any)),
+    .signedness = .unsigned,
+} }) {
+    const T: type = @TypeOf(any);
+    const U: type = @Type(.{ .Int = .{
+        .bits = @bitSizeOf(T),
+        .signedness = .unsigned,
+    } });
+    return @bitCast(U, any);
+}
+pub fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
+    .bits = alignAW(@bitSizeOf(@TypeOf(any))),
+    .signedness = .unsigned,
+} }) {
+    return leastBitCast(any);
+}
+pub fn ArrayPointerToSlice(comptime T: type) type {
+    const type_info: Type = @typeInfo(T);
+    const child_type_info: Type = @typeInfo(type_info.Pointer.child);
+    return @Type(.{ .Pointer = .{
+        .size = .Slice,
+        .alignment = type_info.Pointer.alignment,
+        .address_space = type_info.Pointer.address_space,
+        .is_const = type_info.Pointer.is_const,
+        .is_volatile = type_info.Pointer.is_volatile,
+        .is_allowzero = type_info.Pointer.is_allowzero,
+        .sentinel = child_type_info.Array.sentinel,
+        .child = child_type_info.Array.child,
+    } });
+}
+pub fn SliceToArrayPointer(comptime T: type, comptime len: comptime_int) type {
+    const type_info: Type = @typeInfo(T);
+    return @Type(.{ .Pointer = .{
+        .size = .One,
+        .alignment = type_info.Pointer.alignment,
+        .address_space = type_info.Pointer.address_space,
+        .is_const = type_info.Pointer.is_const,
+        .is_volatile = type_info.Pointer.is_volatile,
+        .is_allowzero = type_info.Pointer.is_allowzero,
+        .sentinel = null,
+        .child = @Type(.{ .Array = .{
+            .len = len,
+            .sentinel = type_info.Pointer.sentinel,
+            .child = type_info.Pointer.child,
+        } }),
+    } });
+}
+pub fn arrayPointerToSlice(any: anytype) ArrayPointerToSlice(@TypeOf(any)) {
+    return @as(ArrayPointerToSlice(@TypeOf(any)), any);
+}
+pub fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@TypeOf(any), any.len) {
+    return @ptrCast(SliceToArrayPointer(@TypeOf(any), any.len), any.ptr);
+}
+pub fn Element(comptime T: type) type {
+    switch (@typeInfo(T)) {
+        .Array => |array_info| {
+            return array_info.child;
+        },
+        .Pointer => |pointer_info| {
+            if (pointer_info.size == .Slice) {
+                return pointer_info.child;
+            }
+            const child_type_info: Type = @typeInfo(pointer_info.child);
+            if (child_type_info == .Array) {
+                return child_type_info.Array.child;
+            }
+        },
+        else => |type_info| debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer }),
+    }
+}
+pub fn sentinel(comptime T: type) ?Element(T) {
+    switch (@typeInfo(T)) {
+        .Array => |array_info| {
+            if (array_info.sentinel) |sentinel_ptr| {
+                return @ptrCast(*const array_info.child, @alignCast(@alignOf(array_info.child), sentinel_ptr)).*;
+            }
+        },
+        .Pointer => |pointer_info| {
+            if (pointer_info.sentinel) |sentinel_ptr| {
+                const ret: pointer_info.child = @ptrCast(*const pointer_info.child, @alignCast(@alignOf(pointer_info.child), sentinel_ptr)).*;
+                return ret;
+            }
+        },
+        else => |type_info| debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer }),
+    }
+}
+
+const debug = opaque {
+    fn typeTypeName(comptime any: TypeId) []const u8 {
+        return switch (any) {
+            .Type => "type",
+            .Void => "void",
+            .Bool => "bool",
+            .NoReturn => "noreturn",
+            .Int => "integer",
+            .Float => "float",
+            .Pointer => "pointer",
+            .Array => "array",
+            .Struct => "struct",
+            .ComptimeFloat => "comptime_float",
+            .ComptimeInt => "comptime_int",
+            .Undefined => "undefined",
+            .Null => "null",
+            .Optional => "optional",
+            .ErrorUnion => "error union",
+            .ErrorSet => "error set",
+            .Enum => "enum",
+            .Union => "union",
+            .Fn => "function",
+            .BoundFn => "method", // Soon deprecated
+            .Opaque => "opaque",
+            .Frame => "frame",
+            .AnyFrame => "anyframe",
+            .Vector => "vector",
+            .EnumLiteral => "(enum literal)",
+        };
+    }
+    fn genericTypeList(comptime kind: TypeKind, any: anytype) []const u8 {
+        var msg: []const u8 = empty;
+        var last: u64 = 0;
+        var i: u64 = 0;
+        while (i < any.len) : (i += 1) {
+            last = msg.len;
+            switch (kind) {
+                .type => {
+                    msg = msg ++ ", " ++ @typeName(any[i]);
+                },
+                .type_type => {
+                    msg = msg ++ ", " ++ typeTypeName(any[i]);
+                },
+            }
+        }
+        if (i > 2) {
+            return msg[2 .. last + 1] ++ " or " ++ msg[last + 2 ..];
+        } else if (i == 2) {
+            return msg[2..last] ++ " or " ++ msg[last + 2 ..];
+        } else if (i == 1) {
+            return msg[2..];
+        } else {
+            return "(none)";
+        }
+    }
+    fn typeList(comptime any: []const type) []const u8 {
+        return genericTypeList(.type, any);
+    }
+    fn typeTypeList(comptime any: anytype) []const u8 {
+        return genericTypeList(.type_type, any);
+    }
+    fn fieldList(comptime type_info: Type) []const u8 {
+        var msg: []const u8 = empty;
+        const container_info = switch (type_info) {
+            .Enum => |enum_info| enum_info,
+            .Struct => |struct_info| struct_info,
+            .Union => |union_info| union_info,
+            else => unexpectedTypeTypesError(type_info, &[_]TypeId{ .Enum, .Struct, .Union }),
+        };
+        var last: u64 = 0;
+        var i: u64 = 0;
+        inline for (container_info.fields) |field| {
+            last = msg.len;
+            msg = msg ++ ", '" ++ field.name ++ "'";
+        }
+        return terminateAndList(msg, i, last);
+    }
+    fn terminateAndList(comptime msg: []const u8, n: u64, len: u64) []const u8 {
+        if (msg.len > 2) {
+            return if (n >= 3 and n < 150)
+                msg[2 .. len + 1] ++ " and " ++ msg[len + 2 ..]
+            else if (n > 1)
+                msg[2..len] ++ " and " ++ msg[len + 2 ..]
+            else
+                msg[2..];
+        } else {
+            return msg;
+        }
+    }
+    fn declList(comptime msg: []const u8, comptime type_info: Type) []const u8 {
+        var pub_str: []const u8 = "";
+        var pub_num: u64 = 0;
+        const container_info = switch (type_info) {
+            .Enum => |enum_info| enum_info,
+            .Struct => |struct_info| struct_info,
+            .Union => |union_info| union_info,
+            else => unexpectedTypeTypesError(type_info, container_types),
+        };
+        for (container_info.decls) |decl| {
+            if (decl.is_pub) {
+                pub_num += 1;
+                pub_str = pub_str ++ ", '" ++ decl.name;
+            }
+        }
+        if (pub_num == 1) {
+            return msg[0 .. msg.len - 3] ++ ": " ++ pub_str[2..pub_str.len] ++ "'";
+        } else {
+            return msg ++ pub_str[2..pub_str.len] ++ "'";
+        }
+    }
+    fn unexpectedTypesError(comptime T: type, comptime any: []const type) noreturn {
+        @compileError("expected any " ++ typeList(any) ++ ", found " ++ @typeName(T));
+    }
+    fn unexpectedTypeError(comptime T: type, comptime any: type) noreturn {
+        @compileError("expected " ++ @typeName(any) ++ ", found " ++ @typeName(T));
+    }
+    fn unexpectedTypeTypesError(comptime T: type, comptime type_info: Type, comptime any: anytype) noreturn {
+        @compileError("expected any " ++ typeTypeList(any) ++ ", found " ++ typeTypeName(type_info) ++ " '" ++ @typeName(T) ++ "'");
+    }
+    fn unexpectedTypeTypeError(comptime T: type, comptime type_info: Type, comptime any: TypeId) noreturn {
+        @compileError("expected " ++ typeTypeName(any) ++ ", found " ++ typeTypeName(type_info) ++ " '" ++ @typeName(T) ++ "'");
+    }
+    fn fieldError(comptime T: type, comptime field: []const u8) noreturn {
+        @compileError("no member named '" ++ field ++ "' in struct '" ++
+            @typeName(T) ++ "' with fields: " ++ fieldList(@typeInfo(T)));
+    }
+    fn declError(comptime T: type, comptime identifier: []const u8) noreturn {
+        @compileError(declList("undeclared identifier '" ++ identifier ++
+            "' in container '" ++ @typeName(T) ++ "' with declarations: ", @typeInfo(T)));
+    }
+    fn invalidTypeErrorDescr(comptime Invalid: type, comptime descr: []const u8) noreturn {
+        @compileError("invalid type `" ++ @typeName(Invalid) ++ "': " ++ descr ++ "\n");
+    }
+    fn standardNoDeclError(comptime T: type, decl_name: []const u8) noreturn {
+        @compileError("container '" ++ @typeName(T) ++ "' has no member called '" ++ decl_name ++ "'");
+    }
+    fn standardNoFieldError(comptime T: type, field_name: []const u8) noreturn {
+        @compileError("no member named '" ++ field_name ++ "' in " ++ typeTypeName(@typeInfo(T)) ++ " '" ++ @typeName(T) ++ "'");
+    }
+    fn unexpectedTypeBytesError(comptime T: type, bytes: u64) void {
+        const required_bytes_s: []const u8 = builtin.fmt.ud(bytes).readAll();
+        const found_bytes_s: []const u8 = builtin.fmt.ud(@sizeOf(T)).readAll();
+        @compileError("static assertion failed: object '" ++ @typeName(T) ++
+            "' size " ++ found_bytes_s ++ " does not match requirement " ++ required_bytes_s);
+    }
+    fn unexpectedTypeBitsError(comptime T: type, bits: u64) void {
+        const required_bits_s: []const u8 = builtin.fmt.ud(bits).readAll();
+        const found_bits_s: []const u8 = builtin.fmt.ud(@bitSizeOf(T)).readAll();
+        @compileError("static assertion failed: object '" ++ @typeName(T) ++
+            "' bit size " ++ found_bits_s ++ " does not match requirement " ++ required_bits_s);
+    }
+    fn initializeNothingError(comptime T: type, comptime U: type) noreturn {
+        @compileError("cannot initialize " ++ @typeName(T) ++ " with value of type " ++ @typeName(U));
+    }
+    fn initializeComptimeFieldError(comptime T: type, comptime field: StructField) noreturn {
+        @compileError("cannot initialize comptime field '" ++ field.name ++ "' in " ++ @typeName(T));
+    }
+    fn unexpectedVariantError(comptime T: type, value: anytype, yes: anytype, no: anytype) noreturn {
+        if (no.len != 0) {
+            inline for (no) |n| if (value == n) @compileError("invalid variant of " ++ @typeName(T) ++ ": " ++ @tagName(value));
+        }
+        if (yes.len != 0) {
+            inline for (yes) |y| if (value == y) return;
+        }
+        @compileError("unlisted variant of " ++ @typeName(T) ++ ": " ++ @tagName(value));
+    }
+};

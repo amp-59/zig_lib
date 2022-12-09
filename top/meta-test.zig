@@ -8,7 +8,7 @@ pub usingnamespace proc.exception;
 pub const is_verbose: bool = true;
 pub const is_correct: bool = true;
 
-pub fn main() !void {
+fn basicTests() !void {
     try builtin.expect(8 == meta.alignAW(7));
     try builtin.expect(16 == meta.alignAW(9));
     try builtin.expect(32 == meta.alignAW(25));
@@ -32,7 +32,45 @@ pub fn main() !void {
     try builtin.expect(meta.isFunction(@TypeOf(struct {
         fn other(_: *@This()) void {}
     }.other)));
+
+    try builtin.expect(0 == meta.sentinel([:0]u8).?);
+}
+fn alignTests() !void {
     try builtin.expect(32 == comptime meta.alignCX(-964392));
     try builtin.expect(8 == comptime meta.alignCX(-128));
     try builtin.expect(16 == comptime meta.alignCX(-129));
+    try builtin.expect(8 == meta.alignSizeBW(u9));
+    try builtin.expect(8 == meta.alignSizeAW(u7));
+    try builtin.expect(u8 == meta.AlignSizeBW(u9));
+    try builtin.expect(u8 == meta.AlignSizeAW(u7));
+}
+fn bitCastTests() !void {
+    const S = packed struct {
+        x: u3,
+        y: u6,
+    };
+    var s: S = .{ .x = 1, .y = 25 };
+    try builtin.expect(u9 == @TypeOf(meta.leastBitCast(s)));
+    try builtin.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
+}
+fn memoryTests() !void {
+    comptime {
+        const T = [8]u8;
+        const E = meta.Element(T);
+        const U = meta.ArrayPointerToSlice(*T);
+        try builtin.expect([]u8 == U);
+        builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, 8));
+        var t: T = T{ 0, 1, 2, 3, 4, 5, 6, 7 };
+        var u: U = &t;
+        builtin.assertEqual(type, meta.Element(T), E);
+        builtin.assertEqual(type, meta.Element(*T), E);
+        for (meta.arrayPointerToSlice(&t)) |e, i| builtin.assertEqual(E, e, u[i]);
+        for (meta.sliceToArrayPointer(u)) |e, i| builtin.assertEqual(E, e, t[i]);
+    }
+}
+pub fn main() !void {
+    try basicTests();
+    try bitCastTests();
+    try alignTests();
+    try memoryTests();
 }
