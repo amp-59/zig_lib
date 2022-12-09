@@ -97,4 +97,5 @@ pub fn main(builder: *build.Builder) !void {
     Context.run_step = builder.step("run", "Run programs");
 
     _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .need_build_root = true });
+    _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{});
 }
