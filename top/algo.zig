@@ -1,4 +1,4 @@
-const lit = @import("./");
+const lit = @import("./lit.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
