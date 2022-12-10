@@ -27,7 +27,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .need_build_root = true });
     _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{});
     _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{});
-    _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{});
+    _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseFast });
     _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{});
 }
 
@@ -66,6 +66,7 @@ pub fn Args(comptime name: [:0]const u8) type {
         run_step_desc: [:0]const u8 = "...",
         emit_asm_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".s",
         emit_analysis_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".analysis",
+        build_mode: ?std.builtin.Mode = null,
         need_build_root: bool = false,
     };
 }
@@ -76,8 +77,7 @@ fn addProjectExecutable(
     args: Args(name),
 ) *build.LibExeObjStep {
     const ret: *build.LibExeObjStep = builder.addExecutableSource(name, build.FileSource.relative(path));
-
-    ret.build_mode = Context.build_mode;
+    ret.build_mode = args.build_mode orelse Context.build_mode;
     ret.omit_frame_pointer = false;
     ret.single_threaded = false;
     ret.image_base = 0x10000;
@@ -99,6 +99,7 @@ fn addProjectExecutable(
     make_step.dependOn(&ret.install_step.?.step);
     run_step.dependOn(make_step);
     run_step.dependOn(&ret.run().step);
+
     if (args.is_support orelse Utility.endsWith("-aux.zig", path)) {
         Context.run_step.dependOn(&ret.run().step);
     }
