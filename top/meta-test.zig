@@ -3,7 +3,6 @@ const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 
 pub usingnamespace proc.start;
-pub usingnamespace proc.exception;
 
 pub const is_verbose: bool = true;
 pub const is_correct: bool = true;
