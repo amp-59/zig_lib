@@ -424,9 +424,9 @@ pub const OpenSpec = struct {
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const CloseSpec = struct {
-    logging: bool = builtin.is_verbose,
     errors: ?[]const sys.ErrorCode = sys.close_errors,
     return_type: type = void,
+    logging: bool = builtin.is_verbose,
     const Specification = @This();
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
@@ -434,8 +434,6 @@ pub const StatSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.stat_errors,
     return_type: type = void,
-
-    const STAT = sys.AT;
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
@@ -454,8 +452,6 @@ pub const ReadLinkSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.readlink_errors,
     return_type: type = u64,
     logging: bool = builtin.is_verbose,
-
-    const STAT = sys.AT;
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
@@ -470,7 +466,7 @@ pub const ReadLinkSpec = struct {
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 
-// TODO: Define default options suited to mapping files
+// TODO: Define default options suited to mapping files.
 pub const MapSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mmap_errors,
@@ -550,6 +546,229 @@ pub fn write(fd: u64, write_buf: []const u8) !void {
         return write_error;
     }
 }
+pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const flags: Open = spec.flags();
+    if (spec.call(.open, .{ pathname_buf_addr, flags.val, 0 })) |fd| {
+        if (spec.logging) {
+            debug.openNotice(pathname, fd);
+        }
+        return fd;
+    } else |open_error| {
+        if (builtin.is_correct or spec.logging) {
+            debug.openError(open_error, pathname);
+        }
+        return open_error;
+    }
+}
+pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) spec.Unwrapped(.openat) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const flags: Open = spec.flags();
+    if (spec.call(.openat, .{ dir_fd, name_buf_addr, flags.val })) |fd| {
+        if (spec.logging) {
+            debug.openAtNotice(dir_fd, name, fd);
+        }
+        return fd;
+    } else |open_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.openAtError(open_error, dir_fd, name);
+        }
+        return open_error;
+    }
+}
+pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const flags: Open = spec.flags();
+    if (spec.call(.open, .{ pathname_buf_addr, flags.val, 0 })) |fd| {
+        if (spec.logging) {
+            debug.openNotice(pathname, fd);
+        }
+        return fd;
+    } else |open_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.openError(open_error, pathname);
+        }
+        return open_error;
+    }
+}
+pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) spec.Unwrapped(.openat) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    if (spec.call(.openat, dir_fd, name_buf_addr, spec.pathFlags())) |fd| {
+        if (spec.logging) {
+            debug.openAtNotice(dir_fd, name, fd);
+        }
+        return fd;
+    } else |open_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.openAtError(open_error, dir_fd, name);
+        }
+        return open_error;
+    }
+}
+pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const flags: Open = spec.flags();
+    const mode: Mode = spec.mode.mode();
+    if (spec.call(.open, .{ pathname_buf_addr, flags.val, mode.val })) |fd| {
+        if (spec.logging) {
+            debug.createNotice(pathname, fd, spec.mode.describe());
+        }
+        return fd;
+    } else |open_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.createError(open_error, pathname, spec.mode.describe());
+        }
+        return open_error;
+    }
+}
+pub fn close(comptime spec: CloseSpec, fd: u64) spec.Unwrapped(.close) {
+    if (spec.call(.close, .{fd})) {
+        if (spec.logging) {
+            debug.closeNotice(fd);
+        }
+    } else |close_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.closeError(close_error, fd);
+        }
+        return close_error;
+    }
+}
+pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) spec.Unwrapped(.mkdir) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const mode: Mode = spec.mode.mode();
+    if (spec.call(.mkdir, .{ pathname_buf_addr, mode.val })) {
+        if (spec.logging) {
+            debug.makeDirNotice(pathname, spec.mode.describe());
+        }
+    } else |mkdir_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.makeDirError(mkdir_error, pathname);
+        }
+        return mkdir_error;
+    }
+}
+pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) spec.Unwrapped(.mkdirat) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const mode: Mode = spec.mode.mode();
+    if (spec.call(.mkdirat, .{ dir_fd, name_buf_addr, mode.val })) {
+        if (spec.logging) {
+            debug.makeDirAtNotice(dir_fd, name, spec.mode.describe());
+        }
+    } else |mkdir_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.makeDirAtError(mkdir_error, dir_fd, name, spec.mode.describe());
+        }
+        return mkdir_error;
+    }
+}
+pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) spec.Replaced(.readlink, [:0]const u8) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const buf_addr: u64 = @ptrToInt(buf.ptr);
+    if (spec.call(.readlink, .{ pathname_buf_addr, buf_addr, buf.len })) |len| {
+        return buf[0..len :0];
+    } else |readlink_error| {
+        if (builtin.is_verbose) {
+            debug.readLinkError(readlink_error, pathname);
+        }
+        return readlink_error;
+    }
+}
+pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, buf: []u8) spec.Replaced(.readlinkat, [:0]const u8) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const buf_addr: u64 = @ptrToInt(buf.ptr);
+    if (spec.call(.readlinkat, .{ dir_fd, name_buf_addr, buf_addr, buf.len })) |len| {
+        return buf[0..len :0];
+    } else |readlink_error| {
+        if (spec.logging or builtin.is_verbose) {
+            debug.readLinkAtError(readlink_error, dir_fd, name);
+        }
+        return readlink_error;
+    }
+}
+pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) spec.Unwrapped(.unlink) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    if (spec.call(.unlink, .{pathname_buf_addr})) {
+        if (spec.logging) {
+            debug.unlinkNotice(pathname);
+        }
+    } else |unlink_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.unlinkError(unlink_error, pathname);
+        }
+        return unlink_error;
+    }
+}
+pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) spec.Unwrapped(.rmdir) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    if (spec.call(.rmdir, .{pathname_buf_addr})) {
+        if (spec.logging) {
+            debug.removeDirNotice(pathname);
+        }
+    } else |rmdir_error| {
+        if (builtin.is_verbose or spec.logging) {
+            debug.removeDirError(rmdir_error, pathname);
+        }
+        return rmdir_error;
+    }
+}
+pub fn stat(comptime spec: StatSpec, pathname: [:0]const u8) spec.Replaced(.stat, Stat) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    var st: Stat = undefined;
+    const st_buf_addr: u64 = @ptrToInt(&st);
+    spec.call(.stat, .{ pathname_buf_addr, st_buf_addr }) catch |stat_error| {
+        if (builtin.is_verbose) {
+            debug.statError(stat_error, pathname);
+        }
+        return stat_error;
+    };
+    return st;
+}
+pub fn fstat(comptime spec: StatSpec, fd: u64) spec.Replaced(.fstat, Stat) {
+    var st: Stat = undefined;
+    const st_buf_addr: u64 = @ptrToInt(&st);
+    spec.call(.fstat, .{ fd, st_buf_addr }) catch |stat_error| {
+        if (builtin.is_verbose) {
+            debug.fstatError(stat_error, fd);
+        }
+        return stat_error;
+    };
+    return st;
+}
+pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) spec.Replaced(.newfstatat, Stat) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    var st: Stat = undefined;
+    const st_buf_addr: u64 = @ptrToInt(&st);
+    const flags: Open = spec.flags();
+    spec.call(.newfstatat, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }) catch |stat_error| {
+        if (builtin.is_verbose) {
+            debug.fstatAtError(stat_error, dir_fd, name);
+        }
+        return stat_error;
+    };
+    return st;
+}
+pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Unwrapped(.map) {
+    const flags: mem.Map = spec.flags();
+    const prot: mem.Prot = spec.prot();
+    const st: Stat = try fstat(.{ .errors = &.{} }, fd);
+    const len: u64 = blk: {
+        const alignment: u64 = 4096;
+        const mask: u64 = alignment -% 1;
+        break :blk (st.size + mask) & ~mask;
+    };
+    if (spec.call(.mmap, .{ addr, len, prot.val, flags.val, fd, 0 })) {
+        if (spec.logging) {
+            mem.debug.mapNotice(addr, len);
+        }
+        return addr + st.size;
+    } else |map_error| {
+        if (builtin.is_verbose or spec.logging) {
+            mem.debug.mapError(map_error, addr, len);
+        }
+        return map_error;
+    }
+}
+
 pub const noexcept = opaque {
     pub fn write(fd: u64, buf: []const u8) void {
         sys.noexcept.write(fd, @ptrToInt(buf.ptr), buf.len);
@@ -557,10 +776,29 @@ pub const noexcept = opaque {
 };
 
 const debug = opaque {
+    const about_open_0_s: []const u8 = "open:           ";
+    const about_open_1_s: []const u8 = "open-error:     ";
     const about_read_0_s: []const u8 = "read:           ";
     const about_read_1_s: []const u8 = "read-error:     ";
+    const about_stat_1_s: []const u8 = "stat-error:     ";
+    const about_fstat_1_s: []const u8 = "fstat-error:    ";
+    const about_close_0_s: []const u8 = "close:          ";
+    const about_close_1_s: []const u8 = "close-error:    ";
+    const about_mkdir_0_s: []const u8 = "mkdir:          ";
+    const about_mkdir_1_s: []const u8 = "mkdir-error:    ";
+    const about_rmdir_0_s: []const u8 = "rmdir:          ";
+    const about_rmdir_1_s: []const u8 = "rmdir-error:    ";
     const about_write_0_s: []const u8 = "write:          ";
     const about_write_1_s: []const u8 = "write-error:    ";
+    const about_create_0_s: []const u8 = "create:         ";
+    const about_create_1_s: []const u8 = "create-error:   ";
+    const about_openat_0_s: []const u8 = "openat:         ";
+    const about_openat_1_s: []const u8 = "openat-error:   ";
+    const about_unlink_0_s: []const u8 = "unlink:         ";
+    const about_unlink_1_s: []const u8 = "unlink-error:   ";
+    const about_fstatat_1_s: []const u8 = "fstatat-error:  ";
+    const about_fexecve_1_s: []const u8 = "fexecve-error:  ";
+    const about_readlink_1_s: []const u8 = "readlink-error: ";
 
     fn print(buf: []u8, ss: []const []const u8) void {
         var len: u64 = 0;
@@ -577,5 +815,96 @@ const debug = opaque {
     fn writeError(write_error: anytype, fd: u64) void {
         var buf: [16 + 32 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_write_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), " (", @errorName(write_error), ")\n" });
+    }
+    fn openError(open_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_open_1_s, pathname, " (", @errorName(open_error), ")\n" });
+    }
+    fn openNotice(pathname: [:0]const u8, fd: u64) void {
+        var buf: [4096 + 32]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
+    }
+    fn createError(open_error: anytype, pathname: [:0]const u8, comptime summary: []const u8) void {
+        var buf: [4096 + 512 + summary.len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_create_1_s, pathname, ", ", summary, " (", @errorName(open_error), ")\n" });
+    }
+    fn createNotice(pathname: [:0]const u8, fd: u64, comptime summary: []const u8) void {
+        var buf: [4096 + 64 + summary.len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", summary, "\n" });
+    }
+    fn openAtError(open_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_openat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(open_error), ")\n" });
+    }
+    fn openAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_openat_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
+    }
+    fn makeDirError(mkdir_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_mkdir_1_s, pathname, " (", @errorName(mkdir_error), ")\n" });
+    }
+    fn makeDirNotice(pathname: [:0]const u8, comptime descr: []const u8) void {
+        const max_len: u64 = 16 + 4096 + 2 + descr.len + 1;
+        var buf: [max_len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_mkdir_0_s, pathname, ", ", descr, "\n" });
+    }
+    fn makeDirAtError(mkdir_error: anytype, dir_fd: u64, name: [:0]const u8, comptime descr: []const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096 + 512 + descr.len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_mkdir_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(mkdir_error), ")\n" });
+    }
+    fn makeDirAtNotice(dir_fd: u64, name: [:0]const u8, comptime descr: []const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096 + descr.len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_mkdir_0_s, "dir_fd=", dir_fd_s, ", ", name, ", ", descr, "\n" });
+    }
+    fn closeError(close_error: anytype, fd: u64) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_close_1_s, builtin.fmt.ud64(fd).readAll(), " (", @errorName(close_error), ")\n" });
+    }
+    fn closeNotice(fd: u64) void {
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_close_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), "\n" });
+    }
+    fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
+    }
+    fn unlinkNotice(pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 8]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_unlink_0_s, pathname, "\n" });
+    }
+    fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
+    }
+    fn removeDirNotice(pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 1]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
+    }
+    fn readLinkError(readlink_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 8]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_readlink_1_s, pathname, " (", @errorName(readlink_error), ")\n" });
+    }
+    fn readLinkAtError(readlink_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 64 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_readlink_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(readlink_error), ")\n" });
+    }
+    fn statError(stat_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_stat_1_s, pathname, " (", @errorName(stat_error), ")\n" });
+    }
+    fn fstatError(stat_error: anytype, fd: u64) void {
+        var buf: [16 + 32 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_fstat_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", (", @errorName(stat_error), ")\n" });
+    }
+    fn fstatAtError(stat_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_fstatat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(stat_error), ")\n" });
     }
 };
