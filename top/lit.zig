@@ -1,5 +1,34 @@
 //! Constants. More useful as a reference than as an import.
 
+// If the programmer can remember to use these, the LHS name may be more helpful
+// to the reader than the RHS expression.
+pub const max_val_u8: u8 = ~@as(u8, 0);
+pub const max_val_u16: u16 = ~@as(u16, 0);
+pub const max_val_u32: u32 = ~@as(u32, 0);
+pub const max_val_u64: u64 = ~@as(u64, 0);
+pub const max_bit_u8: u8 = 1 + (max_val_u8 >> 1);
+pub const max_bit_u16: u16 = 1 + (max_val_u16 >> 1);
+pub const max_bit_u32: u32 = 1 + (max_val_u32 >> 1);
+pub const max_bit_u64: u64 = 1 + (max_val_u64 >> 1);
+pub const max_val_i8: i8 = max_val_u8 >> 1;
+pub const max_val_i16: i16 = max_val_u16 >> 1;
+pub const max_val_i32: i32 = max_val_u32 >> 1;
+pub const max_val_i64: i64 = max_val_u64 >> 1;
+pub const max_bit_i8: i8 = 1 + (max_val_i8 >> 1);
+pub const max_bit_i16: i16 = 1 + (max_val_i16 >> 1);
+pub const max_bit_i32: i32 = 1 + (max_val_i32 >> 1);
+pub const max_bit_i64: i64 = 1 + (max_val_i64 >> 1);
+
+// So that basic formatters do not need to compute a safe buffer length.
+pub const u8d_max_len: u64 = 3;
+pub const u8x_max_len: u64 = 5;
+pub const u64d_max_len: u64 = 19;
+pub const u64x_max_len: u64 = 18;
+pub const i8d_max_len: u64 = 4;
+pub const i8x_max_len: u64 = 6;
+pub const i64d_max_len: u64 = 20;
+pub const i64x_max_len: u64 = 19;
+
 /// Unconfirmed theory that using these is faster to compile when naming tuple
 /// fields.
 pub const ud8 = [256][:0]const u8{
@@ -30,4 +59,3 @@ pub const ud8 = [256][:0]const u8{
     "240", "241", "242", "243", "244", "245", "246", "247", "248", "249",
     "250", "251", "252", "253", "254", "255",
 };
-
