@@ -312,6 +312,20 @@ pub inline fn shiftRightMaskTruncate(
     return @truncate(U, value >> shift_amt) & ((@as(U, 1) << pop_count) -% 1);
 }
 
+// Sub-registers
+pub inline fn mask32(value: u64) u32 {
+    return @truncate(u32, value);
+}
+pub inline fn mask16(value: u64) u16 {
+    return @truncate(u16, value);
+}
+pub inline fn mask8L(value: u64) u8 {
+    return @truncate(u8, value);
+}
+pub inline fn mask8H(value: u64) u8 {
+    return @truncate(u8, value >> 8);
+}
+
 /// Derives and packs approximation counts.
 pub fn packSingleApproxB(n_bytes: u64) u16 {
     const n_bytes_clz: u8 = builtin.lzcnt(u64, n_bytes);
