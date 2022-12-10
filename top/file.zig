@@ -3,6 +3,13 @@ const meta = @import("./meta.zig");
 const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
 
+const dmode_owner: Perms = .{ .read = true, .write = true, .execute = true };
+const dmode_group: Perms = .{ .read = true, .write = false, .execute = true };
+const dmode_other: Perms = .{ .read = false, .write = false, .execute = false };
+const fmode_owner: Perms = .{ .read = true, .write = true, .execute = false };
+const fmode_group: Perms = .{ .read = true, .write = false, .execute = false };
+const fmode_other: Perms = .{ .read = false, .write = false, .execute = false };
+
 pub const Open = meta.EnumBitField(enum(u64) {
     no_cache = OPEN.DIRECT,
     no_atime = OPEN.NOATIME,
@@ -124,6 +131,132 @@ pub const DirectoryEntry = extern struct {
     array: u8,
 };
 const Perms = struct { read: bool, write: bool, execute: bool };
+
+pub const ModeSpec = struct {
+    owner: Perms,
+    group: Perms,
+    other: Perms,
+    pub const file_mode: ModeSpec = .{
+        .owner = fmode_owner,
+        .group = fmode_group,
+        .other = fmode_other,
+    };
+    pub const dir_mode: ModeSpec = .{
+        .owner = dmode_owner,
+        .group = dmode_group,
+        .other = dmode_other,
+    };
+    fn mode(comptime mode_spec: ModeSpec) Mode {
+        var mode_bitfield: Mode = .{ .val = 0 };
+        if (mode_spec.owner.read) {
+            mode_bitfield.set(.owner_read);
+        }
+        if (mode_spec.owner.write) {
+            mode_bitfield.set(.owner_write);
+        }
+        if (mode_spec.owner.execute) {
+            mode_bitfield.set(.owner_execute);
+        }
+        if (mode_spec.group.read) {
+            mode_bitfield.set(.group_read);
+        }
+        if (mode_spec.group.write) {
+            mode_bitfield.set(.group_write);
+        }
+        if (mode_spec.group.execute) {
+            mode_bitfield.set(.group_execute);
+        }
+        if (mode_spec.other.read) {
+            mode_bitfield.set(.other_read);
+        }
+        if (mode_spec.other.write) {
+            mode_bitfield.set(.other_write);
+        }
+        if (mode_spec.other.execute) {
+            mode_bitfield.set(.other_execute);
+        }
+        return mode_bitfield;
+    }
+    fn describeBriefly(comptime perms: Perms) []const u8 {
+        var descr: []const u8 = meta.empty;
+        if (perms.read) {
+            descr = descr ++ "r";
+        } else {
+            descr = descr ++ "-";
+        }
+        if (perms.write) {
+            descr = descr ++ "w";
+        } else {
+            descr = descr ++ "-";
+        }
+        if (perms.execute) {
+            descr = descr ++ "x";
+        } else {
+            descr = descr ++ "-";
+        }
+        return descr;
+    }
+    fn describe(comptime mode_spec: ModeSpec) []const u8 {
+        if (builtin.is_small) {
+            var descr: []const u8 = meta.empty;
+            descr = descr ++ describeBriefly(mode_spec.owner);
+            descr = descr ++ describeBriefly(mode_spec.group);
+            descr = descr ++ describeBriefly(mode_spec.other);
+            return descr;
+        } else {
+            var owner: ?[]const u8 = null;
+            if (mode_spec.owner.read) {
+                owner = "owner: read";
+            }
+            if (mode_spec.owner.write) {
+                owner = if (owner) |owner_s| owner_s ++ "+write" else "owner: write";
+            }
+            if (mode_spec.owner.execute) {
+                owner = if (owner) |owner_s| owner_s ++ "+execute" else "owner: execute";
+            }
+            var group: ?[]const u8 = null;
+            if (mode_spec.group.read) {
+                group = "group: read";
+            }
+            if (mode_spec.group.write) {
+                group = if (group) |group_s| group_s ++ "+write" else "group: write";
+            }
+            if (mode_spec.group.execute) {
+                group = if (group) |group_s| group_s ++ "+execute, " else "group: execute";
+            }
+            var other: ?[]const u8 = null;
+            if (mode_spec.other.read) {
+                other = "other read";
+            }
+            if (mode_spec.other.write) {
+                other = if (other) |other_s| other_s ++ "+write" else "other: write";
+            }
+            if (mode_spec.other.execute) {
+                other = if (other) |other_s| other_s ++ "+execute" else "other: execute";
+            }
+            if (owner) |owner_s| {
+                if (group) |group_s| {
+                    if (other) |other_s| {
+                        return owner_s ++ ", " ++ group_s ++ ", " ++ other_s;
+                    }
+                    return owner_s ++ ", " ++ group_s;
+                } else if (other) |other_s| {
+                    return owner_s ++ ", " ++ other_s;
+                }
+                return owner_s;
+            }
+            if (group) |group_s| {
+                if (other) |other_s| {
+                    return group_s ++ ", " ++ other_s;
+                }
+                return group_s;
+            }
+            if (other) |other_s| {
+                return other_s;
+            }
+        }
+    }
+};
 
 pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
