@@ -11,7 +11,7 @@ const fmode_owner: Perms = .{ .read = true, .write = true, .execute = false };
 const fmode_group: Perms = .{ .read = true, .write = false, .execute = false };
 const fmode_other: Perms = .{ .read = false, .write = false, .execute = false };
 
-/// Tentative mapped IO flags default options
+/// Tentative mapped IO default options
 pub const file_map_opts: MapSpec.Options = .{
     .visibility = .shared,
     .anonymous = false,

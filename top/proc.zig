@@ -16,7 +16,6 @@ pub const clone_opts: CloneSpec.Options = .{
     .clear_child_thread_id = true,
     .io = false,
 };
-
 pub const SignalAction = extern struct {
     handler: u64,
     flags: u64,
