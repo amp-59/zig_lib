@@ -1,6 +1,21 @@
 const sys = @import("./sys.zig");
+const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
+
+pub const clone_opts: CloneSpec.Options = .{
+    .address_space = true,
+    .thread = true,
+    .file_system = true,
+    .files = true,
+    .signal_handlers = true,
+    .sysvsem = true,
+    .set_thread_local_storage = true,
+    .set_parent_thread_id = true,
+    .set_child_thread_id = true,
+    .clear_child_thread_id = true,
+    .io = false,
+};
 
 pub const SignalAction = extern struct {
     handler: u64,
@@ -687,7 +702,6 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
 
 pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr: anytype, comptime function: anytype, args: anytype) spec.Unwrapped(.clone3) {
     const Fn: type = @TypeOf(function);
-    const Return = meta.Return(function);
     const cl_args: CloneArgs = spec.args(stack_addr);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
@@ -698,7 +712,7 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
     @intToPtr(**const Fn, stack_addr + fn_off).* = &function;
     @intToPtr(*Args(Fn), stack_addr + args_off).* = args;
     if (@TypeOf(result_ptr) != void) {
-        @intToPtr(**Return, stack_addr + ret_off).* = result_ptr;
+        @intToPtr(*@TypeOf(result_ptr), stack_addr + ret_off).* = result_ptr;
     }
     const rc: i64 = asm volatile (
         \\syscall
@@ -718,7 +732,7 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
             : "rbp", "rsp", "memory"
         );
         if (comptime @TypeOf(result_ptr) != void) {
-            @intToPtr(**Return, tl_stack_addr + ret_off).*.* = @call(
+            @intToPtr(*@TypeOf(result_ptr), tl_stack_addr + ret_off).*.* = @call(
                 .{ .modifier = .never_inline },
                 @intToPtr(**Fn, tl_stack_addr + fn_off).*,
                 @intToPtr(*Args(Fn), tl_stack_addr + args_off).*,
@@ -751,9 +765,9 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
 fn Args(comptime Fn: type) type {
     var fields: []const meta.StructField = meta.empty;
     inline for (@typeInfo(Fn).Fn.args) |arg, i| {
-        fields = fields ++ meta.parcel(meta.structField(arg.arg_type.?, builtin.fmt.u8(i).readAll(), null));
+        fields = fields ++ meta.parcel(meta.structField(arg.arg_type.?, lit.ud8[i], null));
     }
-    return @Type(meta.simpleTuple(fields));
+    return @Type(meta.tupleInfo(fields));
 }
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
     var addr: u64 = @ptrToInt(auxv);
