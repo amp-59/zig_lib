@@ -1,5 +1,6 @@
 const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
+const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
 
 pub const Open = meta.EnumBitField(enum(u64) {
@@ -41,6 +42,88 @@ const Mode = meta.EnumBitField(enum(u16) {
 
     const MODE = sys.S;
 });
+
+pub const Stat = extern struct {
+    dev: u64,
+    ino: u64,
+    nlink: u64,
+    mode: Mode,
+    _: [2]u8,
+    uid: u32,
+    gid: u32,
+    __: [4]u8,
+    rdev: u64,
+    size: u64,
+    blksize: u64,
+    blocks: u64,
+    atime: time.TimeSpec = .{},
+    mtime: time.TimeSpec = .{},
+    ctime: time.TimeSpec = .{},
+    ___: [20]u8,
+    pub fn isDirectory(st: Stat) bool {
+        return st.mode.check(.directory);
+    }
+    pub fn isCharacterSpecial(st: Stat) bool {
+        return st.mode.check(.character_special);
+    }
+    pub fn isBlockSpecial(st: Stat) bool {
+        return st.mode.check(.block_special);
+    }
+    pub fn isRegular(st: Stat) bool {
+        return st.mode.check(.regular);
+    }
+    pub fn isNamedPipe(st: Stat) bool {
+        return st.mode.check(.named_pipe);
+    }
+    pub fn isSymbolicLink(st: Stat) bool {
+        return st.mode.check(.symbolic_link);
+    }
+    pub fn isSocket(st: Stat) bool {
+        return st.mode.check(.socket);
+    }
+    pub fn isExecutable(st: Stat, user_id: u16, group_id: u16) bool {
+        if (user_id == st.uid) {
+            return st.mode.check(.owner_execute);
+        }
+        if (group_id == st.gid) {
+            return st.mode.check(.group_execute);
+        }
+        return st.mode.check(.other_execute);
+    }
+    const S = sys.S;
+};
+pub const StatX = extern struct {
+    mask: u32,
+    blksize: u32,
+    attributes: u64,
+    nlink: u32,
+    uid: u32,
+    gid: u32,
+    mode: u16,
+    __pad0: [2]u8,
+    ino: u64,
+    size: u64,
+    blocks: u64,
+    attributes_mask: u64,
+    atime: time.TimeSpec,
+    btime: time.TimeSpec,
+    ctime: time.TimeSpec,
+    mtime: time.TimeSpec,
+    rdev_major: u32,
+    rdev_minor: u32,
+    dev_major: u32,
+    dev_minor: u32,
+    mnt_id: u64,
+    __pad3: [104]u8,
+};
+pub const DirectoryEntry = extern struct {
+    inode: u64,
+    offset: u64,
+    reclen: u16,
+    kind: u8,
+    array: u8,
+};
+const Perms = struct { read: bool, write: bool, execute: bool };
 
 pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);

@@ -2,7 +2,6 @@ const sys = @import("./sys.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-const abstract = @import("./abstract.zig");
 
 pub const TimeSpec = extern struct { sec: u64 = 0, nsec: u64 = 0 };
 pub const MonotonicClock = enum { raw, coarse };
