@@ -11,6 +11,29 @@ const fmode_owner: Perms = .{ .read = true, .write = true, .execute = false };
 const fmode_group: Perms = .{ .read = true, .write = false, .execute = false };
 const fmode_other: Perms = .{ .read = false, .write = false, .execute = false };
 
+/// Tentative mapped IO flags default options
+pub const file_map_opts: MapSpec.Options = .{
+    .visibility = .shared,
+    .anonymous = false,
+    .read = true,
+    .write = true,
+    .exec = false,
+    .populate = true,
+    .grows_down = false,
+    .sync = false,
+};
+/// Tentative dynamic load default options
+pub const so_map_opts: MapSpec.Options = .{
+    .visibility = .private,
+    .anonymous = false,
+    .read = true,
+    .write = false,
+    .exec = true,
+    .populate = true,
+    .grows_down = false,
+    .sync = false,
+};
+
 pub const Open = meta.EnumBitField(enum(u64) {
     no_cache = OPEN.DIRECT,
     no_atime = OPEN.NOATIME,
@@ -575,28 +598,29 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) spec.Unw
         return open_error;
     }
 }
-pub fn indexOfBasenameStart(pathname: []const u8) u64 {
-    var start: u64 = pathname.len - 1;
-    if (builtin.int2a(bool, pathname[start] == '/', start != 0)) {
-        while (pathname[start] == '/') start -= 1;
-        while (pathname[start] != '/') start -= 1;
-    } else {
-        while (builtin.int2a(bool, pathname[start] == '/', start != 0)) start -= 1;
-        while (builtin.int2a(bool, pathname[start] != '/', start != 0)) start -= 1;
+fn pathnameLimit(pathname: []const u8) u64 {
+    if (pathname.len == 0) {
+        return 0;
     }
-    return start + 1;
+    var index: u64 = pathname.len -% 1;
+    if (builtin.int2a(bool, pathname[index] == '/', index != 0)) {
+        while (pathname[index] == '/') index -%= 1;
+        while (pathname[index] != '/') index -%= 1;
+    } else {
+        while (builtin.int2a(bool, pathname[index] == '/', index != 0)) index -%= 1;
+        while (builtin.int2a(bool, pathname[index] != '/', index != 0)) index -%= 1;
+    }
+    return index;
 }
 pub fn indexOfDirnameFinish(pathname: []const u8) u64 {
-    var finish: u64 = pathname.len - 1;
-    if (pathname[0] == '/') {
-        while (pathname[finish] == '/') finish -= 1;
-        while (pathname[finish] != '/') finish -= 1;
-    } else {
-        while (builtin.int2a(bool, pathname[finish] == '/', finish != 0)) finish -= 1;
-        while (builtin.int2a(bool, pathname[finish] != '/', finish != 0)) finish -= 1;
-    }
-    return finish;
+    return pathnameLimit(pathname);
 }
+pub fn indexOfBasenameStart(pathname: []const u8) u64 {
+    const index: u64 = pathnameLimit(pathname);
+
+    return index + builtin.int(u64, pathname[index] == '/');
+}
+
 pub fn dirname(pathname: []const u8) []const u8 {
     return pathname[0..indexOfDirnameFinish(pathname)];
 }

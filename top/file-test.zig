@@ -44,6 +44,18 @@ const close_spec: file.CloseSpec = .{
 const stat_spec: file.StatSpec = .{
     .errors = errors,
 };
+
+fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) builtin.Exception!void {
+    if (arg1.len != arg2.len) {
+        return error.UnexpectedValue;
+    }
+    var i: u64 = 0;
+    while (i != arg1.len) : (i += 1) {
+        if (arg1[i] != arg2[i]) {
+            return error.UnexpectedValue;
+        }
+    }
+}
 pub fn main() !void {
     {
         try file.makeDir(make_dir_spec, "/run/user/1000/file_test");
@@ -51,6 +63,11 @@ pub fn main() !void {
         const fd: u64 = try file.create(create_spec, "/run/user/1000/file_test");
         try file.close(close_spec, fd);
         try file.unlink(unlink_spec, "/run/user/1000/file_test");
+        try expectEqualMany(u8, "file_test", file.basename("/run/user/1000/file_test"));
+        try expectEqualMany(u8, "file_test", file.basename("1000/file_test"));
+        try expectEqualMany(u8, "file", file.basename("file"));
+        try expectEqualMany(u8, "/run/user/1000", file.dirname("/run/user/1000/file_test"));
+        try expectEqualMany(u8, "////run/user/1000", file.dirname("////run/user/1000///file_test///"));
     }
     {
         try file.makeDir(make_dir_spec, "/run/user/1000/file_test");

@@ -18,7 +18,7 @@ pub const is_verbose: bool = config("is_verbose", bool, is_debug);
 pub const is_tolerant: bool = config("is_tolerant", bool, is_debug);
 pub const build_root: ?[:0]const u8 = config("build_root", ?[:0]const u8, null);
 
-const Exception = error{
+pub const Exception = error{
     SubCausedOverflow,
     AddCausedOverflow,
     MulCausedOverflow,

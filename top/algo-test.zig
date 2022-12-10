@@ -20,7 +20,6 @@ fn print(buf: []u8, ss: []const []const u8) void {
 pub fn main() void {
     var buf: [4096]u8 = undefined;
     var s_count: u64 = 1;
-
     while (s_count != lit.max_bit_u32) : (s_count += 1) {
         const s_lu_counts: u32 = algo.packDoubleApproxB(s_count);
         const t_count: u64 = algo.unpackDoubleApproxB(s_lu_counts);
