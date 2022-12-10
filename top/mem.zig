@@ -3,37 +3,6 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
-pub const map_opts: MapSpec.Options = .{
-    .visibility = .private,
-    .anonymous = true,
-    .populate = false,
-    .read = true,
-    .write = true,
-    .exec = false,
-    .grows_down = false,
-    .sync = false,
-};
-pub const thread_opts: MapSpec.Options = .{
-    .visibility = .private,
-    .anonymous = true,
-    .populate = true,
-    .read = true,
-    .write = true,
-    .exec = true,
-    .grows_down = true,
-    .sync = false,
-};
-pub const move_opts: RemapSpec.Options = .{
-    .resize = false,
-    .no_unmap = true,
-    .may_move = true,
-};
-pub const resize_opts: RemapSpec.Options = .{
-    .no_unmap = false,
-    .may_move = false,
-    .resize = true,
-};
-
 pub const ArenaError = error{ UnderSupply, OverSupply };
 
 pub const Map = meta.EnumBitField(enum(u64) {
@@ -114,17 +83,17 @@ pub const MapSpec = struct {
     logging: bool = builtin.is_verbose,
     const Specification = @This();
     const Options = struct {
-        anonymous: bool,
-        visibility: Visibility,
-        read: bool,
-        write: bool,
-        exec: bool,
-        populate: bool,
-        grows_down: bool,
-        sync: bool,
+        anonymous: bool = true,
+        visibility: Visibility = .private,
+        read: bool = true,
+        write: bool = true,
+        exec: bool = false,
+        populate: bool = false,
+        grows_down: bool = false,
+        sync: bool = false,
     };
     const Visibility = enum { shared, shared_validate, private };
-    pub fn flags(comptime spec: MapSpec) Map {
+    pub fn flags(comptime spec: Specification) Map {
         var flags_bitfield: Map = .{ .tag = .fixed_no_replace };
         switch (spec.options.visibility) {
             .private => flags_bitfield.set(.private),
@@ -148,7 +117,7 @@ pub const MapSpec = struct {
         }
         return flags_bitfield;
     }
-    pub fn prot(comptime spec: MapSpec) Prot {
+    pub fn prot(comptime spec: Specification) Prot {
         var prot_bitfield: Prot = .{ .val = 0 };
         if (spec.options.read) {
             prot_bitfield.set(.read);
@@ -163,36 +132,37 @@ pub const MapSpec = struct {
     }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
-pub const RemapSpec = struct {
+pub const MoveSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mremap_errors,
     return_type: type = void,
     logging: bool = builtin.is_verbose,
-    const Options = struct {
-        resize: bool,
-        no_unmap: bool,
-        may_move: bool,
-    };
-    pub fn flags(comptime spec: RemapSpec) Remap {
+    const Specification = @This();
+    const Options = struct { no_unmap: bool = false };
+    pub fn flags(comptime spec: Specification) Remap {
         var flags_bitfield: Remap = .{ .val = 0 };
-        if (spec.options.resize) {
-            return flags_bitfield;
-        } else {
-            flags_bitfield.set(.fixed);
-            flags_bitfield.set(.may_move);
-        }
         if (spec.options.no_unmap) {
             flags_bitfield.set(.no_unmap);
         }
+        flags_bitfield.set(.fixed);
+        flags_bitfield.set(.may_move);
         return flags_bitfield;
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(RemapSpec);
+    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
+};
+pub const RemapSpec = struct {
+    errors: ?[]const sys.ErrorCode = sys.mremap_errors,
+    return_type: type = void,
+    logging: bool = builtin.is_verbose,
+    const Specification = @This();
+    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const UnmapSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.munmap_errors,
     return_type: type = void,
     logging: bool = builtin.is_verbose,
-    pub usingnamespace sys.FunctionInterfaceSpec(UnmapSpec);
+    const Specification = @This();
+    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const AdviseSpec = struct {
     options: Options,
@@ -424,7 +394,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) spec.Unwrapped(.mmap) {
         return map_error;
     }
 }
-pub fn move(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_addr: u64) spec.Unwrapped(.mremap) {
+pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) spec.Unwrapped(.mremap) {
     const mremap_flags: Remap = spec.flags();
     if (spec.call(.mremap, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr })) {
         if (spec.logging) {
@@ -438,8 +408,7 @@ pub fn move(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_addr: u64
     }
 }
 pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) spec.Unwrapped(.mremap) {
-    const mremap_flags: Remap = spec.flags();
-    if (spec.call(.mremap, .{ old_addr, old_len, new_len, mremap_flags.val, 0 })) {
+    if (spec.call(.mremap, .{ old_addr, old_len, new_len, 0, 0 })) {
         if (spec.logging) {
             debug.remapNotice(old_addr, old_len, null, new_len);
         }
@@ -490,8 +459,8 @@ pub const debug = opaque {
     fn print(buf: []u8, ss: []const []const u8) void {
         var len: u64 = 0;
         for (ss) |s| {
-            for (s) |c, i| buf[len + i] = c;
-            len += s.len;
+            for (s) |c, i| buf[len +% i] = c;
+            len +%= s.len;
         }
         sys.noexcept.write(2, @ptrToInt(buf.ptr), len);
     }
@@ -499,17 +468,17 @@ pub const debug = opaque {
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_map_0_s, builtin.fmt.ux64(addr).readAll(),
-            "..",          builtin.fmt.ux64(addr + len).readAll(),
+            "..",          builtin.fmt.ux64(addr +% len).readAll(),
             ", ",          builtin.fmt.ud64(len).readAll(),
             " bytes\n",
         });
     }
     pub fn mapError(map_error: anytype, addr: u64, len: u64) void {
         @setCold(true);
-        var buf: [4096 + 512]u8 = undefined;
+        var buf: [4096 +% 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_map_1_s, builtin.fmt.ux64(addr).readAll(),
-            "..",          builtin.fmt.ux64(addr + len).readAll(),
+            "..",          builtin.fmt.ux64(addr +% len).readAll(),
             ", ",          builtin.fmt.ud64(len).readAll(),
             " bytes (",    @errorName(map_error),
             ")\n",
@@ -519,17 +488,17 @@ pub const debug = opaque {
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_unmap_0_s, builtin.fmt.ux64(addr).readAll(),
-            "..",            builtin.fmt.ux64(addr + len).readAll(),
+            "..",            builtin.fmt.ux64(addr +% len).readAll(),
             ", ",            builtin.fmt.ud64(len).readAll(),
             " bytes\n",
         });
     }
     fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
         @setCold(true);
-        var buf: [4096 + 512]u8 = undefined;
+        var buf: [4096 +% 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_unmap_1_s, builtin.fmt.ux64(addr).readAll(),
-            "..",            builtin.fmt.ux64(addr + len).readAll(),
+            "..",            builtin.fmt.ux64(addr +% len).readAll(),
             ", ",            builtin.fmt.ud64(len).readAll(),
             " bytes (",      @errorName(unmap_error),
             ")\n",
@@ -539,7 +508,7 @@ pub const debug = opaque {
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_advice_0_s, builtin.fmt.ux64(addr).readAll(),
-            "..",             builtin.fmt.ux64(addr + len).readAll(),
+            "..",             builtin.fmt.ux64(addr +% len).readAll(),
             ", ",             builtin.fmt.ud64(len).readAll(),
             " bytes, ",       description_s,
             "\n",
@@ -549,7 +518,7 @@ pub const debug = opaque {
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_advice_1_s, builtin.fmt.ux64(addr).readAll(),
-            "..",             builtin.fmt.ux64(addr + len).readAll(),
+            "..",             builtin.fmt.ux64(addr +% len).readAll(),
             ", ",             builtin.fmt.ud64(len).readAll(),
             " bytes, ",       description_s,
             ", (",            @errorName(madvise_error),
@@ -559,15 +528,15 @@ pub const debug = opaque {
     pub fn remapNotice(old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
         const new_addr: u64 = maybe_new_addr orelse old_addr;
         const new_len: u64 = maybe_new_len orelse old_len;
-        const abs_diff: u64 = builtin.max(u64, new_len, old_len) - builtin.min(u64, new_len, old_len);
+        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_0_s, about_resize_0_s);
-        var buf: [4096 + 512]u8 = undefined;
+        var buf: [4096 +% 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             operation_s, builtin.fmt.ux64(old_addr).readAll(),
-            "..",        builtin.fmt.ux64(old_addr + old_len).readAll(),
+            "..",        builtin.fmt.ux64(old_addr +% old_len).readAll(),
             " -> ",      builtin.fmt.ux64(new_addr).readAll(),
-            "..",        builtin.fmt.ux64(new_addr + new_len).readAll(),
+            "..",        builtin.fmt.ux64(new_addr +% new_len).readAll(),
             notation_s,  builtin.fmt.ud64(abs_diff).readAll(),
             " bytes\n",
         });
@@ -575,15 +544,15 @@ pub const debug = opaque {
     fn remapError(mremap_err: anytype, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
         const new_addr: u64 = maybe_new_addr orelse old_addr;
         const new_len: u64 = maybe_new_len orelse old_len;
-        const abs_diff: u64 = builtin.max(u64, new_len, old_len) - builtin.min(u64, new_len, old_len);
+        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_1_s, about_resize_1_s);
-        var buf: [4096 + 512]u8 = undefined;
+        var buf: [4096 +% 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             operation_s, builtin.fmt.ux64(old_addr).readAll(),
-            "..",        builtin.fmt.ux64(old_addr + old_len).readAll(),
+            "..",        builtin.fmt.ux64(old_addr +% old_len).readAll(),
             " -> ",      builtin.fmt.ux64(new_addr).readAll(),
-            "..",        builtin.fmt.ux64(new_addr + new_len).readAll(),
+            "..",        builtin.fmt.ux64(new_addr +% new_len).readAll(),
             notation_s,  builtin.fmt.ud64(abs_diff).readAll(),
             " bytes (",  @errorName(mremap_err),
             ")\n",
@@ -594,7 +563,7 @@ pub const debug = opaque {
         print(&buf, &[_][]const u8{
             about_brk_1_s, builtin.fmt.ux64(old_addr).readAll(),
             "..",          builtin.fmt.ux64(new_addr).readAll(),
-            ", ",          builtin.fmt.ud64(new_addr - old_addr).readAll(),
+            ", ",          builtin.fmt.ud64(new_addr -% old_addr).readAll(),
             " bytes (",    @errorName(brk_error),
             ")\n",
         });

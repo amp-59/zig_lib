@@ -204,6 +204,7 @@ pub const CloneArgs = extern struct {
     /// File descriptor for target cgroup
     cgroup: u64 = 0,
 };
+
 pub const WaitSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.wait_errors,
@@ -215,7 +216,21 @@ pub const WaitSpec = struct {
         stopped: bool = false,
         continued: bool = false,
     };
-    const For = union(enum) { pid: usize, pgid: usize, ppid, any };
+    const For = union(enum) {
+        pid: usize,
+        pgid: usize,
+        ppid,
+        any,
+    };
+    fn pid(id: For) u64 {
+        const val: isize = switch (id) {
+            .pid => |val| @intCast(isize, val),
+            .pgid => |val| @intCast(isize, val),
+            .ppid => 0,
+            .any => -1,
+        };
+        return @bitCast(usize, val);
+    }
     fn flags(comptime spec: WaitSpec) Wait {
         var ret: Wait = .{ .val = 0 };
         if (spec.options.exited) {
@@ -227,15 +242,6 @@ pub const WaitSpec = struct {
         if (spec.options.continued) {
             ret.set(.continued);
         }
-    }
-    fn pid(id: For) u64 {
-        const val: isize = switch (id) {
-            .pid => |val| @intCast(isize, val),
-            .pgid => |val| @intCast(isize, val),
-            .ppid => 0,
-            .any => -1,
-        };
-        return @bitCast(usize, val);
     }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };

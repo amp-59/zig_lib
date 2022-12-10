@@ -11,28 +11,26 @@ pub const is_correct: bool = true;
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
 const move_spec = if (default_errors) .{
-    .options = mem.move_opts,
+    .options = .{},
     .logging = logging,
 } else .{
-    .options = mem.move_opts,
+    .options = .{},
     .logging = logging,
     .errors = builtin.root.errors,
 };
 const map_spec = if (default_errors)
 .{
-    .options = mem.map_opts,
+    .options = .{},
     .logging = logging,
 } else .{
-    .options = mem.map_opts,
+    .options = .{},
     .logging = logging,
     .errors = builtin.root.errors,
 };
 const resize_spec = if (default_errors)
 .{
-    .options = mem.resize_opts,
     .logging = logging,
 } else .{
-    .options = mem.resize_opts,
     .logging = logging,
     .errors = builtin.root.errors,
 };
@@ -54,7 +52,7 @@ const advise_spec = if (default_errors)
     .errors = builtin.root.errors,
 };
 
-const logging = true;
+const logging = false;
 const errors = null;
 
 fn testLowSystemMemoryOperations() !void {
