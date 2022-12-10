@@ -28,6 +28,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{});
     _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{});
     _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{});
+    _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{});
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
