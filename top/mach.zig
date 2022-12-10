@@ -193,3 +193,69 @@ pub inline fn orn32(arg1: u32, arg2: u32) u32 {
 pub inline fn xor32(arg1: u32, arg2: u32) u32 {
     return xor(u32, arg1, arg2);
 }
+
+pub inline fn alignA(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
+    const mask: @TypeOf(value) = alignment - 1;
+    return (value +% mask) & ~mask;
+}
+pub inline fn alignB(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
+    const mask: @TypeOf(value) = alignment - 1;
+    return value & ~mask;
+}
+pub inline fn alignA64(value: u64, alignment: u64) u64 {
+    const mask: u64 = alignment - 1;
+    return (value +% mask) & ~mask;
+}
+pub inline fn alignB64(value: u64, alignment: u64) u64 {
+    const mask: u64 = alignment - 1;
+    return value & ~mask;
+}
+pub inline fn halfMask64(pop_count: u8) u64 {
+    const iunit: i64 = -1;
+    const popcnt_shl: u6 = @truncate(u6, pop_count);
+    const int_max_mask: u64 = ~@as(u64, 0);
+    const int_sub_mask: u64 = @bitCast(u64, ~(iunit << popcnt_shl));
+    return cmov64(pop_count == 64, int_max_mask, int_sub_mask);
+}
+pub inline fn bitMask64(pop_count: u8, shift_amt: u8) u64 {
+    const iunit: i64 = -1;
+    const popcnt_shl: u6 = @truncate(u6, pop_count);
+    const tzcnt_shl: u6 = @truncate(u6, shift_amt);
+    const int_max_mask: u64 = ~@as(u64, 0);
+    const int_sub_mask: u64 = @bitCast(u64, ~(iunit << popcnt_shl) << tzcnt_shl);
+    return cmov64(pop_count == 64, int_max_mask, int_sub_mask);
+}
+pub inline fn bitMask64NonZero(pop_count: u8, shift_amt: u8) u64 {
+    const iunit: i64 = @as(i64, -1 << 1);
+    const popcnt_shl: u6 = @truncate(u6, pop_count - 1);
+    const tzcnt_shl: u6 = @truncate(u6, shift_amt);
+    return @bitCast(u64, ~(iunit << popcnt_shl) << tzcnt_shl);
+}
+pub inline fn halfMask64NonMax(pop_count: u8) u64 {
+    const iunit: i64 = -1;
+    const popcnt_shl: u6 = @truncate(u6, pop_count);
+    return @bitCast(u64, ~(iunit << popcnt_shl));
+}
+pub inline fn bitMask64NonMax(pop_count: u8, shift_amt: u8) u64 {
+    const iunit: i64 = @as(i64, -1);
+    const popcnt_shl: u6 = @truncate(u6, pop_count);
+    const tzcnt_shl: u6 = @truncate(u6, shift_amt);
+    return @bitCast(u64, ~(iunit << popcnt_shl) << tzcnt_shl);
+}
+pub inline fn shiftRightTruncate(
+    comptime T: type,
+    comptime U: type,
+    value: T,
+    comptime shift_amt: comptime_int,
+) U {
+    return @truncate(U, value >> shift_amt);
+}
+pub inline fn shiftRightMaskTruncate(
+    comptime T: type,
+    comptime U: type,
+    value: T,
+    comptime shift_amt: comptime_int,
+    comptime pop_count: comptime_int,
+) U {
+    return @truncate(U, value >> shift_amt) & ((@as(U, 1) << pop_count) -% 1);
+}
