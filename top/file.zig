@@ -50,7 +50,6 @@ const Mode = meta.EnumBitField(enum(u16) {
 
     const MODE = sys.S;
 });
-
 pub const Stat = extern struct {
     dev: u64,
     ino: u64,
@@ -576,6 +575,35 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) spec.Unw
         return open_error;
     }
 }
+pub fn indexOfBasenameStart(pathname: []const u8) u64 {
+    var start: u64 = pathname.len - 1;
+    if (builtin.int2a(bool, pathname[start] == '/', start != 0)) {
+        while (pathname[start] == '/') start -= 1;
+        while (pathname[start] != '/') start -= 1;
+    } else {
+        while (builtin.int2a(bool, pathname[start] == '/', start != 0)) start -= 1;
+        while (builtin.int2a(bool, pathname[start] != '/', start != 0)) start -= 1;
+    }
+    return start + 1;
+}
+pub fn indexOfDirnameFinish(pathname: []const u8) u64 {
+    var finish: u64 = pathname.len - 1;
+    if (pathname[0] == '/') {
+        while (pathname[finish] == '/') finish -= 1;
+        while (pathname[finish] != '/') finish -= 1;
+    } else {
+        while (builtin.int2a(bool, pathname[finish] == '/', finish != 0)) finish -= 1;
+        while (builtin.int2a(bool, pathname[finish] != '/', finish != 0)) finish -= 1;
+    }
+    return finish;
+}
+pub fn dirname(pathname: []const u8) []const u8 {
+    return pathname[0..indexOfDirnameFinish(pathname)];
+}
+pub fn basename(pathname: []const u8) []const u8 {
+    return pathname[indexOfBasenameStart(pathname)..];
+}
+
 pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
