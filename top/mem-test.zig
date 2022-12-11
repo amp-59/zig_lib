@@ -52,7 +52,7 @@ const advise_spec = if (default_errors)
     .errors = builtin.root.errors,
 };
 
-const logging = false;
+const logging = true;
 const errors = null;
 
 fn testLowSystemMemoryOperations() !void {

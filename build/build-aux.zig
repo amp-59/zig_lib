@@ -27,7 +27,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .need_build_root = true });
     _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{});
     _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{});
-    _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseFast });
+    _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseSmall });
     _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{});
 }
 
