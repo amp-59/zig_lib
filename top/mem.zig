@@ -387,6 +387,9 @@ pub const Bytes = struct {
         return amt.count * @enumToInt(amt.unit);
     }
 };
+pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
+    return builtin.intToPtr(*child, s_lb_addr);
+}
 pub fn pointerMany(comptime child: type, s_lb_addr: u64, n: u64) []child {
     return builtin.intToPtr([*]child, s_lb_addr)[0..n];
 }
