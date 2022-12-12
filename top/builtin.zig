@@ -1179,9 +1179,7 @@ pub const parse = opaque {
                     },
                 }
             },
-            else => {
-                return error.InvalidNotation;
-            },
+            else => unreachable,
         }
         return value;
     }
