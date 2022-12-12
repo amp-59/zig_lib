@@ -1,6 +1,7 @@
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
+const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
 
@@ -826,6 +827,66 @@ pub const noexcept = opaque {
         sys.noexcept.write(fd, @ptrToInt(buf.ptr), buf.len);
     }
 };
+
+pub fn DeviceRandomBytes(comptime bytes: u64) type {
+    return struct {
+        data: mem.StaticString(4096) = .{},
+        const Random = @This();
+
+        const dev: u64 = if (builtin.is_perf)
+            sys.GRND.INSECURE
+        else
+            sys.GRND.RANDOM;
+        pub fn readOne(random: *Random, comptime T: type) T {
+            const child: type = meta.AlignSizeAW(T);
+            const high_alignment: u64 = @sizeOf(child);
+            const low_alignment: u64 = @alignOf(child);
+            if (random.data.impl.ub_word == 0) {
+                sys.noexcept.getrandom(random.data.impl.start(), bytes, dev);
+            }
+            if (high_alignment + low_alignment > bytes) {
+                @compileError("requested type " ++ @typeName(T) ++ " is too large");
+            }
+            const s_lb_addr: u64 = random.data.impl.next();
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
+            const s_up_addr: u64 = s_ab_addr + high_alignment;
+            if (s_up_addr > random.data.impl.finish()) {
+                sys.noexcept.getrandom(random.data.impl.start(), bytes, dev);
+                const t_lb_addr: u64 = random.data.impl.next();
+                const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
+                const t_up_addr: u64 = t_ab_addr + high_alignment;
+                random.data.impl.ub_word = t_up_addr - t_lb_addr;
+                return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
+            }
+            random.data.impl.define(s_up_addr - s_lb_addr);
+            return @truncate(T, @intToPtr(*const child, s_ab_addr).*);
+        }
+        pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
+            var ret: T = random.readOne();
+            if (meta.Return(function) == bool) {
+                while (function(ret)) {
+                    ret = random.readOne();
+                }
+            } else if (meta.Return(function) == T) {
+                return function(ret);
+            } else {
+                @compileError("condition function must return " ++
+                    @typeName(T) ++ " or " ++ @typeName(bool));
+            }
+            return ret;
+        }
+        pub fn readCount(random: *Random, comptime T: type, comptime count: u64) [count]T {
+            var ret: [count]T = undefined;
+            for (ret) |*value| value.* = random.readOne(T);
+            return ret;
+        }
+        pub fn readCountConditionally(random: *Random, comptime T: type, comptime count: u64) [count]T {
+            var ret: [count]T = undefined;
+            for (ret) |*value| value.* = random.readOneConditionally(T);
+            return ret;
+        }
+    };
+}
 
 const debug = opaque {
     const about_open_0_s: []const u8 = "open:           ";
