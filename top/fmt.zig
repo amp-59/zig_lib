@@ -519,3 +519,81 @@ pub const SourceLocationFormat = struct {
         return .{ .value = value, .return_address = @intCast(u32, ret_addr orelse @returnAddress()) };
     }
 };
+pub const Bytes = struct {
+    value: Value,
+    const Format = @This();
+    const Value = struct {
+        integer: mem.Bytes,
+        remainder: mem.Bytes,
+    };
+    const Unit = mem.Bytes.Unit;
+    const MajorIntFormat = PolynomialFormat(.{
+        .bits = 10,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .min,
+    });
+    const MinorIntFormat = PolynomialFormat(.{
+        .bits = 10,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 3 },
+    });
+    const fields: []const meta.EnumField = @typeInfo(Unit).Enum.fields;
+    pub const max_len: u64 =
+        MajorIntFormat.max_len +
+        MinorIntFormat.max_len + 3; // Unit
+    const default: mem.Bytes = .{
+        .count = 0,
+        .unit = .B,
+    };
+    pub fn formatRemainder(format: Format) MinorIntFormat {
+        return .{ .value = @intCast(u10, (format.value.remainder.count * 1000) / 1024) };
+    }
+    pub fn formatInteger(format: Format) MajorIntFormat {
+        return .{ .value = @intCast(u10, format.value.integer.count) };
+    }
+    pub noinline fn formatWrite(format: Format, array: anytype) void {
+        if (format.value.remainder.count != 0) {
+            array.writeFormat(format.formatInteger());
+            array.writeOne('.');
+            array.writeFormat(format.formatRemainder());
+            array.writeMany(@tagName(format.value.integer.unit));
+        } else {
+            array.writeFormat(format.formatInteger());
+            array.writeMany(@tagName(format.value.integer.unit));
+        }
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        if (format.value.remainder.count != 0) {
+            len += format.formatInteger().formatLength();
+            len += 1;
+            len += format.formatRemainder().formatLength();
+            len += @tagName(format.value.integer.unit).len;
+        } else {
+            len += format.formatInteger().formatLength();
+            len += @tagName(format.value.integer.unit).len;
+        }
+        return len;
+    }
+    pub fn init(value: u64) Bytes {
+        inline for (fields) |field, i| {
+            const integer: mem.Bytes = mem.Bytes.Unit.to(value, @field(mem.Bytes.Unit, field.name));
+            if (integer.count != 0) {
+                const remainder: mem.Bytes = blk: {
+                    const j: u64 = if (i != fields.len - 1) i + 1 else i;
+                    break :blk Unit.to(value -| mem.Bytes.bytes(integer), @field(Unit, fields[j].name));
+                };
+                return .{ .value = .{
+                    .integer = integer,
+                    .remainder = remainder,
+                } };
+            }
+        }
+        return .{ .value = .{
+            .integer = default,
+            .remainder = default,
+        } };
+    }
+};
