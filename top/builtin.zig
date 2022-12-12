@@ -549,7 +549,7 @@ pub fn intToPtr(comptime Pointer: type, address: u64) Pointer {
     if (is_correct) {
         const alignment: u64 = @typeInfo(Pointer).Pointer.alignment;
         if (address & (alignment -% 1) != 0) {
-            debug.incorrectAlignment(Pointer, address, alignment);
+            debug.incorrectAlignmentFault(Pointer, address, alignment);
         }
     }
     return @intToPtr(Pointer, address);
@@ -789,7 +789,7 @@ const debug = opaque {
         });
     }
     fn incorrectAlignmentString(comptime Pointer: type, about: []const u8, buf: *[size]u8, address: usize, alignment: usize, rem: u64) u64 {
-        return write(&buf, &[_][]const u8{
+        return write(buf, &[_][]const u8{
             about,                             ": incorrect alignment: ",
             @typeName(Pointer),                " align(",
             tos(u64, alignment).readAll(),     "): ",
@@ -1114,21 +1114,25 @@ pub const parse = opaque {
             return error.InvalidInputParity;
         }
         var idx: u64 = int(u64, signed);
-        idx += int(u64, str[idx] == '0');
-        return switch (str[idx]) {
+        const zero: bool = str[idx] == '0';
+        idx += int(u64, zero);
+        if (idx == str.len) {
+            return 0;
+        }
+        switch (str[idx]) {
             'b' => {
-                try parseValidate(T, str[idx + 1 ..], 2);
+                return parseValidate(T, str[idx + 1 ..], 2);
             },
             'o' => {
-                try parseValidate(T, str[idx + 1 ..], 8);
+                return parseValidate(T, str[idx + 1 ..], 8);
             },
             'x' => {
-                try parseValidate(T, str[idx + 1 ..], 16);
+                return parseValidate(T, str[idx + 1 ..], 16);
             },
             else => {
-                try parseValidate(T, str[idx..], 10);
+                return parseValidate(T, str[idx..], 10);
             },
-        };
+        }
     }
     fn parseValidate(comptime T: type, str: []const u8, comptime radix: u16) !T {
         const sig_fig_list: []const T = comptime sigFigList(T, radix);
