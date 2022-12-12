@@ -696,6 +696,9 @@ pub const AbstractSpec = union(enum) {
             },
         };
     };
+    // This word 'disjunct' is used below instead of packed, because no packing
+    // is ever needed to perform the technique. The unaligned bits can sit in
+    // the lowest dead bits of the start address indefinitely.
     pub const Technique = struct {
         lazy_alignment: bool = true,
         unit_alignment: bool = false,
