@@ -3,6 +3,14 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
+const _reference = @import("./reference.zig");
+const _container = @import("./container.zig");
+
+const mem = @This();
+
+pub usingnamespace _reference;
+pub usingnamespace _container;
+
 pub const ArenaError = error{ UnderSupply, OverSupply };
 
 pub const Map = meta.EnumBitField(enum(u64) {
@@ -379,7 +387,21 @@ pub const Bytes = struct {
         return amt.count * @enumToInt(amt.unit);
     }
 };
-
+pub fn pointerMany(comptime child: type, s_lb_addr: u64, n: u64) []child {
+    return builtin.intToPtr([*]child, s_lb_addr)[0..n];
+}
+pub fn pointerManyWithSentinel(comptime child: type, s_lb_addr: u64, n: u64, comptime sentinel: child) [:sentinel]child {
+    return builtin.intToPtr([*]child, s_lb_addr)[0..n :sentinel];
+}
+pub fn pointerCount(comptime child: type, s_lb_addr: u64, comptime n: u64) *[n]child {
+    return builtin.intToPtr(*[n]child, s_lb_addr)[0..n];
+}
+pub fn pointerCountWithSentinel(comptime child: type, s_lb_addr: u64, comptime n: u64, comptime sentinel: child) *[n:sentinel]child {
+    return builtin.intToPtr(*[n]child, s_lb_addr)[0..n :sentinel];
+}
+pub fn pointerOneWithSentinel(comptime child: type, s_lb_addr: u64, comptime sentinel: child) [*:sentinel]child {
+    return builtin.intToPtr([*:sentinel]child, s_lb_addr);
+}
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) spec.Unwrapped(.mmap) {
     const mmap_prot: Prot = spec.prot();
     const mmap_flags: Map = spec.flags();
@@ -567,5 +589,232 @@ pub const debug = opaque {
             " bytes (",    @errorName(brk_error),
             ")\n",
         });
+    }
+};
+
+pub fn StaticArray(comptime child: type, comptime count: u64) type {
+    return mem.StructuredAutomaticVector(.{
+        .child = child,
+        .count = count,
+        .low_alignment = @alignOf(child),
+    });
+}
+pub fn StaticString(comptime count: u64) type {
+    return StaticArray(u8, count);
+}
+
+/// Potential features of a referenced value in memory:
+/// |->_~~~~~~_~~~~_------------------------------_--|
+/// |  |      |    |                              |  |
+/// |  |      |    `lowest undefined byte (UB)*   |  `lowest unallocated byte (UP)**
+/// |  |      `- lowest unstreamed byte (SS)      |
+/// |  `lowest aligned byte (AB)                  `-lowest sentinel byte (XB)
+/// |
+/// `-lowest allocated byte (LB)
+///
+/// *  'lowest unallocated byte' in allocator implementations
+/// ** 'lowest unaddressable byte' in allocator implementations
+///
+/// The purpose of this union is to provide a compact overview of how memory is
+/// implemented, and to restrict the nomenclature therefor. The implementation
+/// is specified using four arbitrary categories:
+///     `mode`          => set of available functions,
+///     `fields`        => data for storing the referenced value,
+///     `techniques`    => how to interpret or transform the reference data,
+///     `specifiers`    => set of available configuration parameters,
+pub const AbstractSpec = union(enum) {
+    automatic_storage: union(enum) {
+        read_write_auto: union(enum) {
+            structured: AutoAlignment(struct {
+                child: type,
+                sentinel: in_out(*const anyopaque) = null,
+                count: u64,
+                low_alignment: in(u64) = null,
+            }),
+        },
+        offset_byte_address: union(enum) {
+            read_write_stream_auto: union(enum) {
+                structured: AutoAlignment(struct {
+                    child: type,
+                    sentinel: in_out(*const anyopaque) = null,
+                    count: u64,
+                    low_alignment: in(u64) = null,
+                }),
+            },
+            undefined_byte_address: union(enum) {
+                read_write_stream_push_pop_auto: union(enum) {
+                    structured: AutoAlignment(struct {
+                        child: type,
+                        sentinel: in_out(*const anyopaque) = null,
+                        count: u64,
+                        low_alignment: in(u64) = null,
+                    }),
+                },
+            },
+        },
+        undefined_byte_address: union(enum) {
+            read_write_push_pop_auto: union(enum) {
+                structured: AutoAlignment(struct {
+                    child: type,
+                    sentinel: in_out(*const anyopaque) = null,
+                    count: u64,
+                    low_alignment: in(u64) = null,
+                }),
+            },
+        },
+    },
+    pub const Mode = enum {
+        read_write,
+        read_write_push_pop,
+        read_write_auto,
+        read_write_push_pop_auto,
+        read_write_stream,
+        read_write_stream_push_pop,
+        read_write_stream_auto,
+        read_write_stream_push_pop_auto,
+    };
+    // For structures below named 'mutex', iterate through the structure until
+    // finding an enum literal, then concatenate direct parent field names to
+    // yield the name of one of the category fields. In contexts where multiple
+    // names from the same substructure present, these should form a union or
+    // enumeration instead of individual boolean options.
+    pub const Fields = union {
+        automatic_storage: struct {
+            ss_word: bool,
+            ub_word: bool,
+        },
+        allocated_storage: struct {
+            lb_word: bool,
+            ss_word: bool,
+            ub_word: bool,
+            up_word: bool,
+        },
+        pub const mutex = .{
+            .storage = .{
+                .automatic,
+                .allocated,
+            },
+        };
+    };
+    pub const Technique = struct {
+        lazy_alignment: bool = true,
+        unit_alignment: bool = false,
+        disjunct_alignment: bool = false,
+        single_packed_approximate_capacity: bool = false,
+        double_packed_approximate_capacity: bool = false,
+        pub const mutex = .{
+            .capacity = .{
+                .single_packed_approximate,
+                .double_packed_approximate,
+            },
+            .alignment = .{
+                .unit,
+                .lazy,
+                .disjunct,
+            },
+        };
+    };
+    fn getMutuallyExclusivePivot(comptime any: anytype) []const []const u8 {
+        switch (@typeInfo(@TypeOf(any))) {
+            .Struct => |struct_info| {
+                var names: []const []const u8 = meta.empty;
+                for (struct_info.fields) |field| {
+                    for (getMutuallyExclusivePivot(@field(any, field.name))) |name| {
+                        if (struct_info.is_tuple) {
+                            names = meta.parcel(@as([]const u8, name));
+                        } else {
+                            names = meta.parcel(@as([]const u8, name ++ "_" ++ field.name));
+                        }
+                    }
+                }
+                return names;
+            },
+            .EnumLiteral => {
+                return meta.parcel(@as([]const u8, @tagName(any)));
+            },
+            else => @compileError(@typeName(@TypeOf(any))),
+        }
+    }
+    comptime {
+        for (getMutuallyExclusivePivot(Technique.mutex)) |name| {
+            if (!@hasField(Technique, name)) {
+                @compileError(name);
+            }
+        }
+        for (getMutuallyExclusivePivot(Fields.mutex)) |name| {
+            if (!@hasField(Fields, name)) {
+                @compileError(name);
+            }
+        }
+    }
+
+    /// Require the field be optional in the input parameters
+    fn in(comptime T: type) type {
+        return ?T;
+    }
+    /// Require the field be a variance point in the output specification
+    fn out(comptime T: type) type {
+        return ??T;
+    }
+    /// Require the field be static in the output specification
+    fn in_out(comptime T: type) type {
+        return ???T;
+    }
+    /// Remove the field from the output specification--only used by the input.
+    fn strip(comptime T: type) type {
+        return ????T;
+    }
+    /// Having this type in one of the specification structs below means that
+    /// the container configurator struct will have a field 'Allocator: type',
+    /// and by a function named 'arenaIndex'--a member function--may obtain the
+    /// optional parameter 'arena_index'.
+    const AllocatorStripped = strip(type);
+    const AllocatorWithArenaIndex = union {
+        Allocator: type,
+        arena_index: in_out(u64),
+    };
+    const Allocator = AllocatorWithArenaIndex;
+    /// Implementations with lb_word ignore the cause for distinction between
+    /// packed_super- and packed_natural- alignment techniques, because doing so
+    /// makes no (known) effective difference, saves around ~1000 lines in
+    /// the output, and removes a logical branch from relevant specifications
+    /// deductions. Possible solution: For all implementations where the
+    /// difference is ineffective, do not specify whether natural, structural,
+    /// or super-structural. This cost would be seen in the compilation time of
+    /// implgen.
+    ///
+    /// Super alignment is a valid technique while allocated_byte_address is
+    /// available. However it is likely sub-optimal for all variations.
+    fn NoSuperAlignment(comptime S: type) type {
+        return union(enum) {
+            unit_alignment: S,
+            lazy_alignment: S,
+            disjunct_alignment: S,
+        };
+    }
+    fn AutoAlignment(comptime S: type) type {
+        return union(enum) {
+            auto_alignment: S,
+        };
+    }
+    fn NoPackedAlignment(comptime S: type) type {
+        return union(enum) {
+            unit_alignment: S,
+            lazy_alignment: S,
+        };
+    }
+    fn StrictAlignment(comptime S: type) type {
+        return union(enum) {
+            unit_alignment: S,
+            disjunct_alignment: S,
+        };
+    }
+    fn AnyAlignment(comptime S: type) type {
+        return union(enum) {
+            unit_alignment: S,
+            lazy_alignment: S,
+            super_alignment: S,
+            disjunct_alignment: S,
+        };
     }
 };
