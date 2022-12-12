@@ -1,8 +1,11 @@
 const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
+const file = @import("./file.zig");
 const builtin = @import("./builtin.zig");
+const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
@@ -51,6 +54,10 @@ const advise_spec = if (default_errors)
     .logging = logging,
     .errors = builtin.root.errors,
 };
+const wr_spec: mem.ReinterpretSpec = .{
+    .composite = .{ .format = true },
+    .reference = .{ .dereference = &.{} },
+};
 
 const logging = true;
 const errors = null;
@@ -67,6 +74,31 @@ fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.advise(advise_spec, addr, len));
     try meta.wrap(mem.unmap(unmap_spec, addr, len));
 }
+
+fn view(comptime s: []const u8) mem.StructuredAutomaticView(.{ .child = u8, .count = s.len }) {
+    return .{ .impl = .{ .auto = @ptrCast(*const [s.len]u8, s.ptr).* } };
+}
+fn testImplementation() !void {
+    {
+        const array = view("Hello, World!12340x1fee1dead");
+        try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
+        try testing.expectEqualMany(u8, "World!", &array.readCountAt("Hello, ".len, "World!".len));
+    }
+    {
+        const StaticString = mem.StructuredAutomaticStreamVector(.{ .child = u8, .count = 256 });
+        var array: StaticString = .{};
+        array.writeMany("Hello, world!");
+        array.writeCount(4, "1234".*);
+        array.writeFormat(fmt.ux(0x1fee1dead));
+        try testing.expectEqualMany(u8, "world!", &array.readCountAt("Hello, ".len, "world!".len));
+        try testing.expectEqualMany(u8, "Hello, ", array.readManyAhead("Hello, ".len));
+        array.seek("Hello, ".len);
+        try testing.expectEqualMany(u8, "world!", array.readManyAhead("world!".len));
+        try testing.expectEqualMany(u8, "Hello, ", array.readManyBehind("Hello, ".len));
+    }
+}
+
 pub fn main() !void {
+    try meta.wrap(testImplementation());
     try meta.wrap(testLowSystemMemoryOperations());
 }
