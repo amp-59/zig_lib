@@ -270,11 +270,17 @@ fn StructuredAutomaticStreamViewFunctions(comptime Memory: type) type {
         inline fn __behind(memory: *const Memory, offset: u64) u64 {
             return mach.sub64(memory.impl.position(), offset * Memory.child_size);
         }
-        pub fn tell(memory: *Memory, count: u64) void {
+        pub fn stream(memory: *Memory, count: u64) void {
+            memory.impl.seek(count);
+        }
+        pub fn streamAll(memory: *Memory) void {
+            memory.impl.seek(memory.impl.available());
+        }
+        pub fn unstream(memory: *Memory, count: u64) void {
             memory.impl.tell(count);
         }
-        pub fn seek(memory: *Memory, count: u64) void {
-            memory.impl.seek(count);
+        pub fn unstreamAll(memory: *Memory) void {
+            memory.impl.tell(memory.impl.length());
         }
     };
 }
@@ -473,17 +479,29 @@ fn StructuredAutomaticStreamVectorFunctions(comptime Memory: type) type {
         inline fn __behind(memory: *const Memory, offset: u64) u64 {
             return mach.sub64(memory.impl.position(), offset * Memory.child_size);
         }
-        pub fn undefine(memory: *Memory, count: u64) void {
-            memory.impl.undefine(count);
-        }
         pub fn define(memory: *Memory, count: u64) void {
             memory.impl.define(count);
         }
-        pub fn tell(memory: *Memory, count: u64) void {
+        pub fn defineAll(memory: *Memory) void {
+            memory.impl.define(memory.impl.available());
+        }
+        pub fn undefine(memory: *Memory, count: u64) void {
+            memory.impl.undefine(count);
+        }
+        pub fn undefineAll(memory: *Memory) void {
+            memory.impl.undefine(memory.impl.length());
+        }
+        pub fn stream(memory: *Memory, count: u64) void {
+            memory.impl.seek(count);
+        }
+        pub fn streamAll(memory: *Memory) void {
+            memory.impl.seek(memory.impl.available());
+        }
+        pub fn unstream(memory: *Memory, count: u64) void {
             memory.impl.tell(count);
         }
-        pub fn seek(memory: *Memory, count: u64) void {
-            memory.impl.seek(count);
+        pub fn unstreamAll(memory: *Memory) void {
+            memory.impl.tell(memory.impl.length());
         }
     };
 }
@@ -649,11 +667,17 @@ fn StructuredAutomaticVectorFunctions(comptime Memory: type) type {
         inline fn __prev(memory: *const Memory, offset: u64) u64 {
             return mach.sub64(memory.impl.next(), offset * Memory.child_size);
         }
+        pub fn define(memory: *Memory, count: u64) void {
+            memory.impl.define(count);
+        }
+        pub fn defineAll(memory: *Memory) void {
+            memory.impl.define(memory.impl.available());
+        }
         pub fn undefine(memory: *Memory, count: u64) void {
             memory.impl.undefine(count);
         }
-        pub fn define(memory: *Memory, count: u64) void {
-            memory.impl.define(count);
+        pub fn undefineAll(memory: *Memory) void {
+            memory.impl.undefine(memory.impl.length());
         }
     };
 }
