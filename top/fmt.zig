@@ -215,6 +215,9 @@ pub fn uz64(value: u64) PolynomialFormat(.{ .bits = 64, .radix = 36, .signedness
 pub fn uz128(value: u128) PolynomialFormat(.{ .bits = 128, .radix = 36, .signedness = .unsigned, .width = .min }) {
     return .{ .value = value };
 }
+pub fn bytes(count: usize) Bytes {
+    return Bytes.init(count);
+}
 pub fn yr(year: u64) PolynomialFormat(.{
     .bits = 64,
     .signedness = .unsigned,
@@ -596,4 +599,5 @@ pub const Bytes = struct {
             .remainder = default,
         } };
     }
+    pub usingnamespace GenericFormat(Format);
 };

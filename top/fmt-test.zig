@@ -10,9 +10,8 @@ pub const is_correct: bool = true;
 
 pub usingnamespace proc.start;
 
-const Random = file.DeviceRandomBytes(4096);
-
 fn testBytesFormat() !void {
+    try testing.expectEqualMany(u8, "0B", fmt.bytes(0).formatConvert().readAll());
     try testing.expectEqualMany(u8, "12.224EiB", fmt.bytes(14094246983574119504).formatConvert().readAll());
     try testing.expectEqualMany(u8, "3.055GiB", fmt.bytes(3281572597).formatConvert().readAll());
     try testing.expectEqualMany(u8, "48.898KiB", fmt.bytes(50072).formatConvert().readAll());
@@ -61,6 +60,7 @@ fn testBytesFormat() !void {
     try testing.expectEqualMany(u8, "5.851EiB", fmt.bytes(6747100094387843530).formatConvert().readAll());
     try testing.expectEqualMany(u8, "1.462GiB", fmt.bytes(1570931657).formatConvert().readAll());
     try testing.expectEqualMany(u8, "23.408KiB", fmt.bytes(23970).formatConvert().readAll());
+    try testing.expectEqualMany(u8, "15.999EiB", fmt.bytes(~@as(u64, 0)).formatConvert().readAll());
 }
 fn testEquivalentIntToStringFormat() !void {
     var uint: u64 = 0;
