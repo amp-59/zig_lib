@@ -215,6 +215,69 @@ pub fn uz64(value: u64) PolynomialFormat(.{ .bits = 64, .radix = 36, .signedness
 pub fn uz128(value: u128) PolynomialFormat(.{ .bits = 128, .radix = 36, .signedness = .unsigned, .width = .min }) {
     return .{ .value = value };
 }
+pub fn yr(year: u64) PolynomialFormat(.{
+    .bits = 64,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 4 },
+    .range = .{ .min = 0, .max = 9999 },
+}) {
+    return .{ .value = year };
+}
+pub fn mon(month: u8) PolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 1, .max = 12 },
+}) {
+    return .{ .value = month };
+}
+pub fn mday(month_day: u8) PolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 1, .max = 31 },
+}) {
+    return .{ .value = month_day };
+}
+pub fn yday(year_day: u8) PolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 4 },
+    .range = .{ .min = 1, .max = 366 },
+}) {
+    return .{ .value = year_day };
+}
+pub fn hr(hour: u8) PolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 0, .max = 23 },
+}) {
+    return .{ .value = hour };
+}
+pub fn min(minute: u8) PolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 0, .max = 59 },
+}) {
+    return .{ .value = minute };
+}
+pub fn sec(second: u8) PolynomialFormat(.{
+    .bits = 8,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 2 },
+    .range = .{ .min = 0, .max = 59 },
+}) {
+    return .{ .value = second };
+}
 
 fn GenericFormat(comptime Format: type) type {
     return struct {

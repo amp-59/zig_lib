@@ -64,7 +64,6 @@ fn testEquivalentIntToString() !void {
         try expectEqualMany(u8, builtin.fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
     }
 }
-
-pub fn main(args: [][*:0]u8) !void {
+pub fn main() !void {
     try meta.wrap(testEquivalentIntToString());
 }
