@@ -6,29 +6,6 @@ pub usingnamespace proc.start;
 pub const is_verbose: bool = true;
 pub const is_correct: bool = true;
 
-fn printArrayOfChars(s: []const u8) struct { buf: [4096]u8, len: u64 } {
-    var buf: [4096]u8 = undefined;
-    var len: u64 = 0;
-    for ("{ ") |c, i| buf[len + i] = c;
-    len += 2;
-    for (s) |c, i| {
-        if (c == 0) {
-            for ("0x0") |b, j| buf[len + j] = b;
-            len += 3;
-        } else {
-            for ([_]u8{ '\'', c, '\'' }) |b, j| buf[len + j] = b;
-            len += 3;
-        }
-        if (i != s.len - 1) {
-            for (", ") |b, j| buf[len + j] = b;
-            len += 2;
-        }
-    }
-    for (" }\n") |c, i| buf[len + i] = c;
-    len += 3;
-    return .{ .buf = buf, .len = len };
-}
-
 // TODO: Tests to show all error messages.
 export fn showAssertionFailedAbove(arg1: u64, arg2: u64) void {
     builtin.assertAbove(u64, arg1, arg2);
