@@ -83,6 +83,7 @@ fn testImplementation() !void {
         const array = view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, "World!", &array.readCountAt("Hello, ".len, "World!".len));
+        try builtin.expectEqual(u64, array.readAll().len, array.impl.bytes());
     }
     {
         const StaticString = mem.StructuredAutomaticStreamVector(.{ .child = u8, .count = 256 });
@@ -92,9 +93,15 @@ fn testImplementation() !void {
         array.writeFormat(fmt.ux(0x1fee1dead));
         try testing.expectEqualMany(u8, "world!", &array.readCountAt("Hello, ".len, "world!".len));
         try testing.expectEqualMany(u8, "Hello, ", array.readManyAhead("Hello, ".len));
-        array.seek("Hello, ".len);
+        array.stream("Hello, ".len);
         try testing.expectEqualMany(u8, "world!", array.readManyAhead("world!".len));
         try testing.expectEqualMany(u8, "Hello, ", array.readManyBehind("Hello, ".len));
+    }
+    {
+        const BitSet = mem.StructuredAutomaticStreamVector(.{ .child = bool, .count = 256 });
+        var bit_set: BitSet = .{};
+        bit_set.writeCount(4, .{ true, false, false, true });
+        try testing.expectEqualMany(bool, bit_set.readAll(), &.{ true, false, false, true });
     }
 }
 

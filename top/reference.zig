@@ -49,17 +49,15 @@ pub const Specification0 = struct {
 };
 pub fn ReadWriteAutoStructuredAutoAlignment(comptime spec: Specification0) type {
     return struct {
-        auto: [count]child align(low_alignment) = undefined,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        auto: [spec.count]spec.child align(low_alignment) = undefined,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
@@ -73,47 +71,31 @@ pub fn ReadWriteAutoStructuredAutoAlignment(comptime spec: Specification0) type 
         const allocated_byte_count: Static = aligned_byte_count;
         const aligned_byte_count: Static = writable_byte_count;
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         pub const start: Value = aligned_byte_address;
         pub const finish: Value = unwritable_byte_address;
         pub const capacity: Static = writable_byte_count;
-        pub inline fn construct() Implementation {
-            return .{
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
-        }
-        pub inline fn convert() Implementation {
-            return .{
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
-        }
     };
 }
 pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0) type {
     return struct {
-        auto: [count]child align(low_alignment) = undefined,
+        auto: [spec.count]spec.child align(low_alignment) = undefined,
         ss_word: u64,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
         const aligned_byte_address: Value = allocated_byte_address;
         inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ss_word;
+            return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
         inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
@@ -130,7 +112,7 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0)
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         pub const start: Value = aligned_byte_address;
         pub const finish: Value = unwritable_byte_address;
@@ -142,13 +124,6 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0)
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
-        }
-        pub inline fn construct() Implementation {
-            return .{
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
         }
         pub inline fn convert(s: Convert4) Implementation {
             return .{
@@ -162,28 +137,26 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0)
 }
 pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specification0) type {
     return struct {
-        auto: [count]child align(low_alignment) = undefined,
+        auto: [spec.count]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
         const aligned_byte_address: Value = allocated_byte_address;
         inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ss_word;
+            return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
         inline fn undefined_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ub_word;
+            return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
         inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
@@ -200,7 +173,7 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specific
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
@@ -230,14 +203,6 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specific
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
         }
-        pub inline fn construct() Implementation {
-            return .{
-                .ub_word = 0,
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
-        }
         pub inline fn convert(s: Convert4) Implementation {
             return .{
                 .ss_word = s.ss_addr,
@@ -251,24 +216,22 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specific
 }
 pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0) type {
     return struct {
-        auto: [count]child align(low_alignment) = undefined,
+        auto: [spec.count]spec.child align(low_alignment) = undefined,
         ub_word: u64,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
         const aligned_byte_address: Value = allocated_byte_address;
         inline fn undefined_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ub_word;
+            return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
         inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
@@ -279,7 +242,7 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0
         const allocated_byte_count: Static = aligned_byte_count;
         const aligned_byte_count: Static = writable_byte_count;
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
@@ -299,22 +262,6 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-        }
-        pub inline fn construct() Implementation {
-            return .{
-                .ub_word = 0,
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
-        }
-        pub inline fn convert() Implementation {
-            return .{
-                .ub_word = 0,
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
         }
     };
 }
@@ -365,18 +312,15 @@ pub const Specification1 = struct {
 };
 pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [count + 1]child align(low_alignment) = undefined,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
-        pub const sentinel: *const child = @ptrCast(*const child, @alignCast(@alignOf(child), spec.sentinel));
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
@@ -392,48 +336,31 @@ pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification
             return mach.add64(writable_byte_count(), high_alignment);
         }
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         pub const start: Value = aligned_byte_address;
         pub const finish: Value = unwritable_byte_address;
         pub const capacity: Static = writable_byte_count;
-        pub inline fn construct() Implementation {
-            return .{
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
-        }
-        pub inline fn convert() Implementation {
-            return .{
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
-        }
     };
 }
 pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [count + 1]child align(low_alignment) = undefined,
+        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
         ss_word: u64,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
-        pub const sentinel: *const child = @ptrCast(*const child, @alignCast(@alignOf(child), spec.sentinel));
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
         const aligned_byte_address: Value = allocated_byte_address;
         inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ss_word;
+            return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
         inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
@@ -452,7 +379,7 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         pub const start: Value = aligned_byte_address;
         pub const finish: Value = unwritable_byte_address;
@@ -464,13 +391,6 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
-        }
-        pub inline fn construct() Implementation {
-            return .{
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
         }
         pub inline fn convert(s: Convert4) Implementation {
             return .{
@@ -484,29 +404,26 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
 }
 pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [count + 1]child align(low_alignment) = undefined,
+        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
-        pub const sentinel: *const child = @ptrCast(*const child, @alignCast(@alignOf(child), spec.sentinel));
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
         const aligned_byte_address: Value = allocated_byte_address;
         inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ss_word;
+            return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
         inline fn undefined_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ub_word;
+            return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
         inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
@@ -525,7 +442,7 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
@@ -545,25 +462,19 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(child, undefined_byte_address(impl)).* = sentinel.*;
+            mem.pointerOne(spec.child, undefined_byte_address(impl)).* =
+                @ptrCast(*const spec.child, @alignCast(@alignOf(spec.child), spec.sentinel)).*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(child, undefined_byte_address(impl)).* = sentinel.*;
+            mem.pointerOne(spec.child, undefined_byte_address(impl)).* =
+                @ptrCast(*const spec.child, @alignCast(@alignOf(spec.child), spec.sentinel)).*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
-        }
-        pub inline fn construct() Implementation {
-            return .{
-                .ub_word = 0,
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
         }
         pub inline fn convert(s: Convert4) Implementation {
             return .{
@@ -578,25 +489,22 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
 }
 pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [count + 1]child align(low_alignment) = undefined,
+        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
         ub_word: u64,
-        comptime bytes: Static = allocated_byte_count,
-        comptime capacity: Static = writable_byte_count,
-        comptime utility: Static = aligned_byte_count,
+        comptime bytes: *const Static = &allocated_byte_count,
+        comptime capacity: *const Static = &writable_byte_count,
+        comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const count: u64 = spec.count;
-        pub const child: type = spec.child;
-        pub const sentinel: *const child = @ptrCast(*const child, @alignCast(@alignOf(child), spec.sentinel));
         pub const low_alignment: u64 = spec.low_alignment;
-        pub const high_alignment: u64 = @sizeOf(child);
+        pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return @ptrToInt(impl) + @offsetOf(Implementation, "auto");
         }
         const aligned_byte_address: Value = allocated_byte_address;
         inline fn undefined_byte_address(impl: *const Implementation) u64 {
-            return allocated_byte_address(impl) + impl.ub_word;
+            return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
         inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
@@ -609,7 +517,7 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
             return mach.add64(writable_byte_count(), high_alignment);
         }
         inline fn writable_byte_count() u64 {
-            return mach.mul64(count, high_alignment);
+            return mach.mul64(spec.count, high_alignment);
         }
         inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
@@ -626,27 +534,13 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(child, undefined_byte_address(impl)).* = sentinel.*;
+            mem.pointerOne(spec.child, undefined_byte_address(impl)).* =
+                @ptrCast(*const spec.child, @alignCast(@alignOf(spec.child), spec.sentinel)).*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(child, undefined_byte_address(impl)).* = sentinel.*;
-        }
-        pub inline fn construct() Implementation {
-            return .{
-                .ub_word = 0,
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
-        }
-        pub inline fn convert() Implementation {
-            return .{
-                .ub_word = 0,
-                .utility = aligned_byte_count,
-                .capacity = writable_byte_count,
-                .bytes = allocated_byte_count,
-            };
+            mem.pointerOne(spec.child, undefined_byte_address(impl)).* =
+                @ptrCast(*const spec.child, @alignCast(@alignOf(spec.child), spec.sentinel)).*;
         }
     };
 }
