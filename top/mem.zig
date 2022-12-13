@@ -5,11 +5,13 @@ const builtin = @import("./builtin.zig");
 
 const _reference = @import("./reference.zig");
 const _container = @import("./container.zig");
+const _allocator = @import("./allocator.zig");
 
 const mem = @This();
 
 pub usingnamespace _reference;
 pub usingnamespace _container;
+pub usingnamespace _allocator;
 
 pub const ArenaError = error{ UnderSupply, OverSupply };
 

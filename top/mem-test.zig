@@ -10,6 +10,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const is_correct: bool = true;
+pub const is_verbose: bool = false;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
@@ -58,6 +59,10 @@ const wr_spec: mem.ReinterpretSpec = .{
     .composite = .{ .format = true },
     .reference = .{ .dereference = &.{} },
 };
+const arena_spec: mem.ArenaAllocatorSpec = .{
+    .arena_index = 0,
+    .options = .{ .count_branches = false },
+};
 
 const logging = true;
 const errors = null;
@@ -74,7 +79,6 @@ fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.advise(advise_spec, addr, len));
     try meta.wrap(mem.unmap(unmap_spec, addr, len));
 }
-
 fn view(comptime s: []const u8) mem.StructuredAutomaticView(.{ .child = u8, .count = s.len }) {
     return .{ .impl = .{ .auto = @ptrCast(*const [s.len]u8, s.ptr).* } };
 }
@@ -98,13 +102,31 @@ fn testImplementation() !void {
         try testing.expectEqualMany(u8, "Hello, ", array.readManyBehind("Hello, ".len));
     }
     {
-        const BitSet = mem.StructuredAutomaticStreamVector(.{ .child = bool, .count = 256 });
-        var bit_set: BitSet = .{};
+        const VectorBool = mem.StructuredAutomaticStreamVector(.{ .child = bool, .count = 256 });
+        var bit_set: VectorBool = .{};
         bit_set.writeCount(4, .{ true, false, false, true });
         try testing.expectEqualMany(bool, bit_set.readAll(), &.{ true, false, false, true });
     }
-}
+    {
+        const Allocator = mem.GenericArenaAllocator(arena_spec);
+        var address_space: mem.AddressSpace = .{};
+        var allocator: Allocator = try Allocator.init(&address_space);
+        defer allocator.deinit(&address_space);
 
+        const Array = Allocator.StructuredStreamHolder(u8);
+        var array: Array = Array.init(&allocator);
+        defer array.deinit(&allocator);
+
+        try array.appendMany(&allocator, "Hello, world!");
+        try array.appendCount(&allocator, 4, "1234".*);
+        try array.appendFormat(&allocator, fmt.ux(0x1fee1dead));
+        try testing.expectEqualMany(u8, "world!", &array.readCountAt(allocator, "Hello, ".len, "world!".len));
+        try testing.expectEqualMany(u8, "Hello, ", array.readManyAhead("Hello, ".len));
+        array.stream("Hello, ".len);
+        try testing.expectEqualMany(u8, "world!", array.readManyAhead("world!".len));
+        try testing.expectEqualMany(u8, "Hello, ", array.readManyBehind("Hello, ".len));
+    }
+}
 pub fn main() !void {
     try meta.wrap(testImplementation());
     try meta.wrap(testLowSystemMemoryOperations());

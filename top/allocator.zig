@@ -388,7 +388,7 @@ fn Reference(comptime options: AllocatorOptions) type {
         utility: meta.maybe(options.count_useful_bytes, u64) = 0,
     };
 }
-const ArenaAllocatorSpec = struct {
+pub const ArenaAllocatorSpec = struct {
     arena_index: u8,
     options: AllocatorOptions = .{},
     errors: Errors = .{},

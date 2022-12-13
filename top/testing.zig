@@ -2,7 +2,10 @@
 //! miscellaneous testing functions which will not be used in the long term.
 //! Still more infrastructure is needed.
 
+const mem = @import("./mem.zig");
+const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
+const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
 fn arrayOfCharsLength(s: []const u8) u64 {
@@ -69,4 +72,156 @@ pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) built
             return error.UnexpectedValue;
         }
     }
+}
+
+fn writeDepth(array: *mem.StaticString(1048576), depth: u64) void {
+    var i: u64 = 0;
+    while (i != depth) : (i += 1) {
+        array.writeMany(tab_s);
+    }
+}
+fn depthLength(depth: u64) u64 {
+    return depth * tab_s.len;
+}
+const tab_s: []const u8 = "    ";
+fn sizeBreakDownLengthInternal(comptime T: type, depth: u64) u64 {
+    var len: u64 = 0;
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Struct or type_info == .Union) {
+        if (@sizeOf(T) != 0) {
+            if (type_info == .Struct) {
+                len += ("struct {\t// sub total: ").len;
+            } else {
+                len += ("union {\t// sub total: ").len;
+            }
+            len += fmt.ud64(@sizeOf(T)).formatLength();
+            len += ("\n").len;
+            inline for (@field(type_info, @tagName(type_info)).fields) |field| {
+                len += depthLength(depth);
+                if (type_info == .Struct and field.is_comptime) {
+                    len += ("comptime " ++ field.name ++ ": ").len;
+                    len += (@typeName(field.field_type) ++ ",\t// 0 bytes\n").len;
+                } else {
+                    len += (field.name ++ ": ").len;
+                    len += sizeBreakDownLengthInternal(field.field_type, depth + 1);
+                }
+            }
+            len += depthLength(depth - 1);
+            len += ("},\n").len;
+        } else {
+            len += ("struct {},\t// 0 bytes\n").len;
+        }
+    } else {
+        len += (@typeName(T) ++ ",\t// ").len;
+        len += fmt.ud64(@sizeOf(T)).formatLength();
+        len += (" bytes\n").len;
+    }
+    return len;
+}
+fn sizeBreakDownLength(comptime T: type, type_rename: ?[:0]const u8) u64 {
+    const depth: u64 = 1;
+    var len: u64 = 0;
+    const type_info: builtin.Type = @typeInfo(T);
+    len += ("const ").len;
+    len += (type_rename orelse fmt.shortTypeName(T)).len;
+    if (type_info == .Struct or type_info == .Union) {
+        if (@sizeOf(T) != 0) {
+            if (type_info == .Struct) {
+                len += ("struct {\t// total: ").len;
+            } else {
+                len += ("union {\t// total: ").len;
+            }
+            len += fmt.ud64(@sizeOf(T)).formatLength();
+            len += ("\n").len;
+            inline for (@field(type_info, @tagName(type_info)).fields) |field| {
+                len += depthLength(depth);
+                if (type_info == .Struct and field.is_comptime) {
+                    len += ("comptime " ++ field.name ++ ": ").len;
+                    len += (@typeName(field.field_type) ++ ",\t// 0 bytes\n").len;
+                } else {
+                    len += (field.name ++ ": ").len;
+                    len += sizeBreakDownLengthInternal(field.field_type, depth + 1);
+                }
+            }
+            len += ("};").len;
+        } else {
+            len += ("\t0,\n").len;
+        }
+    } else {
+        len += 1;
+        len += fmt.ud64(@sizeOf(T)).formatLength();
+        len += 1;
+    }
+    len += 1;
+    return len;
+}
+fn sizeBreakDownInternal(comptime T: type, array: *mem.StaticString(1048576), depth: u64) void {
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Struct or type_info == .Union) {
+        if (@sizeOf(T) != 0) {
+            if (type_info == .Struct) {
+                array.writeMany("struct {\t// sub total: ");
+            } else {
+                array.writeMany("union {\t// sub total: ");
+            }
+            array.writeFormat(fmt.ud64(@sizeOf(T)));
+            array.writeMany("\n");
+            inline for (@field(type_info, @tagName(type_info)).fields) |field| {
+                writeDepth(array, depth);
+                if (type_info == .Struct and field.is_comptime) {
+                    array.writeMany("comptime " ++ field.name ++ ": ");
+                    array.writeMany(@typeName(field.field_type) ++ ",\t// 0 bytes\n");
+                } else {
+                    array.writeMany(field.name ++ ": ");
+                    sizeBreakDownInternal(field.field_type, array, depth + 1);
+                }
+            }
+            writeDepth(array, depth - 1);
+            array.writeMany("},\n");
+        } else {
+            array.writeMany("struct {},\t// 0 bytes\n");
+        }
+    } else {
+        array.writeMany(@typeName(T) ++ ",\t// ");
+        array.writeFormat(fmt.ud64(@sizeOf(T)));
+        array.writeMany(" bytes\n");
+    }
+}
+pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
+    const depth: u64 = 1;
+    const type_info: builtin.Type = @typeInfo(T);
+    var array: mem.StaticString(1048576) = .{};
+    array.writeMany("const ");
+    array.writeMany(type_rename orelse fmt.shortTypeName(T));
+    if (type_info == .Struct or type_info == .Union) {
+        if (@sizeOf(T) != 0) {
+            if (type_info == .Struct) {
+                array.writeMany("struct {\t// total: ");
+            } else {
+                array.writeMany("union {\t// total: ");
+            }
+            array.writeFormat(fmt.ud64(@sizeOf(T)));
+            array.writeMany("\n");
+            inline for (@field(type_info, @tagName(type_info)).fields) |field| {
+                writeDepth(&array, depth);
+                if (type_info == .Struct and field.is_comptime) {
+                    array.writeMany("comptime " ++ field.name ++ ": ");
+                    array.writeMany(@typeName(field.field_type) ++ ",\t// 0 bytes\n");
+                } else {
+                    array.writeMany(field.name ++ ": ");
+                    sizeBreakDownInternal(field.field_type, &array, depth + 1);
+                }
+            }
+            array.writeMany("};");
+        } else {
+            array.writeMany("\t0,\n");
+        }
+    } else {
+        array.writeOne('\t');
+        array.writeFormat(fmt.ud64(@sizeOf(T)));
+        array.writeOne('\n');
+    }
+    array.writeOne('\n');
+    file.noexcept.write(2, array.readAll());
+    return array.readAll().len;
 }
