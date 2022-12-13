@@ -7,7 +7,7 @@ pub fn ud(value: anytype) PolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assert(value > 0);
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -23,7 +23,7 @@ pub fn udh(value: anytype) PolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assert(value > 0);
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -40,7 +40,7 @@ pub fn ub(value: anytype) PolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assert(value > 0);
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -56,7 +56,7 @@ pub fn ux(value: anytype) PolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assert(value > 0);
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -324,14 +324,6 @@ pub const PolynomialFormatSpec = struct {
     prefix: bool = true,
     separator: ?Separator = null,
 };
-fn length(comptime U: type, abs_value: U, radix: U) u64 {
-    var value: U = abs_value;
-    var count: u64 = 0;
-    while (value != 0) : (value /= radix) {
-        count +%= 1;
-    }
-    return @max(1, count);
-}
 pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
     return struct {
         value: Int,
@@ -341,8 +333,8 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
         const fmt_spec: PolynomialFormatSpec = spec;
         const min_abs_value: Abs = fmt_spec.range.min orelse 0;
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
-        const min_digits_count: u16 = length(Abs, min_abs_value, fmt_spec.radix);
-        const max_digits_count: u16 = length(Abs, max_abs_value, fmt_spec.radix);
+        const min_digits_count: u16 = builtin.fmt.length(Abs, min_abs_value, fmt_spec.radix);
+        const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, fmt_spec.radix);
         const prefix: [2]u8 = lit.int_prefixes[fmt_spec.radix].*;
         const max_len: u64 = blk: {
             var len: u64 = max_digits_count;
@@ -366,7 +358,7 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
         }
         inline fn digits(format: Format) u64 {
             const digits_len: u64 = switch (fmt_spec.width) {
-                .min => length(Abs, format.absolute(), fmt_spec.radix),
+                .min => builtin.fmt.length(Abs, format.absolute(), fmt_spec.radix),
                 .max => max_digits_count,
                 .fixed => |fixed| fixed,
             };
@@ -550,13 +542,13 @@ pub const Bytes = struct {
         .count = 0,
         .unit = .B,
     };
-    pub fn formatRemainder(format: Format) MinorIntFormat {
+    fn formatRemainder(format: Format) MinorIntFormat {
         return .{ .value = @intCast(u10, (format.value.remainder.count * 1000) / 1024) };
     }
-    pub fn formatInteger(format: Format) MajorIntFormat {
+    fn formatInteger(format: Format) MajorIntFormat {
         return .{ .value = @intCast(u10, format.value.integer.count) };
     }
-    pub noinline fn formatWrite(format: Format, array: anytype) void {
+    pub fn formatWrite(format: Format, array: anytype) void {
         if (format.value.remainder.count != 0) {
             array.writeFormat(format.formatInteger());
             array.writeOne('.');
@@ -601,3 +593,37 @@ pub const Bytes = struct {
     }
     pub usingnamespace GenericFormat(Format);
 };
+
+fn indexOfFirst(comptime T: type, comptime value: T, values: []const T) ?u64 {
+    var idx: u64 = 0;
+    while (idx != values.len) : (idx += 1) {
+        if (values[idx] == value) return idx;
+    }
+    return null;
+}
+fn indexOfLast(comptime T: type, comptime value: T, values: []const T) ?u64 {
+    var idx: u64 = values.len;
+    while (idx != 0) {
+        idx -= 1;
+        if (values[idx] == value) return idx;
+    }
+    return null;
+}
+
+pub fn shortTypeName(comptime T: type) [:0]const u8 {
+    comptime {
+        const type_name: [:0]const u8 = @typeName(T);
+        if (indexOfFirst(u8, '.', type_name)) |first_dot| {
+            if (indexOfFirst(u8, '(', type_name)) |first_parens| {
+                if (indexOfLast(u8, '.', type_name[0..first_parens])) |last_dot| {
+                    if (last_dot != first_dot) {
+                        return type_name[0..first_dot] ++ "." ++ type_name[last_dot..first_parens] ++ "(..)";
+                    }
+                }
+            }
+        } else if (indexOfFirst(u8, '(', type_name)) |first_parens| {
+            return type_name[0..first_parens] ++ "(..)";
+        }
+        return type_name;
+    }
+}
