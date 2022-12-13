@@ -18,6 +18,25 @@ pub const is_verbose: bool = config("is_verbose", bool, is_debug);
 pub const is_tolerant: bool = config("is_tolerant", bool, is_debug);
 pub const build_root: ?[:0]const u8 = config("build_root", ?[:0]const u8, null);
 
+pub const Type = @TypeOf(@typeInfo(void));
+pub const TypeId = @typeInfo(Type).Union.tag_type.?;
+pub const TypeKind = enum { type, type_type };
+pub const StructField = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.fields)).Pointer.child;
+pub const EnumField = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
+pub const UnionField = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
+pub const AddressSpace = @TypeOf(@typeInfo(*void).Pointer.address_space);
+pub const Size = @TypeOf(@typeInfo(*void).Pointer.size);
+pub const Signedness = @TypeOf(@typeInfo(u0).Int.signedness);
+pub const ContainerLayout = @TypeOf(@typeInfo(struct {}).Struct.layout);
+pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
+pub const Declaration = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
+pub const FnParam = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.args)).Pointer.child;
+pub const Endian = @TypeOf(zig.cpu.arch.endian());
+pub const SourceLocation = Src();
+fn Src() type {
+    return @TypeOf(@src());
+}
+
 pub const Exception = error{
     SubCausedOverflow,
     AddCausedOverflow,
@@ -1457,6 +1476,95 @@ pub const fmt = opaque {
         } else {
             return result +% dec;
         }
+    }
+    pub fn typeTypeName(comptime any: TypeId) []const u8 {
+        return switch (any) {
+            .Type => "type",
+            .Void => "void",
+            .Bool => "bool",
+            .NoReturn => "noreturn",
+            .Int => "integer",
+            .Float => "float",
+            .Pointer => "pointer",
+            .Array => "array",
+            .Struct => "struct",
+            .ComptimeFloat => "comptime_float",
+            .ComptimeInt => "comptime_int",
+            .Undefined => "undefined",
+            .Null => "null",
+            .Optional => "optional",
+            .ErrorUnion => "error union",
+            .ErrorSet => "error set",
+            .Enum => "enum",
+            .Union => "union",
+            .Fn => "function",
+            .BoundFn => "method", // Soon deprecated
+            .Opaque => "opaque",
+            .Frame => "frame",
+            .AnyFrame => "anyframe",
+            .Vector => "vector",
+            .EnumLiteral => "(enum literal)",
+        };
+    }
+    pub fn typeTypeSpecifier(comptime any: Type) []const u8 {
+        return switch (any) {
+            .Type => "type",
+            .Void => "void",
+            .Bool => "bool",
+            .NoReturn => "noreturn",
+            .Int => "integer",
+            .Float => "float",
+            .Pointer => "pointer",
+            .Array => "array",
+            .ComptimeFloat => "comptime_float",
+            .ComptimeInt => "comptime_int",
+            .Undefined => "undefined",
+            .Null => "null",
+            .Optional => "optional",
+            .ErrorUnion => "error union",
+            .ErrorSet => "error",
+            .Enum => |enum_info| {
+                return "enum(" ++ @typeName(enum_info.tag_type) ++ ")";
+            },
+            .Struct => |struct_info| {
+                switch (struct_info.layout) {
+                    .Packed => {
+                        if (struct_info.backing_integer) |backing_integer| {
+                            return "packed struct(" ++
+                                @typeName(backing_integer) ++ ")";
+                        } else {
+                            return "packed struct";
+                        }
+                    },
+                    .Extern => {
+                        return "extern struct";
+                    },
+                    .Auto => {
+                        return "struct";
+                    },
+                }
+            },
+            .Union => |union_info| {
+                switch (union_info.layout) {
+                    .Packed => {
+                        return "packed union";
+                    },
+                    .Extern => {
+                        return "extern struct";
+                    },
+                    .Auto => {
+                        return "struct";
+                    },
+                }
+            },
+            .Opaque => "opaque",
+            .Fn => "function",
+            .BoundFn => "method", // Soon deprecated
+            .Frame => "frame",
+            .AnyFrame => "anyframe",
+            .Vector => "vector",
+            .EnumLiteral => "@Type(.EnumLiteral)",
+        };
     }
 };
 pub const Version = struct {

@@ -4,33 +4,16 @@ pub const Empty = struct {};
 pub const empty = &.{};
 pub const default = .{};
 
-pub const Type = @TypeOf(@typeInfo(void));
-pub const TypeId = @typeInfo(Type).Union.tag_type.?;
-pub const TypeKind = enum { type, type_type };
-pub const StructField = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.fields)).Pointer.child;
-pub const EnumField = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
-pub const UnionField = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
-pub const AddressSpace = @TypeOf(@typeInfo(*void).Pointer.address_space);
-pub const Size = @TypeOf(@typeInfo(*void).Pointer.size);
-pub const Signedness = @TypeOf(@typeInfo(u0).Int.signedness);
-pub const ContainerLayout = @TypeOf(@typeInfo(struct {}).Struct.layout);
-pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
-pub const Declaration = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
-pub const FnParam = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.args)).Pointer.child;
-pub const Endian = @TypeOf(builtin.zig.cpu.arch.endian());
-pub const SourceLocation = Src();
-pub const number_types: []const TypeId = integer_types ++ float_types;
-pub const integer_types: []const TypeId = &[_]TypeId{ .Int, .ComptimeInt };
-pub const float_types: []const TypeId = &[_]TypeId{ .Float, .ComptimeFloat };
-pub const enum_types: []const TypeId = &[_]TypeId{ .Int, .ComptimeInt, .Enum, .EnumLiteral };
-pub const tag_types: []const TypeId = &[_]TypeId{ .Type, .ErrorUnion, .Enum, .EnumLiteral };
-pub const fn_types: []const TypeId = &[_]TypeId{ .Fn, .BoundFn };
-pub const data_types: []const TypeId = &[_]TypeId{ .Struct, .Union };
-pub const container_types: []const TypeId = &[_]TypeId{ .Struct, .Enum, .Union };
-fn Src() type {
-    return @TypeOf(@src());
-}
-fn isTypeType(comptime T: type, comptime type_types: []const TypeId) bool {
+pub const number_types: []const builtin.TypeId = integer_types ++ float_types;
+pub const integer_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .ComptimeInt };
+pub const float_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Float, .ComptimeFloat };
+pub const enum_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .ComptimeInt, .Enum, .EnumLiteral };
+pub const tag_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Type, .ErrorUnion, .Enum, .EnumLiteral };
+pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Fn, .BoundFn };
+pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union };
+pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union };
+
+fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
     for (type_types) |type_type| {
         if (@typeInfo(T) == type_type) {
             return true;
@@ -85,6 +68,20 @@ pub fn wrap(any: anytype) blk: {
 } {
     return any;
 }
+/// Returns T if cond is true, else a type of the same kind with zero size.
+pub fn maybe(comptime cond: bool, comptime T: type) type {
+    if (cond) return T;
+    const type_info: builtin.Type = @typeInfo(T);
+    switch (type_info) {
+        .Int => return u0,
+        .Struct => return struct {},
+        .Opaque => return opaque {},
+        .Enum => return enum {},
+        else => {
+            debug.unexpectedTypeTypesError(type_info, T, .{ .Int, .Struct, .Opaque, .Enum });
+        },
+    }
+}
 
 /// Attempts to return the type of a field without matching strings to field
 /// names.
@@ -92,19 +89,19 @@ pub fn Field(comptime T: type, comptime field_name: []const u8) type {
     return @TypeOf(@field(@as(T, undefined), field_name));
 }
 /// Return a simple struct field
-pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value: ?T) StructField {
+pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value: ?T) builtin.StructField {
     const default_value_ptr: ?*const anyopaque = if (default_value) |value| &value else null;
     return .{ .name = field_name, .field_type = T, .default_value = default_value_ptr, .is_comptime = false, .alignment = 0 };
 }
 /// Assist creation of struct types
-pub fn structInfo(comptime fields: []const StructField) Type {
+pub fn structInfo(comptime fields: []const builtin.StructField) builtin.Type {
     return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = false } };
 }
 /// Assist creation of tuple types
-pub fn tupleInfo(comptime fields: []const StructField) Type {
+pub fn tupleInfo(comptime fields: []const builtin.StructField) builtin.Type {
     return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = true } };
 }
-pub fn defaultValue(comptime struct_field: StructField) ?struct_field.field_type {
+pub fn defaultValue(comptime struct_field: builtin.StructField) ?struct_field.field_type {
     if (struct_field.default_value) |default_value_ptr| {
         return @ptrCast(*const struct_field.field_type, @alignCast(@alignOf(struct_field.field_type), default_value_ptr)).*;
     }
@@ -198,12 +195,12 @@ pub fn alignSizeAW(comptime T: type) u16 { // Needs a better name
     return alignAW(bits);
 }
 pub fn AlignSizeAW(comptime T: type) type { // Needs a better name
-    var int_type_info: Type.Int = @typeInfo(T).Int;
+    var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
     int_type_info.bits = alignAW(int_type_info.bits);
     return @Type(.{ .Int = int_type_info });
 }
 pub fn AlignSizeBW(comptime T: type) type { // Needs a better name
-    var int_type_info: Type.Int = @typeInfo(T).Int;
+    var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
     int_type_info.bits = alignBW(int_type_info.bits);
     return @Type(.{ .Int = int_type_info });
 }
@@ -286,8 +283,8 @@ pub fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
     return leastBitCast(any);
 }
 pub fn ArrayPointerToSlice(comptime T: type) type {
-    const type_info: Type = @typeInfo(T);
-    const child_type_info: Type = @typeInfo(type_info.Pointer.child);
+    const type_info: builtin.Type = @typeInfo(T);
+    const child_type_info: builtin.Type = @typeInfo(type_info.Pointer.child);
     return @Type(.{ .Pointer = .{
         .size = .Slice,
         .alignment = type_info.Pointer.alignment,
@@ -300,7 +297,7 @@ pub fn ArrayPointerToSlice(comptime T: type) type {
     } });
 }
 pub fn SliceToArrayPointer(comptime T: type, comptime len: comptime_int) type {
-    const type_info: Type = @typeInfo(T);
+    const type_info: builtin.Type = @typeInfo(T);
     return @Type(.{ .Pointer = .{
         .size = .One,
         .alignment = type_info.Pointer.alignment,
@@ -382,7 +379,7 @@ fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
 }
 pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
     const T: type = @TypeOf(any);
-    const type_info: Type = @typeInfo(T);
+    const type_info: builtin.Type = @typeInfo(T);
     const len: u64 = switch (@typeInfo(type_info.Pointer.child)) {
         .Pointer => blk: {
             var len: u64 = 0;
@@ -408,7 +405,7 @@ pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
     return @ptrCast(ManyToSlice(T), any[0..len :comptime sentinel(T).?]);
 }
 pub fn ManyToSlice(comptime T: type) type {
-    var type_info: Type = @typeInfo(T);
+    var type_info: builtin.Type = @typeInfo(T);
     type_info.Pointer.size = .Slice;
     return @Type(type_info);
 }
@@ -436,7 +433,7 @@ pub fn EnumBitField(comptime E: type) type {
     };
 }
 
-pub fn fnParams(comptime function: anytype) []const FnParam {
+pub fn fnParams(comptime function: anytype) []const builtin.FnParam {
     return @typeInfo(@TypeOf(function)).Fn.args;
 }
 pub fn FnParam0(comptime function: anytype) type {
@@ -500,7 +497,7 @@ pub fn ReturnPayload(comptime any_function: anytype) type {
 }
 /// Attempts to replicate the structure of an error union. Experimental.
 pub fn ErrorUnion(comptime any_function: anytype) type {
-    const return_type_info: Type =
+    const return_type_info: builtin.Type =
         @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?);
     switch (return_type_info) {
         .ErrorUnion => |error_set_info| {
@@ -597,7 +594,7 @@ pub inline fn analysisEnd(comptime name: []const u8) void {
 }
 
 const debug = opaque {
-    fn typeTypeName(comptime any: TypeId) []const u8 {
+    fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
         return switch (any) {
             .Type => "type",
             .Void => "void",
@@ -626,7 +623,7 @@ const debug = opaque {
             .EnumLiteral => "(enum literal)",
         };
     }
-    fn genericTypeList(comptime kind: TypeKind, any: anytype) []const u8 {
+    fn genericTypeList(comptime kind: builtin.TypeKind, any: anytype) []const u8 {
         var buf: []const u8 = empty;
         var last: u64 = 0;
         var i: u64 = 0;
@@ -657,14 +654,14 @@ const debug = opaque {
     fn typeTypeList(comptime any: anytype) []const u8 {
         return genericTypeList(.type_type, any);
     }
-    fn fieldList(comptime type_info: Type) []const u8 {
+    fn fieldList(comptime type_info: builtin.Type) []const u8 {
         var buf: []const u8 = empty;
-        const container_info: Type = switch (type_info) {
+        const container_info: builtin.Type = switch (type_info) {
             .Enum => |enum_info| enum_info,
             .Struct => |struct_info| struct_info,
             .Union => |union_info| union_info,
             else => {
-                unexpectedTypeTypesError(type_info, &[_]TypeId{ .Enum, .Struct, .Union });
+                unexpectedTypeTypesError(type_info, &[_]builtin.TypeId{ .Enum, .Struct, .Union });
             },
         };
         var last: u64 = 0;
@@ -687,7 +684,7 @@ const debug = opaque {
             return buf;
         }
     }
-    fn declList(comptime buf: []const u8, comptime type_info: Type) []const u8 {
+    fn declList(comptime buf: []const u8, comptime type_info: builtin.Type) []const u8 {
         var pub_str: []const u8 = "";
         var pub_num: u64 = 0;
         const container_info = switch (type_info) {
@@ -714,10 +711,10 @@ const debug = opaque {
     fn unexpectedTypeError(comptime T: type, comptime any: type) noreturn {
         @compileError("expected " ++ @typeName(any) ++ ", found " ++ @typeName(T));
     }
-    fn unexpectedTypeTypesError(comptime T: type, comptime type_info: Type, comptime any: anytype) noreturn {
+    fn unexpectedTypeTypesError(comptime T: type, comptime type_info: builtin.Type, comptime any: anytype) noreturn {
         @compileError("expected any " ++ typeTypeList(any) ++ ", found " ++ typeTypeName(type_info) ++ " '" ++ @typeName(T) ++ "'");
     }
-    fn unexpectedTypeTypeError(comptime T: type, comptime type_info: Type, comptime any: TypeId) noreturn {
+    fn unexpectedTypeTypeError(comptime T: type, comptime type_info: builtin.Type, comptime any: builtin.TypeId) noreturn {
         @compileError("expected " ++ typeTypeName(any) ++ ", found " ++ typeTypeName(type_info) ++ " '" ++ @typeName(T) ++ "'");
     }
     fn fieldError(comptime T: type, comptime field: []const u8) noreturn {
@@ -752,7 +749,7 @@ const debug = opaque {
     fn initializeNothingError(comptime T: type, comptime U: type) noreturn {
         @compileError("cannot initialize " ++ @typeName(T) ++ " with value of type " ++ @typeName(U));
     }
-    fn initializeComptimeFieldError(comptime T: type, comptime field: StructField) noreturn {
+    fn initializeComptimeFieldError(comptime T: type, comptime field: builtin.StructField) noreturn {
         @compileError("cannot initialize comptime field '" ++ field.name ++ "' in " ++ @typeName(T));
     }
     fn unexpectedVariantError(comptime T: type, value: anytype, yes: anytype, no: anytype) noreturn {
