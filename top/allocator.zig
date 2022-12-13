@@ -1,0 +1,4045 @@
+const fmt = @import("./fmt.zig");
+const mem = @import("./mem.zig");
+const sys = @import("./sys.zig");
+const mach = @import("./mach.zig");
+const file = @import("./file.zig");
+const meta = @import("./meta.zig");
+const algo = @import("./algo.zig");
+const builtin = @import("./builtin.zig");
+const container = @import("./container.zig");
+
+const AllocatorOptions = struct {
+    /// Experimental feature:
+    check_parametric_binding: bool = true,
+    /// Count concurrent allocations, return to head if zero.
+    count_allocations: bool = true,
+    /// Count each unique set of side-effects.
+    count_branches: bool = true,
+    /// Count the number of bytes writable by clients.
+    count_useful_bytes: bool = false,
+    /// Halt program execution if not all free on deinit.
+    require_all_free_deinit: bool = true,
+    /// Halt program execution with error if frees are not in reverse allocation
+    /// order.
+    require_filo_free: bool = true,
+    /// Each return address must be at least this aligned.
+    unit_alignment: u64 = 1,
+    require_length_aligned: bool = true,
+    /// Each new mapping must at least double the size of the existing
+    /// mapped segment.
+    require_geometric_growth: bool = false,
+    /// Allocations are tracked as unique entities across resizes.
+    trace_clients: bool = false,
+    /// Reports rendered relative to the last report, unchanged quantities
+    /// are omitted.
+    trace_state: bool = false,
+    /// Does nothing
+    trace_saved_addresses: bool = false,
+    /// Halt if size of total mapping exceeds quota.
+    max_commit: ?u64 = null,
+    /// Halt if size of next mapping exceeds quota.
+    max_acquire: ?u64 = null,
+    /// Used to test metadata
+    no_system_calls: bool = false,
+    /// Lock on arena acquisition and release
+    thread_safe: bool = false,
+};
+const Logging = packed struct {
+    /// Report arena acquisition and release
+    arena: bool = default,
+    /// Report updates to allocator state
+    head: bool = default,
+    sentinel: bool = default,
+    metadata: bool = default,
+    branches: bool = default,
+    /// Report system calls
+    map: bool = default,
+    unmap: bool = default,
+    remap: bool = default,
+    advise: bool = default,
+    /// Report client requests
+    allocate: bool = default,
+    reallocate: bool = default,
+    reinterpret: bool = default,
+    deallocate: bool = default,
+    const default: bool = builtin.is_verbose;
+
+    inline fn isSilent(comptime logging: Logging) bool {
+        comptime {
+            return 0 == meta.leastBitCast(logging);
+        }
+    }
+};
+const Branches = struct {
+    allocate: extern struct {
+        static: extern struct {
+            any_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+            unit_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+        } = .{},
+        many: extern struct {
+            any_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+            unit_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+        } = .{},
+        holder: extern struct {
+            any_aligned: u64 = 0,
+            unit_aligned: u64 = 0,
+        } = .{},
+    } = .{},
+    resize: extern struct {
+        many: extern struct {
+            below: extern struct {
+                any_aligned: extern struct {
+                    end_boundary: u64 = 0,
+                    end_internal: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    end_boundary: u64 = 0,
+                    end_internal: u64 = 0,
+                } = .{},
+            } = .{},
+            above: extern struct {
+                any_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+            } = .{},
+        } = .{},
+        holder: extern struct {
+            below: extern struct {
+                any_aligned: u64 = 0,
+                unit_aligned: u64 = 0,
+            } = .{},
+            above: extern struct {
+                any_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+            } = .{},
+        } = .{},
+    } = .{},
+    move: extern struct {
+        static: extern struct {
+            any_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+            unit_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+        } = .{},
+        many: extern struct {
+            any_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+            unit_aligned: extern struct {
+                addressable: u64 = 0,
+                unaddressable: u64 = 0,
+            } = .{},
+        } = .{},
+    } = .{},
+    reallocate: extern struct {
+        many: extern struct {
+            below: extern struct {
+                any_aligned: extern struct {
+                    end_boundary: u64 = 0,
+                    end_internal: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    end_boundary: u64 = 0,
+                    end_internal: u64 = 0,
+                } = .{},
+            } = .{},
+            above: extern struct {
+                any_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+            } = .{},
+        } = .{},
+    } = .{},
+    convert: extern struct {
+        any: extern struct {
+            static: extern struct {
+                any_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+            } = .{},
+            many: extern struct {
+                any_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+            } = .{},
+        } = .{},
+        holder: extern struct {
+            static: extern struct {
+                any_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+            } = .{},
+            many: extern struct {
+                any_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+                unit_aligned: extern struct {
+                    addressable: u64 = 0,
+                    unaddressable: u64 = 0,
+                } = .{},
+            } = .{},
+            holder: extern struct {
+                any_aligned: u64 = 0,
+                unit_aligned: u64 = 0,
+            } = .{},
+        } = .{},
+    } = .{},
+    deallocate: extern struct {
+        static: extern struct {
+            any_aligned: extern struct {
+                end_boundary: u64 = 0,
+                end_internal: u64 = 0,
+            } = .{},
+            unit_aligned: extern struct {
+                end_boundary: u64 = 0,
+                end_internal: u64 = 0,
+            } = .{},
+        } = .{},
+        many: extern struct {
+            any_aligned: extern struct {
+                end_boundary: u64 = 0,
+                end_internal: u64 = 0,
+            } = .{},
+            unit_aligned: extern struct {
+                end_boundary: u64 = 0,
+                end_internal: u64 = 0,
+            } = .{},
+        } = .{},
+        holder: extern struct {
+            any_aligned: u64 = 0,
+            unit_aligned: u64 = 0,
+        } = .{},
+    } = .{},
+
+    fn sumBranches(branches: Branches, comptime field_name: []const u8) u64 {
+        var sum: u64 = 0;
+        for (@bitCast(
+            [@divExact(@sizeOf(@TypeOf(@field(branches, field_name))), 8)]u64,
+            @field(branches, field_name),
+        )) |count| sum += count;
+        return sum;
+    }
+    const Graphics = opaque {
+        const PrintArray = mem.StaticString(8192);
+        const branch_s: []const u8 = "branch:         ";
+        const grand_total_s: []const u8 = "grand total:    ";
+        pub fn showBranches(branches: Branches, array: *PrintArray, comptime field_name: []const u8) void {
+            const Branch: type = meta.Field(Branches, field_name);
+            const super_branch_name: [:0]const u8 = comptime fmt.about(field_name);
+            const sum: u64 = branches.sumBranches(field_name);
+            const value: Branch = @field(branches, field_name);
+            showWithReferenceWriteInternal(Branch, value, value, array, "", super_branch_name);
+            array.writeMany(super_branch_name);
+            array.writeFormat(fmt.udh(sum));
+            array.writeOne('\n');
+        }
+        pub fn showBranchesWithReference(
+            t_branches: Branches,
+            s_branches: *Branches,
+            array: *PrintArray,
+            comptime field_name: []const u8,
+        ) void {
+            const Branch: type = meta.Field(Branches, field_name);
+            const super_branch_name: [:0]const u8 = comptime fmt.about(field_name);
+            const s_sum: u64 = s_branches.sumBranches(field_name);
+            const t_sum: u64 = t_branches.sumBranches(field_name);
+            const t_value: Branch = @field(t_branches, field_name);
+            const s_value: *Branch = &@field(s_branches, field_name);
+            showWithReferenceWriteInternal(Branch, t_value, s_value, array, "", super_branch_name);
+            array.writeMany(super_branch_name);
+            array.writeFormat(fmt.udd(s_sum, t_sum));
+            array.writeOne('\n');
+        }
+        fn showWriteInternal(
+            comptime T: type,
+            branch: T,
+            array: *PrintArray,
+            comptime branch_name: []const u8,
+            super_branch_name: ?[]const u8,
+        ) void {
+            inline for (@typeInfo(@TypeOf(branch)).Struct.fields) |field| {
+                const branch_label: [:0]const u8 = branch_name ++ field.name ++ ",";
+                const value: field.field_type = @field(branch, field.name);
+                if (@typeInfo(field.field_type) == .Struct) {
+                    showWriteInternal(field.field_type, value, array, branch_label, super_branch_name);
+                } else if (value != 0) {
+                    if (super_branch_name) |super_branch_name_s| {
+                        array.writeMany(super_branch_name_s);
+                    }
+                    array.writeMany(branch_s);
+                    array.writeMany(branch_label);
+                    array.writeOne('\t');
+                    array.writeFormat(fmt.udh(value));
+                    array.writeOne('\n');
+                }
+            }
+        }
+        fn showWithReferenceWriteInternal(
+            comptime T: type,
+            t_branch: T,
+            s_branch: *T,
+            array: *PrintArray,
+            comptime branch_name: []const u8,
+            super_branch_name: ?[]const u8,
+        ) void {
+            inline for (@typeInfo(@TypeOf(t_branch)).Struct.fields) |field| {
+                const branch_label: [:0]const u8 = branch_name ++ field.name ++ ",";
+                const t_value: field.field_type = @field(t_branch, field.name);
+                const s_value: *field.field_type = &@field(s_branch, field.name);
+                if (@typeInfo(field.field_type) == .Struct) {
+                    showWithReferenceWriteInternal(field.field_type, t_value, s_value, array, branch_label, super_branch_name);
+                    s_value.* = t_value;
+                } else if (s_value.* != t_value) {
+                    if (super_branch_name) |super_branch_name_s| {
+                        array.writeMany(super_branch_name_s);
+                    }
+                    array.writeMany(branch_s);
+                    array.writeMany(branch_label);
+                    array.writeOne('\t');
+                    array.writeFormat(fmt.udd(s_value.*, t_value));
+                    array.writeOne('\n');
+                }
+            }
+        }
+        pub fn showWrite(branches: Branches, array: *PrintArray) void {
+            showWriteInternal(Branches, branches, array, "", null);
+        }
+        pub fn showWithReferenceWrite(t_branches: Branches, s_branches: *Branches, array: *PrintArray) void {
+            showWithReferenceWriteInternal(Branches, t_branches, s_branches, array, "", null);
+        }
+        pub fn show(branches: Branches) void {
+            var array: PrintArray = .{};
+            showWrite(branches, &array);
+            file.noexcept.write(2, array.readAll());
+        }
+        pub fn showWithReference(t_branches: Branches, s_branches: *Branches) void {
+            var array: PrintArray = .{};
+            showWithReferenceWrite(t_branches, s_branches, &array);
+            file.noexcept.write(2, array.readAll());
+        }
+    };
+};
+fn Metadata(comptime options: AllocatorOptions) type {
+    return struct {
+        branches: meta.maybe(options.count_branches, Branches) = .{},
+        holder: meta.maybe(options.check_parametric_binding, u64) = 0,
+        saved: meta.maybe(options.trace_saved_addresses, u64) = 0,
+        count: meta.maybe(options.count_allocations, u64) = 0,
+        utility: meta.maybe(options.count_useful_bytes, u64) = 0,
+    };
+}
+fn Reference(comptime options: AllocatorOptions) type {
+    return struct {
+        branches: meta.maybe(options.trace_state, Branches) = .{},
+        ub_addr: meta.maybe(options.trace_state, u64) = 0,
+        up_addr: meta.maybe(options.trace_state, u64) = 0,
+        holder: meta.maybe(options.check_parametric_binding, u64) = 0,
+        saved: meta.maybe(options.trace_saved_addresses, u64) = 0,
+        count: meta.maybe(options.count_allocations, u64) = 0,
+        utility: meta.maybe(options.count_useful_bytes, u64) = 0,
+    };
+}
+const ArenaAllocatorSpec = struct {
+    arena_index: u8,
+    options: AllocatorOptions = .{},
+    errors: Errors = .{},
+    logging: Logging = .{},
+    const Errors = struct {
+        map: ?[]const sys.ErrorCode = sys.mmap_errors,
+        unmap: ?[]const sys.ErrorCode = null,
+        acquire: ?type = mem.ArenaError,
+        release: ?type = null,
+    };
+    pub fn next(comptime spec: ArenaAllocatorSpec) ArenaAllocatorSpec {
+        var ret: ArenaAllocatorSpec = spec;
+        ret.arena_index += 1;
+        return ret;
+    }
+    pub fn prev(comptime spec: ArenaAllocatorSpec) ArenaAllocatorSpec {
+        var ret: ArenaAllocatorSpec = spec;
+        ret.arena_index -= 1;
+        return ret;
+    }
+};
+pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
+    return struct {
+        comptime lb_addr: u64 = lb_addr,
+        ub_addr: u64,
+        up_addr: u64,
+        comptime ua_addr: u64 = ua_addr,
+        metadata: Metadata(spec.options) = .{},
+        reference: Reference(spec.options) = .{},
+
+        const Allocator = @This();
+        const Value = fn (*const Allocator) callconv(.Inline) u64;
+        pub const allocator_spec: ArenaAllocatorSpec = spec;
+        pub const arena_index: u8 = allocator_spec.arena_index;
+        pub const arena: mem.Arena = mem.Arena{ .index = arena_index };
+        pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
+        const lb_addr: u64 = arena.begin();
+        const ua_addr: u64 = arena.end();
+        const map_spec: mem.MapSpec = .{
+            .options = .{},
+            .errors = allocator_spec.errors.map,
+            .logging = allocator_spec.logging.map,
+        };
+        const unmap_spec: mem.UnmapSpec = .{
+            .errors = allocator_spec.errors.unmap,
+            .logging = allocator_spec.logging.unmap,
+        };
+        const acq_part_spec: mem.PartSpec = .{
+            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
+            .errors = allocator_spec.errors.acquire,
+            .logging = allocator_spec.logging.arena,
+        };
+        const rel_part_spec: mem.PartSpec = .{
+            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
+            .errors = allocator_spec.errors.release,
+            .logging = allocator_spec.logging.arena,
+        };
+        inline fn addressable_byte_address(allocator: *const Allocator) u64 {
+            return allocator.lb_addr;
+        }
+        inline fn unallocated_byte_address(allocator: *const Allocator) u64 {
+            return allocator.ub_addr;
+        }
+        inline fn unmapped_byte_address(allocator: *const Allocator) u64 {
+            return allocator.up_addr;
+        }
+        inline fn unaddressable_byte_address(allocator: *const Allocator) u64 {
+            return allocator.ua_addr;
+        }
+        inline fn allocated_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unallocated_byte_address(allocator), addressable_byte_address(allocator));
+        }
+        inline fn unallocated_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unmapped_byte_address(allocator), unallocated_byte_address(allocator));
+        }
+        inline fn mapped_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unmapped_byte_address(allocator), addressable_byte_address(allocator));
+        }
+        inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
+        }
+        pub const start: Value = addressable_byte_address;
+        pub const next: Value = unallocated_byte_address;
+        pub const finish: Value = unmapped_byte_address;
+        pub const span: Value = allocated_byte_count;
+        pub const capacity: Value = mapped_byte_count;
+        pub const available: Value = unallocated_byte_count;
+        pub fn allocate(allocator: *Allocator, s_up_addr: u64) void {
+            allocator.ub_addr = s_up_addr;
+        }
+        pub fn deallocate(allocator: *Allocator, s_lb_addr: u64) void {
+            if (Allocator.allocator_spec.options.require_filo_free) {
+                allocator.ub_addr = s_lb_addr;
+            } else {
+                allocator.ub_addr = mach.cmov64(allocator.reusable(), allocator.lb_addr, s_lb_addr);
+            }
+        }
+        pub fn reset(allocator: *Allocator) void {
+            if (!Allocator.allocator_spec.options.require_filo_free) {
+                allocator.ub_addr = mach.cmov64(allocator.reusable(), allocator.lb_addr, allocator.ub_addr);
+            }
+        }
+        pub fn map(allocator: *Allocator, s_bytes: u64) anyerror!void {
+            builtin.assertEqual(u64, s_bytes & 4095, 0);
+            if (s_bytes >= 4096) {
+                if (Allocator.allocator_spec.options.require_geometric_growth) {
+                    const t_bytes: u64 = builtin.max(u64, allocator.capacity(), s_bytes);
+                    try meta.wrap(mem.map(map_spec, unmapped_byte_address(allocator), t_bytes));
+                    allocator.up_addr += t_bytes;
+                } else {
+                    try meta.wrap(mem.map(map_spec, unmapped_byte_address(allocator), s_bytes));
+                    allocator.up_addr += s_bytes;
+                }
+            }
+        }
+        pub fn unmap(allocator: *Allocator, s_bytes: u64) void {
+            builtin.assertEqual(u64, s_bytes & 4095, 0);
+            if (s_bytes >= 4096) {
+                allocator.up_addr -= s_bytes;
+                mem.unmap(unmap_spec, unmapped_byte_address(allocator), s_bytes);
+            }
+        }
+        fn reusable(allocator: *const Allocator) bool {
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                return allocator.metadata.utility == 0;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                return allocator.metadata.count == 0;
+            }
+            return false;
+        }
+        pub fn discard(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                allocator.metadata.holder = 0;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count = 0;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility = 0;
+            }
+            allocator.ub_addr = lb_addr;
+        }
+        pub fn release(allocator: *Allocator, s_up_addr: u64) void {
+            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+            const t_bytes: u64 = mach.sub64(t_ua_addr, allocator.start());
+            const x_bytes: u64 = mach.sub64(allocator.capacity(), t_bytes);
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
+            }
+            allocator.unmap(x_bytes);
+        }
+        pub fn acquire(allocator: *Allocator, s_up_addr: u64) !void {
+            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+            const x_bytes: u64 = mach.sub64(t_ua_addr, allocator.finish());
+            const t_bytes: u64 = mach.add64(allocator.capacity(), x_bytes);
+            if (Allocator.allocator_spec.options.max_acquire) |max| {
+                builtin.assertBelowOrEqual(u64, x_bytes, max);
+            }
+            if (Allocator.allocator_spec.options.max_commit) |max| {
+                builtin.assertBelowOrEqual(u64, t_bytes, max);
+            }
+            try allocator.map(x_bytes);
+        }
+        pub inline fn init(address_space: *mem.AddressSpace) !Allocator {
+            var allocator: Allocator = undefined;
+            defer Graphics.showWithReference(&allocator, @src());
+            try mem.acquire(acq_part_spec, address_space, arena.index);
+            allocator = Allocator{ .ub_addr = lb_addr, .up_addr = lb_addr };
+            return allocator;
+        }
+        pub fn deinit(allocator: *Allocator, address_space: *mem.AddressSpace) void {
+            defer Graphics.showWithReference(allocator, @src());
+            allocator.release(allocator.start());
+            mem.noexcept.release(rel_part_spec, address_space, arena.index);
+        }
+        pub usingnamespace GenericConfiguration(Allocator);
+        pub usingnamespace GenericInterface(Allocator);
+
+        pub const Graphics = GenericAllocatorGraphics(Allocator);
+        comptime {
+            if (allocator_spec.options.unit_alignment != 1) @compileError("TODO: Implement length/unit alignment");
+        }
+    };
+}
+fn GenericConfiguration(comptime Allocator: type) type {
+    return opaque {
+        pub fn StructuredStaticView(comptime child: type, comptime count: u64) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticView(params);
+        }
+        pub fn StructuredStaticViewLowAligned(comptime child: type, comptime count: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticView(params);
+        }
+        pub fn StructuredStaticViewWithSentinel(comptime child: type, comptime count: u64, comptime sentinel: child) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticView(params);
+        }
+        pub fn StructuredStaticViewLowAlignedWithSentinel(comptime child: type, comptime count: u64, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticView(params);
+        }
+        pub fn StructuredStaticStreamVector(comptime child: type, comptime count: u64) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticStreamVector(params);
+        }
+        pub fn StructuredStaticStreamVectorLowAligned(comptime child: type, comptime count: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticStreamVector(params);
+        }
+        pub fn StructuredStaticStreamVectorWithSentinel(comptime child: type, comptime count: u64, comptime sentinel: child) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticStreamVector(params);
+        }
+        pub fn StructuredStaticStreamVectorLowAlignedWithSentinel(comptime child: type, comptime count: u64, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticStreamVector(params);
+        }
+        pub fn StructuredStaticVector(comptime child: type, comptime count: u64) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticVector(params);
+        }
+        pub fn StructuredStaticVectorLowAligned(comptime child: type, comptime count: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticVector(params);
+        }
+        pub fn StructuredStaticVectorWithSentinel(comptime child: type, comptime count: u64, comptime sentinel: child) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticVector(params);
+        }
+        pub fn StructuredStaticVectorLowAlignedWithSentinel(comptime child: type, comptime count: u64, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters1 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .count = count,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStaticVector(params);
+        }
+        pub fn UnstructuredStaticView(comptime bytes: u64) type {
+            var params: container.Parameters2 = .{ .Allocator = Allocator, .bytes = bytes, .low_alignment = bytes };
+            params.options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStaticView(params);
+        }
+        pub fn UnstructuredStaticViewLowAligned(comptime bytes: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters2 = .{
+                .Allocator = Allocator,
+                .bytes = bytes,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStaticView(params);
+        }
+        pub fn UnstructuredStaticStreamVector(comptime bytes: u64) type {
+            var params: container.Parameters2 = .{ .Allocator = Allocator, .bytes = bytes, .low_alignment = bytes };
+            params.options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStaticStreamVector(params);
+        }
+        pub fn UnstructuredStaticStreamVectorLowAligned(comptime bytes: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters2 = .{
+                .Allocator = Allocator,
+                .bytes = bytes,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStaticStreamVector(params);
+        }
+        pub fn UnstructuredStaticVector(comptime bytes: u64) type {
+            var params: container.Parameters2 = .{ .Allocator = Allocator, .bytes = bytes, .low_alignment = bytes };
+            params.options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStaticVector(params);
+        }
+        pub fn UnstructuredStaticVectorLowAligned(comptime bytes: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters2 = .{
+                .Allocator = Allocator,
+                .bytes = bytes,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStaticVector(params);
+        }
+        pub fn StructuredStreamVector(comptime child: type) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamVector(params);
+        }
+        pub fn StructuredStreamVectorLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamVector(params);
+        }
+        pub fn StructuredStreamVectorWithSentinel(comptime child: type, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamVector(params);
+        }
+        pub fn StructuredStreamVectorLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamVector(params);
+        }
+        pub fn StructuredStreamView(comptime child: type) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamView(params);
+        }
+        pub fn StructuredStreamViewLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamView(params);
+        }
+        pub fn StructuredStreamViewWithSentinel(comptime child: type, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamView(params);
+        }
+        pub fn StructuredStreamViewLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamView(params);
+        }
+        pub fn StructuredVector(comptime child: type) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredVector(params);
+        }
+        pub fn StructuredVectorLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredVector(params);
+        }
+        pub fn StructuredVectorWithSentinel(comptime child: type, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredVector(params);
+        }
+        pub fn StructuredVectorLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredVector(params);
+        }
+        pub fn StructuredView(comptime child: type) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredView(params);
+        }
+        pub fn StructuredViewLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredView(params);
+        }
+        pub fn StructuredViewWithSentinel(comptime child: type, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredView(params);
+        }
+        pub fn StructuredViewLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters3 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredView(params);
+        }
+        pub fn UnstructuredStreamVector(comptime high_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = high_alignment,
+            };
+            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStreamVector(params);
+        }
+        pub fn UnstructuredStreamVectorLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStreamVector(params);
+        }
+        pub fn UnstructuredStreamView(comptime high_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = high_alignment,
+            };
+            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStreamView(params);
+        }
+        pub fn UnstructuredStreamViewLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStreamView(params);
+        }
+        pub fn UnstructuredVector(comptime high_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = high_alignment,
+            };
+            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredVector(params);
+        }
+        pub fn UnstructuredVectorLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredVector(params);
+        }
+        pub fn UnstructuredView(comptime high_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = high_alignment,
+            };
+            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredView(params);
+        }
+        pub fn UnstructuredViewLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters4 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredView(params);
+        }
+        pub fn StructuredStreamHolder(comptime child: type) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamHolder(params);
+        }
+        pub fn StructuredStreamHolderLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamHolder(params);
+        }
+        pub fn StructuredStreamHolderWithSentinel(comptime child: type, comptime sentinel: child) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamHolder(params);
+        }
+        pub fn StructuredStreamHolderLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredStreamHolder(params);
+        }
+        pub fn StructuredHolder(comptime child: type) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredHolder(params);
+        }
+        pub fn StructuredHolderLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredHolder(params);
+        }
+        pub fn StructuredHolderWithSentinel(comptime child: type, comptime sentinel: child) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = @alignOf(child),
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredHolder(params);
+        }
+        pub fn StructuredHolderLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
+            var params: container.Parameters5 = .{
+                .Allocator = Allocator,
+                .child = child,
+                .low_alignment = low_alignment,
+                .sentinel = &sentinel,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.StructuredHolder(params);
+        }
+        pub fn UnstructuredStreamHolder(comptime high_alignment: u64) type {
+            var params: container.Parameters6 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = high_alignment,
+            };
+            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStreamHolder(params);
+        }
+        pub fn UnstructuredStreamHolderLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters6 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredStreamHolder(params);
+        }
+        pub fn UnstructuredHolder(comptime high_alignment: u64) type {
+            var params: container.Parameters6 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = high_alignment,
+            };
+            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredHolder(params);
+        }
+        pub fn UnstructuredHolderLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var params: container.Parameters6 = .{
+                .Allocator = Allocator,
+                .high_alignment = high_alignment,
+                .low_alignment = low_alignment,
+            };
+            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            params.options.lazy_alignment = !params.options.unit_alignment;
+            return container.UnstructuredHolder(params);
+        }
+    };
+}
+fn GenericInterface(comptime Allocator: type) type {
+    return opaque {
+        const Graphics = GenericAllocatorGraphics(Allocator);
+        const Intermediate = GenericIntermediate(Allocator);
+        const Implementation = GenericImplementation(Allocator);
+        pub fn allocateStatic(allocator: *Allocator, comptime s_impl_type: type, o_amt: ?mem.Amount) anyerror!s_impl_type {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Construct: type = meta.FnParam0(s_impl_type.construct);
+                if (@hasField(Construct, "lb_addr")) {
+                    const s_lb_addr: u64 = allocator.next();
+                    if (@hasField(Construct, "ss_addr")) {
+                        const s_ab_addr: u64 = s_lb_addr;
+                        const s_ss_addr: u64 = s_ab_addr;
+                        const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
+                        const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
+                        const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.allocateStaticUnitAligned,
+                            .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                        );
+                        const s_impl: s_impl_type = s_impl_type.construct(.{
+                            .lb_addr = s_lb_addr,
+                            .ss_addr = s_ss_addr,
+                        });
+                        Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                        return s_impl;
+                    }
+                    const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
+                    const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
+                    const s_ab_addr: u64 = s_lb_addr;
+                    const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                    try @call(
+                        .{ .modifier = .always_inline },
+                        Intermediate.allocateStaticUnitAligned,
+                        .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                    );
+                    const s_impl: s_impl_type = s_impl_type.construct(.{
+                        .lb_addr = s_lb_addr,
+                    });
+                    Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                    return s_impl;
+                }
+            } else { // @1b1
+                const Construct: type = meta.FnParam0(s_impl_type.construct);
+                if (@hasField(Construct, "lb_addr")) {
+                    const s_lb_addr: u64 = allocator.next();
+                    if (@hasField(Construct, "ab_addr")) {
+                        const s_ab_addr: u64 = mach.alignA64(s_lb_addr, s_impl_type.low_alignment);
+                        if (@hasField(Construct, "ss_addr")) {
+                            const s_ss_addr: u64 = s_ab_addr;
+                            const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
+                            const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
+                            const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.allocateStaticAnyAligned,
+                                .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                            );
+                            const s_impl: s_impl_type = s_impl_type.construct(.{
+                                .lb_addr = s_lb_addr,
+                                .ab_addr = s_ab_addr,
+                                .ss_addr = s_ss_addr,
+                            });
+                            Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                            return s_impl;
+                        }
+                        const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
+                        const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
+                        const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.allocateStaticAnyAligned,
+                            .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                        );
+                        const s_impl: s_impl_type = s_impl_type.construct(.{
+                            .lb_addr = s_lb_addr,
+                            .ab_addr = s_ab_addr,
+                        });
+                        Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                        return s_impl;
+                    }
+                    const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
+                    const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
+                    const s_ab_addr: u64 = mach.alignA64(s_lb_addr, s_impl_type.low_alignment);
+                    const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                    try @call(
+                        .{ .modifier = .always_inline },
+                        Intermediate.allocateStaticAnyAligned,
+                        .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                    );
+                    const s_impl: s_impl_type = s_impl_type.construct(.{
+                        .lb_addr = s_lb_addr,
+                    });
+                    Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                    return s_impl;
+                }
+            }
+        }
+        pub fn allocateMany(allocator: *Allocator, comptime s_impl_type: type, n_amt: mem.Amount) anyerror!s_impl_type {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Construct: type = meta.FnParam0(s_impl_type.construct);
+                if (@hasField(Construct, "lb_addr")) {
+                    const s_lb_addr: u64 = allocator.next();
+                    if (@hasField(Construct, "up_addr")) {
+                        const s_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                        const s_ab_addr: u64 = s_lb_addr;
+                        const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                        if (@hasField(Construct, "ss_addr")) {
+                            const s_ss_addr: u64 = s_ab_addr;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.allocateManyUnitAligned,
+                                .{ allocator, s_aligned_bytes, s_up_addr },
+                            );
+                            const s_impl: s_impl_type = s_impl_type.construct(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ss_addr = s_ss_addr,
+                            });
+                            Graphics.showAllocateMany(s_impl_type, s_impl, @src());
+                            return s_impl;
+                        }
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.allocateManyUnitAligned,
+                            .{ allocator, s_aligned_bytes, s_up_addr },
+                        );
+                        const s_impl: s_impl_type = s_impl_type.construct(.{
+                            .lb_addr = s_lb_addr,
+                            .up_addr = s_up_addr,
+                        });
+                        Graphics.showAllocateMany(s_impl_type, s_impl, @src());
+                        return s_impl;
+                    }
+                }
+            } else { // @1b1
+                const Construct: type = meta.FnParam0(s_impl_type.construct);
+                if (@hasField(Construct, "lb_addr")) {
+                    const s_lb_addr: u64 = allocator.next();
+                    if (@hasField(Construct, "up_addr")) {
+                        const s_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                        const s_ab_addr: u64 = mach.alignA64(s_lb_addr, s_impl_type.low_alignment);
+                        const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                        if (@hasField(Construct, "ab_addr")) {
+                            if (@hasField(Construct, "ss_addr")) {
+                                const s_ss_addr: u64 = s_ab_addr;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.allocateManyAnyAligned,
+                                    .{ allocator, s_aligned_bytes, s_up_addr },
+                                );
+                                const s_impl: s_impl_type = s_impl_type.construct(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ab_addr = s_ab_addr,
+                                    .ss_addr = s_ss_addr,
+                                });
+                                Graphics.showAllocateMany(s_impl_type, s_impl, @src());
+                                return s_impl;
+                            }
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.allocateManyAnyAligned,
+                                .{ allocator, s_aligned_bytes, s_up_addr },
+                            );
+                            const s_impl: s_impl_type = s_impl_type.construct(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ab_addr = s_ab_addr,
+                            });
+                            Graphics.showAllocateMany(s_impl_type, s_impl, @src());
+                            return s_impl;
+                        }
+                        if (@hasField(Construct, "ss_addr")) {
+                            const s_ss_addr: u64 = s_ab_addr;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.allocateManyAnyAligned,
+                                .{ allocator, s_aligned_bytes, s_up_addr },
+                            );
+                            const s_impl: s_impl_type = s_impl_type.construct(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ss_addr = s_ss_addr,
+                            });
+                            Graphics.showAllocateMany(s_impl_type, s_impl, @src());
+                            return s_impl;
+                        }
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.allocateManyAnyAligned,
+                            .{ allocator, s_aligned_bytes, s_up_addr },
+                        );
+                        const s_impl: s_impl_type = s_impl_type.construct(.{
+                            .lb_addr = s_lb_addr,
+                            .up_addr = s_up_addr,
+                        });
+                        Graphics.showAllocateMany(s_impl_type, s_impl, @src());
+                        return s_impl;
+                    }
+                }
+            }
+        }
+        pub fn allocateHolder(allocator: *Allocator, comptime s_impl_type: type) s_impl_type {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Construct: type = meta.FnParam0(s_impl_type.construct);
+                if (@hasField(Construct, "lb_addr")) {
+                    const s_lb_addr: u64 = allocator.next();
+                    if (@hasField(Construct, "ss_addr")) {
+                        const s_ab_addr: u64 = s_lb_addr;
+                        const s_ss_addr: u64 = s_ab_addr;
+                        @call(
+                            .{ .modifier = .always_inline },
+                            Implementation.allocateHolderUnitAligned,
+                            .{ allocator, s_lb_addr },
+                        );
+                        const s_impl: s_impl_type = s_impl_type.construct(.{
+                            .lb_addr = s_lb_addr,
+                            .ss_addr = s_ss_addr,
+                        });
+                        Graphics.showAllocateHolder(allocator, s_impl_type, s_impl, @src());
+                        return s_impl;
+                    }
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.allocateHolderUnitAligned,
+                        .{ allocator, s_lb_addr },
+                    );
+                    const s_impl: s_impl_type = s_impl_type.construct(.{
+                        .lb_addr = s_lb_addr,
+                    });
+                    Graphics.showAllocateHolder(allocator, s_impl_type, s_impl, @src());
+                    return s_impl;
+                }
+            } else { // @1b1
+                const Construct: type = meta.FnParam0(s_impl_type.construct);
+                if (@hasField(Construct, "ab_addr")) {
+                    const s_lb_addr: u64 = allocator.next();
+                    const s_ab_addr: u64 = mach.alignA64(s_lb_addr, s_impl_type.low_alignment);
+                    if (@hasField(Construct, "ss_addr")) {
+                        const s_ss_addr: u64 = s_ab_addr;
+                        @call(
+                            .{ .modifier = .always_inline },
+                            Implementation.allocateHolderAnyAligned,
+                            .{ allocator, s_lb_addr },
+                        );
+                        const s_impl: s_impl_type = s_impl_type.construct(.{
+                            .ab_addr = s_ab_addr,
+                            .ss_addr = s_ss_addr,
+                        });
+                        Graphics.showAllocateHolder(allocator, s_impl_type, s_impl, @src());
+                        return s_impl;
+                    }
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.allocateHolderAnyAligned,
+                        .{ allocator, s_lb_addr },
+                    );
+                    const s_impl: s_impl_type = s_impl_type.construct(.{
+                        .ab_addr = s_ab_addr,
+                    });
+                    Graphics.showAllocateHolder(allocator, s_impl_type, s_impl, @src());
+                    return s_impl;
+                }
+            }
+        }
+        pub fn resizeManyAbove(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, n_amt: mem.Amount) anyerror!void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                builtin.assertAbove(u64, t_aligned_bytes, s_aligned_bytes);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyAboveUnitAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            } else { // @1b1
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                builtin.assertAbove(u64, t_aligned_bytes, s_aligned_bytes);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyAboveAnyAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            }
+        }
+        pub fn resizeManyBelow(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, n_amt: mem.Amount) void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                builtin.assertBelow(u64, t_aligned_bytes, s_aligned_bytes);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyBelowUnitAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            } else { // @1b1
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                builtin.assertBelow(u64, t_aligned_bytes, s_aligned_bytes);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyBelowAnyAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            }
+        }
+        pub fn resizeManyIncrement(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, x_amt: mem.Amount) anyerror!void {
+            if (!@hasDecl(s_impl_type, "length")) {
+                @compileError("cannot grow fixed-size memory: " ++ @typeName(s_impl_type));
+            }
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const n_amt: mem.Amount = .{ .bytes = s_impl.length() + mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                if (t_aligned_bytes <= s_aligned_bytes) return;
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyAboveUnitAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            } else { // @1b1
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const n_amt: mem.Amount = .{ .bytes = s_impl.length() + mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                if (t_aligned_bytes <= s_aligned_bytes) return;
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyAboveAnyAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            }
+        }
+        pub fn resizeManyDecrement(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, x_amt: mem.Amount) void {
+            if (!@hasDecl(s_impl_type, "length")) {
+                @compileError("cannot shrink fixed-size memory: " ++ @typeName(s_impl_type));
+            }
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const n_amt: mem.Amount = .{ .bytes = s_impl.length() - mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                if (t_aligned_bytes >= s_aligned_bytes) return;
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyBelowUnitAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            } else { // @1b1
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start();
+                const s_aligned_bytes: u64 = s_impl.utility();
+                const n_amt: mem.Amount = .{ .bytes = s_impl.length() - mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                if (t_aligned_bytes >= s_aligned_bytes) return;
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeManyBelowAnyAligned,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+                return s_impl_ptr.resize(.{
+                    .up_addr = t_up_addr,
+                });
+            }
+        }
+        pub fn resizeHolderAbove(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, n_amt: mem.Amount) anyerror!void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateHolder(allocator, s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start(allocator.*);
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeHolderAboveUnitAligned,
+                    .{ allocator, t_up_addr },
+                );
+            } else { // @1b1
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateHolder(allocator, s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start(allocator.*);
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeHolderAboveAnyAligned,
+                    .{ allocator, t_up_addr },
+                );
+            }
+        }
+        pub fn resizeHolderIncrement(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, x_amt: mem.Amount) anyerror!void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateHolder(allocator, s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start(allocator.*);
+                const n_amt: mem.Amount = .{ .bytes = s_impl.length(allocator.*) + mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeHolderAboveUnitAligned,
+                    .{ allocator, t_up_addr },
+                );
+            } else { // @1b1
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateHolder(allocator, s_impl_type, s_impl, s_impl_ptr.*, @src());
+                const s_ab_addr: u64 = s_impl.start(allocator.*);
+                const n_amt: mem.Amount = .{ .bytes = s_impl.length(allocator.*) + mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
+                const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
+                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                try @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.resizeHolderAboveAnyAligned,
+                    .{ allocator, t_up_addr },
+                );
+            }
+        }
+        pub fn moveStatic(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type) anyerror!void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Translate: type = meta.FnParam1(s_impl_type.translate);
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                if (@hasField(Translate, "lb_addr")) {
+                    const t_lb_addr: u64 = mach.cmov64(allocator.metadata.count == 1, allocator.start(), allocator.next());
+                    if (@hasField(Translate, "ss_addr")) {
+                        const t_ab_addr: u64 = t_lb_addr;
+                        const t_ss_addr: u64 = t_ab_addr + s_impl.behind();
+                        const s_aligned_bytes: u64 = s_impl.utility();
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.moveStaticUnitAligned,
+                            .{ allocator, t_up_addr },
+                        );
+                        return s_impl_ptr.translate(.{
+                            .lb_addr = t_lb_addr,
+                            .ss_addr = t_ss_addr,
+                        });
+                    }
+                    const s_aligned_bytes: u64 = s_impl.utility();
+                    const t_aligned_bytes: u64 = s_aligned_bytes;
+                    const t_ab_addr: u64 = t_lb_addr;
+                    const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                    try @call(
+                        .{ .modifier = .always_inline },
+                        Intermediate.moveStaticUnitAligned,
+                        .{ allocator, t_up_addr },
+                    );
+                    return s_impl_ptr.translate(.{
+                        .lb_addr = t_lb_addr,
+                    });
+                }
+            } else { // @1b1
+                const Translate: type = meta.FnParam1(s_impl_type.translate);
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                if (@hasField(Translate, "lb_addr")) {
+                    const t_lb_addr: u64 = mach.cmov64(allocator.metadata.count == 1, allocator.start(), allocator.next());
+                    if (@hasField(Translate, "ab_addr")) {
+                        const t_ab_addr: u64 = mach.alignA64(t_lb_addr, s_impl_type.low_alignment);
+                        if (@hasField(Translate, "ss_addr")) {
+                            const t_ss_addr: u64 = t_ab_addr + s_impl.behind();
+                            const s_aligned_bytes: u64 = s_impl.utility();
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.moveStaticAnyAligned,
+                                .{ allocator, t_up_addr },
+                            );
+                            return s_impl_ptr.translate(.{
+                                .lb_addr = t_lb_addr,
+                                .ab_addr = t_ab_addr,
+                                .ss_addr = t_ss_addr,
+                            });
+                        }
+                        const s_aligned_bytes: u64 = s_impl.utility();
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.moveStaticAnyAligned,
+                            .{ allocator, t_up_addr },
+                        );
+                        return s_impl_ptr.translate(.{
+                            .lb_addr = t_lb_addr,
+                            .ab_addr = t_ab_addr,
+                        });
+                    }
+                    const s_aligned_bytes: u64 = s_impl.utility();
+                    const t_aligned_bytes: u64 = s_aligned_bytes;
+                    const t_ab_addr: u64 = mach.alignA64(t_lb_addr, s_impl_type.low_alignment);
+                    const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                    try @call(
+                        .{ .modifier = .always_inline },
+                        Intermediate.moveStaticAnyAligned,
+                        .{ allocator, t_up_addr },
+                    );
+                    return s_impl_ptr.translate(.{
+                        .lb_addr = t_lb_addr,
+                    });
+                }
+            }
+        }
+        pub fn moveMany(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type) anyerror!void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Translate: type = meta.FnParam1(s_impl_type.translate);
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                if (@hasField(Translate, "lb_addr")) {
+                    const t_lb_addr: u64 = mach.cmov64(allocator.metadata.count == 1, allocator.start(), allocator.next());
+                    if (@hasField(Translate, "ss_addr")) {
+                        const t_ab_addr: u64 = t_lb_addr;
+                        const t_ss_addr: u64 = t_ab_addr + s_impl.behind();
+                        if (@hasField(Translate, "up_addr")) {
+                            const s_aligned_bytes: u64 = s_impl.utility();
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.moveManyUnitAligned,
+                                .{ allocator, t_up_addr },
+                            );
+                            return s_impl_ptr.translate(.{
+                                .lb_addr = t_lb_addr,
+                                .ss_addr = t_ss_addr,
+                                .up_addr = t_up_addr,
+                            });
+                        }
+                    }
+                    if (@hasField(Translate, "up_addr")) {
+                        const s_aligned_bytes: u64 = s_impl.utility();
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_ab_addr: u64 = t_lb_addr;
+                        const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.moveManyUnitAligned,
+                            .{ allocator, t_up_addr },
+                        );
+                        return s_impl_ptr.translate(.{
+                            .lb_addr = t_lb_addr,
+                            .up_addr = t_up_addr,
+                        });
+                    }
+                }
+            } else { // @1b1
+                const Translate: type = meta.FnParam1(s_impl_type.translate);
+                const s_impl: s_impl_type = s_impl_ptr.*;
+                defer Graphics.showReallocateMany(s_impl_type, s_impl, s_impl_ptr.*, @src());
+                if (@hasField(Translate, "lb_addr")) {
+                    const t_lb_addr: u64 = mach.cmov64(allocator.metadata.count == 1, allocator.start(), allocator.next());
+                    if (@hasField(Translate, "ab_addr")) {
+                        const t_ab_addr: u64 = mach.alignA64(t_lb_addr, s_impl_type.low_alignment);
+                        if (@hasField(Translate, "ss_addr")) {
+                            const t_ss_addr: u64 = t_ab_addr + s_impl.behind();
+                            if (@hasField(Translate, "up_addr")) {
+                                const s_aligned_bytes: u64 = s_impl.utility();
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.moveManyAnyAligned,
+                                    .{ allocator, t_up_addr },
+                                );
+                                return s_impl_ptr.translate(.{
+                                    .lb_addr = t_lb_addr,
+                                    .ab_addr = t_ab_addr,
+                                    .ss_addr = t_ss_addr,
+                                    .up_addr = t_up_addr,
+                                });
+                            }
+                        }
+                        if (@hasField(Translate, "up_addr")) {
+                            const s_aligned_bytes: u64 = s_impl.utility();
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.moveManyAnyAligned,
+                                .{ allocator, t_up_addr },
+                            );
+                            return s_impl_ptr.translate(.{
+                                .lb_addr = t_lb_addr,
+                                .ab_addr = t_ab_addr,
+                                .up_addr = t_up_addr,
+                            });
+                        }
+                    }
+                    if (@hasField(Translate, "ss_addr")) {
+                        const t_ab_addr: u64 = mach.alignA64(t_lb_addr, s_impl_type.low_alignment);
+                        const t_ss_addr: u64 = t_ab_addr + s_impl.behind();
+                        if (@hasField(Translate, "up_addr")) {
+                            const s_aligned_bytes: u64 = s_impl.utility();
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.moveManyAnyAligned,
+                                .{ allocator, t_up_addr },
+                            );
+                            return s_impl_ptr.translate(.{
+                                .lb_addr = t_lb_addr,
+                                .ss_addr = t_ss_addr,
+                                .up_addr = t_up_addr,
+                            });
+                        }
+                    }
+                    if (@hasField(Translate, "up_addr")) {
+                        const s_aligned_bytes: u64 = s_impl.utility();
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_ab_addr: u64 = mach.alignA64(t_lb_addr, s_impl_type.low_alignment);
+                        const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.moveManyAnyAligned,
+                            .{ allocator, t_up_addr },
+                        );
+                        return s_impl_ptr.translate(.{
+                            .lb_addr = t_lb_addr,
+                            .up_addr = t_up_addr,
+                        });
+                    }
+                }
+            }
+        }
+        pub fn deallocateStatic(allocator: *Allocator, comptime s_impl_type: type, s_impl: s_impl_type, o_amt: ?mem.Amount) void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
+                const n_aligned_bytes: u64 = s_impl_type.utility();
+                const s_aligned_bytes: u64 = n_aligned_bytes * n_count;
+                const s_lb_addr: u64 = s_impl.low();
+                const s_ab_addr: u64 = s_impl.start();
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.deallocateStaticUnitAligned,
+                    .{ allocator, n_count, s_aligned_bytes, s_lb_addr, s_up_addr },
+                );
+                Graphics.showDeallocateMany(s_impl_type, s_impl, @src());
+            } else { // @1b1
+                const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
+                const n_aligned_bytes: u64 = s_impl_type.utility();
+                const s_aligned_bytes: u64 = n_aligned_bytes * n_count;
+                const s_lb_addr: u64 = s_impl.low();
+                const s_ab_addr: u64 = s_impl.start();
+                const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.deallocateStaticAnyAligned,
+                    .{ allocator, n_count, s_aligned_bytes, s_lb_addr, s_up_addr },
+                );
+                Graphics.showDeallocateMany(s_impl_type, s_impl, @src());
+            }
+        }
+        pub fn deallocateMany(allocator: *Allocator, comptime s_impl_type: type, s_impl: s_impl_type) void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const s_ab_addr: u64 = s_impl.start();
+                const s_up_addr: u64 = s_impl.high();
+                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                const s_lb_addr: u64 = s_impl.low();
+                @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.deallocateManyUnitAligned,
+                    .{ allocator, s_aligned_bytes, s_lb_addr, s_up_addr },
+                );
+                Graphics.showDeallocateMany(s_impl_type, s_impl, @src());
+            } else { // @1b1
+                const s_ab_addr: u64 = s_impl.start();
+                const s_up_addr: u64 = s_impl.high();
+                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                const s_lb_addr: u64 = s_impl.low();
+                @call(
+                    .{ .modifier = .always_inline },
+                    Intermediate.deallocateManyAnyAligned,
+                    .{ allocator, s_aligned_bytes, s_lb_addr, s_up_addr },
+                );
+                Graphics.showDeallocateMany(s_impl_type, s_impl, @src());
+            }
+        }
+        pub fn deallocateHolder(allocator: *Allocator, comptime s_impl_type: type, s_impl: s_impl_type) void {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateHolderUnitAligned,
+                    .{allocator},
+                );
+                Graphics.showDeallocateHolder(allocator, s_impl_type, s_impl, @src());
+            } else { // @1b1
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateHolderAnyAligned,
+                    .{allocator},
+                );
+                Graphics.showDeallocateHolder(allocator, s_impl_type, s_impl, @src());
+            }
+        }
+        pub fn convertHolderMany(allocator: *Allocator, comptime s_impl_type: type, comptime t_impl_type: type, s_impl: s_impl_type) anyerror!t_impl_type {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Convert: type = meta.FnParam0(t_impl_type.convert);
+                if (@hasField(Convert, "lb_addr")) {
+                    const s_lb_addr: u64 = s_impl.low(allocator.*);
+                    if (@hasField(Convert, "up_addr")) {
+                        const s_ab_addr: u64 = s_impl.start(allocator.*);
+                        const s_aligned_bytes: u64 = s_impl.length(allocator.*);
+                        const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                        if (@hasField(Convert, "ss_addr")) {
+                            const s_ss_addr: u64 = s_impl.start(allocator.*);
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertHolderManyUnitAligned,
+                                    .{ allocator, t_aligned_bytes, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ss_addr = s_ss_addr,
+                                    .ub_addr = s_ub_addr,
+                                });
+                            }
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertHolderManyUnitAligned,
+                                .{ allocator, t_aligned_bytes, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ss_addr = s_ss_addr,
+                            });
+                        }
+                        if (@hasField(Convert, "ub_addr")) {
+                            const s_ub_addr: u64 = s_impl.next();
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertHolderManyUnitAligned,
+                                .{ allocator, t_aligned_bytes, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ub_addr = s_ub_addr,
+                            });
+                        }
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.convertHolderManyUnitAligned,
+                            .{ allocator, t_aligned_bytes, t_up_addr },
+                        );
+                        return t_impl_type.convert(.{
+                            .lb_addr = s_lb_addr,
+                            .up_addr = s_up_addr,
+                        });
+                    }
+                }
+            } else { // @1b1
+                const Convert: type = meta.FnParam0(t_impl_type.convert);
+                if (@hasField(Convert, "lb_addr")) {
+                    const s_lb_addr: u64 = s_impl.low(allocator.*);
+                    if (@hasField(Convert, "up_addr")) {
+                        const s_ab_addr: u64 = s_impl.start(allocator.*);
+                        const s_aligned_bytes: u64 = s_impl.length(allocator.*);
+                        const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
+                        if (@hasField(Convert, "ab_addr")) {
+                            if (@hasField(Convert, "ss_addr")) {
+                                const s_ss_addr: u64 = s_impl.start(allocator.*);
+                                if (@hasField(Convert, "ub_addr")) {
+                                    const s_ub_addr: u64 = s_impl.next();
+                                    const t_aligned_bytes: u64 = s_aligned_bytes;
+                                    const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                    try @call(
+                                        .{ .modifier = .always_inline },
+                                        Intermediate.convertHolderManyAnyAligned,
+                                        .{ allocator, t_aligned_bytes, t_up_addr },
+                                    );
+                                    return t_impl_type.convert(.{
+                                        .lb_addr = s_lb_addr,
+                                        .up_addr = s_up_addr,
+                                        .ab_addr = s_ab_addr,
+                                        .ss_addr = s_ss_addr,
+                                        .ub_addr = s_ub_addr,
+                                    });
+                                }
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertHolderManyAnyAligned,
+                                    .{ allocator, t_aligned_bytes, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ab_addr = s_ab_addr,
+                                    .ss_addr = s_ss_addr,
+                                });
+                            }
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertHolderManyAnyAligned,
+                                    .{ allocator, t_aligned_bytes, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ab_addr = s_ab_addr,
+                                    .ub_addr = s_ub_addr,
+                                });
+                            }
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertHolderManyAnyAligned,
+                                .{ allocator, t_aligned_bytes, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ab_addr = s_ab_addr,
+                            });
+                        }
+                        if (@hasField(Convert, "ss_addr")) {
+                            const s_ss_addr: u64 = s_impl.start(allocator.*);
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertHolderManyAnyAligned,
+                                    .{ allocator, t_aligned_bytes, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ss_addr = s_ss_addr,
+                                    .ub_addr = s_ub_addr,
+                                });
+                            }
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertHolderManyAnyAligned,
+                                .{ allocator, t_aligned_bytes, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ss_addr = s_ss_addr,
+                            });
+                        }
+                        if (@hasField(Convert, "ub_addr")) {
+                            const s_ub_addr: u64 = s_impl.next();
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertHolderManyAnyAligned,
+                                .{ allocator, t_aligned_bytes, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ub_addr = s_ub_addr,
+                            });
+                        }
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.convertHolderManyAnyAligned,
+                            .{ allocator, t_aligned_bytes, t_up_addr },
+                        );
+                        return t_impl_type.convert(.{
+                            .lb_addr = s_lb_addr,
+                            .up_addr = s_up_addr,
+                        });
+                    }
+                }
+            }
+        }
+        pub fn convertStaticMany(allocator: *Allocator, comptime s_impl_type: type, comptime t_impl_type: type, s_impl: s_impl_type) anyerror!t_impl_type {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Convert: type = meta.FnParam0(t_impl_type.convert);
+                if (@hasField(Convert, "lb_addr")) {
+                    const s_lb_addr: u64 = s_impl.low();
+                    if (@hasField(Convert, "up_addr")) {
+                        const s_up_addr: u64 = s_impl.high();
+                        if (@hasField(Convert, "ss_addr")) {
+                            const s_ss_addr: u64 = s_impl.start();
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const s_ab_addr: u64 = s_impl.start();
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertAnyManyUnitAligned,
+                                    .{ allocator, s_up_addr, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ss_addr = s_ss_addr,
+                                    .ub_addr = s_ub_addr,
+                                });
+                            }
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertAnyManyUnitAligned,
+                                .{ allocator, s_up_addr, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ss_addr = s_ss_addr,
+                            });
+                        }
+                        if (@hasField(Convert, "ub_addr")) {
+                            const s_ub_addr: u64 = s_impl.next();
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertAnyManyUnitAligned,
+                                .{ allocator, s_up_addr, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ub_addr = s_ub_addr,
+                            });
+                        }
+                        const s_ab_addr: u64 = s_impl.start();
+                        const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.convertAnyManyUnitAligned,
+                            .{ allocator, s_up_addr, t_up_addr },
+                        );
+                        return t_impl_type.convert(.{
+                            .lb_addr = s_lb_addr,
+                            .up_addr = s_up_addr,
+                        });
+                    }
+                }
+            } else { // @1b1
+                const Convert: type = meta.FnParam0(t_impl_type.convert);
+                if (@hasField(Convert, "lb_addr")) {
+                    const s_lb_addr: u64 = s_impl.low();
+                    if (@hasField(Convert, "up_addr")) {
+                        const s_up_addr: u64 = s_impl.high();
+                        if (@hasField(Convert, "ab_addr")) {
+                            const s_ab_addr: u64 = s_impl.start();
+                            if (@hasField(Convert, "ss_addr")) {
+                                const s_ss_addr: u64 = s_impl.start();
+                                if (@hasField(Convert, "ub_addr")) {
+                                    const s_ub_addr: u64 = s_impl.next();
+                                    const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                    const t_aligned_bytes: u64 = s_aligned_bytes;
+                                    const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                    try @call(
+                                        .{ .modifier = .always_inline },
+                                        Intermediate.convertAnyManyAnyAligned,
+                                        .{ allocator, s_up_addr, t_up_addr },
+                                    );
+                                    return t_impl_type.convert(.{
+                                        .lb_addr = s_lb_addr,
+                                        .up_addr = s_up_addr,
+                                        .ab_addr = s_ab_addr,
+                                        .ss_addr = s_ss_addr,
+                                        .ub_addr = s_ub_addr,
+                                    });
+                                }
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertAnyManyAnyAligned,
+                                    .{ allocator, s_up_addr, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ab_addr = s_ab_addr,
+                                    .ss_addr = s_ss_addr,
+                                });
+                            }
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertAnyManyAnyAligned,
+                                    .{ allocator, s_up_addr, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ab_addr = s_ab_addr,
+                                    .ub_addr = s_ub_addr,
+                                });
+                            }
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertAnyManyAnyAligned,
+                                .{ allocator, s_up_addr, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ab_addr = s_ab_addr,
+                            });
+                        }
+                        if (@hasField(Convert, "ss_addr")) {
+                            const s_ss_addr: u64 = s_impl.start();
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const s_ab_addr: u64 = s_impl.start();
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try @call(
+                                    .{ .modifier = .always_inline },
+                                    Intermediate.convertAnyManyAnyAligned,
+                                    .{ allocator, s_up_addr, t_up_addr },
+                                );
+                                return t_impl_type.convert(.{
+                                    .lb_addr = s_lb_addr,
+                                    .up_addr = s_up_addr,
+                                    .ss_addr = s_ss_addr,
+                                    .ub_addr = s_ub_addr,
+                                });
+                            }
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertAnyManyAnyAligned,
+                                .{ allocator, s_up_addr, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ss_addr = s_ss_addr,
+                            });
+                        }
+                        if (@hasField(Convert, "ub_addr")) {
+                            const s_ub_addr: u64 = s_impl.next();
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try @call(
+                                .{ .modifier = .always_inline },
+                                Intermediate.convertAnyManyAnyAligned,
+                                .{ allocator, s_up_addr, t_up_addr },
+                            );
+                            return t_impl_type.convert(.{
+                                .lb_addr = s_lb_addr,
+                                .up_addr = s_up_addr,
+                                .ub_addr = s_ub_addr,
+                            });
+                        }
+                        const s_ab_addr: u64 = s_impl.start();
+                        const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                        try @call(
+                            .{ .modifier = .always_inline },
+                            Intermediate.convertAnyManyAnyAligned,
+                            .{ allocator, s_up_addr, t_up_addr },
+                        );
+                        return t_impl_type.convert(.{
+                            .lb_addr = s_lb_addr,
+                            .up_addr = s_up_addr,
+                        });
+                    }
+                }
+            }
+        }
+    };
+}
+fn GenericIntermediate(comptime Allocator: type) type {
+    return opaque {
+        const Graphics = GenericAllocatorGraphics(Allocator);
+        const Implementation = GenericImplementation(Allocator);
+
+        fn allocateStaticUnitAligned(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            if (s_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.allocateStaticUnitAlignedUnaddressable,
+                    .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.allocateStaticUnitAlignedAddressable,
+                    .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                );
+            }
+        }
+        fn allocateStaticAnyAligned(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            if (s_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.allocateStaticAnyAlignedUnaddressable,
+                    .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.allocateStaticAnyAlignedAddressable,
+                    .{ allocator, n_count, s_aligned_bytes, s_up_addr },
+                );
+            }
+        }
+        fn allocateManyUnitAligned(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            if (s_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.allocateManyUnitAlignedUnaddressable,
+                    .{ allocator, s_aligned_bytes, s_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.allocateManyUnitAlignedAddressable,
+                    .{ allocator, s_aligned_bytes, s_up_addr },
+                );
+            }
+        }
+        fn allocateManyAnyAligned(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            if (s_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.allocateManyAnyAlignedUnaddressable,
+                    .{ allocator, s_aligned_bytes, s_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.allocateManyAnyAlignedAddressable,
+                    .{ allocator, s_aligned_bytes, s_up_addr },
+                );
+            }
+        }
+        fn resizeManyAboveUnitAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            if (s_up_addr == allocator.next()) {
+                if (t_up_addr > allocator.finish()) {
+                    try @call(
+                        .{ .modifier = .never_inline },
+                        Implementation.resizeManyAboveUnitAlignedUnaddressable,
+                        .{ allocator, s_up_addr, t_up_addr },
+                    );
+                } else {
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.resizeManyAboveUnitAlignedAddressable,
+                        .{ allocator, s_up_addr, t_up_addr },
+                    );
+                }
+            } else {
+                return error.ResizeInternal;
+            }
+        }
+        fn resizeManyAboveAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            if (s_up_addr == allocator.next()) {
+                if (t_up_addr > allocator.finish()) {
+                    try @call(
+                        .{ .modifier = .never_inline },
+                        Implementation.resizeManyAboveAnyAlignedUnaddressable,
+                        .{ allocator, s_up_addr, t_up_addr },
+                    );
+                } else {
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.resizeManyAboveAnyAlignedAddressable,
+                        .{ allocator, s_up_addr, t_up_addr },
+                    );
+                }
+            } else {
+                return error.ResizeInternal;
+            }
+        }
+        fn resizeManyBelowUnitAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            if (s_up_addr == allocator.next()) {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.resizeManyBelowUnitAlignedEndBoundary,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+            } else if (Allocator.allocator_spec.options.require_filo_free) {
+                Graphics.showFiloResizeViolationAndExit(allocator, s_up_addr, @src());
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.resizeManyBelowUnitAlignedEndInternal,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+            }
+        }
+        fn resizeManyBelowAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            if (s_up_addr == allocator.next()) {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.resizeManyBelowAnyAlignedEndBoundary,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+            } else if (Allocator.allocator_spec.options.require_filo_free) {
+                Graphics.showFiloResizeViolationAndExit(allocator, s_up_addr, @src());
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.resizeManyBelowAnyAlignedEndInternal,
+                    .{ allocator, s_up_addr, t_up_addr },
+                );
+            }
+        }
+        fn resizeHolderAboveUnitAligned(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.resizeHolderAboveUnitAlignedUnaddressable,
+                    .{ allocator, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.resizeHolderAboveUnitAlignedAddressable,
+                    .{allocator},
+                );
+            }
+        }
+        fn resizeHolderAboveAnyAligned(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.resizeHolderAboveAnyAlignedUnaddressable,
+                    .{ allocator, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.resizeHolderAboveAnyAlignedAddressable,
+                    .{allocator},
+                );
+            }
+        }
+        fn moveStaticUnitAligned(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.moveStaticUnitAlignedUnaddressable,
+                    .{ allocator, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.moveStaticUnitAlignedAddressable,
+                    .{ allocator, t_up_addr },
+                );
+            }
+        }
+        fn moveStaticAnyAligned(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.moveStaticAnyAlignedUnaddressable,
+                    .{ allocator, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.moveStaticAnyAlignedAddressable,
+                    .{ allocator, t_up_addr },
+                );
+            }
+        }
+        fn moveManyUnitAligned(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.moveManyUnitAlignedUnaddressable,
+                    .{ allocator, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.moveManyUnitAlignedAddressable,
+                    .{ allocator, t_up_addr },
+                );
+            }
+        }
+        fn moveManyAnyAligned(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.moveManyAnyAlignedUnaddressable,
+                    .{ allocator, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.moveManyAnyAlignedAddressable,
+                    .{ allocator, t_up_addr },
+                );
+            }
+        }
+        fn deallocateStaticUnitAligned(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_lb_addr: u64, s_up_addr: u64) void {
+            if (s_up_addr == allocator.next()) {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateStaticUnitAlignedEndBoundary,
+                    .{ allocator, n_count, s_aligned_bytes, s_lb_addr },
+                );
+            } else if (Allocator.allocator_spec.options.require_filo_free) {
+                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateStaticUnitAlignedEndInternal,
+                    .{ allocator, n_count, s_aligned_bytes },
+                );
+            }
+        }
+        fn deallocateStaticAnyAligned(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_lb_addr: u64, s_up_addr: u64) void {
+            if (s_up_addr == allocator.next()) {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateStaticAnyAlignedEndBoundary,
+                    .{ allocator, n_count, s_aligned_bytes, s_lb_addr },
+                );
+            } else if (Allocator.allocator_spec.options.require_filo_free) {
+                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateStaticAnyAlignedEndInternal,
+                    .{ allocator, n_count, s_aligned_bytes },
+                );
+            }
+        }
+        fn deallocateManyUnitAligned(allocator: *Allocator, s_aligned_bytes: u64, s_lb_addr: u64, s_up_addr: u64) void {
+            if (s_up_addr == allocator.next()) {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateManyUnitAlignedEndBoundary,
+                    .{ allocator, s_aligned_bytes, s_lb_addr },
+                );
+            } else if (Allocator.allocator_spec.options.require_filo_free) {
+                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateManyUnitAlignedEndInternal,
+                    .{ allocator, s_aligned_bytes },
+                );
+            }
+        }
+        fn deallocateManyAnyAligned(allocator: *Allocator, s_aligned_bytes: u64, s_lb_addr: u64, s_up_addr: u64) void {
+            if (s_up_addr == allocator.next()) {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateManyAnyAlignedEndBoundary,
+                    .{ allocator, s_aligned_bytes, s_lb_addr },
+                );
+            } else if (Allocator.allocator_spec.options.require_filo_free) {
+                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.deallocateManyAnyAlignedEndInternal,
+                    .{ allocator, s_aligned_bytes },
+                );
+            }
+        }
+        fn convertHolderManyUnitAligned(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.convertHolderManyUnitAlignedUnaddressable,
+                    .{ allocator, t_aligned_bytes, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.convertHolderManyUnitAlignedAddressable,
+                    .{ allocator, t_aligned_bytes, t_up_addr },
+                );
+            }
+        }
+        fn convertHolderManyAnyAligned(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) anyerror!void {
+            if (t_up_addr > allocator.finish()) {
+                try @call(
+                    .{ .modifier = .never_inline },
+                    Implementation.convertHolderManyAnyAlignedUnaddressable,
+                    .{ allocator, t_aligned_bytes, t_up_addr },
+                );
+            } else {
+                @call(
+                    .{ .modifier = .always_inline },
+                    Implementation.convertHolderManyAnyAlignedAddressable,
+                    .{ allocator, t_aligned_bytes, t_up_addr },
+                );
+            }
+        }
+        fn convertAnyManyUnitAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            if (s_up_addr == allocator.next()) {
+                if (t_up_addr > allocator.finish()) {
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.convertAnyManyUnitAlignedUnaddressable,
+                        .{allocator},
+                    );
+                } else {
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.convertAnyManyUnitAlignedAddressable,
+                        .{allocator},
+                    );
+                }
+            } else {
+                return error.ResizeInternal;
+            }
+        }
+        fn convertAnyManyAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            if (s_up_addr == allocator.next()) {
+                if (t_up_addr > allocator.finish()) {
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.convertAnyManyAnyAlignedUnaddressable,
+                        .{allocator},
+                    );
+                } else {
+                    @call(
+                        .{ .modifier = .always_inline },
+                        Implementation.convertAnyManyAnyAlignedAddressable,
+                        .{allocator},
+                    );
+                }
+            } else {
+                return error.ResizeInternal;
+            }
+        }
+    };
+}
+fn GenericImplementation(comptime Allocator: type) type {
+    return opaque {
+        const Graphics = GenericAllocatorGraphics(Allocator);
+
+        fn allocateStaticAnyAlignedAddressable(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.static.any_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+        }
+        fn allocateStaticAnyAlignedUnaddressable(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.static.any_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+            try allocator.acquire(s_up_addr);
+        }
+        fn allocateStaticUnitAlignedAddressable(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.static.unit_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+        }
+        fn allocateStaticUnitAlignedUnaddressable(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.static.unit_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+            try allocator.acquire(s_up_addr);
+        }
+        fn allocateManyAnyAlignedAddressable(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.many.any_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+        }
+        fn allocateManyAnyAlignedUnaddressable(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.many.any_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+            try allocator.acquire(s_up_addr);
+        }
+        fn allocateManyUnitAlignedAddressable(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.many.unit_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+        }
+        fn allocateManyUnitAlignedUnaddressable(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.many.unit_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += s_aligned_bytes;
+            }
+            allocator.allocate(s_up_addr);
+            try allocator.acquire(s_up_addr);
+        }
+        fn allocateHolderAnyAligned(allocator: *Allocator, s_lb_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.holder.any_aligned += 1;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = s_lb_addr;
+            }
+        }
+        fn allocateHolderUnitAligned(allocator: *Allocator, s_lb_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.allocate.holder.unit_aligned += 1;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = s_lb_addr;
+            }
+        }
+        fn resizeManyBelowAnyAlignedEndBoundary(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.below.any_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr, t_up_addr);
+            }
+            allocator.deallocate(s_up_addr);
+        }
+        fn resizeManyBelowAnyAlignedEndInternal(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.below.any_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr, t_up_addr);
+            }
+        }
+        fn resizeManyBelowUnitAlignedEndBoundary(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.below.unit_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr, t_up_addr);
+            }
+            allocator.deallocate(s_up_addr);
+        }
+        fn resizeManyBelowUnitAlignedEndInternal(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.below.unit_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr, t_up_addr);
+            }
+        }
+        fn resizeManyAboveAnyAlignedAddressable(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.above.any_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn resizeManyAboveAnyAlignedUnaddressable(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.above.any_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn resizeManyAboveUnitAlignedAddressable(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.above.unit_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn resizeManyAboveUnitAlignedUnaddressable(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.many.above.unit_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn resizeHolderBelowAnyAligned(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.holder.below.any_aligned += 1;
+            }
+        }
+        fn resizeHolderBelowUnitAligned(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.holder.below.unit_aligned += 1;
+            }
+        }
+        fn resizeHolderAboveAnyAlignedAddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.holder.above.any_aligned.addressable += 1;
+            }
+        }
+        fn resizeHolderAboveAnyAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.holder.above.any_aligned.unaddressable += 1;
+            }
+            try allocator.acquire(t_up_addr);
+        }
+        fn resizeHolderAboveUnitAlignedAddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.holder.above.unit_aligned.addressable += 1;
+            }
+        }
+        fn resizeHolderAboveUnitAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.resize.holder.above.unit_aligned.unaddressable += 1;
+            }
+            try allocator.acquire(t_up_addr);
+        }
+        fn moveStaticAnyAlignedAddressable(allocator: *Allocator, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.static.any_aligned.addressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn moveStaticAnyAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.static.any_aligned.unaddressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn moveStaticUnitAlignedAddressable(allocator: *Allocator, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.static.unit_aligned.addressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn moveStaticUnitAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.static.unit_aligned.unaddressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn moveManyAnyAlignedAddressable(allocator: *Allocator, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.many.any_aligned.addressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn moveManyAnyAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.many.any_aligned.unaddressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn moveManyUnitAlignedAddressable(allocator: *Allocator, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.many.unit_aligned.addressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn moveManyUnitAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.move.many.unit_aligned.unaddressable += 1;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn reallocateManyBelowAnyAlignedEndBoundary(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.below.any_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn reallocateManyBelowAnyAlignedEndInternal(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.below.any_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn reallocateManyBelowUnitAlignedEndBoundary(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.below.unit_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn reallocateManyBelowUnitAlignedEndInternal(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.below.unit_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn reallocateManyAboveAnyAlignedAddressable(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.above.any_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn reallocateManyAboveAnyAlignedUnaddressable(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.above.any_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn reallocateManyAboveUnitAlignedAddressable(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.above.unit_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn reallocateManyAboveUnitAlignedUnaddressable(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.reallocate.many.above.unit_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn convertAnyStaticAnyAlignedAddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.static.any_aligned.addressable += 1;
+            }
+        }
+        fn convertAnyStaticAnyAlignedUnaddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.static.any_aligned.unaddressable += 1;
+            }
+        }
+        fn convertAnyStaticUnitAlignedAddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.static.unit_aligned.addressable += 1;
+            }
+        }
+        fn convertAnyStaticUnitAlignedUnaddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.static.unit_aligned.unaddressable += 1;
+            }
+        }
+        fn convertAnyManyAnyAlignedAddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.many.any_aligned.addressable += 1;
+            }
+        }
+        fn convertAnyManyAnyAlignedUnaddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.many.any_aligned.unaddressable += 1;
+            }
+        }
+        fn convertAnyManyUnitAlignedAddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.many.unit_aligned.addressable += 1;
+            }
+        }
+        fn convertAnyManyUnitAlignedUnaddressable(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.any.many.unit_aligned.unaddressable += 1;
+            }
+        }
+        fn convertHolderStaticAnyAlignedAddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.static.any_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn convertHolderStaticAnyAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.static.any_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn convertHolderStaticUnitAlignedAddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.static.unit_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn convertHolderStaticUnitAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.static.unit_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn convertHolderManyAnyAlignedAddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.many.any_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn convertHolderManyAnyAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.many.any_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn convertHolderManyUnitAlignedAddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.many.unit_aligned.addressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+        }
+        fn convertHolderManyUnitAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) anyerror!void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.many.unit_aligned.unaddressable += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count += 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility += t_aligned_bytes;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+            allocator.allocate(t_up_addr);
+            try allocator.acquire(t_up_addr);
+        }
+        fn convertHolderHolderAnyAligned(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.holder.any_aligned += 1;
+            }
+        }
+        fn convertHolderHolderUnitAligned(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.convert.holder.holder.unit_aligned += 1;
+            }
+        }
+        fn deallocateStaticAnyAlignedEndBoundary(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_lb_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.static.any_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.deallocate(s_lb_addr);
+        }
+        fn deallocateStaticAnyAlignedEndInternal(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.static.any_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.reset();
+        }
+        fn deallocateStaticUnitAlignedEndBoundary(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_lb_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.static.unit_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.deallocate(s_lb_addr);
+        }
+        fn deallocateStaticUnitAlignedEndInternal(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.static.unit_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= n_count;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.reset();
+        }
+        fn deallocateManyAnyAlignedEndBoundary(allocator: *Allocator, s_aligned_bytes: u64, s_lb_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.many.any_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.deallocate(s_lb_addr);
+        }
+        fn deallocateManyAnyAlignedEndInternal(allocator: *Allocator, s_aligned_bytes: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.many.any_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.reset();
+        }
+        fn deallocateManyUnitAlignedEndBoundary(allocator: *Allocator, s_aligned_bytes: u64, s_lb_addr: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.many.unit_aligned.end_boundary += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.deallocate(s_lb_addr);
+        }
+        fn deallocateManyUnitAlignedEndInternal(allocator: *Allocator, s_aligned_bytes: u64) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.many.unit_aligned.end_internal += 1;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -= 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility -= s_aligned_bytes;
+            }
+            allocator.reset();
+        }
+        fn deallocateHolderAnyAligned(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.holder.any_aligned += 1;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+        }
+        fn deallocateHolderUnitAligned(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.count_branches) {
+                allocator.metadata.branches.deallocate.holder.unit_aligned += 1;
+            }
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
+                allocator.metadata.holder = 0;
+            }
+        }
+    };
+}
+fn GenericAllocatorGraphics(comptime Allocator: type) type {
+    return opaque {
+        const PrintArray = mem.StaticString(8192);
+        const ArenaRange = blk: {
+            if (@hasDecl(Allocator, "arena")) {
+                break :blk fmt.ArenaRangeFormat(Allocator.arena.index);
+            } else {
+                break :blk fmt.AddressRangeFormat;
+            }
+        };
+        const ChangedArenaRange = blk: {
+            if (@hasDecl(Allocator, "arena")) {
+                break :blk fmt.ChangedArenaRangeFormat(Allocator.arena.index);
+            } else {
+                break :blk fmt.ChangedAddressRangeFormat;
+            }
+        };
+        const ChangedBytes = fmt.ChangedBytesFormat(.{});
+        const about_next_s: []const u8 = "next:           ";
+        const about_count_s: []const u8 = "count:          ";
+        const about_no_op_s: []const u8 = "no-op:          ";
+        const about_moved_s: []const u8 = "moved:          ";
+        const about_finish_s: []const u8 = "finish:         ";
+        const about_holder_s: []const u8 = "holder:         ";
+        const about_utility_s: []const u8 = "utility:        ";
+        const about_resized_s: []const u8 = "resized:        ";
+        const about_capacity_s: []const u8 = "capacity:       ";
+        const about_remapped_s: []const u8 = "remapped:       ";
+        const about_allocated_s: []const u8 = "allocated:      ";
+        const about_filo_error_s: []const u8 = "filo-error:     ";
+        const about_deallocated_s: []const u8 = "deallocated:    ";
+        const about_reallocated_s: []const u8 = "reallocated:    ";
+        pub fn show(allocator: *Allocator, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.isSilent()) return;
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            if (Allocator.allocator_spec.logging.head) {
+                array.writeMany(about_next_s);
+                array.writeFormat(fmt.ux64(allocator.next()));
+                array.writeOne('\n');
+            }
+            if (Allocator.allocator_spec.logging.sentinel) {
+                array.writeMany(about_finish_s);
+                array.writeFormat(fmt.ux64(allocator.finish()));
+                array.writeOne('\n');
+            }
+            if (Allocator.allocator_spec.logging.metadata) {
+                if (Allocator.allocator_spec.options.count_allocations) {
+                    array.writeMany(about_count_s);
+                    array.writeFormat(fmt.ud64(allocator.metadata.count));
+                    array.writeOne('\n');
+                }
+                if (Allocator.allocator_spec.options.count_useful_bytes) {
+                    array.writeMany(about_utility_s);
+                    array.writeFormat(fmt.ud64(allocator.metadata.utility));
+                    array.writeOne('/');
+                    array.writeFormat(fmt.ud64(allocator.span()));
+                    array.writeOne('\n');
+                }
+                if (Allocator.allocator_spec.options.check_parametric_binding) {
+                    array.writeMany(about_holder_s);
+                    array.writeFormat(fmt.ux64(allocator.metadata.holder));
+                    array.writeOne('\n');
+                }
+                if (Allocator.allocator_spec.options.count_branches) {
+                    Branches.Graphics.showWrite(allocator.metadata.branches, &array);
+                }
+            }
+            if (array.count() != src_fmt.formatLength()) {
+                array.writeOne('\n');
+                file.noexcept.write(2, array.readAll());
+            }
+        }
+        pub fn showWithReference(allocator: *Allocator, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.isSilent()) return;
+            if (Allocator.allocator_spec.options.trace_state) {
+                const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+                var array: PrintArray = .{};
+                array.writeFormat(src_fmt);
+                if (Allocator.allocator_spec.logging.head and
+                    allocator.reference.ub_addr != allocator.ub_addr)
+                {
+                    array.writeMany(about_next_s);
+                    array.writeFormat(fmt.uxd(allocator.reference.ub_addr, allocator.ub_addr));
+                    array.writeOne('\n');
+                    allocator.reference.ub_addr = allocator.ub_addr;
+                }
+                if (Allocator.allocator_spec.logging.sentinel and
+                    allocator.reference.up_addr != allocator.up_addr)
+                {
+                    array.writeMany(about_finish_s);
+                    array.writeFormat(fmt.uxd(allocator.reference.up_addr, allocator.up_addr));
+                    array.writeOne('\n');
+                    allocator.reference.up_addr = allocator.up_addr;
+                }
+                if (Allocator.allocator_spec.logging.metadata) {
+                    if (Allocator.allocator_spec.options.count_allocations and
+                        allocator.reference.count != allocator.metadata.count)
+                    {
+                        array.writeMany(about_count_s);
+                        array.writeFormat(fmt.udd(allocator.reference.count, allocator.metadata.count));
+                        array.writeOne('\n');
+                        allocator.reference.count = allocator.metadata.count;
+                    }
+                    if (Allocator.allocator_spec.options.count_useful_bytes and
+                        allocator.reference.utility != allocator.metadata.utility)
+                    {
+                        array.writeMany(about_utility_s);
+                        array.writeFormat(fmt.udd(allocator.reference.utility, allocator.metadata.utility));
+                        array.writeOne('/');
+                        array.writeFormat(fmt.ud(allocator.span()));
+                        array.writeOne('\n');
+                        allocator.reference.utility = allocator.metadata.utility;
+                    }
+                    if (Allocator.allocator_spec.options.check_parametric_binding and
+                        allocator.reference.holder != allocator.metadata.holder)
+                    {
+                        array.writeMany(about_holder_s);
+                        array.writeFormat(fmt.uxd(allocator.reference.holder, allocator.metadata.holder));
+                        array.writeOne('\n');
+                        allocator.reference.holder = allocator.metadata.holder;
+                    }
+                }
+                if (Allocator.allocator_spec.logging.branches and
+                    Allocator.allocator_spec.options.count_branches)
+                {
+                    Branches.Graphics.showWithReferenceWrite(allocator.metadata.branches, &allocator.reference.branches, &array);
+                }
+                if (array.count() != src_fmt.formatLength()) {
+                    array.writeOne('\n');
+                    file.noexcept.write(2, array.readAll());
+                }
+            } else {
+                return show(allocator, src);
+            }
+        }
+        fn writeModifyOperation(array: *PrintArray, s_ab_addr: u64, s_aligned_bytes: u64, t_ab_addr: u64, t_aligned_bytes: u64) void {
+            if (s_aligned_bytes != t_aligned_bytes and s_ab_addr == t_ab_addr) {
+                return array.writeMany(about_resized_s);
+            }
+            if (s_aligned_bytes == t_aligned_bytes and s_ab_addr != t_ab_addr) {
+                return array.writeMany(about_moved_s);
+            }
+            if (s_ab_addr != t_ab_addr) {
+                return array.writeMany(about_reallocated_s);
+            }
+            array.writeMany(about_no_op_s);
+        }
+        fn writeManyArrayNotation(array: *PrintArray, comptime child: type, count: u64, comptime sentinel: ?*const child) void {
+            array.writeOne('[');
+            array.writeFormat(fmt.ud64(count));
+            if (sentinel) |sentinel_ptr| {
+                array.writeOne(':');
+                array.writeFormat(fmt.any(sentinel_ptr.*));
+                array.writeOne(']');
+            } else {
+                array.writeOne(']');
+            }
+            array.writeMany(@typeName(child));
+        }
+        fn writeHolderArrayNotation(array: *PrintArray, comptime child: type, count: u64, comptime sentinel: ?*const child) void {
+            array.writeOne('[');
+            array.writeFormat(fmt.ud64(count));
+            array.writeMany("..*");
+            if (sentinel) |sentinel_ptr| {
+                array.writeOne(':');
+                array.writeFormat(fmt.any(sentinel_ptr.*));
+                array.writeOne(']');
+            } else {
+                array.writeOne(']');
+            }
+            array.writeMany(@typeName(child));
+        }
+        fn writeChangedManyArrayNotation(array: *PrintArray, comptime child: type, s_count: u64, t_count: u64, comptime sentinel: ?*const child) void {
+            array.writeOne('[');
+            array.writeFormat(fmt.udd(s_count, t_count));
+            if (sentinel) |sentinel_ptr| {
+                array.writeOne(':');
+                array.writeFormat(fmt.any(sentinel_ptr.*));
+                array.writeOne(']');
+            } else {
+                array.writeOne(']');
+            }
+            array.writeMany(@typeName(child));
+        }
+        fn writeChangedHolderArrayNotation(array: *PrintArray, comptime child: type, s_count: u64, t_count: u64, comptime sentinel: ?*const child) void {
+            array.writeOne('[');
+            array.writeFormat(fmt.udd(s_count, t_count));
+            array.writeMany("..*");
+            if (sentinel) |sentinel_ptr| {
+                array.writeOne(':');
+                array.writeFormat(fmt.any(sentinel_ptr.*));
+                array.writeOne(']');
+            } else {
+                array.writeOne(']');
+            }
+            array.writeMany(@typeName(child));
+        }
+        fn writeAddressSpaceA(array: *PrintArray, s_ab_addr: u64, s_uw_addr: u64) void {
+            array.writeFormat(ArenaRange.init(s_ab_addr, s_uw_addr));
+            array.writeMany(", ");
+        }
+        fn writeAddressSpaceB(array: *PrintArray, s_ab_addr: u64, s_uw_addr: u64, t_ab_addr: u64, t_uw_addr: u64) void {
+            array.writeFormat(ChangedArenaRange.init(s_ab_addr, s_uw_addr, t_ab_addr, t_uw_addr));
+            array.writeMany(", ");
+        }
+        fn writeAlignedBytesA(array: *PrintArray, s_aligned_bytes: u64) void {
+            array.writeFormat(fmt.bytes(s_aligned_bytes));
+            array.writeMany(", ");
+        }
+        fn writeAlignedBytesB(array: *PrintArray, s_aligned_bytes: u64, t_aligned_bytes: u64) void {
+            array.writeFormat(ChangedBytes.init(s_aligned_bytes, t_aligned_bytes));
+            array.writeMany(", ");
+        }
+        fn writeManyArrayNotationA(
+            array: *PrintArray,
+            comptime s_child: type,
+            s_aligned_bytes: u64,
+            comptime s_sentinel: ?*const s_child,
+        ) void {
+            const s_count: u64 = (s_aligned_bytes - @sizeOf(s_child) * @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+            writeManyArrayNotation(array, s_child, s_count, s_sentinel);
+            array.writeMany(", ");
+        }
+        fn writeManyArrayNotationB(
+            array: *PrintArray,
+            comptime s_child: type,
+            comptime t_child: type,
+            s_aligned_bytes: u64,
+            t_aligned_bytes: u64,
+            comptime s_sentinel: ?*const s_child,
+            comptime t_sentinel: ?*const t_child,
+        ) void {
+            const s_count: u64 = (s_aligned_bytes - @sizeOf(s_child) * @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+            const t_count: u64 = (t_aligned_bytes - @sizeOf(t_child) * @boolToInt(t_sentinel != null)) / @sizeOf(t_child);
+            if (s_child == t_child and s_sentinel == t_sentinel) {
+                if (s_count != t_count) {
+                    writeChangedManyArrayNotation(array, s_child, s_count, t_count, s_sentinel);
+                } else {
+                    writeManyArrayNotation(array, s_child, s_count, s_sentinel);
+                }
+            } else {
+                writeManyArrayNotation(array, s_child, s_count, s_sentinel);
+                if (s_count != t_count) {
+                    array.writeMany(" -> ");
+                    writeManyArrayNotation(array, t_child, t_count, t_sentinel);
+                }
+            }
+            array.writeMany(", ");
+        }
+        fn writeHolderArrayNotationA(
+            array: *PrintArray,
+            comptime s_child: type,
+            s_aligned_bytes: u64,
+            comptime s_sentinel: ?*const s_child,
+        ) void {
+            const s_count: u64 = (s_aligned_bytes - @sizeOf(s_child) * @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+            writeHolderArrayNotation(array, s_child, s_count, s_sentinel);
+            array.writeMany(", ");
+        }
+        fn writeHolderArrayNotationB(
+            array: *PrintArray,
+            comptime s_child: type,
+            comptime t_child: type,
+            s_aligned_bytes: u64,
+            t_aligned_bytes: u64,
+            comptime s_sentinel: ?*const s_child,
+            comptime t_sentinel: ?*const t_child,
+        ) void {
+            const s_count: u64 = (s_aligned_bytes - @sizeOf(s_child) * @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+            const t_count: u64 = (t_aligned_bytes - @sizeOf(t_child) * @boolToInt(t_sentinel != null)) / @sizeOf(t_child);
+            if (s_child == t_child and s_sentinel == t_sentinel) {
+                if (s_count != t_count) {
+                    writeChangedHolderArrayNotation(array, s_child, s_count, t_count, s_sentinel);
+                } else {
+                    writeHolderArrayNotation(array, s_child, s_count, s_sentinel);
+                }
+            } else {
+                writeHolderArrayNotation(array, s_child, s_count, s_sentinel);
+                if (s_count != t_count) {
+                    array.writeMany(" -> ");
+                    writeHolderArrayNotation(array, t_child, t_count, t_sentinel);
+                }
+            }
+            array.writeMany(", ");
+        }
+        fn showAllocateMany(comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.allocate) {
+                if (@hasDecl(impl_type, "child")) {
+                    const sentinel_ptr: ?*const impl_type.child =
+                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
+                    @call(.{ .modifier = .never_inline }, showAllocateManyStructured, .{
+                        impl_type.child, impl.low(), impl.start(),     impl.high(),
+                        sentinel_ptr,    src,        @returnAddress(),
+                    });
+                } else {
+                    @call(.{ .modifier = .never_inline }, showAllocateManyUnstructured, .{
+                        impl.low(), impl.start(),     impl.high(),
+                        src,        @returnAddress(),
+                    });
+                }
+            }
+        }
+        const showAllocateStatic = showAllocateMany;
+        fn showAllocateHolder(allocator: *const Allocator, comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.allocate) {
+                if (@hasDecl(impl_type, "child")) {
+                    const sentinel_ptr: ?*const impl_type.child =
+                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
+                    @call(.{ .modifier = .never_inline }, showAllocateHolderStructured, .{
+                        impl_type.child, impl.low(allocator.*), impl.start(allocator.*), impl.high(allocator.*),
+                        sentinel_ptr,    src,                   @returnAddress(),
+                    });
+                } else {
+                    @call(.{ .modifier = .never_inline }, showAllocateHolderUnstructured, .{
+                        impl.low(allocator.*), impl.start(allocator.*), impl.high(allocator.*),
+                        src,                   @returnAddress(),
+                    });
+                }
+            }
+        }
+        fn showReallocateMany(comptime impl_type: type, s_impl: impl_type, t_impl: impl_type, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.reallocate) {
+                if (@hasDecl(impl_type, "child")) {
+                    const sentinel_ptr: ?*const impl_type.child =
+                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
+                    @call(.{ .modifier = .never_inline }, showReallocateManyStructured, .{
+                        impl_type.child, impl_type.child, s_impl.low(),
+                        s_impl.start(),  s_impl.high(),   t_impl.low(),
+                        t_impl.start(),  t_impl.high(),   sentinel_ptr,
+                        sentinel_ptr,    src,             @returnAddress(),
+                    });
+                } else {
+                    @call(.{ .modifier = .never_inline }, showReallocateManyUnstructured, .{
+                        s_impl.low(), s_impl.start(),   s_impl.high(),
+                        t_impl.low(), t_impl.start(),   t_impl.high(),
+                        src,          @returnAddress(),
+                    });
+                }
+            }
+        }
+        const showReallocateStatic = showReallocateMany;
+        fn showReallocateHolder(allocator: *const Allocator, comptime impl_type: type, s_impl: impl_type, t_impl: impl_type, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.reallocate) {
+                if (@hasDecl(impl_type, "child")) {
+                    const sentinel_ptr: ?*const impl_type.child =
+                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
+                    @call(.{ .modifier = .never_inline }, showReallocateHolderStructured, .{
+                        impl_type.child,           impl_type.child,          s_impl.low(allocator.*),
+                        s_impl.start(allocator.*), s_impl.high(allocator.*), t_impl.low(allocator.*),
+                        t_impl.start(allocator.*), t_impl.high(allocator.*), sentinel_ptr,
+                        sentinel_ptr,              src,                      @returnAddress(),
+                    });
+                } else {
+                    @call(.{ .modifier = .never_inline }, showReallocateHolderUnstructured, .{
+                        s_impl.low(allocator.*), s_impl.start(allocator.*), s_impl.high(allocator.*),
+                        t_impl.low(allocator.*), t_impl.start(allocator.*), t_impl.high(allocator.*),
+                        src,                     @returnAddress(),
+                    });
+                }
+            }
+        }
+        const showResizeMany = showReallocateMany;
+        const showResizeStatic = showReallocateStatic;
+        const showResizeHolder = showReallocateHolder;
+        fn showDeallocateMany(comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.deallocate) {
+                if (@hasDecl(impl_type, "child")) {
+                    const sentinel_ptr: ?*const impl_type.child =
+                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
+                    @call(.{ .modifier = .never_inline }, showDeallocateManyStructured, .{
+                        impl_type.child, impl.low(), impl.start(),     impl.high(),
+                        sentinel_ptr,    src,        @returnAddress(),
+                    });
+                } else {
+                    @call(.{ .modifier = .never_inline }, showDeallocateManyUnstructured, .{
+                        impl.low(), impl.start(),     impl.high(),
+                        src,        @returnAddress(),
+                    });
+                }
+            }
+        }
+        const showDeallocateStatic = showDeallocateMany;
+        fn showDeallocateHolder(allocator: *const Allocator, comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
+            if (Allocator.allocator_spec.logging.deallocate) {
+                if (@hasDecl(impl_type, "child")) {
+                    const sentinel_ptr: ?*const impl_type.child =
+                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
+                    @call(.{ .modifier = .never_inline }, showDeallocateHolderStructured, .{
+                        impl_type.child, impl.low(allocator.*), impl.start(allocator.*), impl.high(allocator.*),
+                        sentinel_ptr,    src,                   @returnAddress(),
+                    });
+                } else {
+                    @call(.{ .modifier = .never_inline }, showDeallocateHolderUnstructured, .{
+                        impl.low(allocator.*), impl.start(allocator.*), impl.high(allocator.*),
+                        src,                   @returnAddress(),
+                    });
+                }
+            }
+        }
+        fn showAllocateManyStructured(comptime s_child: type, _: u64, s_ab_addr: u64, s_up_addr: u64, comptime s_sentinel: ?*const s_child, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_allocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            writeManyArrayNotationA(&array, s_child, s_aligned_bytes, s_sentinel);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        pub fn showAllocateHolderStructured(comptime s_child: type, _: u64, s_ab_addr: u64, s_up_addr: u64, comptime sentinel: ?*const s_child, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const s_ua_addr: u64 = s_ab_addr + s_aligned_bytes;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_allocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_ua_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            writeHolderArrayNotationA(&array, s_child, s_aligned_bytes, sentinel);
+            array.writeMany("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showReallocateManyStructured(comptime s_child: type, comptime t_child: type, _: u64, s_ab_addr: u64, s_up_addr: u64, _: u64, t_ab_addr: u64, t_up_addr: u64, comptime s_sentinel: ?*const s_child, comptime t_sentinel: ?*const t_child, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const t_aligned_bytes: u64 = t_up_addr - t_ab_addr;
+            const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
+            const t_uw_addr: u64 = t_ab_addr + t_aligned_bytes;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
+            writeAddressSpaceB(&array, s_ab_addr, s_uw_addr, t_ab_addr, t_uw_addr);
+            writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
+            writeManyArrayNotationB(&array, s_child, t_child, s_aligned_bytes, t_aligned_bytes, s_sentinel, t_sentinel);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showReallocateHolderStructured(comptime s_child: type, comptime t_child: type, _: u64, s_ab_addr: u64, s_up_addr: u64, _: u64, t_ab_addr: u64, t_up_addr: u64, comptime s_sentinel: ?*const s_child, comptime t_sentinel: ?*const t_child, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const t_aligned_bytes: u64 = t_up_addr - t_ab_addr;
+            const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
+            const t_uw_addr: u64 = t_ab_addr + t_aligned_bytes;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
+            writeAddressSpaceB(&array, s_ab_addr, s_uw_addr, t_ab_addr, t_uw_addr);
+            writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
+            writeHolderArrayNotationB(&array, s_child, t_child, s_aligned_bytes, t_aligned_bytes, s_sentinel, t_sentinel);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showDeallocateManyStructured(comptime s_child: type, _: u64, s_ab_addr: u64, s_up_addr: u64, comptime s_sentinel: ?*const s_child, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const uw_offset: u64 = @sizeOf(s_child) * @boolToInt(s_sentinel != null);
+            const s_uw_addr: u64 = s_up_addr - uw_offset;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_deallocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            writeManyArrayNotationA(&array, s_child, s_aligned_bytes, s_sentinel);
+            array.writeMany("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showDeallocateHolderStructured(comptime s_child: type, _: u64, s_ab_addr: u64, s_up_addr: u64, comptime s_sentinel: ?*const s_child, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const uw_offset: u64 = @sizeOf(s_child) * @boolToInt(s_sentinel != null);
+            const s_uw_addr: u64 = s_up_addr - uw_offset;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_deallocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            writeHolderArrayNotationA(&array, s_child, s_aligned_bytes, s_sentinel);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        pub fn verboseAllocateStaticUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_allocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showAllocateManyUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_allocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showReallocateManyUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, _: u64, t_ab_addr: u64, t_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const t_aligned_bytes: u64 = t_up_addr - t_ab_addr;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
+            writeAddressSpaceB(&array, s_ab_addr, s_up_addr, t_ab_addr, t_up_addr);
+            writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showReallocateHolderUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, _: u64, t_ab_addr: u64, t_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const t_aligned_bytes: u64 = t_up_addr - t_ab_addr;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
+            writeAddressSpaceB(&array, s_ab_addr, s_up_addr, t_ab_addr, t_up_addr);
+            writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showAllocateHolderUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            const s_ua_addr: u64 = s_ab_addr + s_aligned_bytes;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_allocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_ua_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showDeallocateManyUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_deallocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_up_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showDeallocateHolderUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_deallocated_s);
+            writeAddressSpaceA(&array, s_ab_addr, s_up_addr);
+            writeAlignedBytesA(&array, s_aligned_bytes);
+            array.overwriteManyBack("\n\n");
+            file.noexcept.write(2, array.readAll());
+        }
+        fn showFiloDeallocateViolationAndExit(allocator: *const Allocator, s_up_addr: u64, src: builtin.SourceLocation) void {
+            if (builtin.is_perf) @panic(about_filo_error_s ++ "bad deallocate");
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const s_ua_addr: u64 = allocator.next();
+            const d_aligned_bytes: u64 = s_ua_addr - s_up_addr;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_filo_error_s ++ "attempted deallocation ");
+            array.writeFormat(fmt.bytes(d_aligned_bytes));
+            array.writeMany(" below segment maximum\n\n");
+            file.noexcept.write(2, array.readAll());
+            sys.exit(1);
+        }
+        fn showFiloResizeViolationAndExit(allocator: *const Allocator, s_up_addr: u64, src: builtin.SourceLocation) void {
+            if (builtin.is_perf) @panic(about_filo_error_s ++ "bad resize");
+            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const s_ua_addr: u64 = allocator.next();
+            const d_aligned_bytes: u64 = s_ua_addr - s_up_addr;
+            var array: PrintArray = .{};
+            array.writeFormat(src_fmt);
+            array.writeMany(about_filo_error_s ++ "attempted resize ");
+            array.writeFormat(fmt.bytes(d_aligned_bytes));
+            array.writeMany(" below segment maximum\n\n");
+            file.noexcept.write(2, array.readAll());
+            sys.exit(1);
+        }
+    };
+}
