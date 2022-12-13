@@ -351,7 +351,6 @@ pub const AdviseSpec = struct {
     }
     pub usingnamespace sys.FunctionInterfaceSpec(AdviseSpec);
 };
-pub const Amount = union(enum) { bytes: u64, count: u64 };
 pub const Bytes = struct {
     count: u64,
     unit: Unit,
@@ -928,46 +927,121 @@ pub fn StaticString(comptime count: u64) type {
 ///     `techniques`    => how to interpret or transform the reference data,
 ///     `specifiers`    => set of available configuration parameters,
 pub const AbstractSpec = union(enum) {
+    /// Automatic memory below
     automatic_storage: union(enum) {
-        read_write_auto: union(enum) {
-            structured: AutoAlignment(struct {
-                child: type,
-                sentinel: in_out(*const anyopaque) = null,
-                count: u64,
-                low_alignment: in(u64) = null,
-            }),
-        },
+        read_write_auto: Automatic,
         offset_byte_address: union(enum) {
-            read_write_stream_auto: union(enum) {
-                structured: AutoAlignment(struct {
-                    child: type,
-                    sentinel: in_out(*const anyopaque) = null,
-                    count: u64,
-                    low_alignment: in(u64) = null,
-                }),
-            },
+            read_write_stream_auto: Automatic,
             undefined_byte_address: union(enum) {
-                read_write_stream_push_pop_auto: union(enum) {
-                    structured: AutoAlignment(struct {
-                        child: type,
-                        sentinel: in_out(*const anyopaque) = null,
-                        count: u64,
-                        low_alignment: in(u64) = null,
-                    }),
-                },
+                read_write_stream_push_pop_auto: Automatic,
             },
         },
         undefined_byte_address: union(enum) {
-            read_write_push_pop_auto: union(enum) {
-                structured: AutoAlignment(struct {
-                    child: type,
-                    sentinel: in_out(*const anyopaque) = null,
-                    count: u64,
-                    low_alignment: in(u64) = null,
-                }),
-            },
+            read_write_push_pop_auto: Automatic,
         },
     },
+    /// Managed memory below
+    allocated_byte_address: union(enum) {
+        read_write: union(enum) {
+            static: Static,
+            // single_packed_approximate_capacity: Dynamic,
+        },
+        offset_byte_address: union(enum) {
+            undefined_byte_address: union(enum) {
+                read_write_stream_push_pop: union(enum) {
+                    // single_packed_approximate_capacity: Dynamic,
+                    // double_packed_approximate_capacity: Dynamic,
+                    static: Static,
+                },
+                unallocated_byte_address: union(enum) {
+                    read_write_stream_push_pop: Dynamic,
+                },
+            },
+            unallocated_byte_address: union(enum) {
+                read_write_stream: Dynamic,
+            },
+        },
+        undefined_byte_address: union(enum) {
+            read_write_push_pop: union(enum) {
+                // single_packed_approximate_capacity: Dynamic,
+                // double_packed_approximate_capacity: Dynamic,
+                static: Static,
+            },
+
+            unallocated_byte_address: union(enum) {
+                read_write_push_pop: Dynamic,
+            },
+        },
+        unallocated_byte_address: union(enum) {
+            read_write: Dynamic,
+        },
+    },
+    offset_byte_address: union(enum) {
+        undefined_byte_address: union(enum) {
+            read_write_stream_push_pop: union(enum) { parametric: Parametric },
+        },
+    },
+    undefined_byte_address: union(enum) {
+        read_write_push_pop: union(enum) { parametric: Parametric },
+    },
+
+    const Automatic = union(enum) {
+        structured: AutoAlignment(AutomaticStuctured),
+    };
+    const Static = union(enum) {
+        structured: NoSuperAlignment(StructuredStatic),
+        unstructured: NoSuperAlignment(UnstructuredStatic),
+    };
+    const Dynamic = union(enum) {
+        structured: NoSuperAlignment(Structured),
+        unstructured: NoSuperAlignment(Unstructured),
+    };
+    const Parametric = union(enum) {
+        structured: NoPackedAlignment(StructuredParametric),
+        unstructured: NoPackedAlignment(UnstructuredParametric),
+    };
+
+    const AutomaticStuctured = struct {
+        child: type,
+        sentinel: in_out(*const anyopaque) = null,
+        count: u64,
+        low_alignment: in(u64) = null,
+    };
+    const Structured = struct {
+        child: type,
+        sentinel: in_out(*const anyopaque) = null,
+        low_alignment: in(u64) = null,
+        Allocator: Allocator,
+    };
+    const Unstructured = struct {
+        high_alignment: u64,
+        low_alignment: in(u64) = null,
+        Allocator: Allocator,
+    };
+    const StructuredStatic = struct {
+        child: type,
+        sentinel: in_out(*const anyopaque) = null,
+        count: u64,
+        low_alignment: in(u64) = null,
+        Allocator: Allocator,
+    };
+    const UnstructuredStatic = struct {
+        bytes: u64,
+        low_alignment: in(u64) = null,
+        Allocator: Allocator,
+    };
+    const StructuredParametric = struct {
+        Allocator: type,
+        child: type,
+        sentinel: in_out(*const anyopaque) = null,
+        low_alignment: in(u64) = null,
+    };
+    const UnstructuredParametric = struct {
+        Allocator: type,
+        high_alignment: u64,
+        low_alignment: in(u64) = null,
+    };
+
     pub const Mode = enum {
         read_write,
         read_write_push_pop,
