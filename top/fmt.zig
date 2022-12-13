@@ -218,6 +218,9 @@ pub fn uz128(value: u128) PolynomialFormat(.{ .bits = 128, .radix = 36, .signedn
 pub fn bytes(count: usize) Bytes {
     return Bytes.init(count);
 }
+pub fn src(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
+    return SourceLocationFormat.init(value, ret_addr);
+}
 pub fn yr(year: u64) PolynomialFormat(.{
     .bits = 64,
     .signedness = .unsigned,
@@ -317,7 +320,7 @@ const Width = union(enum) {
 };
 pub const PolynomialFormatSpec = struct {
     bits: u16,
-    signedness: meta.Signedness,
+    signedness: builtin.Signedness,
     radix: comptime_int,
     width: Width,
     range: Range = .{},
@@ -440,7 +443,7 @@ pub fn uo(value: anytype) PolynomialFormat(.{
     return .{ .value = value };
 }
 pub const SourceLocationFormat = struct {
-    value: meta.SourceLocation,
+    value: builtin.SourceLocation,
     return_address: u32,
     const Format = @This();
     const LineColFormat = PolynomialFormat(.{
@@ -510,7 +513,7 @@ pub const SourceLocationFormat = struct {
         len += 1;
         return len;
     }
-    pub fn init(value: meta.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
+    pub fn init(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
         return .{ .value = value, .return_address = @intCast(u32, ret_addr orelse @returnAddress()) };
     }
 };
@@ -534,7 +537,7 @@ pub const Bytes = struct {
         .radix = 10,
         .width = .{ .fixed = 3 },
     });
-    const fields: []const meta.EnumField = @typeInfo(Unit).Enum.fields;
+    const fields: []const builtin.EnumField = @typeInfo(Unit).Enum.fields;
     pub const max_len: u64 =
         MajorIntFormat.max_len +
         MinorIntFormat.max_len + 3; // Unit
