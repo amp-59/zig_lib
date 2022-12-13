@@ -462,6 +462,11 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
     return @max(arg1, arg2);
 }
 
+pub inline fn isComptime() bool {
+    var b: bool = false;
+    return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
+}
+
 pub fn assert(b: bool) void {
     if (!b) {
         @panic("assertion failed");
@@ -1408,27 +1413,7 @@ pub const fmt = opaque {
     pub noinline fn ix64(value: i64) StaticString(i64, 16) {
         return ix(i64, value);
     }
-    pub fn toSymbol(comptime T: type, value: T, radix: u16) u8 {
-        const result: u8 = @intCast(u8, @rem(value, @intCast(T, radix)));
-        const dec: u8 = '9' -% 9;
-        const hex: u8 = 'f' -% 15;
-        if (radix > 10) {
-            return result +% if (result < 10) dec else hex;
-        } else {
-            return result +% dec;
-        }
-    }
-    fn maxSigFig(comptime T: type, radix: u16) u16 {
-        const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-        var value: U = 0;
-        var len: u16 = 0;
-        if (radix != 10) {
-            len += 2;
-        }
-        value -%= 1;
-        while (value != 0) : (len += 1) value /= radix;
-        return len;
-    }
+
     fn Absolute(comptime Int: type) type {
         return @Type(.{ .Int = .{
             .bits = @max(@bitSizeOf(Int), 8),
@@ -1441,7 +1426,170 @@ pub const fmt = opaque {
             .signedness = @typeInfo(Int).Int.signedness,
         } });
     }
-    pub fn absoluteValue(comptime Int: type, comptime Abs: type, i: Real(Int)) Abs {
+    fn absoluteValue(comptime Int: type, comptime Abs: type, i: Real(Int)) Abs {
         return if (i < 0) 1 +% ~@bitCast(Abs, i) else @bitCast(Abs, i);
     }
+    fn maxSigFig(comptime T: type, radix: u16) u16 {
+        const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
+        var value: U = 0;
+        var len: u16 = 0;
+        if (radix != 10) {
+            len += 2;
+        }
+        value -%= 1;
+        while (value != 0) : (len += 1) value /= radix;
+        return len;
+    }
+    pub fn length(comptime U: type, abs_value: U, radix: U) u64 {
+        var value: U = abs_value;
+        var count: u64 = 0;
+        while (value != 0) : (value /= radix) {
+            count +%= 1;
+        }
+        return @max(1, count);
+    }
+    pub fn toSymbol(comptime T: type, value: T, radix: u16) u8 {
+        const result: u8 = @intCast(u8, @rem(value, @intCast(T, radix)));
+        const dec: u8 = '9' -% 9;
+        const hex: u8 = 'f' -% 15;
+        if (radix > 10) {
+            return result +% if (result < 10) dec else hex;
+        } else {
+            return result +% dec;
+        }
+    }
 };
+pub const Version = struct {
+    major: u32,
+    minor: u32,
+    patch: u32 = 0,
+    pub const Range = struct {
+        min: Version,
+        max: Version,
+        pub fn includesVersion(range: Range, version: Version) bool {
+            if (range.min.order(version) == .gt) return false;
+            if (range.max.order(version) == .lt) return false;
+            return true;
+        }
+        pub fn isAtLeast(range: Range, version: Version) ?bool {
+            if (range.min.order(version) != .lt) return true;
+            if (range.max.order(version) == .lt) return false;
+            return null;
+        }
+    };
+    const Order = enum { lt, gt, eq };
+    pub fn order(lhs: Version, rhs: Version) Order {
+        if (lhs.major < rhs.major) return .lt;
+        if (lhs.major > rhs.major) return .gt;
+        if (lhs.minor < rhs.minor) return .lt;
+        if (lhs.minor > rhs.minor) return .gt;
+        if (lhs.patch < rhs.patch) return .lt;
+        if (lhs.patch > rhs.patch) return .gt;
+        return .eq;
+    }
+    pub fn parseVersion(comptime text: []const u8) !Version {
+        var i: usize = 0;
+        while (i < text.len) : (i += 1) {
+            switch (text[i]) {
+                '0'...'9', '.' => {},
+                else => break,
+            }
+        }
+        const digits: []const u8 = text[0..i];
+        if (i == 0) return error.InvalidVersion;
+        i = 0;
+        const major: usize = blk: {
+            while (i < digits.len and digits[i] != '.') i += 1;
+            break :blk i;
+        };
+        i += 1;
+        const minor: usize = blk: {
+            while (i < digits.len and digits[i] != '.') i += 1;
+            break :blk i;
+        };
+        const patch: u64 = digits.len;
+        const major_digits: []const u8 = digits[0..major];
+        const minor_digits: []const u8 =
+            if (major + 1 < minor) digits[major + 1 .. minor] else "0";
+        const patch_digits: []const u8 =
+            if (minor + 1 < patch) digits[minor + 1 .. patch] else "0";
+        const major_val: u64 = parse.ud(u64, major_digits);
+        const minor_val: u64 = parse.ud(u64, minor_digits);
+        const patch_val: u64 = parse.ud(u64, patch_digits);
+        if (major_val > ~@as(u32, 0)) {
+            return error.Overflow;
+        }
+        if (minor_val > ~@as(u32, 0)) {
+            return error.Overflow;
+        }
+        if (patch_val > ~@as(u32, 0)) {
+            return error.Overflow;
+        }
+        if (major_digits.len == 0) {
+            return error.InvalidVersion;
+        }
+        return Version{
+            .major = @intCast(u32, major_val),
+            .minor = @intCast(u32, minor_val),
+            .patch = @intCast(u32, patch_val),
+        };
+    }
+    pub fn format(
+        _: Version,
+        comptime _: []const u8,
+        _: anytype,
+        _: anytype,
+    ) !void {
+        @compileError("TODO: Print version number");
+    }
+};
+test {
+    @setEvalBranchQuota(3000);
+    comptime try testVersionParse();
+}
+fn testVersionParse() !void {
+    const f = struct {
+        fn eql(
+            comptime text: []const u8,
+            comptime v1: u32,
+            comptime v2: u32,
+            comptime v3: u32,
+        ) !void {
+            const v = try comptime Version.parseVersion(text);
+            comptime static.assertEqual(u32, v.major, v1);
+            comptime static.assertEqual(u32, v.minor, v2);
+            comptime static.assertEqual(u32, v.patch, v3);
+        }
+        fn err(comptime text: []const u8, comptime expected_err: anyerror) !void {
+            _ = comptime Version.parseVersion(text) catch |actual_err| {
+                if (actual_err == expected_err) return;
+                return actual_err;
+            };
+            return error.Unreachable;
+        }
+    };
+    try f.eql("2.6.32.11-svn21605", 2, 6, 32); // Debian PPC
+    try f.eql("2.11.2(0.329/5/3)", 2, 11, 2); // MinGW
+    try f.eql("5.4.0-1018-raspi", 5, 4, 0); // Ubuntu
+    try f.eql("5.7.12_3", 5, 7, 12); // Void
+    try f.eql("2.13-DEVELOPMENT", 2, 13, 0); // DragonFly
+    try f.eql("2.3-35", 2, 3, 0);
+    try f.eql("1a.4", 1, 0, 0);
+    try f.eql("3.b1.0", 3, 0, 0);
+    try f.eql("1.4beta", 1, 4, 0);
+    try f.eql("2.7.pre", 2, 7, 0);
+    try f.eql("0..3", 0, 0, 0);
+    try f.eql("8.008.", 8, 8, 0);
+    try f.eql("01...", 1, 0, 0);
+    try f.eql("55", 55, 0, 0);
+    try f.eql("4294967295.0.1", 4294967295, 0, 1);
+    try f.eql("429496729_6", 429496729, 0, 0);
+    try f.err("foobar", error.InvalidVersion);
+    try f.err("", error.InvalidVersion);
+    try f.err("-1", error.InvalidVersion);
+    try f.err("+4", error.InvalidVersion);
+    try f.err(".", error.InvalidVersion);
+    try f.err("....3", error.InvalidVersion);
+    try f.err("4294967296", error.Overflow);
+    try f.err("5000877755", error.Overflow);
+}
