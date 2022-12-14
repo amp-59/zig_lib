@@ -64,7 +64,7 @@ fn testBytesFormat() !void {
 }
 fn testEquivalentIntToStringFormat() !void {
     var uint: u64 = 0;
-    while (uint < 0x1000) : (uint += 3) {
+    while (uint < 0x10000) : (uint += 99) {
         const uint_32: u32 = @truncate(u32, uint);
         const uint_16: u16 = @truncate(u16, uint);
         const uint_8: u8 = @truncate(u8, uint);

@@ -768,7 +768,7 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
     unreachable;
 }
 fn Args(comptime Fn: type) type {
-    var fields: []const meta.StructField = meta.empty;
+    var fields: []const builtin.StructField = meta.empty;
     inline for (@typeInfo(Fn).Fn.args) |arg, i| {
         fields = fields ++ meta.parcel(meta.structField(arg.arg_type.?, lit.ud8[i], null));
     }
