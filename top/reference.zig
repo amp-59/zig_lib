@@ -12688,19 +12688,20 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
         }
         pub const low: Slave = allocated_byte_address;
         pub const start: Slave = aligned_byte_address;
-pub const finish: Slave = unwritable_byte_address;
-pub const high: Slave = unallocated_byte_address;
-t bytes: Slave = allocated_byte_count;
+        pub const position: Value = unstreamed_byte_address;
+        pub const next: Value = undefined_byte_address;
+        pub const finish: Slave = unwritable_byte_address;
+        pub const high: Slave = unallocated_byte_address;
+        pub const bytes: Slave = allocated_byte_count;
         pub const behind: Value = streamed_byte_count;
-pub const utility: Slave = aligned_byte_count;
-pub const capacity: Slave = writable_byte_count;
-pub const length: Vector = defined_byte_count;
-pub const ahead: Value = unstreamed_byte_count;
-pub const available: Vector = undefined_byte_count;
-pub fn define(impl: *Implementation, x_bytes: u64) void {
+        pub const utility: Slave = aligned_byte_count;
+        pub const capacity: Slave = writable_byte_count;
+        pub const length: Vector = defined_byte_count;
+        pub const ahead: Value = unstreamed_byte_count;
+        pub const available: Vector = undefined_byte_count;
+        pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-    
-   }
+        }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -12896,10 +12897,9 @@ pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specif
 }
 pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specification14) type {
     return struct {
-        ub_word: u64,
-
         comptime low: *const Slave = &allocated_byte_address,
         comptime start: *const Slave = &aligned_byte_address,
+        ub_word: u64,
         comptime high: *const Slave = &unallocated_byte_address,
         comptime finish: *const Slave = &unwritable_byte_address,
         comptime bytes: *const Slave = &allocated_byte_count,
