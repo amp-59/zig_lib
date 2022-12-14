@@ -4378,7 +4378,7 @@ const Reinterpret = struct {
         if (!@hasDecl(Format, "formatWrite")) {
             @compileError("invalid interface for formatter type: " ++ @typeName(Format));
         }
-        if (builtin.is_correct) {
+        if (builtin.is_correct and builtin.is_perf) {
             const s_len: u64 = format.formatLength();
             const len_0: u64 = memory.impl.next();
             format.formatWrite(memory);

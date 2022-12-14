@@ -1546,10 +1546,10 @@ pub const fmt = opaque {
                         return "packed union";
                     },
                     .Extern => {
-                        return "extern struct";
+                        return "extern union";
                     },
                     .Auto => {
-                        return "struct";
+                        return "union";
                     },
                 }
             },
