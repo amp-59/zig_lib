@@ -480,12 +480,10 @@ pub fn min(comptime T: type, arg1: T, arg2: T) T {
 pub fn max(comptime T: type, arg1: T, arg2: T) T {
     return @max(arg1, arg2);
 }
-
 pub inline fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
-
 pub fn assert(b: bool) void {
     if (!b) {
         @panic("assertion failed");

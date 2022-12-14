@@ -9,7 +9,7 @@ const Context = opaque {
     var run_step: *build.Step = undefined;
     var install_step: *build.Step = undefined;
     var fmt_step: *build.Step = undefined;
-    var always_strip: bool = true;
+    const always_strip: bool = true;
     fn init() void {
         Context.builder.reference_trace = 100;
         Context.build_mode = builder.standardReleaseOptions();
@@ -23,10 +23,9 @@ const Context = opaque {
 pub fn main(builder: *build.Builder) !void {
     Context.builder = builder;
     Context.init();
-
     _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .build_root = true, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{ .is_correct = true, .is_verbose = true });
-    _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{ .is_correct = true, .is_verbose = true, .strip = true });
     _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseSmall, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
@@ -80,6 +79,7 @@ pub fn Args(comptime name: [:0]const u8) type {
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
         is_tolerant: ?bool = null,
+        strip: bool = Context.always_strip,
     };
 }
 fn addProjectExecutable(
@@ -95,7 +95,7 @@ fn addProjectExecutable(
     ret.image_base = 0x10000;
     ret.linkage = .static;
     ret.main_pkg_path = builder.build_root;
-    ret.strip = (Context.always_strip or
+    ret.strip = (args.strip or
         Context.build_mode == .ReleaseFast or
         Context.build_mode == .ReleaseSmall) or
         Context.output_mode == .Lib;
