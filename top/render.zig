@@ -67,23 +67,189 @@ pub fn ArrayFormat(comptime Array: type) type {
         pub usingnamespace fmt.GenericFormat(Format);
     };
 }
-
 //  Function
 //  Boolean
+//
 //  Type
-//  Struct
-//  Union
-//  Enum
-//  EnumLiteral
-//  ComptimeInt
-//  Int
-//  Pointer
-//      One
-//      Many
-//      Slice
-//  Optional
-//  Null
-//  Void
-//  Vector
-//  ErrorUnion
+//
+pub const TypeFormat = struct {
+    const Format = @This();
+    value: type,
+    pub fn formatWrite(comptime format: Format, array: anytype) void {
+        const type_info: builtin.Type = @typeInfo(format.value);
+        switch (type_info) {
+            .Struct => |struct_info| {
+                if (struct_info.fields.len == 0) {
+                    array.writeMany(builtin.fmt.typeDeclSpecifier(type_info) ++ " {}");
+                } else {
+                    array.writeMany(builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
+                    inline for (struct_info.fields) |field| {
+                        const FieldFormat = AnyFormat(field.field_type);
+                        if (render_composite_field_type_recursively) {
+                            const field_type_format: TypeFormat = .{ .value = field.field_type };
+                            array.writeMany(field.name ++ ": ");
+                            field_type_format.formatWrite(array);
+                        } else {
+                            array.writeMany(field.name ++ ": " ++ @typeName(field.field_type));
+                        }
+                        if (meta.defaultValue(field)) |default_value| {
+                            const field_format: FieldFormat = .{ .value = default_value };
+                            array.writeMany(" = ");
+                            field_format.formatWrite(array);
+                        }
+                        array.writeMany(", ");
+                    }
+                    array.writeMany("}");
+                }
+            },
+            .Union => |union_info| {
+                if (union_info.fields.len == 0) {
+                    array.writeMany(builtin.fmt.typeDeclSpecifier(type_info) ++ " {}");
+                } else {
+                    array.writeMany(builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
+                    inline for (union_info.fields) |field| {
+                        if (field.field_type == void) {
+                            array.writeMany(field.name ++ ", ");
+                        } else {
+                            if (render_composite_field_type_recursively) {
+                                array.writeMany(field.name ++ ": ");
+                                const field_type_format: TypeFormat = .{ .value = field.field_type };
+                                field_type_format.formatWrite(array);
+                            } else {
+                                array.writeMany(field.name ++ ": " ++ @typeName(field.field_type));
+                            }
+                            array.writeMany(", ");
+                        }
+                    }
+                    array.writeMany("}");
+                }
+            },
+            .Enum => |enum_info| {
+                if (enum_info.fields.len == 0) {
+                    array.writeMany(builtin.fmt.typeDeclSpecifier(type_info) ++ " {}");
+                } else {
+                    array.writeMany(builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
+                    inline for (enum_info.fields) |field| {
+                        array.writeMany(field.name ++ ", ");
+                    }
+                    array.writeMany("}");
+                }
+            },
+            .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer => {
+                array.writeMany(@typeName(format.value));
+            },
+            else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
+        }
+    }
+    pub fn formatLength(comptime format: Format) u64 {
+        switch (@typeInfo(format.value)) {
+            .Struct => |struct_info| {
+                var len: u64 = 0;
+                const fields: []const builtin.Structield = struct_info.fields;
+                len += 9;
+                if (fields.len != 0) {
+                    inline for (fields) |field| {
+                        const FieldFormat = AnyFormat(field.field_type);
+                        if (render_composite_field_type_recursively) {
+                            len += field.name.len + 2 + TypeFormat.formatLength(.{ .value = field.field_type });
+                        } else {
+                            len += field.name.len + 2 + @typeName(field.field_type).len;
+                        }
+                        if (meta.defaultValue(field)) |default_value| {
+                            const field_format: FieldFormat = .{ .value = default_value };
+                            len += 3 + field_format.formatLength();
+                        }
+                        len += 2;
+                    }
+                    len += 1;
+                }
+                return len;
+            },
+            .Union => |union_info| {
+                var len: u64 = 0;
+                const fields: []const meta.UnionField = union_info.fields;
+                len += 8;
+                if (fields.len != 0) {
+                    inline for (fields) |field| {
+                        if (field.field_type == void) {
+                            len += field.name.len;
+                        } else if (render_composite_field_type_recursively) {
+                            len += field.name.len + 2 + TypeFormat.formatLength(.{ .value = field.field_type });
+                        } else {
+                            len += field.name.len + 2 + @typeName(field.field_type).len;
+                        }
+                        len += 2;
+                    }
+                    len += 1;
+                }
+                return len;
+            },
+            .Enum => |enum_info| {
+                var len: u64 = 0;
+                const fields: []const builtin.EnumField = enum_info.fields;
+                if (fields.len == 0) {
+                    len += 7;
+                } else {
+                    len += 7;
+                    inline for (fields) |field| {
+                        len += field.name.len + 2;
+                    }
+                    len += 1;
+                }
+                return len;
+            },
+            .Int, .Bool, .Pointer, .Optional, .ComptimeInt, .Type => {
+                return @typeName(format.value).len;
+            },
+            else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
+        }
+    }
+};
 
+//
+//  Struct
+//
+//
+//  Union
+//
+//
+//  Enum
+//
+//
+//  EnumLiteral
+//
+//
+//  ComptimeInt
+//
+//
+//  Int
+//
+//
+//  Pointer
+//
+//
+//      One
+//
+//
+//      Many
+//
+//
+//      Slice
+//
+//
+//  Optional
+//
+//
+//  Null
+//
+//
+//  Void
+//
+//
+//  Vector
+//
+//
+//  ErrorUnion
+//
+//
+const render_composite_field_type_recursively: bool = true;
