@@ -52,8 +52,8 @@ pub fn main() !void {
             }
         }
     }
-    uint = 0;
-    while (uint != 0x1000) : (uint += 1) {
+    uint = 1;
+    while (uint < 0x100000) : (uint += 99) {
         builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.ud(u64, builtin.fmt.ud64(uint).readAll()));
