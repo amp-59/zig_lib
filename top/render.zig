@@ -65,3 +65,23 @@ pub fn ArrayFormat(comptime Array: type) type {
         pub usingnamespace fmt.GenericFormat(Format);
     };
 }
+
+//  Function
+//  Boolean
+//  Type
+//  Struct
+//  Union
+//  Enum
+//  EnumLiteral
+//  ComptimeInt
+//  Int
+//  Pointer
+//      One
+//      Many
+//      Slice
+//  Optional
+//  Null
+//  Void
+//  Vector
+//  ErrorUnion
+
