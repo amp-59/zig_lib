@@ -24,12 +24,12 @@ pub fn main(builder: *build.Builder) !void {
     Context.builder = builder;
     Context.init();
 
-    _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .need_build_root = true });
-    _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{});
-    _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{});
-    _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseSmall });
-    _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{});
-    _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug });
+    _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .build_root = true, .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseSmall, .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
@@ -57,6 +57,13 @@ fn defineBuildRoot(builder: *build.Builder, exe: *build.LibExeObjStep) void {
         build_root_s[len] = 0;
     }
 }
+fn defineConfig(exe: *build.LibExeObjStep, name: []const u8, value: bool) void {
+    if (value) {
+        exe.defineCMacro(name, "1");
+    } else {
+        exe.defineCMacro(name, "0");
+    }
+}
 pub fn Args(comptime name: [:0]const u8) type {
     return struct {
         is_test: ?bool = null,
@@ -68,7 +75,11 @@ pub fn Args(comptime name: [:0]const u8) type {
         emit_asm_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".s",
         emit_analysis_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".analysis",
         build_mode: ?std.builtin.Mode = null,
-        need_build_root: bool = false,
+        build_root: bool = false,
+        is_correct: ?bool = null,
+        is_perf: ?bool = null,
+        is_verbose: ?bool = null,
+        is_tolerant: ?bool = null,
     };
 }
 fn addProjectExecutable(
@@ -91,8 +102,20 @@ fn addProjectExecutable(
 
     const make_step: *build.Step = builder.step(args.make_step_name, args.make_step_desc);
     const run_step: *build.Step = builder.step(args.run_step_name, args.run_step_desc);
-    if (args.need_build_root) {
+    if (args.build_root) {
         defineBuildRoot(builder, ret);
+    }
+    if (args.is_correct) |is_correct| {
+        defineConfig(ret, "is_correct", is_correct);
+    }
+    if (args.is_tolerant) |is_tolerant| {
+        defineConfig(ret, "is_tolerant", is_tolerant);
+    }
+    if (args.is_verbose) |is_verbose| {
+        defineConfig(ret, "is_verbose", is_verbose);
+    }
+    if (args.is_perf) |is_perf| {
+        defineConfig(ret, "is_perf", is_perf);
     }
     ret.addPackage(srg);
     ret.install();
