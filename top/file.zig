@@ -862,10 +862,10 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             return @truncate(T, @intToPtr(*const child, s_ab_addr).*);
         }
         pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
-            var ret: T = random.readOne();
+            var ret: T = random.readOne(T);
             if (meta.Return(function) == bool) {
                 while (function(ret)) {
-                    ret = random.readOne();
+                    ret = random.readOne(T);
                 }
             } else if (meta.Return(function) == T) {
                 return function(ret);
