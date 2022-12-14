@@ -5,6 +5,10 @@ const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
 
+const _dir = @import("./dir.zig");
+
+pub usingnamespace _dir;
+
 const dmode_owner: Perms = .{ .read = true, .write = true, .execute = true };
 const dmode_group: Perms = .{ .read = true, .write = false, .execute = true };
 const dmode_other: Perms = .{ .read = false, .write = false, .execute = false };

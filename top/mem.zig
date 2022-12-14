@@ -15,8 +15,36 @@ pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
 
-pub const ArenaError = error{ UnderSupply, OverSupply };
+pub const flat_wr_spec: mem.ReinterpretSpec = .{};
+pub const ptr_wr_spec: mem.ReinterpretSpec = .{
+    .reference = .{ .dereference = &.{} },
+};
+pub const fmt_wr_spec: mem.ReinterpretSpec = reinterpretRecursively(.{
+    .reference = ptr_wr_spec.reference,
+    .aggregate = .{ .iterate = true },
+    .composite = .{ .format = true },
+    .symbol = .{ .tag_name = true },
+});
+fn reinterpretRecursively(comptime spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
+    var rs_0: mem.ReinterpretSpec = spec;
+    var rs_1: mem.ReinterpretSpec = spec;
+    rs_0.reference.dereference = &rs_1;
+    rs_1.reference.dereference = &rs_0;
+    return rs_1;
+}
+pub const follow_wr_spec: mem.ReinterpretSpec = blk: {
+    var rs_0: mem.ReinterpretSpec = .{};
+    var rs_1: mem.ReinterpretSpec = .{ .reference = .{
+        .dereference = &rs_0,
+    } };
+    rs_1.reference.dereference = &rs_0;
+    rs_0 = .{ .reference = .{
+        .dereference = &rs_1,
+    } };
+    break :blk rs_1;
+};
 
+pub const ArenaError = error{ UnderSupply, OverSupply };
 pub const Map = meta.EnumBitField(enum(u64) {
     anonymous = MAP.ANONYMOUS,
     file = MAP.FILE,
@@ -880,7 +908,9 @@ pub const debug = opaque {
         });
     }
 };
-
+pub fn set(dst_addr: u64, src_value: anytype, count: u64) void {
+    for (@intToPtr([*]@TypeOf(src_value), dst_addr)[0..count]) |*dst_value| dst_value.* = src_value;
+}
 pub fn StaticArray(comptime child: type, comptime count: u64) type {
     return mem.StructuredAutomaticVector(.{
         .child = child,
