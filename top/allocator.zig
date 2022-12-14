@@ -47,23 +47,25 @@ const AllocatorOptions = struct {
 const Logging = packed struct {
     /// Report arena acquisition and release
     arena: bool = default,
-    /// Report updates to allocator state
+    // Report updates to allocator state
     head: bool = default,
     sentinel: bool = default,
     metadata: bool = default,
     branches: bool = default,
-    /// Report system calls
+    // Report system calls
     map: bool = default,
     unmap: bool = default,
     remap: bool = default,
     advise: bool = default,
-    /// Report client requests
+    /// Report when a reference is created.
     allocate: bool = default,
+    /// Report when a reference is modified (move/resize).
     reallocate: bool = default,
+    /// Report when a reference is converted to another kind of reference.
     reinterpret: bool = default,
+    /// Report when a reference is destroyed.
     deallocate: bool = default,
     const default: bool = builtin.is_verbose;
-
     inline fn isSilent(comptime logging: Logging) bool {
         comptime {
             return 0 == meta.leastBitCast(logging);
