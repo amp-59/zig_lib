@@ -284,6 +284,55 @@ pub fn sec(second: u8) PolynomialFormat(.{
 }) {
     return .{ .value = second };
 }
+
+fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.Signedness, comptime radix: u16) ChangedIntFormatSpec {
+    const old_fmt_spec: PolynomialFormatSpec = .{
+        .bits = bits,
+        .signedness = signedness,
+        .width = if (radix == 2) .max else .min,
+        .radix = radix,
+    };
+    const new_fmt_spec: PolynomialFormatSpec = .{
+        .bits = bits,
+        .signedness = .unsigned,
+        .width = if (radix == 2) .max else .min,
+        .radix = radix,
+    };
+    return .{
+        .old_fmt_spec = old_fmt_spec,
+        .new_fmt_spec = new_fmt_spec,
+        .del_fmt_spec = old_fmt_spec,
+    };
+}
+pub fn ubd(old: anytype, new: anytype) blk: {
+    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
+    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 2));
+} {
+    return .{ .old_value = old, .new_value = new };
+}
+pub fn uod(old: anytype, new: anytype) blk: {
+    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
+    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 8));
+} {
+    return .{ .old_value = old, .new_value = new };
+}
+pub fn udd(old: anytype, new: anytype) blk: {
+    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
+    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 10));
+} {
+    return .{ .old_value = old, .new_value = new };
+}
+pub fn uxd(old: anytype, new: anytype) blk: {
+    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
+    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 16));
+} {
+    return .{ .old_value = old, .new_value = new };
+}
+
 fn GenericFormat(comptime Format: type) type {
     return struct {
         const StaticString = mem.StaticString(Format.max_len);
