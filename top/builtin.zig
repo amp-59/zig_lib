@@ -1222,6 +1222,20 @@ pub const fmt = opaque {
             }
         };
     }
+    pub fn ci(value: comptime_int) []const u8 {
+        if (value == 0) {
+            return "0";
+        }
+        var s: []const u8 = "";
+        var y = if (value < 0) -value else value;
+        while (y != 0) : (y /= 10) {
+            s = [_]u8{@truncate(u8, ((y % 10) + 48))} ++ s;
+        }
+        if (value < 0) {
+            s = [_]u8{'-'} ++ s;
+        }
+        return s;
+    }
     pub fn int(any: anytype) StaticString(@TypeOf(any), 10) {
         return d(@TypeOf(any), any);
     }
@@ -1504,23 +1518,8 @@ pub const fmt = opaque {
             .EnumLiteral => "(enum literal)",
         };
     }
-    pub fn typeTypeSpecifier(comptime any: Type) []const u8 {
+    pub fn typeDeclSpecifier(comptime any: Type) []const u8 {
         return switch (any) {
-            .Type => "type",
-            .Void => "void",
-            .Bool => "bool",
-            .NoReturn => "noreturn",
-            .Int => "integer",
-            .Float => "float",
-            .Pointer => "pointer",
-            .Array => "array",
-            .ComptimeFloat => "comptime_float",
-            .ComptimeInt => "comptime_int",
-            .Undefined => "undefined",
-            .Null => "null",
-            .Optional => "optional",
-            .ErrorUnion => "error union",
-            .ErrorSet => "error",
             .Enum => |enum_info| {
                 return "enum(" ++ @typeName(enum_info.tag_type) ++ ")";
             },
@@ -1528,8 +1527,7 @@ pub const fmt = opaque {
                 switch (struct_info.layout) {
                     .Packed => {
                         if (struct_info.backing_integer) |backing_integer| {
-                            return "packed struct(" ++
-                                @typeName(backing_integer) ++ ")";
+                            return "packed struct(" ++ @typeName(backing_integer) ++ ")";
                         } else {
                             return "packed struct";
                         }
@@ -1556,12 +1554,30 @@ pub const fmt = opaque {
                 }
             },
             .Opaque => "opaque",
-            .Fn => "function",
-            .BoundFn => "method", // Soon deprecated
-            .Frame => "frame",
-            .AnyFrame => "anyframe",
-            .Vector => "vector",
-            .EnumLiteral => "@Type(.EnumLiteral)",
+            .ErrorSet => "error",
+
+            .BoundFn,
+            .Fn,
+            .Vector,
+            .Type,
+            .Void,
+            .Bool,
+            .NoReturn,
+            .Int,
+            .Float,
+            .Pointer,
+            .Array,
+            .ComptimeFloat,
+            .ComptimeInt,
+            .Undefined,
+            .Null,
+            .Optional,
+            .ErrorUnion,
+            .EnumLiteral,
+
+            .Frame,
+            .AnyFrame,
+            => @compileError(@typeName(@Type(any))),
         };
     }
 };

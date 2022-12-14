@@ -1,4 +1,5 @@
 const fmt = @import("./fmt.zig");
+const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
@@ -34,6 +35,7 @@ const RenderSpec = struct {
     const Options = struct {};
 };
 
+// Array
 pub fn ArrayFormat(comptime Array: type) type {
     return struct {
         value: Array,
