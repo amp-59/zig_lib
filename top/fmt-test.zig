@@ -6,9 +6,9 @@ const proc = @import("./proc.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
-pub const is_correct: bool = true;
-
 pub usingnamespace proc.start;
+
+pub const is_correct: bool = true;
 
 fn testBytesFormat() !void {
     try testing.expectEqualMany(u8, "0B", fmt.bytes(0).formatConvert().readAll());
@@ -64,7 +64,7 @@ fn testBytesFormat() !void {
 }
 fn testEquivalentIntToStringFormat() !void {
     var uint: u64 = 0;
-    while (uint != 0x10000) : (uint += 1) {
+    while (uint < 0x1000) : (uint += 3) {
         const uint_32: u32 = @truncate(u32, uint);
         const uint_16: u16 = @truncate(u16, uint);
         const uint_8: u8 = @truncate(u8, uint);

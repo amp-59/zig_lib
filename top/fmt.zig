@@ -284,7 +284,6 @@ pub fn sec(second: u8) PolynomialFormat(.{
 }) {
     return .{ .value = second };
 }
-
 fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.Signedness, comptime radix: u16) ChangedIntFormatSpec {
     const old_fmt_spec: PolynomialFormatSpec = .{
         .bits = bits,
