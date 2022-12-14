@@ -47,12 +47,12 @@ const AllocatorOptions = struct {
 const Logging = packed struct {
     /// Report arena acquisition and release
     arena: bool = default,
-    // Report updates to allocator state
+    /// Report updates to allocator state
     head: bool = default,
     sentinel: bool = default,
     metadata: bool = default,
     branches: bool = default,
-    // Report system calls
+    /// Report system calls
     map: bool = default,
     unmap: bool = default,
     remap: bool = default,

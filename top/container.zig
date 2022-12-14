@@ -49,19 +49,17 @@ pub fn amountToBytesOfLength(amt: Amount, length: u64) u64 {
     };
 }
 fn hasSentinel(comptime impl_type: type) bool {
-    return builtin.int2v(
-        bool,
-        @hasDecl(impl_type, "sentinel"),
-        @hasField(impl_type.Specification, "sentinel"),
-    );
+    return @hasDecl(impl_type, "sentinel") or
+        @hasDecl(impl_type, "Specification") and
+        @hasField(impl_type.Specification, "sentinel");
 }
 pub fn amountToCountReserved(amt: Amount, comptime impl_type: type) u64 {
     return amountToCountOfLength(amt, impl_type.high_alignment) +
-        builtin.int(@hasDecl(impl_type, "sentinel"));
+        builtin.int(hasSentinel(impl_type));
 }
 pub fn amountToBytesReserved(amt: Amount, comptime impl_type: type) u64 {
     return amountToBytesOfLength(amt, impl_type.high_alignment) +
-        mach.cmov64z(@hasDecl(impl_type, "sentinel"), impl_type.high_alignment);
+        mach.cmov64z(hasSentinel(impl_type), impl_type.high_alignment);
 }
 fn writeOneImpl(comptime T: type, dst: *T, src: T) void {
     dst.* = src;
@@ -133,16 +131,16 @@ pub fn StructuredAutomaticView(comptime params: Parameters0) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -206,16 +204,16 @@ pub fn StructuredAutomaticStreamView(comptime params: Parameters0) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -324,16 +322,16 @@ pub fn StructuredAutomaticStreamVector(comptime params: Parameters0) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -517,16 +515,16 @@ pub fn StructuredAutomaticVector(comptime params: Parameters0) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -714,16 +712,16 @@ pub fn StructuredStaticView(comptime params: Parameters1) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -794,16 +792,16 @@ pub fn StructuredStaticStreamVector(comptime params: Parameters1) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -994,16 +992,16 @@ pub fn StructuredStaticVector(comptime params: Parameters1) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -1182,16 +1180,16 @@ pub fn UnstructuredStaticView(comptime params: Parameters2) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return pointerOne(child, __at(array, child, offset)).*;
@@ -1260,16 +1258,16 @@ pub fn UnstructuredStaticStreamVector(comptime params: Parameters2) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return pointerOne(child, __at(array, child, offset)).*;
@@ -1458,16 +1456,16 @@ pub fn UnstructuredStaticVector(comptime params: Parameters2) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return pointerOne(child, __at(array, child, offset)).*;
@@ -1674,16 +1672,16 @@ pub fn StructuredStreamVector(comptime params: Parameters3) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -1913,16 +1911,16 @@ pub fn StructuredStreamView(comptime params: Parameters3) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -2044,16 +2042,16 @@ pub fn StructuredVector(comptime params: Parameters3) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -2238,16 +2236,16 @@ pub fn StructuredView(comptime params: Parameters3) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return pointerOne(child, __at(array, offset)).*;
@@ -2351,16 +2349,16 @@ pub fn UnstructuredStreamVector(comptime params: Parameters4) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return pointerOne(child, __at(array, child, offset)).*;
@@ -2588,16 +2586,16 @@ pub fn UnstructuredStreamView(comptime params: Parameters4) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return pointerOne(child, __at(array, child, offset)).*;
@@ -2717,16 +2715,16 @@ pub fn UnstructuredVector(comptime params: Parameters4) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type) []child {
-            return pointerMany(child, array.impl.start(), array.impl.length());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.length(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return pointerOne(child, __at(array, child, offset)).*;
@@ -2909,16 +2907,16 @@ pub fn UnstructuredView(comptime params: Parameters4) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type) []child {
-            return pointerMany(child, array.impl.start(), array.impl.capacity());
+            return pointerMany(child, __at(array, 0), __len(array, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(), array.impl.capacity(), sentinel);
+            return pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return pointerOne(child, __at(array, child, offset)).*;
@@ -3026,16 +3024,16 @@ pub fn StructuredStreamHolder(comptime params: Parameters5) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array, allocator: Allocator) []const child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, allocator: Allocator, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn referAll(array: *const Array, allocator: Allocator) []child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, allocator: Allocator, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, allocator: Allocator, offset: usize) child {
             return pointerOne(child, __at(array, allocator, offset)).*;
@@ -3265,16 +3263,16 @@ pub fn StructuredHolder(comptime params: Parameters5) type {
         pub const child: type = params.child;
         pub const child_size: u64 = @sizeOf(child);
         pub fn readAll(array: *const Array, allocator: Allocator) []const child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, allocator: Allocator, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn referAll(array: *const Array, allocator: Allocator) []child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, allocator: Allocator, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, allocator: Allocator, offset: usize) child {
             return pointerOne(child, __at(array, allocator, offset)).*;
@@ -3481,16 +3479,16 @@ pub fn UnstructuredStreamHolder(comptime params: Parameters6) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -3718,16 +3716,16 @@ pub fn UnstructuredHolder(comptime params: Parameters6) type {
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime sentinel: child) [:sentinel]const child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn referAll(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return pointerMany(child, array.impl.start(allocator), array.impl.length(allocator));
+            return pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
         }
         pub fn referAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime sentinel: child) [:sentinel]child {
-            return pointerManyWithSentinel(child, array.impl.start(allocator), array.impl.length(allocator), sentinel);
+            return pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), sentinel);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return pointerOne(child, __at(array, child, allocator, offset)).*;
