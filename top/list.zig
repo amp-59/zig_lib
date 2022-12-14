@@ -47,7 +47,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                 }
             };
             pub const Link = opaque {
-                const begin: u64 = if (link_after) mem.alignAbove(unit_size, link_alignment) else 0;
+                const begin: u64 = if (link_after) mach.alignA64(unit_size, link_alignment) else 0;
                 const len: u64 = link_size;
                 const end: u64 = begin + len;
                 fn addr(t_node_blk: Block) u64 {

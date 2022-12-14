@@ -635,25 +635,6 @@ pub const noexcept = opaque {
         }
     }
 };
-
-pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
-    return builtin.intToPtr(*child, s_lb_addr);
-}
-pub fn pointerMany(comptime child: type, s_lb_addr: u64, n: u64) []child {
-    return builtin.intToPtr([*]child, s_lb_addr)[0..n];
-}
-pub fn pointerManyWithSentinel(comptime child: type, s_lb_addr: u64, n: u64, comptime sentinel: child) [:sentinel]child {
-    return builtin.intToPtr([*]child, s_lb_addr)[0..n :sentinel];
-}
-pub fn pointerCount(comptime child: type, s_lb_addr: u64, comptime n: u64) *[n]child {
-    return builtin.intToPtr(*[n]child, s_lb_addr)[0..n];
-}
-pub fn pointerCountWithSentinel(comptime child: type, s_lb_addr: u64, comptime n: u64, comptime sentinel: child) *[n:sentinel]child {
-    return builtin.intToPtr(*[n]child, s_lb_addr)[0..n :sentinel];
-}
-pub fn pointerOneWithSentinel(comptime child: type, s_lb_addr: u64, comptime sentinel: child) [*:sentinel]child {
-    return builtin.intToPtr([*:sentinel]child, s_lb_addr);
-}
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) spec.Unwrapped(.mmap) {
     const mmap_prot: Prot = spec.prot();
     const mmap_flags: Map = spec.flags();
