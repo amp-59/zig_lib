@@ -209,6 +209,104 @@ pub const TypeFormat = struct {
 //
 //  Struct
 //
+pub fn StructFormat(comptime Struct: type) type {
+    return struct {
+        value: Struct,
+        const Format = @This();
+        const type_name: []const u8 = fmt.shortTypeName(Struct);
+        const fields: []const builtin.Structield = @typeInfo(Struct).Struct.fields;
+
+        const omit_default_fields: bool = true;
+        const omit_compiler_given_names: bool = true;
+
+        const max_len: u64 = blk: {
+            var len: u64 = 0;
+            if (omit_compiler_given_names and mem.startsWith(u8, "struct:", type_name)) {
+                len += 3;
+            } else {
+                len += type_name.len + 2;
+            }
+            if (fields.len == 0) {
+                len += 1;
+            } else {
+                inline for (fields) |field| {
+                    len += 1 + field.name.len + 3;
+                    len += AnyFormat(field.field_type).max_len;
+                    len += 2;
+                }
+            }
+            break :blk len;
+        };
+        pub fn formatWrite(format: anytype, array: anytype) void {
+            if (fields.len == 0) {
+                if (omit_compiler_given_names and mem.startsWith(u8, "struct:", type_name)) {
+                    array.writeMany(".{}");
+                } else {
+                    array.writeMany(type_name ++ "{}");
+                }
+            } else {
+                if (omit_compiler_given_names and mem.startsWith(u8, "struct:", type_name)) {
+                    array.writeMany(".{");
+                } else {
+                    array.writeMany(type_name ++ "{ ");
+                }
+                inline for (fields) |field| {
+                    const FieldFormat = AnyFormat(field.field_type);
+                    const field_value: field.field_type = @field(format.value, field.name);
+                    if (omit_default_fields and field.default_value != null and
+                        meta.isTriviallyComparable(field.field_type))
+                    {
+                        const default_value: field.field_type =
+                            mem.pointerOpaque(field.field_type, field.default_value.?);
+                        if (field_value != default_value) {
+                            const field_format: FieldFormat = .{ .value = field_value };
+                            array.writeMany(("." ++ field.name ++ " = "));
+                            field_format.formatWrite(array);
+                            array.writeMany(", ");
+                        }
+                    } else {
+                        const field_format: FieldFormat = .{ .value = field_value };
+                        array.writeMany("." ++ field.name ++ " = ");
+                        field_format.formatWrite(array);
+                        array.writeMany(", ");
+                    }
+                }
+                if (mem.equalMany(u8, array.rereadMany(2), "{ ")) {
+                    array.rewriteOne('}');
+                } else {
+                    array.rewriteMany(" }");
+                }
+            }
+        }
+        pub fn formatLength(format: Format) u64 {
+            var len: u64 = 0;
+            if (omit_default_fields and mem.startsWith(u8, "struct:", type_name)) {
+                len += 2;
+            } else {
+                len += type_name.len + 2;
+            }
+            inline for (fields) |field| {
+                const FieldFormat = AnyFormat(field.field_type);
+                const field_value: field.field_type = @field(format.value, field.name);
+                if (omit_default_fields and field.default_value != null and
+                    meta.isTriviallyComparable(field.field_type))
+                {
+                    const default_value: field.field_type =
+                        mem.pointerOpaque(field.field_type, field.default_value.?);
+                    if (field_value != default_value) {
+                        const field_format: FieldFormat = .{ .value = field_value };
+                        len += 1 + field.name.len + 3 + field_format.formatLength() + 2;
+                    }
+                } else {
+                    const field_format: FieldFormat = .{ .value = field_value };
+                    len += 1 + field.name.len + 3 + field_format.formatLength() + 2;
+                }
+            }
+            return len;
+        }
+        pub usingnamespace fmt.GenericFormat(Format);
+    };
+}
 //
 //  Union
 //
