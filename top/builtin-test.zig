@@ -3,9 +3,6 @@ const proc = @import("./proc.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_verbose: bool = true;
-pub const is_correct: bool = true;
-
 // TODO: Tests to show all error messages.
 export fn showAssertionFailedAbove(arg1: u64, arg2: u64) void {
     builtin.assertAbove(u64, arg1, arg2);
@@ -56,7 +53,7 @@ pub fn main() !void {
         }
     }
     uint = 0;
-    while (uint != 0x10000) : (uint += 1) {
+    while (uint != 0x1000) : (uint += 1) {
         builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.ud(u64, builtin.fmt.ud64(uint).readAll()));

@@ -284,7 +284,6 @@ pub fn sec(second: u8) PolynomialFormat(.{
 }) {
     return .{ .value = second };
 }
-
 fn GenericFormat(comptime Format: type) type {
     return struct {
         const StaticString = mem.StaticString(Format.max_len);
@@ -458,8 +457,6 @@ pub const SourceLocationFormat = struct {
         .radix = 16,
         .width = .min,
     });
-    var cwd_pathname: ?mem.StaticString(4096) = null;
-
     pub fn formatWrite(format: Format, array: anytype) void {
         const fn_name: []const u8 = format.functionName();
         const file_name: []const u8 = format.value.file;
@@ -596,7 +593,389 @@ pub const Bytes = struct {
     }
     pub usingnamespace GenericFormat(Format);
 };
-
+pub const ChangedIntFormatSpec = struct {
+    old_fmt_spec: PolynomialFormatSpec,
+    new_fmt_spec: PolynomialFormatSpec,
+    del_fmt_spec: PolynomialFormatSpec,
+    dec_style: []const u8 = lit.fx.color.fg.red ++ "-",
+    inc_style: []const u8 = lit.fx.color.fg.green ++ "+",
+    no_style: []const u8 = lit.fx.none,
+    arrow_style: []const u8 = " => ",
+};
+pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
+    return struct {
+        old_value: Old,
+        new_value: New,
+        const Format = @This();
+        const Old: type = @Type(.{ .Int = .{ .bits = fmt_spec.old_fmt_spec.bits, .signedness = fmt_spec.old_fmt_spec.signedness } });
+        const New: type = @Type(.{ .Int = .{ .bits = fmt_spec.new_fmt_spec.bits, .signedness = fmt_spec.new_fmt_spec.signedness } });
+        const OldIntFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
+        const NewIntFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
+        const DeltaIntFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
+        const fmt_spec: ChangedIntFormatSpec = spec;
+        pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +
+            OldIntFormat.max_len + 1 + DeltaIntFormat.max_len + 5 + fmt_spec.no_style.len + NewIntFormat.max_len;
+        fn formatWriteDelta(format: Format, array: anytype) void {
+            if (format.old_value == format.new_value) {
+                array.writeCount(4, "(+0)".*);
+            } else if (format.new_value > format.old_value) {
+                const del_fmt: DeltaIntFormat = .{ .value = format.new_value - format.old_value };
+                array.writeOne('(');
+                array.writeMany(fmt_spec.inc_style);
+                array.writeFormat(del_fmt);
+                array.writeMany(fmt_spec.no_style);
+                array.writeOne(')');
+            } else {
+                const del_fmt: DeltaIntFormat = .{ .value = format.old_value - format.new_value };
+                array.writeOne('(');
+                array.writeMany(fmt_spec.dec_style);
+                array.writeFormat(del_fmt);
+                array.writeMany(fmt_spec.no_style);
+                array.writeOne(')');
+            }
+        }
+        fn formatLengthDelta(format: Format) u64 {
+            var len: u64 = 0;
+            if (format.old_value == format.new_value) {
+                len += 4;
+            } else if (format.new_value > format.old_value) {
+                const del_fmt: DeltaIntFormat = .{ .value = format.new_value - format.old_value };
+                len += 1;
+                len += fmt_spec.inc_style.len;
+                len += del_fmt.formatLength();
+                len += fmt_spec.no_style.len;
+                len += 1;
+            } else {
+                const del_fmt: DeltaIntFormat = .{ .value = format.old_value - format.new_value };
+                len += 1;
+                len += fmt_spec.dec_style.len;
+                len += del_fmt.formatLength();
+                len += fmt_spec.no_style.len;
+                len += 1;
+            }
+            return len;
+        }
+        pub noinline fn formatWrite(format: Format, array: anytype) void {
+            const old_fmt: OldIntFormat = .{ .value = format.old_value };
+            const new_fmt: NewIntFormat = .{ .value = format.new_value };
+            array.writeFormat(old_fmt);
+            format.formatWriteDelta(array);
+            array.writeMany(spec.arrow_style);
+            array.writeFormat(new_fmt);
+        }
+        pub fn formatLength(format: Format) u64 {
+            const old_fmt: OldIntFormat = .{ .value = format.old_value };
+            const new_fmt: NewIntFormat = .{ .value = format.new_value };
+            var len: u64 = 0;
+            len += old_fmt.formatLength();
+            len += formatLengthDelta(format);
+            len += 4;
+            len += new_fmt.formatLength();
+            return len;
+        }
+        pub usingnamespace GenericFormat(Format);
+    };
+}
+pub const ChangedBytesFormatSpec = struct {
+    dec_style: []const u8 = lit.fx.color.fg.red ++ "-",
+    inc_style: []const u8 = lit.fx.color.fg.green ++ "+",
+    no_style: []const u8 = lit.fx.none,
+};
+pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
+    return struct {
+        old_value: u64,
+        new_value: u64,
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            const old_fmt: Bytes = bytes(format.old_value);
+            const new_fmt: Bytes = bytes(format.new_value);
+            old_fmt.formatWrite(array);
+            if (format.old_value != format.new_value) {
+                if (format.old_value > format.new_value) {
+                    const del_fmt: Bytes = bytes(format.old_value - format.new_value);
+                    array.writeOne('(');
+                    array.writeMany(fmt_spec.dec_style);
+                    array.writeFormat(del_fmt);
+                    array.writeMany(fmt_spec.no_style);
+                    array.writeOne(')');
+                } else {
+                    const del_fmt: Bytes = bytes(format.new_value - format.old_value);
+                    array.writeOne('(');
+                    array.writeMany(fmt_spec.inc_style);
+                    array.writeFormat(del_fmt);
+                    array.writeMany(fmt_spec.no_style);
+                    array.writeOne(')');
+                }
+                array.writeCount(4, " => ".*);
+                new_fmt.formatWrite(array);
+            }
+        }
+        pub fn formatLength(format: Format) u64 {
+            const old_fmt: Bytes = bytes(format.old_value);
+            const new_fmt: Bytes = bytes(format.new_value);
+            var len: u64 = 0;
+            len += old_fmt.formatLength();
+            if (format.old_value != format.new_value) {
+                if (format.old_value > format.new_value) {
+                    const del_fmt: Bytes = bytes(format.old_value - format.new_value);
+                    len += 1;
+                    len += fmt_spec.dec_style.len;
+                    len += del_fmt.formatLength();
+                    len += fmt_spec.no_style.len;
+                    len += 1;
+                } else {
+                    const del_fmt: Bytes = bytes(format.new_value - format.old_value);
+                    len += 1;
+                    len += fmt_spec.inc_style.len;
+                    len += del_fmt.formatLength();
+                    len += fmt_spec.no_style.len;
+                    len += 1;
+                }
+                len += 4;
+                len += new_fmt.formatLength();
+            }
+            return len;
+        }
+        pub fn init(old_value: u64, new_value: u64) Format {
+            return .{ .old_value = old_value, .new_value = new_value };
+        }
+    };
+}
+pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
+    return struct {
+        lower: SubFormat.Int,
+        upper: SubFormat.Int,
+        const Format = @This();
+        pub const SubFormat = PolynomialFormat(blk: {
+            var tmp: PolynomialFormatSpec = fmt_spec;
+            tmp.prefix = false;
+            break :blk tmp;
+        });
+        const fmt_spec: PolynomialFormatSpec = spec;
+        pub const max_len: u64 = (SubFormat.max_len) * 2 + 4;
+        pub fn formatLength(format: Format) u64 {
+            const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
+            const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
+            const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
+            const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
+            const lower_s_count: u64 = lower_s.count();
+            const upper_s_count: u64 = upper_s.count();
+            for (lower_s.readAll()) |v, i| {
+                if (v != upper_s.readOneAt(i)) {
+                    return (upper_s_count - lower_s_count) + i + 1 + (lower_s_count - i) + 2 + (upper_s_count - i) + 1;
+                }
+            }
+            return (upper_s_count - lower_s_count) + lower_s.count() + 4;
+        }
+        pub fn formatWrite(format: Format, array: anytype) void {
+            const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
+            const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
+            const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
+            const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
+            var i: u64 = 0;
+            const lower_s_count: u64 = lower_s.count();
+            const upper_s_count: u64 = upper_s.count();
+            while (i != lower_s_count) : (i += 1) {
+                if (upper_s.readOneAt(i) != lower_s.readOneAt(i)) {
+                    break;
+                }
+            }
+            array.writeMany(upper_s.readAll()[0..i]);
+            array.writeOne('{');
+            var z: u64 = upper_s_count - lower_s_count;
+            while (z != 0) : (z -= 1) array.writeOne('0');
+            array.writeMany(lower_s.readAll()[i..lower_s_count]);
+            array.writeMany("..");
+            array.writeMany(upper_s.readAll()[i..upper_s_count]);
+            array.writeOne('}');
+        }
+        pub fn init(lower: SubFormat.Int, upper: SubFormat.Int) Format {
+            return .{ .lower = lower, .upper = upper };
+        }
+        pub usingnamespace GenericFormat(Format);
+    };
+}
+pub fn ArenaRangeFormat(comptime arena_index: comptime_int) type {
+    const arena: mem.Arena = mem.Arena{ .index = arena_index };
+    return RangeFormat(.{
+        .bits = 64,
+        .signedness = .unsigned,
+        .radix = 16,
+        .width = .max,
+        .range = .{
+            .min = arena.begin(),
+            .max = arena.end(),
+        },
+    });
+}
+pub fn ChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
+    const arena: mem.Arena = mem.Arena{ .index = arena_index };
+    const int_fmt_spec: PolynomialFormatSpec = .{
+        .bits = 64,
+        .signedness = .unsigned,
+        .radix = 16,
+        .width = .max,
+        .range = .{ .min = arena.begin(), .max = arena.end() },
+    };
+    return ChangedRangeFormat(.{
+        .new_fmt_spec = int_fmt_spec,
+        .old_fmt_spec = int_fmt_spec,
+        .del_fmt_spec = .{
+            .bits = 64,
+            .signedness = .unsigned,
+            .radix = 16,
+            .width = .min,
+            .range = .{ .max = arena.end() },
+        },
+    });
+}
+pub const ChangedRangeFormatSpec = struct {
+    old_fmt_spec: PolynomialFormatSpec,
+    new_fmt_spec: PolynomialFormatSpec,
+    del_fmt_spec: PolynomialFormatSpec,
+    lower_inc_style: []const u8 = lit.fx.color.fg.green ++ lit.fx.style.bold ++ "+",
+    lower_dec_style: []const u8 = lit.fx.color.fg.red ++ lit.fx.style.bold ++ "-",
+    upper_inc_style: []const u8 = lit.fx.color.fg.green ++ lit.fx.style.bold ++ "+",
+    upper_dec_style: []const u8 = lit.fx.color.fg.red ++ lit.fx.style.bold ++ "-",
+    arrow_style: []const u8 = " => ",
+};
+pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
+    return struct {
+        old_lower: OldPolynomialFormat.Int,
+        old_upper: OldPolynomialFormat.Int,
+        new_lower: NewPolynomialFormat.Int,
+        new_upper: NewPolynomialFormat.Int,
+        const Format = @This();
+        const OldPolynomialFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
+        const NewPolynomialFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
+        const DelPolynomialFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
+        const LowerChangedIntFormat = ChangedIntFormat(.{
+            .old_fmt_spec = fmt_spec.old_fmt_spec,
+            .new_fmt_spec = fmt_spec.new_fmt_spec,
+            .del_fmt_spec = fmt_spec.del_fmt_spec,
+            .dec_style = fmt_spec.lower_dec_style,
+            .inc_style = fmt_spec.lower_inc_style,
+            .arrow_style = fmt_spec.arrow_style,
+        });
+        const UpperChangedIntFormat = ChangedIntFormat(.{
+            .old_fmt_spec = fmt_spec.old_fmt_spec,
+            .new_fmt_spec = fmt_spec.new_fmt_spec,
+            .del_fmt_spec = fmt_spec.del_fmt_spec,
+            .dec_style = fmt_spec.upper_dec_style,
+            .inc_style = fmt_spec.upper_inc_style,
+            .arrow_style = fmt_spec.arrow_style,
+        });
+        pub const fmt_spec: ChangedRangeFormatSpec = spec;
+        pub fn formatLength(format: Format) u64 {
+            const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
+            const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
+            const old_lower_s: OldPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
+            const old_upper_s: OldPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
+            const new_lower_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_lower };
+            const new_upper_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_upper };
+            const new_lower_s: NewPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
+            const new_upper_s: NewPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
+            var len: u64 = 0;
+            const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
+            const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
+            var i: u64 = 0;
+            const old_lower_s_count: u64 = old_lower_s.count();
+            const old_upper_s_count: u64 = old_upper_s.count();
+            len += old_upper_s_count - old_lower_s_count;
+            if (format.old_lower != format.new_lower) {
+                len += lower_del_fmt.formatLengthDelta();
+            }
+            if (format.old_upper != format.new_upper) {
+                len += upper_del_fmt.formatLengthDelta();
+            }
+            while (i != old_lower_s_count) : (i += 1) {
+                if (old_upper_s.readOneAt(i) != old_lower_s.readOneAt(i)) {
+                    len += i + 1 +
+                        (old_lower_s_count - i) + 2 +
+                        (old_upper_s_count - i) + 1 + 4;
+                    break;
+                }
+            }
+            i = 0;
+            const new_lower_s_count: u64 = new_lower_s.count();
+            const new_upper_s_count: u64 = new_upper_s.count();
+            len += new_upper_s_count - new_lower_s_count;
+            while (i != new_lower_s_count) : (i += 1) {
+                if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
+                    len += i + 1 +
+                        (new_lower_s_count - i) + 2 +
+                        (new_upper_s_count - i) + 1;
+                    break;
+                }
+            }
+            return len;
+        }
+        pub fn formatWrite(format: Format, array: anytype) void {
+            const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
+            const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
+            const old_lower_s: OldPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
+            const old_upper_s: OldPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
+            const new_lower_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_lower };
+            const new_upper_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_upper };
+            const new_lower_s: NewPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
+            const new_upper_s: NewPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
+            const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
+            const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
+            var i: u64 = 0;
+            const old_lower_s_count: u64 = old_lower_s.count();
+            const old_upper_s_count: u64 = old_upper_s.count();
+            while (i != old_lower_s_count) : (i += 1) {
+                if (old_upper_s.readOneAt(i) != old_lower_s.readOneAt(i)) {
+                    break;
+                }
+            }
+            array.writeMany(old_upper_s.readAll()[0..i]);
+            array.writeOne('{');
+            var x: u64 = old_upper_s_count - old_lower_s_count;
+            while (x != 0) : (x -= 1) array.writeOne('0');
+            array.writeMany(old_lower_s.readAll()[i..old_lower_s_count]);
+            if (format.old_lower != format.new_lower) {
+                lower_del_fmt.formatWriteDelta(array);
+            }
+            array.writeCount(2, "..".*);
+            array.writeMany(old_upper_s.readAll()[i..old_upper_s_count]);
+            if (format.old_upper != format.new_upper) {
+                upper_del_fmt.formatWriteDelta(array);
+            }
+            array.writeOne('}');
+            array.writeCount(4, " => ".*);
+            i = 0;
+            const new_lower_s_count: u64 = new_lower_s.count();
+            const new_upper_s_count: u64 = new_upper_s.count();
+            while (i != new_lower_s_count) : (i += 1) {
+                if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
+                    break;
+                }
+            }
+            array.writeMany(new_upper_s.readAll()[0..i]);
+            array.writeOne('{');
+            var y: u64 = new_upper_s_count - new_lower_s_count;
+            while (y != 0) : (y -= 1) array.writeOne('0');
+            array.writeMany(new_lower_s.readAll()[i..new_lower_s_count]);
+            array.writeCount(2, "..".*);
+            array.writeMany(new_upper_s.readAll()[i..new_upper_s_count]);
+            array.writeOne('}');
+        }
+        pub fn init(
+            old_lower: OldPolynomialFormat.Int,
+            old_upper: OldPolynomialFormat.Int,
+            new_lower: NewPolynomialFormat.Int,
+            new_upper: NewPolynomialFormat.Int,
+        ) Format {
+            return .{
+                .old_lower = old_lower,
+                .old_upper = old_upper,
+                .new_lower = new_lower,
+                .new_upper = new_upper,
+            };
+        }
+    };
+}
 fn indexOfFirst(comptime T: type, comptime value: T, values: []const T) ?u64 {
     var idx: u64 = 0;
     while (idx != values.len) : (idx += 1) {
@@ -612,7 +991,6 @@ fn indexOfLast(comptime T: type, comptime value: T, values: []const T) ?u64 {
     }
     return null;
 }
-
 pub fn shortTypeName(comptime T: type) [:0]const u8 {
     comptime {
         const type_name: [:0]const u8 = @typeName(T);
