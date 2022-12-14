@@ -48,7 +48,6 @@ pub fn amountToBytesOfLength(amt: Amount, length: u64) u64 {
         .count => |count| count * length,
     };
 }
-
 fn hasSentinel(comptime impl_type: type) bool {
     return builtin.int2v(
         bool,
@@ -3969,7 +3968,6 @@ pub const ReinterpretSpec = struct {
     composite: Composite = .{},
     reference: Reference = .{},
     symbol: Symbol = .{},
-    options: Options = .{},
     const Integral = struct {
         /// Attempt to write over_size integer types
         over_size: bool = false,
@@ -4025,35 +4023,9 @@ pub const ReinterpretSpec = struct {
         /// Convert type to string. Length is always compile-time-known.
         type_name: bool = false,
     };
-    const Options = struct {
-        /// If variable check and panic
-        bounds: struct {
-            Array: enum(u1) {
-                /// Assert capacity of the destination is above or equal
-                /// to the size of the source, aborting with error message if
-                /// this test fails. (Debug)
-                check_capacity_assert,
-                /// Write to end without checks (ReleaseFast)
-                assert_capacity,
-            } = if (builtin.is_correct) .check_capacity_assert else .assert_capacity,
-            Pointer: enum(u2) {
-                /// Assert capacity of the destination is above or equal
-                /// to the size of the source, aborting with error message if
-                /// this test fails.
-                check_capacity_assert,
-                /// Test capacity of the destination is above or equal
-                /// to the size of the source,
-                check_capacity_increment,
-                /// Write to end without checks
-                assert_capacity,
-            } = .check_capacity_increment,
-        } = .{},
-    };
 };
-
 const Reinterpret = struct {
     const validate_format_length: bool = false;
-
     fn isEquivalent(comptime child: type, comptime write_spec: ReinterpretSpec, comptime dst_type: type, comptime src_type: type) bool {
         const dst_type_info: meta.Type = @typeInfo(dst_type);
         const src_type_info: meta.Type = @typeInfo(src_type);
