@@ -29,7 +29,6 @@ pub const DirStreamSpec = struct {
     fn log(comptime spec: DirStreamSpec, decl_literal: anytype) bool {
         return spec.logging != null and @field(spec.logging.?, @tagName(decl_literal));
     }
-
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const Kind = enum(u8) {
