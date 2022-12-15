@@ -49,6 +49,21 @@ pub const Logging = packed struct {
     Release: bool = is_verbose,
     Error: bool = true,
     Fault: bool = true,
+
+    pub const verbose: Logging = .{
+        .Success = true,
+        .Acquire = true,
+        .Release = true,
+        .Error = true,
+        .Fault = true,
+    };
+    pub const silent: Logging = .{
+        .Success = false,
+        .Acquire = false,
+        .Release = false,
+        .Error = false,
+        .Fault = false,
+    };
 };
 
 pub const lib_build_root: [:0]const u8 = blk: {
