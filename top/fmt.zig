@@ -182,7 +182,7 @@ pub fn ud32(value: u32) PolynomialFormat(.{ .bits = 32, .radix = 10, .signedness
 pub fn ud64(value: u64) PolynomialFormat(.{ .bits = 64, .radix = 10, .signedness = .unsigned, .width = .min }) {
     return .{ .value = value };
 }
-pub fn ud128(value: u128) PolynomialFormat(.{ .bits = 8, .radix = 10, .signedness = .unsigned, .width = .min }) {
+pub fn ud128(value: u128) PolynomialFormat(.{ .bits = 128, .radix = 10, .signedness = .unsigned, .width = .min }) {
     return .{ .value = value };
 }
 pub fn ux8(value: u8) PolynomialFormat(.{ .bits = 8, .radix = 16, .signedness = .unsigned, .width = .min }) {
@@ -197,7 +197,7 @@ pub fn ux32(value: u32) PolynomialFormat(.{ .bits = 32, .radix = 16, .signedness
 pub fn ux64(value: u64) PolynomialFormat(.{ .bits = 64, .radix = 16, .signedness = .unsigned, .width = .min }) {
     return .{ .value = value };
 }
-pub fn ux128(value: u128) PolynomialFormat(.{ .bits = 8, .radix = 16, .signedness = .unsigned, .width = .min }) {
+pub fn ux128(value: u128) PolynomialFormat(.{ .bits = 128, .radix = 16, .signedness = .unsigned, .width = .min }) {
     return .{ .value = value };
 }
 pub fn uz8(value: u8) PolynomialFormat(.{ .bits = 8, .radix = 36, .signedness = .unsigned, .width = .min }) {
@@ -1024,33 +1024,18 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
         }
     };
 }
-fn indexOfFirst(comptime T: type, comptime value: T, values: []const T) ?u64 {
-    var idx: u64 = 0;
-    while (idx != values.len) : (idx += 1) {
-        if (values[idx] == value) return idx;
-    }
-    return null;
-}
-fn indexOfLast(comptime T: type, comptime value: T, values: []const T) ?u64 {
-    var idx: u64 = values.len;
-    while (idx != 0) {
-        idx -= 1;
-        if (values[idx] == value) return idx;
-    }
-    return null;
-}
-pub fn shortTypeName(comptime T: type) [:0]const u8 {
+pub fn typeName(comptime T: type) [:0]const u8 {
     comptime {
         const type_name: [:0]const u8 = @typeName(T);
-        if (indexOfFirst(u8, '.', type_name)) |first_dot| {
-            if (indexOfFirst(u8, '(', type_name)) |first_parens| {
-                if (indexOfLast(u8, '.', type_name[0..first_parens])) |last_dot| {
+        if (mem.indexOfFirstEqualOne(u8, '.', type_name)) |first_dot| {
+            if (mem.indexOfLastEqualOne(u8, '(', type_name)) |first_parens| {
+                if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_parens])) |last_dot| {
                     if (last_dot != first_dot) {
                         return type_name[0..first_dot] ++ "." ++ type_name[last_dot..first_parens] ++ "(..)";
                     }
                 }
             }
-        } else if (indexOfFirst(u8, '(', type_name)) |first_parens| {
+        } else if (mem.indexOfFirstEqualOne(u8, '(', type_name)) |first_parens| {
             return type_name[0..first_parens] ++ "(..)";
         }
         return type_name;
