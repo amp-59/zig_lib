@@ -111,7 +111,7 @@ pub const Advice = meta.EnumBitField(enum(u64) {
 pub const PartSpec = struct {
     options: Options = .{},
     errors: ?type = ArenaError,
-    logging: bool = true,
+    logging: builtin.Logging = .{},
     const Options = struct {
         thread_safe: bool = true,
     };
@@ -120,7 +120,7 @@ pub const MapSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mmap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
         anonymous: bool = true,
@@ -176,7 +176,7 @@ pub const MoveSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mremap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct { no_unmap: bool = false };
     pub fn flags(comptime spec: Specification) Remap {
@@ -193,14 +193,14 @@ pub const MoveSpec = struct {
 pub const RemapSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.mremap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const UnmapSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.munmap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
@@ -208,7 +208,7 @@ pub const AdviseSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.madvise_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Options = struct {
         usage: ?Usage = null,
         action: ?Action = null,
@@ -617,11 +617,11 @@ pub fn acquire(comptime part_spec: PartSpec, address_space: anytype, index: u8) 
     else
         address_space.acquire(index))
     {
-        if (part_spec.logging) {
+        if (part_spec.logging.Acquire) {
             debug.arenaAcquireNotice(index);
         }
     } else |arena_error| {
-        if (part_spec.logging or builtin.is_correct) {
+        if (part_spec.logging.Error) {
             debug.arenaAcquireError(arena_error, index);
         }
         return arena_error;
@@ -633,11 +633,11 @@ pub fn release(comptime part_spec: PartSpec, address_space: anytype, index: u8) 
     else
         address_space.release(index))
     {
-        if (part_spec.logging) {
+        if (part_spec.logging.Release) {
             debug.arenaReleaseNotice(index);
         }
     } else |arena_error| {
-        if (part_spec.logging or builtin.is_correct) {
+        if (part_spec.logging.Error) {
             return debug.arenaReleaseError(arena_error, index);
         }
         return arena_error;
@@ -649,7 +649,7 @@ pub const noexcept = opaque {
             address_space.atomicSet(index)
         else
             address_space.set(index);
-        if (part_spec.logging and ret) {
+        if (part_spec.logging.Error and ret) {
             debug.arenaAcquireNotice(index);
         }
     }
@@ -658,7 +658,7 @@ pub const noexcept = opaque {
             address_space.atomicUnset(index)
         else
             address_space.unset(index);
-        if (part_spec.logging and ret) {
+        if (part_spec.logging.Error and ret) {
             debug.arenaReleaseNotice(index);
         }
     }
@@ -667,11 +667,11 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) spec.Unwrapped(.mmap) {
     const mmap_prot: Prot = spec.prot();
     const mmap_flags: Map = spec.flags();
     if (spec.call(.mmap, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 })) {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.mapNotice(addr, len);
         }
     } else |map_error| {
-        if (spec.logging or builtin.is_correct) {
+        if (spec.logging.Error) {
             debug.mapError(map_error, addr, len);
         }
         return map_error;
@@ -680,11 +680,11 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) spec.Unwrapped(.mmap) {
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) spec.Unwrapped(.mremap) {
     const mremap_flags: Remap = spec.flags();
     if (spec.call(.mremap, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr })) {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.remapNotice(old_addr, old_len, new_addr, null);
         }
     } else |mremap_error| {
-        if (spec.logging or builtin.is_correct) {
+        if (spec.logging.Error) {
             debug.remapError(mremap_error, old_addr, old_len, new_addr, null);
         }
         return mremap_error;
@@ -692,11 +692,11 @@ pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64)
 }
 pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) spec.Unwrapped(.mremap) {
     if (spec.call(.mremap, .{ old_addr, old_len, new_len, 0, 0 })) {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.remapNotice(old_addr, old_len, null, new_len);
         }
     } else |mremap_error| {
-        if (spec.logging or builtin.is_correct) {
+        if (spec.logging.Error) {
             debug.remapError(mremap_error, old_addr, old_len, null, new_len);
         }
         return mremap_error;
@@ -704,11 +704,11 @@ pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u6
 }
 pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) spec.Unwrapped(.munmap) {
     if (spec.call(.munmap, .{ addr, len })) {
-        if (spec.logging) {
+        if (spec.logging.Release) {
             debug.unmapNotice(addr, len);
         }
     } else |unmap_error| {
-        if (spec.logging or builtin.is_correct) {
+        if (spec.logging.Error) {
             debug.unmapError(unmap_error, addr, len);
         }
         return unmap_error;
@@ -717,11 +717,11 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) spec.Unwrapped(.munm
 pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) spec.Unwrapped(.madvise) {
     const advice: Advice = spec.advice();
     if (spec.call(.madvise, .{ addr, len, advice.val })) {
-        if (spec.logging) {
+        if (spec.logging.Success) {
             debug.adviseNotice(addr, len, spec.describe());
         }
     } else |madvise_error| {
-        if (spec.logging or builtin.is_correct) {
+        if (spec.logging.Error) {
             debug.adviseError(madvise_error, addr, len, spec.describe());
         }
         return madvise_error;
@@ -1297,30 +1297,46 @@ pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []c
     }
     return null;
 }
-pub fn readBeforeFirstEqualMany(comptime T: type, suffix_values: []const T, values: []const T) ?[]const T {
-    @setRuntimeSafety(false);
-    if (indexOfFirstEqualMany(T, suffix_values, values)) |index| {
-        return @ptrCast(@TypeOf(values), values[0..index]);
-    }
-    return null;
-}
-pub fn readAfterFirstEqualMany(comptime T: type, prefix_values: []const T, values: []const T) ?[]const T {
-    if (indexOfFirstEqualMany(T, prefix_values, values)) |index| {
-        return values[index + prefix_values.len ..];
-    }
-    return null;
-}
-pub fn readBeforeLastEqualMany(comptime T: type, comptime suffix: []const T, values: []const T) ?[]const T {
-    @setRuntimeSafety(false);
-    if (indexOfLastEqualMany(T, suffix, values)) |index| {
+pub fn readBeforeFirstEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
         return values[0..index];
     }
     return null;
 }
-pub fn readAfterLastEqualMany(comptime T: type, comptime prefix: []const T, values: anytype) ?@TypeOf(values) {
-    @setRuntimeSafety(false);
-    if (indexOfLastEqualMany(T, prefix, values)) |index| {
-        return @ptrCast(@TypeOf(values), values[prefix.len + index ..]);
+pub fn readAfterFirstEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
+        return values[index + sub_values.len ..];
+    }
+    return null;
+}
+
+pub fn readBeforeLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    if (indexOfLastEqualMany(T, sub_values, values)) |index| {
+        return values[0..index];
+    }
+    return null;
+}
+pub fn readAfterLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    if (indexOfLastEqualMany(T, sub_values, values)) |index| {
+        return values[sub_values.len + index ..];
+    }
+    return null;
+}
+pub fn propagateSearch(needle: anytype, haystack: anytype, index: u64) ?u64 {
+    var spread: u64 = 0;
+    while (spread != haystack.len) : (spread += 1) {
+        const below_start: u64 = index -% spread;
+        const above_start: u64 = index +% spread;
+        if (below_start < haystack.len) {
+            if (testEqualManyFront(u8, needle, haystack[below_start..])) {
+                return below_start;
+            }
+        }
+        if (above_start < haystack.len) {
+            if (testEqualManyFront(u8, needle, haystack[above_start..])) {
+                return above_start;
+            }
+        }
     }
     return null;
 }
