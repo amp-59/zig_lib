@@ -224,6 +224,9 @@ pub fn StructuredAutomaticStreamView(comptime params: Parameters0) type {
         pub fn readManyAt(array: *const Array, offset: usize) []const child {
             return pointerMany(child, __at(array, offset), __len(array, offset));
         }
+        pub fn readOneBehind(array: *const Array) child {
+            return pointerOne(child, __behind(array, 1)).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, read_count), read_count).*;
         }
@@ -350,6 +353,9 @@ pub fn StructuredAutomaticStreamVector(comptime params: Parameters0) type {
         }
         pub fn readManyBack(array: *const Array, offset: usize) []const child {
             return pointerMany(child, __prev(array, offset), offset);
+        }
+        pub fn readOneBehind(array: *const Array) child {
+            return pointerOne(child, __behind(array, 1)).*;
         }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, read_count), read_count).*;
@@ -821,6 +827,9 @@ pub fn StructuredStaticStreamVector(comptime params: Parameters1) type {
         pub fn readManyBack(array: *const Array, offset: usize) []const child {
             return pointerMany(child, __prev(array, offset), offset);
         }
+        pub fn readOneBehind(array: *const Array) child {
+            return pointerOne(child, __behind(array, 1)).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, read_count), read_count).*;
         }
@@ -1287,6 +1296,9 @@ pub fn UnstructuredStaticStreamVector(comptime params: Parameters2) type {
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
             return pointerMany(child, __prev(array, child, offset), offset);
         }
+        pub fn readOneBehind(array: *const Array, comptime child: type) child {
+            return pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
@@ -1419,26 +1431,26 @@ pub fn UnstructuredStaticStreamVector(comptime params: Parameters2) type {
         inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
-        pub fn define(array: *Array, comptime child: type, comptime define_amount: Amount) void {
-            array.impl.define(amountToBytesOfType(child, define_amount));
+        pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
+            array.impl.define(amountToBytesOfType(define_amount, child));
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
-        pub fn undefine(array: *Array, comptime child: type, comptime undefine_amount: Amount) void {
-            array.impl.undefine(amountToBytesOfType(child, undefine_amount));
+        pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
+            array.impl.undefine(amountToBytesOfType(undefine_amount, child));
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
         }
-        pub fn stream(array: *Array, comptime child: type, comptime stream_amount: Amount) void {
-            array.impl.seek(amountToBytesOfType(child, stream_amount));
+        pub fn stream(array: *Array, comptime child: type, stream_amount: Amount) void {
+            array.impl.seek(amountToBytesOfType(stream_amount, child));
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
-        pub fn unstream(array: *Array, comptime child: type, comptime unstream_amount: Amount) void {
-            array.impl.tell(amountToBytesOfType(child, unstream_amount));
+        pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
+            array.impl.tell(amountToBytesOfType(unstream_amount, child));
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -1584,14 +1596,14 @@ pub fn UnstructuredStaticVector(comptime params: Parameters2) type {
         inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        pub fn define(array: *Array, comptime child: type, comptime define_amount: Amount) void {
-            array.impl.define(amountToBytesOfType(child, define_amount));
+        pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
+            array.impl.define(amountToBytesOfType(define_amount, child));
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
-        pub fn undefine(array: *Array, comptime child: type, comptime undefine_amount: Amount) void {
-            array.impl.undefine(amountToBytesOfType(child, undefine_amount));
+        pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
+            array.impl.undefine(amountToBytesOfType(undefine_amount, child));
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
@@ -1700,6 +1712,9 @@ pub fn StructuredStreamVector(comptime params: Parameters3) type {
         }
         pub fn readManyBack(array: *const Array, offset: usize) []const child {
             return pointerMany(child, __prev(array, offset), offset);
+        }
+        pub fn readOneBehind(array: *const Array) child {
+            return pointerOne(child, __behind(array, 1)).*;
         }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, read_count), read_count).*;
@@ -1930,6 +1945,9 @@ pub fn StructuredStreamView(comptime params: Parameters3) type {
         }
         pub fn readManyAt(array: *const Array, offset: usize) []const child {
             return pointerMany(child, __at(array, offset), __len(array, offset));
+        }
+        pub fn readOneBehind(array: *const Array) child {
+            return pointerOne(child, __behind(array, 1)).*;
         }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, read_count), read_count).*;
@@ -2378,6 +2396,9 @@ pub fn UnstructuredStreamVector(comptime params: Parameters4) type {
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
             return pointerMany(child, __prev(array, child, offset), offset);
         }
+        pub fn readOneBehind(array: *const Array, comptime child: type) child {
+            return pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
@@ -2549,26 +2570,26 @@ pub fn UnstructuredStreamVector(comptime params: Parameters4) type {
         inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
-        pub fn define(array: *Array, comptime child: type, comptime define_amount: Amount) void {
-            array.impl.define(amountToBytesOfType(child, define_amount));
+        pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
+            array.impl.define(amountToBytesOfType(define_amount, child));
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
-        pub fn undefine(array: *Array, comptime child: type, comptime undefine_amount: Amount) void {
-            array.impl.undefine(amountToBytesOfType(child, undefine_amount));
+        pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
+            array.impl.undefine(amountToBytesOfType(undefine_amount, child));
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
         }
-        pub fn stream(array: *Array, comptime child: type, comptime stream_amount: Amount) void {
-            array.impl.seek(amountToBytesOfType(child, stream_amount));
+        pub fn stream(array: *Array, comptime child: type, stream_amount: Amount) void {
+            array.impl.seek(amountToBytesOfType(stream_amount, child));
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
-        pub fn unstream(array: *Array, comptime child: type, comptime unstream_amount: Amount) void {
-            array.impl.tell(amountToBytesOfType(child, unstream_amount));
+        pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
+            array.impl.tell(amountToBytesOfType(unstream_amount, child));
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -2605,6 +2626,9 @@ pub fn UnstructuredStreamView(comptime params: Parameters4) type {
         }
         pub fn readManyAt(array: *const Array, comptime child: type, offset: Amount) []const child {
             return pointerMany(child, __at(array, child, offset), __len(array, child, offset));
+        }
+        pub fn readOneBehind(array: *const Array, comptime child: type) child {
+            return pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
         }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
@@ -2690,14 +2714,14 @@ pub fn UnstructuredStreamView(comptime params: Parameters4) type {
         inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
-        pub fn stream(array: *Array, comptime child: type, comptime stream_amount: Amount) void {
-            array.impl.seek(amountToBytesOfType(child, stream_amount));
+        pub fn stream(array: *Array, comptime child: type, stream_amount: Amount) void {
+            array.impl.seek(amountToBytesOfType(stream_amount, child));
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
-        pub fn unstream(array: *Array, comptime child: type, comptime unstream_amount: Amount) void {
-            array.impl.tell(amountToBytesOfType(child, unstream_amount));
+        pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
+            array.impl.tell(amountToBytesOfType(unstream_amount, child));
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -2882,14 +2906,14 @@ pub fn UnstructuredVector(comptime params: Parameters4) type {
         inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        pub fn define(array: *Array, comptime child: type, comptime define_amount: Amount) void {
-            array.impl.define(amountToBytesOfType(child, define_amount));
+        pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
+            array.impl.define(amountToBytesOfType(define_amount, child));
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
-        pub fn undefine(array: *Array, comptime child: type, comptime undefine_amount: Amount) void {
-            array.impl.undefine(amountToBytesOfType(child, undefine_amount));
+        pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
+            array.impl.undefine(amountToBytesOfType(undefine_amount, child));
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
@@ -3052,6 +3076,9 @@ pub fn StructuredStreamHolder(comptime params: Parameters5) type {
         }
         pub fn readManyBack(array: *const Array, offset: usize) []const child {
             return pointerMany(child, __prev(array, offset), offset);
+        }
+        pub fn readOneBehind(array: *const Array) child {
+            return pointerOne(child, __behind(array, 1)).*;
         }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, read_count), read_count).*;
@@ -3508,6 +3535,9 @@ pub fn UnstructuredStreamHolder(comptime params: Parameters6) type {
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
             return pointerMany(child, __prev(array, child, offset), offset);
         }
+        pub fn readOneBehind(array: *const Array, comptime child: type) child {
+            return pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
@@ -3679,26 +3709,26 @@ pub fn UnstructuredStreamHolder(comptime params: Parameters6) type {
         inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
-        pub fn define(array: *Array, comptime child: type, comptime define_amount: Amount) void {
-            array.impl.define(amountToBytesOfType(child, define_amount));
+        pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
+            array.impl.define(amountToBytesOfType(define_amount, child));
         }
         pub fn defineAll(array: *Array, allocator: Allocator) void {
             array.impl.define(array.impl.available(allocator));
         }
-        pub fn undefine(array: *Array, comptime child: type, comptime undefine_amount: Amount) void {
-            array.impl.undefine(amountToBytesOfType(child, undefine_amount));
+        pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
+            array.impl.undefine(amountToBytesOfType(undefine_amount, child));
         }
         pub fn undefineAll(array: *Array, allocator: Allocator) void {
             array.impl.undefine(array.impl.length(allocator));
         }
-        pub fn stream(array: *Array, comptime child: type, comptime stream_amount: Amount) void {
-            array.impl.seek(amountToBytesOfType(child, stream_amount));
+        pub fn stream(array: *Array, comptime child: type, stream_amount: Amount) void {
+            array.impl.seek(amountToBytesOfType(stream_amount, child));
         }
         pub fn streamAll(array: *Array, allocator: Allocator) void {
             array.impl.seek(array.impl.ahead(allocator));
         }
-        pub fn unstream(array: *Array, comptime child: type, comptime unstream_amount: Amount) void {
-            array.impl.tell(amountToBytesOfType(child, unstream_amount));
+        pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
+            array.impl.tell(amountToBytesOfType(unstream_amount, child));
         }
         pub fn unstreamAll(array: *Array, allocator: Allocator) void {
             array.impl.tell(array.impl.behind(allocator));
@@ -3883,14 +3913,14 @@ pub fn UnstructuredHolder(comptime params: Parameters6) type {
         inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        pub fn define(array: *Array, comptime child: type, comptime define_amount: Amount) void {
-            array.impl.define(amountToBytesOfType(child, define_amount));
+        pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
+            array.impl.define(amountToBytesOfType(define_amount, child));
         }
         pub fn defineAll(array: *Array, allocator: Allocator) void {
             array.impl.define(array.impl.available(allocator));
         }
-        pub fn undefine(array: *Array, comptime child: type, comptime undefine_amount: Amount) void {
-            array.impl.undefine(amountToBytesOfType(child, undefine_amount));
+        pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
+            array.impl.undefine(amountToBytesOfType(undefine_amount, child));
         }
         pub fn undefineAll(array: *Array, allocator: Allocator) void {
             array.impl.undefine(array.impl.length(allocator));
