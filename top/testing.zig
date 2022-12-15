@@ -51,6 +51,10 @@ pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void 
     len += arrayOfCharsWrite(buf[len..], arg1);
     len += arrayOfCharsWrite(buf[len..], arg2);
     file.noexcept.write(2, buf[0..len]);
+    file.noexcept.write(2, arg1);
+    file.noexcept.write(2, "\n");
+    file.noexcept.write(2, arg2);
+    file.noexcept.write(2, "\n");
 }
 
 // Q: Why not put this in builtin, according to specification?
@@ -124,7 +128,7 @@ fn sizeBreakDownLength(comptime T: type, type_rename: ?[:0]const u8) u64 {
     var len: u64 = 0;
     const type_info: builtin.Type = @typeInfo(T);
     len += ("const ").len;
-    len += (type_rename orelse fmt.shortTypeName(T)).len;
+    len += (type_rename orelse fmt.typeName(T)).len;
     if (type_info == .Struct or type_info == .Union) {
         if (@sizeOf(T) != 0) {
             if (type_info == .Struct) {
@@ -193,7 +197,7 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     const type_info: builtin.Type = @typeInfo(T);
     var array: mem.StaticString(1048576) = .{};
     array.writeMany("const ");
-    array.writeMany(type_rename orelse fmt.shortTypeName(T));
+    array.writeMany(type_rename orelse fmt.typeName(T));
     if (type_info == .Struct or type_info == .Union) {
         if (@sizeOf(T) != 0) {
             if (type_info == .Struct) {
@@ -225,59 +229,4 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     array.writeOne('\n');
     file.noexcept.write(2, array.readAll());
     return array.readAll().len;
-}
-fn isLikeString(comptime T: type) bool {
-    const type_info: builtin.Type = @typeInfo(T);
-    if (type_info == .Array) {
-        return type_info.Array.child == u8;
-    }
-    if (type_info == .Pointer) {
-        return builtin.int2a(
-            bool,
-            type_info.Pointer.size == .Slice,
-            type_info.Pointer.child == u8,
-        );
-    }
-    return false;
-}
-fn hasDecls(comptime T: type) bool {
-    const type_info: builtin.Type = @typeInfo(T);
-    return type_info == .Struct or type_info == .Opaque or
-        type_info == .Union or type_info == .Enum;
-}
-fn printDeclsRecursively(comptime T: type, array: *mem.StaticString(1024 * 1024)) void {
-    if (comptime !hasDecls(T)) {
-        return;
-    }
-    const type_info: builtin.Type = @typeInfo(T);
-    inline for (@field(type_info, @tagName(type_info)).decls) |decl| {
-        if (comptime !decl.is_pub) {
-            continue;
-        }
-        const field_type: type = @TypeOf(@field(T, decl.name));
-        const field: field_type = @field(T, decl.name);
-        const field_type_info: builtin.Type = @typeInfo(field_type);
-        const decl_kind: []const u8 = if (decl.is_pub) "pub const " else "const ";
-        if (field_type_info == .Type) {
-            array.writeMany(decl_kind ++ decl.name ++ " = " ++ comptime builtin.fmt.typeTypeSpecifier(@typeInfo(field)));
-            array.writeMany(" {\n");
-            printDeclsRecursively(@field(T, decl.name), array);
-            array.writeMany("};\n");
-        } else {
-            if (field_type_info != .Fn) {
-                if (comptime isLikeString(field_type)) {
-                    array.writeMany(decl_kind ++ decl.name ++ ": " ++ @typeName(field_type) ++ " = ");
-                    array.writeMany("\"");
-                    for (field) |c| {
-                        array.writeMany(lit.esc_hex_sequences[c]);
-                    }
-                    array.writeMany("\";\n");
-                } else if (field_type_info == .Int) {
-                    array.writeMany(decl_kind ++ decl.name ++ ": " ++ @typeName(field_type) ++ " = ");
-                    array.writeFormat(fmt.ux(field));
-                    array.writeMany(";\n");
-                }
-            }
-        }
-    }
 }
