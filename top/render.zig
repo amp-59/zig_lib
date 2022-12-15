@@ -343,9 +343,96 @@ pub fn StructFormat(comptime Struct: type) type {
 //
 //  ComptimeInt
 //
+const ComptimeIntFormat = struct {
+    value: comptime_int,
+    const Format = @This();
+    pub fn formatWrite(comptime format: Format, array: anytype) void {
+        const Int: type = meta.LeastRealBitSize(format.value);
+        const real_format: IntFormat(Int) = .{ .value = format.value };
+        return real_format.formatWrite(array);
+    }
+    pub fn formatLength(comptime format: Format) u64 {
+        const Int: type = meta.LeastRealBitSize(format.value);
+        const real_format: IntFormat(Int) = .{ .value = format.value };
+        return real_format.formatLength();
+    }
+    pub usingnamespace GenericRenderFormat(Format);
+};
+
 //
 //  Int
 //
+pub fn IntFormat(comptime Int: type) type {
+    return struct {
+        value: Int,
+        const Format = @This();
+        const Abs: type = @Type(.{ .Int = .{ .bits = type_info.Int.bits, .signedness = .unsigned } });
+        const type_info: builtin.Type = @typeInfo(Int);
+        const radix: Abs = 10;
+        const max_abs_value: Abs = ~@as(Abs, 0);
+        const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, radix);
+        const prefix: [2]u8 = lit.int_prefixes[radix].*;
+        const max_len: u64 = blk: {
+            var len: u64 = max_digits_count;
+            if (radix != 10) {
+                len += prefix.len;
+            }
+            if (type_info.Int.signedness == .signed) {
+                len += 1;
+            }
+            break :blk len;
+        };
+        /// Value
+        inline fn absolute(format: Format) Abs {
+            if (format.value < 0) {
+                return 1 +% ~@bitCast(Abs, format.value);
+            } else {
+                return @bitCast(Abs, format.value);
+            }
+        }
+        /// Length
+        inline fn digits(format: Format) u64 {
+            return builtin.fmt.length(Abs, format.absolute(), radix);
+        }
+        pub fn formatWrite(format: Format, array: anytype) void {
+            const start: u64 = array.impl.next();
+            var next: u64 = start;
+            if (Abs != Int) {
+                @intToPtr(*u8, next).* = '-';
+            }
+            next += @boolToInt(format.value < 0);
+            if (radix != 10) {
+                @intToPtr(*[prefix.len]u8, next).* = prefix;
+                next += prefix.len;
+            }
+            var value: Abs = format.absolute();
+            if (format.value == 0) {
+                @intToPtr(*u8, next).* = '0';
+            }
+            const count: u64 = format.digits();
+            next += count;
+            var len: u64 = 0;
+            while (len != count) : (value /= radix) {
+                len +%= 1;
+                @intToPtr(*u8, next - len).* =
+                    builtin.fmt.toSymbol(Abs, value, radix);
+            }
+            array.impl.define(next - start);
+        }
+        pub fn formatLength(format: Format) u64 {
+            var len: u64 = 0;
+            if (radix != 10) {
+                len += prefix.len;
+            }
+            if (format.value < 0) {
+                len += 1;
+            }
+            return len + format.digits();
+        }
+        pub usingnamespace GenericRenderFormat(Format);
+    };
+}
+
 //
 //  Pointer
 //

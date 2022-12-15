@@ -767,7 +767,7 @@ pub const debug = opaque {
             ")\n",
         });
     }
-    fn unmapNotice(addr: u64, len: u64) void {
+    pub fn unmapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_unmap_0_s, builtin.fmt.ux64(addr).readAll(),
@@ -776,7 +776,7 @@ pub const debug = opaque {
             " bytes\n",
         });
     }
-    fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
+    pub fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
         @setCold(true);
         var buf: [4096 +% 512]u8 = undefined;
         print(&buf, &[_][]const u8{

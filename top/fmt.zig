@@ -703,7 +703,7 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
             }
             return len;
         }
-        pub noinline fn formatWrite(format: Format, array: anytype) void {
+        pub fn formatWrite(format: Format, array: anytype) void {
             const old_fmt: OldIntFormat = .{ .value = format.old_value };
             const new_fmt: NewIntFormat = .{ .value = format.new_value };
             array.writeFormat(old_fmt);
@@ -914,6 +914,57 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             .arrow_style = fmt_spec.arrow_style,
         });
         pub const fmt_spec: ChangedRangeFormatSpec = spec;
+        pub fn formatWrite(format: Format, array: anytype) void {
+            const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
+            const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
+            const old_lower_s: OldPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
+            const old_upper_s: OldPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
+            const new_lower_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_lower };
+            const new_upper_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_upper };
+            const new_lower_s: NewPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
+            const new_upper_s: NewPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
+            const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
+            const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
+            var i: u64 = 0;
+            const old_lower_s_count: u64 = old_lower_s.count();
+            const old_upper_s_count: u64 = old_upper_s.count();
+            while (i != old_lower_s_count) : (i += 1) {
+                if (old_upper_s.readOneAt(i) != old_lower_s.readOneAt(i)) {
+                    break;
+                }
+            }
+            array.writeMany(old_upper_s.readAll()[0..i]);
+            array.writeOne('{');
+            var x: u64 = old_upper_s_count - old_lower_s_count;
+            while (x != 0) : (x -= 1) array.writeOne('0');
+            array.writeMany(old_lower_s.readAll()[i..old_lower_s_count]);
+            if (format.old_lower != format.new_lower) {
+                lower_del_fmt.formatWriteDelta(array);
+            }
+            array.writeCount(2, "..".*);
+            array.writeMany(old_upper_s.readAll()[i..old_upper_s_count]);
+            if (format.old_upper != format.new_upper) {
+                upper_del_fmt.formatWriteDelta(array);
+            }
+            array.writeOne('}');
+            array.writeMany(" => ");
+            i = 0;
+            const new_lower_s_count: u64 = new_lower_s.count();
+            const new_upper_s_count: u64 = new_upper_s.count();
+            while (i != new_lower_s_count) : (i += 1) {
+                if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
+                    break;
+                }
+            }
+            array.writeMany(new_upper_s.readAll()[0..i]);
+            array.writeOne('{');
+            var y: u64 = new_upper_s_count - new_lower_s_count;
+            while (y != 0) : (y -= 1) array.writeOne('0');
+            array.writeMany(new_lower_s.readAll()[i..new_lower_s_count]);
+            array.writeMany("..");
+            array.writeMany(new_upper_s.readAll()[i..new_upper_s_count]);
+            array.writeOne('}');
+        }
         pub fn formatLength(format: Format) u64 {
             const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
             const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
@@ -957,57 +1008,6 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
                 }
             }
             return len;
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
-            const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
-            const old_lower_s: OldPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
-            const old_upper_s: OldPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
-            const new_lower_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_lower };
-            const new_upper_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_upper };
-            const new_lower_s: NewPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
-            const new_upper_s: NewPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
-            const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
-            const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
-            var i: u64 = 0;
-            const old_lower_s_count: u64 = old_lower_s.count();
-            const old_upper_s_count: u64 = old_upper_s.count();
-            while (i != old_lower_s_count) : (i += 1) {
-                if (old_upper_s.readOneAt(i) != old_lower_s.readOneAt(i)) {
-                    break;
-                }
-            }
-            array.writeMany(old_upper_s.readAll()[0..i]);
-            array.writeOne('{');
-            var x: u64 = old_upper_s_count - old_lower_s_count;
-            while (x != 0) : (x -= 1) array.writeOne('0');
-            array.writeMany(old_lower_s.readAll()[i..old_lower_s_count]);
-            if (format.old_lower != format.new_lower) {
-                lower_del_fmt.formatWriteDelta(array);
-            }
-            array.writeCount(2, "..".*);
-            array.writeMany(old_upper_s.readAll()[i..old_upper_s_count]);
-            if (format.old_upper != format.new_upper) {
-                upper_del_fmt.formatWriteDelta(array);
-            }
-            array.writeOne('}');
-            array.writeCount(4, " => ".*);
-            i = 0;
-            const new_lower_s_count: u64 = new_lower_s.count();
-            const new_upper_s_count: u64 = new_upper_s.count();
-            while (i != new_lower_s_count) : (i += 1) {
-                if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
-                    break;
-                }
-            }
-            array.writeMany(new_upper_s.readAll()[0..i]);
-            array.writeOne('{');
-            var y: u64 = new_upper_s_count - new_lower_s_count;
-            while (y != 0) : (y -= 1) array.writeOne('0');
-            array.writeMany(new_lower_s.readAll()[i..new_lower_s_count]);
-            array.writeCount(2, "..".*);
-            array.writeMany(new_upper_s.readAll()[i..new_upper_s_count]);
-            array.writeOne('}');
         }
         pub fn init(
             old_lower: OldPolynomialFormat.Int,
