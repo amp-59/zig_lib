@@ -10,7 +10,7 @@ pub const DirStreamSpec = struct {
     initial_size: u64 = 1024,
     errors: Errors = .{},
     options: Options = .{},
-    logging: ?Logging = null,
+    logging: Logging = .{},
 
     const Specification = @This();
 
@@ -22,13 +22,9 @@ pub const DirStreamSpec = struct {
         close_when_done: bool = true,
     };
     const Logging = struct {
-        open: bool = default,
-        close: bool = default,
-        const default: bool = builtin.is_debug;
+        open: builtin.Logging = .{},
+        close: builtin.Logging = .{},
     };
-    fn log(comptime spec: DirStreamSpec, decl_literal: anytype) bool {
-        return spec.logging != null and @field(spec.logging.?, @tagName(decl_literal));
-    }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const Kind = enum(u8) {
@@ -220,9 +216,9 @@ pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
         pub const dir_spec: DirStreamSpec = spec;
         const dir_open_spec: file.OpenSpec = .{
             .options = .{ .write = null, .directory = true, .read = true },
-            .logging = dir_spec.log(.open),
+            .logging = dir_spec.logging.open,
         };
-        const dir_close_spec: file.CloseSpec = .{ .errors = null, .logging = dir_spec.log(.close) };
+        const dir_close_spec: file.CloseSpec = .{ .errors = null, .logging = dir_spec.logging.close };
         pub var disordered: u64 = 0;
         pub fn entry(dir: *Dir) *file.DirectoryEntry {
             return @intToPtr(*file.DirectoryEntry, dir.blk.start());
