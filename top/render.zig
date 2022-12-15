@@ -12,11 +12,11 @@ pub fn AnyFormat(comptime Type: type) type {
     return switch (@typeInfo(Type)) {
         .Array => ArrayFormat(Type),
         //            .Fn => FnFormat(Type),
-        //            .Bool => BoolFormat,
+        .Bool => BoolFormat,
         .Type => TypeFormat,
         .Struct => StructFormat(Type),
         .Union => UnionFormat(Type),
-        //            .Enum => EnumFormat(Type),
+        .Enum => EnumFormat(Type),
         //            .EnumLiteral => EnumLiteralFormat(Type),
         .ComptimeInt => ComptimeIntFormat,
         .Int => IntFormat(Type),
@@ -93,6 +93,29 @@ pub fn ArrayFormat(comptime Array: type) type {
 //  Function
 //  Boolean
 //
+pub const BoolFormat = struct {
+    value: bool,
+    const Format = @This();
+    const max_len: u64 = @max(true_s.len, false_s.len);
+    const t_s: []const u8 = if (render_minimal) "t" else "true";
+    const f_s: []const u8 = if (render_minimal) "f" else "false";
+    const true_s = if (render_effects) "\x1b[1m" ++ t_s ++ "\x1b[0m" else t_s;
+    const false_s = if (render_effects) "\x1b[2m" ++ f_s ++ "\x1b[0m" else f_s;
+    const render_minimal: bool = false;
+    const render_effects: bool = false;
+    pub fn formatWrite(format: Format, array: anytype) void {
+        if (format.value) {
+            array.writeMany(true_s);
+        } else {
+            array.writeMany(false_s);
+        }
+    }
+    pub fn formatLength(format: Format) u64 {
+        return if (format.value) true_s.len else false_s.len;
+    }
+    pub usingnamespace GenericRenderFormat(Format);
+};
+
 //  Type
 //
 pub const TypeFormat = struct {
@@ -170,59 +193,59 @@ pub const TypeFormat = struct {
         switch (type_info) {
             .Struct => |struct_info| {
                 if (struct_info.fields.len == 0) {
-                    len += (comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {}").len;
+                    len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                 } else {
-                    len += (comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ").len;
+                    len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                     inline for (struct_info.fields) |field| {
                         const FieldFormat = AnyFormat(field.field_type);
                         if (render_composite_field_type_recursively) {
                             const field_type_format: TypeFormat = .{ .value = field.field_type };
-                            len += (field.name ++ ": ").len;
+                            len += field.name.len + 2;
                             len += field_type_format.formatLength();
                         } else {
-                            len += (field.name ++ ": " ++ @typeName(field.field_type)).len;
+                            len += field.name.len + 2 + @typeName(field.field_type).len;
                         }
                         if (meta.defaultValue(field)) |default_value| {
                             const field_format: FieldFormat = .{ .value = default_value };
-                            len += (" = ").len;
+                            len += 3;
                             len += field_format.formatLength();
                         }
-                        len += (", ").len;
+                        len += 2;
                     }
-                    len += ("}").len;
+                    len += 1;
                 }
             },
             .Union => |union_info| {
                 if (union_info.fields.len == 0) {
-                    len += (comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {}").len;
+                    len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                 } else {
-                    len += (comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ").len;
+                    len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                     inline for (union_info.fields) |field| {
                         if (field.field_type == void) {
-                            len += (field.name ++ ", ").len;
+                            len += field.name.len + 2;
                         } else {
                             if (render_composite_field_type_recursively) {
-                                len += (field.name ++ ": ").len;
+                                len += field.name + 2;
                                 const field_type_format: TypeFormat = .{ .value = field.field_type };
                                 len += field_type_format.formatLength();
                             } else {
-                                len += (field.name ++ ": " ++ @typeName(field.field_type)).len;
+                                len += field.name + 2 + @typeName(field.field_type).len;
                             }
-                            len += (", ").len;
+                            len += 2;
                         }
                     }
-                    len += ("}").len;
+                    len += 1;
                 }
             },
             .Enum => |enum_info| {
                 if (enum_info.fields.len == 0) {
-                    len += (comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {}").len;
+                    len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                 } else {
-                    len += (comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ").len;
+                    len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                     inline for (enum_info.fields) |field| {
-                        len += (field.name ++ ", ").len;
+                        len += field.name.len + 2;
                     }
-                    len += ("}").len;
+                    len += 1;
                 }
             },
             .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer => {
@@ -404,15 +427,15 @@ pub fn UnionFormat(comptime Union: type) type {
                     array.writeFormat(IntFormat(enum_info.Enum.tag_type){ .value = x });
                     array.writeMany(" }");
                 } else {
-                    array.unwriteCount(1);
-                    array.rewriteMany(" }");
+                    array.undefine(1);
+                    array.overwriteManyBack(" }");
                 }
             } else {
                 if (x != 0) {
                     array.writeFormat(IntFormat(enum_info.Enum.tag_type){ .value = x });
                     array.writeMany(" }");
                 } else {
-                    array.rewriteMany("}");
+                    array.overwriteManyBack("}");
                 }
             }
         }
@@ -456,7 +479,7 @@ pub fn UnionFormat(comptime Union: type) type {
                             array.writeMany(", ");
                         }
                     }
-                    array.rewriteMany(" }");
+                    array.overwriteManyBack(" }");
                 } else {
                     inline for (fields) |field| {
                         const FieldFormat = AnyFormat(field.field_type);
@@ -465,8 +488,8 @@ pub fn UnionFormat(comptime Union: type) type {
                         field_format.formatWrite(array);
                         array.writeMany(" | ");
                     }
-                    array.unwriteCount(1);
-                    array.rewriteMany(" }");
+                    array.undefine(1);
+                    array.overwriteManyBack(" }");
                 }
             }
         }
@@ -499,7 +522,23 @@ pub fn UnionFormat(comptime Union: type) type {
 
 //  Enum
 //
-//
+pub fn EnumFormat(comptime T: type) type {
+    return struct {
+        value: T,
+        const Format = @This();
+        const max_len: u64 = 1 + meta.maxDeclLength(T);
+        pub fn formatWrite(format: Format, array: anytype) void {
+            const tag_name = @tagName(format.value);
+            array.writeOne('.');
+            array.writeMany(tag_name);
+        }
+        pub fn formatLength(format: Format) u64 {
+            return 1 + @tagName(format.value).len;
+        }
+        pub usingnamespace GenericRenderFormat(Format);
+    };
+}
+
 //  EnumLiteral
 //
 //
