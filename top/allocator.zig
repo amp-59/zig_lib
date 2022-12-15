@@ -46,17 +46,17 @@ const AllocatorOptions = struct {
 };
 const Logging = packed struct {
     /// Report arena acquisition and release
-    arena: bool = default,
+    arena: builtin.Logging = .{},
     /// Report updates to allocator state
     head: bool = default,
     sentinel: bool = default,
     metadata: bool = default,
     branches: bool = default,
     /// Report system calls
-    map: bool = default,
-    unmap: bool = default,
-    remap: bool = default,
-    advise: bool = default,
+    map: builtin.Logging = .{},
+    unmap: builtin.Logging = .{},
+    remap: builtin.Logging = .{},
+    advise: builtin.Logging = .{},
     /// Report when a reference is created.
     allocate: bool = default,
     /// Report when a reference is modified (move/resize).
