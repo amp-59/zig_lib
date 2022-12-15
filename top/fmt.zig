@@ -1,6 +1,7 @@
 const lit = @import("./lit.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
+const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
 
 const render = @import("./render.zig");
@@ -289,6 +290,15 @@ pub fn sec(second: u8) PolynomialFormat(.{
 }) {
     return .{ .value = second };
 }
+/// Constructs DateTime formatter
+pub fn dt(value: time.DateTime) DateTimeFormat(time.DateTime) {
+    return .{ .value = value };
+}
+/// Constructs packed DateTime formatter
+pub fn pdt(value: time.PackedDateTime) DateTimeFormat(time.PackedDateTime) {
+    return .{ .value = value };
+}
+
 fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.Signedness, comptime radix: u16) ChangedIntFormatSpec {
     const old_fmt_spec: PolynomialFormatSpec = .{
         .bits = bits,
@@ -1026,6 +1036,64 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
                 .new_lower = new_lower,
                 .new_upper = new_upper,
             };
+        }
+    };
+}
+pub fn DateTimeFormat(comptime DateTime: type) type {
+    return struct {
+        value: DateTime,
+        const Format = @This();
+        pub const max_len: u64 = 19;
+        pub fn formatConvert(format: Format) mem.StaticString(max_len) {
+            var array: mem.StaticString(max_len) = .{};
+            format.formatWrite(&array);
+            return array;
+        }
+        pub fn formatLength(format: Format) u64 {
+            if (builtin.is_small) {
+                if (@hasDecl(DateTime, "getNanoseconds")) {
+                    return "0000-00-00 00:00:00.000000000".len;
+                } else {
+                    return "0000-00-00 00:00:00".len;
+                }
+            } else {
+                var len: u64 = 0;
+                len += yr(format.value.getYear()).formatLength();
+                len += 1;
+                len += mon(format.value.getMonth()).formatLength();
+                len += 1;
+                len += mday(format.value.getMonthDay()).formatLength();
+                len += 1;
+                len += hr(format.value.getHour()).formatLength();
+                len += 1;
+                len += min(format.value.getMinute()).formatLength();
+                len += 1;
+                len += sec(format.value.getSecond()).formatLength();
+                if (@hasDecl(DateTime, "getNanoseconds")) {
+                    len += 1;
+                    len += sec(format.value.getNanoseconds()).formatLength();
+                    @compileError("TODO: sig.fig. Formatter");
+                }
+                return len;
+            }
+        }
+        pub fn formatWrite(format: Format, array: anytype) void {
+            array.writeFormat(yr(format.value.getYear()));
+            array.writeOne('-');
+            array.writeFormat(mon(format.value.getMonth()));
+            array.writeOne('-');
+            array.writeFormat(mday(format.value.getMonthDay()));
+            array.writeOne(' ');
+            array.writeFormat(hr(format.value.getHour()));
+            array.writeOne(':');
+            array.writeFormat(min(format.value.getMinute()));
+            array.writeOne(':');
+            array.writeFormat(sec(format.value.getSecond()));
+            if (@hasDecl(DateTime, "getNanoseconds")) {
+                array.writeOne('.');
+                array.writeFormat(sec(format.value.getNanoSecond()));
+                @compileError("TODO: sig.fig. Formatter");
+            }
         }
     };
 }
