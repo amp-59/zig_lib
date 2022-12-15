@@ -26,7 +26,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     .options = .{
         .check_parametric_binding = false,
         .unit_alignment = 1,
-        .count_allocations = false,
+        .count_allocations = true,
         .count_useful_bytes = false,
         .count_branches = false,
         .require_filo_free = false,
@@ -39,7 +39,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
     .options = .{
         .check_parametric_binding = false,
         .unit_alignment = 1,
-        .count_allocations = false,
+        .count_allocations = true,
         .count_useful_bytes = false,
         .count_branches = false,
         .require_filo_free = false,
@@ -55,13 +55,7 @@ const LinkedList = mem.XorLinkedListAdv(.{
 });
 const Link0 = LinkedList.Link;
 const Node0 = LinkedList.Node;
-fn c(x: anytype) bool {
-    return x != 0;
-}
-var list_count: u64 = 0;
-fn d(x: anytype) bool {
-    return x < list_count and c(x);
-}
+
 fn contrivedInternal(allocator: *Allocator0, list: *LinkedList) !void {
     const values: [5]T = .{
         .{ .i = 11 },
@@ -95,23 +89,17 @@ fn string(allocator: *Allocator0, any: anytype) !String {
     array.writeAny(ptr_wr_spec, any);
     return array;
 }
-fn testAllMovement(list: LinkedList) void {
+fn testAllMovement(list: LinkedList) !void {
     var tmp: LinkedList = list;
-    while (tmp.next()) |next| {
-        tmp = next;
-    }
+    while (tmp.next()) |next| tmp = next;
     var n_bwd: u64 = 0;
-    while (tmp.prev()) |prev| {
-        n_bwd += 1;
-        tmp = prev;
-    }
-    const n_tot: u64 = n_bwd + @boolToInt(list.count != 0);
-    builtin.assertEqual(u64, n_tot, list.count);
+    while (tmp.prev()) |prev| : (n_bwd += 1) tmp = prev;
+    try builtin.expectEqual(u64, n_bwd + (builtin.int(u1, list.count != 0)), list.count);
 }
 pub fn main() !void {
-    const big_num: comptime_int = 10;
+    const big_num: comptime_int = 1024;
     const Count: type = meta.LeastBitSize(big_num);
-    const Big: type = meta.LeastBitSize(big_num / 3);
+    const Big: type = meta.LeastBitSize(big_num / 4);
     const undefined_s: [256]u8 = ("a" ** 256).*;
     var address_space: mem.AddressSpace = .{};
     var random: Random = .{};
@@ -125,35 +113,36 @@ pub fn main() !void {
         allocator_1.discard();
         allocator_1.deinit(&address_space);
     }
-    const appends_per_round: u64 = random.readOneConditionally(Big, c);
-    const prepends_per_round: u64 = random.readOneConditionally(Big, c);
-    const inserts_per_round: u64 = big_num - (appends_per_round + prepends_per_round);
+
     const Disruptor = Allocator1.StructuredHolder(String);
     var disruption: Disruptor = Disruptor.init(&allocator_1);
     defer disruption.deinit(&allocator_1);
     var round_count: u64 = 0;
-    while (round_count != 100000) : (round_count += 1) {
-        builtin.assertEqual(u64, 0, allocator_0.metadata.count);
+    while (round_count != 100) : (round_count += 1) {
+        const appends_per_round: u64 = @max(1, random.readOne(Big));
+        const prepends_per_round: u64 = @max(1, random.readOne(Big));
+        const inserts_per_round: u64 = big_num - (appends_per_round + prepends_per_round);
+
+        try builtin.expectEqual(u64, 0, allocator_0.metadata.count);
         var list: LinkedList = try LinkedList.init(&allocator_0);
         var operation_count: u64 = 0;
         while (operation_count != appends_per_round) : (operation_count += 1) {
             try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.readOne(u8))]));
-            try list.append(&allocator_0, .{ .i = 1 });
+            try list.append(&allocator_0, .{ .i = random.readOne(u16) });
         }
         operation_count = 0;
         while (operation_count != prepends_per_round) : (operation_count += 1) {
             try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.readOne(u8))]));
-            try list.prepend(&allocator_0, .{ .i = 10 });
+            try list.prepend(&allocator_0, .{ .i = random.readOne(u16) });
         }
         operation_count = 0;
         while (operation_count != inserts_per_round) : (operation_count += 1) {
             const mid: u64 = builtin.min(u64, list.count, random.readOne(Count));
             try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.readOne(u8))]));
-            try list.insert(&allocator_0, mid, .{ .i = 100 });
+            try list.insert(&allocator_0, mid, .{ .i = random.readOne(u16) });
         }
         operation_count = 0;
         while (operation_count != big_num / 4) : (operation_count += 1) {
-            list_count = list.count;
             const count = list.count;
             const s_begin = try list.at(0);
             const t_begin = try list.extract(0);
@@ -170,6 +159,7 @@ pub fn main() !void {
             list.retire(t_mid);
             list.retire(t_begin);
         }
+        try testAllMovement(list);
         try LinkedList.Graphics.show(list, &address_space);
         list.deinit(&allocator_0);
         for (disruption.referAll(allocator_1)) |*z| {

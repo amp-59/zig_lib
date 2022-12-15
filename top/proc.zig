@@ -539,7 +539,7 @@ pub const start = opaque {
         });
         sys.exit(2);
     }
-    pub fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
+    pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         debug.print(&buf, &[_][]const u8{
@@ -551,6 +551,13 @@ pub const start = opaque {
     }
     pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
         @compileError("error is discarded");
+    }
+    fn unexpectedReturnCodeValueError(rc: u64) void {
+        var buf: [512]u8 = undefined;
+        debug.print(&buf, &[_][]const u8{
+            "unexpected return value: ", builtin.fmt.ud64(rc).readAll(),
+            "\n",
+        });
     }
 };
 pub const exception = opaque {
