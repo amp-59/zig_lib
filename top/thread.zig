@@ -13,11 +13,11 @@ pub fn map(comptime spec: MapSpec, arena_index: u8) spec.Replaced(.mmap, u64) {
     const mmap_prot: mem.Prot = spec.prot();
     const mmap_flags: mem.Map = spec.flags();
     if (spec.call(.mmap, .{ st_addr, s_bytes, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 })) {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             mem.debug.mapNotice(st_addr, s_bytes);
         }
     } else |map_error| {
-        if (spec.logging or builtin.is_correct) {
+        if (spec.logging.Error) {
             mem.debug.mapError(map_error, st_addr, s_bytes);
         }
         return map_error;
@@ -30,11 +30,11 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) spec.Unwrapped(.munm
     const st_addr = mach.alignA64(up_addr - 8192, 4096);
     const len: u64 = up_addr - st_addr;
     if (spec.call(.munmap, .{ st_addr, up_addr - st_addr })) {
-        if (spec.logging) {
+        if (spec.logging.Release) {
             mem.debug.unmapNotice(st_addr, len);
         }
     } else |unmap_error| {
-        if (spec.logging or builtin.is_correct) {
+        if (spec.logging.Error) {
             mem.debug.unmapError(unmap_error, st_addr, len);
         }
         return unmap_error;
@@ -46,7 +46,7 @@ pub const MapSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mmap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Visibility = enum { shared, shared_validate, private };
     const Options = struct {
