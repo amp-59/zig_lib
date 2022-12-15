@@ -290,7 +290,7 @@ pub const MakeDirSpec = struct {
     mode: ModeSpec = ModeSpec.dir_mode,
     errors: ?[]const sys.ErrorCode = sys.mkdir_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
         exclusive: bool = true,
@@ -300,7 +300,7 @@ pub const MakeDirSpec = struct {
 pub const RemoveDirSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.rmdir_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const special_fn = sys.special.rmdir;
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
@@ -310,7 +310,7 @@ pub const CreateSpec = struct {
     mode: ModeSpec = ModeSpec.file_mode,
     errors: ?[]const sys.ErrorCode = sys.open_errors,
     return_type: type = u64,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
         exclusive: bool = true,
@@ -354,7 +354,7 @@ pub const CreateSpec = struct {
 pub const UnlinkSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.unlink_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
@@ -362,7 +362,7 @@ pub const PathSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.open_errors,
     return_type: type = u64,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
         directory: bool = true,
@@ -388,7 +388,7 @@ pub const OpenSpec = struct {
     options: Options,
     return_type: type = u64,
     errors: ?[]const sys.ErrorCode = sys.open_errors,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
         read: bool = true,
@@ -453,13 +453,14 @@ pub const OpenSpec = struct {
 pub const CloseSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.close_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const StatSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.stat_errors,
+    logging: builtin.Logging = .{},
     return_type: type = void,
     const Specification = @This();
     const Options = struct {
@@ -478,7 +479,7 @@ pub const ReadLinkSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.readlink_errors,
     return_type: type = u64,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
@@ -498,7 +499,7 @@ pub const MapSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.mmap_errors,
     return_type: type = void,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
         anonymous: bool,
@@ -577,12 +578,12 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) spec.Unwrapped(.ope
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
     if (spec.call(.open, .{ pathname_buf_addr, flags.val, 0 })) |fd| {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.openNotice(pathname, fd);
         }
         return fd;
     } else |open_error| {
-        if (builtin.is_correct or spec.logging) {
+        if (spec.logging.Error) {
             debug.openError(open_error, pathname);
         }
         return open_error;
@@ -592,12 +593,12 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) spec.Unw
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = spec.flags();
     if (spec.call(.openat, .{ dir_fd, name_buf_addr, flags.val })) |fd| {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
         }
         return fd;
     } else |open_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.openAtError(open_error, dir_fd, name);
         }
         return open_error;
@@ -637,12 +638,12 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) spec.Unwrapped(.ope
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
     if (spec.call(.open, .{ pathname_buf_addr, flags.val, 0 })) |fd| {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.openNotice(pathname, fd);
         }
         return fd;
     } else |open_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.openError(open_error, pathname);
         }
         return open_error;
@@ -651,12 +652,12 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) spec.Unwrapped(.ope
 pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) spec.Unwrapped(.openat) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     if (spec.call(.openat, dir_fd, name_buf_addr, spec.pathFlags())) |fd| {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
         }
         return fd;
     } else |open_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.openAtError(open_error, dir_fd, name);
         }
         return open_error;
@@ -667,12 +668,12 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) spec.Unwrapped(
     const flags: Open = spec.flags();
     const mode: Mode = spec.mode.mode();
     if (spec.call(.open, .{ pathname_buf_addr, flags.val, mode.val })) |fd| {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             debug.createNotice(pathname, fd, spec.mode.describe());
         }
         return fd;
     } else |open_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.createError(open_error, pathname, spec.mode.describe());
         }
         return open_error;
@@ -680,11 +681,11 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) spec.Unwrapped(
 }
 pub fn close(comptime spec: CloseSpec, fd: u64) spec.Unwrapped(.close) {
     if (spec.call(.close, .{fd})) {
-        if (spec.logging) {
+        if (spec.logging.Release) {
             debug.closeNotice(fd);
         }
     } else |close_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.closeError(close_error, fd);
         }
         return close_error;
@@ -694,11 +695,11 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) spec.Unwrappe
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const mode: Mode = spec.mode.mode();
     if (spec.call(.mkdir, .{ pathname_buf_addr, mode.val })) {
-        if (spec.logging) {
+        if (spec.logging.Success) {
             debug.makeDirNotice(pathname, spec.mode.describe());
         }
     } else |mkdir_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.makeDirError(mkdir_error, pathname);
         }
         return mkdir_error;
@@ -708,11 +709,11 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sp
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const mode: Mode = spec.mode.mode();
     if (spec.call(.mkdirat, .{ dir_fd, name_buf_addr, mode.val })) {
-        if (spec.logging) {
+        if (spec.logging.Success) {
             debug.makeDirAtNotice(dir_fd, name, spec.mode.describe());
         }
     } else |mkdir_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.makeDirAtError(mkdir_error, dir_fd, name, spec.mode.describe());
         }
         return mkdir_error;
@@ -724,7 +725,7 @@ pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) 
     if (spec.call(.readlink, .{ pathname_buf_addr, buf_addr, buf.len })) |len| {
         return buf[0..len :0];
     } else |readlink_error| {
-        if (builtin.is_verbose) {
+        if (spec.logging.Error) {
             debug.readLinkError(readlink_error, pathname);
         }
         return readlink_error;
@@ -736,7 +737,7 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
     if (spec.call(.readlinkat, .{ dir_fd, name_buf_addr, buf_addr, buf.len })) |len| {
         return buf[0..len :0];
     } else |readlink_error| {
-        if (spec.logging or builtin.is_verbose) {
+        if (spec.logging.Error) {
             debug.readLinkAtError(readlink_error, dir_fd, name);
         }
         return readlink_error;
@@ -745,11 +746,11 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
 pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) spec.Unwrapped(.unlink) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     if (spec.call(.unlink, .{pathname_buf_addr})) {
-        if (spec.logging) {
+        if (spec.logging.Success) {
             debug.unlinkNotice(pathname);
         }
     } else |unlink_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.unlinkError(unlink_error, pathname);
         }
         return unlink_error;
@@ -758,11 +759,11 @@ pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) spec.Unwrapped(
 pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) spec.Unwrapped(.rmdir) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     if (spec.call(.rmdir, .{pathname_buf_addr})) {
-        if (spec.logging) {
+        if (spec.logging.Success) {
             debug.removeDirNotice(pathname);
         }
     } else |rmdir_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             debug.removeDirError(rmdir_error, pathname);
         }
         return rmdir_error;
@@ -773,7 +774,7 @@ pub fn stat(comptime spec: StatSpec, pathname: [:0]const u8) spec.Replaced(.stat
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
     spec.call(.stat, .{ pathname_buf_addr, st_buf_addr }) catch |stat_error| {
-        if (builtin.is_verbose) {
+        if (spec.logging.Error) {
             debug.statError(stat_error, pathname);
         }
         return stat_error;
@@ -804,7 +805,7 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) spec.Re
     };
     return st;
 }
-pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Unwrapped(.map) {
+pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Replaced(.mmap, u64) {
     const flags: mem.Map = spec.flags();
     const prot: mem.Prot = spec.prot();
     const st: Stat = try fstat(.{ .errors = &.{} }, fd);
@@ -814,12 +815,12 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Unwrapped(.map) {
         break :blk (st.size + mask) & ~mask;
     };
     if (spec.call(.mmap, .{ addr, len, prot.val, flags.val, fd, 0 })) {
-        if (spec.logging) {
+        if (spec.logging.Acquire) {
             mem.debug.mapNotice(addr, len);
         }
         return addr + st.size;
     } else |map_error| {
-        if (builtin.is_verbose or spec.logging) {
+        if (spec.logging.Error) {
             mem.debug.mapError(map_error, addr, len);
         }
         return map_error;
@@ -831,7 +832,6 @@ pub const noexcept = opaque {
         sys.noexcept.write(fd, @ptrToInt(buf.ptr), buf.len);
     }
 };
-
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
         data: mem.StaticString(4096) = .{},
@@ -890,6 +890,50 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             return ret;
         }
     };
+}
+
+fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 {
+    const path_spec: PathSpec = .{ .options = .{ .directory = false } };
+    const stat_spec: StatSpec = .{ .options = .{ .no_follow = false } };
+    const dir_fd: u64 = path(path_spec, dir_pathname) catch return null;
+    const st: Stat = fstatAt(stat_spec, dir_fd, file_name) catch return null;
+    if (st.isExecutable(sys.geteuid(), sys.getegid())) {
+        return dir_fd;
+    }
+    return null;
+}
+pub fn find(vars: [][*:0]u8, name: [:0]const u8) !u64 {
+    const path_key_s: []const u8 = "PATH=";
+    for (vars) |entry_ptr| {
+        const entry: [:0]u8 = meta.manyToSlice(entry_ptr);
+        if (mem.testEqualManyFront(u8, path_key_s, entry)) {
+            const path_s: [:0]u8 = entry[path_key_s.len..];
+            var i: u64 = 0;
+            var j: u64 = 0;
+            while (i < path_s.len) : (i += 1) {
+                i += builtin.int(u64, path_s[i] == '\\');
+                if (path_s[i] == ':') {
+                    path_s[i] = 0;
+                    defer path_s[i] = ':';
+                    defer j = i + 1;
+                    if (determineFound(path_s[j..i :0], name)) |dir_fd| {
+                        return dir_fd;
+                    }
+                }
+            }
+        }
+    }
+    return error.NoExecutableInEnvironmentPath;
+}
+pub fn home(vars: [][*:0]u8) ![:0]const u8 {
+    const home_key_s: []const u8 = "HOME=";
+    for (vars) |entry_ptr| {
+        const entry: [:0]u8 = meta.manyToSlice(entry_ptr);
+        if (mem.testEqualManyFront(u8, home_key_s, entry)) {
+            return entry[home_key_s.len..];
+        }
+    }
+    return error.NoHomeInEnvironment;
 }
 
 const debug = opaque {
