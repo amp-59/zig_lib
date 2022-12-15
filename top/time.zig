@@ -99,7 +99,7 @@ pub fn nanoSleepA(req: TimeSpec) !TimeSpec {
 const SleepSpec = struct {
     return_type: type = void,
     errors: ?[]const sys.ErrorCode = sys.nanosleep_errors,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
 
     pub usingnamespace sys.FunctionInterfaceSpec(SleepSpec);
 };

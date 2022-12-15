@@ -4,19 +4,17 @@ pub const zig = @import("builtin");
 pub const native_endian = zig.cpu.arch.endian();
 pub const is_little: bool = native_endian == .Little;
 pub const is_big: bool = native_endian == .Big;
-
 pub const is_debug: bool = config("is_debug", bool, zig.mode == .Debug);
 pub const is_safe: bool = config("is_safe", bool, zig.mode == .ReleaseSafe);
 pub const is_small: bool = config("is_small", bool, zig.mode == .ReleaseSmall);
 pub const is_fast: bool = config("is_fast", bool, zig.mode == .ReleaseFast);
-
 /// Perform runtime assertions
 pub const is_correct: bool = config("is_correct", bool, is_debug or is_safe);
 pub const is_perf: bool = config("is_perf", bool, is_small or is_fast);
-/// Report succesful actions
 pub const is_verbose: bool = config("is_verbose", bool, is_debug);
-pub const is_tolerant: bool = config("is_tolerant", bool, is_debug);
 pub const build_root: ?[:0]const u8 = config("build_root", ?[:0]const u8, null);
+/// Global default logging policy
+pub const logging: Logging = config("logging", Logging, .{});
 
 pub const Type = @TypeOf(@typeInfo(void));
 pub const TypeId = @typeInfo(Type).Union.tag_type.?;
@@ -44,6 +42,13 @@ pub const Exception = error{
     LeftShiftCausedOverflow,
     ExactDivisionWithRemainder,
     UnexpectedValue,
+};
+pub const Logging = packed struct {
+    Success: bool = is_verbose,
+    Acquire: bool = is_verbose,
+    Release: bool = is_verbose,
+    Error: bool = true,
+    Fault: bool = true,
 };
 
 pub const lib_build_root: [:0]const u8 = blk: {
