@@ -45,7 +45,6 @@ const wait_spec: proc.WaitIdSpec = .{
         .all = false,
     },
 };
-
 const BlockAllocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 24,
     .options = .{
@@ -209,8 +208,8 @@ fn writeAndWalk(
             }
             if (builtin.int2v(
                 bool,
-                equalMany(u8, "zig-cache", base_name),
-                equalMany(u8, "zig-out", base_name),
+                mem.testEqualMany(u8, "zig-cache", base_name),
+                mem.testEqualMany(u8, "zig-out", base_name),
             )) {
                 continue;
             }
@@ -269,44 +268,35 @@ fn writeAndWalk(
         }
     }
 }
-fn equalMany(comptime T: type, arg1: []const T, arg2: []const T) bool {
-    if (arg1.len != arg2.len) {
-        return false;
-    }
-    for (arg1) |c, i| {
-        if (c != arg2[i]) return false;
-    }
-    return true;
-}
 fn setType(arg: []const u8) Filter {
     var mask: Filter = .{ .val = ~@as(u64, 0) };
-    if (equalMany(u8, "-f", arg)) {
+    if (mem.testEqualMany(u8, "-f", arg)) {
         mask.set(.regular);
-    } else if (equalMany(u8, "-d", arg)) {
+    } else if (mem.testEqualMany(u8, "-d", arg)) {
         mask.set(.directory);
-    } else if (equalMany(u8, "-b", arg)) {
+    } else if (mem.testEqualMany(u8, "-b", arg)) {
         mask.set(.block_special);
-    } else if (equalMany(u8, "-h", arg)) {
+    } else if (mem.testEqualMany(u8, "-h", arg)) {
         mask.set(.symbolic_link);
-    } else if (equalMany(u8, "-S", arg)) {
+    } else if (mem.testEqualMany(u8, "-S", arg)) {
         mask.set(.socket);
-    } else if (equalMany(u8, "-p", arg)) {
+    } else if (mem.testEqualMany(u8, "-p", arg)) {
         mask.set(.named_pipe);
-    } else if (equalMany(u8, "-c", arg)) {
+    } else if (mem.testEqualMany(u8, "-c", arg)) {
         mask.set(.character_special);
-    } else if (equalMany(u8, "+f", arg)) {
+    } else if (mem.testEqualMany(u8, "+f", arg)) {
         mask.unset(.regular);
-    } else if (equalMany(u8, "+d", arg)) {
+    } else if (mem.testEqualMany(u8, "+d", arg)) {
         mask.unset(.directory);
-    } else if (equalMany(u8, "+b", arg)) {
+    } else if (mem.testEqualMany(u8, "+b", arg)) {
         mask.unset(.block_special);
-    } else if (equalMany(u8, "+h", arg)) {
+    } else if (mem.testEqualMany(u8, "+h", arg)) {
         mask.unset(.symbolic_link);
-    } else if (equalMany(u8, "+S", arg)) {
+    } else if (mem.testEqualMany(u8, "+S", arg)) {
         mask.unset(.socket);
-    } else if (equalMany(u8, "+p", arg)) {
+    } else if (mem.testEqualMany(u8, "+p", arg)) {
         mask.unset(.named_pipe);
-    } else if (equalMany(u8, "+c", arg)) {
+    } else if (mem.testEqualMany(u8, "+c", arg)) {
         mask.unset(.character_special);
     }
     return mask;
@@ -321,6 +311,7 @@ fn showResults(counts: Results) !void {
     });
     try file.write(2, array.readAll());
 }
+
 fn shift(args: *[][*:0]u8, i: u64) void {
     if (args.len > i + 1) {
         var this: *[*:0]u8 = &args.*[i];
@@ -351,13 +342,14 @@ noinline fn printAlong(done: *volatile bool, allocator: *BlockAllocator1, array:
     builtin.assert(offset == array.count(allocator.*));
     file.noexcept.write(2, "\n");
 }
+
 inline fn getOpts(args: *[][*:0]u8) Options {
     var opts: Options = .{};
     var i: u64 = 1;
     while (i != args.len) {
         if (!always_show_hidden) {
-            if (equalMany(u8, "-a", meta.manyToSlice(args.*[i])) or
-                equalMany(u8, "--all", meta.manyToSlice(args.*[i])))
+            if (mem.testEqualMany(u8, "-a", meta.manyToSlice(args.*[i])) or
+                mem.testEqualMany(u8, "--all", meta.manyToSlice(args.*[i])))
             {
                 opts.show_hidden = true;
                 shift(args, i);
@@ -365,29 +357,31 @@ inline fn getOpts(args: *[][*:0]u8) Options {
             }
         }
         if (permit_switch_arrows) {
-            if (equalMany(u8, "-w", meta.manyToSlice(args.*[i])) or
-                equalMany(u8, "--wide", meta.manyToSlice(args.*[i])))
+            if (mem.testEqualMany(u8, "-w", meta.manyToSlice(args.*[i])) or
+                mem.testEqualMany(u8, "--wide", meta.manyToSlice(args.*[i])))
             {
                 Style.wide = true;
                 shift(args, i);
                 continue;
             }
         }
-        if (equalMany(u8, "-L", meta.manyToSlice(args.*[i])) or
-            equalMany(u8, "--follow", meta.manyToSlice(args.*[i])))
+        if (mem.testEqualMany(u8, "-L", meta.manyToSlice(args.*[i])) or
+            mem.testEqualMany(u8, "--follow", meta.manyToSlice(args.*[i])))
         {
             opts.try_print_links = true;
             shift(args, i);
             continue;
         }
-        if (equalMany(u8, "+L", meta.manyToSlice(args.*[i])) or
-            equalMany(u8, "--no-follow", meta.manyToSlice(args.*[i])))
+        if (mem.testEqualMany(u8, "+L", meta.manyToSlice(args.*[i])) or
+            mem.testEqualMany(u8, "--no-follow", meta.manyToSlice(args.*[i])))
         {
             opts.try_print_links = false;
             shift(args, i);
             continue;
         }
-        if (equalMany(u8, "-h", meta.manyToSlice(args.*[i])) or equalMany(u8, "--help", meta.manyToSlice(args.*[i]))) {
+        if (mem.testEqualMany(u8, "-h", meta.manyToSlice(args.*[i])) or
+            mem.testEqualMany(u8, "--help", meta.manyToSlice(args.*[i])))
+        {
             file.noexcept.write(2,
                 \\-h, --help        print this text
                 \\-a, --all         print hidden entries
@@ -400,7 +394,7 @@ inline fn getOpts(args: *[][*:0]u8) Options {
             );
             sys.exit(0);
         }
-        if (equalMany(u8, "--", meta.manyToSlice(args.*[i]))) {
+        if (mem.testEqualMany(u8, "--", meta.manyToSlice(args.*[i]))) {
             break;
         }
         i += 1;
