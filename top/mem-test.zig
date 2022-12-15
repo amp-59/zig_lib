@@ -58,7 +58,7 @@ const wr_spec: mem.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
 };
 
-const logging = true;
+const logging = .{ .Acquire = true, .Release = true };
 const errors = null;
 
 fn testLowSystemMemoryOperations() !void {
@@ -89,9 +89,9 @@ fn testAllocatedImplementation() !void {
             .trace_state = true,
         },
         .logging = .{
-            .map = true,
-            .unmap = true,
-            .remap = false,
+            .map = logging,
+            .unmap = logging,
+            .remap = logging,
             .reallocate = true,
         },
     });
