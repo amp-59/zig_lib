@@ -12,17 +12,10 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_correct: bool = true;
+pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
 
-const BlockAllocator0 = mem.GenericArenaAllocator(.{
-    .arena_index = 24,
-    .options = .{
-        .count_allocations = false,
-        .require_filo_free = false,
-        .require_geometric_growth = true,
-    },
-});
+const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec = proc.CloneSpec{
     .errors = null,
     .return_type = u64,
@@ -52,19 +45,37 @@ const wait_spec: proc.WaitIdSpec = .{
     },
 };
 
-const BlockAllocator1 = mem.GenericArenaAllocator(.{ .arena_index = 32, .options = .{ .require_geometric_growth = true } });
+const BlockAllocator0 = mem.GenericArenaAllocator(.{
+    .arena_index = 24,
+    .options = .{
+        .count_allocations = false,
+        .require_filo_free = false,
+        .require_geometric_growth = true,
+        .trace_state = false,
+    },
+});
+const BlockAllocator1 = mem.GenericArenaAllocator(.{
+    .arena_index = 32,
+    .options = .{
+        .count_allocations = false,
+        .require_filo_free = true,
+        .require_geometric_growth = true,
+        .trace_state = false,
+    },
+});
 const String1 = BlockAllocator1.StructuredHolder(u8);
 const String0 = BlockAllocator0.StructuredHolder(u8);
-const Names = mem.StructuredAutomaticVector(.{ .child = [:0]const u8, .count = 128, .low_alignment = 8 });
-const DirStream = file.DirStreamBlock(.{ .Allocator = BlockAllocator0, .options = .{}, .logging = .{} });
+const DirStream = file.DirStreamBlock(.{
+    .Allocator = BlockAllocator0,
+    .options = .{},
+    .logging = .{},
+});
+const Names = mem.StructuredAutomaticVector(.{
+    .child = [:0]const u8,
+    .count = 128,
+    .low_alignment = 8,
+});
 const PrintArray = mem.StaticString(4096);
-
-const print_in_second_thread: bool = true;
-const always_show_hidden: bool = true;
-const permit_switch_arrows: bool = false;
-const plain_print: bool = false;
-const pretty_print: bool = !plain_print;
-
 const Options = struct {
     show_hidden: bool = always_show_hidden or permit_switch_arrows,
     try_print_links: bool = false,
@@ -89,6 +100,13 @@ const any_style: [16][]const u8 = blk: {
     tmp[sys.S.IFSOCK >> 12] = lit.fx.color.fg.hi_magenta;
     break :blk tmp;
 };
+
+const print_in_second_thread: bool = true;
+const always_show_hidden: bool = true;
+const permit_switch_arrows: bool = false;
+const plain_print: bool = false;
+const pretty_print: bool = !plain_print;
+
 const endl_s: []const u8 = "\x1b[0m\n";
 const del_s: []const u8 = "\x08\x08\x08\x08";
 const spc_bs: []const u8 = "    ";
@@ -313,6 +331,25 @@ fn shift(args: *[][*:0]u8, i: u64) void {
     args.* = args.*[0 .. args.len - 1];
 }
 
+inline fn printIfAvail(allocator: BlockAllocator1, array: String1, offset: u64) u64 {
+    const many: []const u8 = array.readManyAt(allocator, offset);
+    if (many.len != 0) {
+        file.noexcept.write(2, many);
+    }
+    return many.len;
+}
+noinline fn printAlong(done: *volatile bool, allocator: *BlockAllocator1, array: *String1) void {
+    var offset: u64 = 0;
+    while (true) {
+        offset += printIfAvail(allocator.*, array.*, offset);
+        if (done.*) {
+            break;
+        }
+    }
+    offset += printIfAvail(allocator.*, array.*, offset);
+    builtin.assert(offset == array.count(allocator.*));
+    file.noexcept.write(2, "\n");
+}
 inline fn getOpts(args: *[][*:0]u8) Options {
     var opts: Options = .{};
     var i: u64 = 1;
@@ -354,7 +391,10 @@ inline fn getOpts(args: *[][*:0]u8) Options {
                 \\-h, --help        print this text
                 \\-a, --all         print hidden entries
                 \\-L, --follow      print link destinations
+            ++ if (permit_switch_arrows)
                 \\-w, --wide        print fancy arrows
+                \\
+            else
                 \\
             );
             sys.exit(0);
@@ -374,12 +414,10 @@ inline fn getNames(args: *[][*:0]u8) Names {
     }
     return names;
 }
-const map_spec: thread.MapSpec = .{ .options = .{} };
 
 pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
-    var done: bool = false;
-    var results: Results = .{};
+    var done: bool = undefined;
     var opts: Options = getOpts(&args);
     var names: Names = getNames(&args);
     if (permit_switch_arrows) {
@@ -390,13 +428,15 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
     }
     var allocator_0: BlockAllocator0 = try BlockAllocator0.init(address_space);
     var allocator_1: BlockAllocator1 = try BlockAllocator1.init(address_space);
+    defer allocator_0.deinit(address_space);
+    defer allocator_1.deinit(address_space);
     const stack_addr: u64 = mach.cmov64(print_in_second_thread, try thread.map(map_spec, 8), 0);
     defer thread.unmap(.{ .errors = null }, 8);
     try allocator_0.map(4096);
     try allocator_1.map(4096);
     for (names.readAll()) |arg| {
-        defer allocator_0.discard();
-        defer allocator_1.discard();
+        done = false;
+        var results: Results = .{};
         var alts_buf: PrintArray = .{};
         if (!plain_print) {
             alts_buf.writeCount(4096, (" " ** 4096).*);
@@ -405,9 +445,9 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
         var link_buf: PrintArray = .{};
         var array: String1 = String1.init(&allocator_1);
         defer array.deinit(&allocator_1);
-        _ = if (print_in_second_thread) blk: {
-            break :blk proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &done, &allocator_1, &array });
-        } else 0;
+        if (print_in_second_thread) {
+            _ = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &done, &allocator_1, &array });
+        }
         try array.appendMany(&allocator_1, arg);
         if (arg[arg.len - 1] != '/') {
             try array.appendMany(&allocator_1, "/\n");
@@ -424,27 +464,7 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
         try showResults(results);
     }
 }
-inline fn printIfAvail(allocator: BlockAllocator1, array: String1, offset: u64) u64 {
-    const many: []const u8 = array.readManyAt(allocator, offset);
-    if (many.len != 0) {
-        file.noexcept.write(2, many);
-    }
-    return many.len;
-}
-noinline fn printAlong(done: *volatile bool, allocator: *BlockAllocator1, array: *String1) void {
-    var offset: u64 = 0;
-    while (true) {
-        offset += printIfAvail(allocator.*, array.*, offset);
-        if (done.*) {
-            break;
-        }
-    }
-    offset += printIfAvail(allocator.*, array.*, offset);
-    builtin.assert(offset == array.count(allocator.*));
-    file.noexcept.write(2, "\n");
-}
-pub fn main1(args: [][*:0]u8, _: [][*:0]u8) !void {
+pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
     var address_space: mem.AddressSpace = .{};
     try threadMain(&address_space, args);
 }
-pub const main = main1;
