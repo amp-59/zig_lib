@@ -78,7 +78,7 @@ fn view(comptime s: []const u8) mem.StructuredAutomaticView(.{ .child = u8, .cou
 }
 
 fn testAllocatedImplementation() !void {
-    const repeats: u64 = 0x10000;
+    const repeats: u64 = 0x100;
     const Allocator = mem.GenericArenaAllocator(.{
         // Allocations will begin offset 1GiB into the virtual address space.
         // This would be 0B, but to avoid the program mapping. Obviously
@@ -165,8 +165,48 @@ fn testAutomaticImplementation() !void {
         try testing.expectEqualMany(bool, bit_set.readAll(), &.{ true, false, false, true });
     }
 }
+fn testUtilityTestFunctions() !void {
+    { // strings
+        { // true
+            try builtin.expect(mem.testEqualManyFront(u8, "1", "10"));
+            try builtin.expect(mem.testEqualManyBack(u8, "0", "10"));
+        } // false
+        {
+            try builtin.expect(!mem.testEqualManyFront(u8, "0", "10"));
+            try builtin.expect(!mem.testEqualManyBack(u8, "1", "10"));
+        }
+        { // impossible (false)
+            try builtin.expect(!mem.testEqualManyFront(u8, "012", "10"));
+            try builtin.expect(!mem.testEqualManyBack(u8, "124", "10"));
+        }
+        { // result
+            try builtin.expectEqual(u64, 5, mem.indexOfFirstEqualOne(u8, ',', "Hello, world!").?);
+            try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualOne(u8, 'H', "Hello, world!").?);
+            try builtin.expectEqual(u64, 12, mem.indexOfFirstEqualOne(u8, '!', "Hello, world!").?);
+            try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualMany(u8, "Hello", "Hello, world!").?);
+            try builtin.expectEqual(u64, 7, mem.indexOfFirstEqualMany(u8, "world", "Hello, world!").?);
+            try builtin.expectEqual(u64, 7, mem.indexOfLastEqualMany(u8, "world", "Hello, world!").?);
+        }
+        { // null
+            try builtin.expect(mem.indexOfFirstEqualOne(u8, 'f', "Hello, world!") == null);
+            try builtin.expect(mem.indexOfFirstEqualMany(u8, "foo", "Hello, world!") == null);
+        }
+        { // impossible (null)
+            try builtin.expect(mem.indexOfFirstEqualMany(u8, "Hello, world!", "foo") == null);
+            try builtin.expect(mem.indexOfFirstEqualMany(u8, "", "Hello, world!") == null);
+        }
+        {
+            try testing.expectEqualMany(u8, ".field", mem.readBeforeFirstEqualMany(u8, " = ", ".field = value,").?);
+            try testing.expectEqualMany(u8, "value,", mem.readAfterFirstEqualMany(u8, " = ", ".field = value,").?);
+            try testing.expectEqualMany(u8, "", mem.readAfterFirstEqualMany(u8, " = ", ".field = ").?);
+            try testing.expectEqualMany(u8, "", mem.readBeforeFirstEqualMany(u8, " = ", " = value,").?);
+        }
+    }
+}
+
 pub fn main() !void {
     try meta.wrap(testLowSystemMemoryOperations());
     try meta.wrap(testAutomaticImplementation());
     try meta.wrap(testAllocatedImplementation());
+    try meta.wrap(testUtilityTestFunctions());
 }
