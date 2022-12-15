@@ -8,16 +8,6 @@ const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
-fn shift(args: *[][*:0]u8, i: u64) void {
-    if (args.len > i + 1) {
-        var this: *[*:0]u8 = &args.*[i];
-        for (args.*[i + 1 ..]) |*next| {
-            this.* = next.*;
-            this = next;
-        }
-    }
-    args.* = args.*[0 .. args.len - 1];
-}
 const Radix = enum(u5) {
     bin = 2,
     oct = 8,
@@ -60,18 +50,18 @@ inline fn getOpts(args: *[][*:0]u8) Options {
     while (i != args.len) {
         if (mem.readAfterFirstEqualMany(u8, "--output=", meta.manyToSlice(args.*[i]))) |assigned| {
             opts.output = getOutputWith(assigned);
-            shift(args, i);
+            proc.shift(args, i);
             continue;
         }
         if (mem.readAfterFirstEqualMany(u8, "-o", meta.manyToSlice(args.*[i]))) |squished| {
             opts.output = getOutputWith(squished);
-            shift(args, i);
+            proc.shift(args, i);
             continue;
         }
         if (mem.testEqualMany(u8, "-o", meta.manyToSlice(args.*[i]))) {
-            shift(args, i);
+            proc.shift(args, i);
             opts.output = getOutputWith(meta.manyToSlice(args.*[i]));
-            shift(args, i);
+            proc.shift(args, i);
             continue;
         }
         if (mem.testEqualMany(u8, "-h", meta.manyToSlice(args.*[i])) or
