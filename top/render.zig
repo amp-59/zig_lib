@@ -23,13 +23,13 @@ pub fn AnyFormat(comptime Type: type) type {
         .Pointer => |pointer_info| switch (pointer_info.size) {
             .One => PointerOneFormat(Type),
             //                .Many => PointerManyFormat(Type),
-            //                .Slice => PointerSliceFormat(Type),
+            .Slice => PointerSliceFormat(Type),
             else => @compileError(comptime fmt.typeName(Type)),
         },
         .Optional => OptionalFormat(Type),
         //            .Null => NullFormat(Type),
         //            .Void => VoidFormat,
-        //            .Vector => VectorFormat(Type),
+        .Vector => VectorFormat(Type),
         //            .ErrorUnion => ErrorUnionFormat(Type),
         else => @compileError(comptime fmt.typeName(Type)),
     };
@@ -225,11 +225,11 @@ pub const TypeFormat = struct {
                             len += field.name.len + 2;
                         } else {
                             if (render_composite_field_type_recursively) {
-                                len += field.name + 2;
+                                len += field.name.len + 2;
                                 const field_type_format: TypeFormat = .{ .value = field.field_type };
                                 len += field_type_format.formatLength();
                             } else {
-                                len += field.name + 2 + @typeName(field.field_type).len;
+                                len += field.name.len + 2 + @typeName(field.field_type).len;
                             }
                             len += 2;
                         }
@@ -672,14 +672,14 @@ pub fn PointerOneFormat(comptime Pointer: type) type {
 }
 
 //
-//      Many
+//     Slice
 //
 pub fn PointerSliceFormat(comptime Pointer: type) type {
     return struct {
         value: Pointer,
         const Format = @This();
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const max_len: u64 = 65536; // @compileError("indeterminant length");
+        const max_len: u64 = 65536;
 
         fn formatLengthAny(format: Format) u64 {
             const type_name = comptime fmt.typeName(Pointer);
@@ -784,7 +784,7 @@ pub fn PointerSliceFormat(comptime Pointer: type) type {
     };
 }
 //
-//      Slice
+//      Many
 //
 //
 //  Optional
