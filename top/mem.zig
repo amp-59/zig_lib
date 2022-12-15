@@ -1215,3 +1215,112 @@ pub const AbstractSpec = union(enum) {
         };
     }
 };
+
+// These should be in builtin.zig, but cannot adhere to the test-error-fault
+// standard yet--that is, their assert* and expect* counterparts cannot be added
+// to builtin--so they are here temporarily as utility functions.
+pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T) bool {
+    if (l_values.len != r_values.len) {
+        return false;
+    }
+    var idx: usize = 0;
+    while (idx != l_values.len) {
+        if (l_values[idx] != r_values[idx]) return false;
+        idx += 1;
+    }
+    return true;
+}
+
+pub fn testEqualOneFront(comptime T: type, value: T, values: []const T) bool {
+    if (values.len != 0) {
+        return values[0] == value;
+    }
+}
+pub fn testEqualOneBack(comptime T: type, value: T, values: []const T) bool {
+    if (values.len != 0) {
+        return values[-1] == value;
+    }
+}
+pub fn testEqualManyFront(comptime T: type, prefix_values: []const T, values: []const T) bool {
+    if (builtin.int2v(bool, prefix_values.len == 0, prefix_values.len > values.len)) {
+        return false;
+    }
+    return testEqualMany(T, prefix_values, values[0..prefix_values.len]);
+}
+pub fn testEqualManyBack(comptime T: type, suffix_values: []const T, values: []const T) bool {
+    if (builtin.int2v(bool, suffix_values.len == 0, suffix_values.len > values.len)) {
+        return false;
+    }
+    return testEqualMany(T, suffix_values, values[values.len - suffix_values.len ..]);
+}
+pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
+    var idx: usize = 0;
+    while (idx != values.len) {
+        if (values[idx] == value) return idx;
+        idx += 1;
+    }
+    return null;
+}
+pub fn indexOfLastEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
+    var idx: usize = values.len;
+    while (idx != 0) {
+        idx -= 1;
+        if (values[idx] == value) return idx;
+    }
+    return null;
+}
+pub fn indexOfFirstEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    if (sub_values.len > values.len) {
+        return null;
+    }
+    const max_idx: u64 = (values.len -% sub_values.len) +% 1;
+    var idx: u64 = 0;
+    while (idx != max_idx) {
+        if (testEqualManyFront(T, sub_values, values[idx..])) {
+            return idx;
+        }
+        idx += 1;
+    }
+    return null;
+}
+pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    if (sub_values.len > values.len) {
+        return null;
+    }
+    const max_idx: u64 = (values.len -% sub_values.len) +% 1;
+    var idx: u64 = max_idx;
+    while (idx != 0) {
+        idx -= 1;
+        if (testEqualManyFront(T, sub_values, values[idx..])) {
+            return idx;
+        }
+    }
+    return null;
+}
+pub fn readBeforeFirstEqualMany(comptime T: type, suffix_values: []const T, values: []const T) ?[]const T {
+    @setRuntimeSafety(false);
+    if (indexOfFirstEqualMany(T, suffix_values, values)) |index| {
+        return @ptrCast(@TypeOf(values), values[0..index]);
+    }
+    return null;
+}
+pub fn readAfterFirstEqualMany(comptime T: type, prefix_values: []const T, values: []const T) ?[]const T {
+    if (indexOfFirstEqualMany(T, prefix_values, values)) |index| {
+        return values[index + prefix_values.len ..];
+    }
+    return null;
+}
+pub fn readBeforeLastEqualMany(comptime T: type, comptime suffix: []const T, values: []const T) ?[]const T {
+    @setRuntimeSafety(false);
+    if (indexOfLastEqualMany(T, suffix, values)) |index| {
+        return values[0..index];
+    }
+    return null;
+}
+pub fn readAfterLastEqualMany(comptime T: type, comptime prefix: []const T, values: anytype) ?@TypeOf(values) {
+    @setRuntimeSafety(false);
+    if (indexOfLastEqualMany(T, prefix, values)) |index| {
+        return @ptrCast(@TypeOf(values), values[prefix.len + index ..]);
+    }
+    return null;
+}
