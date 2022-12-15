@@ -3,6 +3,8 @@ const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
+const render = @import("./render.zig");
+
 pub fn ud(value: anytype) PolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
@@ -220,6 +222,9 @@ pub fn bytes(count: usize) Bytes {
 }
 pub fn src(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
+}
+pub fn any(value: anytype) render.AnyFormat(@TypeOf(value)) {
+    return .{ .value = value };
 }
 pub fn yr(year: u64) PolynomialFormat(.{
     .bits = 64,

@@ -1,14 +1,15 @@
-const lit = @import("./lit.zig");
-const sys = @import("./sys.zig");
-const fmt = @import("./fmt.zig");
-const mem = @import("./mem.zig");
-const mach = @import("./mach.zig");
-const time = @import("./time.zig");
-const file = @import("./file.zig");
-const meta = @import("./meta.zig");
-const proc = @import("./proc.zig");
-const thread = @import("./thread.zig");
-const builtin = @import("./builtin.zig");
+const srg = @import("./../zig_lib.zig");
+const lit = srg.lit;
+const sys = srg.sys;
+const fmt = srg.fmt;
+const mem = srg.mem;
+const mach = srg.mach;
+const time = srg.time;
+const file = srg.file;
+const meta = srg.meta;
+const proc = srg.proc;
+const thread = srg.thread;
+const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 

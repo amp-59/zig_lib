@@ -5,11 +5,11 @@ const file = @import("./file.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-const Random = file.DeviceRandomBytes(4096);
-
-const String = Allocator0.StructuredVector(u8);
 
 pub usingnamespace proc.start;
+
+const Random = file.DeviceRandomBytes(4096);
+const String = Allocator0.StructuredVector(u8);
 
 pub const is_verbose: bool = false;
 pub const is_correct: bool = true;
@@ -125,8 +125,8 @@ pub fn main() !void {
         allocator_1.discard();
         allocator_1.deinit(&address_space);
     }
-    const appends_per_round: u64 = random.takeCond(Big, c);
-    const prepends_per_round: u64 = random.takeCond(Big, c);
+    const appends_per_round: u64 = random.readOneConditionally(Big, c);
+    const prepends_per_round: u64 = random.readOneConditionally(Big, c);
     const inserts_per_round: u64 = big_num - (appends_per_round + prepends_per_round);
     const Disruptor = Allocator1.StructuredHolder(String);
     var disruption: Disruptor = Disruptor.init(&allocator_1);
@@ -137,18 +137,18 @@ pub fn main() !void {
         var list: LinkedList = try LinkedList.init(&allocator_0);
         var operation_count: u64 = 0;
         while (operation_count != appends_per_round) : (operation_count += 1) {
-            try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.take(u8))]));
+            try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.readOne(u8))]));
             try list.append(&allocator_0, .{ .i = 1 });
         }
         operation_count = 0;
         while (operation_count != prepends_per_round) : (operation_count += 1) {
-            try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.take(u8))]));
+            try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.readOne(u8))]));
             try list.prepend(&allocator_0, .{ .i = 10 });
         }
         operation_count = 0;
         while (operation_count != inserts_per_round) : (operation_count += 1) {
-            const mid: u64 = builtin.min(u64, list.count, random.take(Count));
-            try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.take(u8))]));
+            const mid: u64 = builtin.min(u64, list.count, random.readOne(Count));
+            try disruption.appendOne(&allocator_1, try string(&allocator_0, undefined_s[0..builtin.max(u64, 1, random.readOne(u8))]));
             try list.insert(&allocator_0, mid, .{ .i = 100 });
         }
         operation_count = 0;
@@ -159,7 +159,7 @@ pub fn main() !void {
             const t_begin = try list.extract(0);
             const s_end = try list.at(list.count - 1);
             const t_end = try list.extract(list.count - 1);
-            const mid: u64 = builtin.min(u64, list.count - 1, random.take(Count));
+            const mid: u64 = builtin.min(u64, list.count - 1, random.readOne(Count));
             const s_mid = try list.at(mid);
             const t_mid = try list.extract(mid);
             try builtin.expectEqual(u64, s_end.i, t_end.read().i);
@@ -170,6 +170,7 @@ pub fn main() !void {
             list.retire(t_mid);
             list.retire(t_begin);
         }
+        try LinkedList.Graphics.show(list, &address_space);
         list.deinit(&allocator_0);
         for (disruption.referAll(allocator_1)) |*z| {
             z.deinit(&allocator_0);

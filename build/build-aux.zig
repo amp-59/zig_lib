@@ -28,10 +28,13 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{ .is_correct = true, .is_verbose = true, .strip = true });
     _ = addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseSmall, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "list_test", "top/list-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "render_test", "top/render-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
 
-    _ = addProjectExecutable(builder, "dir_test", "top/dir-test.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
+    // Complete test programs:
+    _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
+    _ = addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
