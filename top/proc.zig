@@ -207,7 +207,7 @@ pub const CloneArgs = extern struct {
 pub const WaitSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.wait_errors,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     return_type: type = u64,
     const Specification = @This();
     const Options = struct {
@@ -248,7 +248,7 @@ pub const WaitIdSpec = struct {
     id_type: IdType,
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.wait_errors,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     return_type: type = u64,
     const Specification = @This();
     const Options = struct {
@@ -285,7 +285,7 @@ pub const WaitIdSpec = struct {
 };
 pub const ForkSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.fork_errors,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     return_type: ?type = u64,
     const Specification = @This();
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
@@ -296,7 +296,7 @@ pub const ExecuteSpec = struct {
     return_type: type = void,
     args_type: type = [][*:0]u8,
     vars_type: type = [][*:0]u8,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct { no_follow: bool = false };
     fn flags(comptime spec: ExecuteSpec) Execute {
@@ -312,7 +312,7 @@ pub const CloneSpec = struct {
     options: Options,
     errors: ?[]const sys.ErrorCode = sys.clone_errors,
     return_type: type = isize,
-    logging: bool = builtin.is_verbose,
+    logging: builtin.Logging = .{},
     const Options = struct {
         address_space: bool,
         file_system: bool,
@@ -381,7 +381,7 @@ pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.optio
     if (spec.call(.execve, .{ filename_buf_addr, args_addr, vars_addr })) {
         unreachable;
     } else |execve_error| {
-        if (spec.logging or builtin.is_debug) {
+        if (spec.logging.Error) {
             debug.executeError(execve_error, pathname, args);
         }
         return execve_error;
@@ -394,7 +394,7 @@ pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.options.args_t
     if (spec.call(.execveat, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val })) {
         unreachable;
     } else |execve_error| {
-        if (spec.logging or builtin.is_debug) {
+        if (spec.logging.Error) {
             debug.executeError(execve_error, args[0], args);
         }
         return execve_error;
@@ -408,7 +408,7 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
     if (spec.call(.execveat, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val })) {
         unreachable;
     } else |execve_error| {
-        if (spec.logging or builtin.is_debug) {
+        if (spec.logging.Error) {
             debug.executeError(execve_error, name, args);
         }
         return execve_error;
@@ -419,7 +419,7 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) spec.Unwrapped(.wait4)
     if (spec.call(.wait4, .{ WaitSpec.pid(id), @ptrToInt(&status), 0, 0 })) |pid| {
         return pid;
     } else |wait_error| {
-        if (spec.logging or builtin.is_verbose) {
+        if (spec.logging.Error) {
             debug.waitError(wait_error);
         }
         return wait_error;
@@ -432,7 +432,7 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64) spec.Unwrapped(.wait4) {
     if (spec.call(.wait4, .{ idtype.val, id, @ptrToInt(&info), flags.val })) |pid| {
         return pid;
     } else |wait_error| {
-        if (spec.logging or builtin.is_verbose) {
+        if (spec.logging.Error) {
             debug.waitError(wait_error);
         }
         return wait_error;
@@ -442,7 +442,7 @@ pub fn fork(comptime spec: ForkSpec) spec.Unwrapped(.fork) {
     if (spec.call(.fork, .{})) |pid| {
         return pid;
     } else |fork_error| {
-        if (spec.logging or builtin.is_debug) {
+        if (spec.logging.Error) {
             debug.forkError(fork_error);
         }
         return fork_error;
@@ -457,13 +457,13 @@ pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.op
         if (spec.call(.execve, .{ filename_buf_addr, args_addr, vars_addr })) {
             unreachable;
         } else |execve_error| {
-            if (spec.logging or builtin.is_debug) {
+            if (spec.logging.Error) {
                 debug.executeError(execve_error, pathname, args);
             }
             return execve_error;
         }
     }
-    if (spec.logging) {
+    if (spec.logging.Success) {
         debug.executeNotice(pathname, args);
     }
     return waitPid(pid);
@@ -478,13 +478,13 @@ pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, ar
         if (spec.call(.execveat, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val })) {
             unreachable;
         } else |execve_error| {
-            if (spec.logging or builtin.is_debug) {
+            if (spec.logging.Error) {
                 debug.executeError(execve_error, name, args);
             }
             return execve_error;
         }
     }
-    if (spec.logging) {
+    if (spec.logging.Success) {
         debug.executeNotice(name, args);
     }
     return waitPid(.{}, .{ .pid = pid });
@@ -502,7 +502,7 @@ pub const start = opaque {
         sys.noexcept.write(2, @ptrToInt(msg.ptr), msg.len);
         sys.exit(2);
     }
-    pub noinline fn panicOutOfBounds(max_len: u64, idx: u64) noreturn {
+    pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
@@ -522,7 +522,7 @@ pub const start = opaque {
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        debug.print(&buf, [_][]const u8{
+        debug.print(&buf, &[_][]const u8{
             debug.about_error_s,                 "sentinel mismatch: expected ",
             builtin.fmt.int(expected).readAll(), ", found ",
             builtin.fmt.int(actual).readAll(),   "\n",
@@ -532,7 +532,7 @@ pub const start = opaque {
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        debug.print(&buf, [_][]const u8{
+        debug.print(&buf, &[_][]const u8{
             debug.about_error_s,               "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
@@ -774,6 +774,16 @@ fn Args(comptime Fn: type) type {
     }
     return @Type(meta.tupleInfo(fields));
 }
+pub fn shift(args: *[][*:0]u8, i: u64) void {
+    if (args.len > i + 1) {
+        var this: *[*:0]u8 = &args.*[i];
+        for (args.*[i + 1 ..]) |*next| {
+            this.* = next.*;
+            this = next;
+        }
+    }
+    args.* = args.*[0 .. args.len - 1];
+}
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
     var addr: u64 = @ptrToInt(auxv);
     while (@intToPtr(*u64, addr).* != 0) : (addr += 16) {
@@ -835,7 +845,7 @@ const debug = opaque {
     // TODO: Report more information, such as pid, idtype, conditions
     fn waitError(wait_error: anytype) void {
         var buf: [16 + 32 + 512]u8 = undefined;
-        print(&buf, [_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
+        print(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
     fn strlen(s: [*:0]const u8) u64 {
         var len: u64 = 0;
