@@ -9,7 +9,7 @@ pub const integer_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .Com
 pub const float_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Float, .ComptimeFloat };
 pub const enum_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .ComptimeInt, .Enum, .EnumLiteral };
 pub const tag_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Type, .ErrorUnion, .Enum, .EnumLiteral };
-pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Fn, .BoundFn };
+pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{.Fn};
 pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union };
 pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union };
 
@@ -465,9 +465,6 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
         .Fn => {
             return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.error_set;
         },
-        .BoundFn => {
-            return @typeInfo(@typeInfo(@TypeOf(any_function)).BoundFn.return_type.?).ErrorUnion.error_set;
-        },
         .Struct => {
             var errors: type = error{};
             for (any_function) |arg| {
@@ -476,7 +473,7 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
             return errors;
         },
         else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .BoundFn, .Struct });
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .Struct });
         },
     }
 }
@@ -487,11 +484,8 @@ pub fn ReturnPayload(comptime any_function: anytype) type {
         .Fn => {
             return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.payload;
         },
-        .BoundFn => {
-            return @typeInfo(@typeInfo(@TypeOf(any_function)).BoundFn.return_type.?).ErrorUnion.payload;
-        },
         else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .BoundFn });
+            debug.unexpectedTypeTypesError(T, type_info, .{.Fn});
         },
     }
 }
@@ -582,7 +576,6 @@ pub fn isTriviallyComparable(comptime T: type) bool {
         .Optional => |optional_info| @typeInfo(optional_info.child) == .Pointer and
             @typeInfo(optional_info.child).Pointer.size != .Slice and
             @typeInfo(optional_info.child).Pointer.size != .C,
-        .BoundFn => unreachable,
         .Undefined => unreachable,
     };
 }
@@ -615,7 +608,6 @@ const debug = opaque {
             .Enum => "enum",
             .Union => "union",
             .Fn => "function",
-            .BoundFn => "method", // Soon deprecated
             .Opaque => "opaque",
             .Frame => "frame",
             .AnyFrame => "anyframe",

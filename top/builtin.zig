@@ -49,7 +49,6 @@ pub const Logging = packed struct {
     Release: bool = is_verbose,
     Error: bool = true,
     Fault: bool = true,
-
     pub const verbose: Logging = .{
         .Success = true,
         .Acquire = true,
@@ -1530,7 +1529,6 @@ pub const fmt = opaque {
             .Enum => "enum",
             .Union => "union",
             .Fn => "function",
-            .BoundFn => "method", // Soon deprecated
             .Opaque => "opaque",
             .Frame => "frame",
             .AnyFrame => "anyframe",
@@ -1576,7 +1574,6 @@ pub const fmt = opaque {
             .Opaque => "opaque",
             .ErrorSet => "error",
 
-            .BoundFn,
             .Fn,
             .Vector,
             .Type,

@@ -398,22 +398,14 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                 return list.insertInitial(data);
             }
             const n_node_blk: Block = try list.getNodeBlock(allocator);
-            try @call(
-                .{ .modifier = .always_inline },
-                insertAfter,
-                .{ list, data, n_node_blk },
-            );
+            try insertBefore(list, data, n_node_blk);
         }
         pub fn prepend(list: *List, allocator: *Allocator, data: child) !void {
             if (list.count == 0) {
                 return list.insertInitial(data);
             }
             const n_node_blk: Block = try list.getNodeBlock(allocator);
-            try @call(
-                .{ .modifier = .always_inline },
-                insertBefore,
-                .{ list, data, n_node_blk },
-            );
+            try insertBefore(list, data, n_node_blk);
         }
         fn getNodeBlock(list: *List, allocator: *Allocator) !Block {
             if (list.save) |s_save_blk| {
