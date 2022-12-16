@@ -1097,20 +1097,36 @@ pub fn DateTimeFormat(comptime DateTime: type) type {
         }
     };
 }
-pub fn typeName(comptime T: type) [:0]const u8 {
-    comptime {
-        const type_name: [:0]const u8 = @typeName(T);
-        if (mem.indexOfFirstEqualOne(u8, '.', type_name)) |first_dot| {
-            if (mem.indexOfLastEqualOne(u8, '(', type_name)) |first_parens| {
-                if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_parens])) |last_dot| {
-                    if (last_dot != first_dot) {
-                        return type_name[0..first_dot] ++ "." ++ type_name[last_dot..first_parens] ++ "(..)";
-                    }
-                }
-            }
-        } else if (mem.indexOfFirstEqualOne(u8, '(', type_name)) |first_parens| {
-            return type_name[0..first_parens] ++ "(..)";
+/// This function attempts to shorten type names, to improve readability, and
+/// makes no attempt to accomodate for extreme names, such as enabled by @"".
+pub fn typeName(comptime T: type) []const u8 {
+    const type_name: [:0]const u8 = @typeName(T);
+    // From last dot:
+    // ns.TypeName
+    //
+    // From last dot before first open parens:
+    // ns.Generic()                 => Generic()
+    //
+    // From last dot after last close parens:
+    // ns.Generic().Within          => Within
+    //
+    // Cannot be parsed, because () is essentially a black box:
+    // ns.Generic().Within()        => ???
+    if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
+        if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
+            return type_name[last_dot..];
         }
-        return type_name;
+        if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
+            if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
+                return type_name[last_dot + 1 .. first_op];
+            }
+        } else {
+            @compileError("???");
+        }
+    } else {
+        if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
+            return type_name[last_dot..];
+        }
     }
+    return type_name;
 }

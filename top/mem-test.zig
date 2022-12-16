@@ -92,6 +92,13 @@ fn testAllocatedImplementation() !void {
             .map = builtin.Logging.silent,
             .unmap = builtin.Logging.silent,
             .remap = builtin.Logging.silent,
+            .allocate = false,
+            .deallocate = false,
+            .reallocate = false,
+            .head = false,
+            .sentinel = false,
+            .branches = false,
+            .metadata = false,
         },
     });
     var address_space: mem.AddressSpace = .{};

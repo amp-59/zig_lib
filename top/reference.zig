@@ -1,24 +1,53 @@
-const mem = @import("./mem.zig");
-const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
 fn automatic_storage_address(impl: anytype) u64 {
     return @ptrToInt(impl) + @offsetOf(@TypeOf(impl.*), "auto");
 }
+pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
+    return builtin.intToPtr(*child, s_lb_addr);
+}
+pub fn pointerMany(comptime child: type, s_lb_addr: u64, count: u64) []child {
+    return builtin.intToPtr([*]child, s_lb_addr)[0..count];
+}
+pub fn pointerManyWithSentinel(comptime child: type, s_lb_addr: u64, count: u64, comptime sentinel: child) [:sentinel]child {
+    return builtin.intToPtr([*]child, s_lb_addr)[0..count :sentinel];
+}
+pub fn pointerCount(comptime child: type, s_lb_addr: u64, comptime count: u64) *[count]child {
+    return builtin.intToPtr(*[count]child, s_lb_addr)[0..count];
+}
+pub fn pointerCountWithSentinel(comptime child: type, s_lb_addr: u64, comptime count: u64, comptime sentinel: child) *[count:sentinel]child {
+    return builtin.intToPtr(*[count]child, s_lb_addr)[0..count :sentinel];
+}
+pub fn pointerOneWithSentinel(comptime child: type, s_lb_addr: u64, comptime sentinel: child) [*:sentinel]child {
+    return builtin.intToPtr([*:sentinel]child, s_lb_addr);
+}
+pub fn pointerOpaque(comptime child: type, any: *const anyopaque) *const child {
+    return @ptrCast(*const child, @alignCast(@alignOf(child), any));
+}
+pub fn copy(dst: u64, src: u64, bytes: u64, comptime high_alignment: u64) void {
+    const unit_type: type = @Type(.{ .Int = .{
+        .bits = 8 * high_alignment,
+        .signedness = .unsigned,
+    } });
+    var index: u64 = 0;
+    while (index != bytes / high_alignment) : (index += 1) {
+        @intToPtr([*]unit_type, dst)[index] = @intToPtr([*]const unit_type, src)[index];
+    }
+}
 pub const Specification0 = struct {
     child: type,
     count: u64,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -344,7 +373,7 @@ pub fn ReadWriteStaticStructuredUnitAlignment(comptime spec: Specification0) typ
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -397,7 +426,7 @@ pub fn ReadWriteStaticStructuredLazyAlignment(comptime spec: Specification0) typ
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -450,7 +479,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignment(comptime spec: Specification0)
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -543,7 +572,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignment(comptime spec: Specif
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -646,7 +675,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignment(comptime spec: Specif
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -749,7 +778,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignment(comptime spec: Sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -822,7 +851,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignment(comptime spec: Specificatio
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -897,7 +926,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignment(comptime spec: Specificatio
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -975,7 +1004,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignment(comptime spec: Specific
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -991,14 +1020,14 @@ pub const Specification1 = struct {
     count: u64,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -1086,7 +1115,7 @@ pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1121,7 +1150,7 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1177,7 +1206,7 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1227,14 +1256,14 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -1254,7 +1283,7 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1292,11 +1321,11 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
     };
 }
@@ -1309,7 +1338,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specificati
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1343,7 +1372,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specificati
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -1358,7 +1387,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specificati
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1399,7 +1428,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specificati
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -1414,7 +1443,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1455,7 +1484,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -1473,7 +1502,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1526,14 +1555,14 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -1553,7 +1582,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -1574,7 +1603,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1634,14 +1663,14 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -1661,7 +1690,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -1682,7 +1711,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime 
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1742,14 +1771,14 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -1769,7 +1798,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -1790,7 +1819,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Spec
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1831,11 +1860,11 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Spec
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.lb_addr };
@@ -1847,7 +1876,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Spec
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -1863,7 +1892,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Spec
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1911,11 +1940,11 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Spec
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ab_addr };
@@ -1927,7 +1956,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -1943,7 +1972,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: 
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1991,11 +2020,11 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct3) Implementation {
             return .{
@@ -2010,7 +2039,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -2026,14 +2055,14 @@ pub const Specification2 = struct {
     low_alignment: u64,
     arena_index: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -2141,7 +2170,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -2194,7 +2223,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -2247,7 +2276,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -2340,7 +2369,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex(comptime sp
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -2443,7 +2472,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex(comptime sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -2546,7 +2575,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex(comptim
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -2619,7 +2648,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex(comptime spec: Sp
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -2694,7 +2723,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex(comptime spec: Sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -2772,7 +2801,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex(comptime spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -2789,14 +2818,14 @@ pub const Specification3 = struct {
     low_alignment: u64,
     arena_index: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -2873,7 +2902,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2907,7 +2936,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -2922,7 +2951,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2963,7 +2992,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -2978,7 +3007,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3019,7 +3048,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -3037,7 +3066,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(com
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3090,14 +3119,14 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(com
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -3117,7 +3146,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(com
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -3138,7 +3167,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(com
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3198,14 +3227,14 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(com
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -3225,7 +3254,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(com
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -3246,7 +3275,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3306,14 +3335,14 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -3333,7 +3362,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -3354,7 +3383,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime 
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3395,11 +3424,11 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.lb_addr };
@@ -3411,7 +3440,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime 
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -3427,7 +3456,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime 
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3475,11 +3504,11 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ab_addr };
@@ -3491,7 +3520,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -3507,7 +3536,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(compt
         const Implementation = @This();
         const Static: type = fn () callconv(.Inline) u64;
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3555,11 +3584,11 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(compt
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct3) Implementation {
             return .{
@@ -3574,7 +3603,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(compt
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -3588,14 +3617,14 @@ pub const Specification4 = struct {
     bytes: u64,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -3700,7 +3729,7 @@ pub fn ReadWriteStaticUnstructuredUnitAlignment(comptime spec: Specification4) t
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -3751,7 +3780,7 @@ pub fn ReadWriteStaticUnstructuredLazyAlignment(comptime spec: Specification4) t
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -3802,7 +3831,7 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignment(comptime spec: Specification
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -3892,7 +3921,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignment(comptime spec: Spec
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -3993,7 +4022,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignment(comptime spec: Spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -4094,7 +4123,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment(comptime spec: 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -4164,7 +4193,7 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignment(comptime spec: Specificat
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -4237,7 +4266,7 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignment(comptime spec: Specificat
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -4313,7 +4342,7 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignment(comptime spec: Specif
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -4328,14 +4357,14 @@ pub const Specification5 = struct {
     low_alignment: u64,
     arena_index: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -4440,7 +4469,7 @@ pub fn ReadWriteStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -4491,7 +4520,7 @@ pub fn ReadWriteStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -4542,7 +4571,7 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -4632,7 +4661,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime 
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -4733,7 +4762,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -4834,7 +4863,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex(compt
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -4904,7 +4933,7 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: 
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -4977,7 +5006,7 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -5053,7 +5082,7 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex(comptime sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -5067,14 +5096,14 @@ pub const Specification6 = struct {
     child: type,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -5247,7 +5276,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignment(comptime spec: Specificatio
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -5356,7 +5385,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignment(comptime spec: Specificatio
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -5465,7 +5494,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignment(comptime spec: Specific
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -5548,7 +5577,7 @@ pub fn ReadWriteStreamStructuredUnitAlignment(comptime spec: Specification6) typ
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -5635,7 +5664,7 @@ pub fn ReadWriteStreamStructuredLazyAlignment(comptime spec: Specification6) typ
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -5722,7 +5751,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignment(comptime spec: Specification6)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -5804,7 +5833,7 @@ pub fn ReadWritePushPopStructuredUnitAlignment(comptime spec: Specification6) ty
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -5891,7 +5920,7 @@ pub fn ReadWritePushPopStructuredLazyAlignment(comptime spec: Specification6) ty
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -5978,7 +6007,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignment(comptime spec: Specification6
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -6036,7 +6065,7 @@ pub fn ReadWriteStructuredUnitAlignment(comptime spec: Specification6) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -6095,7 +6124,7 @@ pub fn ReadWriteStructuredLazyAlignment(comptime spec: Specification6) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -6157,7 +6186,7 @@ pub fn ReadWriteStructuredDisjunctAlignment(comptime spec: Specification6) type 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -6175,14 +6204,14 @@ pub const Specification7 = struct {
     sentinel: *const anyopaque,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -6274,7 +6303,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Spec
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6329,14 +6358,14 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Spec
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -6358,7 +6387,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -6381,7 +6410,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Spec
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6441,14 +6470,14 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Spec
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -6470,7 +6499,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -6493,7 +6522,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: 
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6553,14 +6582,14 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -6582,7 +6611,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -6604,7 +6633,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinel(comptime spec: Specificati
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6666,7 +6695,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinel(comptime spec: Specificati
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -6687,7 +6716,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinel(comptime spec: Specificati
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6754,7 +6783,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinel(comptime spec: Specificati
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -6775,7 +6804,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6842,7 +6871,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -6863,7 +6892,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specificat
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6906,11 +6935,11 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specificat
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct9) Implementation {
             return .{
@@ -6927,7 +6956,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -6948,7 +6977,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specificat
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6996,11 +7025,11 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specificat
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct11) Implementation {
             return .{
@@ -7017,7 +7046,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -7038,7 +7067,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specif
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7086,11 +7115,11 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specif
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct11) Implementation {
             return .{
@@ -7107,7 +7136,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -7127,7 +7156,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinel(comptime spec: Specification7) t
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7166,7 +7195,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinel(comptime spec: Specification7) t
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -7182,7 +7211,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinel(comptime spec: Specification7) t
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7226,7 +7255,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinel(comptime spec: Specification7) t
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -7242,7 +7271,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinel(comptime spec: Specification
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7289,7 +7318,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinel(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -7307,14 +7336,14 @@ pub const Specification8 = struct {
     low_alignment: u64,
     arena_index: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -7487,7 +7516,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex(comptime spec: Sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -7596,7 +7625,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex(comptime spec: Sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -7705,7 +7734,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex(comptime spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -7788,7 +7817,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -7875,7 +7904,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -7962,7 +7991,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -8044,7 +8073,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentArenaIndex(comptime spec: Specific
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -8131,7 +8160,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentArenaIndex(comptime spec: Specific
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -8218,7 +8247,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentArenaIndex(comptime spec: Spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -8276,7 +8305,7 @@ pub fn ReadWriteStructuredUnitAlignmentArenaIndex(comptime spec: Specification8)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -8335,7 +8364,7 @@ pub fn ReadWriteStructuredLazyAlignmentArenaIndex(comptime spec: Specification8)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -8397,7 +8426,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentArenaIndex(comptime spec: Specificati
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -8416,14 +8445,14 @@ pub const Specification9 = struct {
     low_alignment: u64,
     arena_index: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -8515,7 +8544,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime 
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8570,14 +8599,14 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -8599,7 +8628,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -8622,7 +8651,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime 
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8682,14 +8711,14 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -8711,7 +8740,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -8734,7 +8763,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(compt
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8794,14 +8823,14 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(compt
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -8823,7 +8852,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(compt
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -8845,7 +8874,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8907,7 +8936,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -8928,7 +8957,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8995,7 +9024,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -9016,7 +9045,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9083,7 +9112,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -9104,7 +9133,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: 
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9147,11 +9176,11 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct9) Implementation {
             return .{
@@ -9168,7 +9197,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -9189,7 +9218,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: 
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9237,11 +9266,11 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: 
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct11) Implementation {
             return .{
@@ -9258,7 +9287,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -9279,7 +9308,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime sp
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9327,11 +9356,11 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime sp
         pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct11) Implementation {
             return .{
@@ -9348,7 +9377,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -9368,7 +9397,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specifi
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9407,7 +9436,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -9423,7 +9452,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specifi
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9467,7 +9496,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -9483,7 +9512,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Spe
         up_word: u64,
         const Implementation = @This();
         const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9530,7 +9559,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Spe
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -9547,14 +9576,14 @@ pub const Specification10 = struct {
     high_alignment: u64,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -9727,7 +9756,7 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignment(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -9836,7 +9865,7 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignment(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -9945,7 +9974,7 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignment(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -10028,7 +10057,7 @@ pub fn ReadWriteStreamUnstructuredUnitAlignment(comptime spec: Specification10) 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -10115,7 +10144,7 @@ pub fn ReadWriteStreamUnstructuredLazyAlignment(comptime spec: Specification10) 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -10202,7 +10231,7 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignment(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -10284,7 +10313,7 @@ pub fn ReadWritePushPopUnstructuredUnitAlignment(comptime spec: Specification10)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -10371,7 +10400,7 @@ pub fn ReadWritePushPopUnstructuredLazyAlignment(comptime spec: Specification10)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -10458,7 +10487,7 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignment(comptime spec: Specificatio
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -10516,7 +10545,7 @@ pub fn ReadWriteUnstructuredUnitAlignment(comptime spec: Specification10) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -10575,7 +10604,7 @@ pub fn ReadWriteUnstructuredLazyAlignment(comptime spec: Specification10) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -10637,7 +10666,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignment(comptime spec: Specification10) ty
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -10655,14 +10684,14 @@ pub const Specification11 = struct {
     low_alignment: u64,
     arena_index: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -10835,7 +10864,7 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -10944,7 +10973,7 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -11053,7 +11082,7 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex(comptime sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -11136,7 +11165,7 @@ pub fn ReadWriteStreamUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -11223,7 +11252,7 @@ pub fn ReadWriteStreamUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -11310,7 +11339,7 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -11392,7 +11421,7 @@ pub fn ReadWritePushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -11479,7 +11508,7 @@ pub fn ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -11566,7 +11595,7 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -11624,7 +11653,7 @@ pub fn ReadWriteUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -11683,7 +11712,7 @@ pub fn ReadWriteUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -11745,7 +11774,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specifica
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -11763,14 +11792,14 @@ pub const Specification12 = struct {
     child: type,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write_push_pop => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -11901,7 +11930,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Sp
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -11998,7 +12027,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Sp
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12071,7 +12100,7 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specific
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12149,7 +12178,7 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignment(comptime spec: Specific
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12162,14 +12191,14 @@ pub const Specification13 = struct {
     sentinel: *const anyopaque,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write_push_pop => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -12231,7 +12260,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
         const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
         const Slave: type = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(allocator: Allocator) u64 {
@@ -12286,14 +12315,14 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
         pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -12305,7 +12334,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12328,7 +12357,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
         const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
         const Slave: type = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(allocator: Allocator) u64 {
@@ -12388,14 +12417,14 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
         pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn tell(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word -%= x_bytes;
@@ -12407,7 +12436,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12429,7 +12458,7 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
         const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
         const Slave: type = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(allocator: Allocator) u64 {
@@ -12472,11 +12501,11 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
         pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .ub_word = s.lb_addr };
@@ -12485,7 +12514,7 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12507,7 +12536,7 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: 
         const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
         const Slave: type = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
-        pub const sentinel: *const spec.child = mem.pointerOpaque(spec.child, spec.sentinel);
+        pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(allocator: Allocator) u64 {
@@ -12555,11 +12584,11 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: 
         pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
-            mem.pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
+            pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
         pub inline fn construct(s: Construct2) Implementation {
             return .{ .ub_word = s.ab_addr };
@@ -12568,7 +12597,7 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12580,14 +12609,14 @@ pub const Specification14 = struct {
     high_alignment: u64,
     low_alignment: u64,
     const Specification = @This();
-    pub fn deduce(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) type {
+    pub fn deduce(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) type {
         if (spec.matchImplementation(mode, techs)) |match| {
             return match;
         } else {
             @compileError("no matching specification");
         }
     }
-    pub fn matchImplementation(comptime spec: Specification, comptime mode: mem.AbstractSpec.Mode, comptime techs: anytype) ?type {
+    pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
             .read_write_push_pop => {
                 if (comptime techs.unit_alignment) { // @1b1
@@ -12718,7 +12747,7 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12815,7 +12844,7 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12888,7 +12917,7 @@ pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specif
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12966,7 +12995,7 @@ pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specif
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            mem.cpy(t_impl.start(), s_impl.start(), s_impl.utility());
+            copy(t_impl.start(), s_impl.start(), s_impl.utility(), high_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12989,6 +13018,16 @@ pub const specifications: [15]type = .{
     Specification12,
     Specification13,
     Specification14,
+};
+const Mode = enum {
+    read_write,
+    read_write_push_pop,
+    read_write_auto,
+    read_write_push_pop_auto,
+    read_write_stream,
+    read_write_stream_push_pop,
+    read_write_stream_auto,
+    read_write_stream_push_pop_auto,
 };
 const Construct1 = struct { lb_addr: u64 };
 const Construct2 = struct { ab_addr: u64 };
