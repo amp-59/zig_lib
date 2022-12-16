@@ -1,0 +1,1078 @@
+const srg = @import("zig_lib");
+const mem = srg.mem;
+const sys = srg.sys;
+const fmt = srg.fmt;
+const proc = srg.proc;
+const file = srg.file;
+const meta = srg.meta;
+const builtin = srg.builtin;
+
+pub usingnamespace proc.start;
+
+const types = @import("buildgen/builder-types.zig");
+
+const template_src: [:0]const u8 = @embedFile("buildgen/builder-template.zig");
+const types_src: [:0]const u8 = @embedFile("buildgen/builder-types.zig");
+
+pub const is_verbose: bool = false;
+pub const is_correct: bool = true;
+
+const never_fixed: bool = false;
+const never_dynamic: bool = false;
+
+const Allocator0 = mem.GenericArenaAllocator(.{
+    .arena_index = 24,
+    .options = .{
+        .count_allocations = false,
+        .require_filo_free = false,
+        .require_geometric_growth = true,
+        .trace_state = false,
+    },
+});
+const Allocator1 = mem.GenericArenaAllocator(.{
+    .arena_index = 32,
+    .options = .{
+        .count_allocations = false,
+        .require_filo_free = true,
+        .require_geometric_growth = true,
+        .trace_state = false,
+    },
+});
+const String0 = Allocator0.StructuredHolder(u8);
+const String1 = Allocator1.StructuredHolder(u8);
+
+const create_spec: file.CreateSpec = .{
+    .options = .{
+        .write = .truncate,
+        .read = false,
+        .exclusive = false,
+    },
+    .logging = .{},
+};
+const close_spec: file.CloseSpec = .{
+    .logging = .{},
+    .errors = null,
+};
+const ws: [24]u8 = .{' '} ** 24;
+pub const input_open_spec: file.OpenSpec = .{ .read = true, .write = null };
+pub const input_close_spec: file.CloseSpec = .{};
+pub const OptionSpec = struct {
+    /// Command line flag/switch
+    string: ?[]const u8 = null,
+    /// Simple argument type
+    args_type: ?type = null,
+    /// Any argument type name; must be defined in builder-template.zig
+    args_type_name: ?[]const u8 = null,
+    /// For options with -f<name> and -fno-<name> variants
+    and_no: ?*const OptionSpec = null,
+};
+const SimpleInverse = struct {
+    /// Do not output machine code
+    pub const no_emit_bin_opt_spec: OptionSpec = .{ .string = "-fno-emit-bin" };
+    /// (default) Do not output .s (assembly code)
+    pub const no_emit_asm_opt_spec: OptionSpec = .{ .string = "-fno-emit-asm" };
+    /// (default) Do not produce a .ll file with LLVM IR
+    pub const no_emit_llvm_ir_opt_spec: OptionSpec = .{ .string = "-fno-emit-llvm-ir" };
+    /// (default) Do not produce a LLVM module as a .bc file
+    pub const no_emit_llvm_bc_opt_spec: OptionSpec = .{ .string = "-fno-emit-llvm-bc" };
+    /// (default) Do not generate a C header file (.h)
+    pub const no_emit_h_opt_spec: OptionSpec = .{ .string = "-fno-emit-h" };
+    /// (default) Do not produce docs/ dir with html documentation
+    pub const no_emit_docs_opt_spec: OptionSpec = .{ .string = "-fno-emit-docs" };
+    /// (default) Do not write analysis JSON file with type information
+    pub const no_emit_analysis_opt_spec: OptionSpec = .{ .string = "-fno-emit-analysis" };
+    /// Do not produce an import .lib when building a Windows DLL
+    pub const no_emit_implib_opt_spec: OptionSpec = .{ .string = "-fno-emit-implib" };
+    /// -mno-red-zone               Force-disable the "red-zone"
+    pub const no_red_zone_opt_spec: OptionSpec = .{ .string = "-mno-red-zone" };
+    /// -fno-omit-frame-pointer     Store the stack frame pointer
+    pub const no_omit_frame_pointer_opt_spec: OptionSpec = .{ .string = "-fno-omit-frame-pointer" };
+    /// -fno-PIC                    Force-disable Position Independent Code
+    pub const no_pic_opt_spec: OptionSpec = .{ .string = "-fno-PIC" };
+    /// -fno-PIE                    Force-disable Position Independent Executable
+    pub const no_pie_opt_spec: OptionSpec = .{ .string = "-fno-PIE" };
+    /// -fno-lto                    Force-disable Link Time Optimization
+    pub const no_lto_opt_spec: OptionSpec = .{ .string = "-fno-lto" };
+    /// -fno-stack-check            Disable stack probing in safe builds
+    pub const no_stack_check_opt_spec: OptionSpec = .{ .string = "-fno-stack-check" };
+    /// -fno-sanitize-c             Disable C undefined behavior detection in safe builds
+    pub const no_sanitize_c_opt_spec: OptionSpec = .{ .string = "-fno-sanitize-c" };
+    /// -fno-valgrind               Omit valgrind client requests in debug builds
+    pub const no_valgrind_opt_spec: OptionSpec = .{ .string = "-fno-valgrind" };
+    /// -fno-sanitize-thread        Disable Thread Sanitizer
+    pub const no_sanitize_thread_opt_spec: OptionSpec = .{ .string = "-fno-sanitize-thread" };
+    /// -fno-dll-export-fns         Force-disable marking exported functions as DLL exports
+    pub const no_dll_export_fns_opt_spec: OptionSpec = .{ .string = "-fno-dll-export-fns" };
+    /// -fno-unwind-tables          Never produce unwind table entries
+    pub const no_unwind_tables_opt_spec: OptionSpec = .{ .string = "-fno-unwind-tables" };
+    /// -fno-LLVM                   Prevent using LLVM as the codegen backend
+    pub const no_llvm_opt_spec: OptionSpec = .{ .string = "-fno-LLVM" };
+    /// -fno-Clang                  Prevent using Clang as the C/C++ compilation backend
+    pub const no_clang_opt_spec: OptionSpec = .{ .string = "-fno-Clang" };
+    /// -fno-stage1                 Prevent using bootstrap compiler as the codegen backend
+    pub const no_stage1_opt_spec: OptionSpec = .{ .string = "-fno-stage1" };
+    /// -fno-single-threaded        Code may not assume there is only one thread
+    pub const no_single_threaded_opt_spec: OptionSpec = .{ .string = "-fno-single-threaded" };
+    /// -fno-builtin                Disable implicit builtin knowledge of functions
+    pub const no_builtin_opt_spec: OptionSpec = .{ .string = "-fno-builtin" };
+    /// -fno-function-sections      All functions go into same section
+    pub const no_function_sections_opt_spec: OptionSpec = .{ .string = "-fno-function-sections" };
+    /// --no-gc-sections            Don't force removal of unreachable functions and data
+    pub const no_gc_sections_opt_spec: OptionSpec = .{ .string = "--no-gc-sections" };
+    /// -fno-strip                   Do no omit debug symbols
+    pub const no_strip_opt_spec: OptionSpec = .{ .string = "-fno-strip" };
+};
+pub const ExecutableOptions = opaque {
+    // Enable compiler REPL
+    pub const watch_opt_spec: OptionSpec = .{ .string = "--watch" };
+    // Enable or disable colored error messages
+    pub const color_opt_spec: OptionSpec = .{ .string = "--color", .args_type = enum { on, off, auto } };
+    // (default) Output machine code
+    pub const emit_bin_opt_spec: OptionSpec = .{ .string = "-femit-bin", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_bin_opt_spec };
+    // Output .s (assembly code)
+    pub const emit_asm_opt_spec: OptionSpec = .{ .string = "-femit-asm", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_asm_opt_spec };
+    // Produce a .ll file with LLVM IR (requires LLVM extensions)
+    pub const emit_llvm_ir_opt_spec: OptionSpec = .{ .string = "-femit-llvm-ir", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_ir_opt_spec };
+    // Produce a LLVM module as a .bc file (requires LLVM extensions)
+    pub const emit_llvm_bc_opt_spec: OptionSpec = .{ .string = "-femit-llvm-bc", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_bc_opt_spec };
+    // Generate a C header file (.h)
+    pub const emit_h_opt_spec: OptionSpec = .{ .string = "-femit-h", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_h_opt_spec };
+    // Create a docs/ dir with html documentation
+    pub const emit_docs_opt_spec: OptionSpec = .{ .string = "-femit-docs", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_docs_opt_spec };
+    // Write analysis JSON file with type information
+    pub const emit_analysis_opt_spec: OptionSpec = .{ .string = "-femit-analysis", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_analysis_opt_spec };
+    // (default) Produce an import .lib when building a Windows DLL
+    pub const emit_implib_opt_spec: OptionSpec = .{ .string = "-femit-implib", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_implib_opt_spec };
+    // Output the source of @import(pub const builtin_opt_spec: OptionSpec = .{ .string = "builtin" } ) then exit
+    pub const show_builtin_opt_spec: OptionSpec = .{ .string = "--show-builtin" };
+    // Override the local cache directory
+    pub const cache_dir_opt_spec: OptionSpec = .{ .string = "--cache-dir", .args_type = []const u8 };
+    // Override the global cache directory
+    pub const global_cache_dir_opt_spec: OptionSpec = .{ .string = "--global-cache-dir", .args_type = []const u8 };
+    // Override path to Zig installation lib directory
+    pub const zig_lib_dir_opt_spec: OptionSpec = .{ .string = "--zig-lib-dir", .args_type = []const u8 };
+    // Output to cache directory; print path to stdout
+    pub const enable_cache_opt_spec: OptionSpec = .{ .string = "--enable-cache" };
+    // Compile Options:
+    ///  -target [name]            <arch><sub>-<os>-<abi> see the targets command
+    pub const target_opt_spec: OptionSpec = .{ .string = "-target", .args_type = []const u8 };
+    /// -mcpu [cpu]               Specify target CPU and feature set
+    pub const cpu_opt_spec: OptionSpec = .{ .string = "-mcpu", .args_type = []const u8 };
+    ///  -mcmodel=[default|tiny|   Limit range of code and data virtual addresses
+    ///            small|kernel|
+    ///            medium|large]
+    pub const cmodel_opt_spec: OptionSpec = .{ .string = "-mcmodel", .args_type = enum { default, tiny, small, kernel, medium, large } };
+    /// -mred-zone                Force-enable the "red-zone"
+    pub const red_zone_opt_spec: OptionSpec = .{ .string = "-mred-zone", .and_no = &SimpleInverse.no_red_zone_opt_spec };
+    /// -fomit-frame-pointer      Omit the stack frame pointer
+    pub const omit_frame_pointer_opt_spec: OptionSpec = .{ .string = "-fomit-frame-pointer", .and_no = &SimpleInverse.no_omit_frame_pointer_opt_spec };
+    /// -mexec-model=[value]      (WASI) Execution model
+    pub const exec_model_opt_spec: OptionSpec = .{ .string = "-mexec-model", .args_type = []const u8 };
+    /// --name [name]             Override root name (not a file path)
+    pub const name_opt_spec: OptionSpec = .{ .string = "--name", .args_type = []const u8 };
+    /// -O [mode]                 Choose what to optimize for
+    ///    Debug                   (default) Optimizations off, safety on
+    ///    ReleaseFast             Optimizations on, safety off
+    ///    ReleaseSafe             Optimizations on, safety on
+    ///    ReleaseSmall            Optimize for small binary, safety off
+    pub const O_opt_spec: OptionSpec = .{ .string = "-O", .args_type = enum { Debug, ReleaseSafe, ReleaseSmall, ReleaseFast } };
+    // pub const pkg_end_opt_spec: OptionSpec = .{ .string = "--pkg-end" };
+    /// --main-pkg-path           Set the directory of the root package
+    pub const main_pkg_path_opt_spec: OptionSpec = .{ .string = "--main-pkg-path", .args_type = []const u8 };
+    /// -fPIC                     Force-enable Position Independent Code
+    pub const pic_opt_spec: OptionSpec = .{ .string = "-fPIC", .and_no = &SimpleInverse.no_pic_opt_spec };
+    /// -fPIE                     Force-enable Position Independent Executable
+    pub const pie_opt_spec: OptionSpec = .{ .string = "-fPIE", .and_no = &SimpleInverse.no_pie_opt_spec };
+    /// -flto                     Force-enable Link Time Optimization (requires LLVM extensions)
+    pub const lto_opt_spec: OptionSpec = .{ .string = "-flto", .and_no = &SimpleInverse.no_lto_opt_spec };
+    /// -fstack-check             Enable stack probing in unsafe builds
+    pub const stack_check_opt_spec: OptionSpec = .{ .string = "-fstack-check", .and_no = &SimpleInverse.no_stack_check_opt_spec };
+    /// -fsanitize-c              Enable C undefined behavior detection in unsafe builds
+    pub const sanitize_c_opt_spec: OptionSpec = .{ .string = "-fsanitize-c", .and_no = &SimpleInverse.no_sanitize_c_opt_spec };
+    /// -fvalgrind                Include valgrind client requests in release builds
+    pub const valgrind_opt_spec: OptionSpec = .{ .string = "-fvalgrind", .and_no = &SimpleInverse.no_valgrind_opt_spec };
+    /// -fsanitize-thread         Enable Thread Sanitizer
+    pub const sanitize_thread_opt_spec: OptionSpec = .{ .string = "-fsanitize-thread", .and_no = &SimpleInverse.no_sanitize_thread_opt_spec };
+    /// -fdll-export-fns          Mark exported functions as DLL exports (Windows)
+    pub const dll_export_fns_opt_spec: OptionSpec = .{ .string = "-fdll-export-fns", .and_no = &SimpleInverse.no_dll_export_fns_opt_spec };
+    /// -funwind-tables           Always produce unwind table entries for all functions
+    pub const unwind_tables_opt_spec: OptionSpec = .{ .string = "-funwind-tables", .and_no = &SimpleInverse.no_unwind_tables_opt_spec };
+    /// -fLLVM                    Force using LLVM as the codegen backend
+    pub const llvm_opt_spec: OptionSpec = .{ .string = "-fLLVM", .and_no = &SimpleInverse.no_llvm_opt_spec };
+    /// -fClang                   Force using Clang as the C/C++ compilation backend
+    pub const clang_opt_spec: OptionSpec = .{ .string = "-fClang", .and_no = &SimpleInverse.no_clang_opt_spec };
+    /// -fstage1                  Force using bootstrap compiler as the codegen backend
+    pub const stage1_opt_spec: OptionSpec = .{ .string = "-fstage1", .and_no = &SimpleInverse.no_stage1_opt_spec };
+    /// -fsingle-threaded         Code assumes there is only one thread
+    pub const single_threaded_opt_spec: OptionSpec = .{ .string = "-fsingle-threaded", .and_no = &SimpleInverse.no_single_threaded_opt_spec };
+    /// -fbuiltin                 Enable implicit builtin knowledge of functions
+    pub const builtin_opt_spec: OptionSpec = .{ .string = "-fbuiltin" };
+    /// -ffunction-sections       Places each function in a separate section
+    pub const function_sections_opt_spec: OptionSpec = .{ .string = "-ffunction-sections", .and_no = &SimpleInverse.no_function_sections_opt_spec };
+    /// -fstrip                   Omit debug symbols
+    pub const strip_opt_spec: OptionSpec = .{ .string = "-fstrip", .and_no = &SimpleInverse.no_strip_opt_spec };
+    /// -ofmt=[mode]              Override target object format
+    ///   elf                     Executable and Linking Format
+    ///   c                       C source code
+    ///   wasm                    WebAssembly
+    ///   coff                    Common Object File Format (Windows)
+    ///   macho                   macOS relocatables
+    ///   spirv                   Standard, Portable Intermediate Representation V (SPIR-V)
+    ///   plan9                   Plan 9 from Bell Labs object format
+    ///   hex  (planned feature)  Intel IHEX
+    ///   raw  (planned feature)  Dump machine code directly
+    pub const fmt_opt_spec: OptionSpec = .{ .string = "-ofmt", .args_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw } };
+    /// -dirafter [dir]           Add directory to AFTER include search path
+    pub const dirafter_opt_spec: OptionSpec = .{ .string = "-dirafter", .args_type = []const u8 };
+    /// -isystem  [dir]           Add directory to SYSTEM include search path
+    pub const system_opt_spec: OptionSpec = .{ .string = "-isystem", .args_type = []const u8 };
+    /// -I[dir]                   Add directory to include search path
+    pub const include_opt_spec: OptionSpec = .{ .string = "-I", .args_type = []const u8 };
+    /// -D[macro]=[value]         Define C [macro] to [value] (1 if [value] omitted)
+    pub const macros_opt_spec: OptionSpec = .{ .args_type = types.Macros, .args_type_name = "Macros" };
+    /// --pkg-begin [name] [path] Make pkg available to import and push current pkg
+    pub const packages_opt_spec: OptionSpec = .{ .args_type = types.Packages, .args_type_name = "Packages" };
+    // --pkg-end                 Pop current pkg
+    /// --libc [file]             Provide a file which specifies libc paths
+    /// -cflags [flags] --        Set extra flags for the next positional C source files
+    /// Link Options:
+    ///   -l[lib], --library [lib]       Link against system library (only if actually used)
+    ///   -needed-l[lib],                Link against system library (even if unused)
+    ///     --needed-library [lib]
+    ///   -L[d], --library-directory [d] Add a directory to the library search path
+    ///   -T[script], --script [script]  Use a custom linker script
+    ///   --version-script [path]        Provide a version .map file
+    ///   --dynamic-linker [path]        Set the dynamic interpreter path (usually ld.so)
+    ///   --sysroot [path]               Set the system root directory (usually /)
+    ///   --version [ver]                Dynamic library semver
+    ///   --entry [name]                 Set the entrypoint symbol name
+    ///   -fsoname[=name]                Override the default SONAME value
+    ///   -fno-soname                    Disable emitting a SONAME
+    ///   -fLLD                          Force using LLD as the linker
+    ///   -fno-LLD                       Prevent using LLD as the linker
+    ///   -fcompiler-rt                  Always include compiler-rt symbols in output
+    ///   -fno-compiler-rt               Prevent including compiler-rt symbols in output
+    ///   -rdynamic                      Add all symbols to the dynamic symbol table
+    ///   -rpath [path]                  Add directory to the runtime library search path
+    ///   -feach-lib-rpath               Ensure adding rpath for each used dynamic library
+    ///   -fno-each-lib-rpath            Prevent adding rpath for each used dynamic library
+    ///   -fallow-shlib-undefined        Allows undefined symbols in shared libraries
+    ///   -fno-allow-shlib-undefined     Disallows undefined symbols in shared libraries
+    ///   -fbuild-id                     Helps coordinate stripped binaries with debug symbols
+    ///   -fno-build-id                  (default) Saves a bit of time linking
+    ///   --eh-frame-hdr                 Enable C++ exception handling by passing --eh-frame-hdr to linker
+    ///   --emit-relocs                  Enable output of relocation sections for post build tools
+    /// -dynamic                       Force output to be dynamically linked
+    pub const dynamic_opt_spec: OptionSpec = .{ .string = "-dynamic" };
+    /// -static                        Force output to be statically linked
+    pub const static_opt_spec: OptionSpec = .{ .string = "-static" };
+    ///   -Bsymbolic                     Bind global references locally
+    ///   --compress-debug-sections=[e]  Debug section compression settings
+    ///       none                       No compression
+    ///       zlib                       Compression with deflate/inflate
+    ///   --gc-sections                  Force removal of functions and data that are unreachable by the entry point or exported symbols
+    pub const gc_sections_opt_spec: OptionSpec = .{ .string = "--gc-sections", .and_no = &SimpleInverse.no_gc_sections_opt_spec };
+    ///   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
+    ///   --stack [size]                 Override default stack size
+    ///   --image-base [addr]            Set base address for executable image
+    ///   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
+    ///     -weak_library [lib]
+    ///   -framework [name]              (Darwin) link against framework
+    ///   -needed_framework [name]       (Darwin) link against framework (even if unused)
+    ///   -needed_library [lib]          (Darwin) link against system library (even if unused)
+    ///   -weak_framework [name]         (Darwin) link against framework and mark it and all referenced symbols as weak
+    ///   -F[dir]                        (Darwin) add search path for frameworks
+    ///   -install_name=[value]          (Darwin) add dylib's install name
+    ///   --entitlements [path]          (Darwin) add path to entitlements file for embedding in code signature
+    ///   -pagezero_size [value]         (Darwin) size of the __PAGEZERO segment in hexadecimal notation
+    ///   -search_paths_first            (Darwin) search each dir in library search paths for `libx.dylib` then `libx.a`
+    ///   -search_dylibs_first           (Darwin) search `libx.dylib` in each dir in library search paths, then `libx.a`
+    ///   -headerpad [value]             (Darwin) set minimum space for future expansion of the load commands in hexadecimal notation
+    ///   -headerpad_max_install_names   (Darwin) set enough space as if all paths were MAXPATHLEN
+    ///   -dead_strip                    (Darwin) remove functions and data that are unreachable by the entry point or exported symbols
+    ///   -dead_strip_dylibs             (Darwin) remove dylibs that are unreachable by the entry point or exported symbols
+    ///   --import-memory                (WebAssembly) import memory from the environment
+    ///   --import-table                 (WebAssembly) import function table from the host environment
+    ///   --export-table                 (WebAssembly) export function table to the host environment
+    ///   --initial-memory=[bytes]       (WebAssembly) initial size of the linear memory
+    ///   --max-memory=[bytes]           (WebAssembly) maximum size of the linear memory
+    ///   --shared-memory                (WebAssembly) use shared linear memory
+    ///   --global-base=[addr]           (WebAssembly) where to start to place global data
+    ///   --export=[value]               (WebAssembly) Force a symbol to be exported
+    ///
+    /// Test Options:
+    ///   --test-filter [text]           Skip tests that do not match filter
+    ///   --test-name-prefix [text]      Add prefix to all tests
+    ///   --test-cmd [arg]               Specify test execution command one arg at a time
+    ///   --test-cmd-bin                 Appends test binary path to test cmd args
+    ///   --test-evented-io              Runs the test in evented I/O mode
+    ///   --test-no-exec                 Compiles test binary without running it
+    ///
+    /// Debug Options (Zig Compiler Development):
+    ///   -ftime-report                Print timing diagnostics
+    ///   -fstack-report               Print stack size diagnostics
+    ///   --verbose-link               Display linker invocations
+    ///   --verbose-cc                 Display C compiler invocations
+    ///   --verbose-air                Enable compiler debug output for Zig AIR
+    ///   --verbose-mir                Enable compiler debug output for Zig MIR
+    ///   --verbose-llvm-ir            Enable compiler debug output for LLVM IR
+    ///   --verbose-cimport            Enable compiler debug output for C imports
+    ///   --verbose-llvm-cpu-features  Enable compiler debug output for LLVM CPU features
+    ///   --debug-log [scope]          Enable printing debug/info log messages for scope
+    ///   --debug-compile-errors       Crash with helpful diagnostics at the first compile error
+    ///   --debug-link-snapshot        Enable dumping of the linker's state in JSON
+    ///   -z [arg]                       Set linker extension flags
+    ///     nodelete                     Indicate that the object cannot be deleted from a process
+    ///     notext                       Permit read-only relocations in read-only segments
+    ///     defs                         Force a fatal error if any undefined symbols remain
+    ///     origin                       Indicate that the object must have its origin processed
+    ///     nocopyreloc                  Disable the creation of copy relocations
+    ///     now                          (default) Force all relocations to be processed on load
+    ///     lazy                         Don't force all relocations to be processed on load
+    ///     relro                        (default) Force all relocations to be read-only after processing
+    ///     norelro                      Don't force all relocations to be read-only after processing
+    pub const z_opt_spec: OptionSpec = .{ .string = "-z", .args_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro } };
+};
+/// These are the various states of definition of options. The 'how not' and
+/// 'maybe how not' do not have any examples, but it is easier to think about if
+/// symmetrical.
+const Kind = enum {
+    /// Simple boolean switches.
+    what,
+    /// Switch requires an argument.
+    what_how,
+    /// Switch requests some behaviour, and lets the compiler decide how if no
+    /// argument follows.
+    what_maybe_how,
+    /// The inverse behaviour is also explicit.
+    what_and_not,
+    what_and_how_not,
+    what_and_maybe_how_not,
+    what_how_and_not,
+    what_how_and_how_not,
+    what_how_and_maybe_how_not,
+    what_maybe_how_and_not,
+    what_maybe_how_and_how_not,
+    what_maybe_how_and_maybe_how_not,
+};
+pub fn inaccurateGuessWarning(comptime string: []const u8, guess: u64, actual: u64, delta: u64) !void {
+    const max_len: u64 = 16 + 19 + 41 + string.len + 3 + 19 + 13 + 19 + 2;
+    var msg: [max_len]u8 = undefined;
+    var len: u64 = 0;
+    inline for (.{
+        "guess-warn:     ",                          builtin.fmt.ud64(guess).readAll(),
+        ", better guess for starting position of '", string,
+        "': ",                                       builtin.fmt.ud64(actual).readAll(),
+        " (abs.diff = ",                             builtin.fmt.ud64(delta).readAll(),
+        ")\n",
+    }) |s| {
+        for (s) |c, i| msg[len + i] = c;
+        len += s.len;
+    }
+    sys.noexcept.write(2, @ptrToInt(&msg), len);
+}
+pub fn nullGuessWarning(comptime string: []const u8) !void {
+    const msg: []const u8 = "source does not contain string '" ++ string ++ "'\n";
+    sys.noexcept.write(2, @ptrToInt(msg.ptr), msg.len);
+}
+pub fn guessSourceOffset(src: []const u8, comptime string: []const u8, guess: u64) !u64 {
+    if (mem.propagateSearch(string, src, guess)) |actual| {
+        const delta = @max(actual, guess) - @min(actual, guess);
+        if (delta != 0) {
+            try inaccurateGuessWarning(string, guess, actual, delta);
+        }
+        return actual;
+    }
+    try nullGuessWarning(string);
+    return error.SourceDoesNotContainString;
+}
+pub fn guessSourceOffsetStatic(comptime src: []const u8, comptime string: []const u8, comptime guess: u64) u64 {
+    @setEvalBranchQuota(~@as(u32, 0));
+    comptime {
+        if (mem.propagateSearch(string, src, guess)) |actual| {
+            const delta = @max(actual, guess) - @min(actual, guess);
+            if (delta != 0) {
+                const g_dectos = builtin.fmt.ud(guess);
+                const a_dectos = builtin.fmt.ud(actual);
+                const d_dectos = builtin.fmt.ud(delta);
+                @compileError("inaccurate guess: " ++ g_dectos.auto[g_dectos.ub_word..] ++
+                    ", better guess for starting position of '" ++ string ++ "': " ++ a_dectos.auto[a_dectos.ub_word..] ++
+                    " (abs.diff = " ++ d_dectos.auto[d_dectos.ub_word..] ++ ")");
+            }
+            return actual;
+        }
+        @compileError("source does not contain string '" ++ string ++ "'");
+    }
+}
+fn unhandledSpecification(what_field: []const u8, comptime opt_spec: OptionSpec) noreturn {
+    @compileError("todo: " ++ @tagName(getOptKind(opt_spec)) ++ ": " ++ what_field);
+}
+pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime T: type) anyerror!void {
+    const type_name: []const u8 = @typeName(T);
+    switch (@typeInfo(T)) {
+        .Enum => |enum_info| {
+            try array.appendAny(mem.ptr_wr_spec, allocator, .{ "enum(", @typeName(enum_info.tag_type), ") {" });
+            inline for (enum_info.fields) |field| {
+                try array.appendAny(mem.fmt_wr_spec, allocator, .{ ' ', field.name, " = ", fmt.any(field.value), ',' });
+            }
+            array.undefine(1);
+            try array.appendMany(allocator, " }");
+        },
+        .Union => |union_info| {
+            switch (union_info.layout) {
+                .Auto => {
+                    if (union_info.tag_type) |_| {
+                        try array.appendMany(allocator, "union(enum) {");
+                    } else {
+                        try array.appendMany(allocator, "union {");
+                    }
+                },
+                .Extern => {
+                    try array.appendMany(allocator, "extern union {");
+                },
+                .Packed => {
+                    try array.appendMany(allocator, "packed union {");
+                },
+            }
+            inline for (union_info.fields) |field| {
+                try array.appendAny(mem.ptr_wr_spec, allocator, .{ ' ', field.name, ": " });
+                switch (@typeInfo(field.field_type)) {
+                    .Enum, .Struct, .Union => {
+                        try formatCompositeLiteral(allocator, array, field.field_type);
+                    },
+                    else => {
+                        try array.appendMany(allocator, @typeName(field.field_type));
+                    },
+                }
+                try array.appendOne(allocator, ',');
+            }
+            array.undefine(1);
+            try array.appendMany(allocator, " }");
+        },
+        .Struct => |struct_info| {
+            switch (struct_info.layout) {
+                .Auto => {
+                    try array.appendMany(allocator, "struct {");
+                },
+                .Extern => {
+                    try array.appendMany(allocator, "extern struct {");
+                },
+                .Packed => {
+                    try array.appendMany(allocator, "packed struct {");
+                },
+            }
+            inline for (struct_info.fields) |field| {
+                try array.appendAny(mem.ptr_wr_spec, allocator, .{ ' ', field.name, ": " });
+                switch (@typeInfo(field.field_type)) {
+                    .Enum, .Struct, .Union => {
+                        try formatCompositeLiteral(allocator, array, field.field_type);
+                    },
+                    else => {
+                        try array.appendMany(allocator, @typeName(field.field_type));
+                    },
+                }
+                try array.appendOne(allocator, ',');
+            }
+            array.undefine(1);
+            try array.appendMany(allocator, " }");
+        },
+        else => @compileError("???" ++ type_name),
+    }
+}
+fn appendIf(allocator: *Allocator0, array: *String0, d: u64, what_field: []const u8) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "if (build.");
+    try array.appendMany(allocator, what_field);
+    try array.appendMany(allocator, ") {\n");
+}
+fn appendYesOptionalIf(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "if (yes_optional_arg) |yes_arg| {\n");
+}
+fn appendNoOptionalIf(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "if (no_optional_arg) |no_arg| {\n");
+}
+fn appendIfHow(allocator: *Allocator0, array: *String0, d: u64, what_field: []const u8) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "if (build.");
+    try array.appendMany(allocator, what_field);
+    try array.appendMany(allocator, ") |how| {\n");
+}
+fn appendIfWhat(allocator: *Allocator0, array: *String0, d: u64, what_field: []const u8) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "if (build.");
+    try array.appendMany(allocator, what_field);
+    try array.appendMany(allocator, ") |");
+    try array.appendMany(allocator, what_field);
+    try array.appendMany(allocator, "| {\n");
+}
+fn appendIfOr(allocator: *Allocator0, array: *String0, d: u64, what_field: []const u8) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "if (");
+    try array.appendMany(allocator, what_field);
+    try array.appendMany(allocator, ") {\n");
+}
+fn appendSwitch(allocator: *Allocator0, array: *String0, d: u64, what_field: []const u8) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "switch (");
+    try array.appendMany(allocator, what_field);
+    try array.appendMany(allocator, ") {\n");
+}
+fn appendDefaultProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".default => {\n");
+}
+fn appendExplicitProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".explicit => |how| {\n");
+}
+fn appendNoProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".no => {\n");
+}
+fn appendYesProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".yes => {\n");
+}
+fn appendNoRequiredProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".no => |no_arg| {\n");
+}
+fn appendYesRequiredProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".yes => |yes_arg| {\n");
+}
+fn appendYesOptionalProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".yes => |yes_optional_arg| {\n");
+}
+fn appendNoOptionalProng(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, ".no => |no_optional_arg| {\n");
+}
+fn appendElse(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "} else {\n");
+}
+fn appendIfClose(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "}\n");
+}
+fn appendSwitchClose(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "}\n");
+}
+fn appendProngClose(allocator: *Allocator0, array: *String0, d: u64) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    try array.appendMany(allocator, "},\n");
+}
+fn append(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+    }
+    try array.appendMany(allocator, what_switch.?);
+    try array.appendMany(allocator, "\\x00\" });\n");
+}
+fn appendDefault(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+    }
+    try array.appendMany(allocator, what_switch.?);
+    try array.appendMany(allocator, "\\x00\"});\n");
+}
+fn appendNo(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+    }
+    try array.appendMany(allocator, what_not_switch.?);
+    try array.appendMany(allocator, "\\x00\"});\n");
+}
+fn appendYes(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+    }
+    try array.appendMany(allocator, what_switch.?);
+    try array.appendMany(allocator, "\\x00\"});\n");
+}
+fn appendYesOptionalArg(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+    }
+    try array.appendMany(allocator, what_switch.?);
+    try array.appendMany(allocator, "=\", yes_arg, \"\\x00\" });\n");
+}
+fn appendYesOptionalNoArg(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+    }
+    try array.appendMany(allocator, what_switch.?);
+    try array.appendMany(allocator, "\\x00\"});\n");
+}
+fn appendNoOptionalArg(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+    }
+    try array.appendMany(allocator, what_not_switch.?);
+    try array.appendMany(allocator, "=\", no_arg, \"\\x00\" });\n");
+}
+fn appendNoOptionalNoArg(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+    }
+    if (what_not_switch) |string| {
+        try array.appendMany(allocator, string);
+    }
+    try array.appendMany(allocator, "\\x00\"});\n");
+}
+fn appendHow(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ ");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ ");
+    }
+    if (what_switch) |string| {
+        try array.appendMany(allocator, "\"");
+        try array.appendMany(allocator, string);
+        try array.appendMany(allocator, "\\x00\", how, \"\\x00\" });\n");
+    } else {
+        try array.appendMany(allocator, "how });\n");
+    }
+}
+fn appendExplicit(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+    }
+    if (what_switch) |string| {
+        try array.appendMany(allocator, string);
+    }
+    try array.appendMany(allocator, "\\x00\", how, \"\\x00\" });\n");
+}
+fn appendNoRequiredArg(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ ");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ ");
+    }
+    if (what_not_switch) |string| {
+        try array.appendMany(allocator, string);
+    }
+    try array.appendMany(allocator, ", \"\\x00\", no_arg, \"\\x00\" });\n");
+}
+fn appendYesRequiredArg(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) void {
+    try array.appendMany(allocator, ws[0..d]);
+    if (is_dynamic) {
+        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ ");
+    } else {
+        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, allocator, .{ ");
+    }
+    if (what_switch) |string| {
+        try array.appendMany(allocator, string);
+    }
+    try array.appendMany(allocator, ", \"\\x00\", yes_arg, \"\\x00\" });\n");
+}
+pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
+    if (opt_spec.args_type) |args_type| {
+        if (@typeInfo(args_type) == .Optional) {
+            if (opt_spec.and_no) |inverse| {
+                if (inverse.*.args_type) |no_args_type| {
+                    if (@typeInfo(no_args_type) == .Optional) {
+                        return .what_maybe_how_and_maybe_how_not;
+                    } else {
+                        return .what_maybe_how_and_how_not;
+                    }
+                } else {
+                    return .what_maybe_how_and_not;
+                }
+            } else {
+                return .what_maybe_how;
+            }
+        } else {
+            if (opt_spec.and_no) |inverse| {
+                if (inverse.*.args_type) |no_args_type| {
+                    if (@typeInfo(no_args_type) == .Optional) {
+                        return .what_how_and_maybe_how_not;
+                    } else {
+                        return .what_how_and_how_not;
+                    }
+                } else {
+                    return .what_how_and_not;
+                }
+            } else {
+                return .what_how;
+            }
+        }
+    } else {
+        if (opt_spec.and_no) |inverse| {
+            if (inverse.*.args_type) |no_args_type| {
+                if (@typeInfo(no_args_type) == .Optional) {
+                    return .what_and_maybe_how_not;
+                } else {
+                    return .what_and_how_not;
+                }
+            } else {
+                return .what_and_not;
+            }
+        } else {
+            return .what;
+        }
+    }
+}
+pub fn getOptType(comptime opt_spec: OptionSpec) type {
+    if (@as(?type, blk: {
+        if (opt_spec.args_type_name) |type_name| {
+            break :blk @field(types, type_name);
+        }
+        break :blk opt_spec.args_type;
+    })) |args_type| {
+        if (@typeInfo(args_type) == .Optional) {
+            if (opt_spec.and_no) |inverse| {
+                if (inverse.*.args_type) |no_args_type| {
+                    return ?union(enum) { yes: args_type, no: no_args_type };
+                } else {
+                    return ?union(enum) { yes: args_type, no };
+                }
+            } else {
+                return ?union(enum) { explicit: args_type, default };
+            }
+        } else {
+            if (opt_spec.and_no) |inverse| {
+                if (inverse.*.args_type) |no_args_type| {
+                    return ?union(enum) { yes: args_type, no: no_args_type };
+                } else {
+                    return ?union(enum) { yes: args_type, no };
+                }
+            } else {
+                return ?args_type;
+            }
+        }
+    } else {
+        if (opt_spec.and_no) |inverse| {
+            if (inverse.*.args_type) |no_args_type| {
+                return ?union(enum) {
+                    yes,
+                    no: no_args_type,
+                };
+            } else {
+                return ?bool;
+            }
+        } else {
+            return bool;
+        }
+    }
+}
+pub fn appendWhat(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendIf(allocator, array, 8, what_field);
+    try append(allocator, array, 12, what_switch, is_dynamic);
+    try appendIfClose(allocator, array, 8);
+}
+pub fn appendWhatHow(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendIfHow(allocator, array, 8, what_field);
+    try appendHow(allocator, array, 12, what_switch, is_dynamic);
+    try appendIfClose(allocator, array, 8);
+}
+pub fn appendWhatOrWhatNot(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendIfWhat(allocator, array, 8, what_field);
+    try appendIfOr(allocator, array, 12, what_field);
+    try appendYes(allocator, array, 16, what_switch, is_dynamic);
+    try appendElse(allocator, array, 12);
+    try appendNo(allocator, array, 16, what_not_switch, is_dynamic);
+    try appendIfClose(allocator, array, 12);
+    try appendIfClose(allocator, array, 8);
+}
+pub fn appendOptionalWhat(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendIfWhat(allocator, array, 8, what_field);
+    try appendSwitch(allocator, array, 12, what_field);
+    try appendYesOptionalProng(allocator, array, 16);
+    try appendYesOptionalIf(allocator, array, 20);
+    try appendYesOptionalArg(allocator, array, 24, what_switch, is_dynamic);
+    try appendElse(allocator, array, 20);
+    try appendYesOptionalNoArg(allocator, array, 24, what_switch, is_dynamic);
+    try appendIfClose(allocator, array, 20);
+    try appendProngClose(allocator, array, 16);
+}
+pub fn appendNonOptionalWhat(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendIfWhat(allocator, array, 8, what_field);
+    try appendSwitch(allocator, array, 12, what_field);
+    try appendYesRequiredProng(allocator, array, 16);
+    try appendYesRequiredArg(allocator, array, 20, what_switch, is_dynamic);
+    try appendProngClose(allocator, array, 16);
+}
+pub fn appendOptionalWhatNot(allocator: *Allocator0, array: *String0, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendNoOptionalProng(allocator, array, 16);
+    try appendNoOptionalIf(allocator, array, 20);
+    try appendNoOptionalArg(allocator, array, 24, what_not_switch, is_dynamic);
+    try appendElse(allocator, array, 20);
+    try appendNoOptionalNoArg(allocator, array, 24, what_not_switch, is_dynamic);
+    try appendIfClose(allocator, array, 20);
+    try appendProngClose(allocator, array, 16);
+    try appendSwitchClose(allocator, array, 12);
+    try appendIfClose(allocator, array, 8);
+}
+pub fn appendNonOptionalWhatNot(allocator: *Allocator0, array: *String0, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendNoRequiredProng(allocator, array, 16);
+    try appendNoRequiredArg(allocator, array, 20, what_not_switch, is_dynamic);
+    try appendProngClose(allocator, array, 16);
+    try appendSwitchClose(allocator, array, 12);
+    try appendIfClose(allocator, array, 8);
+}
+pub fn appendNoArgWhatNot(allocator: *Allocator0, array: *String0, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
+    try appendNoProng(allocator, array, 16);
+    try appendNo(allocator, array, 20, what_not_switch, is_dynamic);
+    try appendProngClose(allocator, array, 16);
+    try appendSwitchClose(allocator, array, 12);
+    try appendIfClose(allocator, array, 8);
+}
+pub fn appendImportTypeName(allocator: *Allocator0, array: *String0, comptime imported_type: type) anyerror!void {
+    const type_name: []const u8 = @typeName(imported_type);
+    const stop_idx: u64 = for (type_name) |c, i| {
+        if (c == '.') {
+            break i;
+        }
+    } else unreachable;
+    try array.appendAny(mem.ptr_wr_spec, allocator, .{ "@import(\"", type_name[0..stop_idx], ".zig\").", type_name[stop_idx + 1 ..] });
+}
+pub fn appendStructMembers(allocator: *Allocator0, array: *String0) anyerror!void {
+    inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
+        const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
+        const field_type: type = getOptType(opt_spec);
+        const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
+        try array.appendMany(allocator, "    " ++ what_field ++ ": ");
+        switch (@typeInfo(field_type)) {
+            .Bool => {
+                try array.appendMany(allocator, @typeName(field_type) ++ " = false");
+            },
+            .Optional => |optional_info| {
+                try array.appendOne(allocator, '?');
+                if (opt_spec.args_type_name) |type_name| {
+                    try array.appendMany(allocator, type_name ++ " = null");
+                } else {
+                    switch (@typeInfo(optional_info.child)) {
+                        .Enum, .Struct, .Union => {
+                            try formatCompositeLiteral(allocator, array, optional_info.child);
+                            try array.appendMany(allocator, " = null");
+                        },
+                        else => {
+                            try array.appendMany(allocator, @typeName(optional_info.child) ++ " = null");
+                        },
+                    }
+                }
+            },
+            else => {
+                unhandledSpecification(what_field, opt_spec);
+            },
+        }
+        try array.appendMany(allocator, ",\n");
+    }
+}
+pub fn appendFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: bool) anyerror!void {
+    inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
+        const decl_type: type = @TypeOf(@field(ExecutableOptions, decl.name));
+        if (decl_type != OptionSpec) {
+            continue;
+        }
+        const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
+        const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
+        const what_switch: ?[]const u8 = opt_spec.string;
+        if (opt_spec.args_type) |args_type| {
+            if (@typeInfo(args_type) == .Optional) {
+                if (opt_spec.and_no) |inverse| {
+                    try appendOptionalWhat(allocator, array, what_field, what_switch, is_dynamic);
+                    const what_not_switch: ?[]const u8 = inverse.*.string;
+                    if (inverse.*.args_type) |no_args_type| {
+                        if (@typeInfo(no_args_type) == .Optional) {
+                            try appendOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
+                        } else {
+                            try appendNonOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
+                        }
+                    } else {
+                        try appendNoArgWhatNot(allocator, array, what_not_switch, is_dynamic);
+                    }
+                } else {
+                    unhandledSpecification(what_field, opt_spec);
+                }
+            } else {
+                if (opt_spec.and_no) |inverse| {
+                    const what_not_switch: ?[]const u8 = inverse.*.string;
+                    try appendNonOptionalWhat(allocator, array, what_field, what_switch);
+                    if (inverse.*.args_type) |no_args_type| {
+                        if (@typeInfo(no_args_type) == .Optional) {
+                            try appendOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
+                        } else {
+                            try appendNonOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
+                        }
+                    } else {
+                        try appendNoArgWhatNot(allocator, array, what_not_switch, is_dynamic);
+                    }
+                } else {
+                    try appendWhatHow(allocator, array, what_field, what_switch, is_dynamic);
+                }
+            }
+        } else {
+            if (opt_spec.and_no) |inverse| {
+                const what_not_switch: ?[]const u8 = inverse.*.string;
+                if (inverse.*.args_type) |no_args_type| {
+                    if (@typeInfo(no_args_type) == .Optional) {
+                        unhandledSpecification(what_field, opt_spec);
+                    } else {
+                        unhandledSpecification(what_field, opt_spec);
+                    }
+                } else {
+                    try appendWhatOrWhatNot(allocator, array, what_field, what_switch, what_not_switch, is_dynamic);
+                }
+            } else {
+                try appendWhat(allocator, array, what_field, what_switch, is_dynamic);
+            }
+        }
+    }
+}
+
+const Options = struct {
+    generate_dynamic: bool = true,
+    generate_fixed: bool = true,
+    output_pathname: ?[:0]const u8 = null,
+};
+
+inline fn getOpts(args: *[][*:0]u8) Options {
+    var options: Options = .{};
+    var i: u64 = 1;
+    const dynamic_s: []const u8 = "--dynamic";
+    const no_dynamic_s: []const u8 = "--no-dynamic";
+    const fixed_s: []const u8 = "--fixed";
+    const no_fixed_s: []const u8 = "--no-fixed";
+    const output_s: []const u8 = "--output=";
+    const o_s: []const u8 = "-o";
+
+    while (i != args.len) {
+        if (never_dynamic) {
+            if (mem.testEqualMany(u8, dynamic_s, meta.manyToSlice(args.*[i]))) {
+                options.generate_dynamic = true;
+                proc.shift(args, i);
+                continue;
+            }
+            if (mem.testEqualMany(u8, no_dynamic_s, meta.manyToSlice(args.*[i]))) {
+                options.generate_dynamic = false;
+                proc.shift(args, i);
+                continue;
+            }
+        }
+        if (never_fixed) {
+            if (mem.testEqualMany(u8, fixed_s, meta.manyToSlice(args.*[i]))) {
+                options.generate_fixed = true;
+                proc.shift(args, i);
+                continue;
+            }
+            if (mem.testEqualMany(u8, no_fixed_s, meta.manyToSlice(args.*[i]))) {
+                options.generate_fixed = false;
+                proc.shift(args, i);
+                continue;
+            }
+        }
+        if (mem.testEqualManyFront(u8, output_s, meta.manyToSlice(args.*[i]))) {
+            options.output_pathname = meta.manyToSlice(args.*[i])[output_s.len..];
+            proc.shift(args, i);
+            continue;
+        }
+        if (mem.testEqualManyFront(u8, o_s, meta.manyToSlice(args.*[i]))) {
+            options.output_pathname = meta.manyToSlice(args.*[i])[o_s.len..];
+            proc.shift(args, i);
+            continue;
+        }
+        if (mem.testEqualMany(u8, o_s, meta.manyToSlice(args.*[i]))) {
+            proc.shift(args, i);
+            options.output_pathname = meta.manyToSlice(args.*[i]);
+            proc.shift(args, i);
+            continue;
+        }
+        if (mem.testEqualMany(u8, "-h", meta.manyToSlice(args.*[i])) or
+            mem.testEqualMany(u8, "--help", meta.manyToSlice(args.*[i])))
+        {
+            file.noexcept.write(2,
+                \\--[no-]dynamic    whether to emit allocated command line
+                \\--[no-]fixed      whether to emit static command line
+                \\
+            );
+            sys.exit(0);
+        }
+        if (mem.testEqualMany(u8, "--", meta.manyToSlice(args.*[i]))) {
+            break;
+        }
+        i += 1;
+    }
+    return options;
+}
+pub fn main(args_in: [][*:0]u8) anyerror!void {
+    var args: [][*:0]u8 = args_in;
+    const options: Options = getOpts(&args);
+    const members: []const u8 = "_: void,";
+    const dynamic_variant: []const u8 = "build.__dynamic;";
+    const static_variant: []const u8 = "build.__static;";
+
+    var address_space: mem.AddressSpace = .{};
+    var allocator: Allocator0 = try Allocator0.init(&address_space);
+    defer allocator.deinit(&address_space);
+
+    var array: String0 = String0.init(&allocator);
+    defer array.deinit(&allocator);
+
+    const guess_i: u64 = 331;
+    const guess_j: u64 = 1769;
+    const guess_k: u64 = 2431;
+
+    const members_offset: u64 = try guessSourceOffset(template_src, members, guess_i);
+    const v_function_offset: u64 = try guessSourceOffset(template_src, dynamic_variant, guess_j);
+    const s_function_offset: u64 = try guessSourceOffset(template_src, static_variant, guess_k);
+    try array.appendMany(&allocator, template_src[0 .. members_offset - 4]);
+    try appendStructMembers(&allocator, &array);
+    try array.appendMany(&allocator, template_src[members_offset + members.len .. v_function_offset - 8]);
+    if (never_dynamic) {
+        try array.appendMany(&allocator, "        if (@compileError(\"dynamic-size compile commands disabled\")) {}");
+    } else {
+        try appendFunctionBody(&allocator, &array, true);
+    }
+    try array.appendMany(&allocator, template_src[v_function_offset + dynamic_variant.len .. s_function_offset - 8]);
+    if (never_fixed) {
+        try array.appendMany(&allocator, "        if (@compileError(\"fixed-size compile commands disabled\")) {}");
+    } else {
+        try appendFunctionBody(&allocator, &array, false);
+    }
+    try array.appendMany(&allocator, template_src[s_function_offset + static_variant.len ..]);
+    try array.appendMany(&allocator, types_src);
+
+    if (options.output_pathname) |pathname| {
+        const builder_fd: u64 = try file.create(create_spec, pathname);
+        defer file.close(close_spec, builder_fd);
+        try file.write(builder_fd, array.readAll(allocator));
+    } else {
+        try file.write(1, array.readAll(allocator));
+    }
+}
