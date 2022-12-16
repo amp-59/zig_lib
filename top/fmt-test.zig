@@ -10,6 +10,14 @@ pub usingnamespace proc.start;
 
 pub const is_correct: bool = true;
 
+const PrintArray = mem.StaticString(1024 * 1024);
+
+fn testNonChildIntegers() !void {
+    var array: PrintArray = .{};
+    array.writeAny(.{ .integral = .{ .format = .hex } }, @as(u64, 0xdeadbeef));
+    try testing.expectEqualMany(u8, "0xdeadbeef", array.readAll());
+}
+
 fn testBytesFormat() !void {
     try testing.expectEqualMany(u8, "0B", fmt.bytes(0).formatConvert().readAll());
     try testing.expectEqualMany(u8, "12.224EiB", fmt.bytes(14094246983574119504).formatConvert().readAll());
@@ -109,4 +117,5 @@ fn testEquivalentIntToStringFormat() !void {
 pub fn main() !void {
     try meta.wrap(testEquivalentIntToStringFormat());
     try meta.wrap(testBytesFormat());
+    try meta.wrap(testNonChildIntegers());
 }

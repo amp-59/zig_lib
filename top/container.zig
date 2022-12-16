@@ -4009,6 +4009,8 @@ pub const ReinterpretSpec = struct {
         comptime_int: bool = true,
         /// Attempt to write comptime known floats
         comptime_float: bool = true,
+        /// Attempt to render integer
+        format: ?enum { bin, oct, dec, hex } = null,
     };
     const Aggregate = struct {
         /// Copy @size(..child) bytes from *..child to end of range
@@ -4270,6 +4272,28 @@ const Reinterpret = struct {
                 return memory.writeMany(@errorName(any));
             }
         }
+        if (comptime write_spec.integral.format) |kind| {
+            if (src_type_info == .Int and dst_type == u8) {
+                return memory.writeMany(switch (kind) {
+                    .bin => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.ix
+                    else
+                        builtin.fmt.ub,
+                    .oct => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.io
+                    else
+                        builtin.fmt.uo,
+                    .dec => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.id
+                    else
+                        builtin.fmt.ud,
+                    .hex => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.ix
+                    else
+                        builtin.fmt.ux,
+                }(src_type, any).readAll());
+            }
+        }
         return memory.writeAny(write_spec, @as(dst_type, any));
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
@@ -4396,6 +4420,28 @@ const Reinterpret = struct {
         if (comptime write_spec.symbol.error_name) {
             if (src_type_info == .ErrorSet and dst_type == u8) {
                 return memory.writeMany(child, @errorName(any));
+            }
+        }
+        if (comptime write_spec.integral.format) |kind| {
+            if (src_type_info == .Int and dst_type == u8) {
+                return memory.writeMany(child, switch (kind) {
+                    .bin => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.ix
+                    else
+                        builtin.fmt.ub,
+                    .oct => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.io
+                    else
+                        builtin.fmt.uo,
+                    .dec => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.id
+                    else
+                        builtin.fmt.ud,
+                    .hex => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.ix
+                    else
+                        builtin.fmt.ux,
+                }(src_type, any).readAll());
             }
         }
         return memory.writeAny(child, write_spec, @as(dst_type, any));
@@ -4560,6 +4606,28 @@ const Reinterpret = struct {
                     len = @max(len, e.name.len);
                 }
                 return len;
+            }
+        }
+        if (comptime write_spec.integral.format) |kind| {
+            if (src_type_info == .Int and dst_type == u8) {
+                return switch (kind) {
+                    .bin => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.ix
+                    else
+                        builtin.fmt.ub,
+                    .oct => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.io
+                    else
+                        builtin.fmt.uo,
+                    .dec => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.id
+                    else
+                        builtin.fmt.ud,
+                    .hex => if (src_type_info.Int.signedness == .signed)
+                        builtin.fmt.ix
+                    else
+                        builtin.fmt.ux,
+                }(src_type, any).len;
             }
         }
         return lengthAny(child, write_spec, @as(dst_type, any));
