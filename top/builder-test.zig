@@ -58,7 +58,7 @@ fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8) !void {
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
     const arg_set = .{
         .{ vars, "builtin_test", "top/builtin-test.zig" },
-        .{ vars, "elf_test", "top/elf-test.zig" },
+        .{ vars, "elf_test", "test/readelf.zig" },
         .{ vars, "mem_test", "top/mem-test.zig" },
         .{ vars, "file_test", "top/file-test.zig" },
         .{ vars, "fmt_test", "top/fmt-test.zig" },
