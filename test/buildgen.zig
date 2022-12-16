@@ -20,23 +20,28 @@ pub const is_correct: bool = true;
 const never_fixed: bool = false;
 const never_dynamic: bool = false;
 
+const alloc_options = .{
+    .count_allocations = false,
+    .require_filo_free = false,
+    .require_geometric_growth = true,
+    .trace_state = false,
+};
+const alloc_logging = .{
+    .arena = builtin.Logging.silent,
+    .map = builtin.Logging.silent,
+    .unmap = builtin.Logging.silent,
+    .remap = builtin.Logging.silent,
+};
+
 const Allocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 24,
-    .options = .{
-        .count_allocations = false,
-        .require_filo_free = false,
-        .require_geometric_growth = true,
-        .trace_state = false,
-    },
+    .options = alloc_options,
+    .logging = alloc_logging,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 32,
-    .options = .{
-        .count_allocations = false,
-        .require_filo_free = true,
-        .require_geometric_growth = true,
-        .trace_state = false,
-    },
+    .options = alloc_options,
+    .logging = alloc_logging,
 });
 const String0 = Allocator0.StructuredHolder(u8);
 const String1 = Allocator1.StructuredHolder(u8);
@@ -121,6 +126,9 @@ const SimpleInverse = struct {
     pub const no_gc_sections_opt_spec: OptionSpec = .{ .string = "--no-gc-sections" };
     /// -fno-strip                   Do no omit debug symbols
     pub const no_strip_opt_spec: OptionSpec = .{ .string = "-fno-strip" };
+
+    ///   -fno-soname                    Disable emitting a SONAME
+    pub const no_soname_opt_spec: OptionSpec = .{ .string = "-fno-soname" };
 };
 pub const ExecutableOptions = opaque {
     // Enable compiler REPL
@@ -247,7 +255,7 @@ pub const ExecutableOptions = opaque {
     ///   --version [ver]                Dynamic library semver
     ///   --entry [name]                 Set the entrypoint symbol name
     ///   -fsoname[=name]                Override the default SONAME value
-    ///   -fno-soname                    Disable emitting a SONAME
+    pub const soname_opt_spec: OptionSpec = .{ .string = "-fsoname", .args_type = []const u8, .and_no = &SimpleInverse.no_soname_opt_spec };
     ///   -fLLD                          Force using LLD as the linker
     ///   -fno-LLD                       Prevent using LLD as the linker
     ///   -fcompiler-rt                  Always include compiler-rt symbols in output
@@ -274,6 +282,7 @@ pub const ExecutableOptions = opaque {
     pub const gc_sections_opt_spec: OptionSpec = .{ .string = "--gc-sections", .and_no = &SimpleInverse.no_gc_sections_opt_spec };
     ///   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
     ///   --stack [size]                 Override default stack size
+    pub const stack_opt_spec: OptionSpec = .{ .string = "--stack", .args_type = u64 };
     ///   --image-base [addr]            Set base address for executable image
     ///   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
     ///     -weak_library [lib]
@@ -392,12 +401,12 @@ pub fn guessSourceOffsetStatic(comptime src: []const u8, comptime string: []cons
         if (mem.propagateSearch(string, src, guess)) |actual| {
             const delta = @max(actual, guess) - @min(actual, guess);
             if (delta != 0) {
-                const g_dectos = builtin.fmt.ud(guess);
-                const a_dectos = builtin.fmt.ud(actual);
-                const d_dectos = builtin.fmt.ud(delta);
-                @compileError("inaccurate guess: " ++ g_dectos.auto[g_dectos.ub_word..] ++
-                    ", better guess for starting position of '" ++ string ++ "': " ++ a_dectos.auto[a_dectos.ub_word..] ++
-                    " (abs.diff = " ++ d_dectos.auto[d_dectos.ub_word..] ++ ")");
+                const g_dec = builtin.fmt.ud(guess);
+                const a_dec = builtin.fmt.ud(actual);
+                const d_dec = builtin.fmt.ud(delta);
+                @compileError("inaccurate guess: " ++ g_dec.auto[g_dec.ub_word..] ++
+                    ", better guess for starting position of '" ++ string ++ "': " ++ a_dec.auto[a_dec.ub_word..] ++
+                    " (abs.diff = " ++ d_dec.auto[d_dec.ub_word..] ++ ")");
             }
             return actual;
         }
@@ -407,6 +416,7 @@ pub fn guessSourceOffsetStatic(comptime src: []const u8, comptime string: []cons
 fn unhandledSpecification(what_field: []const u8, comptime opt_spec: OptionSpec) noreturn {
     @compileError("todo: " ++ @tagName(getOptKind(opt_spec)) ++ ": " ++ what_field);
 }
+
 pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime T: type) anyerror!void {
     const type_name: []const u8 = @typeName(T);
     switch (@typeInfo(T)) {
@@ -570,9 +580,9 @@ fn appendProngClose(allocator: *Allocator0, array: *String0, d: u64) anyerror!vo
 fn append(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{ \"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{ \"");
     }
     try array.appendMany(allocator, what_switch.?);
     try array.appendMany(allocator, "\\x00\" });\n");
@@ -580,9 +590,9 @@ fn append(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const
 fn appendDefault(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{\"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{\"");
     }
     try array.appendMany(allocator, what_switch.?);
     try array.appendMany(allocator, "\\x00\"});\n");
@@ -590,9 +600,9 @@ fn appendDefault(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?
 fn appendNo(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{\"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{\"");
     }
     try array.appendMany(allocator, what_not_switch.?);
     try array.appendMany(allocator, "\\x00\"});\n");
@@ -600,9 +610,9 @@ fn appendNo(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[
 fn appendYes(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{\"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{\"");
     }
     try array.appendMany(allocator, what_switch.?);
     try array.appendMany(allocator, "\\x00\"});\n");
@@ -610,9 +620,9 @@ fn appendYes(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]co
 fn appendYesOptionalArg(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{ \"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{ \"");
     }
     try array.appendMany(allocator, what_switch.?);
     try array.appendMany(allocator, "=\", yes_arg, \"\\x00\" });\n");
@@ -620,9 +630,9 @@ fn appendYesOptionalArg(allocator: *Allocator0, array: *String0, d: u64, what_sw
 fn appendYesOptionalNoArg(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{\"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{\"");
     }
     try array.appendMany(allocator, what_switch.?);
     try array.appendMany(allocator, "\\x00\"});\n");
@@ -630,9 +640,9 @@ fn appendYesOptionalNoArg(allocator: *Allocator0, array: *String0, d: u64, what_
 fn appendNoOptionalArg(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{ \"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{ \"");
     }
     try array.appendMany(allocator, what_not_switch.?);
     try array.appendMany(allocator, "=\", no_arg, \"\\x00\" });\n");
@@ -640,9 +650,9 @@ fn appendNoOptionalArg(allocator: *Allocator0, array: *String0, d: u64, what_not
 fn appendNoOptionalNoArg(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{\"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{\"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{\"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{\"");
     }
     if (what_not_switch) |string| {
         try array.appendMany(allocator, string);
@@ -652,9 +662,9 @@ fn appendNoOptionalNoArg(allocator: *Allocator0, array: *String0, d: u64, what_n
 fn appendHow(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ ");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{ ");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ ");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{ ");
     }
     if (what_switch) |string| {
         try array.appendMany(allocator, "\"");
@@ -667,38 +677,38 @@ fn appendHow(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]co
 fn appendExplicit(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ \"");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{ \"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ \"");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{ \"");
     }
     if (what_switch) |string| {
         try array.appendMany(allocator, string);
     }
     try array.appendMany(allocator, "\\x00\", how, \"\\x00\" });\n");
 }
-fn appendNoRequiredArg(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) void {
+fn appendNoRequiredArg(allocator: *Allocator0, array: *String0, d: u64, what_not_switch: ?[]const u8, is_dynamic: bool) !void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ ");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{ \"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, .{ ");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{ \"");
     }
     if (what_not_switch) |string| {
         try array.appendMany(allocator, string);
     }
-    try array.appendMany(allocator, ", \"\\x00\", no_arg, \"\\x00\" });\n");
+    try array.appendMany(allocator, "\\x00\", no_arg, \"\\x00\" });\n");
 }
-fn appendYesRequiredArg(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) void {
+fn appendYesRequiredArg(allocator: *Allocator0, array: *String0, d: u64, what_switch: ?[]const u8, is_dynamic: bool) !void {
     try array.appendMany(allocator, ws[0..d]);
     if (is_dynamic) {
-        try array.appendMany(allocator, "try array.appendAny(mem.fmt_wr_spec, allocator, .{ ");
+        try array.appendMany(allocator, "try array.appendAny(fmt_spec, allocator, .{ \"");
     } else {
-        try array.appendMany(allocator, "array.writeAny(mem.fmt_wr_spec, allocator, .{ ");
+        try array.appendMany(allocator, "array.writeAny(fmt_spec, .{ \"");
     }
     if (what_switch) |string| {
         try array.appendMany(allocator, string);
     }
-    try array.appendMany(allocator, ", \"\\x00\", yes_arg, \"\\x00\" });\n");
+    try array.appendMany(allocator, "\\x00\", yes_arg, \"\\x00\" });\n");
 }
 pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
     if (opt_spec.args_type) |args_type| {
@@ -923,7 +933,7 @@ pub fn appendFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: b
             } else {
                 if (opt_spec.and_no) |inverse| {
                     const what_not_switch: ?[]const u8 = inverse.*.string;
-                    try appendNonOptionalWhat(allocator, array, what_field, what_switch);
+                    try appendNonOptionalWhat(allocator, array, what_field, what_switch, is_dynamic);
                     if (inverse.*.args_type) |no_args_type| {
                         if (@typeInfo(no_args_type) == .Optional) {
                             try appendOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
@@ -971,7 +981,6 @@ inline fn getOpts(args: *[][*:0]u8) Options {
     const no_fixed_s: []const u8 = "--no-fixed";
     const output_s: []const u8 = "--output=";
     const o_s: []const u8 = "-o";
-
     while (i != args.len) {
         if (never_dynamic) {
             if (mem.testEqualMany(u8, dynamic_s, meta.manyToSlice(args.*[i]))) {
@@ -1017,6 +1026,7 @@ inline fn getOpts(args: *[][*:0]u8) Options {
             mem.testEqualMany(u8, "--help", meta.manyToSlice(args.*[i])))
         {
             file.noexcept.write(2,
+                \\-o, --output      output file pathname
                 \\--[no-]dynamic    whether to emit allocated command line
                 \\--[no-]fixed      whether to emit static command line
                 \\

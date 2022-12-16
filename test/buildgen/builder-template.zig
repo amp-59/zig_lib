@@ -13,6 +13,11 @@ pub const BuildCmd = struct {
         .arena_index = mem.arena_indices.builder,
         .options = .{ .require_filo_free = false, .trace_state = true },
     });
+    const fmt_spec: mem.ReinterpretSpec = blk: {
+        var tmp: mem.ReinterpretSpec = mem.fmt_wr_spec;
+        tmp.integral = .{ .format = .dec };
+        break :blk tmp;
+    };
     const DirStream = file.DirStreamBlock(.{ .Allocator = Allocator, .options = .{} });
     const Path = Allocator.StructuredVectorWithSentinel(u8, 0);
     const Paths = Allocator.StructuredVectorLowAligned(Path, 8);
