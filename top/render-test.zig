@@ -2,6 +2,7 @@ const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const lit = @import("./lit.zig");
 const proc = @import("./proc.zig");
+const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const render = @import("./render.zig");
 const builtin = @import("./builtin.zig");
@@ -17,6 +18,7 @@ fn hasDecls(comptime T: type) bool {
     return type_info == .Struct or type_info == .Opaque or
         type_info == .Union or type_info == .Enum;
 }
+
 // This could be used to test the value renderer in bulk, but currently crashing
 // compiler.
 fn printDeclsRecursively(comptime T: type, array: *mem.StaticString(1024 * 1024)) void {
@@ -35,9 +37,9 @@ fn printDeclsRecursively(comptime T: type, array: *mem.StaticString(1024 * 1024)
         const field_type_info: builtin.Type = @typeInfo(field_type);
         const decl_kind: []const u8 = if (decl.is_pub) "pub const " else "const ";
         if (field_type_info == .Type) {
-            array.writeMany(decl_kind ++ decl.name ++ " = " ++ comptime builtin.fmt.typeDeclSpecifier(@typeInfo(field)));
+            array.writeMany(decl_kind ++ decl.name ++ " = " ++ @typeName(field_type));
             array.writeMany(" {\n");
-            printDeclsRecursively(@field(T, decl.name), array);
+            printDeclsRecursively(field, array);
             array.writeMany("};\n");
         } else {
             if (field_type_info != .Fn) {
@@ -48,7 +50,8 @@ fn printDeclsRecursively(comptime T: type, array: *mem.StaticString(1024 * 1024)
         }
     }
 }
-pub fn main() !void {
+
+fn testSpecificCases() !void {
     var array: PrintArray = .{};
     array.writeFormat(render.TypeFormat{ .value = packed struct(u128) { a: u64, b: u64 } });
     try testing.expectEqualMany(u8, array.readAll(), "packed struct(u128) { a: u64, b: u64, }");
@@ -77,7 +80,7 @@ pub fn main() !void {
     array.writeFormat(render.PointerSliceFormat([]const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } });
     try testing.expectEqualMany(u8, array.readAll(), "[]const u64{ 1, 2, 3, 4, 5, 6 }");
     array.undefineAll();
-    array.writeFormat(render.TypeFormat{ .value = mem.AbstractSpec });
-    file.noexcept.write(2, array.readAll());
-    array.undefineAll();
+}
+pub fn main() !void {
+    try meta.wrap(testSpecificCases());
 }

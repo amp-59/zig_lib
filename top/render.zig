@@ -24,14 +24,14 @@ pub fn AnyFormat(comptime Type: type) type {
             .One => PointerOneFormat(Type),
             //                .Many => PointerManyFormat(Type),
             .Slice => PointerSliceFormat(Type),
-            else => @compileError(comptime fmt.typeName(Type)),
+            else => @compileError(fmt.typeName(Type)),
         },
         .Optional => OptionalFormat(Type),
         //            .Null => NullFormat(Type),
         //            .Void => VoidFormat,
         .Vector => VectorFormat(Type),
         //            .ErrorUnion => ErrorUnionFormat(Type),
-        else => @compileError(comptime fmt.typeName(Type)),
+        else => @compileError(fmt.typeName(Type)),
     };
 }
 

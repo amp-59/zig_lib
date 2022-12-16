@@ -682,14 +682,14 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
             builtin.root.enableExceptionHandlers();
         }
         if (main_return_type == void) {
-            @call(.{ .modifier = .always_inline }, main, params);
+            @call(.always_inline, main, params);
             sys.exit(0);
         }
         if (main_return_type == u8) {
-            sys.exit(@call(.{ .modifier = .always_inline }, main, params));
+            sys.exit(@call(.always_inline, main, params));
         }
         if (main_return_type_info.ErrorUnion.payload == void) {
-            if (@call(.{ .modifier = .always_inline }, main, params)) {
+            if (@call(.always_inline, main, params)) {
                 sys.exit(0);
             } else |err| {
                 @setCold(true);
@@ -698,7 +698,7 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
             }
         }
         if (main_return_type_info.ErrorUnion.payload == u8) {
-            if (@call(.{ .modifier = .always_inline }, builtin.root.main, params)) |rc| {
+            if (@call(.always_inline, builtin.root.main, params)) |rc| {
                 sys.exit(rc);
             } else |err| {
                 @setCold(true);
@@ -745,13 +745,13 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
         );
         if (comptime @TypeOf(result_ptr) != void) {
             @intToPtr(*@TypeOf(result_ptr), tl_stack_addr + ret_off).*.* = @call(
-                .{ .modifier = .never_inline },
+                .never_inline,
                 @intToPtr(**Fn, tl_stack_addr + fn_off).*,
                 @intToPtr(*Args(Fn), tl_stack_addr + args_off).*,
             );
         } else {
             @call(
-                .{ .modifier = .never_inline },
+                .never_inline,
                 @intToPtr(**Fn, tl_stack_addr + fn_off).*,
                 @intToPtr(*Args(Fn), tl_stack_addr + args_off).*,
             );

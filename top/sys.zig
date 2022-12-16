@@ -1825,7 +1825,7 @@ pub const Config = struct {
         unreachable;
     }
     pub fn call(comptime fn_conf: Config, args: anytype) Wrapped(fn_conf) {
-        return fn_conf.wrap(@call(.{}, syscalls[fn_conf.args], .{@enumToInt(fn_conf.tag)} ++ args));
+        return fn_conf.wrap(@call(.always_inline, syscalls[fn_conf.args], .{@enumToInt(fn_conf.tag)} ++ args));
     }
 };
 pub fn FunctionInterfaceSpec(comptime Specification: type) type {
