@@ -8,7 +8,7 @@ const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
 const container = @import("./container.zig");
 
-const AllocatorOptions = struct {
+pub const AllocatorOptions = struct {
     /// Experimental feature:
     check_parametric_binding: bool = true,
     /// Count concurrent allocations, return to head if zero.
@@ -44,7 +44,7 @@ const AllocatorOptions = struct {
     /// Lock on arena acquisition and release
     thread_safe: bool = false,
 };
-const Logging = packed struct {
+pub const AllocatorLogging = packed struct {
     /// Report arena acquisition and release
     arena: builtin.Logging = .{},
     /// Report updates to allocator state
@@ -66,11 +66,17 @@ const Logging = packed struct {
     /// Report when a reference is destroyed.
     deallocate: bool = default,
     const default: bool = builtin.is_verbose;
-    inline fn isSilent(comptime logging: Logging) bool {
+    inline fn isSilent(comptime logging: AllocatorLogging) bool {
         comptime {
             return 0 == meta.leastBitCast(logging);
         }
     }
+};
+pub const AllocatorErrors = struct {
+    map: ?[]const sys.ErrorCode = sys.mmap_errors,
+    unmap: ?[]const sys.ErrorCode = null,
+    acquire: ?type = mem.ArenaError,
+    release: ?type = null,
 };
 fn Metadata(comptime options: AllocatorOptions) type {
     return struct {
@@ -95,14 +101,8 @@ fn Reference(comptime options: AllocatorOptions) type {
 pub const ArenaAllocatorSpec = struct {
     arena_index: u8,
     options: AllocatorOptions = .{},
-    errors: Errors = .{},
-    logging: Logging = .{},
-    const Errors = struct {
-        map: ?[]const sys.ErrorCode = sys.mmap_errors,
-        unmap: ?[]const sys.ErrorCode = null,
-        acquire: ?type = mem.ArenaError,
-        release: ?type = null,
-    };
+    errors: AllocatorErrors = .{},
+    logging: AllocatorLogging = .{},
     pub fn next(comptime spec: ArenaAllocatorSpec) ArenaAllocatorSpec {
         var ret: ArenaAllocatorSpec = spec;
         ret.arena_index += 1;
