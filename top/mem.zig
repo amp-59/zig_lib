@@ -683,7 +683,7 @@ pub const noexcept = opaque {
         else
             address_space.unset(index);
         if (part_spec.logging.Release and ret) {
-            debug.arenaReleaseError(index);
+            debug.arenaReleaseNotice(index);
         }
     }
 };
