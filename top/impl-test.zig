@@ -16,7 +16,11 @@ pub const is_perf: bool = false;
 
 const Allocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .options = .{ .require_filo_free = false, .trace_state = true },
+    .options = .{
+        .require_filo_free = false,
+        .trace_state = true,
+        .count_allocations = true,
+    },
     .logging = mem.alloc_silent,
 });
 const PrintArray = mem.StructuredAutomaticVector(.{ .child = u8, .count = 4096 });

@@ -30,8 +30,9 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "file_test", "top/file-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "list_test", "top/list-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
-    _ = addProjectExecutable(builder, "render_test", "top/render-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "render_test", "top/render-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .build_root = true });
+    _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{});
 
     // More complete test programs:
     _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{});
