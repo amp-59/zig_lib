@@ -38,9 +38,6 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
-
-    // Experiments
-    _ = addProjectExecutable(builder, "allocator_syscalls", "top/allocator-syscalls.zig", .{});
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
