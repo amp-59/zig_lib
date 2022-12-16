@@ -88,18 +88,7 @@ fn testAllocatedImplementation() !void {
         .options = .{
             .trace_state = true,
         },
-        .logging = .{
-            .map = builtin.Logging.silent,
-            .unmap = builtin.Logging.silent,
-            .remap = builtin.Logging.silent,
-            .allocate = false,
-            .deallocate = false,
-            .reallocate = false,
-            .head = false,
-            .sentinel = false,
-            .branches = false,
-            .metadata = false,
-        },
+        .logging = mem.alloc_silent,
     });
     var address_space: mem.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
