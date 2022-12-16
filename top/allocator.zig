@@ -2478,7 +2478,7 @@ fn GenericIntermediate(comptime Allocator: type) type {
                     .{ allocator, s_up_addr, t_up_addr },
                 );
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                Graphics.showFiloResizeViolationAndExit(allocator, s_up_addr, @src());
+                debug.showFiloResizeViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 @call(
                     .always_inline,
@@ -2495,7 +2495,7 @@ fn GenericIntermediate(comptime Allocator: type) type {
                     .{ allocator, s_up_addr, t_up_addr },
                 );
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                Graphics.showFiloResizeViolationAndExit(allocator, s_up_addr, @src());
+                debug.showFiloResizeViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 @call(
                     .always_inline,
@@ -2602,7 +2602,7 @@ fn GenericIntermediate(comptime Allocator: type) type {
                     .{ allocator, n_count, s_aligned_bytes, s_lb_addr },
                 );
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 @call(
                     .always_inline,
@@ -2619,7 +2619,7 @@ fn GenericIntermediate(comptime Allocator: type) type {
                     .{ allocator, n_count, s_aligned_bytes, s_lb_addr },
                 );
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 @call(
                     .always_inline,
@@ -2636,7 +2636,7 @@ fn GenericIntermediate(comptime Allocator: type) type {
                     .{ allocator, s_aligned_bytes, s_lb_addr },
                 );
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 @call(
                     .always_inline,
@@ -2653,7 +2653,7 @@ fn GenericIntermediate(comptime Allocator: type) type {
                     .{ allocator, s_aligned_bytes, s_lb_addr },
                 );
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                Graphics.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 @call(
                     .always_inline,
