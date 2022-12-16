@@ -89,13 +89,11 @@ fn testAllocatedImplementation() !void {
             .trace_state = true,
         },
         .logging = .{
-            .map = logging,
-            .unmap = logging,
-            .remap = logging,
-            .reallocate = true,
+            .map = builtin.Logging.silent,
+            .unmap = builtin.Logging.silent,
+            .remap = builtin.Logging.silent,
         },
     });
-    // TODO: Create warnings in case holder is freed after conversion.
     var address_space: mem.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
@@ -203,7 +201,6 @@ fn testUtilityTestFunctions() !void {
         }
     }
 }
-
 pub fn main() !void {
     try meta.wrap(testLowSystemMemoryOperations());
     try meta.wrap(testAutomaticImplementation());

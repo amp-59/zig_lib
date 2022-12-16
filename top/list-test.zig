@@ -11,7 +11,6 @@ pub usingnamespace proc.start;
 const Random = file.DeviceRandomBytes(4096);
 const String = Allocator0.StructuredVector(u8);
 
-pub const is_verbose: bool = false;
 pub const is_correct: bool = true;
 
 const ptr_wr_spec: mem.ReinterpretSpec = .{
@@ -160,7 +159,9 @@ pub fn main() !void {
             list.retire(t_begin);
         }
         try testAllMovement(list);
-        try LinkedList.Graphics.show(list, &address_space);
+        if (builtin.is_verbose) {
+            try LinkedList.Graphics.show(list, &address_space);
+        }
         list.deinit(&allocator_0);
         for (disruption.referAll(allocator_1)) |*z| {
             z.deinit(&allocator_0);
