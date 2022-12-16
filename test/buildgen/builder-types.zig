@@ -23,13 +23,14 @@ pub const Pkg = struct {
     }
     pub fn formatLength(pkg: Pkg) u64 {
         var len: u64 = 0;
-        len += pkg.name.len;
+        len += 11;
         len += 1;
-        len += pkg.path.len;
+        len += pkg.name;
+        len += 1;
+        len += pkg.path;
         len += 1;
         if (pkg.deps) |deps| {
             for (deps) |dep| {
-                len += 11;
                 len += 1;
                 len += dep.formatLength();
             }
