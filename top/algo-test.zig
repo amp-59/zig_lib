@@ -6,7 +6,7 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-var show_best_cases: bool = true;
+const show_best_cases: bool = false;
 
 fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     var len: u64 = 0;
@@ -22,14 +22,21 @@ fn print(buf: []u8, off: u64, ss: []const []const u8) void {
 pub fn main() void {
     var buf: [4096]u8 = undefined;
     var len: u64 = 0;
-    var s_count: u32 = 1;
-    while (s_count < lit.max_bit_u32) : (s_count += 1) {
-        const s_lu_counts: u32 = algo.packDoubleApproxB(s_count);
-        const t_count: u64 = algo.unpackDoubleApproxB(s_lu_counts);
-        if (t_count - s_count == 0 and show_best_cases) {
+    var n_aligned_bytes: u32 = 1;
+    var total_requested: u64 = 0;
+    var total_returned: u64 = 0;
+
+    while (n_aligned_bytes < lit.max_bit_u16) : (n_aligned_bytes += 1) {
+        const s_lb_counts: u16 = algo.partialPackSingleApprox(n_aligned_bytes);
+        const o_aligned_bytes: u64 = algo.partialUnpackSingleApprox(s_lb_counts);
+        const s_ub_counts: u16 = algo.partialPackDoubleApprox(n_aligned_bytes, o_aligned_bytes);
+        const s_aligned_bytes: u64 = algo.partialUnpackDoubleApprox(o_aligned_bytes, s_ub_counts);
+        total_requested += n_aligned_bytes;
+        total_returned += s_aligned_bytes;
+        if (n_aligned_bytes - s_aligned_bytes == 0 and show_best_cases) {
             const ss: []const []const u8 = &[_][]const u8{
-                builtin.fmt.ud32(s_count).readAll(), " ",
-                builtin.fmt.ub32(s_count).readAll(), "\n",
+                builtin.fmt.ud32(s_aligned_bytes).readAll(), " ",
+                builtin.fmt.ub32(s_aligned_bytes).readAll(), "\n",
             };
             if (len + 128 > buf.len) {
                 print(&buf, len, ss);
@@ -39,4 +46,6 @@ pub fn main() void {
             }
         }
     }
+    // The error is below 2 percent.
+    builtin.assertBelow(u64, total_returned - total_requested, (2 * total_requested) / 100);
 }

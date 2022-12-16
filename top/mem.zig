@@ -44,28 +44,34 @@ pub const follow_wr_spec: mem.ReinterpretSpec = blk: {
     break :blk rs_1;
 };
 pub const alloc_silent: mem.AllocatorLogging = .{
+    .arena = builtin.Logging.silent,
+    .head = false,
+    .sentinel = false,
+    .metadata = false,
+    .branches = false,
     .map = builtin.Logging.silent,
     .unmap = builtin.Logging.silent,
     .remap = builtin.Logging.silent,
+    .advise = builtin.Logging.silent,
     .allocate = false,
-    .deallocate = false,
     .reallocate = false,
-    .head = false,
-    .sentinel = false,
-    .branches = false,
-    .metadata = false,
+    .reinterpret = false,
+    .deallocate = false,
 };
 pub const alloc_verbose: mem.AllocatorLogging = .{
+    .arena = builtin.Logging.verbose,
+    .head = true,
+    .sentinel = true,
+    .metadata = true,
+    .branches = true,
     .map = builtin.Logging.verbose,
     .unmap = builtin.Logging.verbose,
     .remap = builtin.Logging.verbose,
+    .advise = builtin.Logging.verbose,
     .allocate = true,
-    .deallocate = true,
     .reallocate = true,
-    .head = true,
-    .sentinel = true,
-    .branches = true,
-    .metadata = true,
+    .reinterpret = true,
+    .deallocate = true,
 };
 
 pub const ArenaError = error{ UnderSupply, OverSupply };

@@ -43,7 +43,7 @@ pub const Exception = error{
     ExactDivisionWithRemainder,
     UnexpectedValue,
 };
-pub const Logging = packed struct {
+pub const Logging = extern struct {
     Success: bool = is_verbose,
     Acquire: bool = is_verbose,
     Release: bool = is_verbose,

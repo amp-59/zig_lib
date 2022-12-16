@@ -44,7 +44,7 @@ pub const AllocatorOptions = struct {
     /// Lock on arena acquisition and release
     thread_safe: bool = false,
 };
-pub const AllocatorLogging = packed struct {
+pub const AllocatorLogging = extern struct {
     /// Report arena acquisition and release
     arena: builtin.Logging = .{},
     /// Report updates to allocator state
@@ -4124,9 +4124,11 @@ fn GenericAllocatorGraphics(comptime Allocator: type) type {
                     array.writeFormat(fmt.ux64(allocator.metadata.holder));
                     array.writeOne('\n');
                 }
-                if (Allocator.allocator_spec.options.count_branches) {
-                    Branches.Graphics.showWrite(allocator.metadata.branches, &array);
-                }
+            }
+            if (Allocator.allocator_spec.logging.branches and
+                Allocator.allocator_spec.options.count_branches)
+            {
+                Branches.Graphics.showWrite(allocator.metadata.branches, &array);
             }
             if (array.count() != src_fmt.formatLength()) {
                 array.writeOne('\n');

@@ -559,11 +559,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .arena_index = 32,
                 .errors = .{ .map = null, .unmap = null },
-                .logging = .{
-                    .arena = builtin.Logging.silent,
-                    .map = builtin.Logging.silent,
-                    .unmap = builtin.Logging.silent,
-                },
+                .logging = mem.alloc_silent,
             });
             const IOPrintArray = IOAllocator.StructuredHolder(u8);
             pub fn show(list: List, address_space: *mem.AddressSpace) !void {
@@ -1037,11 +1033,7 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .arena_index = 32,
                 .errors = .{ .map = null, .unmap = null },
-                .logging = .{
-                    .arena = builtin.Logging.silent,
-                    .map = builtin.Logging.silent,
-                    .unmap = builtin.Logging.silent,
-                },
+                .logging = mem.alloc_silent,
             });
             const IOPrintArray = IOAllocator.Holder(u8);
             pub fn show(list: List, address_space: *mem.AddressSpace) !void {
