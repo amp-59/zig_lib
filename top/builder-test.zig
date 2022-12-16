@@ -4,12 +4,15 @@ const proc = @import("./proc.zig");
 const time = @import("./time.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
+const thread = @import("./thread.zig");
 const builder = @import("./builder.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
 pub const is_verbose: bool = true;
+
+const try_multi_threaded: bool = false;
 
 fn globalCacheDir(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
     const home_pathname: [:0]const u8 = try file.home(vars);
@@ -42,21 +45,25 @@ fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8) !void {
         .root = pathname,
         .cmd = .run,
         .name = name,
-        .O = .ReleaseFast,
+        .O = .Debug,
         .strip = true,
         .enable_cache = false,
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
         .cache_dir = builtin.lib_build_root ++ "/zig-cache",
+        .stack = 8388608,
         .macros = &.{
             .{ .name = "is_verbose", .value = "0" },
             .{ .name = "is_correct", .value = "1" },
-            .{ .name = "build_root", .value = "\"" ++ builtin.build_root.? ++ "\"" },
+            .{ .name = "build_root", .value = "\"" ++ builtin.lib_build_root ++ "\"" },
+        },
+        .packages = &.{
+            .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
         },
     };
     _ = try cmd.executeS(vars);
 }
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
-    const arg_set = .{
+    var arg_set = .{
         .{ vars, "builtin_test", "top/builtin-test.zig" },
         .{ vars, "elf_test", "test/readelf.zig" },
         .{ vars, "mem_test", "top/mem-test.zig" },
@@ -64,7 +71,13 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
         .{ vars, "fmt_test", "top/fmt-test.zig" },
         .{ vars, "list_test", "top/list-test.zig" },
     };
-    inline for (arg_set) |args| {
-        try @call(.auto, runTest, args);
+    inline for (arg_set) |args, i| {
+        if (try_multi_threaded) {
+            var result: meta.Return(runTest) = undefined;
+
+            try proc.callClone(thread_spec, try thread.map(.{ .options = .{} }, i), &result, runTest, args);
+        } else {
+            try @call(.auto, runTest, args);
+        }
     }
 }

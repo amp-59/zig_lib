@@ -25,9 +25,9 @@ pub const Pkg = struct {
         var len: u64 = 0;
         len += 11;
         len += 1;
-        len += pkg.name;
+        len += pkg.name.len;
         len += 1;
-        len += pkg.path;
+        len += pkg.path.len;
         len += 1;
         if (pkg.deps) |deps| {
             for (deps) |dep| {
