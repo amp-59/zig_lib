@@ -532,10 +532,10 @@ pub const SourceLocationFormat = struct {
         array.writeFormat(line_fmt);
         array.writeOne(':');
         array.writeFormat(column_fmt);
-        array.writeCount(2, ": ".*);
+        array.writeMany(": ");
         array.writeMany(lit.fx.none ++ lit.fx.style.faint);
         array.writeFormat(ret_addr_fmt);
-        array.writeCount(4, " in ".*);
+        array.writeMany(" in ");
         array.writeMany(fn_name);
         array.writeMany(lit.fx.none);
         array.writeOne('\n');
@@ -680,7 +680,7 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
             OldIntFormat.max_len + 1 + DeltaIntFormat.max_len + 5 + fmt_spec.no_style.len + NewIntFormat.max_len;
         fn formatWriteDelta(format: Format, array: anytype) void {
             if (format.old_value == format.new_value) {
-                array.writeCount(4, "(+0)".*);
+                array.writeMany("(+0)");
             } else if (format.new_value > format.old_value) {
                 const del_fmt: DeltaIntFormat = .{ .value = format.new_value - format.old_value };
                 array.writeOne('(');
@@ -769,7 +769,7 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
                     array.writeMany(fmt_spec.no_style);
                     array.writeOne(')');
                 }
-                array.writeCount(4, " => ".*);
+                array.writeMany(" => ");
                 new_fmt.formatWrite(array);
             }
         }
@@ -858,6 +858,12 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
         pub usingnamespace GenericFormat(Format);
     };
 }
+pub const AddressRangeFormat = RangeFormat(.{
+    .bits = 64,
+    .signedness = .unsigned,
+    .radix = 16,
+    .width = .min,
+});
 pub fn ArenaRangeFormat(comptime arena_index: comptime_int) type {
     const arena: mem.Arena = mem.Arena{ .index = arena_index };
     return RangeFormat(.{
@@ -871,6 +877,16 @@ pub fn ArenaRangeFormat(comptime arena_index: comptime_int) type {
         },
     });
 }
+pub const ChangedAddressRangeFormat = ChangedRangeFormat(.{
+    .new_fmt_spec = AddressRangeFormat.fmt_spec,
+    .old_fmt_spec = AddressRangeFormat.fmt_spec,
+    .del_fmt_spec = .{
+        .bits = 64,
+        .signedness = .unsigned,
+        .radix = 16,
+        .width = .min,
+    },
+});
 pub fn ChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
     const arena: mem.Arena = mem.Arena{ .index = arena_index };
     const int_fmt_spec: PolynomialFormatSpec = .{
@@ -956,7 +972,7 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             if (format.old_lower != format.new_lower) {
                 lower_del_fmt.formatWriteDelta(array);
             }
-            array.writeCount(2, "..".*);
+            array.writeMany("..");
             array.writeMany(old_upper_s.readAll()[i..old_upper_s_count]);
             if (format.old_upper != format.new_upper) {
                 upper_del_fmt.formatWriteDelta(array);
