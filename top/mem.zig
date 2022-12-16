@@ -43,6 +43,30 @@ pub const follow_wr_spec: mem.ReinterpretSpec = blk: {
     } };
     break :blk rs_1;
 };
+pub const alloc_silent: mem.AllocatorLogging = .{
+    .map = builtin.Logging.silent,
+    .unmap = builtin.Logging.silent,
+    .remap = builtin.Logging.silent,
+    .allocate = false,
+    .deallocate = false,
+    .reallocate = false,
+    .head = false,
+    .sentinel = false,
+    .branches = false,
+    .metadata = false,
+};
+pub const alloc_verbose: mem.AllocatorLogging = .{
+    .map = builtin.Logging.verbose,
+    .unmap = builtin.Logging.verbose,
+    .remap = builtin.Logging.verbose,
+    .allocate = true,
+    .deallocate = true,
+    .reallocate = true,
+    .head = true,
+    .sentinel = true,
+    .branches = true,
+    .metadata = true,
+};
 
 pub const ArenaError = error{ UnderSupply, OverSupply };
 pub const Map = meta.EnumBitField(enum(u64) {
@@ -649,7 +673,7 @@ pub const noexcept = opaque {
             address_space.atomicSet(index)
         else
             address_space.set(index);
-        if (part_spec.logging.Error and ret) {
+        if (part_spec.logging.Acquire and ret) {
             debug.arenaAcquireNotice(index);
         }
     }
@@ -658,8 +682,8 @@ pub const noexcept = opaque {
             address_space.atomicUnset(index)
         else
             address_space.unset(index);
-        if (part_spec.logging.Error and ret) {
-            debug.arenaReleaseNotice(index);
+        if (part_spec.logging.Release and ret) {
+            debug.arenaReleaseError(index);
         }
     }
 };
