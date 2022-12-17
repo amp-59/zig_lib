@@ -1128,21 +1128,24 @@ pub fn typeName(comptime T: type) []const u8 {
     //
     // Cannot be parsed, because () is essentially a black box:
     // ns.Generic().Within()        => ???
-    if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
-        if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
-            return type_name[last_dot..];
+    comptime {
+        if (type_name.len < 64) {
+            return type_name;
         }
-        if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
-            if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
-                return type_name[last_dot + 1 .. first_op];
+        if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
+            if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
+                return type_name[last_dot..];
+            }
+            if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
+                if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
+                    return type_name[last_dot + 1 .. first_op];
+                }
             }
         } else {
-            @compileError("???");
+            if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
+                return type_name[last_dot..];
+            }
         }
-    } else {
-        if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
-            return type_name[last_dot..];
-        }
+        return type_name;
     }
-    return type_name;
 }
