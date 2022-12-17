@@ -89,7 +89,12 @@ fn testSpecificCases() !void {
     array.writeFormat(render.ArrayFormat([0]u64){ .value = .{} });
     try testing.expectEqualMany(u8, array.readAll(), "[0]u64{}");
     array.undefineAll();
-
+    array.writeFormat(render.PointerManyFormat([*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr });
+    try testing.expectEqualMany(u8, array.readAll(), "[:0]const u64{ 1, 2, 3, 4, 5, 6 }");
+    array.undefineAll();
+    array.writeFormat(render.PointerManyFormat([*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr });
+    try testing.expectEqualMany(u8, array.readAll(), "[*]const u64{ ... }");
+    array.undefineAll();
     array.writeFormat(render.NullFormat{});
     try testing.expectEqualMany(u8, array.readAll(), "null");
     array.undefineAll();

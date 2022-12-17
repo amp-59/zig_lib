@@ -3,9 +3,20 @@ const mem = @import("./mem.zig");
 const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
+
 const render_composite_field_type_recursively: bool = true;
 const render_string_literal: bool = true;
 const render_multi_line_string_literal: bool = false;
+const attempt_short_type_names: bool = true;
+
+fn typeName(comptime T: type) []const u8 {
+    if (attempt_short_type_names) {
+        return fmt.typeName(T);
+    } else {
+        return @typeName(T);
+    }
+}
+
 pub fn AnyFormat(comptime Type: type) type {
     return switch (@typeInfo(Type)) {
         .Array => ArrayFormat(Type),
@@ -22,14 +33,14 @@ pub fn AnyFormat(comptime Type: type) type {
             .One => PointerOneFormat(Type),
             //                .Many => PointerManyFormat(Type),
             .Slice => PointerSliceFormat(Type),
-            else => @compileError(fmt.typeName(Type)),
+            else => @compileError(typeName(Type)),
         },
         .Optional => OptionalFormat(Type),
         .Null => NullFormat,
         .Void => VoidFormat,
         .Vector => VectorFormat(Type),
         //            .ErrorUnion => ErrorUnionFormat(Type),
-        else => @compileError(fmt.typeName(Type)),
+        else => @compileError(typeName(Type)),
     };
 }
 fn GenericRenderFormat(comptime Format: type) type {
@@ -58,12 +69,12 @@ pub fn ArrayFormat(comptime Array: type) type {
     return struct {
         value: Array,
         const Format = @This();
-        const ElementFormat = AnyFormat(child);
+        const ChildFormat = AnyFormat(child);
         const array_info: builtin.Type = @typeInfo(Array);
         const child: type = array_info.Array.child;
-        const type_name: []const u8 = fmt.typeName(Array);
+        const type_name: []const u8 = typeName(Array);
         const max_len: u64 = (type_name.len + 2) +
-            array_info.Array.len * (ElementFormat.max_len + 2);
+            array_info.Array.len * (ChildFormat.max_len + 2);
         pub fn formatWrite(format: Format, array: anytype) void {
             if (format.value.len == 0) {
                 array.writeMany(type_name ++ "{}");
@@ -80,7 +91,7 @@ pub fn ArrayFormat(comptime Array: type) type {
         pub fn formatLength(format: Format) u64 {
             var len: u64 = type_name.len + 2;
             for (format.value) |value| {
-                len += ElementFormat.formatLength(.{ .value = value }) + 2;
+                len += ChildFormat.formatLength(.{ .value = value }) + 2;
             }
             return len;
         }
@@ -132,7 +143,7 @@ pub const TypeFormat = struct {
                             array.writeMany(field.name ++ ": ");
                             field_type_format.formatWrite(array);
                         } else {
-                            array.writeMany(field.name ++ ": " ++ @typeName(field.field_type));
+                            array.writeMany(field.name ++ ": " ++ typeName(field.field_type));
                         }
                         if (meta.defaultValue(field)) |default_value| {
                             const field_format: FieldFormat = .{ .value = default_value };
@@ -158,7 +169,7 @@ pub const TypeFormat = struct {
                                 const field_type_format: TypeFormat = .{ .value = field.field_type };
                                 field_type_format.formatWrite(array);
                             } else {
-                                array.writeMany(field.name ++ ": " ++ @typeName(field.field_type));
+                                array.writeMany(field.name ++ ": " ++ typeName(field.field_type));
                             }
                             array.writeMany(", ");
                         }
@@ -178,7 +189,7 @@ pub const TypeFormat = struct {
                 }
             },
             .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer => {
-                array.writeMany(@typeName(format.value));
+                array.writeMany(typeName(format.value));
             },
             else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
         }
@@ -199,7 +210,7 @@ pub const TypeFormat = struct {
                             len += field.name.len + 2;
                             len += field_type_format.formatLength();
                         } else {
-                            len += field.name.len + 2 + @typeName(field.field_type).len;
+                            len += field.name.len + 2 + typeName(field.field_type).len;
                         }
                         if (meta.defaultValue(field)) |default_value| {
                             const field_format: FieldFormat = .{ .value = default_value };
@@ -225,7 +236,7 @@ pub const TypeFormat = struct {
                                 const field_type_format: TypeFormat = .{ .value = field.field_type };
                                 len += field_type_format.formatLength();
                             } else {
-                                len += field.name.len + 2 + @typeName(field.field_type).len;
+                                len += field.name.len + 2 + typeName(field.field_type).len;
                             }
                             len += 2;
                         }
@@ -245,7 +256,7 @@ pub const TypeFormat = struct {
                 }
             },
             .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer => {
-                len += @typeName(format.value).len;
+                len += typeName(format.value).len;
             },
             else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
         }
@@ -259,7 +270,7 @@ pub fn StructFormat(comptime Struct: type) type {
     return struct {
         value: Struct,
         const Format = @This();
-        const type_name: []const u8 = fmt.typeName(Struct);
+        const type_name: []const u8 = typeName(Struct);
         const fields: []const builtin.StructField = @typeInfo(Struct).Struct.fields;
         const omit_default_fields: bool = true;
         const omit_compiler_given_names: bool = true;
@@ -359,7 +370,7 @@ pub fn UnionFormat(comptime Union: type) type {
         value: Union,
         const Format = @This();
         const fields: []const builtin.UnionField = @typeInfo(Union).Union.fields;
-        const type_name: []const u8 = fmt.typeName(Union);
+        const type_name: []const u8 = typeName(Union);
         const show_enum_field: bool = fields.len == 2 and (@typeInfo(fields[0].field_type) == .Enum and
             fields[1].field_type == @typeInfo(fields[0].field_type).Enum.tag_type);
         const max_len: u64 = blk: {
@@ -376,7 +387,7 @@ pub fn UnionFormat(comptime Union: type) type {
                 // The length of 'bit_field('
                 len += 10;
                 // The length of the integer tag_type name
-                len += @typeName(enum_info.Enum.tag_type);
+                len += typeName(enum_info.Enum.tag_type);
                 // The length of ') {'
                 len += 3;
                 // The length of '}'
@@ -400,7 +411,7 @@ pub fn UnionFormat(comptime Union: type) type {
         pub fn formatWriteEnumField(format: Format, array: anytype) void {
             const enum_info: builtin.Type = @typeInfo(fields[0].field_type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            array.writeMany("bit_field(" ++ @typeName(enum_info.Enum.tag_type) ++ "){ ");
+            array.writeMany("bit_field(" ++ typeName(enum_info.Enum.tag_type) ++ "){ ");
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
@@ -434,7 +445,7 @@ pub fn UnionFormat(comptime Union: type) type {
         pub fn formatLengthEnumField(format: Format) u64 {
             const enum_info: builtin.Type = @typeInfo(fields[0].field_type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            var len: u64 = 10 + @typeName(enum_info.Enum.tag_type).len + 3;
+            var len: u64 = 10 + typeName(enum_info.Enum.tag_type).len + 3;
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
@@ -632,9 +643,9 @@ pub fn PointerOneFormat(comptime Pointer: type) type {
         const Format = @This();
         const SubFormat = meta.Return(fmt.ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const type_name: []const u8 = @typeName(Pointer);
-        const max_len: u64 = (4 + type_name.len + 3) + AnyFormat(child).max_len + 1;
+        const max_len: u64 = (4 + typeName(Pointer).len + 3) + AnyFormat(child).max_len + 1;
         pub fn formatWrite(format: Format, array: anytype) void {
+            const type_name: []const u8 = typeName(Pointer);
             if (child == anyopaque) {
                 array.writeMany("@intToPtr(" ++ type_name ++ ", ");
                 const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };
@@ -647,6 +658,7 @@ pub fn PointerOneFormat(comptime Pointer: type) type {
             array.writeMany(")");
         }
         pub fn formatLength(format: Format) u64 {
+            const type_name: []const u8 = typeName(Pointer);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };
                 return 10 + type_name.len + 2 + sub_format.formatLength() + 1;
@@ -665,11 +677,11 @@ pub fn PointerSliceFormat(comptime Pointer: type) type {
     return struct {
         value: Pointer,
         const Format = @This();
-        const ElementFormat = AnyFormat(child);
+        const ChildFormat = AnyFormat(child);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = 65536;
         fn formatLengthAny(format: Format) u64 {
-            const type_name = comptime fmt.typeName(Pointer);
+            const type_name = comptime typeName(Pointer);
             var len: u64 = type_name.len + 2;
             for (format.value) |value| {
                 len += AnyFormat(child).formatLength(.{ .value = value }) + 2;
@@ -677,13 +689,13 @@ pub fn PointerSliceFormat(comptime Pointer: type) type {
             return len;
         }
         fn formatWriteAny(format: Format, array: anytype) void {
-            const type_name = comptime fmt.typeName(Pointer);
+            const type_name = comptime typeName(Pointer);
             if (format.value.len == 0) {
                 array.writeMany(type_name ++ "{}");
             } else {
                 array.writeMany(type_name ++ "{ ");
                 for (format.value) |element| {
-                    const sub_format: AnyFormat(child) = .{ .value = element };
+                    const sub_format: ChildFormat = .{ .value = element };
                     sub_format.formatWrite(array);
                     array.writeMany(", ");
                 }
@@ -770,6 +782,42 @@ pub fn PointerSliceFormat(comptime Pointer: type) type {
 //
 //      Many
 //
+
+pub fn PointerManyFormat(comptime Pointer: type) type {
+    return struct {
+        value: Pointer,
+        const Format: type = @This();
+        const ChildFormat: type = AnyFormat(child);
+        const type_info: builtin.Type = @typeInfo(Pointer);
+        const child: type = type_info.Pointer.child;
+        const max_len: u64 = @compileError("indeterminant length");
+
+        pub fn formatWrite(format: Format, array: anytype) void {
+            if (type_info.Pointer.sentinel == null) {
+                const type_name: []const u8 = comptime typeName(Pointer);
+                array.writeMany(type_name ++ "{ ... }");
+            } else {
+                const Slice: type = meta.ManyToSlice(Pointer);
+                const slice_fmt_type: type = PointerSliceFormat(Slice);
+                const slice_fmt: slice_fmt_type = .{ .value = meta.manyToSlice(format.value) };
+                return slice_fmt.formatWrite(array);
+            }
+        }
+        pub fn formatLength(format: Format) u64 {
+            if (type_info.Pointer.sentinel == null) {
+                const type_name: []const u8 = comptime typeName(Pointer);
+                return type_name.len + 7;
+            } else {
+                const Slice: type = meta.ManyToSlice(Pointer);
+                const slice_fmt_type: type = PointerSliceFormat(Slice);
+                const slice_fmt: slice_fmt_type = .{ .value = meta.manyToSlice(format.value) };
+
+                return slice_fmt.formatLength();
+            }
+        }
+        pub usingnamespace GenericRenderFormat(Format);
+    };
+}
 //
 //  Optional
 //
@@ -777,8 +825,9 @@ pub fn OptionalFormat(comptime Optional: type) type {
     return struct {
         value: Optional,
         const Format = @This();
+        const ChildFormat = AnyFormat(child);
         const child: type = @typeInfo(Optional).Optional.child;
-        const type_name: []const u8 = fmt.typeName(Optional);
+        const type_name: []const u8 = typeName(Optional);
         const max_len: u64 = (4 + type_name.len + 2) + @max(1 + AnyFormat(child).max_len, 5);
         const render_readable: bool = true;
         pub fn formatWrite(format: anytype, array: anytype) void {
@@ -786,7 +835,7 @@ pub fn OptionalFormat(comptime Optional: type) type {
                 array.writeMany("@as(" ++ type_name ++ ", ");
             }
             if (format.value) |optional| {
-                const sub_format: AnyFormat(child) = .{ .value = optional };
+                const sub_format: ChildFormat = .{ .value = optional };
                 sub_format.formatWrite(array);
             } else {
                 array.writeMany("null");
@@ -855,18 +904,18 @@ pub fn VectorFormat(comptime Vector: type) type {
     return struct {
         value: Vector,
         const Format = @This();
-        const ElementFormat = AnyFormat(child);
+        const ChildFormat = AnyFormat(child);
         const vector_info: builtin.Type = @typeInfo(Vector);
         const child: type = vector_info.Vector.child;
-        const type_name: []const u8 = fmt.typeName(Vector);
+        const type_name: []const u8 = typeName(Vector);
         const max_len: u64 = (type_name.len + 2) +
-            vector_info.Array.len * (ElementFormat.max_len + 2);
+            vector_info.Array.len * (ChildFormat.max_len + 2);
         pub fn formatWrite(format: Format, array: anytype) void {
             array.writeMany(type_name ++ "{ ");
             var i: u64 = 0;
             while (i != vector_info.Vector.len) : (i += 1) {
                 const element: child = format.value[i];
-                const element_format: ElementFormat = .{ .value = element };
+                const element_format: ChildFormat = .{ .value = element };
                 element_format.formatWrite(array);
                 array.writeMany(", ");
             }
@@ -877,7 +926,7 @@ pub fn VectorFormat(comptime Vector: type) type {
             var i: u64 = 0;
             while (i != vector_info.Vector.len) : (i += 1) {
                 const element: child = format.value[i];
-                const element_format: ElementFormat = .{ .value = element };
+                const element_format: ChildFormat = .{ .value = element };
                 len += element_format.formatLength() + 2;
             }
             return len;
