@@ -11,7 +11,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 const PrintArray = mem.StaticString(1024 * 1024);
-const is_correct: bool = true;
+pub const is_correct: bool = true;
 
 fn hasDecls(comptime T: type) bool {
     const type_info: builtin.Type = @typeInfo(T);
@@ -80,8 +80,21 @@ fn testSpecificCases() !void {
     array.writeFormat(render.PointerSliceFormat([]const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } });
     try testing.expectEqualMany(u8, array.readAll(), "[]const u64{ 1, 2, 3, 4, 5, 6 }");
     array.undefineAll();
+    array.writeFormat(render.PointerSliceFormat([]const u64){ .value = &.{} });
+    try testing.expectEqualMany(u8, array.readAll(), "[]const u64{}");
+    array.undefineAll();
+    array.writeFormat(render.ArrayFormat([6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } });
+    try testing.expectEqualMany(u8, array.readAll(), "[6]u64{ 1, 2, 3, 4, 5, 6 }");
+    array.undefineAll();
+    array.writeFormat(render.ArrayFormat([0]u64){ .value = .{} });
+    try testing.expectEqualMany(u8, array.readAll(), "[0]u64{}");
+    array.undefineAll();
+
     array.writeFormat(render.NullFormat{});
     try testing.expectEqualMany(u8, array.readAll(), "null");
+    array.undefineAll();
+    array.writeFormat(render.VoidFormat{});
+    try testing.expectEqualMany(u8, array.readAll(), "{}");
     array.undefineAll();
 }
 pub fn main() !void {

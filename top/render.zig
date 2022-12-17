@@ -3,11 +3,9 @@ const mem = @import("./mem.zig");
 const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-
 const render_composite_field_type_recursively: bool = true;
 const render_string_literal: bool = true;
 const render_multi_line_string_literal: bool = false;
-
 pub fn AnyFormat(comptime Type: type) type {
     return switch (@typeInfo(Type)) {
         .Array => ArrayFormat(Type),
@@ -28,13 +26,12 @@ pub fn AnyFormat(comptime Type: type) type {
         },
         .Optional => OptionalFormat(Type),
         .Null => NullFormat,
-        // .Void => VoidFormat,
+        .Void => VoidFormat,
         .Vector => VectorFormat(Type),
         //            .ErrorUnion => ErrorUnionFormat(Type),
         else => @compileError(fmt.typeName(Type)),
     };
 }
-
 fn GenericRenderFormat(comptime Format: type) type {
     return struct {
         const StaticString = mem.StaticString(Format.max_len);
@@ -51,13 +48,11 @@ fn GenericRenderFormat(comptime Format: type) type {
         }
     };
 }
-
 const RenderSpec = struct {
     type: type,
     options: Options,
     const Options = struct {};
 };
-
 // Array
 pub fn ArrayFormat(comptime Array: type) type {
     return struct {
@@ -70,20 +65,22 @@ pub fn ArrayFormat(comptime Array: type) type {
         const max_len: u64 = (type_name.len + 2) +
             array_info.Array.len * (ElementFormat.max_len + 2);
         pub fn formatWrite(format: Format, array: anytype) void {
-            array.writeMany((type_name ++ "{ "));
-            for (format.value) |element| { // No support for useless types
-                const element_format: ElementFormat = .{ .value = element };
-                element_format.formatWrite(array);
-                array.writeMany(", ");
+            if (format.value.len == 0) {
+                array.writeMany(type_name ++ "{}");
+            } else {
+                array.writeMany(type_name ++ "{ ");
+                for (format.value) |element| {
+                    const sub_format: AnyFormat(child) = .{ .value = element };
+                    sub_format.formatWrite(array);
+                    array.writeMany(", ");
+                }
+                array.overwriteManyBack(" }");
             }
-            array.overwriteManyBack(" }");
         }
         pub fn formatLength(format: Format) u64 {
-            var len: u64 = 0;
-            len += type_name.len + 2;
-            for (format.value) |element| { // No support for useless types
-                const element_format: ElementFormat = .{ .value = element };
-                len += element_format.formatLength() + 2;
+            var len: u64 = type_name.len + 2;
+            for (format.value) |value| {
+                len += ElementFormat.formatLength(.{ .value = value }) + 2;
             }
             return len;
         }
@@ -115,7 +112,6 @@ pub const BoolFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-
 //  Type
 //
 pub const TypeFormat = struct {
@@ -256,7 +252,6 @@ pub const TypeFormat = struct {
         return len;
     }
 };
-
 //
 //  Struct
 //
@@ -266,10 +261,8 @@ pub fn StructFormat(comptime Struct: type) type {
         const Format = @This();
         const type_name: []const u8 = fmt.typeName(Struct);
         const fields: []const builtin.StructField = @typeInfo(Struct).Struct.fields;
-
         const omit_default_fields: bool = true;
         const omit_compiler_given_names: bool = true;
-
         const max_len: u64 = blk: {
             var len: u64 = 0;
             if (omit_compiler_given_names and mem.testEqualManyFront(u8, "struct:", type_name)) {
@@ -361,7 +354,6 @@ pub fn StructFormat(comptime Struct: type) type {
 //
 //  Union
 //
-
 pub fn UnionFormat(comptime Union: type) type {
     return struct {
         value: Union,
@@ -519,7 +511,6 @@ pub fn UnionFormat(comptime Union: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-
 //  Enum
 //
 pub fn EnumFormat(comptime T: type) type {
@@ -538,7 +529,6 @@ pub fn EnumFormat(comptime T: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-
 //  EnumLiteral
 //
 //
@@ -559,7 +549,6 @@ pub const ComptimeIntFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-
 //
 //  Int
 //
@@ -631,7 +620,6 @@ pub fn IntFormat(comptime Int: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-
 //
 //  Pointer
 //
@@ -644,7 +632,7 @@ pub fn PointerOneFormat(comptime Pointer: type) type {
         const Format = @This();
         const SubFormat = meta.Return(fmt.ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const type_name: []const u8 = fmt.typeName(Pointer);
+        const type_name: []const u8 = @typeName(Pointer);
         const max_len: u64 = (4 + type_name.len + 3) + AnyFormat(child).max_len + 1;
         pub fn formatWrite(format: Format, array: anytype) void {
             if (child == anyopaque) {
@@ -670,7 +658,6 @@ pub fn PointerOneFormat(comptime Pointer: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-
 //
 //     Slice
 //
@@ -678,17 +665,14 @@ pub fn PointerSliceFormat(comptime Pointer: type) type {
     return struct {
         value: Pointer,
         const Format = @This();
+        const ElementFormat = AnyFormat(child);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = 65536;
-
         fn formatLengthAny(format: Format) u64 {
             const type_name = comptime fmt.typeName(Pointer);
             var len: u64 = type_name.len + 2;
-            if (format.value.len != 0) {
-                for (format.value) |value| {
-                    const sub_format: AnyFormat(child) = .{ .value = value };
-                    len += sub_format.formatLength() + 2;
-                }
+            for (format.value) |value| {
+                len += AnyFormat(child).formatLength(.{ .value = value }) + 2;
             }
             return len;
         }
@@ -830,7 +814,6 @@ pub fn OptionalFormat(comptime Optional: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-
 //
 //  Null
 //
@@ -851,8 +834,23 @@ pub const NullFormat = struct {
 //
 //  Void
 //
+pub const VoidFormat = struct {
+    comptime value: void = {},
+    comptime formatWrite: fn (anytype) void = formatWrite,
+    comptime formatLength: fn () u64 = formatLength,
+    const Format = @This();
+    const max_len: u64 = 2;
+    pub fn formatWrite(array: anytype) void {
+        array.writeMany("{}");
+    }
+    pub fn formatLength() u64 {
+        return 2;
+    }
+    pub usingnamespace GenericRenderFormat(Format);
+};
 //
 //  Vector
+//
 pub fn VectorFormat(comptime Vector: type) type {
     return struct {
         value: Vector,
