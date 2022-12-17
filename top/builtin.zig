@@ -1004,8 +1004,8 @@ const debug = opaque {
         asm volatile (
             \\syscall
             :
-            : [sysno] "{rax}" (60),
-              [arg1] "{rdi}" (2),
+            : [sysno] "{rax}" (60), // linux sys_exit
+              [arg1] "{rdi}" (2), // exit code
         );
         unreachable;
     }
@@ -1013,8 +1013,8 @@ const debug = opaque {
         asm volatile (
             \\syscall
             :
-            : [sysno] "{rax}" (1),
-              [arg1] "{rdi}" (2),
+            : [sysno] "{rax}" (1), // linux sys_write
+              [arg1] "{rdi}" (2), // stderr
               [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
               [arg3] "{rdx}" (buf.len),
         );
@@ -1226,12 +1226,11 @@ pub const parse = opaque {
     }
 };
 pub const fmt = opaque {
-    fn StaticString(comptime T: type, comptime radix: u16) type {
+    fn StaticStringMemo(comptime max_len: u64) type {
         return struct {
             auto: [max_len]u8 align(8) = undefined,
             len: u64 = max_len,
             const Array = @This();
-            const max_len: u64 = maxSigFig(T, radix) + 1;
             fn writeOneBackwards(array: *Array, v: u8) void {
                 array.len -%= 1;
                 array.auto[array.len] = v;
@@ -1240,6 +1239,9 @@ pub const fmt = opaque {
                 return array.auto[array.len..];
             }
         };
+    }
+    fn StaticString(comptime T: type, comptime radix: u16) type {
+        return StaticStringMemo(maxSigFig(T, radix) + 1);
     }
     pub fn ci(value: comptime_int) []const u8 {
         if (value == 0) {
@@ -1258,7 +1260,7 @@ pub const fmt = opaque {
     pub fn int(any: anytype) StaticString(@TypeOf(any), 10) {
         return d(@TypeOf(any), any);
     }
-    inline fn b(comptime Int: type, value: Int) StaticString(Int, 2) {
+    fn b(comptime Int: type, value: Int) StaticString(Int, 2) {
         const Array = StaticString(Int, 2);
         const Abs = Absolute(Int);
         var array: Array = .{};
@@ -1284,7 +1286,7 @@ pub const fmt = opaque {
         }
         return array;
     }
-    inline fn o(comptime Int: type, value: Int) StaticString(Int, 8) {
+    fn o(comptime Int: type, value: Int) StaticString(Int, 8) {
         const Array = StaticString(Int, 8);
         const Abs = Absolute(Int);
         var array: Array = .{};
@@ -1305,7 +1307,7 @@ pub const fmt = opaque {
         }
         return array;
     }
-    inline fn d(comptime Int: type, value: Int) StaticString(Int, 10) {
+    fn d(comptime Int: type, value: Int) StaticString(Int, 10) {
         const Array = StaticString(Int, 10);
         const Abs = Absolute(Int);
         var array: Array = .{};
@@ -1322,7 +1324,7 @@ pub const fmt = opaque {
         }
         return array;
     }
-    inline fn x(comptime Int: type, value: Int) StaticString(Int, 16) {
+    fn x(comptime Int: type, value: Int) StaticString(Int, 16) {
         const Array = StaticString(Int, 16);
         const Abs = Absolute(Int);
         var array: Array = .{};

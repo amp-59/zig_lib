@@ -712,6 +712,16 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
     unreachable;
 }
 
+// If the return value is greater than word size or is a zig error union, this
+// internal call can never be inlined.
+noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: u64, call_addr: u64, args_addr: u64) void {
+    @intToPtr(**meta.Return(Fn), result_addr).*.* = @call(
+        .never_inline,
+        @intToPtr(**Fn, call_addr).*,
+        @intToPtr(*Args(Fn), args_addr).*,
+    );
+}
+
 pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr: anytype, comptime function: anytype, args: anytype) spec.Unwrapped(.clone3) {
     const Fn: type = @TypeOf(function);
     const cl_args: CloneArgs = spec.args(stack_addr);
@@ -719,9 +729,9 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
     const cl_args_size: u64 = @sizeOf(CloneArgs);
     const cl_sysno: u64 = @enumToInt(sys.Function.clone3);
     const ret_off: u64 = 0;
-    const fn_off: u64 = 8;
+    const call_off: u64 = 8;
     const args_off: u64 = 16;
-    @intToPtr(**const Fn, stack_addr + fn_off).* = &function;
+    @intToPtr(**const Fn, stack_addr + call_off).* = &function;
     @intToPtr(*Args(Fn), stack_addr + args_off).* = args;
     if (@TypeOf(result_ptr) != void) {
         @intToPtr(*@TypeOf(result_ptr), stack_addr + ret_off).* = result_ptr;
@@ -743,19 +753,33 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
             :
             : "rbp", "rsp", "memory"
         );
-        if (comptime @TypeOf(result_ptr) != void) {
-            @intToPtr(*@TypeOf(result_ptr), tl_stack_addr + ret_off).*.* = @call(
-                .never_inline,
-                @intToPtr(**Fn, tl_stack_addr + fn_off).*,
-                @intToPtr(*Args(Fn), tl_stack_addr + args_off).*,
-            );
+        const ret_addr: u64 = tl_stack_addr + ret_off;
+        const call_addr: u64 = tl_stack_addr + call_off;
+        const args_addr: u64 = tl_stack_addr + args_off;
+        if (@TypeOf(result_ptr) != void) {
+            if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
+                @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)
+            {
+                @intToPtr(**meta.Return(Fn), ret_addr).*.* = @call(
+                    .never_inline,
+                    @intToPtr(**Fn, call_addr).*,
+                    @intToPtr(*Args(Fn), args_addr).*,
+                );
+            } else {
+                @call(
+                    .never_inline,
+                    callErrorOrMediaReturnValueFunction,
+                    .{ @TypeOf(function), ret_addr, call_addr, args_addr },
+                );
+            }
         } else {
             @call(
                 .never_inline,
-                @intToPtr(**Fn, tl_stack_addr + fn_off).*,
-                @intToPtr(*Args(Fn), tl_stack_addr + args_off).*,
+                @intToPtr(**Fn, call_addr).*,
+                @intToPtr(*Args(Fn), args_addr).*,
             );
         }
+
         asm volatile (
             \\movq  $60,    %rax
             \\movq  $0,     %rdi

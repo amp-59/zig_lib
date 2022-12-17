@@ -31,7 +31,7 @@ pub fn AnyFormat(comptime Type: type) type {
         .Int => IntFormat(Type),
         .Pointer => |pointer_info| switch (pointer_info.size) {
             .One => PointerOneFormat(Type),
-            //                .Many => PointerManyFormat(Type),
+            .Many => PointerManyFormat(Type),
             .Slice => PointerSliceFormat(Type),
             else => @compileError(typeName(Type)),
         },
@@ -762,10 +762,6 @@ pub fn PointerSliceFormat(comptime Pointer: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//
-//      Many
-//
-
 pub fn PointerManyFormat(comptime Pointer: type) type {
     return struct {
         value: Pointer,
@@ -792,16 +788,12 @@ pub fn PointerManyFormat(comptime Pointer: type) type {
                 const Slice: type = meta.ManyToSlice(Pointer);
                 const slice_fmt_type: type = PointerSliceFormat(Slice);
                 const slice_fmt: slice_fmt_type = .{ .value = meta.manyToSlice(format.value) };
-
                 return slice_fmt.formatLength();
             }
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//
-//  Optional
-//
 pub fn OptionalFormat(comptime Optional: type) type {
     return struct {
         value: Optional,
@@ -844,9 +836,6 @@ pub fn OptionalFormat(comptime Optional: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//
-//  Null
-//
 pub const NullFormat = struct {
     comptime value: @TypeOf(null) = null,
     comptime formatWrite: fn (anytype) void = formatWrite,
@@ -861,9 +850,6 @@ pub const NullFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-//
-//  Void
-//
 pub const VoidFormat = struct {
     comptime value: void = {},
     comptime formatWrite: fn (anytype) void = formatWrite,
@@ -878,9 +864,6 @@ pub const VoidFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-//
-//  Vector
-//
 pub fn VectorFormat(comptime Vector: type) type {
     return struct {
         value: Vector,
