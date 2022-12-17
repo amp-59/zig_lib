@@ -26,7 +26,7 @@ pub fn AnyFormat(comptime Type: type) type {
         .Struct => StructFormat(Type),
         .Union => UnionFormat(Type),
         .Enum => EnumFormat(Type),
-        //            .EnumLiteral => EnumLiteralFormat(Type),
+        .EnumLiteral => EnumLiteralFormat(Type),
         .ComptimeInt => ComptimeIntFormat,
         .Int => IntFormat(Type),
         .Pointer => |pointer_info| switch (pointer_info.size) {
@@ -39,7 +39,7 @@ pub fn AnyFormat(comptime Type: type) type {
         .Null => NullFormat,
         .Void => VoidFormat,
         .Vector => VectorFormat(Type),
-        //            .ErrorUnion => ErrorUnionFormat(Type),
+        .ErrorUnion => ErrorUnionFormat(Type),
         else => @compileError(typeName(Type)),
     };
 }
@@ -98,9 +98,6 @@ pub fn ArrayFormat(comptime Array: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//  Function
-//  Boolean
-//
 pub const BoolFormat = struct {
     value: bool,
     const Format = @This();
@@ -123,8 +120,6 @@ pub const BoolFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-//  Type
-//
 pub const TypeFormat = struct {
     const Format = @This();
     value: type,
@@ -263,9 +258,6 @@ pub const TypeFormat = struct {
         return len;
     }
 };
-//
-//  Struct
-//
 pub fn StructFormat(comptime Struct: type) type {
     return struct {
         value: Struct,
@@ -362,9 +354,6 @@ pub fn StructFormat(comptime Struct: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//
-//  Union
-//
 pub fn UnionFormat(comptime Union: type) type {
     return struct {
         value: Union,
@@ -522,8 +511,6 @@ pub fn UnionFormat(comptime Union: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//  Enum
-//
 pub fn EnumFormat(comptime T: type) type {
     return struct {
         value: T,
@@ -540,11 +527,19 @@ pub fn EnumFormat(comptime T: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//  EnumLiteral
-//
-//
-//  ComptimeInt
-//
+pub const EnumLiteralFormat = struct {
+    value: @Type(.EnumLiteral),
+    const Format = @This();
+    const max_len: u64 = undefined;
+    pub fn formatWrite(comptime format: Format, array: anytype) void {
+        const tag_name = @tagName(format.value);
+        array.writeMany("." ++ tag_name);
+    }
+    pub fn formatLength(comptime format: Format) u64 {
+        return 1 + @tagName(format.value).len;
+    }
+    pub usingnamespace GenericRenderFormat(Format);
+};
 pub const ComptimeIntFormat = struct {
     value: comptime_int,
     const Format = @This();
@@ -560,9 +555,6 @@ pub const ComptimeIntFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-//
-//  Int
-//
 pub fn IntFormat(comptime Int: type) type {
     return struct {
         value: Int,
@@ -631,12 +623,6 @@ pub fn IntFormat(comptime Int: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//
-//  Pointer
-//
-//
-//      One
-//
 pub fn PointerOneFormat(comptime Pointer: type) type {
     return struct {
         value: Pointer,
@@ -670,9 +656,6 @@ pub fn PointerOneFormat(comptime Pointer: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//
-//     Slice
-//
 pub fn PointerSliceFormat(comptime Pointer: type) type {
     return struct {
         value: Pointer,
@@ -790,8 +773,6 @@ pub fn PointerManyFormat(comptime Pointer: type) type {
         const ChildFormat: type = AnyFormat(child);
         const type_info: builtin.Type = @typeInfo(Pointer);
         const child: type = type_info.Pointer.child;
-        const max_len: u64 = @compileError("indeterminant length");
-
         pub fn formatWrite(format: Format, array: anytype) void {
             if (type_info.Pointer.sentinel == null) {
                 const type_name: []const u8 = comptime typeName(Pointer);
@@ -934,9 +915,6 @@ pub fn VectorFormat(comptime Vector: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-//
-//  ErrorUnion
-//
 pub fn ErrorUnionFormat(comptime ErrorUnion: type) type {
     return struct {
         value: ErrorUnion,

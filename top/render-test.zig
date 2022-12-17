@@ -51,56 +51,37 @@ fn printDeclsRecursively(comptime T: type, array: *mem.StaticString(1024 * 1024)
     }
 }
 
+fn runTest(array: *PrintArray, format: anytype, expected: []const u8) !void {
+    array.writeFormat(format);
+    try testing.expectEqualMany(u8, array.readAll(), expected);
+    array.undefineAll();
+}
+
 fn testSpecificCases() !void {
     var array: PrintArray = .{};
-    array.writeFormat(render.TypeFormat{ .value = packed struct(u128) { a: u64, b: u64 } });
-    try testing.expectEqualMany(u8, array.readAll(), "packed struct(u128) { a: u64, b: u64, }");
-    array.undefineAll();
-    array.writeFormat(render.TypeFormat{ .value = packed union { a: u64, b: u64 } });
-    try testing.expectEqualMany(u8, array.readAll(), "packed union { a: u64, b: u64, }");
-    array.undefineAll();
-    array.writeFormat(render.TypeFormat{ .value = enum { a, b } });
-    try testing.expectEqualMany(u8, array.readAll(), "enum(u1) { a, b, }");
-    array.undefineAll();
-    array.writeFormat(render.TypeFormat{ .value = u64 });
-    try testing.expectEqualMany(u8, array.readAll(), "u64");
-    array.undefineAll();
-    array.writeFormat(render.IntFormat(u64){ .value = 111111111 });
-    try testing.expectEqualMany(u8, array.readAll(), "111111111");
-    array.undefineAll();
-    array.writeFormat(render.ComptimeIntFormat{ .value = 111111111 });
-    try testing.expectEqualMany(u8, array.readAll(), "111111111");
-    array.undefineAll();
-    array.writeFormat(render.IntFormat(i64){ .value = -111111111 });
-    try testing.expectEqualMany(u8, array.readAll(), "-111111111");
-    array.undefineAll();
-    array.writeFormat(render.ComptimeIntFormat{ .value = -111111111 });
-    try testing.expectEqualMany(u8, array.readAll(), "-111111111");
-    array.undefineAll();
-    array.writeFormat(render.PointerSliceFormat([]const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } });
-    try testing.expectEqualMany(u8, array.readAll(), "[]const u64{ 1, 2, 3, 4, 5, 6 }");
-    array.undefineAll();
-    array.writeFormat(render.PointerSliceFormat([]const u64){ .value = &.{} });
-    try testing.expectEqualMany(u8, array.readAll(), "[]const u64{}");
-    array.undefineAll();
-    array.writeFormat(render.ArrayFormat([6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } });
-    try testing.expectEqualMany(u8, array.readAll(), "[6]u64{ 1, 2, 3, 4, 5, 6 }");
-    array.undefineAll();
-    array.writeFormat(render.ArrayFormat([0]u64){ .value = .{} });
-    try testing.expectEqualMany(u8, array.readAll(), "[0]u64{}");
-    array.undefineAll();
-    array.writeFormat(render.PointerManyFormat([*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr });
-    try testing.expectEqualMany(u8, array.readAll(), "[:0]const u64{ 1, 2, 3, 4, 5, 6 }");
-    array.undefineAll();
-    array.writeFormat(render.PointerManyFormat([*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr });
-    try testing.expectEqualMany(u8, array.readAll(), "[*]const u64{ ... }");
-    array.undefineAll();
-    array.writeFormat(render.NullFormat{});
-    try testing.expectEqualMany(u8, array.readAll(), "null");
-    array.undefineAll();
-    array.writeFormat(render.VoidFormat{});
-    try testing.expectEqualMany(u8, array.readAll(), "{}");
-    array.undefineAll();
+    try runTest(&array, render.TypeFormat{ .value = packed struct(u128) { a: u64, b: u64 } }, "packed struct(u128) { a: u64, b: u64, }");
+    try runTest(&array, render.TypeFormat{ .value = packed union { a: u64, b: u64 } }, "packed union { a: u64, b: u64, }");
+    try runTest(&array, render.TypeFormat{ .value = enum { a, b } }, "enum(u1) { a, b, }");
+    try runTest(&array, render.TypeFormat{ .value = u64 }, "u64");
+    try runTest(&array, render.ComptimeIntFormat{ .value = 111111111 }, "111111111");
+    try runTest(&array, render.ComptimeIntFormat{ .value = -111111111 }, "-111111111");
+    try runTest(&array, render.PointerSliceFormat([]const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } }, "[]const u64{ 1, 2, 3, 4, 5, 6 }");
+    try runTest(&array, render.PointerSliceFormat([]const u64){ .value = &.{} }, "[]const u64{}");
+    try runTest(&array, render.ArrayFormat([6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } }, "[6]u64{ 1, 2, 3, 4, 5, 6 }");
+    try runTest(&array, render.ArrayFormat([0]u64){ .value = .{} }, "[0]u64{}");
+    try runTest(
+        &array,
+        render.PointerManyFormat([*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
+        "[:0]const u64{ 1, 2, 3, 4, 5, 6 }",
+    );
+    try runTest(
+        &array,
+        render.PointerManyFormat([*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
+        "[*]const u64{ ... }",
+    );
+    try runTest(&array, render.EnumLiteralFormat{ .value = .EnumLiteral }, ".EnumLiteral");
+    try runTest(&array, render.NullFormat{}, "null");
+    try runTest(&array, render.VoidFormat{}, "{}");
 }
 pub fn main() !void {
     try meta.wrap(testSpecificCases());
