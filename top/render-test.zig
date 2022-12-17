@@ -80,6 +80,9 @@ fn testSpecificCases() !void {
     array.writeFormat(render.PointerSliceFormat([]const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } });
     try testing.expectEqualMany(u8, array.readAll(), "[]const u64{ 1, 2, 3, 4, 5, 6 }");
     array.undefineAll();
+    array.writeFormat(render.NullFormat{});
+    try testing.expectEqualMany(u8, array.readAll(), "null");
+    array.undefineAll();
 }
 pub fn main() !void {
     try meta.wrap(testSpecificCases());

@@ -27,8 +27,8 @@ pub fn AnyFormat(comptime Type: type) type {
             else => @compileError(fmt.typeName(Type)),
         },
         .Optional => OptionalFormat(Type),
-        //            .Null => NullFormat(Type),
-        //            .Void => VoidFormat,
+        .Null => NullFormat,
+        // .Void => VoidFormat,
         .Vector => VectorFormat(Type),
         //            .ErrorUnion => ErrorUnionFormat(Type),
         else => @compileError(fmt.typeName(Type)),
@@ -71,7 +71,7 @@ pub fn ArrayFormat(comptime Array: type) type {
             array_info.Array.len * (ElementFormat.max_len + 2);
         pub fn formatWrite(format: Format, array: anytype) void {
             array.writeMany((type_name ++ "{ "));
-            for (format.value) |element| {
+            for (format.value) |element| { // No support for useless types
                 const element_format: ElementFormat = .{ .value = element };
                 element_format.formatWrite(array);
                 array.writeMany(", ");
@@ -81,7 +81,7 @@ pub fn ArrayFormat(comptime Array: type) type {
         pub fn formatLength(format: Format) u64 {
             var len: u64 = 0;
             len += type_name.len + 2;
-            for (format.value) |element| {
+            for (format.value) |element| { // No support for useless types
                 const element_format: ElementFormat = .{ .value = element };
                 len += element_format.formatLength() + 2;
             }
@@ -834,6 +834,20 @@ pub fn OptionalFormat(comptime Optional: type) type {
 //
 //  Null
 //
+pub const NullFormat = struct {
+    comptime value: @TypeOf(null) = null,
+    comptime formatWrite: fn (anytype) void = formatWrite,
+    comptime formatLength: fn () u64 = formatLength,
+    const Format = @This();
+    const max_len: u64 = 4;
+    pub fn formatWrite(array: anytype) void {
+        array.writeMany("null");
+    }
+    pub fn formatLength() u64 {
+        return 4;
+    }
+    pub usingnamespace GenericRenderFormat(Format);
+};
 //
 //  Void
 //
