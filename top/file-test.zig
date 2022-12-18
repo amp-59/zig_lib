@@ -45,7 +45,20 @@ const close_spec: file.CloseSpec = .{
 const stat_spec: file.StatSpec = .{
     .errors = errors,
 };
-pub fn main() !void {
+
+fn makeArgs(buf: [:0]u8, any: anytype) [@typeInfo(@TypeOf(any)).Struct.fields.len][*:0]u8 {
+    var args: [@typeInfo(@TypeOf(any)).Struct.fields.len][*:0]u8 = undefined;
+    var off: u64 = 0;
+    var dst_arg: [:0]u8 = buf;
+    inline for (any) |src_arg, i| {
+        @memcpy(dst_arg.ptr, @as([]const u8, src_arg).ptr, src_arg.len);
+        off = src_arg.len;
+        args[i] = dst_arg.ptr;
+        dst_arg = dst_arg[off..];
+    }
+    return args;
+}
+pub fn main(_: anytype, vars: anytype) !void {
     {
         try file.makeDir(make_dir_spec, "/run/user/1000/file_test");
         try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
@@ -62,6 +75,12 @@ pub fn main() !void {
         try file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test");
         try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
         try file.close(close_spec, dir_fd);
+    }
+    {
+        const dir_fd: u64 = try file.find(vars, "zig");
+        var args_buf: [4096:0]u8 = .{0} ** 4096;
+        var args: [1][*:0]u8 = makeArgs(&args_buf, .{"zen"});
+        try proc.execAt(exec_spec, dir_fd, "zig", &args, vars);
     }
     {
         try testing.expectEqualMany(u8, "file_test", file.basename("/run/user/1000/file_test"));

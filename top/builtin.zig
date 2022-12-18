@@ -29,6 +29,7 @@ pub const ContainerLayout = @TypeOf(@typeInfo(struct {}).Struct.layout);
 pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
 pub const Declaration = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
 pub const FnParam = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.args)).Pointer.child;
+pub const DeclLiteral = @Type(.EnumLiteral);
 pub const Endian = @TypeOf(zig.cpu.arch.endian());
 pub const SourceLocation = Src();
 fn Src() type {
