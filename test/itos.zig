@@ -6,6 +6,8 @@ const meta = srg.meta;
 const file = srg.file;
 const builtin = srg.builtin;
 
+const opts = @import("./opts.zig");
+
 pub usingnamespace proc.start;
 
 const Radix = enum(u5) {
@@ -15,74 +17,42 @@ const Radix = enum(u5) {
     hex = 16,
 };
 const Options = struct {
-    output: Radix,
+    output: Radix = .hex,
 };
-fn getOutputWith(opt_arg: []const u8) Radix {
+fn validateOutputMode(options: *Options, opt_arg: [:0]const u8) void {
     if (mem.testEqualMany(u8, "hex", opt_arg) or
         mem.testEqualMany(u8, "x", opt_arg))
     {
-        return .hex;
+        options.output = .hex;
     } else if (mem.testEqualMany(u8, "bin", opt_arg) or
         mem.testEqualMany(u8, "b", opt_arg))
     {
-        return .bin;
+        options.output = .bin;
     } else if (mem.testEqualMany(u8, "dec", opt_arg) or
         mem.testEqualMany(u8, "d", opt_arg))
     {
-        return .dec;
+        options.output = .dec;
     } else if (mem.testEqualMany(u8, "oct", opt_arg) or
         mem.testEqualMany(u8, "o", opt_arg))
     {
-        return .oct;
+        options.output = .oct;
+    } else {
+        file.noexcept.write(2, "unrecognised output mode: '");
+        file.noexcept.write(2, opt_arg);
+        file.noexcept.write(2, "'\n");
+        file.noexcept.write(2,
+            \\-o, --output=     x,d,o,b
+            \\
+        );
+        sys.exit(2);
     }
-    file.noexcept.write(2, "unrecognised output mode: '");
-    file.noexcept.write(2, opt_arg);
-    file.noexcept.write(2, "'\n");
-    file.noexcept.write(2,
-        \\-o, --output=     x,d,o,b
-        \\
-    );
-    sys.exit(1);
-}
-inline fn getOpts(args: *[][*:0]u8) Options {
-    var opts: Options = .{ .output = .hex };
-    var i: u64 = 1;
-    while (i != args.len) {
-        if (mem.readAfterFirstEqualMany(u8, "--output=", meta.manyToSlice(args.*[i]))) |assigned| {
-            opts.output = getOutputWith(assigned);
-            proc.shift(args, i);
-            continue;
-        }
-        if (mem.readAfterFirstEqualMany(u8, "-o", meta.manyToSlice(args.*[i]))) |squished| {
-            opts.output = getOutputWith(squished);
-            proc.shift(args, i);
-            continue;
-        }
-        if (mem.testEqualMany(u8, "-o", meta.manyToSlice(args.*[i]))) {
-            proc.shift(args, i);
-            opts.output = getOutputWith(meta.manyToSlice(args.*[i]));
-            proc.shift(args, i);
-            continue;
-        }
-        if (mem.testEqualMany(u8, "-h", meta.manyToSlice(args.*[i])) or
-            mem.testEqualMany(u8, "--help", meta.manyToSlice(args.*[i])))
-        {
-            file.noexcept.write(2,
-                \\-o, --output=     x,d,o,b
-                \\
-            );
-            sys.exit(0);
-        }
-        if (mem.testEqualMany(u8, "--", meta.manyToSlice(args.*[i]))) {
-            break;
-        }
-        i += 1;
-    }
-    return opts;
 }
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
-    const options: Options = getOpts(&args);
+
+    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){
+        .{ .decl = .output, .short = "-o", .long = "--output", .assign = .{ .convert = validateOutputMode } },
+    });
     var i: u64 = 1;
     while (i != args.len) {
         file.noexcept.write(1, switch (options.output) {
