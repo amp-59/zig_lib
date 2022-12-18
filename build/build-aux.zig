@@ -32,11 +32,12 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "render_test", "top/render-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .build_root = true });
+
     _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{});
 
     // More complete test programs:
-    _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{});
-    _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
+    _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
+    _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
 }
