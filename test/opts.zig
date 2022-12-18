@@ -36,18 +36,20 @@ pub fn GenericOptions(comptime Options: type) type {
                         proc.shift(args, idx);
                     }
                     @field(options, @tagName(flag.decl)) = meta.manyToSlice(args.*[idx])[off..];
+                    proc.shift(args, idx);
                 },
                 .convert => |convert| {
                     if (off == 0) {
                         proc.shift(args, idx);
                     }
                     convert(options, meta.manyToSlice(args.*[idx])[off..]);
+                    proc.shift(args, idx);
                 },
             }
         }
     };
 }
-pub fn getOpts(comptime Options: type, all_options: []const GenericOptions(Options), args: *[][*:0]u8) Options {
+pub fn getOpts(comptime Options: type, args: *[][*:0]u8, all_options: []const GenericOptions(Options)) Options {
     var options: Options = .{};
     if (args.len == 0) {
         return options;

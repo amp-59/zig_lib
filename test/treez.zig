@@ -1,4 +1,4 @@
-const srg = @import("./../zig_lib.zig");
+const srg = @import("zig_lib");
 const lit = srg.lit;
 const sys = srg.sys;
 const fmt = srg.fmt;
@@ -10,6 +10,8 @@ const meta = srg.meta;
 const proc = srg.proc;
 const thread = srg.thread;
 const builtin = srg.builtin;
+
+const opts = @import("./opts.zig");
 
 pub usingnamespace proc.start;
 
@@ -35,24 +37,26 @@ const thread_spec = proc.CloneSpec{
     },
 };
 const wait_spec: proc.WaitIdSpec = .{
-    .id_type = .{ .tag = .pid },
+    .id_type = .{ .tag = .all },
     .options = .{
         .continued = false,
         .no_thread = false,
-        .clone = true,
-        .exited = false,
+        .clone = false,
+        .exited = true,
         .stopped = false,
-        .all = false,
+        .all = true,
     },
 };
 const BlockAllocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 24,
     .options = .{
-        .count_allocations = false,
+        .count_allocations = true,
         .require_filo_free = false,
         .require_geometric_growth = true,
         .trace_state = false,
+        .count_branches = false,
     },
+    .logging = mem.alloc_silent,
 });
 const BlockAllocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 32,
@@ -61,7 +65,9 @@ const BlockAllocator1 = mem.GenericArenaAllocator(.{
         .require_filo_free = true,
         .require_geometric_growth = true,
         .trace_state = false,
+        .count_branches = false,
     },
+    .logging = mem.alloc_silent,
 });
 const String1 = BlockAllocator1.StructuredHolder(u8);
 const String0 = BlockAllocator0.StructuredHolder(u8);
@@ -77,8 +83,9 @@ const Names = mem.StructuredAutomaticVector(.{
 });
 const PrintArray = mem.StaticString(4096);
 const Options = struct {
-    show_hidden: bool = always_show_hidden or permit_switch_arrows,
-    try_print_links: bool = false,
+    all: bool = always_show_hidden or permit_switch_arrows,
+    follow: bool = false,
+    wide: bool = false,
 };
 const Results = struct {
     files: u64 = 0,
@@ -171,8 +178,8 @@ const Style = if (permit_switch_arrows) struct {
     const empty_dir_arrow_s: []const u8 = if (wide) empty_dir_arrow_ws else empty_dir_arrow_bs;
     const last_empty_dir_arrow_s: []const u8 = if (wide) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
 };
-fn writeAndWalk(
-    opts: *Options,
+noinline fn writeAndWalk(
+    options: *const Options,
     allocator_0: *BlockAllocator0,
     allocator_1: *BlockAllocator1,
     array: *String1,
@@ -202,7 +209,7 @@ fn writeAndWalk(
         if (pretty_print) alts_buf.writeMany(indent);
         defer if (pretty_print) alts_buf.undefine(indent.len);
         const base_name: [:0]const u8 = entry.name();
-        if (!opts.show_hidden) {
+        if (!options.all) {
             if (base_name[0] == '.') {
                 continue;
             }
@@ -224,7 +231,7 @@ fn writeAndWalk(
                     try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), s_arrow_s, base_name, endl_s });
                 }
                 const s_total: u64 = results.total();
-                writeAndWalk(opts, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name) catch {};
+                writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name) catch {};
                 const t_total: u64 = results.total();
                 const t_arrow_s: []const u8 = mach.cmovx(is_last, last_empty_dir_arrow_ws, empty_dir_arrow_ws);
                 if (Style.wide and !plain_print) {
@@ -237,7 +244,7 @@ fn writeAndWalk(
                 results.links += 1;
                 const arrow: []const u8 = mach.cmovx(is_last, Style.last_link_arrow_s, Style.link_arrow_s);
                 const style: []const u8 = lit.fx.color.fg.cyan;
-                if (opts.try_print_links) {
+                if (options.follow) {
                     if (plain_print) {
                         try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                     } else {
@@ -301,7 +308,7 @@ fn setType(arg: []const u8) Filter {
     }
     return mask;
 }
-fn showResults(counts: Results) !void {
+noinline fn showResults(counts: Results) void {
     var array: PrintArray = .{};
     array.writeAny(mem.fmt_wr_spec, .{
         "dirs:       ", fmt.udh(counts.dirs),          '\n',
@@ -309,18 +316,7 @@ fn showResults(counts: Results) !void {
         "links:      ", fmt.udh(counts.links),         '\n',
         "swaps:      ", fmt.udh(DirStream.disordered), '\n',
     });
-    try file.write(2, array.readAll());
-}
-
-fn shift(args: *[][*:0]u8, i: u64) void {
-    if (args.len > i + 1) {
-        var this: *[*:0]u8 = &args.*[i];
-        for (args.*[i + 1 ..]) |*next| {
-            this.* = next.*;
-            this = next;
-        }
-    }
-    args.* = args.*[0 .. args.len - 1];
+    file.noexcept.write(2, array.readAll());
 }
 
 inline fn printIfAvail(allocator: BlockAllocator1, array: String1, offset: u64) u64 {
@@ -330,7 +326,7 @@ inline fn printIfAvail(allocator: BlockAllocator1, array: String1, offset: u64) 
     }
     return many.len;
 }
-noinline fn printAlong(done: *volatile bool, allocator: *BlockAllocator1, array: *String1) void {
+noinline fn printAlong(results: *volatile Results, done: *volatile bool, allocator: *BlockAllocator1, array: *String1) void {
     var offset: u64 = 0;
     while (true) {
         offset += printIfAvail(allocator.*, array.*, offset);
@@ -338,68 +334,24 @@ noinline fn printAlong(done: *volatile bool, allocator: *BlockAllocator1, array:
             break;
         }
     }
-    offset += printIfAvail(allocator.*, array.*, offset);
-    builtin.assert(offset == array.count(allocator.*));
-    file.noexcept.write(2, "\n");
-}
-
-inline fn getOpts(args: *[][*:0]u8) Options {
-    var opts: Options = .{};
-    var i: u64 = 1;
-    while (i != args.len) {
-        if (!always_show_hidden) {
-            if (mem.testEqualMany(u8, "-a", meta.manyToSlice(args.*[i])) or
-                mem.testEqualMany(u8, "--all", meta.manyToSlice(args.*[i])))
-            {
-                opts.show_hidden = true;
-                shift(args, i);
-                continue;
-            }
-        }
-        if (permit_switch_arrows) {
-            if (mem.testEqualMany(u8, "-w", meta.manyToSlice(args.*[i])) or
-                mem.testEqualMany(u8, "--wide", meta.manyToSlice(args.*[i])))
-            {
-                Style.wide = true;
-                shift(args, i);
-                continue;
-            }
-        }
-        if (mem.testEqualMany(u8, "-L", meta.manyToSlice(args.*[i])) or
-            mem.testEqualMany(u8, "--follow", meta.manyToSlice(args.*[i])))
-        {
-            opts.try_print_links = true;
-            shift(args, i);
-            continue;
-        }
-        if (mem.testEqualMany(u8, "+L", meta.manyToSlice(args.*[i])) or
-            mem.testEqualMany(u8, "--no-follow", meta.manyToSlice(args.*[i])))
-        {
-            opts.try_print_links = false;
-            shift(args, i);
-            continue;
-        }
-        if (mem.testEqualMany(u8, "-h", meta.manyToSlice(args.*[i])) or
-            mem.testEqualMany(u8, "--help", meta.manyToSlice(args.*[i])))
-        {
-            file.noexcept.write(2,
-                \\-h, --help        print this text
-                \\-a, --all         print hidden entries
-                \\-L, --follow      print link destinations
-            ++ if (permit_switch_arrows)
-                \\-w, --wide        print fancy arrows
-                \\
-            else
-                \\
-            );
-            sys.exit(0);
-        }
-        if (mem.testEqualMany(u8, "--", meta.manyToSlice(args.*[i]))) {
-            break;
-        }
-        i += 1;
+    while (offset != array.count(allocator.*)) {
+        offset += printIfAvail(allocator.*, array.*, offset);
     }
-    return opts;
+    showResults(results.*);
+    done.* = false;
+}
+fn printHelpText(rc: u8) noreturn {
+    file.noexcept.write(2,
+        \\-h, --help        print this text
+        \\-a, --all         print hidden entries
+        \\-L, --follow      print link destinations
+    ++ if (permit_switch_arrows)
+        \\-w, --wide        print fancy arrows
+        \\
+    else
+        \\
+    );
+    sys.exit(rc);
 }
 inline fn getNames(args: *[][*:0]u8) Names {
     var names: Names = .{};
@@ -413,14 +365,23 @@ inline fn getNames(args: *[][*:0]u8) Names {
 pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     var done: bool = undefined;
-    var opts: Options = getOpts(&args);
-    var names: Names = getNames(&args);
     if (permit_switch_arrows) {
         Style.setArrows();
     }
+    // zig fmt: off
+    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){
+        .{ .decl = .all,    .short = "-a", .long = "--all",         .assign = .{ .boolean = true } },
+        .{ .decl = .follow, .short = "-L", .long = "--follow",      .assign = .{ .boolean = true } },
+        .{ .decl = .follow, .short = "+L", .long = "--no-follow",   .assign = .{ .boolean = false } },
+        .{ .decl = .wide,   .short = "-w", .long = "--wide",        .assign = .{ .boolean = true } },
+    });
+    // zig fmt: on
+
+    var names: Names = getNames(&args);
     if (names.count() == 0) {
         names.writeOne(".");
     }
+
     var allocator_0: BlockAllocator0 = try BlockAllocator0.init(address_space);
     var allocator_1: BlockAllocator1 = try BlockAllocator1.init(address_space);
     defer allocator_0.deinit(address_space);
@@ -439,9 +400,10 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
         }
         var link_buf: PrintArray = .{};
         var array: String1 = String1.init(&allocator_1);
+        var tid: u64 = undefined;
         defer array.deinit(&allocator_1);
         if (print_in_second_thread) {
-            _ = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &done, &allocator_1, &array });
+            tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
         }
         try array.appendMany(&allocator_1, arg);
         if (arg[arg.len - 1] != '/') {
@@ -449,14 +411,14 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
         } else {
             try array.appendMany(&allocator_1, "\n");
         }
-        try writeAndWalk(&opts, &allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &results, null, arg);
+        try writeAndWalk(&options, &allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &results, null, arg);
         if (print_in_second_thread) {
             done = true;
-            try time.sleep(.{}, .{ .nsec = 25 });
+            mem.monitor(bool, &done);
         } else {
             file.noexcept.write(2, array.readAll(allocator_1));
+            showResults(results);
         }
-        try showResults(results);
     }
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
