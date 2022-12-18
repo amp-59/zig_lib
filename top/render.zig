@@ -16,7 +16,6 @@ fn typeName(comptime T: type) []const u8 {
         return @typeName(T);
     }
 }
-
 pub fn AnyFormat(comptime Type: type) type {
     return switch (@typeInfo(Type)) {
         .Array => ArrayFormat(Type),
@@ -64,7 +63,6 @@ const RenderSpec = struct {
     options: Options,
     const Options = struct {};
 };
-// Array
 pub fn ArrayFormat(comptime Array: type) type {
     return struct {
         value: Array,
@@ -101,22 +99,15 @@ pub fn ArrayFormat(comptime Array: type) type {
 pub const BoolFormat = struct {
     value: bool,
     const Format = @This();
-    const max_len: u64 = @max(true_s.len, false_s.len);
-    const t_s: []const u8 = if (render_minimal) "t" else "true";
-    const f_s: []const u8 = if (render_minimal) "f" else "false";
-    const true_s = if (render_effects) "\x1b[1m" ++ t_s ++ "\x1b[0m" else t_s;
-    const false_s = if (render_effects) "\x1b[2m" ++ f_s ++ "\x1b[0m" else f_s;
-    const render_minimal: bool = false;
-    const render_effects: bool = false;
     pub fn formatWrite(format: Format, array: anytype) void {
         if (format.value) {
-            array.writeMany(true_s);
+            array.writeMany("true");
         } else {
-            array.writeMany(false_s);
+            array.writeMany("false");
         }
     }
     pub fn formatLength(format: Format) u64 {
-        return if (format.value) true_s.len else false_s.len;
+        return if (format.value) 4 else 5;
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
@@ -138,7 +129,7 @@ pub const TypeFormat = struct {
                             array.writeMany(field.name ++ ": ");
                             field_type_format.formatWrite(array);
                         } else {
-                            array.writeMany(field.name ++ ": " ++ typeName(field.field_type));
+                            array.writeMany(field.name ++ ": " ++ comptime typeName(field.field_type));
                         }
                         if (meta.defaultValue(field)) |default_value| {
                             const field_format: FieldFormat = .{ .value = default_value };
@@ -164,7 +155,7 @@ pub const TypeFormat = struct {
                                 const field_type_format: TypeFormat = .{ .value = field.field_type };
                                 field_type_format.formatWrite(array);
                             } else {
-                                array.writeMany(field.name ++ ": " ++ typeName(field.field_type));
+                                array.writeMany(field.name ++ ": " ++ comptime typeName(field.field_type));
                             }
                             array.writeMany(", ");
                         }
@@ -400,7 +391,7 @@ pub fn UnionFormat(comptime Union: type) type {
         pub fn formatWriteEnumField(format: Format, array: anytype) void {
             const enum_info: builtin.Type = @typeInfo(fields[0].field_type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            array.writeMany("bit_field(" ++ typeName(enum_info.Enum.tag_type) ++ "){ ");
+            array.writeMany("bit_field(" ++ comptime typeName(enum_info.Enum.tag_type) ++ "){ ");
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
@@ -458,30 +449,22 @@ pub fn UnionFormat(comptime Union: type) type {
                 return formatWriteEnumField(format, array);
             }
             if (fields.len == 0) {
-                array.writeMany((type_name ++ "{}"));
+                array.writeMany(type_name ++ "{}");
             } else {
-                array.writeMany((type_name ++ "{ "));
-                if (@typeInfo(Union).Union.tag_type) |tag_type| {
+                array.writeMany(type_name ++ "{ ");
+                if (comptime @typeInfo(Union).Union.tag_type) |tag_type| {
                     inline for (fields) |field| {
                         if (format.value == @field(tag_type, field.name)) {
                             const FieldFormat = AnyFormat(field.field_type);
                             const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            array.writeMany(("." ++ field.name ++ " = "));
+                            array.writeMany("." ++ field.name ++ " = ");
                             field_format.formatWrite(array);
                             array.writeMany(", ");
                         }
                     }
                     array.overwriteManyBack(" }");
                 } else {
-                    inline for (fields) |field| {
-                        const FieldFormat = AnyFormat(field.field_type);
-                        const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                        array.writeMany(("." ++ field.name ++ " = "));
-                        field_format.formatWrite(array);
-                        array.writeMany(" | ");
-                    }
-                    array.undefine(1);
-                    array.overwriteManyBack(" }");
+                    array.overwriteManyBack("}");
                 }
             }
         }
@@ -490,7 +473,7 @@ pub fn UnionFormat(comptime Union: type) type {
                 return format.formatLengthEnumField();
             }
             var len: u64 = type_name.len + 2;
-            if (@typeInfo(Union).Union.tag_type) |tag_type| {
+            if (comptime @typeInfo(Union).Union.tag_type) |tag_type| {
                 inline for (fields) |field| {
                     if (format.value == @field(tag_type, field.name)) {
                         const FieldFormat = AnyFormat(field.field_type);
@@ -498,13 +481,6 @@ pub fn UnionFormat(comptime Union: type) type {
                         len += 1 + field.name.len + 3 + field_format.formatLength() + 2;
                     }
                 }
-            } else {
-                inline for (fields) |field| {
-                    const FieldFormat = AnyFormat(field.field_type);
-                    const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                    len += 1 + field.name.len + 3 + field_format.formatLength() + 3;
-                }
-                len -= 1;
             }
             return len;
         }
@@ -631,7 +607,7 @@ pub fn PointerOneFormat(comptime Pointer: type) type {
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = (4 + typeName(Pointer).len + 3) + AnyFormat(child).max_len + 1;
         pub fn formatWrite(format: Format, array: anytype) void {
-            const type_name: []const u8 = typeName(Pointer);
+            const type_name: []const u8 = comptime typeName(Pointer);
             if (child == anyopaque) {
                 array.writeMany("@intToPtr(" ++ type_name ++ ", ");
                 const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };

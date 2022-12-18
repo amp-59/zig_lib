@@ -12,7 +12,7 @@ pub usingnamespace proc.start;
 
 pub const is_verbose: bool = true;
 
-const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .logging = mem.alloc_silent });
+const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .logging = mem.alloc_preset.silent });
 
 const try_multi_threaded: bool = false;
 

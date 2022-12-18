@@ -32,7 +32,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = mem.alloc_silent,
+    .logging = mem.alloc_preset.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 2,
@@ -46,7 +46,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = mem.alloc_silent,
+    .logging = mem.alloc_preset.silent,
 });
 const Allocator = Allocator0;
 const LinkedList = mem.XorLinkedListAdv(.{
