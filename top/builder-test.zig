@@ -12,7 +12,7 @@ pub usingnamespace proc.start;
 
 pub const is_verbose: bool = true;
 
-const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0 });
+const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .logging = mem.alloc_silent });
 
 const try_multi_threaded: bool = false;
 
@@ -47,7 +47,7 @@ fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8) !void {
         .root = pathname,
         .cmd = .run,
         .name = name,
-        .O = .Debug,
+        .O = builtin.zig.mode,
         .strip = true,
         .enable_cache = false,
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
@@ -70,7 +70,7 @@ fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]c
         .root = pathname,
         .cmd = .run,
         .name = name,
-        .O = .Debug,
+        .O = builtin.zig.mode,
         .strip = true,
         .enable_cache = false,
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
@@ -119,7 +119,6 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
             .{ vars, &allocator, "fmt_test", "top/fmt-test.zig" },
             .{ vars, &allocator, "list_test", "top/list-test.zig" },
         };
-
         inline for (arg_set) |args, i| {
             if (try_multi_threaded) {
                 var result: meta.Return(runTest) = undefined;
