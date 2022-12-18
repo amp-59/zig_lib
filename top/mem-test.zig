@@ -85,9 +85,7 @@ fn testAllocatedImplementation() !void {
         // unsound on systems where the program is mapped randomly in the
         // address space.
         .arena_index = 0,
-        .options = .{
-            .trace_state = true,
-        },
+        .options = .{ .trace_state = true },
         .logging = mem.alloc_preset.silent,
     });
     var address_space: mem.AddressSpace = .{};

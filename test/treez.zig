@@ -56,7 +56,7 @@ const BlockAllocator0 = mem.GenericArenaAllocator(.{
         .trace_state = false,
         .count_branches = false,
     },
-    .logging = mem.alloc_silent,
+    .logging = mem.alloc_preset.silent,
 });
 const BlockAllocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 32,
@@ -67,7 +67,7 @@ const BlockAllocator1 = mem.GenericArenaAllocator(.{
         .trace_state = false,
         .count_branches = false,
     },
-    .logging = mem.alloc_silent,
+    .logging = mem.alloc_preset.silent,
 });
 const String1 = BlockAllocator1.StructuredHolder(u8);
 const String0 = BlockAllocator0.StructuredHolder(u8);
