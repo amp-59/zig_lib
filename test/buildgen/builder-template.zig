@@ -11,30 +11,21 @@ const fmt_spec: mem.ReinterpretSpec = blk: {
     break :blk tmp;
 };
 
-const BuildCmdSpec = struct {
+pub const BuildCmdSpec = struct {
     max_len: u64 = 1024 * 1024,
+    max_args: u64 = 1024,
     Allocator: ?type = null,
 };
-
 pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
     return struct {
+        const Builder: type = @This();
+        const Allocator: type = spec.Allocator.?;
+        const String: type = Allocator.StructuredVectorLowAligned(u8, 8);
+        const StaticString: type = mem.StaticString(spec.max_len);
+        const Pointers: type = mem.StaticArray([*:0]u8, spec.max_args);
         cmd: enum { exe, lib, obj, fmt, ast_check, run },
         root: [:0]const u8,
         _: void,
-
-        const Builder = @This();
-        const Allocator = spec.Allocator.?;
-        const Path = Allocator.StructuredVectorWithSentinel(u8, 0);
-        const Paths = Allocator.StructuredVectorLowAligned(Path, 8);
-        const StringV = Allocator.StructuredHolderHolderLowAligned(u8, 8);
-        const String = Allocator.StructuredVectorLowAligned(u8, 8);
-        const PointersV = Allocator.StructuredHolder([*:0]u8);
-        const Pointers = Allocator.StructuredVector([*:0]u8);
-        const StaticString = mem.StaticString(8192);
-        const PointersS = mem.StaticArray([*:0]u8, 1024);
-        const ArgData = struct { data: String, ptrs: Pointers };
-        const ArgDataS = struct { data: StaticString, ptrs: PointersS };
-
         pub fn allocateShow(build: Builder, allocator: *Allocator) !void {
             var ad: BuildCmd.ArgData = try build.parcelDataV(&allocator);
             for (ad.ptrs.readAll()) |argp| {
@@ -52,8 +43,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
         fn genericExec(vars: [][*:0]u8, array: anytype) !u64 {
             const dir_fd: u64 = try file.find(vars, "zig");
             defer file.close(.{ .errors = null }, dir_fd);
-
-            var args: PointersS = .{};
+            var args: Pointers = .{};
             var idx: u64 = 0;
             for (array.readAll()) |c, i| {
                 if (c == 0) {

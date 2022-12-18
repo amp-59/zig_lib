@@ -59,16 +59,16 @@ const close_spec: file.CloseSpec = .{
     .logging = .{},
     .errors = null,
 };
-const ws: [24]u8 = .{' '} ** 24;
+const ws: [28]u8 = .{' '} ** 28;
 pub const input_open_spec: file.OpenSpec = .{ .read = true, .write = null };
 pub const input_close_spec: file.CloseSpec = .{};
 pub const OptionSpec = struct {
     /// Command line flag/switch
     string: ?[]const u8 = null,
     /// Simple argument type
-    args_type: ?type = null,
+    arg_type: ?type = null,
     /// Any argument type name; must be defined in builder-template.zig
-    args_type_name: ?[]const u8 = null,
+    arg_type_name: ?[]const u8 = null,
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?*const OptionSpec = null,
 };
@@ -127,7 +127,6 @@ const SimpleInverse = struct {
     pub const no_gc_sections_opt_spec: OptionSpec = .{ .string = "--no-gc-sections" };
     /// -fno-strip                   Do no omit debug symbols
     pub const no_strip_opt_spec: OptionSpec = .{ .string = "-fno-strip" };
-
     ///   -fno-soname                    Disable emitting a SONAME
     pub const no_soname_opt_spec: OptionSpec = .{ .string = "-fno-soname" };
 };
@@ -135,59 +134,60 @@ pub const ExecutableOptions = opaque {
     // Enable compiler REPL
     pub const watch_opt_spec: OptionSpec = .{ .string = "--watch" };
     // Enable or disable colored error messages
-    pub const color_opt_spec: OptionSpec = .{ .string = "--color", .args_type = enum { on, off, auto } };
+    pub const color_opt_spec: OptionSpec = .{ .string = "--color", .arg_type = enum { on, off, auto } };
     // (default) Output machine code
-    pub const emit_bin_opt_spec: OptionSpec = .{ .string = "-femit-bin", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_bin_opt_spec };
+    pub const emit_bin_opt_spec: OptionSpec = .{ .string = "-femit-bin", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_bin_opt_spec };
     // Output .s (assembly code)
-    pub const emit_asm_opt_spec: OptionSpec = .{ .string = "-femit-asm", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_asm_opt_spec };
+    pub const emit_asm_opt_spec: OptionSpec = .{ .string = "-femit-asm", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_asm_opt_spec };
     // Produce a .ll file with LLVM IR (requires LLVM extensions)
-    pub const emit_llvm_ir_opt_spec: OptionSpec = .{ .string = "-femit-llvm-ir", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_ir_opt_spec };
+    pub const emit_llvm_ir_opt_spec: OptionSpec = .{ .string = "-femit-llvm-ir", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_ir_opt_spec };
     // Produce a LLVM module as a .bc file (requires LLVM extensions)
-    pub const emit_llvm_bc_opt_spec: OptionSpec = .{ .string = "-femit-llvm-bc", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_bc_opt_spec };
+    pub const emit_llvm_bc_opt_spec: OptionSpec = .{ .string = "-femit-llvm-bc", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_bc_opt_spec };
     // Generate a C header file (.h)
-    pub const emit_h_opt_spec: OptionSpec = .{ .string = "-femit-h", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_h_opt_spec };
+    pub const emit_h_opt_spec: OptionSpec = .{ .string = "-femit-h", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_h_opt_spec };
     // Create a docs/ dir with html documentation
-    pub const emit_docs_opt_spec: OptionSpec = .{ .string = "-femit-docs", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_docs_opt_spec };
+    pub const emit_docs_opt_spec: OptionSpec = .{ .string = "-femit-docs", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_docs_opt_spec };
     // Write analysis JSON file with type information
-    pub const emit_analysis_opt_spec: OptionSpec = .{ .string = "-femit-analysis", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_analysis_opt_spec };
+    pub const emit_analysis_opt_spec: OptionSpec = .{ .string = "-femit-analysis", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_analysis_opt_spec };
     // (default) Produce an import .lib when building a Windows DLL
-    pub const emit_implib_opt_spec: OptionSpec = .{ .string = "-femit-implib", .args_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_implib_opt_spec };
+    pub const emit_implib_opt_spec: OptionSpec = .{ .string = "-femit-implib", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_implib_opt_spec };
     // Output the source of @import(pub const builtin_opt_spec: OptionSpec = .{ .string = "builtin" } ) then exit
     pub const show_builtin_opt_spec: OptionSpec = .{ .string = "--show-builtin" };
     // Override the local cache directory
-    pub const cache_dir_opt_spec: OptionSpec = .{ .string = "--cache-dir", .args_type = []const u8 };
+    pub const cache_dir_opt_spec: OptionSpec = .{ .string = "--cache-dir", .arg_type = []const u8 };
     // Override the global cache directory
-    pub const global_cache_dir_opt_spec: OptionSpec = .{ .string = "--global-cache-dir", .args_type = []const u8 };
+    pub const global_cache_dir_opt_spec: OptionSpec = .{ .string = "--global-cache-dir", .arg_type = []const u8 };
     // Override path to Zig installation lib directory
-    pub const zig_lib_dir_opt_spec: OptionSpec = .{ .string = "--zig-lib-dir", .args_type = []const u8 };
+    pub const zig_lib_dir_opt_spec: OptionSpec = .{ .string = "--zig-lib-dir", .arg_type = []const u8 };
     // Output to cache directory; print path to stdout
     pub const enable_cache_opt_spec: OptionSpec = .{ .string = "--enable-cache" };
     // Compile Options:
     ///  -target [name]            <arch><sub>-<os>-<abi> see the targets command
-    pub const target_opt_spec: OptionSpec = .{ .string = "-target", .args_type = []const u8 };
+    pub const target_opt_spec: OptionSpec = .{ .string = "-target", .arg_type = []const u8 };
     /// -mcpu [cpu]               Specify target CPU and feature set
-    pub const cpu_opt_spec: OptionSpec = .{ .string = "-mcpu", .args_type = []const u8 };
+    pub const cpu_opt_spec: OptionSpec = .{ .string = "-mcpu", .arg_type = []const u8 };
     ///  -mcmodel=[default|tiny|   Limit range of code and data virtual addresses
     ///            small|kernel|
     ///            medium|large]
-    pub const cmodel_opt_spec: OptionSpec = .{ .string = "-mcmodel", .args_type = enum { default, tiny, small, kernel, medium, large } };
+    pub const cmodel_opt_spec: OptionSpec = .{ .string = "-mcmodel", .arg_type = enum { default, tiny, small, kernel, medium, large } };
     /// -mred-zone                Force-enable the "red-zone"
     pub const red_zone_opt_spec: OptionSpec = .{ .string = "-mred-zone", .and_no = &SimpleInverse.no_red_zone_opt_spec };
     /// -fomit-frame-pointer      Omit the stack frame pointer
     pub const omit_frame_pointer_opt_spec: OptionSpec = .{ .string = "-fomit-frame-pointer", .and_no = &SimpleInverse.no_omit_frame_pointer_opt_spec };
     /// -mexec-model=[value]      (WASI) Execution model
-    pub const exec_model_opt_spec: OptionSpec = .{ .string = "-mexec-model", .args_type = []const u8 };
+    pub const exec_model_opt_spec: OptionSpec = .{ .string = "-mexec-model", .arg_type = []const u8 };
     /// --name [name]             Override root name (not a file path)
-    pub const name_opt_spec: OptionSpec = .{ .string = "--name", .args_type = []const u8 };
+    pub const name_opt_spec: OptionSpec = .{ .string = "--name", .arg_type = []const u8 };
     /// -O [mode]                 Choose what to optimize for
     ///    Debug                   (default) Optimizations off, safety on
     ///    ReleaseFast             Optimizations on, safety off
     ///    ReleaseSafe             Optimizations on, safety on
     ///    ReleaseSmall            Optimize for small binary, safety off
-    pub const O_opt_spec: OptionSpec = .{ .string = "-O", .args_type = enum { Debug, ReleaseSafe, ReleaseSmall, ReleaseFast } };
+    //pub const O_opt_spec: OptionSpec = .{ .string = "-O", .arg_type = enum { Debug, ReleaseSafe, ReleaseSmall, ReleaseFast } };
+    pub const O_opt_spec: OptionSpec = .{ .string = "-O", .arg_type = @TypeOf(builtin.zig.mode), .arg_type_name = "@TypeOf(builtin.zig.mode)" };
     // pub const pkg_end_opt_spec: OptionSpec = .{ .string = "--pkg-end" };
     /// --main-pkg-path           Set the directory of the root package
-    pub const main_pkg_path_opt_spec: OptionSpec = .{ .string = "--main-pkg-path", .args_type = []const u8 };
+    pub const main_pkg_path_opt_spec: OptionSpec = .{ .string = "--main-pkg-path", .arg_type = []const u8 };
     /// -fPIC                     Force-enable Position Independent Code
     pub const pic_opt_spec: OptionSpec = .{ .string = "-fPIC", .and_no = &SimpleInverse.no_pic_opt_spec };
     /// -fPIE                     Force-enable Position Independent Executable
@@ -230,17 +230,17 @@ pub const ExecutableOptions = opaque {
     ///   plan9                   Plan 9 from Bell Labs object format
     ///   hex  (planned feature)  Intel IHEX
     ///   raw  (planned feature)  Dump machine code directly
-    pub const fmt_opt_spec: OptionSpec = .{ .string = "-ofmt", .args_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw } };
+    pub const fmt_opt_spec: OptionSpec = .{ .string = "-ofmt", .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw } };
     /// -dirafter [dir]           Add directory to AFTER include search path
-    pub const dirafter_opt_spec: OptionSpec = .{ .string = "-dirafter", .args_type = []const u8 };
+    pub const dirafter_opt_spec: OptionSpec = .{ .string = "-dirafter", .arg_type = []const u8 };
     /// -isystem  [dir]           Add directory to SYSTEM include search path
-    pub const system_opt_spec: OptionSpec = .{ .string = "-isystem", .args_type = []const u8 };
+    pub const system_opt_spec: OptionSpec = .{ .string = "-isystem", .arg_type = []const u8 };
     /// -I[dir]                   Add directory to include search path
-    pub const include_opt_spec: OptionSpec = .{ .string = "-I", .args_type = []const u8 };
+    pub const include_opt_spec: OptionSpec = .{ .string = "-I", .arg_type = []const u8 };
     /// -D[macro]=[value]         Define C [macro] to [value] (1 if [value] omitted)
-    pub const macros_opt_spec: OptionSpec = .{ .args_type = types.Macros, .args_type_name = "Macros" };
+    pub const macros_opt_spec: OptionSpec = .{ .arg_type = types.Macros, .arg_type_name = "Macros" };
     /// --pkg-begin [name] [path] Make pkg available to import and push current pkg
-    pub const packages_opt_spec: OptionSpec = .{ .args_type = types.Packages, .args_type_name = "Packages" };
+    pub const packages_opt_spec: OptionSpec = .{ .arg_type = types.Packages, .arg_type_name = "Packages" };
     // --pkg-end                 Pop current pkg
     /// --libc [file]             Provide a file which specifies libc paths
     /// -cflags [flags] --        Set extra flags for the next positional C source files
@@ -256,7 +256,7 @@ pub const ExecutableOptions = opaque {
     ///   --version [ver]                Dynamic library semver
     ///   --entry [name]                 Set the entrypoint symbol name
     ///   -fsoname[=name]                Override the default SONAME value
-    pub const soname_opt_spec: OptionSpec = .{ .string = "-fsoname", .args_type = []const u8, .and_no = &SimpleInverse.no_soname_opt_spec };
+    pub const soname_opt_spec: OptionSpec = .{ .string = "-fsoname", .arg_type = []const u8, .and_no = &SimpleInverse.no_soname_opt_spec };
     ///   -fLLD                          Force using LLD as the linker
     ///   -fno-LLD                       Prevent using LLD as the linker
     ///   -fcompiler-rt                  Always include compiler-rt symbols in output
@@ -283,7 +283,7 @@ pub const ExecutableOptions = opaque {
     pub const gc_sections_opt_spec: OptionSpec = .{ .string = "--gc-sections", .and_no = &SimpleInverse.no_gc_sections_opt_spec };
     ///   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
     ///   --stack [size]                 Override default stack size
-    pub const stack_opt_spec: OptionSpec = .{ .string = "--stack", .args_type = u64 };
+    pub const stack_opt_spec: OptionSpec = .{ .string = "--stack", .arg_type = u64 };
     ///   --image-base [addr]            Set base address for executable image
     ///   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
     ///     -weak_library [lib]
@@ -341,7 +341,7 @@ pub const ExecutableOptions = opaque {
     ///     lazy                         Don't force all relocations to be processed on load
     ///     relro                        (default) Force all relocations to be read-only after processing
     ///     norelro                      Don't force all relocations to be read-only after processing
-    pub const z_opt_spec: OptionSpec = .{ .string = "-z", .args_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro } };
+    pub const z_opt_spec: OptionSpec = .{ .string = "-z", .arg_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro } };
 };
 /// These are the various states of definition of options. The 'how not' and
 /// 'maybe how not' do not have any examples, but it is easier to think about if
@@ -735,11 +735,11 @@ fn appendYesRequiredArg(allocator: *Allocator0, array: *String0, d: u64, what_sw
     try array.appendMany(allocator, "\\x00\", yes_arg, \"\\x00\" });\n");
 }
 pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
-    if (opt_spec.args_type) |args_type| {
-        if (@typeInfo(args_type) == .Optional) {
+    if (opt_spec.arg_type) |arg_type| {
+        if (@typeInfo(arg_type) == .Optional) {
             if (opt_spec.and_no) |inverse| {
-                if (inverse.*.args_type) |no_args_type| {
-                    if (@typeInfo(no_args_type) == .Optional) {
+                if (inverse.*.arg_type) |no_arg_type| {
+                    if (@typeInfo(no_arg_type) == .Optional) {
                         return .what_maybe_how_and_maybe_how_not;
                     } else {
                         return .what_maybe_how_and_how_not;
@@ -752,8 +752,8 @@ pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
             }
         } else {
             if (opt_spec.and_no) |inverse| {
-                if (inverse.*.args_type) |no_args_type| {
-                    if (@typeInfo(no_args_type) == .Optional) {
+                if (inverse.*.arg_type) |no_arg_type| {
+                    if (@typeInfo(no_arg_type) == .Optional) {
                         return .what_how_and_maybe_how_not;
                     } else {
                         return .what_how_and_how_not;
@@ -767,8 +767,8 @@ pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
         }
     } else {
         if (opt_spec.and_no) |inverse| {
-            if (inverse.*.args_type) |no_args_type| {
-                if (@typeInfo(no_args_type) == .Optional) {
+            if (inverse.*.arg_type) |no_arg_type| {
+                if (@typeInfo(no_arg_type) == .Optional) {
                     return .what_and_maybe_how_not;
                 } else {
                     return .what_and_how_not;
@@ -783,38 +783,40 @@ pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
 }
 pub fn getOptType(comptime opt_spec: OptionSpec) type {
     if (@as(?type, blk: {
-        if (opt_spec.args_type_name) |type_name| {
-            break :blk @field(types, type_name);
+        if (opt_spec.arg_type_name) |type_name| {
+            if (@hasDecl(types, type_name)) {
+                break :blk @field(types, type_name);
+            }
         }
-        break :blk opt_spec.args_type;
-    })) |args_type| {
-        if (@typeInfo(args_type) == .Optional) {
+        break :blk opt_spec.arg_type;
+    })) |arg_type| {
+        if (@typeInfo(arg_type) == .Optional) {
             if (opt_spec.and_no) |inverse| {
-                if (inverse.*.args_type) |no_args_type| {
-                    return ?union(enum) { yes: args_type, no: no_args_type };
+                if (inverse.*.arg_type) |no_arg_type| {
+                    return ?union(enum) { yes: arg_type, no: no_arg_type };
                 } else {
-                    return ?union(enum) { yes: args_type, no };
+                    return ?union(enum) { yes: arg_type, no };
                 }
             } else {
-                return ?union(enum) { explicit: args_type, default };
+                return ?union(enum) { explicit: arg_type, default };
             }
         } else {
             if (opt_spec.and_no) |inverse| {
-                if (inverse.*.args_type) |no_args_type| {
-                    return ?union(enum) { yes: args_type, no: no_args_type };
+                if (inverse.*.arg_type) |no_arg_type| {
+                    return ?union(enum) { yes: arg_type, no: no_arg_type };
                 } else {
-                    return ?union(enum) { yes: args_type, no };
+                    return ?union(enum) { yes: arg_type, no };
                 }
             } else {
-                return ?args_type;
+                return ?arg_type;
             }
         }
     } else {
         if (opt_spec.and_no) |inverse| {
-            if (inverse.*.args_type) |no_args_type| {
+            if (inverse.*.arg_type) |no_arg_type| {
                 return ?union(enum) {
                     yes,
-                    no: no_args_type,
+                    no: no_arg_type,
                 };
             } else {
                 return ?bool;
@@ -825,66 +827,66 @@ pub fn getOptType(comptime opt_spec: OptionSpec) type {
     }
 }
 pub fn appendWhat(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendIf(allocator, array, 8, what_field);
-    try append(allocator, array, 12, what_switch, is_dynamic);
-    try appendIfClose(allocator, array, 8);
+    try appendIf(allocator, array, 12, what_field);
+    try append(allocator, array, 16, what_switch, is_dynamic);
+    try appendIfClose(allocator, array, 12);
 }
 pub fn appendWhatHow(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendIfHow(allocator, array, 8, what_field);
-    try appendHow(allocator, array, 12, what_switch, is_dynamic);
-    try appendIfClose(allocator, array, 8);
+    try appendIfHow(allocator, array, 12, what_field);
+    try appendHow(allocator, array, 16, what_switch, is_dynamic);
+    try appendIfClose(allocator, array, 12);
 }
 pub fn appendWhatOrWhatNot(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendIfWhat(allocator, array, 8, what_field);
-    try appendIfOr(allocator, array, 12, what_field);
-    try appendYes(allocator, array, 16, what_switch, is_dynamic);
-    try appendElse(allocator, array, 12);
-    try appendNo(allocator, array, 16, what_not_switch, is_dynamic);
+    try appendIfWhat(allocator, array, 12, what_field);
+    try appendIfOr(allocator, array, 16, what_field);
+    try appendYes(allocator, array, 20, what_switch, is_dynamic);
+    try appendElse(allocator, array, 16);
+    try appendNo(allocator, array, 20, what_not_switch, is_dynamic);
+    try appendIfClose(allocator, array, 16);
     try appendIfClose(allocator, array, 12);
-    try appendIfClose(allocator, array, 8);
 }
 pub fn appendOptionalWhat(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendIfWhat(allocator, array, 8, what_field);
-    try appendSwitch(allocator, array, 12, what_field);
-    try appendYesOptionalProng(allocator, array, 16);
-    try appendYesOptionalIf(allocator, array, 20);
-    try appendYesOptionalArg(allocator, array, 24, what_switch, is_dynamic);
-    try appendElse(allocator, array, 20);
-    try appendYesOptionalNoArg(allocator, array, 24, what_switch, is_dynamic);
-    try appendIfClose(allocator, array, 20);
-    try appendProngClose(allocator, array, 16);
+    try appendIfWhat(allocator, array, 12, what_field);
+    try appendSwitch(allocator, array, 16, what_field);
+    try appendYesOptionalProng(allocator, array, 20);
+    try appendYesOptionalIf(allocator, array, 24);
+    try appendYesOptionalArg(allocator, array, 28, what_switch, is_dynamic);
+    try appendElse(allocator, array, 24);
+    try appendYesOptionalNoArg(allocator, array, 28, what_switch, is_dynamic);
+    try appendIfClose(allocator, array, 24);
+    try appendProngClose(allocator, array, 20);
 }
 pub fn appendNonOptionalWhat(allocator: *Allocator0, array: *String0, what_field: []const u8, what_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendIfWhat(allocator, array, 8, what_field);
-    try appendSwitch(allocator, array, 12, what_field);
-    try appendYesRequiredProng(allocator, array, 16);
-    try appendYesRequiredArg(allocator, array, 20, what_switch, is_dynamic);
-    try appendProngClose(allocator, array, 16);
+    try appendIfWhat(allocator, array, 12, what_field);
+    try appendSwitch(allocator, array, 16, what_field);
+    try appendYesRequiredProng(allocator, array, 20);
+    try appendYesRequiredArg(allocator, array, 24, what_switch, is_dynamic);
+    try appendProngClose(allocator, array, 20);
 }
 pub fn appendOptionalWhatNot(allocator: *Allocator0, array: *String0, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendNoOptionalProng(allocator, array, 16);
-    try appendNoOptionalIf(allocator, array, 20);
-    try appendNoOptionalArg(allocator, array, 24, what_not_switch, is_dynamic);
-    try appendElse(allocator, array, 20);
-    try appendNoOptionalNoArg(allocator, array, 24, what_not_switch, is_dynamic);
-    try appendIfClose(allocator, array, 20);
-    try appendProngClose(allocator, array, 16);
-    try appendSwitchClose(allocator, array, 12);
-    try appendIfClose(allocator, array, 8);
+    try appendNoOptionalProng(allocator, array, 20);
+    try appendNoOptionalIf(allocator, array, 24);
+    try appendNoOptionalArg(allocator, array, 28, what_not_switch, is_dynamic);
+    try appendElse(allocator, array, 24);
+    try appendNoOptionalNoArg(allocator, array, 28, what_not_switch, is_dynamic);
+    try appendIfClose(allocator, array, 24);
+    try appendProngClose(allocator, array, 20);
+    try appendSwitchClose(allocator, array, 16);
+    try appendIfClose(allocator, array, 12);
 }
 pub fn appendNonOptionalWhatNot(allocator: *Allocator0, array: *String0, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendNoRequiredProng(allocator, array, 16);
-    try appendNoRequiredArg(allocator, array, 20, what_not_switch, is_dynamic);
-    try appendProngClose(allocator, array, 16);
-    try appendSwitchClose(allocator, array, 12);
-    try appendIfClose(allocator, array, 8);
+    try appendNoRequiredProng(allocator, array, 20);
+    try appendNoRequiredArg(allocator, array, 24, what_not_switch, is_dynamic);
+    try appendProngClose(allocator, array, 20);
+    try appendSwitchClose(allocator, array, 16);
+    try appendIfClose(allocator, array, 12);
 }
 pub fn appendNoArgWhatNot(allocator: *Allocator0, array: *String0, what_not_switch: ?[]const u8, is_dynamic: bool) anyerror!void {
-    try appendNoProng(allocator, array, 16);
-    try appendNo(allocator, array, 20, what_not_switch, is_dynamic);
-    try appendProngClose(allocator, array, 16);
-    try appendSwitchClose(allocator, array, 12);
-    try appendIfClose(allocator, array, 8);
+    try appendNoProng(allocator, array, 20);
+    try appendNo(allocator, array, 24, what_not_switch, is_dynamic);
+    try appendProngClose(allocator, array, 20);
+    try appendSwitchClose(allocator, array, 16);
+    try appendIfClose(allocator, array, 12);
 }
 pub fn appendImportTypeName(allocator: *Allocator0, array: *String0, comptime imported_type: type) anyerror!void {
     const type_name: []const u8 = @typeName(imported_type);
@@ -900,14 +902,14 @@ pub fn appendStructMembers(allocator: *Allocator0, array: *String0) anyerror!voi
         const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
         const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
-        try array.appendMany(allocator, "    " ++ what_field ++ ": ");
+        try array.appendMany(allocator, "        " ++ what_field ++ ": ");
         switch (@typeInfo(field_type)) {
             .Bool => {
                 try array.appendMany(allocator, @typeName(field_type) ++ " = false");
             },
             .Optional => |optional_info| {
                 try array.appendOne(allocator, '?');
-                if (opt_spec.args_type_name) |type_name| {
+                if (opt_spec.arg_type_name) |type_name| {
                     try array.appendMany(allocator, type_name ++ " = null");
                 } else {
                     switch (@typeInfo(optional_info.child)) {
@@ -937,13 +939,13 @@ pub fn appendFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: b
         const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
         const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
         const what_switch: ?[]const u8 = opt_spec.string;
-        if (opt_spec.args_type) |args_type| {
-            if (@typeInfo(args_type) == .Optional) {
+        if (opt_spec.arg_type) |arg_type| {
+            if (@typeInfo(arg_type) == .Optional) {
                 if (opt_spec.and_no) |inverse| {
                     try appendOptionalWhat(allocator, array, what_field, what_switch, is_dynamic);
                     const what_not_switch: ?[]const u8 = inverse.*.string;
-                    if (inverse.*.args_type) |no_args_type| {
-                        if (@typeInfo(no_args_type) == .Optional) {
+                    if (inverse.*.arg_type) |no_arg_type| {
+                        if (@typeInfo(no_arg_type) == .Optional) {
                             try appendOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
                         } else {
                             try appendNonOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
@@ -958,8 +960,8 @@ pub fn appendFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: b
                 if (opt_spec.and_no) |inverse| {
                     const what_not_switch: ?[]const u8 = inverse.*.string;
                     try appendNonOptionalWhat(allocator, array, what_field, what_switch, is_dynamic);
-                    if (inverse.*.args_type) |no_args_type| {
-                        if (@typeInfo(no_args_type) == .Optional) {
+                    if (inverse.*.arg_type) |no_arg_type| {
+                        if (@typeInfo(no_arg_type) == .Optional) {
                             try appendOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
                         } else {
                             try appendNonOptionalWhatNot(allocator, array, what_not_switch, is_dynamic);
@@ -974,8 +976,8 @@ pub fn appendFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: b
         } else {
             if (opt_spec.and_no) |inverse| {
                 const what_not_switch: ?[]const u8 = inverse.*.string;
-                if (inverse.*.args_type) |no_args_type| {
-                    if (@typeInfo(no_args_type) == .Optional) {
+                if (inverse.*.arg_type) |no_arg_type| {
+                    if (@typeInfo(no_arg_type) == .Optional) {
                         unhandledSpecification(what_field, opt_spec);
                     } else {
                         unhandledSpecification(what_field, opt_spec);
@@ -1033,22 +1035,22 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     const guess_k: u64 = 470;
 
     const members_offset: u64 = try guessSourceOffset(template_src, members_loc_token, guess_i);
-    try array.appendMany(&allocator, template_src[0 .. members_offset - 4]);
+    try array.appendMany(&allocator, template_src[0 .. members_offset - 8]);
     try appendStructMembers(&allocator, &array);
 
     if (!never_dynamic) {
         const dynamic_src: [:0]const u8 = @embedFile("buildgen/dynamic-template.zig");
         const dynamic_fn_body_offset: u64 = try guessSourceOffset(dynamic_src, fn_body_loc_token, guess_j);
-        try appendIndent(&allocator, &array, 1, dynamic_src[0..dynamic_fn_body_offset]);
+        try appendIndent(&allocator, &array, 2, dynamic_src[0..dynamic_fn_body_offset]);
         try appendFunctionBody(&allocator, &array, true);
-        try array.appendMany(&allocator, dynamic_src[dynamic_fn_body_offset + fn_body_loc_token.len ..]);
+        try appendIndent(&allocator, &array, 2, dynamic_src[dynamic_fn_body_offset + fn_body_loc_token.len ..]);
     }
     if (!never_fixed) {
         const fixed_src: [:0]const u8 = @embedFile("buildgen/fixed-template.zig");
         const fixed_fn_body_offset: u64 = try guessSourceOffset(fixed_src, fn_body_loc_token, guess_k);
-        try appendIndent(&allocator, &array, 1, fixed_src[0..fixed_fn_body_offset]);
+        try appendIndent(&allocator, &array, 2, fixed_src[0..fixed_fn_body_offset]);
         try appendFunctionBody(&allocator, &array, false);
-        try appendIndent(&allocator, &array, 1, fixed_src[fixed_fn_body_offset + fn_body_loc_token.len ..]);
+        try appendIndent(&allocator, &array, 2, fixed_src[fixed_fn_body_offset + fn_body_loc_token.len ..]);
     }
     try array.appendMany(&allocator, template_src[members_offset + members_loc_token.len ..]);
     try array.appendMany(&allocator, types_src);

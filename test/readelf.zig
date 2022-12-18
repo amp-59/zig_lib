@@ -143,9 +143,8 @@ fn getLineOffsets(allocator_1: *SecondaryAllocator, many_8: Many8) !Many64 {
     }
     return .{ .impl = try allocator_1.convertHolderMany(Holder64I, Many64I, holder_64.impl) };
 }
-
-fn build(vars: [][*:0]u8, address_space: *mem.AddressSpace, src_path: [:0]const u8, so_path: [:0]const u8) !void {
-    var exe_order: builder.BuildCmd = .{
+fn build(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void {
+    var exe_order: builder.BuildCmd(.{}) = .{
         .root = src_path,
         .emit_bin = .{ .yes = so_path },
         .cmd = .lib,
@@ -153,24 +152,20 @@ fn build(vars: [][*:0]u8, address_space: *mem.AddressSpace, src_path: [:0]const 
         .dynamic = true,
         .pic = true,
     };
-    if (build_dynamic) {
-        _ = try exe_order.execute(address_space, vars);
-    } else {
-        _ = try exe_order.executeS(vars);
-    }
+    _ = try exe_order.exec(vars);
 }
-fn compile(vars: [][*:0]u8, address_space: *mem.AddressSpace, src_path: [:0]const u8, so_path: [:0]const u8) !void {
+fn compile(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void {
     const src_stat: file.Stat = file.stat(.{ .errors = null }, src_path);
     if (file.stat(.{}, so_path)) |so_stat| {
         if (so_stat.mtime.sec < src_stat.mtime.sec) {
-            try build(vars, address_space, src_path, so_path);
+            try build(vars, src_path, so_path);
         } else if (show_up_to_date) {
             showLibraryUpToDate(src_path, so_path, src_stat, so_stat);
         }
     } else |stat_err| {
         switch (stat_err) {
             error.NoSuchFileOrDirectory => {
-                try build(vars, address_space, src_path, so_path);
+                try build(vars, src_path, so_path);
             },
             else => {
                 return stat_err;
@@ -370,7 +365,7 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
         array.writeMany(");\n");
         array.writeMany("}");
         try file.write(fd, array.readAll());
-        try compile(vars, address_space, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
+        try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
         const dlfn: *fn () callconv(.C) u64 = try load(so_path.readAllWithSentinel(0), "__call", *fn () callconv(.C) u64);
         const result: u64 = @call(.auto, dlfn, .{});
         result_array.writeAny(mem.fmt_wr_spec, .{ '\n', fn_name, ": ", fmt.ud64(result), "\n\n" });
@@ -379,7 +374,7 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
             1 => {
                 var src_path: StaticPath = .{};
                 src_path.writeMany(builtin.lib_build_root ++ "/test/readelf/exe-test.zig");
-                try compile(vars, address_space, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
+                try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
                     file.unlink(unlink_spec, so_path.readAllWithSentinel(0));
                 }
@@ -396,7 +391,7 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
                 var src_path: StaticPath = .{};
                 src_path.writeMany(builtin.lib_build_root ++ "/");
                 src_path.writeMany(src_root);
-                try compile(vars, address_space, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
+                try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
                     file.unlink(unlink_spec, so_path.readAllWithSentinel(0));
                 }
@@ -412,7 +407,7 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
                 var src_path: StaticPath = .{};
                 src_path.writeMany(builtin.lib_build_root ++ "/");
                 src_path.writeMany(src_root);
-                try compile(vars, address_space, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
+                try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
                     file.unlink(unlink_spec, so_path.readAllWithSentinel(0));
                 }
@@ -431,7 +426,7 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
                 var src_path: StaticPath = .{};
                 src_path.writeMany(builtin.lib_build_root ++ "/");
                 src_path.writeMany(src_root);
-                try compile(vars, address_space, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
+                try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
                     file.unlink(unlink_spec, so_path.readAllWithSentinel(0));
                 }
