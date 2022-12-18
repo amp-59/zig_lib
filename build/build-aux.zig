@@ -23,6 +23,7 @@ const Context = opaque {
 pub fn main(builder: *build.Builder) !void {
     Context.builder = builder;
     Context.init();
+    // Minor test programs:
     _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .build_root = true, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{ .is_correct = true, .is_verbose = true, .strip = true });
@@ -33,13 +34,14 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "render_test", "top/render-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .build_root = true });
 
-    _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{});
-
     // More complete test programs:
-    _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
-    _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .is_correct = false, .is_verbose = false });
+    _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{ .is_correct = false, .is_verbose = false });
+    _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
+
+    // Other test programs:
+    _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{});
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
