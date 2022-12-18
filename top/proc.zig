@@ -3,6 +3,13 @@ const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
+pub const logging: builtin.Logging = .{
+    .Success = false,
+    .Error = false,
+    .Acquire = false,
+    .Release = false,
+};
+
 pub const clone_opts: CloneSpec.Options = .{
     .address_space = true,
     .thread = true,
@@ -416,7 +423,7 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
 }
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) spec.Unwrapped(.wait4) {
     var status: u64 = 0;
-    if (spec.call(.wait4, .{ WaitSpec.pid(id), @ptrToInt(&status), 0, 0 })) |pid| {
+    if (spec.call(.wait4, .{ WaitSpec.pid(id), @ptrToInt(&status), 0, 0, 0 })) |pid| {
         return pid;
     } else |wait_error| {
         if (spec.logging.Error) {
@@ -425,11 +432,11 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) spec.Unwrapped(.wait4)
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64) spec.Unwrapped(.wait4) {
+pub fn waitId(comptime spec: WaitIdSpec, id: u64) spec.Unwrapped(.waitid) {
     const idtype: IdType = spec.id_type;
     const flags: WaitId = spec.flags();
     var info: SignalInfo = undefined;
-    if (spec.call(.wait4, .{ idtype.val, id, @ptrToInt(&info), flags.val })) |pid| {
+    if (spec.call(.waitid, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 })) |pid| {
         return pid;
     } else |wait_error| {
         if (spec.logging.Error) {
@@ -798,7 +805,7 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
     }
     unreachable;
 }
-fn Args(comptime Fn: type) type {
+pub fn Args(comptime Fn: type) type {
     var fields: []const builtin.StructField = meta.empty;
     inline for (@typeInfo(Fn).Fn.args) |arg, i| {
         fields = fields ++ meta.parcel(meta.structField(arg.arg_type.?, lit.ud8[i], null));
