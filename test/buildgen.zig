@@ -6,6 +6,7 @@ const proc = srg.proc;
 const file = srg.file;
 const meta = srg.meta;
 const builtin = srg.builtin;
+const opts = @import("./opts.zig");
 
 pub usingnamespace proc.start;
 
@@ -13,12 +14,14 @@ const types = @import("buildgen/builder-types.zig");
 
 const template_src: [:0]const u8 = @embedFile("buildgen/builder-template.zig");
 const types_src: [:0]const u8 = @embedFile("buildgen/builder-types.zig");
+const dynamic_src: [:0]const u8 = @embedFile("buildgen/dynamic-template.zig");
+const fixed_src: [:0]const u8 = @embedFile("buildgen/fixed-template.zig");
 
 pub const is_verbose: bool = false;
 pub const is_correct: bool = true;
 
 const never_fixed: bool = false;
-const never_dynamic: bool = false;
+const never_dynamic: bool = true;
 
 const alloc_options = .{
     .count_allocations = false,
@@ -385,6 +388,9 @@ pub fn nullGuessWarning(comptime string: []const u8) !void {
     sys.noexcept.write(2, @ptrToInt(msg.ptr), msg.len);
 }
 pub fn guessSourceOffset(src: []const u8, comptime string: []const u8, guess: u64) !u64 {
+    if (guess > src.len) {
+        return guessSourceOffset(src, string, src.len / 2);
+    }
     if (mem.propagateSearch(string, src, guess)) |actual| {
         const delta = @max(actual, guess) - @min(actual, guess);
         if (delta != 0) {
@@ -411,6 +417,26 @@ pub fn guessSourceOffsetStatic(comptime src: []const u8, comptime string: []cons
             return actual;
         }
         @compileError("source does not contain string '" ++ string ++ "'");
+    }
+}
+pub fn appendIndent(allocator: *Allocator0, array: *String0, width: u64, values: []const String0.child) !void {
+    try array.increment(allocator, values.len * 6);
+    var l_idx: u64 = 0;
+    var r_idx: u64 = 0;
+    while (r_idx != values.len) : (r_idx += 1) {
+        if (values[r_idx] == '\n') {
+            while (r_idx + 1 != values.len and values[r_idx + 1] == '\n') r_idx += 1;
+            array.writeMany(ws[0 .. width * 4]);
+            array.writeMany(values[l_idx .. r_idx + 1]);
+            l_idx = r_idx + 1;
+        }
+    }
+    if (l_idx == 0) {
+        array.writeMany(ws[0 .. width * 4]);
+    }
+    array.writeMany(values[l_idx..r_idx]);
+    if (mem.testEqualManyBack(u8, "\n    ", array.readAll(allocator.*))) {
+        array.undefine(4);
     }
 }
 fn unhandledSpecification(what_field: []const u8, comptime opt_spec: OptionSpec) noreturn {
@@ -967,85 +993,35 @@ pub fn appendFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: b
 }
 
 const Options = struct {
-    generate_dynamic: bool = true,
-    generate_fixed: bool = true,
-    output_pathname: ?[:0]const u8 = null,
+    emit_dynamic: bool = true,
+    emit_fixed: bool = true,
+    output: ?[:0]const u8 = null,
 };
 
-inline fn getOpts(args: *[][*:0]u8) Options {
-    var options: Options = .{};
-    var i: u64 = 1;
-    const dynamic_s: []const u8 = "--dynamic";
-    const no_dynamic_s: []const u8 = "--no-dynamic";
-    const fixed_s: []const u8 = "--fixed";
-    const no_fixed_s: []const u8 = "--no-fixed";
-    const output_s: []const u8 = "--output=";
-    const o_s: []const u8 = "-o";
-    while (i != args.len) {
-        if (never_dynamic) {
-            if (mem.testEqualMany(u8, dynamic_s, meta.manyToSlice(args.*[i]))) {
-                options.generate_dynamic = true;
-                proc.shift(args, i);
-                continue;
-            }
-            if (mem.testEqualMany(u8, no_dynamic_s, meta.manyToSlice(args.*[i]))) {
-                options.generate_dynamic = false;
-                proc.shift(args, i);
-                continue;
-            }
-        }
-        if (never_fixed) {
-            if (mem.testEqualMany(u8, fixed_s, meta.manyToSlice(args.*[i]))) {
-                options.generate_fixed = true;
-                proc.shift(args, i);
-                continue;
-            }
-            if (mem.testEqualMany(u8, no_fixed_s, meta.manyToSlice(args.*[i]))) {
-                options.generate_fixed = false;
-                proc.shift(args, i);
-                continue;
-            }
-        }
-        if (mem.testEqualManyFront(u8, output_s, meta.manyToSlice(args.*[i]))) {
-            options.output_pathname = meta.manyToSlice(args.*[i])[output_s.len..];
-            proc.shift(args, i);
-            continue;
-        }
-        if (mem.testEqualManyFront(u8, o_s, meta.manyToSlice(args.*[i]))) {
-            options.output_pathname = meta.manyToSlice(args.*[i])[o_s.len..];
-            proc.shift(args, i);
-            continue;
-        }
-        if (mem.testEqualMany(u8, o_s, meta.manyToSlice(args.*[i]))) {
-            proc.shift(args, i);
-            options.output_pathname = meta.manyToSlice(args.*[i]);
-            proc.shift(args, i);
-            continue;
-        }
-        if (mem.testEqualMany(u8, "-h", meta.manyToSlice(args.*[i])) or
-            mem.testEqualMany(u8, "--help", meta.manyToSlice(args.*[i])))
-        {
-            file.noexcept.write(2,
-                \\-o, --output      output file pathname
-                \\--[no-]dynamic    whether to emit allocated command line
-                \\--[no-]fixed      whether to emit static command line
-                \\
-            );
-            sys.exit(0);
-        }
-        if (mem.testEqualMany(u8, "--", meta.manyToSlice(args.*[i]))) {
-            break;
-        }
-        i += 1;
-    }
-    return options;
-}
 pub fn main(args_in: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
-    const options: Options = getOpts(&args);
-    const members: []const u8 = "_: void,";
-    const dynamic_variant: []const u8 = "build.__dynamic;";
-    const static_variant: []const u8 = "build.__static;";
+
+    // zig fmt: off
+    const options: Options = opts.getOpts(Options, &args, &if (never_dynamic and never_fixed)
+        @compileError("???")
+    else if (!never_dynamic and !never_fixed) [_]opts.GenericOptions(Options){
+        .{ .decl = .output,         .short = "-o", .long = "--output",  .assign = .argument },
+        .{ .decl = .emit_dynamic,   .long = "--dynamic",                .assign = .{ .boolean = true } },
+        .{ .decl = .emit_dynamic,   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
+        .{ .decl = .emit_fixed,     .long = "--fixed",                  .assign = .{ .boolean = true } },
+        .{ .decl = .emit_fixed,     .long = "--no-fixed",               .assign = .{ .boolean = false } },
+    } else if (never_fixed) [_]opts.GenericOptions(Options){
+        .{ .decl = .output,         .short = "-o", .long = "--output",  .assign = .argument },
+        .{ .decl = .emit_dynamic,   .long = "--dynamic",                .assign = .{ .boolean = true } },
+        .{ .decl = .emit_dynamic,   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
+    } else if (never_dynamic) [_]opts.GenericOptions(Options){
+        .{ .decl = .output,     .short = "-o", .long = "--output",  .assign = .argument },
+        .{ .decl = .emit_fixed, .long = "--fixed",                  .assign = .{ .boolean = true } },
+        .{ .decl = .emit_fixed, .long = "--no-fixed",               .assign = .{ .boolean = false } },
+    });
+    // zig fmt: on
+    const members_loc_token: []const u8 = "_: void,";
+    const fn_body_loc_token: []const u8 = "_;";
 
     var address_space: mem.AddressSpace = .{};
     var allocator: Allocator0 = try Allocator0.init(&address_space);
@@ -1054,31 +1030,29 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     var array: String0 = String0.init(&allocator);
     defer array.deinit(&allocator);
 
-    const guess_i: u64 = 331;
-    const guess_j: u64 = 1769;
-    const guess_k: u64 = 2431;
+    const guess_i: u64 = 1201;
+    const guess_j: u64 = 599;
+    const guess_k: u64 = 470;
 
-    const members_offset: u64 = try guessSourceOffset(template_src, members, guess_i);
-    const v_function_offset: u64 = try guessSourceOffset(template_src, dynamic_variant, guess_j);
-    const s_function_offset: u64 = try guessSourceOffset(template_src, static_variant, guess_k);
+    const members_offset: u64 = try guessSourceOffset(template_src, members_loc_token, guess_i);
     try array.appendMany(&allocator, template_src[0 .. members_offset - 4]);
     try appendStructMembers(&allocator, &array);
-    try array.appendMany(&allocator, template_src[members_offset + members.len .. v_function_offset - 8]);
-    if (never_dynamic) {
-        try array.appendMany(&allocator, "        if (@compileError(\"dynamic-size compile commands disabled\")) {}");
-    } else {
+    if (!never_dynamic) {
+        const dynamic_fn_body_offset: u64 = try guessSourceOffset(dynamic_src, fn_body_loc_token, guess_j);
+        try array.appendMany(&allocator, dynamic_src[0..dynamic_fn_body_offset]);
         try appendFunctionBody(&allocator, &array, true);
+        try array.appendMany(&allocator, dynamic_src[dynamic_fn_body_offset + fn_body_loc_token.len ..]);
     }
-    try array.appendMany(&allocator, template_src[v_function_offset + dynamic_variant.len .. s_function_offset - 8]);
-    if (never_fixed) {
-        try array.appendMany(&allocator, "        if (@compileError(\"fixed-size compile commands disabled\")) {}");
-    } else {
+    if (!never_fixed) {
+        const fixed_fn_body_offset: u64 = try guessSourceOffset(fixed_src, fn_body_loc_token, guess_k);
+        try appendIndent(&allocator, &array, 1, fixed_src[0..fixed_fn_body_offset]);
         try appendFunctionBody(&allocator, &array, false);
+        try appendIndent(&allocator, &array, 1, fixed_src[fixed_fn_body_offset + fn_body_loc_token.len ..]);
     }
-    try array.appendMany(&allocator, template_src[s_function_offset + static_variant.len ..]);
+    try array.appendMany(&allocator, template_src[members_offset + members_loc_token.len ..]);
     try array.appendMany(&allocator, types_src);
 
-    if (options.output_pathname) |pathname| {
+    if (options.output) |pathname| {
         const builder_fd: u64 = try file.create(create_spec, pathname);
         defer file.close(close_spec, builder_fd);
         try file.write(builder_fd, array.readAll(allocator));
