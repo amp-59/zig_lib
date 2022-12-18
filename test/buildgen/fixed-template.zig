@@ -1,4 +1,4 @@
-fn buildStaticCommandString(build: BuildCmd) anyerror!StaticString {
+fn commandString(build: Builder) anyerror!StaticString {
     var array: StaticString = .{};
     array.writeMany("zig\x00");
     switch (build.cmd) {

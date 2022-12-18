@@ -11,7 +11,7 @@ const builtin = srg.builtin;
 pub fn GenericOptions(comptime Options: type) type {
     return struct {
         decl: builtin.DeclLiteral,
-        short: ?[]const u8,
+        short: ?[]const u8 = null,
         // short_prefix: []const u8 = "-",
         // short_anti_prefix: []const u8 = "+",
         long: ?[]const u8 = null,

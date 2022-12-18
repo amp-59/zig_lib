@@ -1,5 +1,5 @@
-fn buildAllocatedCommandString(build: BuildCmd, allocator: *Allocator) anyerror!String {
-    var array: String = String.init(allocator);
+fn allocateCommandString(build: Builder, allocator: *Allocator) !String {
+    var array: String = try String.init(allocator, 512);
     try array.appendMany(allocator, "zig\x00");
     switch (build.cmd) {
         .lib, .exe, .obj => {
@@ -14,5 +14,5 @@ fn buildAllocatedCommandString(build: BuildCmd, allocator: *Allocator) anyerror!
     }
     _;
     try array.appendAny(mem.ptr_wr_spec, allocator, .{ build.root, "\x00" });
-    return array.fix(allocator);
+    return array;
 }

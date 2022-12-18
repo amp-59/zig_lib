@@ -12,6 +12,8 @@ pub usingnamespace proc.start;
 
 pub const is_verbose: bool = true;
 
+const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0 });
+
 const try_multi_threaded: bool = false;
 
 fn globalCacheDir(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
@@ -41,7 +43,7 @@ const thread_spec = proc.CloneSpec{
 };
 fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8) !void {
     var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
-    var cmd: builder.BuildCmd = .{
+    var cmd: builder.BuildCmd(.{}) = .{
         .root = pathname,
         .cmd = .run,
         .name = name,
@@ -60,24 +62,72 @@ fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8) !void {
             .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
         },
     };
-    _ = try cmd.executeS(vars);
+    _ = try cmd.exec(vars);
 }
-pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
-    var arg_set = .{
-        .{ vars, "builtin_test", "top/builtin-test.zig" },
-        .{ vars, "elf_test", "test/readelf.zig" },
-        .{ vars, "mem_test", "top/mem-test.zig" },
-        .{ vars, "file_test", "top/file-test.zig" },
-        .{ vars, "fmt_test", "top/fmt-test.zig" },
-        .{ vars, "list_test", "top/list-test.zig" },
+fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) !void {
+    var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
+    var cmd: builder.BuildCmd(.{ .Allocator = Allocator }) = .{
+        .root = pathname,
+        .cmd = .run,
+        .name = name,
+        .O = .Debug,
+        .strip = true,
+        .enable_cache = false,
+        .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
+        .cache_dir = builtin.lib_build_root ++ "/zig-cache",
+        .stack = 8388608,
+        .macros = &.{
+            .{ .name = "is_verbose", .value = "0" },
+            .{ .name = "is_correct", .value = "1" },
+            .{ .name = "build_root", .value = "\"" ++ builtin.lib_build_root ++ "\"" },
+        },
+        .packages = &.{
+            .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
+        },
     };
-    inline for (arg_set) |args, i| {
-        if (try_multi_threaded) {
-            var result: meta.Return(runTest) = undefined;
+    _ = try cmd.allocateExec(vars, allocator);
+}
 
-            try proc.callClone(thread_spec, try thread.map(.{ .options = .{} }, i), &result, runTest, args);
-        } else {
-            try @call(.auto, runTest, args);
+pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
+    {
+        const arg_set = .{
+            .{ vars, "builtin_test", "top/builtin-test.zig" },
+            .{ vars, "elf_test", "test/readelf.zig" },
+            .{ vars, "mem_test", "top/mem-test.zig" },
+            .{ vars, "file_test", "top/file-test.zig" },
+            .{ vars, "fmt_test", "top/fmt-test.zig" },
+            .{ vars, "list_test", "top/list-test.zig" },
+        };
+        inline for (arg_set) |args, i| {
+            if (try_multi_threaded) {
+                var result: meta.Return(runTest) = undefined;
+
+                try proc.callClone(thread_spec, try thread.map(.{ .options = .{} }, i), &result, runTest, args);
+            } else {
+                try @call(.auto, runTest, args);
+            }
+        }
+    }
+    {
+        var address_space: mem.AddressSpace = .{};
+        var allocator: Allocator = try Allocator.init(&address_space);
+        const arg_set = .{
+            .{ vars, &allocator, "builtin_test", "top/builtin-test.zig" },
+            .{ vars, &allocator, "elf_test", "test/readelf.zig" },
+            .{ vars, &allocator, "mem_test", "top/mem-test.zig" },
+            .{ vars, &allocator, "file_test", "top/file-test.zig" },
+            .{ vars, &allocator, "fmt_test", "top/fmt-test.zig" },
+            .{ vars, &allocator, "list_test", "top/list-test.zig" },
+        };
+
+        inline for (arg_set) |args, i| {
+            if (try_multi_threaded) {
+                var result: meta.Return(runTest) = undefined;
+
+                try proc.callClone(thread_spec, try thread.map(.{ .options = .{} }, i), &result, runTest, args);
+            } else {
+                try @call(.auto, runTestTestUsingAllocator, args);
+            }
         }
     }
 }

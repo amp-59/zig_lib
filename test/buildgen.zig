@@ -14,14 +14,12 @@ const types = @import("buildgen/builder-types.zig");
 
 const template_src: [:0]const u8 = @embedFile("buildgen/builder-template.zig");
 const types_src: [:0]const u8 = @embedFile("buildgen/builder-types.zig");
-const dynamic_src: [:0]const u8 = @embedFile("buildgen/dynamic-template.zig");
-const fixed_src: [:0]const u8 = @embedFile("buildgen/fixed-template.zig");
 
 pub const is_verbose: bool = false;
 pub const is_correct: bool = true;
 
 const never_fixed: bool = false;
-const never_dynamic: bool = true;
+const never_dynamic: bool = false;
 
 const alloc_options = .{
     .count_allocations = false,
@@ -1030,20 +1028,23 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     var array: String0 = String0.init(&allocator);
     defer array.deinit(&allocator);
 
-    const guess_i: u64 = 1201;
+    const guess_i: u64 = 1220;
     const guess_j: u64 = 599;
     const guess_k: u64 = 470;
 
     const members_offset: u64 = try guessSourceOffset(template_src, members_loc_token, guess_i);
     try array.appendMany(&allocator, template_src[0 .. members_offset - 4]);
     try appendStructMembers(&allocator, &array);
+
     if (!never_dynamic) {
+        const dynamic_src: [:0]const u8 = @embedFile("buildgen/dynamic-template.zig");
         const dynamic_fn_body_offset: u64 = try guessSourceOffset(dynamic_src, fn_body_loc_token, guess_j);
-        try array.appendMany(&allocator, dynamic_src[0..dynamic_fn_body_offset]);
+        try appendIndent(&allocator, &array, 1, dynamic_src[0..dynamic_fn_body_offset]);
         try appendFunctionBody(&allocator, &array, true);
         try array.appendMany(&allocator, dynamic_src[dynamic_fn_body_offset + fn_body_loc_token.len ..]);
     }
     if (!never_fixed) {
+        const fixed_src: [:0]const u8 = @embedFile("buildgen/fixed-template.zig");
         const fixed_fn_body_offset: u64 = try guessSourceOffset(fixed_src, fn_body_loc_token, guess_k);
         try appendIndent(&allocator, &array, 1, fixed_src[0..fixed_fn_body_offset]);
         try appendFunctionBody(&allocator, &array, false);
