@@ -641,6 +641,52 @@ pub const Arena = extern struct {
         return .{ .index = AddressSpace.invert(@ptrToInt(&x)) };
     }
 };
+pub noinline fn monitor(comptime T: type, ptr: *volatile T) void {
+    const in: T = ptr.*;
+    switch (T) {
+        u8, bool => asm volatile (
+            \\lo:
+            \\mov %[done], %al
+            \\cmpb %al, %[in]
+            \\je lo
+            :
+            : [done] "p" (ptr),
+              [in] "r" (in),
+            : "al"
+        ),
+        u16 => asm volatile (
+            \\lo:
+            \\mov %[done], %ax
+            \\cmp %ax, %[in]
+            \\je lo
+            :
+            : [done] "p" (ptr),
+              [in] "r" (in),
+            : "ax"
+        ),
+        u32 => asm volatile (
+            \\lo:
+            \\movl %[done], %eax
+            \\cmpl %eax, %[in]
+            \\je lo
+            :
+            : [done] "p" (ptr),
+              [in] "r" (in),
+            : "eax"
+        ),
+        u64 => asm volatile (
+            \\lo:
+            \\movq %[done], %rax
+            \\cmpq %rax, %[in]
+            \\je lo
+            :
+            : [ptr] "p" (ptr),
+              [in] "r" (in),
+            : "rax"
+        ),
+        else => @compileError("???"),
+    }
+}
 pub fn acquire(comptime part_spec: PartSpec, address_space: anytype, index: u8) !void {
     if (if (part_spec.options.thread_safe)
         address_space.atomicAcquire(index)
@@ -1339,7 +1385,6 @@ pub fn readAfterFirstEqualMany(comptime T: type, sub_values: []const T, values: 
     }
     return null;
 }
-
 pub fn readBeforeLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
     if (indexOfLastEqualMany(T, sub_values, values)) |index| {
         return values[0..index];
@@ -1352,6 +1397,55 @@ pub fn readAfterLastEqualMany(comptime T: type, sub_values: []const T, values: [
     }
     return null;
 }
+pub fn readBeforeFirstEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    if (indexOfFirstEqualOne(T, value, values)) |index| {
+        return values[0..index];
+    }
+    return null;
+}
+pub fn readAfterFirstEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    if (indexOfFirstEqualOne(T, value, values)) |index| {
+        return values[index + 1 ..];
+    }
+    return null;
+}
+pub fn readBeforeLastEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    if (indexOfLastEqualOne(T, value, values)) |index| {
+        return values[0..index];
+    }
+    return null;
+}
+pub fn readAfterLastEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    if (indexOfLastEqualOne(T, value, values)) |index| {
+        return values[index + 1 ..];
+    }
+    return null;
+}
+pub fn readBeforeFirstEqualManyOrElse(comptime T: type, sub_values: []const T, values: []const T) []const T {
+    return readBeforeFirstEqualMany(T, sub_values, values) orelse values;
+}
+pub fn readAfterFirstEqualManyOrElse(comptime T: type, sub_values: []const T, values: []const T) []const T {
+    return readAfterFirstEqualMany(T, sub_values, values) orelse values;
+}
+pub fn readBeforeLastEqualManyOrElse(comptime T: type, sub_values: []const T, values: []const T) []const T {
+    return readBeforeLastEqualMany(T, sub_values, values) orelse values;
+}
+pub fn readAfterLastEqualManyOrElse(comptime T: type, sub_values: []const T, values: []const T) []const T {
+    return readAfterLastEqualMany(T, sub_values, values) orelse values;
+}
+pub fn readBeforeFirstEqualOneOrElse(comptime T: type, value: T, values: []const T) []const T {
+    return readBeforeFirstEqualOne(T, value, values) orelse values;
+}
+pub fn readAfterFirstEqualOneOrElse(comptime T: type, value: T, values: []const T) []const T {
+    return readAfterFirstEqualOne(T, value, values) orelse values;
+}
+pub fn readBeforeLastEqualOneOrElse(comptime T: type, value: T, values: []const T) []const T {
+    return readBeforeLastEqualOne(T, value, values) orelse values;
+}
+pub fn readAfterLastEqualOneOrElse(comptime T: type, value: T, values: []const T) []const T {
+    return readAfterLastEqualOne(T, value, values) orelse values;
+}
+
 pub fn propagateSearch(needle: anytype, haystack: anytype, index: u64) ?u64 {
     var spread: u64 = 0;
     while (spread != haystack.len) : (spread += 1) {
@@ -1369,4 +1463,18 @@ pub fn propagateSearch(needle: anytype, haystack: anytype, index: u64) ?u64 {
         }
     }
     return null;
+}
+pub fn orderedMatches(comptime T: type, arg1: []const T, arg2: []const T) u64 {
+    const j: bool = arg1.len < arg2.len;
+    const l_values: []const T = if (j) arg1 else arg2;
+    const r_values: []const T = if (j) arg2 else arg1;
+    var l_idx: u64 = 0;
+    var mats: u64 = 0;
+    while (l_idx + mats < l_values.len) : (l_idx += 1) {
+        var r_idx: u64 = 0;
+        while (r_idx != r_values.len) : (r_idx += 1) {
+            mats += builtin.int(u64, l_values[l_idx + mats] == r_values[r_idx]);
+        }
+    }
+    return mats;
 }
