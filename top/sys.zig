@@ -1607,6 +1607,9 @@ pub const unlink_errors: []const ErrorCode = &[_]ErrorCode{
 pub const wait_errors: []const ErrorCode = &[_]ErrorCode{
     .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
 };
+pub const waitid_errors: []const ErrorCode = &[_]ErrorCode{
+    .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
+};
 pub const write_errors: []const ErrorCode = &[_]ErrorCode{
     .AGAIN, .BADF, .DESTADDRREQ, .DQUOT, .FAULT, .FBIG, .INTR, .INVAL, .IO,
     .NOSPC, .PERM, .PIPE,
@@ -1894,7 +1897,8 @@ const config = opaque {
     const dup2: Config = .{ .tag = .dup2, .args = 2, .errors = dup_errors, .return_type = usize };
     const dup3: Config = .{ .tag = .dup3, .args = 3, .errors = dup_errors, .return_type = usize };
     const fork: Config = .{ .tag = .fork, .args = 0, .errors = fork_errors, .return_type = usize };
-    const wait4: Config = .{ .tag = .wait4, .args = 4, .errors = wait_errors, .return_type = void };
+    const wait4: Config = .{ .tag = .wait4, .args = 5, .errors = wait_errors, .return_type = void };
+    const waitid: Config = .{ .tag = .waitid, .args = 5, .errors = wait_errors, .return_type = void };
     const clone: Config = .{ .tag = .clone, .args = 5, .errors = clone_errors, .return_type = usize };
     const clone3: Config = .{ .tag = .clone3, .args = 2, .errors = clone_errors, .return_type = usize };
     const execve: Config = .{ .tag = .execve, .args = 3, .errors = execve_errors, .return_type = usize };
