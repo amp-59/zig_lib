@@ -207,6 +207,9 @@ pub fn StructuredAutomaticStreamView(comptime params: Parameters0) type {
         pub fn readOneBehind(array: *const Array) child {
             return reference.pointerOne(child, __behind(array, 1)).*;
         }
+        pub fn readOneAhead(array: *const Array) child {
+            return reference.pointerOne(child, array.impl.position()).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, read_count), read_count).*;
         }
@@ -336,6 +339,9 @@ pub fn StructuredAutomaticStreamVector(comptime params: Parameters0) type {
         }
         pub fn readOneBehind(array: *const Array) child {
             return reference.pointerOne(child, __behind(array, 1)).*;
+        }
+        pub fn readOneAhead(array: *const Array) child {
+            return reference.pointerOne(child, array.impl.position()).*;
         }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, read_count), read_count).*;
@@ -810,6 +816,9 @@ pub fn StructuredStaticStreamVector(comptime params: Parameters1) type {
         pub fn readOneBehind(array: *const Array) child {
             return reference.pointerOne(child, __behind(array, 1)).*;
         }
+        pub fn readOneAhead(array: *const Array) child {
+            return reference.pointerOne(child, array.impl.position()).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, read_count), read_count).*;
         }
@@ -1279,6 +1288,9 @@ pub fn UnstructuredStaticStreamVector(comptime params: Parameters2) type {
         pub fn readOneBehind(array: *const Array, comptime child: type) child {
             return reference.pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
         }
+        pub fn readOneAhead(array: *const Array, comptime child: type) child {
+            return reference.pointerOne(child, array.impl.position()).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
@@ -1696,6 +1708,9 @@ pub fn StructuredStreamVector(comptime params: Parameters3) type {
         pub fn readOneBehind(array: *const Array) child {
             return reference.pointerOne(child, __behind(array, 1)).*;
         }
+        pub fn readOneAhead(array: *const Array) child {
+            return reference.pointerOne(child, array.impl.position()).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, read_count), read_count).*;
         }
@@ -1928,6 +1943,9 @@ pub fn StructuredStreamView(comptime params: Parameters3) type {
         }
         pub fn readOneBehind(array: *const Array) child {
             return reference.pointerOne(child, __behind(array, 1)).*;
+        }
+        pub fn readOneAhead(array: *const Array) child {
+            return reference.pointerOne(child, array.impl.position()).*;
         }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, read_count), read_count).*;
@@ -2379,6 +2397,9 @@ pub fn UnstructuredStreamVector(comptime params: Parameters4) type {
         pub fn readOneBehind(array: *const Array, comptime child: type) child {
             return reference.pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
         }
+        pub fn readOneAhead(array: *const Array, comptime child: type) child {
+            return reference.pointerOne(child, array.impl.position()).*;
+        }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
@@ -2609,6 +2630,9 @@ pub fn UnstructuredStreamView(comptime params: Parameters4) type {
         }
         pub fn readOneBehind(array: *const Array, comptime child: type) child {
             return reference.pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
+        }
+        pub fn readOneAhead(array: *const Array, comptime child: type) child {
+            return reference.pointerOne(child, array.impl.position()).*;
         }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
@@ -3059,6 +3083,9 @@ pub fn StructuredStreamHolder(comptime params: Parameters5) type {
         }
         pub fn readOneBehind(array: *const Array) child {
             return reference.pointerOne(child, __behind(array, 1)).*;
+        }
+        pub fn readOneAhead(array: *const Array) child {
+            return reference.pointerOne(child, array.impl.position()).*;
         }
         pub fn readCountBehind(array: *const Array, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, read_count), read_count).*;
@@ -3517,6 +3544,9 @@ pub fn UnstructuredStreamHolder(comptime params: Parameters6) type {
         }
         pub fn readOneBehind(array: *const Array, comptime child: type) child {
             return reference.pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
+        }
+        pub fn readOneAhead(array: *const Array, comptime child: type) child {
+            return reference.pointerOne(child, array.impl.position()).*;
         }
         pub fn readCountBehind(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
