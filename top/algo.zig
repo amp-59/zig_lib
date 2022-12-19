@@ -8,7 +8,7 @@ fn packSingleApproxB(n_bytes: u64) u16 {
     const l_bytes_cls: u8 = builtin.lzcnt(u64, ~mach.shlx64(n_bytes, n_bytes_clz));
     return builtin.shl(u16, n_bytes_clz, 8) | l_bytes_cls;
 }
-fn unpackSingleApproxB(s_counts_l: u64) u64 {
+pub fn unpackSingleApproxB(s_counts_l: u64) u64 {
     const n_bytes_clz: u64 = mach.shrx64(s_counts_l, 8);
     return mach.shrx64(~mach.shrx64(lit.max_bit_u64, s_counts_l), n_bytes_clz);
 }

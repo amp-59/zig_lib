@@ -13019,7 +13019,7 @@ pub const specifications: [15]type = .{
     Specification13,
     Specification14,
 };
-const Mode = enum {
+const Mode = enum(u3) {
     read_write,
     read_write_push_pop,
     read_write_auto,

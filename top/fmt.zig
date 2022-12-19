@@ -1149,3 +1149,84 @@ pub fn typeName(comptime T: type) []const u8 {
         return type_name;
     }
 }
+fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
+    return switch (c) {
+        'a'...'z' => s ++ [1]u8{c - ('a' - 'A')},
+        else => s ++ [1]u8{c},
+    };
+}
+pub fn toInitialism(comptime names: []const []const u8) []const u8 {
+    var ret: []const u8 = meta.empty;
+    var state: bool = false;
+    for (names) |name| {
+        for (name) |c| {
+            if (c == '_' or c == '.') {
+                state = true;
+            } else if (state) {
+                ret = concatUpper(ret, c);
+                state = false;
+            }
+        }
+        state = true;
+    }
+    return toTitlecase(ret);
+}
+pub fn toCamelCases(comptime names: []const []const u8) []const u8 {
+    var ret: []const u8 = meta.empty;
+    var state: bool = false;
+    for (names) |name| {
+        for (name) |c| {
+            if (c == '_' or c == '.') {
+                state = true;
+            } else if (state) {
+                ret = concatUpper(ret, c);
+                state = false;
+            } else {
+                ret = ret ++ [1]u8{c};
+            }
+        }
+        state = true;
+    }
+    return ret;
+}
+pub fn toCamelCase(comptime name: []const u8) []const u8 {
+    var ret: []const u8 = meta.empty;
+    var state: bool = false;
+    for (name) |c| {
+        if (c == '_' or c == '.') {
+            state = true;
+        } else if (state) {
+            ret = concatUpper(ret, c);
+            state = false;
+        } else {
+            ret = ret ++ [1]u8{c};
+        }
+    }
+    return ret;
+}
+pub fn toTitlecases(comptime names: []const []const u8) []const u8 {
+    const rename: []const u8 = toCamelCases(names);
+    if (rename[0] >= 'a') {
+        return [1]u8{rename[0] - ('a' - 'A')} ++ rename[1..rename.len];
+    } else {
+        return rename;
+    }
+}
+pub fn toTitlecase(comptime name: []const u8) []const u8 {
+    const rename: []const u8 = toCamelCase(name);
+    if (rename[0] >= 'a') {
+        return [1]u8{rename[0] - ('a' - 'A')} ++ rename[1..rename.len];
+    } else {
+        return rename;
+    }
+}
+pub fn untitle(comptime name: []const u8) []const u8 {
+    switch (name[0]) {
+        'A'...'Z' => |c| {
+            return [1]u8{c + ('a' - 'A')} ++ name[1..];
+        },
+        else => {
+            return name;
+        },
+    }
+}

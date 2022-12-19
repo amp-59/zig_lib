@@ -1244,7 +1244,7 @@ pub const fmt = opaque {
     fn StaticString(comptime T: type, comptime radix: u16) type {
         return StaticStringMemo(maxSigFig(T, radix) + 1);
     }
-    pub fn ci(value: comptime_int) []const u8 {
+    pub fn ci(comptime value: comptime_int) []const u8 {
         if (value == 0) {
             return "0";
         }
