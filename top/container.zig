@@ -4824,7 +4824,7 @@ const Reinterpret = struct {
                 return lengthArgs(child, write_spec, any);
             }
             if (src_type_info == .Struct and src_type_info.Struct.decls.len == 0) {
-                return lengthFields(child, write_spec, src_type_info.Struct, any, 0);
+                return lengthFields(child, write_spec, any);
             }
         }
         if (comptime write_spec.composite.format) {
