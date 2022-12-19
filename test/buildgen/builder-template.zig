@@ -47,7 +47,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
             var idx: u64 = 0;
             for (array.readAll()) |c, i| {
                 if (c == 0) {
-                    args.writeOne(array.referAll()[idx..i :0].ptr);
+                    args.writeOne(array.referAllDefined()[idx..i :0].ptr);
                     idx = i + 1;
                 }
             }
@@ -55,7 +55,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
                 mem.set(args.impl.next(), @as(u64, 0), 1);
             }
             if (args.count() != 0) {
-                return proc.commandAt(.{}, dir_fd, "zig", args.referAll(), vars);
+                return proc.commandAt(.{}, dir_fd, "zig", args.referAllDefined(), vars);
             }
             return 0;
         }
