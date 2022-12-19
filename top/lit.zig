@@ -121,6 +121,10 @@ pub const fx = struct {
             pub const purple: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
             pub const aqua: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
             pub const max_white: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
+
+            pub fn shade(comptime index: u8) []const u8 {
+                return mcode(.{ 38, 5, 255 - @min(23, index) });
+            }
         };
         pub const bg = packed union {
             pub const black: []const u8 = "\x1b\x5b\x34\x30\x6d";
@@ -149,4 +153,11 @@ pub const fx = struct {
         pub const invisible: []const u8 = "\x1b\x5b\x38\x6d";
         pub const strikeout: []const u8 = "\x1b\x5b\x39\x6d";
     };
+    fn mcode(comptime args: anytype) []const u8 {
+        comptime var code: []const u8 = "\x1b[";
+        inline for (args) |arg| {
+            code = code ++ ud8[arg] ++ ";";
+        }
+        return code[0 .. code.len - 1] ++ "m";
+    }
 };

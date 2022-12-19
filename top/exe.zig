@@ -1554,13 +1554,12 @@ const debug = opaque {
     const PrintArray = mem.StaticString(4096);
 
     const about_elf_1_s: []const u8 = "elf:           ";
-    const about_elf_0_s: []const u8 = "elf-error:     ";
+    const about_elf_0_s: []const u8 = "elf-error:     offset=";
 
     fn badEndianError(hdr32: *Elf32_Ehdr) void {
         const offset: u64 = @ptrToInt(&hdr32.e_ident[EI.DATA]) - @ptrToInt(hdr32);
         var array: PrintArray = .{};
         array.writeMany(about_elf_1_s);
-        array.writeMany("offset=");
         array.writeFormat(fmt.ux64(offset));
         array.writeMany(", bad endian: ");
         array.writeFormat(fmt.ud64(hdr32.e_ident[EI.DATA]));
@@ -1569,7 +1568,7 @@ const debug = opaque {
     fn badVersionError(hdr32: *Elf32_Ehdr) void {
         const offset: u64 = @ptrToInt(&hdr32.e_ident[EI.VERSION]) - @ptrToInt(hdr32);
         var array: PrintArray = .{};
-        array.writeMany("offset=");
+        array.writeMany(about_elf_1_s);
         array.writeFormat(fmt.ux64(offset));
         array.writeMany(", bad version: ");
         array.writeFormat(fmt.ud64(hdr32.e_ident[EI.VERSION]));
