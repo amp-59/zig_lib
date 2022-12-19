@@ -18,8 +18,10 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .options = .{
         .require_filo_free = false,
-        .trace_state = true,
+        .trace_state = false,
         .count_allocations = true,
+        .count_branches = false,
+        .count_useful_bytes = false,
     },
     .logging = mem.alloc_preset.silent,
 });
