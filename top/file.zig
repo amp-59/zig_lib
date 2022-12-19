@@ -831,6 +831,9 @@ pub const noexcept = opaque {
     pub fn write(fd: u64, buf: []const u8) void {
         sys.noexcept.write(fd, @ptrToInt(buf.ptr), buf.len);
     }
+    pub fn read(fd: u64, buf: []u8) u64 {
+        return sys.noexcept.read(fd, @ptrToInt(buf.ptr), buf.len);
+    }
 };
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
