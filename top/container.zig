@@ -460,6 +460,10 @@ pub fn StructuredAutomaticStreamVector(comptime params: Parameters0) type {
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
@@ -640,6 +644,10 @@ pub fn StructuredAutomaticVector(comptime params: Parameters0) type {
         }
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
+        }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
@@ -969,6 +977,10 @@ pub fn StructuredStaticStreamVector(comptime params: Parameters1) type {
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
@@ -1156,6 +1168,10 @@ pub fn StructuredStaticVector(comptime params: Parameters1) type {
         }
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
+        }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
@@ -1474,6 +1490,10 @@ pub fn UnstructuredStaticStreamVector(comptime params: Parameters2) type {
         pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
@@ -1659,6 +1679,10 @@ pub fn UnstructuredStaticVector(comptime params: Parameters2) type {
         }
         pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
+        }
+        pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
@@ -1927,6 +1951,10 @@ pub fn StructuredStreamVector(comptime params: Parameters3) type {
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
@@ -1952,6 +1980,11 @@ pub fn StructuredStreamVector(comptime params: Parameters3) type {
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
@@ -2294,6 +2327,10 @@ pub fn StructuredVector(comptime params: Parameters3) type {
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
@@ -2319,6 +2356,11 @@ pub fn StructuredVector(comptime params: Parameters3) type {
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
@@ -2652,6 +2694,10 @@ pub fn UnstructuredStreamVector(comptime params: Parameters4) type {
         pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
@@ -2677,6 +2723,11 @@ pub fn UnstructuredStreamVector(comptime params: Parameters4) type {
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
@@ -3015,6 +3066,10 @@ pub fn UnstructuredVector(comptime params: Parameters4) type {
         pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
@@ -3040,6 +3095,11 @@ pub fn UnstructuredVector(comptime params: Parameters4) type {
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
@@ -3375,6 +3435,10 @@ pub fn StructuredStreamHolder(comptime params: Parameters5) type {
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
@@ -3400,6 +3464,11 @@ pub fn StructuredStreamHolder(comptime params: Parameters5) type {
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
@@ -3602,6 +3671,10 @@ pub fn StructuredHolder(comptime params: Parameters5) type {
         pub fn writeArgs(array: *Array, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
@@ -3627,6 +3700,11 @@ pub fn StructuredHolder(comptime params: Parameters5) type {
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             inline for (args) |arg| Reinterpret.writeAnyStructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyStructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
@@ -3869,6 +3947,10 @@ pub fn UnstructuredStreamHolder(comptime params: Parameters6) type {
         pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
@@ -3894,6 +3976,11 @@ pub fn UnstructuredStreamHolder(comptime params: Parameters6) type {
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
@@ -4094,6 +4181,10 @@ pub fn UnstructuredHolder(comptime params: Parameters6) type {
         pub fn writeArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) void {
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
         }
+        pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
+        }
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
@@ -4119,6 +4210,11 @@ pub fn UnstructuredHolder(comptime params: Parameters6) type {
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             inline for (args) |arg| Reinterpret.writeAnyUnstructured(child, write_spec, array, arg);
+        }
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+            try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
+            inline for (@typeInfo(@TypeOf(fields)).Struct.fields) |field|
+                Reinterpret.writeAnyUnstructured(child, write_spec, array, @field(fields, field.name));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
