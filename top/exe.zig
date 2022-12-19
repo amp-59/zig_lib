@@ -1,5 +1,6 @@
 const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
 const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
@@ -467,18 +468,26 @@ pub const Header = struct {
     shnum: u16,
     shstrndx: u16,
     pub fn parse(array: anytype) !Header {
-        const hdr64: Elf64_Ehdr = array.readOneAt(Elf64_Ehdr, .{ .bytes = 0 });
-        const hdr32: Elf32_Ehdr = array.readOneAt(Elf32_Ehdr, .{ .bytes = 0 });
+        const hdr64: *Elf64_Ehdr = array.referOneAt(Elf64_Ehdr, .{ .bytes = 0 });
+        const hdr32: *Elf32_Ehdr = array.referOneAt(Elf32_Ehdr, .{ .bytes = 0 });
         if (!mem.testEqualMany(u8, hdr32.e_ident[0..4], MAGIC)) {
             return error.InvalidElfMagic;
         }
         if (hdr32.e_ident[EI.VERSION] != 1) {
+            if (builtin.logging.Error) {
+                debug.badVersionError(hdr32);
+            }
             return error.InvalidElfVersion;
         }
         const endian: builtin.Endian = switch (hdr32.e_ident[EI.DATA]) {
             ELFDATA2LSB => .Little,
             ELFDATA2MSB => .Big,
-            else => return error.InvalidElfEndian,
+            else => {
+                if (builtin.logging.Error) {
+                    debug.badEndianError(hdr32);
+                }
+                return error.InvalidElfEndian;
+            },
         };
         const need_bswap: bool = endian != builtin.native_endian;
         const is_64: bool = switch (hdr32.e_ident[EI.CLASS]) {
@@ -1540,4 +1549,30 @@ pub const STV = enum(u2) {
     INTERNAL = 1,
     HIDDEN = 2,
     PROTECTED = 3,
+};
+const debug = opaque {
+    const PrintArray = mem.StaticString(4096);
+
+    const about_elf_1_s: []const u8 = "elf:           ";
+    const about_elf_0_s: []const u8 = "elf-error:     ";
+
+    fn badEndianError(hdr32: *Elf32_Ehdr) void {
+        const offset: u64 = @ptrToInt(&hdr32.e_ident[EI.DATA]) - @ptrToInt(hdr32);
+        var array: PrintArray = .{};
+        array.writeMany(about_elf_1_s);
+        array.writeMany("offset=");
+        array.writeFormat(fmt.ux64(offset));
+        array.writeMany(", bad endian: ");
+        array.writeFormat(fmt.ud64(hdr32.e_ident[EI.DATA]));
+        array.writeMany("\n");
+    }
+    fn badVersionError(hdr32: *Elf32_Ehdr) void {
+        const offset: u64 = @ptrToInt(&hdr32.e_ident[EI.VERSION]) - @ptrToInt(hdr32);
+        var array: PrintArray = .{};
+        array.writeMany("offset=");
+        array.writeFormat(fmt.ux64(offset));
+        array.writeMany(", bad version: ");
+        array.writeFormat(fmt.ud64(hdr32.e_ident[EI.VERSION]));
+        array.writeMany("\n");
+    }
 };
