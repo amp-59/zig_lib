@@ -821,14 +821,14 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
             const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
             const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
-            const lower_s_count: u64 = lower_s.count();
-            const upper_s_count: u64 = upper_s.count();
+            const lower_s_count: u64 = lower_s.len();
+            const upper_s_count: u64 = upper_s.len();
             for (lower_s.readAll()) |v, i| {
                 if (v != upper_s.readOneAt(i)) {
                     return (upper_s_count - lower_s_count) + i + 1 + (lower_s_count - i) + 2 + (upper_s_count - i) + 1;
                 }
             }
-            return (upper_s_count - lower_s_count) + lower_s.count() + 4;
+            return (upper_s_count - lower_s_count) + lower_s.len() + 4;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
@@ -836,8 +836,8 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
             const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
             var i: u64 = 0;
-            const lower_s_count: u64 = lower_s.count();
-            const upper_s_count: u64 = upper_s.count();
+            const lower_s_count: u64 = lower_s.len();
+            const upper_s_count: u64 = upper_s.len();
             while (i != lower_s_count) : (i += 1) {
                 if (upper_s.readOneAt(i) != lower_s.readOneAt(i)) {
                     break;
@@ -957,8 +957,8 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
             const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
             var i: u64 = 0;
-            const old_lower_s_count: u64 = old_lower_s.count();
-            const old_upper_s_count: u64 = old_upper_s.count();
+            const old_lower_s_count: u64 = old_lower_s.len();
+            const old_upper_s_count: u64 = old_upper_s.len();
             while (i != old_lower_s_count) : (i += 1) {
                 if (old_upper_s.readOneAt(i) != old_lower_s.readOneAt(i)) {
                     break;
@@ -980,8 +980,8 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             array.writeOne('}');
             array.writeMany(" => ");
             i = 0;
-            const new_lower_s_count: u64 = new_lower_s.count();
-            const new_upper_s_count: u64 = new_upper_s.count();
+            const new_lower_s_count: u64 = new_lower_s.len();
+            const new_upper_s_count: u64 = new_upper_s.len();
             while (i != new_lower_s_count) : (i += 1) {
                 if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
                     break;
@@ -1009,8 +1009,8 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
             const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
             var i: u64 = 0;
-            const old_lower_s_count: u64 = old_lower_s.count();
-            const old_upper_s_count: u64 = old_upper_s.count();
+            const old_lower_s_count: u64 = old_lower_s.len();
+            const old_upper_s_count: u64 = old_upper_s.len();
             len += old_upper_s_count - old_lower_s_count;
             if (format.old_lower != format.new_lower) {
                 len += lower_del_fmt.formatLengthDelta();
@@ -1027,8 +1027,8 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
                 }
             }
             i = 0;
-            const new_lower_s_count: u64 = new_lower_s.count();
-            const new_upper_s_count: u64 = new_upper_s.count();
+            const new_lower_s_count: u64 = new_lower_s.len();
+            const new_upper_s_count: u64 = new_upper_s.len();
             len += new_upper_s_count - new_lower_s_count;
             while (i != new_lower_s_count) : (i += 1) {
                 if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
