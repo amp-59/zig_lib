@@ -588,12 +588,6 @@ pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Exception!void {
     }
 }
 pub fn intToPtr(comptime Pointer: type, address: u64) Pointer {
-    if (is_correct) {
-        const alignment: u64 = @typeInfo(Pointer).Pointer.alignment;
-        if (address & (alignment -% 1) != 0) {
-            debug.incorrectAlignmentFault(Pointer, address, alignment);
-        }
-    }
     return @intToPtr(Pointer, address);
 }
 pub const static = opaque {

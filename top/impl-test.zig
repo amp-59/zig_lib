@@ -25,6 +25,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     },
     .logging = mem.alloc_preset.silent,
 });
+
 const PrintArray = mem.StructuredAutomaticVector(u8, null, 4096, 1, .{});
 const ModeSet = enum { ReadWritePushPop, ReadWrite, Both };
 const StructureSet = enum { Structured, Unstructured, Both };

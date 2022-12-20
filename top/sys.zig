@@ -1776,13 +1776,19 @@ pub const Config = struct {
     errors: ?[]const ErrorCode,
     return_type: type,
 
-    pub fn Wrapped(comptime fn_conf: Config) type {
+    /// Returns translation of configured system error codes--if any--to Zig
+    /// error set.
+    pub fn Errors(comptime fn_conf: Config) type {
         if (fn_conf.errors) |errors| {
-            return ZigError(errors)!fn_conf.return_type;
-        } else {
-            return error{}!fn_conf.return_type;
+            return ZigError(errors);
         }
+        return error{};
     }
+    /// Always require try.
+    pub fn Wrapped(comptime fn_conf: Config) type {
+        return fn_conf.Errors()!fn_conf.return_type;
+    }
+    /// No try if no error.
     pub fn Unwrapped(comptime fn_conf: Config) type {
         if (fn_conf.errors) |errors| {
             return ZigError(errors)!fn_conf.return_type;
@@ -1790,6 +1796,9 @@ pub const Config = struct {
             return fn_conf.return_type;
         }
     }
+    /// Replace the return value type with another type. Useful for functions
+    /// which interface with system calls and use the result but discard or
+    /// return something else to the user.
     pub fn Replaced(comptime fn_conf: Config, comptime T: type) type {
         if (fn_conf.errors) |errors| {
             return ZigError(errors)!T;
@@ -1839,12 +1848,22 @@ pub fn FunctionInterfaceSpec(comptime Specification: type) type {
         fn configure(comptime spec: Specification, comptime function: Function) Config {
             return Config.reconfigure(default(function), spec.errors, spec.return_type);
         }
+        /// Returns translation of configured system error codes--if any--to Zig
+        /// error set.
+        pub fn Errors(comptime spec: Specification, comptime function: Function) type {
+            return Config.Errors(configure(spec, function));
+        }
+        /// Always require try.
         pub fn Wrapped(comptime spec: Specification, comptime function: Function) type {
             return Config.Wrapped(configure(spec, function));
         }
+        /// No try if no error.
         pub fn Unwrapped(comptime spec: Specification, comptime function: Function) type {
             return Config.Unwrapped(configure(spec, function));
         }
+        /// Replace the return value type with another type. Useful for functions
+        /// which interface with system calls and use the result but discard or
+        /// return something else to the user.
         pub fn Replaced(comptime spec: Specification, comptime function: Function, comptime T: type) type {
             return Config.Replaced(configure(spec, function), T);
         }
