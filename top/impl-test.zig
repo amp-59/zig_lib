@@ -25,14 +25,13 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     },
     .logging = mem.alloc_preset.silent,
 });
-const PrintArray = mem.StructuredAutomaticVector(.{ .child = u8, .count = 4096 });
+const PrintArray = mem.StructuredAutomaticVector(u8, null, 4096, 1, .{});
 const ModeSet = enum { ReadWritePushPop, ReadWrite, Both };
 const StructureSet = enum { Structured, Unstructured, Both };
 const Dummy = mem.ReadWriteStructuredUnitAlignment(.{ .child = u8, .low_alignment = 1 });
 const Random = file.DeviceRandomBytes(4096);
 
-const logging = if (is_verbose) (.{}) else null;
-const test_types: []const type = &[_]type{ u8, u16, u32, u64, u128 };
+const test_types: []const type = &[_]type{ u16, u32, u64, u128 };
 const static_impl_types: []const type = manifestStatic(test_types);
 const dynamic_impl_types: []const type = manifestDynamic(test_types);
 const parametric_impl_types: []const type = manifestParametric(test_types);

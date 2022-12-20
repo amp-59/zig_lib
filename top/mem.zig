@@ -1000,11 +1000,7 @@ pub fn set(dst_addr: u64, src_value: anytype, count: u64) void {
     for (@intToPtr([*]@TypeOf(src_value), dst_addr)[0..count]) |*dst_value| dst_value.* = src_value;
 }
 pub fn StaticArray(comptime child: type, comptime count: u64) type {
-    return mem.StructuredAutomaticVector(.{
-        .child = child,
-        .count = count,
-        .low_alignment = @alignOf(child),
-    });
+    return mem.StructuredAutomaticVector(child, null, count, @alignOf(child), .{});
 }
 pub fn StaticString(comptime count: u64) type {
     return StaticArray(u8, count);
@@ -1160,6 +1156,18 @@ pub const AbstractSpec = union(enum) {
     // yield the name of one of the category fields. In contexts where multiple
     // names from the same substructure present, these should form a union or
     // enumeration instead of individual boolean options.
+    comptime {
+        for (getMutuallyExclusivePivot(Technique.mutex)) |name| {
+            if (!@hasField(Technique, name)) {
+                @compileError(name);
+            }
+        }
+        for (getMutuallyExclusivePivot(Fields.mutex)) |name| {
+            if (!@hasField(Fields, name)) {
+                @compileError(name);
+            }
+        }
+    }
     pub const Fields = union {
         automatic_storage: struct {
             ss_word: bool,
@@ -1199,39 +1207,6 @@ pub const AbstractSpec = union(enum) {
             },
         };
     };
-    fn getMutuallyExclusivePivot(comptime any: anytype) []const []const u8 {
-        switch (@typeInfo(@TypeOf(any))) {
-            .Struct => |struct_info| {
-                var names: []const []const u8 = meta.empty;
-                for (struct_info.fields) |field| {
-                    for (getMutuallyExclusivePivot(@field(any, field.name))) |name| {
-                        if (struct_info.is_tuple) {
-                            names = meta.parcel(@as([]const u8, name));
-                        } else {
-                            names = meta.parcel(@as([]const u8, name ++ "_" ++ field.name));
-                        }
-                    }
-                }
-                return names;
-            },
-            .EnumLiteral => {
-                return meta.parcel(@as([]const u8, @tagName(any)));
-            },
-            else => @compileError(@typeName(@TypeOf(any))),
-        }
-    }
-    comptime {
-        for (getMutuallyExclusivePivot(Technique.mutex)) |name| {
-            if (!@hasField(Technique, name)) {
-                @compileError(name);
-            }
-        }
-        for (getMutuallyExclusivePivot(Fields.mutex)) |name| {
-            if (!@hasField(Fields, name)) {
-                @compileError(name);
-            }
-        }
-    }
 
     /// Require the field be optional in the input parameters
     fn in(comptime T: type) type {
@@ -1301,6 +1276,28 @@ pub const AbstractSpec = union(enum) {
             super_alignment: S,
             disjunct_alignment: S,
         };
+    }
+
+    fn getMutuallyExclusivePivot(comptime any: anytype) []const []const u8 {
+        switch (@typeInfo(@TypeOf(any))) {
+            .Struct => |struct_info| {
+                var names: []const []const u8 = meta.empty;
+                for (struct_info.fields) |field| {
+                    for (getMutuallyExclusivePivot(@field(any, field.name))) |name| {
+                        if (struct_info.is_tuple) {
+                            names = meta.parcel(@as([]const u8, name));
+                        } else {
+                            names = meta.parcel(@as([]const u8, name ++ "_" ++ field.name));
+                        }
+                    }
+                }
+                return names;
+            },
+            .EnumLiteral => {
+                return meta.parcel(@as([]const u8, @tagName(any)));
+            },
+            else => @compileError(@typeName(@TypeOf(any))),
+        }
     }
 };
 

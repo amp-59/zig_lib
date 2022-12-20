@@ -73,7 +73,7 @@ fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.advise(advise_spec, addr, len));
     try meta.wrap(mem.unmap(unmap_spec, addr, len));
 }
-fn view(comptime s: []const u8) mem.StructuredAutomaticView(.{ .child = u8, .count = s.len }) {
+fn view(comptime s: []const u8) mem.StructuredAutomaticView(u8, null, s.len, null, .{}) {
     return .{ .impl = .{ .auto = @ptrCast(*const [s.len]u8, s.ptr).* } };
 }
 
@@ -131,6 +131,7 @@ fn testAllocatedImplementation() !void {
     }
     try testing.expectEqualMany(u8, array_ab.readAll(), array_b.readAll());
 }
+
 fn testAutomaticImplementation() !void {
     {
         const array = view("Hello, World!12340x1fee1dead");
@@ -139,7 +140,7 @@ fn testAutomaticImplementation() !void {
         try builtin.expectEqual(u64, array.readAll().len, array.impl.bytes());
     }
     {
-        const StaticString = mem.StructuredAutomaticStreamVector(.{ .child = u8, .count = 256 });
+        const StaticString = mem.StructuredAutomaticStreamVector(u8, null, 256, 1, .{});
         var array: StaticString = .{};
         array.writeMany("Hello, world!");
         array.writeCount(4, "1234".*);
@@ -151,7 +152,7 @@ fn testAutomaticImplementation() !void {
         try testing.expectEqualMany(u8, "Hello, ", array.readManyBehind("Hello, ".len));
     }
     {
-        const VectorBool = mem.StructuredAutomaticStreamVector(.{ .child = bool, .count = 256 });
+        const VectorBool = mem.StructuredAutomaticStreamVector(bool, null, 256, 1, .{});
         var bit_set: VectorBool = .{};
         bit_set.writeCount(4, .{ true, false, false, true });
         try testing.expectEqualMany(bool, bit_set.readAll(), &.{ true, false, false, true });
