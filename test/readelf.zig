@@ -21,9 +21,9 @@ const SecondaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 32 });
 
 const Random = file.DeviceRandomBytes(4096);
 const PrintArray = mem.StaticString(4096);
-const StaticPath = mem.StructuredAutomaticVector(.{ .child = u8, .count = 4096, .sentinel = &@as(u8, 0) });
+const StaticPath = mem.StructuredAutomaticVector(u8, &@as(u8, 0), 4096, 1, .{});
 
-const Mapping = SecondaryAllocator.UnstructuredStreamVector(64);
+const Mapping = SecondaryAllocator.UnstructuredStreamVector(64, 64);
 const MappingI = @typeInfo(Mapping).Struct.fields[0].field_type;
 const Holder64 = SecondaryAllocator.StructuredHolder(u64);
 const Holder64I = @typeInfo(Holder64).Struct.fields[0].field_type;
@@ -272,8 +272,8 @@ fn mload(header_array: anytype, fn_name: [:0]const u8, comptime T: type) !T {
     if (show_elf_header) {
         showHeader(elf_header);
     }
-    const vaddr: u64 = try getSectionAddress(header_array, fn_name, elf_header);
     const offset: u64 = try getProgramOffset(header_array, elf_header);
+    const vaddr: u64 = try getSectionAddress(header_array, fn_name, elf_header);
     return @intToPtr(T, header_array.impl.start() +% vaddr +% offset);
 }
 fn fload(fd: u64, fn_name: [:0]const u8, comptime T: type) !T {
