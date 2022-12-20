@@ -582,563 +582,383 @@ const Branches = struct {
 };
 fn GenericConfiguration(comptime Allocator: type) type {
     return opaque {
-        pub fn StructuredStaticView(comptime child: type, comptime count: u64) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticView(params);
+        pub fn StructuredStaticViewWithSentinel(comptime child: type, comptime sentinel: child, comptime count: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticView(child, &sentinel, count, @alignOf(child), Allocator, options);
+        }
+        pub fn StructuredStaticViewLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime count: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticView(child, &sentinel, count, low_alignment, Allocator, options);
         }
         pub fn StructuredStaticViewLowAligned(comptime child: type, comptime count: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticView(params);
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticView(child, null, count, low_alignment, Allocator, options);
         }
-        pub fn StructuredStaticViewWithSentinel(comptime child: type, comptime count: u64, comptime sentinel: child) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticView(params);
+        pub fn StructuredStaticView(comptime child: type, comptime count: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticView(child, null, count, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredStaticViewLowAlignedWithSentinel(comptime child: type, comptime count: u64, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticView(params);
+        pub fn StructuredStaticStreamVectorWithSentinel(comptime child: type, comptime sentinel: child, comptime count: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticStreamVector(child, &sentinel, count, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredStaticStreamVector(comptime child: type, comptime count: u64) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticStreamVector(params);
+        pub fn StructuredStaticStreamVectorLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime count: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticStreamVector(child, &sentinel, count, low_alignment, Allocator, options);
         }
         pub fn StructuredStaticStreamVectorLowAligned(comptime child: type, comptime count: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticStreamVector(params);
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticStreamVector(child, null, count, low_alignment, Allocator, options);
         }
-        pub fn StructuredStaticStreamVectorWithSentinel(comptime child: type, comptime count: u64, comptime sentinel: child) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticStreamVector(params);
+        pub fn StructuredStaticStreamVector(comptime child: type, comptime count: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticStreamVector(child, null, count, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredStaticStreamVectorLowAlignedWithSentinel(comptime child: type, comptime count: u64, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticStreamVector(params);
+        pub fn StructuredStaticVectorWithSentinel(comptime child: type, comptime sentinel: child, comptime count: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticVector(child, &sentinel, count, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredStaticVector(comptime child: type, comptime count: u64) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticVector(params);
+        pub fn StructuredStaticVectorLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime count: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticVector(child, &sentinel, count, low_alignment, Allocator, options);
         }
         pub fn StructuredStaticVectorLowAligned(comptime child: type, comptime count: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticVector(params);
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticVector(child, null, count, low_alignment, Allocator, options);
         }
-        pub fn StructuredStaticVectorWithSentinel(comptime child: type, comptime count: u64, comptime sentinel: child) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticVector(params);
+        pub fn StructuredStaticVector(comptime child: type, comptime count: u64) type {
+            var options: container.Parameters1.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStaticVector(child, null, count, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredStaticVectorLowAlignedWithSentinel(comptime child: type, comptime count: u64, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters1 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .count = count,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStaticVector(params);
-        }
-        pub fn UnstructuredStaticView(comptime bytes: u64) type {
-            var params: container.Parameters2 = .{ .Allocator = Allocator, .bytes = bytes, .low_alignment = bytes };
-            params.options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStaticView(params);
+        pub fn UnstructuredStaticViewHighAligned(comptime bytes: u64) type {
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticView(bytes, bytes, Allocator, options);
         }
         pub fn UnstructuredStaticViewLowAligned(comptime bytes: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters2 = .{
-                .Allocator = Allocator,
-                .bytes = bytes,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStaticView(params);
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticView(bytes, low_alignment, Allocator, options);
         }
-        pub fn UnstructuredStaticStreamVector(comptime bytes: u64) type {
-            var params: container.Parameters2 = .{ .Allocator = Allocator, .bytes = bytes, .low_alignment = bytes };
-            params.options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStaticStreamVector(params);
+        pub fn UnstructuredStaticView(comptime bytes: u64) type {
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticView(bytes, bytes, Allocator, options);
+        }
+        pub fn UnstructuredStaticStreamVectorHighAligned(comptime bytes: u64) type {
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticStreamVector(bytes, bytes, Allocator, options);
         }
         pub fn UnstructuredStaticStreamVectorLowAligned(comptime bytes: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters2 = .{
-                .Allocator = Allocator,
-                .bytes = bytes,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStaticStreamVector(params);
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticStreamVector(bytes, low_alignment, Allocator, options);
         }
-        pub fn UnstructuredStaticVector(comptime bytes: u64) type {
-            var params: container.Parameters2 = .{ .Allocator = Allocator, .bytes = bytes, .low_alignment = bytes };
-            params.options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStaticVector(params);
+        pub fn UnstructuredStaticStreamVector(comptime bytes: u64) type {
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticStreamVector(bytes, bytes, Allocator, options);
+        }
+        pub fn UnstructuredStaticVectorHighAligned(comptime bytes: u64) type {
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticVector(bytes, bytes, Allocator, options);
         }
         pub fn UnstructuredStaticVectorLowAligned(comptime bytes: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters2 = .{
-                .Allocator = Allocator,
-                .bytes = bytes,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStaticVector(params);
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticVector(bytes, low_alignment, Allocator, options);
         }
-        pub fn StructuredStreamVector(comptime child: type) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamVector(params);
-        }
-        pub fn StructuredStreamVectorLowAligned(comptime child: type, comptime low_alignment: u64) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamVector(params);
+        pub fn UnstructuredStaticVector(comptime bytes: u64) type {
+            var options: container.Parameters2.Options = .{};
+            options.unit_alignment = bytes == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStaticVector(bytes, bytes, Allocator, options);
         }
         pub fn StructuredStreamVectorWithSentinel(comptime child: type, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamVector(params);
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamVector(child, &sentinel, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredStreamVectorLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamVector(params);
+        pub fn StructuredStreamVectorLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamVector(child, &sentinel, low_alignment, Allocator, options);
         }
-        pub fn StructuredStreamView(comptime child: type) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamView(params);
+        pub fn StructuredStreamVectorLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamVector(child, null, low_alignment, Allocator, options);
         }
-        pub fn StructuredStreamViewLowAligned(comptime child: type, comptime low_alignment: u64) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamView(params);
+        pub fn StructuredStreamVector(comptime child: type) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamVector(child, null, @alignOf(child), Allocator, options);
         }
         pub fn StructuredStreamViewWithSentinel(comptime child: type, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamView(params);
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamView(child, &sentinel, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredStreamViewLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamView(params);
+        pub fn StructuredStreamViewLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamView(child, &sentinel, low_alignment, Allocator, options);
         }
-        pub fn StructuredVector(comptime child: type) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredVector(params);
+        pub fn StructuredStreamViewLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamView(child, null, low_alignment, Allocator, options);
         }
-        pub fn StructuredVectorLowAligned(comptime child: type, comptime low_alignment: u64) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredVector(params);
+        pub fn StructuredStreamView(comptime child: type) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamView(child, null, @alignOf(child), Allocator, options);
         }
         pub fn StructuredVectorWithSentinel(comptime child: type, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredVector(params);
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredVector(child, &sentinel, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredVectorLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredVector(params);
+        pub fn StructuredVectorLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredVector(child, &sentinel, low_alignment, Allocator, options);
         }
-        pub fn StructuredView(comptime child: type) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredView(params);
+        pub fn StructuredVectorLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredVector(child, null, low_alignment, Allocator, options);
         }
-        pub fn StructuredViewLowAligned(comptime child: type, comptime low_alignment: u64) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredView(params);
+        pub fn StructuredVector(comptime child: type) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredVector(child, null, @alignOf(child), Allocator, options);
         }
         pub fn StructuredViewWithSentinel(comptime child: type, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredView(params);
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredView(child, &sentinel, @alignOf(child), Allocator, options);
         }
-        pub fn StructuredViewLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters3 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredView(params);
+        pub fn StructuredViewLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredView(child, &sentinel, low_alignment, Allocator, options);
         }
-        pub fn UnstructuredStreamVector(comptime high_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = high_alignment,
-            };
-            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStreamVector(params);
+        pub fn StructuredViewLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredView(child, null, low_alignment, Allocator, options);
         }
-        pub fn UnstructuredStreamVectorLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStreamVector(params);
+        pub fn StructuredView(comptime child: type) type {
+            var options: container.Parameters3.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredView(child, null, @alignOf(child), Allocator, options);
         }
-        pub fn UnstructuredStreamView(comptime high_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = high_alignment,
-            };
-            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStreamView(params);
+        pub fn UnstructuredStreamVectorHighAligned(comptime high_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamVector(high_alignment, high_alignment, Allocator, options);
         }
-        pub fn UnstructuredStreamViewLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStreamView(params);
+        pub fn UnstructuredStreamVectorLowAligned(comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamVector(low_alignment, low_alignment, Allocator, options);
         }
-        pub fn UnstructuredVector(comptime high_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = high_alignment,
-            };
-            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredVector(params);
+        pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamVector(low_alignment, high_alignment, Allocator, options);
         }
-        pub fn UnstructuredVectorLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredVector(params);
+        pub fn UnstructuredStreamViewHighAligned(comptime high_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamView(high_alignment, high_alignment, Allocator, options);
         }
-        pub fn UnstructuredView(comptime high_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = high_alignment,
-            };
-            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredView(params);
+        pub fn UnstructuredStreamViewLowAligned(comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamView(low_alignment, low_alignment, Allocator, options);
         }
-        pub fn UnstructuredViewLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters4 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredView(params);
+        pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamView(low_alignment, high_alignment, Allocator, options);
         }
-        pub fn StructuredStreamHolder(comptime child: type) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamHolder(params);
+        pub fn UnstructuredVectorHighAligned(comptime high_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredVector(high_alignment, high_alignment, Allocator, options);
         }
-        pub fn StructuredStreamHolderLowAligned(comptime child: type, comptime low_alignment: u64) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamHolder(params);
+        pub fn UnstructuredVectorLowAligned(comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredVector(low_alignment, low_alignment, Allocator, options);
+        }
+        pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredVector(low_alignment, high_alignment, Allocator, options);
+        }
+        pub fn UnstructuredViewHighAligned(comptime high_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredView(high_alignment, high_alignment, Allocator, options);
+        }
+        pub fn UnstructuredViewLowAligned(comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredView(low_alignment, low_alignment, Allocator, options);
+        }
+        pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters4.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredView(low_alignment, high_alignment, Allocator, options);
         }
         pub fn StructuredStreamHolderWithSentinel(comptime child: type, comptime sentinel: child) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamHolder(params);
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamHolder(Allocator, child, &sentinel, @alignOf(child), options);
         }
-        pub fn StructuredStreamHolderLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredStreamHolder(params);
+        pub fn StructuredStreamHolderLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime low_alignment: u64) type {
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamHolder(Allocator, child, &sentinel, low_alignment, options);
         }
-        pub fn StructuredHolder(comptime child: type) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredHolder(params);
+        pub fn StructuredStreamHolderLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamHolder(Allocator, child, null, low_alignment, options);
         }
-        pub fn StructuredHolderLowAligned(comptime child: type, comptime low_alignment: u64) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredHolder(params);
+        pub fn StructuredStreamHolder(comptime child: type) type {
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredStreamHolder(Allocator, child, null, @alignOf(child), options);
         }
         pub fn StructuredHolderWithSentinel(comptime child: type, comptime sentinel: child) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = @alignOf(child),
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredHolder(params);
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredHolder(Allocator, child, &sentinel, @alignOf(child), options);
         }
-        pub fn StructuredHolderLowAlignedWithSentinel(comptime child: type, comptime low_alignment: u64, comptime sentinel: child) type {
-            var params: container.Parameters5 = .{
-                .Allocator = Allocator,
-                .child = child,
-                .low_alignment = low_alignment,
-                .sentinel = &sentinel,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.StructuredHolder(params);
+        pub fn StructuredHolderLowAlignedWithSentinel(comptime child: type, comptime sentinel: child, comptime low_alignment: u64) type {
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredHolder(Allocator, child, &sentinel, low_alignment, options);
         }
-        pub fn UnstructuredStreamHolder(comptime high_alignment: u64) type {
-            var params: container.Parameters6 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = high_alignment,
-            };
-            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStreamHolder(params);
+        pub fn StructuredHolderLowAligned(comptime child: type, comptime low_alignment: u64) type {
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredHolder(Allocator, child, null, low_alignment, options);
         }
-        pub fn UnstructuredStreamHolderLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters6 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredStreamHolder(params);
+        pub fn StructuredHolder(comptime child: type) type {
+            var options: container.Parameters5.Options = .{};
+            options.unit_alignment = @alignOf(child) == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.StructuredHolder(Allocator, child, null, @alignOf(child), options);
         }
-        pub fn UnstructuredHolder(comptime high_alignment: u64) type {
-            var params: container.Parameters6 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = high_alignment,
-            };
-            params.options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredHolder(params);
+        pub fn UnstructuredStreamHolderHighAligned(comptime high_alignment: u64) type {
+            var options: container.Parameters6.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamHolder(Allocator, high_alignment, high_alignment, options);
         }
-        pub fn UnstructuredHolderLowAligned(comptime high_alignment: u64, comptime low_alignment: u64) type {
-            var params: container.Parameters6 = .{
-                .Allocator = Allocator,
-                .high_alignment = high_alignment,
-                .low_alignment = low_alignment,
-            };
-            params.options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
-            params.options.lazy_alignment = !params.options.unit_alignment;
-            return container.UnstructuredHolder(params);
+        pub fn UnstructuredStreamHolderLowAligned(comptime low_alignment: u64) type {
+            var options: container.Parameters6.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamHolder(Allocator, low_alignment, low_alignment, options);
+        }
+        pub fn UnstructuredStreamHolder(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters6.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredStreamHolder(Allocator, low_alignment, high_alignment, options);
+        }
+        pub fn UnstructuredHolderHighAligned(comptime high_alignment: u64) type {
+            var options: container.Parameters6.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredHolder(Allocator, high_alignment, high_alignment, options);
+        }
+        pub fn UnstructuredHolderLowAligned(comptime low_alignment: u64) type {
+            var options: container.Parameters6.Options = .{};
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredHolder(Allocator, low_alignment, low_alignment, options);
+        }
+        pub fn UnstructuredHolder(comptime high_alignment: u64, comptime low_alignment: u64) type {
+            var options: container.Parameters6.Options = .{};
+            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.lazy_alignment = !options.unit_alignment;
+            return container.UnstructuredHolder(Allocator, low_alignment, high_alignment, options);
         }
     };
 }
@@ -4130,7 +3950,7 @@ fn GenericAllocatorGraphics(comptime Allocator: type) type {
             {
                 Branches.Graphics.showWrite(allocator.metadata.branches, &array);
             }
-            if (array.count() != src_fmt.formatLength()) {
+            if (array.len() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -4190,7 +4010,7 @@ fn GenericAllocatorGraphics(comptime Allocator: type) type {
                 {
                     Branches.Graphics.showWithReferenceWrite(allocator.metadata.branches, &allocator.reference.branches, &array);
                 }
-                if (array.count() != src_fmt.formatLength()) {
+                if (array.len() != src_fmt.formatLength()) {
                     array.writeOne('\n');
                     file.noexcept.write(2, array.readAll());
                 }
