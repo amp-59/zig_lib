@@ -76,11 +76,7 @@ const DirStream = file.DirStreamBlock(.{
     .options = .{},
     .logging = .{},
 });
-const Names = mem.StructuredAutomaticVector(.{
-    .child = [:0]const u8,
-    .count = 128,
-    .low_alignment = 8,
-});
+const Names = mem.StructuredAutomaticVector([:0]const u8, null, 128, 8, .{});
 const PrintArray = mem.StaticString(4096);
 const Options = struct {
     all: bool = always_show_hidden or permit_switch_arrows,
@@ -334,7 +330,7 @@ noinline fn printAlong(results: *volatile Results, done: *volatile bool, allocat
             break;
         }
     }
-    while (offset != array.count(allocator.*)) {
+    while (offset != array.len(allocator.*)) {
         offset += printIfAvail(allocator.*, array.*, offset);
     }
     showResults(results.*);
@@ -378,7 +374,7 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
     // zig fmt: on
 
     var names: Names = getNames(&args);
-    if (names.count() == 0) {
+    if (names.len() == 0) {
         names.writeOne(".");
     }
 
