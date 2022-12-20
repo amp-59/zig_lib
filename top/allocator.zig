@@ -3324,6 +3324,104 @@ fn GenericImplementation(comptime Allocator: type) type {
         }
     };
 }
+const special = opaque {
+    fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) spec.Unwrapped(.mmap) {
+        const mmap_prot: mem.Prot = spec.prot();
+        const mmap_flags: mem.Map = spec.flags();
+        if (spec.call(.mmap, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 })) {
+            if (spec.logging.Acquire) {
+                debug.mapNotice(addr, len);
+            }
+        } else |map_error| {
+            if (spec.logging.Error) {
+                debug.mapError(map_error, addr, len);
+            }
+            return map_error;
+        }
+    }
+    fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) spec.Unwrapped(.mremap) {
+        const mremap_flags: mem.Remap = spec.flags();
+        if (spec.call(.mremap, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr })) {
+            if (spec.logging.Success) {
+                debug.moveNotice(old_addr, old_len, new_addr);
+            }
+        } else |mremap_error| {
+            if (spec.logging.Error) {
+                debug.moveError(mremap_error, old_addr, old_len, new_addr);
+            }
+            return mremap_error;
+        }
+    }
+    fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) spec.Unwrapped(.mremap) {
+        if (spec.call(.mremap, .{ old_addr, old_len, new_len, 0, 0 })) {
+            if (spec.logging.Success) {
+                debug.resizeNotice(old_addr, old_len, new_len);
+            }
+        } else |mremap_error| {
+            if (spec.logging.Error) {
+                debug.resizeError(mremap_error, old_addr, old_len, new_len);
+            }
+            return mremap_error;
+        }
+    }
+    fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) spec.Unwrapped(.munmap) {
+        if (spec.call(.munmap, .{ addr, len })) {
+            if (spec.logging.Release) {
+                debug.unmapNotice(addr, len);
+            }
+        } else |unmap_error| {
+            if (spec.logging.Error) {
+                debug.unmapError(unmap_error, addr, len);
+            }
+            return unmap_error;
+        }
+    }
+    fn advise(comptime spec: mem.AdviseSpec, addr: u64, len: u64) spec.Unwrapped(.madvise) {
+        const advice: mem.Advice = spec.advice();
+        if (spec.call(.madvise, .{ addr, len, advice.val })) {
+            if (spec.logging.Success) {
+                debug.adviseNotice(addr, len, spec.describe());
+            }
+        } else |madvise_error| {
+            if (spec.logging.Error) {
+                debug.adviseError(madvise_error, addr, len, spec.describe());
+            }
+            return madvise_error;
+        }
+    }
+    fn acquire(comptime part_spec: mem.PartSpec, address_space: anytype, index: u8) !void {
+        if (if (part_spec.options.thread_safe)
+            address_space.atomicAcquire(index)
+        else
+            address_space.acquire(index))
+        {
+            if (part_spec.logging.Acquire) {
+                debug.arenaAcquireNotice(index);
+            }
+        } else |arena_error| {
+            if (part_spec.logging.Error) {
+                debug.arenaAcquireError(arena_error, index);
+            }
+            return arena_error;
+        }
+    }
+    fn release(comptime part_spec: mem.PartSpec, address_space: anytype, index: u8) !void {
+        if (if (part_spec.options.thread_safe)
+            address_space.atomicRelease(index)
+        else
+            address_space.release(index))
+        {
+            if (part_spec.logging.Release) {
+                debug.arenaReleaseNotice(index);
+            }
+        } else |arena_error| {
+            if (part_spec.logging.Error) {
+                return debug.arenaReleaseError(arena_error, index);
+            }
+            return arena_error;
+        }
+    }
+};
 const debug = opaque {
     const PrintArray = mem.StaticString(8192);
     const ArenaRange = fmt.AddressRangeFormat;
@@ -3579,13 +3677,11 @@ const debug = opaque {
         file.noexcept.write(2, array.readAll());
     }
     fn arenaAcquireNotice(index: u8) void {
-        const begin: u64 = mem.AddressSpace.begin(index);
-        const end: u64 = mem.AddressSpace.end(index);
         var array: PrintArray = .{};
         array.writeMany(about_acq_0_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, begin, end);
+        addressRangeBytes(&array, mem.AddressSpace.begin(index), mem.AddressSpace.end(index));
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
@@ -3863,104 +3959,6 @@ const debug = opaque {
         array.writeMany(" below segment maximum\n\n");
         file.noexcept.write(2, array.readAll());
         sys.exit(1);
-    }
-};
-const special = opaque {
-    fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) spec.Unwrapped(.mmap) {
-        const mmap_prot: mem.Prot = spec.prot();
-        const mmap_flags: mem.Map = spec.flags();
-        if (spec.call(.mmap, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 })) {
-            if (spec.logging.Acquire) {
-                debug.mapNotice(addr, len);
-            }
-        } else |map_error| {
-            if (spec.logging.Error) {
-                debug.mapError(map_error, addr, len);
-            }
-            return map_error;
-        }
-    }
-    fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) spec.Unwrapped(.mremap) {
-        const mremap_flags: mem.Remap = spec.flags();
-        if (spec.call(.mremap, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr })) {
-            if (spec.logging.Success) {
-                debug.moveNotice(old_addr, old_len, new_addr);
-            }
-        } else |mremap_error| {
-            if (spec.logging.Error) {
-                debug.moveError(mremap_error, old_addr, old_len, new_addr);
-            }
-            return mremap_error;
-        }
-    }
-    fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) spec.Unwrapped(.mremap) {
-        if (spec.call(.mremap, .{ old_addr, old_len, new_len, 0, 0 })) {
-            if (spec.logging.Success) {
-                debug.resizeNotice(old_addr, old_len, new_len);
-            }
-        } else |mremap_error| {
-            if (spec.logging.Error) {
-                debug.resizeError(mremap_error, old_addr, old_len, new_len);
-            }
-            return mremap_error;
-        }
-    }
-    fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) spec.Unwrapped(.munmap) {
-        if (spec.call(.munmap, .{ addr, len })) {
-            if (spec.logging.Release) {
-                debug.unmapNotice(addr, len);
-            }
-        } else |unmap_error| {
-            if (spec.logging.Error) {
-                debug.unmapError(unmap_error, addr, len);
-            }
-            return unmap_error;
-        }
-    }
-    fn advise(comptime spec: mem.AdviseSpec, addr: u64, len: u64) spec.Unwrapped(.madvise) {
-        const advice: mem.Advice = spec.advice();
-        if (spec.call(.madvise, .{ addr, len, advice.val })) {
-            if (spec.logging.Success) {
-                debug.adviseNotice(addr, len, spec.describe());
-            }
-        } else |madvise_error| {
-            if (spec.logging.Error) {
-                debug.adviseError(madvise_error, addr, len, spec.describe());
-            }
-            return madvise_error;
-        }
-    }
-    fn acquire(comptime part_spec: mem.PartSpec, address_space: anytype, index: u8) !void {
-        if (if (part_spec.options.thread_safe)
-            address_space.atomicAcquire(index)
-        else
-            address_space.acquire(index))
-        {
-            if (part_spec.logging.Acquire) {
-                debug.arenaAcquireNotice(index);
-            }
-        } else |arena_error| {
-            if (part_spec.logging.Error) {
-                debug.arenaAcquireError(arena_error, index);
-            }
-            return arena_error;
-        }
-    }
-    fn release(comptime part_spec: mem.PartSpec, address_space: anytype, index: u8) !void {
-        if (if (part_spec.options.thread_safe)
-            address_space.atomicRelease(index)
-        else
-            address_space.release(index))
-        {
-            if (part_spec.logging.Release) {
-                debug.arenaReleaseNotice(index);
-            }
-        } else |arena_error| {
-            if (part_spec.logging.Error) {
-                return debug.arenaReleaseError(arena_error, index);
-            }
-            return arena_error;
-        }
     }
 };
 fn GenericAllocatorGraphics(comptime Allocator: type) type {
