@@ -99,13 +99,12 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, all_options: []const Ge
 const debug = opaque {
     const about_opt_0_s: []const u8 = "opt:            '";
     const about_opt_1_s: []const u8 = "opt-error:      '";
-
     fn badLongSwitchHelp(comptime Options: type, comptime all_options: []const GenericOptions(Options), arg: [:0]const u8) void {
         var array: mem.StaticString(4096) = .{};
         const bad_arg: []const u8 = mem.readBeforeFirstEqualManyOrElse(u8, "=", arg);
         array.writeMany(about_opt_1_s);
         array.writeMany(bad_arg);
-        array.writeMany("\n");
+        array.writeMany("'\n");
         inline for (all_options) |options| {
             if (options.long) |long_switch| {
                 const mats: u64 = mem.orderedMatches(u8, bad_arg, long_switch);
@@ -113,7 +112,7 @@ const debug = opaque {
                 if (math.absoluteDifference(mats, opt_len) < 3) {
                     array.writeMany(about_opt_0_s);
                     array.writeMany(long_switch);
-                    array.writeMany("\n");
+                    array.writeMany("'\n");
                 }
             }
         }
