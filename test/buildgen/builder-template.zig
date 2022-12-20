@@ -54,7 +54,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
             if (args.impl.start() != args.impl.next()) {
                 mem.set(args.impl.next(), @as(u64, 0), 1);
             }
-            if (args.count() != 0) {
+            if (args.lent() != 0) {
                 return proc.commandAt(.{}, dir_fd, "zig", args.referAllDefined(), vars);
             }
             return 0;

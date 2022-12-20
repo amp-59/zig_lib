@@ -417,7 +417,7 @@ pub fn guessSourceOffsetStatic(comptime src: []const u8, comptime string: []cons
         @compileError("source does not contain string '" ++ string ++ "'");
     }
 }
-pub fn appendIndent(allocator: *Allocator0, array: *String0, width: u64, values: []const String0.child) !void {
+pub fn appendIndent(allocator: *Allocator0, array: *String0, width: u64, values: []const u8) !void {
     try array.increment(allocator, values.len * 6);
     var l_idx: u64 = 0;
     var r_idx: u64 = 0;
