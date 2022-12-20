@@ -165,11 +165,11 @@ pub fn main() !void {
             try LinkedList.Graphics.show(list, &address_space);
         }
         list.deinit(&allocator_0);
-        for (disruption.referAll(allocator_1)) |*z| {
+        for (disruption.referAllDefined(allocator_1)) |*z| {
             z.deinit(&allocator_0);
         }
         disruption.undefineAll(allocator_1);
-        try builtin.expectEqual(u64, 0, disruption.count(allocator_1));
+        try builtin.expectEqual(u64, 0, disruption.len(allocator_1));
         try builtin.expectEqual(u64, 0, allocator_0.metadata.count);
     }
 }
