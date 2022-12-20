@@ -271,13 +271,13 @@ pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*
             for (reference.pointerMany(child, __at(array, offset), __len(array, offset))) |*value, i| value.* = values[i];
         }
         pub fn stream(array: *Array, stream_count: usize) void {
-            array.impl.seek(stream_count);
+            array.impl.seek(stream_count * child_size);
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
         pub fn unstream(array: *Array, unstream_count: usize) void {
-            array.impl.tell(unstream_count);
+            array.impl.tell(unstream_count * child_size);
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -468,25 +468,25 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
         }
         pub fn stream(array: *Array, stream_count: usize) void {
-            array.impl.seek(stream_count);
+            array.impl.seek(stream_count * child_size);
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
         pub fn unstream(array: *Array, unstream_count: usize) void {
-            array.impl.tell(unstream_count);
+            array.impl.tell(unstream_count * child_size);
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -653,13 +653,13 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
@@ -735,14 +735,7 @@ pub const Parameters1 = struct {
     }
     usingnamespace GenericParameters(Parameters);
 };
-pub fn StructuredStaticView(
-    comptime child: type,
-    comptime sentinel: ?*const anyopaque,
-    comptime count: u64,
-    comptime low_alignment: ?u64,
-    comptime Allocator: type,
-    comptime options: Parameters1.Options,
-) type {
+pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters1.Options) type {
     const params: Parameters1 = params1(child, sentinel, count, low_alignment, Allocator, options);
     return struct {
         impl: Implementation,
@@ -990,25 +983,25 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
         }
         pub fn stream(array: *Array, stream_count: usize) void {
-            array.impl.seek(stream_count);
+            array.impl.seek(stream_count * child_size);
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
         pub fn unstream(array: *Array, unstream_count: usize) void {
-            array.impl.tell(unstream_count);
+            array.impl.tell(unstream_count * child_size);
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -1181,13 +1174,13 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
@@ -1990,25 +1983,25 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             array.writeAny(write_spec, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
         }
         pub fn stream(array: *Array, stream_count: usize) void {
-            array.impl.seek(stream_count);
+            array.impl.seek(stream_count * child_size);
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
         pub fn unstream(array: *Array, unstream_count: usize) void {
-            array.impl.tell(unstream_count);
+            array.impl.tell(unstream_count * child_size);
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -2159,13 +2152,13 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
             for (reference.pointerMany(child, __at(array, offset), __len(array, offset))) |*value, i| value.* = values[i];
         }
         pub fn stream(array: *Array, stream_count: usize) void {
-            array.impl.seek(stream_count);
+            array.impl.seek(stream_count * child_size);
         }
         pub fn streamAll(array: *Array) void {
             array.impl.seek(array.impl.ahead());
         }
         pub fn unstream(array: *Array, unstream_count: usize) void {
-            array.impl.tell(unstream_count);
+            array.impl.tell(unstream_count * child_size);
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
@@ -2360,13 +2353,13 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
             array.writeAny(write_spec, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array) void {
             array.impl.define(array.impl.available());
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
@@ -3454,25 +3447,25 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             array.writeAny(write_spec, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array, allocator: Allocator) void {
             array.impl.define(array.impl.available(allocator));
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array, allocator: Allocator) void {
             array.impl.undefine(array.impl.length(allocator));
         }
         pub fn stream(array: *Array, stream_count: usize) void {
-            array.impl.seek(stream_count);
+            array.impl.seek(stream_count * child_size);
         }
         pub fn streamAll(array: *Array, allocator: Allocator) void {
             array.impl.seek(array.impl.ahead(allocator));
         }
         pub fn unstream(array: *Array, unstream_count: usize) void {
-            array.impl.tell(unstream_count);
+            array.impl.tell(unstream_count * child_size);
         }
         pub fn unstreamAll(array: *Array, allocator: Allocator) void {
             array.impl.tell(array.impl.behind(allocator));
@@ -3685,13 +3678,13 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             array.writeAny(write_spec, any);
         }
         pub fn define(array: *Array, define_count: usize) void {
-            array.impl.define(define_count);
+            array.impl.define(define_count * child_size);
         }
         pub fn defineAll(array: *Array, allocator: Allocator) void {
             array.impl.define(array.impl.available(allocator));
         }
         pub fn undefine(array: *Array, undefine_count: usize) void {
-            array.impl.undefine(undefine_count);
+            array.impl.undefine(undefine_count * child_size);
         }
         pub fn undefineAll(array: *Array, allocator: Allocator) void {
             array.impl.undefine(array.impl.length(allocator));
