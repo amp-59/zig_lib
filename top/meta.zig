@@ -579,6 +579,82 @@ pub fn isTriviallyComparable(comptime T: type) bool {
         .Undefined => unreachable,
     };
 }
+fn fieldIdInternalNoOp(comptime T: type, id: u64) u64 {
+    const type_info: builtin.Type = @typeInfo(T);
+    var ret: u64 = id;
+    if (type_info == .Union) {
+        inline for (type_info.Union.fields) |field| {
+            ret = fieldIdInternalNoOp(field.field_type, ret);
+        }
+    }
+    if (type_info == .Enum) {
+        inline for (type_info.Enum.fields) |_| {
+            ret += 1;
+        }
+    }
+    return ret;
+}
+pub fn fieldIdNoOp(comptime T: type) u64 {
+    const type_info: builtin.Type = @typeInfo(T);
+    var ret: u64 = 0;
+    if (type_info == .Union) {
+        inline for (type_info.Union.fields) |field| {
+            ret = fieldIdInternalNoOp(field.field_type, ret);
+        }
+    }
+    if (type_info == .Enum) {
+        inline for (type_info.Enum.fields) |_| {
+            ret += 1;
+        }
+    }
+    return ret;
+}
+fn fieldIdInternal(comptime T: type, t: T, id: u64) u64 {
+    const type_info: builtin.Type = @typeInfo(T);
+    var ret: u64 = id;
+    if (type_info == .Union) {
+        inline for (type_info.Union.fields) |field| {
+            if (static.testEqualString(field.name, @tagName(t))) {
+                return fieldIdInternal(field.field_type, @field(t, field.name), ret);
+            } else {
+                ret = fieldIdInternalNoOp(field.field_type, ret);
+            }
+        }
+    }
+    if (type_info == .Enum) {
+        inline for (type_info.Enum.fields) |field| {
+            if (static.testEqualString(field.name, @tagName(t))) {
+                return ret;
+            }
+            ret += 1;
+        }
+    }
+    return ret;
+}
+pub fn fieldId(comptime T: type, t: T) u64 {
+    const type_info: builtin.Type = @typeInfo(T);
+    var ret: u64 = 0;
+    if (type_info == .Union) {
+        inline for (type_info.Union.fields) |field| {
+            if (static.testEqualString(field.name, @tagName(t))) {
+                ret = fieldIdInternal(field.field_type, @field(t, field.name), ret);
+                break;
+            } else {
+                ret = fieldIdInternalNoOp(field.field_type, ret);
+            }
+        }
+    }
+    if (type_info == .Enum) {
+        inline for (type_info.Enum.fields) |field| {
+            if (static.testEqualString(field.name, @tagName(t))) {
+                break;
+            }
+            ret += 1;
+        }
+    }
+    return ret;
+}
+
 pub inline fn analysisBegin(comptime name: []const u8) void {
     asm volatile ("# LLVM-MCA-BEGIN " ++ name);
 }
@@ -752,5 +828,19 @@ const debug = opaque {
             inline for (yes) |y| if (value == y) return;
         }
         @compileError("unlisted variant of " ++ @typeName(T) ++ ": " ++ @tagName(value));
+    }
+};
+const static = opaque {
+    fn testEqualString(arg1: []const u8, arg2: []const u8) bool {
+        if (arg1.len != arg2.len) {
+            return false;
+        }
+        var idx: usize = 0;
+        while (idx != arg1.len) : (idx += 1) {
+            if (arg1[idx] != arg2[idx]) {
+                return false;
+            }
+        }
+        return true;
     }
 };
