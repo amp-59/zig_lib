@@ -136,7 +136,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         const ResizeSpec: type = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
         pub const allocator_spec: ArenaAllocatorSpec = spec;
         pub const arena_index: u8 = allocator_spec.arena_index;
-        pub const arena: mem.Arena = mem.Arena{ .index = arena_index };
+        pub const arena: mem.Arena = .{ .index = arena_index };
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
         const resize_spec: ResizeSpec = if (allocator_spec.options.require_mremap) remap_spec else map_spec;
         const lb_addr: u64 = arena.begin();

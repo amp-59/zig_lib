@@ -2015,14 +2015,14 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub inline fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
@@ -2172,8 +2172,8 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
         pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub inline fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
@@ -2373,14 +2373,14 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub inline fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
@@ -2747,14 +2747,14 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, add_amount));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, sub_amount));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, new_amount));
         }
         pub inline fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
@@ -2903,8 +2903,8 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, new_amount));
         }
         pub inline fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
@@ -3103,14 +3103,14 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, add_amount));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, sub_amount));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, new_amount));
         }
         pub inline fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
@@ -3479,14 +3479,14 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) !void {
-            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .count = new_count }));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
+            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub inline fn index(array: *const Array, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / child_size;
@@ -3698,14 +3698,14 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) !void {
-            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .count = new_count }));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
+            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub inline fn len(array: *const Array, allocator: Allocator) u64 {
             return array.impl.length(allocator) / child_size;
@@ -3982,14 +3982,14 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, add_amount));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, sub_amount));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, new_amount));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
         }
         pub inline fn index(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / @sizeOf(child);
@@ -4200,14 +4200,14 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, add_amount));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) !void {
+        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, sub_amount));
         }
         pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, new_amount));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
         }
         pub inline fn len(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.length(allocator) / @sizeOf(child);

@@ -472,6 +472,22 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
             }
             return errors;
         },
+        .Type => {
+            switch (@typeInfo(any_function)) {
+                .ErrorUnion => {
+                    return @typeInfo(any_function).ErrorUnion.error_set;
+                },
+                .ErrorSet => {
+                    return any_function;
+                },
+                else => |type_info| {
+                    debug.unexpectedTypeTypesError(T, type_info, .{ .ErrorUnion, .ErrorSet });
+                },
+            }
+        },
+        .ErrorSet => {
+            return any_function;
+        },
         else => |type_info| {
             debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .Struct });
         },
