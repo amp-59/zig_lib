@@ -480,8 +480,8 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
                 .ErrorSet => {
                     return any_function;
                 },
-                else => |type_info| {
-                    debug.unexpectedTypeTypesError(T, type_info, .{ .ErrorUnion, .ErrorSet });
+                else => {
+                    return error{};
                 },
             }
         },
