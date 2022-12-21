@@ -10,38 +10,38 @@ const container = @import("./container.zig");
 
 pub const AllocatorOptions = struct {
     /// Experimental feature:
-    check_parametric_binding: bool = true,
+    check_parametric_binding: bool = builtin.is_debug,
     /// Count concurrent allocations, return to head if zero.
-    count_allocations: bool = true,
+    count_allocations: bool = builtin.is_debug,
     /// Count each unique set of side-effects.
-    count_branches: bool = true,
+    count_branches: bool = builtin.is_debug,
     /// Count the number of bytes writable by clients.
-    count_useful_bytes: bool = false,
+    count_useful_bytes: bool = builtin.is_debug,
     /// Halt program execution if not all free on deinit.
-    require_all_free_deinit: bool = true,
+    require_all_free_deinit: bool = builtin.is_debug,
     /// Halt program execution with error if frees are not in reverse allocation
     /// order.
-    require_filo_free: bool = true,
+    require_filo_free: bool = builtin.is_debug,
     /// Each return address must be at least this aligned.
     unit_alignment: u64 = 1,
     require_length_aligned: bool = true,
     /// Each new mapping must at least double the size of the existing
     /// mapped segment.
-    require_geometric_growth: bool = false,
+    require_geometric_growth: bool = builtin.is_fast,
     /// Remap as one large segment, instead of small additional segments.
     require_mremap: bool = true,
     /// Populate (prefault) mappings
     require_populate: bool = false,
     /// Size of mapping at init.
-    init_commit: ?u64 = null,
+    init_commit: ?u64 = if (builtin.is_fast) 32 * 1024 else null,
     /// Halt if size of total mapping exceeds quota.
-    max_commit: ?u64 = null,
+    max_commit: ?u64 = if (builtin.is_safe) 16 * 1024 * 1024 * 1024 else null,
     /// Halt if size of next mapping exceeds quota.
-    max_acquire: ?u64 = null,
+    max_acquire: ?u64 = if (builtin.is_safe) 2 * 1024 * 1024 * 1024 else null,
     /// Used to test metadata
     no_system_calls: bool = false,
     /// Lock on arena acquisition and release
-    thread_safe: bool = false,
+    thread_safe: bool = builtin.is_safe,
     /// Allocations are tracked as unique entities across resizes. (This setting
     /// currently has no effect, because the client trace list has not been
     /// implemented for this allocator).
@@ -284,7 +284,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             if (Allocator.allocator_spec.options.max_commit) |max| {
                 builtin.assertBelowOrEqual(u64, t_bytes, max);
             }
-            try allocator.map(x_bytes);
+            try meta.wrap(allocator.map(x_bytes));
         }
         fn reusable(allocator: *const Allocator) bool {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
@@ -327,6 +327,234 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             defer Graphics.showWithReference(allocator, @src());
             allocator.release(allocator.start());
             mem.noexcept.release(rel_part_spec, address_space, arena.index);
+        }
+        pub usingnamespace GenericConfiguration(Allocator);
+        pub usingnamespace GenericInterface(Allocator);
+        const Graphics = GenericAllocatorGraphics(Allocator);
+        comptime {
+            builtin.static.assertEqual(u64, 1, unit_alignment);
+        }
+    };
+}
+pub const RtArenaAllocatorSpec = struct {
+    options: AllocatorOptions = .{},
+    errors: AllocatorErrors = .{},
+    logging: AllocatorLogging = .{},
+    pub fn next(comptime spec: RtArenaAllocatorSpec) RtArenaAllocatorSpec {
+        var ret: RtArenaAllocatorSpec = spec;
+        ret.arena_index += 1;
+        return ret;
+    }
+    pub fn prev(comptime spec: RtArenaAllocatorSpec) RtArenaAllocatorSpec {
+        var ret: RtArenaAllocatorSpec = spec;
+        ret.arena_index -= 1;
+        return ret;
+    }
+};
+pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
+    return struct {
+        lb_addr: u64,
+        ub_addr: u64,
+        up_addr: u64,
+        ua_addr: u64,
+        metadata: Metadata(spec.options) = .{},
+        reference: Reference(spec.options) = .{},
+        const Allocator: type = @This();
+        const Value: type = fn (*const Allocator) callconv(.Inline) u64;
+        const ResizeSpec: type = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
+        pub const allocator_spec: RtArenaAllocatorSpec = spec;
+        pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
+        const resize_spec: ResizeSpec = if (allocator_spec.options.require_mremap) remap_spec else map_spec;
+        const acq_part_spec: mem.PartSpec = .{
+            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
+            .errors = allocator_spec.errors.acquire,
+            .logging = allocator_spec.logging.arena,
+        };
+        const rel_part_spec: mem.PartSpec = .{
+            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
+            .errors = allocator_spec.errors.release,
+            .logging = allocator_spec.logging.arena,
+        };
+        const map_spec: mem.MapSpec = .{
+            .options = .{ .populate = allocator_spec.options.require_populate },
+            .errors = allocator_spec.errors.map,
+            .logging = allocator_spec.logging.map,
+        };
+        const remap_spec: mem.RemapSpec = .{
+            .errors = allocator_spec.errors.remap,
+            .logging = allocator_spec.logging.remap,
+        };
+        const unmap_spec: mem.UnmapSpec = .{
+            .errors = allocator_spec.errors.unmap,
+            .logging = allocator_spec.logging.unmap,
+        };
+        inline fn mapped_byte_address(allocator: *const Allocator) u64 {
+            return allocator.lb_addr;
+        }
+        inline fn unallocated_byte_address(allocator: *const Allocator) u64 {
+            return allocator.ub_addr;
+        }
+        inline fn unmapped_byte_address(allocator: *const Allocator) u64 {
+            return allocator.up_addr;
+        }
+        inline fn unaddressable_byte_address(allocator: *const Allocator) u64 {
+            return allocator.ua_addr;
+        }
+        inline fn allocated_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unallocated_byte_address(allocator), mapped_byte_address(allocator));
+        }
+        inline fn unallocated_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unmapped_byte_address(allocator), unallocated_byte_address(allocator));
+        }
+        inline fn mapped_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unmapped_byte_address(allocator), mapped_byte_address(allocator));
+        }
+        inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
+        }
+        pub const start: Value = mapped_byte_address;
+        pub const next: Value = unallocated_byte_address;
+        pub const finish: Value = unmapped_byte_address;
+        pub const span: Value = allocated_byte_count;
+        pub const capacity: Value = mapped_byte_count;
+        pub const available: Value = unallocated_byte_count;
+        fn allocate(allocator: *Allocator, s_up_addr: u64) void {
+            allocator.ub_addr = s_up_addr;
+        }
+        fn deallocate(allocator: *Allocator, s_lb_addr: u64) void {
+            if (Allocator.allocator_spec.options.require_filo_free) {
+                allocator.ub_addr = s_lb_addr;
+            } else {
+                allocator.ub_addr = mach.cmov64(allocator.reusable(), allocator.lb_addr, s_lb_addr);
+            }
+        }
+        pub fn reset(allocator: *Allocator) void {
+            if (!Allocator.allocator_spec.options.require_filo_free) {
+                allocator.ub_addr = mach.cmov64(allocator.reusable(), allocator.lb_addr, allocator.ub_addr);
+            }
+        }
+        pub fn allocate_payload(comptime s_impl_type: type) type {
+            if (Allocator.allocator_spec.options.require_mremap) {
+                return resize_spec.Replaced(.mmap, s_impl_type);
+            } else {
+                return resize_spec.Replaced(.mremap, s_impl_type);
+            }
+        }
+        pub const allocate_void = blk: {
+            if (Allocator.allocator_spec.options.require_mremap) {
+                break :blk resize_spec.Unwrapped(.mmap);
+            } else {
+                break :blk resize_spec.Unwrapped(.mremap);
+            }
+        };
+        pub fn map(allocator: *Allocator, s_bytes: u64) allocate_void {
+            builtin.assertEqual(u64, s_bytes & 4095, 0);
+            if (allocator_spec.options.require_mremap) {
+                if (Allocator.allocator_spec.options.require_geometric_growth) {
+                    const t_bytes: u64 = builtin.max(u64, allocator.capacity(), s_bytes);
+                    try meta.wrap(special.resize(
+                        remap_spec,
+                        mapped_byte_address(allocator),
+                        mapped_byte_count(allocator),
+                        mapped_byte_count(allocator) + t_bytes,
+                    ));
+                    allocator.up_addr += t_bytes;
+                } else {
+                    try meta.wrap(special.resize(
+                        remap_spec,
+                        mapped_byte_address(allocator),
+                        mapped_byte_count(allocator),
+                        mapped_byte_count(allocator) + s_bytes,
+                    ));
+                    allocator.up_addr += s_bytes;
+                }
+            } else if (s_bytes >= 4096) {
+                if (Allocator.allocator_spec.options.require_geometric_growth) {
+                    const t_bytes: u64 = builtin.max(u64, allocator.capacity(), s_bytes);
+                    try meta.wrap(special.map(map_spec, unmapped_byte_address(allocator), t_bytes));
+                    allocator.up_addr += t_bytes;
+                } else {
+                    try meta.wrap(special.map(map_spec, unmapped_byte_address(allocator), s_bytes));
+                    allocator.up_addr += s_bytes;
+                }
+            }
+        }
+        pub fn unmap(allocator: *Allocator, s_bytes: u64) void {
+            builtin.assertEqual(u64, s_bytes & 4095, 0);
+            if (s_bytes >= 4096) {
+                allocator.up_addr -= s_bytes;
+                try meta.wrap(special.unmap(unmap_spec, unmapped_byte_address(allocator), s_bytes));
+            }
+        }
+        pub fn release(allocator: *Allocator, s_up_addr: u64) void {
+            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+            const t_bytes: u64 = mach.sub64(t_ua_addr, allocator.start());
+            const x_bytes: u64 = mach.sub64(allocator.capacity(), t_bytes);
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
+            }
+            allocator.unmap(x_bytes);
+        }
+        pub fn acquire(allocator: *Allocator, s_up_addr: u64) !void {
+            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+            const x_bytes: u64 = mach.sub64(t_ua_addr, allocator.finish());
+            const t_bytes: u64 = mach.add64(allocator.capacity(), x_bytes);
+            if (Allocator.allocator_spec.options.max_acquire) |max| {
+                builtin.assertBelowOrEqual(u64, x_bytes, max);
+            }
+            if (Allocator.allocator_spec.options.max_commit) |max| {
+                builtin.assertBelowOrEqual(u64, t_bytes, max);
+            }
+            try allocator.map(x_bytes);
+        }
+        fn reusable(allocator: *const Allocator) bool {
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                return allocator.metadata.utility == 0;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                return allocator.metadata.count == 0;
+            }
+            return false;
+        }
+        pub fn discard(allocator: *Allocator) void {
+            defer Graphics.showWithReference(allocator, @src());
+            if (Allocator.allocator_spec.options.check_parametric_binding) {
+                allocator.metadata.holder = 0;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count = 0;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility = 0;
+            }
+            allocator.ub_addr = allocator.lb_addr;
+        }
+        pub fn init(address_space: *mem.AddressSpace, arena_index: u8) !Allocator {
+            var allocator: Allocator = undefined;
+            defer Graphics.showWithReference(&allocator, @src());
+            const arena: mem.Arena = mem.Arena{ .index = arena_index };
+            const lb_addr: u64 = arena.begin();
+            const ua_addr: u64 = arena.end();
+            allocator = Allocator{ .lb_addr = lb_addr, .ub_addr = lb_addr, .up_addr = lb_addr, .ua_addr = ua_addr };
+            try mem.acquire(acq_part_spec, address_space, arena.index);
+            if (allocator_spec.options.require_mremap) {
+                const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
+                try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
+                allocator.up_addr += s_bytes;
+            } else if (allocator_spec.options.init_commit) |s_bytes| {
+                try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
+                allocator.up_addr += s_bytes;
+            }
+            return allocator;
+        }
+        pub fn deinit(allocator: *Allocator, address_space: *mem.AddressSpace) void {
+            defer Graphics.showWithReference(allocator, @src());
+            const arena_index: u8 = mem.AddressSpace.invert(allocator.lb_addr);
+            allocator.release(allocator.start());
+            mem.noexcept.release(rel_part_spec, address_space, arena_index);
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -1035,11 +1263,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
                         const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
                         const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.allocateStaticUnitAligned,
                             .{ allocator, n_count, s_aligned_bytes, s_up_addr },
-                        );
+                        ));
                         const s_impl: s_impl_type = s_impl_type.construct(.{
                             .lb_addr = s_lb_addr,
                             .ss_addr = s_ss_addr,
@@ -1051,11 +1279,11 @@ fn GenericInterface(comptime Allocator: type) type {
                     const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
                     const s_ab_addr: u64 = s_lb_addr;
                     const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                    try @call(
+                    try meta.wrap(@call(
                         .always_inline,
                         Intermediate.allocateStaticUnitAligned,
                         .{ allocator, n_count, s_aligned_bytes, s_up_addr },
-                    );
+                    ));
                     const s_impl: s_impl_type = s_impl_type.construct(.{
                         .lb_addr = s_lb_addr,
                     });
@@ -1073,11 +1301,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
                             const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
                             const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.allocateStaticAnyAligned,
                                 .{ allocator, n_count, s_aligned_bytes, s_up_addr },
-                            );
+                            ));
                             const s_impl: s_impl_type = s_impl_type.construct(.{
                                 .lb_addr = s_lb_addr,
                                 .ab_addr = s_ab_addr,
@@ -1089,11 +1317,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const n_count: u64 = if (o_amt) |n_amt| mem.amountToCountOfLength(n_amt, s_impl_type.high_alignment) else 1;
                         const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
                         const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.allocateStaticAnyAligned,
                             .{ allocator, n_count, s_aligned_bytes, s_up_addr },
-                        );
+                        ));
                         const s_impl: s_impl_type = s_impl_type.construct(.{
                             .lb_addr = s_lb_addr,
                             .ab_addr = s_ab_addr,
@@ -1105,11 +1333,11 @@ fn GenericInterface(comptime Allocator: type) type {
                     const s_aligned_bytes: u64 = n_count * s_impl_type.utility();
                     const s_ab_addr: u64 = mach.alignA64(s_lb_addr, s_impl_type.low_alignment);
                     const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                    try @call(
+                    try meta.wrap(@call(
                         .always_inline,
                         Intermediate.allocateStaticAnyAligned,
                         .{ allocator, n_count, s_aligned_bytes, s_up_addr },
-                    );
+                    ));
                     const s_impl: s_impl_type = s_impl_type.construct(.{
                         .lb_addr = s_lb_addr,
                     });
@@ -1132,11 +1360,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
                         if (@hasField(Construct, "ss_addr")) {
                             const s_ss_addr: u64 = s_ab_addr;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.allocateManyUnitAligned,
                                 .{ allocator, s_aligned_bytes, s_up_addr },
-                            );
+                            ));
                             const s_impl: s_impl_type = s_impl_type.construct(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -1145,11 +1373,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                             return s_impl;
                         }
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.allocateManyUnitAligned,
                             .{ allocator, s_aligned_bytes, s_up_addr },
-                        );
+                        ));
                         const s_impl: s_impl_type = s_impl_type.construct(.{
                             .lb_addr = s_lb_addr,
                             .up_addr = s_up_addr,
@@ -1169,11 +1397,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         if (@hasField(Construct, "ab_addr")) {
                             if (@hasField(Construct, "ss_addr")) {
                                 const s_ss_addr: u64 = s_ab_addr;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.allocateManyAnyAligned,
                                     .{ allocator, s_aligned_bytes, s_up_addr },
-                                );
+                                ));
                                 const s_impl: s_impl_type = s_impl_type.construct(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -1183,11 +1411,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                                 return s_impl;
                             }
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.allocateManyAnyAligned,
                                 .{ allocator, s_aligned_bytes, s_up_addr },
-                            );
+                            ));
                             const s_impl: s_impl_type = s_impl_type.construct(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -1198,11 +1426,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         }
                         if (@hasField(Construct, "ss_addr")) {
                             const s_ss_addr: u64 = s_ab_addr;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.allocateManyAnyAligned,
                                 .{ allocator, s_aligned_bytes, s_up_addr },
-                            );
+                            ));
                             const s_impl: s_impl_type = s_impl_type.construct(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -1211,11 +1439,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                             return s_impl;
                         }
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.allocateManyAnyAligned,
                             .{ allocator, s_aligned_bytes, s_up_addr },
-                        );
+                        ));
                         const s_impl: s_impl_type = s_impl_type.construct(.{
                             .lb_addr = s_lb_addr,
                             .up_addr = s_up_addr,
@@ -1305,11 +1533,11 @@ fn GenericInterface(comptime Allocator: type) type {
                 builtin.assertAbove(u64, t_aligned_bytes, s_aligned_bytes);
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
                 const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeManyAboveUnitAligned,
                     .{ allocator, s_up_addr, t_up_addr },
-                );
+                ));
                 return s_impl_ptr.resize(.{
                     .up_addr = t_up_addr,
                 });
@@ -1322,11 +1550,11 @@ fn GenericInterface(comptime Allocator: type) type {
                 builtin.assertAbove(u64, t_aligned_bytes, s_aligned_bytes);
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
                 const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeManyAboveAnyAligned,
                     .{ allocator, s_up_addr, t_up_addr },
-                );
+                ));
                 return s_impl_ptr.resize(.{
                     .up_addr = t_up_addr,
                 });
@@ -1389,11 +1617,11 @@ fn GenericInterface(comptime Allocator: type) type {
                 if (t_aligned_bytes <= s_aligned_bytes) return;
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
                 const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeManyAboveUnitAligned,
                     .{ allocator, s_up_addr, t_up_addr },
-                );
+                ));
                 return s_impl_ptr.resize(.{
                     .up_addr = t_up_addr,
                 });
@@ -1407,11 +1635,11 @@ fn GenericInterface(comptime Allocator: type) type {
                 if (t_aligned_bytes <= s_aligned_bytes) return;
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
                 const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeManyAboveAnyAligned,
                     .{ allocator, s_up_addr, t_up_addr },
-                );
+                ));
                 return s_impl_ptr.resize(.{
                     .up_addr = t_up_addr,
                 });
@@ -1472,22 +1700,22 @@ fn GenericInterface(comptime Allocator: type) type {
                 const s_ab_addr: u64 = s_impl.start(allocator.*);
                 const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeHolderAboveUnitAligned,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else { // @1b1
                 const s_impl: s_impl_type = s_impl_ptr.*;
                 defer Graphics.showReallocateHolder(allocator, s_impl_type, s_impl, s_impl_ptr.*, @src());
                 const s_ab_addr: u64 = s_impl.start(allocator.*);
                 const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeHolderAboveAnyAligned,
                     .{ allocator, t_up_addr },
-                );
+                ));
             }
         }
         pub fn resizeHolderIncrement(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, x_amt: mem.Amount) Allocator.allocate_void {
@@ -1501,11 +1729,11 @@ fn GenericInterface(comptime Allocator: type) type {
                 const n_amt: mem.Amount = .{ .bytes = s_impl.length(allocator.*) + mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
                 const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeHolderAboveUnitAligned,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else { // @1b1
                 const s_impl: s_impl_type = s_impl_ptr.*;
                 defer Graphics.showReallocateHolder(allocator, s_impl_type, s_impl, s_impl_ptr.*, @src());
@@ -1513,11 +1741,11 @@ fn GenericInterface(comptime Allocator: type) type {
                 const n_amt: mem.Amount = .{ .bytes = s_impl.length(allocator.*) + mem.amountToBytesOfLength(x_amt, s_impl_type.high_alignment) };
                 const t_aligned_bytes: u64 = mem.amountToBytesReserved(n_amt, s_impl_type);
                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                try @call(
+                try meta.wrap(@call(
                     .always_inline,
                     Intermediate.resizeHolderAboveAnyAligned,
                     .{ allocator, t_up_addr },
-                );
+                ));
             }
         }
         pub fn moveStatic(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type) Allocator.allocate_void {
@@ -1536,11 +1764,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const s_aligned_bytes: u64 = s_impl.utility();
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.moveStaticUnitAligned,
                             .{ allocator, t_up_addr },
-                        );
+                        ));
                         return s_impl_ptr.translate(.{
                             .lb_addr = t_lb_addr,
                             .ss_addr = t_ss_addr,
@@ -1550,11 +1778,11 @@ fn GenericInterface(comptime Allocator: type) type {
                     const t_aligned_bytes: u64 = s_aligned_bytes;
                     const t_ab_addr: u64 = t_lb_addr;
                     const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                    try @call(
+                    try meta.wrap(@call(
                         .always_inline,
                         Intermediate.moveStaticUnitAligned,
                         .{ allocator, t_up_addr },
-                    );
+                    ));
                     return s_impl_ptr.translate(.{
                         .lb_addr = t_lb_addr,
                     });
@@ -1572,11 +1800,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_impl.utility();
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.moveStaticAnyAligned,
                                 .{ allocator, t_up_addr },
-                            );
+                            ));
                             return s_impl_ptr.translate(.{
                                 .lb_addr = t_lb_addr,
                                 .ab_addr = t_ab_addr,
@@ -1586,11 +1814,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const s_aligned_bytes: u64 = s_impl.utility();
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.moveStaticAnyAligned,
                             .{ allocator, t_up_addr },
-                        );
+                        ));
                         return s_impl_ptr.translate(.{
                             .lb_addr = t_lb_addr,
                             .ab_addr = t_ab_addr,
@@ -1600,11 +1828,11 @@ fn GenericInterface(comptime Allocator: type) type {
                     const t_aligned_bytes: u64 = s_aligned_bytes;
                     const t_ab_addr: u64 = mach.alignA64(t_lb_addr, s_impl_type.low_alignment);
                     const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                    try @call(
+                    try meta.wrap(@call(
                         .always_inline,
                         Intermediate.moveStaticAnyAligned,
                         .{ allocator, t_up_addr },
-                    );
+                    ));
                     return s_impl_ptr.translate(.{
                         .lb_addr = t_lb_addr,
                     });
@@ -1628,11 +1856,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_impl.utility();
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.moveManyUnitAligned,
                                 .{ allocator, t_up_addr },
-                            );
+                            ));
                             return s_impl_ptr.translate(.{
                                 .lb_addr = t_lb_addr,
                                 .ss_addr = t_ss_addr,
@@ -1645,11 +1873,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_ab_addr: u64 = t_lb_addr;
                         const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.moveManyUnitAligned,
                             .{ allocator, t_up_addr },
-                        );
+                        ));
                         return s_impl_ptr.translate(.{
                             .lb_addr = t_lb_addr,
                             .up_addr = t_up_addr,
@@ -1670,11 +1898,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_aligned_bytes: u64 = s_impl.utility();
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.moveManyAnyAligned,
                                     .{ allocator, t_up_addr },
-                                );
+                                ));
                                 return s_impl_ptr.translate(.{
                                     .lb_addr = t_lb_addr,
                                     .ab_addr = t_ab_addr,
@@ -1687,11 +1915,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_impl.utility();
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.moveManyAnyAligned,
                                 .{ allocator, t_up_addr },
-                            );
+                            ));
                             return s_impl_ptr.translate(.{
                                 .lb_addr = t_lb_addr,
                                 .ab_addr = t_ab_addr,
@@ -1706,11 +1934,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_impl.utility();
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.moveManyAnyAligned,
                                 .{ allocator, t_up_addr },
-                            );
+                            ));
                             return s_impl_ptr.translate(.{
                                 .lb_addr = t_lb_addr,
                                 .ss_addr = t_ss_addr,
@@ -1723,11 +1951,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_ab_addr: u64 = mach.alignA64(t_lb_addr, s_impl_type.low_alignment);
                         const t_up_addr: u64 = t_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.moveManyAnyAligned,
                             .{ allocator, t_up_addr },
-                        );
+                        ));
                         return s_impl_ptr.translate(.{
                             .lb_addr = t_lb_addr,
                             .up_addr = t_up_addr,
@@ -1834,11 +2062,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_ub_addr: u64 = s_impl.next();
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertHolderManyUnitAligned,
                                     .{ allocator, t_aligned_bytes, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -1848,11 +2076,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             }
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertHolderManyUnitAligned,
                                 .{ allocator, t_aligned_bytes, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -1863,11 +2091,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_ub_addr: u64 = s_impl.next();
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertHolderManyUnitAligned,
                                 .{ allocator, t_aligned_bytes, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -1876,11 +2104,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         }
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.convertHolderManyUnitAligned,
                             .{ allocator, t_aligned_bytes, t_up_addr },
-                        );
+                        ));
                         return t_impl_type.convert(.{
                             .lb_addr = s_lb_addr,
                             .up_addr = s_up_addr,
@@ -1902,11 +2130,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                     const s_ub_addr: u64 = s_impl.next();
                                     const t_aligned_bytes: u64 = s_aligned_bytes;
                                     const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                    try @call(
+                                    try meta.wrap(@call(
                                         .always_inline,
                                         Intermediate.convertHolderManyAnyAligned,
                                         .{ allocator, t_aligned_bytes, t_up_addr },
-                                    );
+                                    ));
                                     return t_impl_type.convert(.{
                                         .lb_addr = s_lb_addr,
                                         .up_addr = s_up_addr,
@@ -1917,11 +2145,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 }
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertHolderManyAnyAligned,
                                     .{ allocator, t_aligned_bytes, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -1933,11 +2161,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_ub_addr: u64 = s_impl.next();
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertHolderManyAnyAligned,
                                     .{ allocator, t_aligned_bytes, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -1947,11 +2175,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             }
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertHolderManyAnyAligned,
                                 .{ allocator, t_aligned_bytes, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -1964,11 +2192,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_ub_addr: u64 = s_impl.next();
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertHolderManyAnyAligned,
                                     .{ allocator, t_aligned_bytes, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -1978,11 +2206,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             }
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertHolderManyAnyAligned,
                                 .{ allocator, t_aligned_bytes, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -1993,11 +2221,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_ub_addr: u64 = s_impl.next();
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertHolderManyAnyAligned,
                                 .{ allocator, t_aligned_bytes, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -2006,11 +2234,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         }
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.convertHolderManyAnyAligned,
                             .{ allocator, t_aligned_bytes, t_up_addr },
-                        );
+                        ));
                         return t_impl_type.convert(.{
                             .lb_addr = s_lb_addr,
                             .up_addr = s_up_addr,
@@ -2037,11 +2265,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertAnyManyUnitAligned,
                                     .{ allocator, s_up_addr, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -2053,11 +2281,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertAnyManyUnitAligned,
                                 .{ allocator, s_up_addr, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -2070,11 +2298,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertAnyManyUnitAligned,
                                 .{ allocator, s_up_addr, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -2085,11 +2313,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.convertAnyManyUnitAligned,
                             .{ allocator, s_up_addr, t_up_addr },
-                        );
+                        ));
                         return t_impl_type.convert(.{
                             .lb_addr = s_lb_addr,
                             .up_addr = s_up_addr,
@@ -2111,11 +2339,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                     const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                                     const t_aligned_bytes: u64 = s_aligned_bytes;
                                     const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                    try @call(
+                                    try meta.wrap(@call(
                                         .always_inline,
                                         Intermediate.convertAnyManyAnyAligned,
                                         .{ allocator, s_up_addr, t_up_addr },
-                                    );
+                                    ));
                                     return t_impl_type.convert(.{
                                         .lb_addr = s_lb_addr,
                                         .up_addr = s_up_addr,
@@ -2127,11 +2355,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertAnyManyAnyAligned,
                                     .{ allocator, s_up_addr, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -2144,11 +2372,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertAnyManyAnyAligned,
                                     .{ allocator, s_up_addr, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -2159,11 +2387,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertAnyManyAnyAligned,
                                 .{ allocator, s_up_addr, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -2178,11 +2406,11 @@ fn GenericInterface(comptime Allocator: type) type {
                                 const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                                 const t_aligned_bytes: u64 = s_aligned_bytes;
                                 const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                                try @call(
+                                try meta.wrap(@call(
                                     .always_inline,
                                     Intermediate.convertAnyManyAnyAligned,
                                     .{ allocator, s_up_addr, t_up_addr },
-                                );
+                                ));
                                 return t_impl_type.convert(.{
                                     .lb_addr = s_lb_addr,
                                     .up_addr = s_up_addr,
@@ -2194,11 +2422,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertAnyManyAnyAligned,
                                 .{ allocator, s_up_addr, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -2211,11 +2439,11 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                             const t_aligned_bytes: u64 = s_aligned_bytes;
                             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                            try @call(
+                            try meta.wrap(@call(
                                 .always_inline,
                                 Intermediate.convertAnyManyAnyAligned,
                                 .{ allocator, s_up_addr, t_up_addr },
-                            );
+                            ));
                             return t_impl_type.convert(.{
                                 .lb_addr = s_lb_addr,
                                 .up_addr = s_up_addr,
@@ -2226,11 +2454,11 @@ fn GenericInterface(comptime Allocator: type) type {
                         const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
                         const t_aligned_bytes: u64 = s_aligned_bytes;
                         const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
-                        try @call(
+                        try meta.wrap(@call(
                             .always_inline,
                             Intermediate.convertAnyManyAnyAligned,
                             .{ allocator, s_up_addr, t_up_addr },
-                        );
+                        ));
                         return t_impl_type.convert(.{
                             .lb_addr = s_lb_addr,
                             .up_addr = s_up_addr,
@@ -2248,11 +2476,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
 
         fn allocateStaticUnitAligned(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             if (s_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.allocateStaticUnitAlignedUnaddressable,
                     .{ allocator, n_count, s_aligned_bytes, s_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2263,11 +2491,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn allocateStaticAnyAligned(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             if (s_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.allocateStaticAnyAlignedUnaddressable,
                     .{ allocator, n_count, s_aligned_bytes, s_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2278,11 +2506,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn allocateManyUnitAligned(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             if (s_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.allocateManyUnitAlignedUnaddressable,
                     .{ allocator, s_aligned_bytes, s_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2293,11 +2521,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn allocateManyAnyAligned(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             if (s_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.allocateManyAnyAlignedUnaddressable,
                     .{ allocator, s_aligned_bytes, s_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2309,11 +2537,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         fn resizeManyAboveUnitAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             if (s_up_addr == allocator.next()) {
                 if (t_up_addr > allocator.finish()) {
-                    try @call(
+                    try meta.wrap(@call(
                         .never_inline,
                         Implementation.resizeManyAboveUnitAlignedUnaddressable,
                         .{ allocator, s_up_addr, t_up_addr },
-                    );
+                    ));
                 } else {
                     @call(
                         .always_inline,
@@ -2328,11 +2556,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         fn resizeManyAboveAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             if (s_up_addr == allocator.next()) {
                 if (t_up_addr > allocator.finish()) {
-                    try @call(
+                    try meta.wrap(@call(
                         .never_inline,
                         Implementation.resizeManyAboveAnyAlignedUnaddressable,
                         .{ allocator, s_up_addr, t_up_addr },
-                    );
+                    ));
                 } else {
                     @call(
                         .always_inline,
@@ -2380,11 +2608,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn resizeHolderAboveUnitAligned(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.resizeHolderAboveUnitAlignedUnaddressable,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2395,11 +2623,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn resizeHolderAboveAnyAligned(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.resizeHolderAboveAnyAlignedUnaddressable,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2410,11 +2638,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn moveStaticUnitAligned(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.moveStaticUnitAlignedUnaddressable,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2425,11 +2653,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn moveStaticAnyAligned(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.moveStaticAnyAlignedUnaddressable,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2440,11 +2668,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn moveManyUnitAligned(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.moveManyUnitAlignedUnaddressable,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2455,11 +2683,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn moveManyAnyAligned(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.moveManyAnyAlignedUnaddressable,
                     .{ allocator, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2538,11 +2766,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn convertHolderManyUnitAligned(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.convertHolderManyUnitAlignedUnaddressable,
                     .{ allocator, t_aligned_bytes, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
@@ -2553,11 +2781,11 @@ fn GenericIntermediate(comptime Allocator: type) type {
         }
         fn convertHolderManyAnyAligned(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) Allocator.allocate_void {
             if (t_up_addr > allocator.finish()) {
-                try @call(
+                try meta.wrap(@call(
                     .never_inline,
                     Implementation.convertHolderManyAnyAlignedUnaddressable,
                     .{ allocator, t_aligned_bytes, t_up_addr },
-                );
+                ));
             } else {
                 @call(
                     .always_inline,
