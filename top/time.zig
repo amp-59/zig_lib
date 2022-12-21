@@ -52,7 +52,7 @@ pub fn realClock(comptime clock_spec: ?RealClock) !TimeSpec {
             .coarse => .realtime_coarse,
         }
     else
-        .REALTIME };
+        .realtime };
     try sys.clock_gettime(flags.val, @ptrToInt(&ts));
     return ts;
 }
@@ -64,7 +64,7 @@ pub fn montonicClock(comptime clock_spec: ?MonotonicClock) !TimeSpec {
             .coarse => .monotonic_coarse,
         }
     else
-        .MONOTONIC };
+        .monotonic };
     try sys.clock_gettime(flags.val, @ptrToInt(&ts));
     return ts;
 }
@@ -84,7 +84,7 @@ pub fn bootClock(comptime clock_spec: ?BootClock) !TimeSpec {
             .alarm => .boottime_alarm,
         }
     else
-        .BOOTTIME };
+        .boottime };
     try sys.clock_gettime(flags.val, @ptrToInt(&ts));
     return ts;
 }
