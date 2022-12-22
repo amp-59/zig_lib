@@ -23,6 +23,7 @@ const Context = opaque {
 pub fn main(builder: *build.Builder) !void {
     Context.builder = builder;
     Context.init();
+
     // Minor test programs:
     _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .build_root = true, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{ .is_correct = true, .is_verbose = true });
@@ -42,6 +43,7 @@ pub fn main(builder: *build.Builder) !void {
 
     // Other test programs:
     _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{});
+    _ = addProjectExecutable(builder, "parse_test", "top/parse-test.zig", .{ .build_root = true, .build_mode = .ReleaseFast });
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
