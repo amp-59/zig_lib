@@ -1718,10 +1718,10 @@ pub const SyntaxTree = struct {
             .arg = data.lhs,
         });
     }
-    pub fn switchCaseOne(ast: SyntaxTree, allocator_n: *const AllocatorN, node: zig.Index) full.SwitchCase {
-        const data: zig.AstNode.Data = &ast.nodes.referOneAt(node).data;
+    pub fn switchCaseOne(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.SwitchCase {
+        const data: *zig.AstNode.Data = &ast.nodes.referOneAt(allocator_n.*, node).data;
         const values: *[1]zig.Index = &data.lhs;
-        return ast.fullSwitchCase(.{
+        return ast.fullSwitchCase(allocator_n, allocator_x, .{
             .values = if (data.lhs == 0) values[0..0] else values[0..1],
             .arrow_token = ast.nodeMainToken(allocator_n, node),
             .target_expr = data.rhs,
@@ -1730,8 +1730,8 @@ pub const SyntaxTree = struct {
     pub fn switchCase(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.SwitchCase {
         const data: zig.AstNode.Data = ast.nodeData(allocator_n, node);
         const extra = ast.extraData(allocator_x, data.lhs, zig.AstNode.SubRange);
-        return ast.fullSwitchCase(.{
-            .values = ast.extras.readAll()[extra.start..extra.end],
+        return ast.fullSwitchCase(allocator_n, allocator_x, .{
+            .values = ast.extras.readAll(allocator_x.*)[extra.start..extra.end],
             .arrow_token = ast.nodeMainToken(allocator_n, node),
             .target_expr = data.rhs,
         }, node);
@@ -1992,7 +1992,6 @@ pub const SyntaxTree = struct {
         info: full.SwitchCase.Components,
         node: zig.Index,
     ) full.SwitchCase {
-        const node_tags: []const zig.AstNode.Tag = ast.nodes.readAll();
         var result: full.SwitchCase = .{
             .ast = info,
             .payload_token = null,
@@ -2001,7 +2000,7 @@ pub const SyntaxTree = struct {
         if (ast.tokenTag(info.arrow_token + 1) == .pipe) {
             result.payload_token = info.arrow_token + 2;
         }
-        switch (node_tags[node]) {
+        switch (ast.nodeTag(allocator_n, node)) {
             .switch_case_inline, .switch_case_inline_one => result.inline_token = ast.firstToken(allocator_n, allocator_x, node),
             else => {},
         }

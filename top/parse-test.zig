@@ -139,7 +139,12 @@ fn mainBoth() !void {
                 .if_simple => {
                     _ = lib_res.ast.ifSimple(&allocator_n, &allocator_x, node_index);
                 },
-
+                .switch_case_one => {
+                    _ = lib_res.ast.switchCaseOne(&allocator_n, &allocator_x, node_index);
+                },
+                .switch_case => {
+                    _ = lib_res.ast.switchCase(&allocator_n, &allocator_x, node_index);
+                },
                 else => {},
             }
         }
