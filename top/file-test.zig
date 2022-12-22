@@ -1,4 +1,5 @@
 const sys = @import("./sys.zig");
+const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const proc = @import("./proc.zig");
 const builtin = @import("./builtin.zig");
@@ -45,6 +46,12 @@ const close_spec: file.CloseSpec = .{
 const stat_spec: file.StatSpec = .{
     .errors = errors,
 };
+const ftruncate_spec: file.TruncateSpec = .{
+    .errors = errors,
+};
+const truncate_spec: file.TruncateSpec = .{
+    .errors = errors,
+};
 
 fn makeArgs(buf: [:0]u8, any: anytype) [@typeInfo(@TypeOf(any)).Struct.fields.len][*:0]u8 {
     var args: [@typeInfo(@TypeOf(any)).Struct.fields.len][*:0]u8 = undefined;
@@ -75,6 +82,9 @@ pub fn main(_: anytype, vars: anytype) !void {
         try file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test");
         try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
         try file.close(close_spec, dir_fd);
+
+        const mem_fd: u64 = try mem.fd(.{}, "buffer");
+        try file.ftruncate(ftruncate_spec, mem_fd, 4096);
     }
     {
         const dir_fd: u64 = try file.find(vars, "zig");
