@@ -1,6 +1,9 @@
 const mem = @import("./mem.zig");
 const builtin = @import("./builtin.zig");
 
+pub const Index = u32;
+pub const Offset = u32;
+
 pub const Allocator = struct {
     const preset_debug: mem.AllocatorOptions = .{
         .trace_state = false,
@@ -46,7 +49,6 @@ pub const StateArray = Allocator.State.StructuredHolder(u32);
 pub const Token = struct {
     tag: Tag,
     loc: Loc,
-    pub const Index = u32;
     pub const Info = struct {
         tag: Token.Tag,
         start: Index,
@@ -476,7 +478,6 @@ pub const AstNode = struct {
     tag: Tag,
     main_token: u32,
     data: Data,
-    pub const Index = u32;
     comptime {
         // Goal is to keep this under one byte for efficiency.
         builtin.static.assert(@sizeOf(Tag) == 1);
@@ -862,14 +863,14 @@ pub const AstNode = struct {
         /// `struct {}`, `union {}`, `opaque {}`, `enum {}`. `extra_data[lhs..rhs]`.
         /// main_token is `struct`, `union`, `opaque`, `enum` keyword.
         container_decl,
-        /// Same as ContainerDecl but there is known to be a trailing comma
+        /// Same as container_decl but there is known to be a trailing comma
         /// or semicolon before the rbrace.
         container_decl_trailing,
         /// `struct {lhs, rhs}`, `union {lhs, rhs}`, `opaque {lhs, rhs}`, `enum {lhs, rhs}`.
         /// lhs or rhs can be omitted.
         /// main_token is `struct`, `union`, `opaque`, `enum` keyword.
         container_decl_two,
-        /// Same as ContainerDeclTwo except there is known to be a trailing comma
+        /// Same as container_decl_two except there is known to be a trailing comma
         /// or semicolon before the rbrace.
         container_decl_two_trailing,
         /// `struct(lhs)` / `union(lhs)` / `enum(lhs)`. `SubRange[rhs]`.
