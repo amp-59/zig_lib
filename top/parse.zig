@@ -5,89 +5,66 @@ const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 const tokenizer = @import("./tokenizer.zig");
 
-const SubRange = zig.AstNode.SubRange;
-const SmallSpan = union(enum) {
-    zero_or_one: u32,
-    multi: SubRange,
-};
 const AllocatorN: type = zig.Allocator.Node;
 const AllocatorE: type = zig.Allocator.Error;
 const AllocatorX: type = zig.Allocator.Extra;
 const AllocatorS: type = zig.Allocator.State;
-
 const Error = meta.ReturnErrorSet(.{
-    AllocatorN.allocate_void,
-    AllocatorE.allocate_void,
-    AllocatorX.allocate_void,
-    AllocatorS.allocate_void,
+    AllocatorN.allocate_void, AllocatorE.allocate_void,
+    AllocatorX.allocate_void, AllocatorS.allocate_void,
     error{ParseError},
 });
 
 const null_node: u32 = 0;
-
 pub const Members = struct {
     len: usize,
     lhs: u32,
     rhs: u32,
     trailing: bool,
-
     pub fn toSpan(self: Members, ast: *abstract.SyntaxTree, allocator_x: *AllocatorX) !zig.AstNode.SubRange {
         if (self.len <= 2) {
             const nodes = [2]u32{ self.lhs, self.rhs };
             return listToSpan(ast, allocator_x, nodes[0..self.len]);
         } else {
-            return SubRange{ .start = self.lhs, .end = self.rhs };
+            return zig.AstNode.SubRange{ .start = self.lhs, .end = self.rhs };
         }
     }
 };
-
-fn listToSpan(ast: *abstract.SyntaxTree, allocator_x: *AllocatorX, list: []const u32) !SubRange {
+fn listToSpan(ast: *abstract.SyntaxTree, allocator_x: *AllocatorX, list: []const u32) !zig.AstNode.SubRange {
     try ast.extras.appendMany(allocator_x, list);
-    return SubRange{
+    return zig.AstNode.SubRange{
         .start = @intCast(u32, ast.extras.len(allocator_x.*) - list.len),
         .end = @intCast(u32, ast.extras.len(allocator_x.*)),
     };
 }
-
 fn addNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, elem: zig.AstNode) Error!u32 {
     const result = @intCast(u32, ast.nodes.len(allocator_n.*));
     try ast.nodes.appendOne(allocator_n, elem);
     return result;
 }
-
 fn setNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, i: usize, elem: zig.AstNode) u32 {
     ast.nodes.overwriteOneAt(allocator_n.*, i, elem);
     return @intCast(u32, i);
 }
-
 fn reserveNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, tag: zig.AstNode.Tag) Error!usize {
     try ast.nodes.increment(allocator_n, 1);
     ast.nodes.define(1);
     ast.nodes.referOneBack().tag = tag;
     return ast.nodes.len(allocator_n.*) - 1;
 }
-
 fn unreserveNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, node_index: usize) void {
     if (ast.nodes.len(allocator_n.*) == node_index) {
-        // XXX: Maybe trouble
-        // Not a thing to holders
         ast.nodes.undefine(1);
-        // ast.nodes.shrink(allocator_n, ast.nodes.len(allocator_n.*) - 1) catch unreachable;
     } else {
-        // There is zombie node left in the tree, let's make it as inoffensive as possible
-        // (sadly there's no no-op node)
-        // XXX: Maybe trouble
         ast.nodes.referOneAt(allocator_n.*, node_index).tag = .unreachable_literal;
         ast.nodes.referOneAt(allocator_n.*, node_index).main_token = tokenIndex(ast);
     }
 }
-
 fn addExtra(ast: *abstract.SyntaxTree, allocator_x: *AllocatorX, extra: anytype) Error!u32 {
     const result = @intCast(u32, ast.extras.len(allocator_x.*));
     try ast.extras.appendAny(.{}, allocator_x, extra);
     return result;
 }
-
 pub fn warnExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expected_token: zig.Token.Tag) !void {
     @setCold(true);
     try warnMsg(ast, allocator_e, .{
@@ -96,12 +73,10 @@ pub fn warnExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expecte
         .extra = .{ .expected_tag = expected_token },
     });
 }
-
 fn warn(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, error_tag: zig.AstError.Tag) !void {
     @setCold(true);
     try warnMsg(ast, allocator_e, .{ .tag = error_tag, .token = tokenIndex(ast) });
 }
-
 fn warnMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstError) !void {
     @setCold(true);
     switch (msg.tag) {
@@ -145,12 +120,10 @@ fn warnMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstErro
     }
     try ast.errors.appendOne(allocator_e, msg);
 }
-
 fn fail(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, tag: zig.AstError.Tag) Error {
     @setCold(true);
     return failMsg(ast, allocator_e, .{ .tag = tag, .token = tokenIndex(ast) });
 }
-
 fn failExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expected_token: zig.Token.Tag) Error {
     @setCold(true);
     return failMsg(ast, allocator_e, .{
@@ -159,13 +132,11 @@ fn failExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expected_to
         .extra = .{ .expected_tag = expected_token },
     });
 }
-
 fn failMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstError) Error {
     @setCold(true);
     try warnMsg(ast, allocator_e, msg);
     return error.ParseError;
 }
-
 /// ContainerMembers <- ContainerDeclarations (ContainerField COMMA)* (ContainerField / ContainerDeclarations)
 /// ContainerDeclarations
 ///     <- TestDecl ContainerDeclarations
@@ -184,16 +155,12 @@ pub fn parseContainerMembers(
     const state_top: u64 = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
     var field_state: union(enum) { none, seen, end: u32, err } = .none;
-
     var last_field: u32 = undefined;
-
     // Skip container doc comments.
     while (eatToken(ast, .container_doc_comment)) |_| {}
-
     var trailing = false;
     while (true) {
         const doc_comment = try eatDocComments(ast, allocator_e);
-
         switch (readTagAhead(ast)) {
             .keyword_test => {
                 if (doc_comment) |some| {
@@ -349,7 +316,6 @@ pub fn parseContainerMembers(
                     else => |mem_error| return mem_error,
                 };
                 if (c_container) continue;
-
                 const identifier = tokenIndex(ast);
                 defer last_field = identifier;
                 const container_field = expectContainerField(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
@@ -406,7 +372,6 @@ pub fn parseContainerMembers(
             },
         }
     }
-
     const items = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
     switch (items.len) {
         0 => return Members{
@@ -438,7 +403,6 @@ pub fn parseContainerMembers(
         },
     }
 }
-
 /// Attempts to find next container member by searching for certain tokens
 fn findNextContainerMember(ast: *abstract.SyntaxTree) void {
     var level: u32 = 0;
@@ -496,7 +460,6 @@ fn findNextContainerMember(ast: *abstract.SyntaxTree) void {
         }
     }
 }
-
 /// Attempts to find the next statement by searching for a semicolon
 fn findNextStmt(ast: *abstract.SyntaxTree) void {
     var level: u32 = 0;
@@ -524,7 +487,6 @@ fn findNextStmt(ast: *abstract.SyntaxTree) void {
         }
     }
 }
-
 /// TestDecl <- KEYWORD_test (STRINGLITERALSINGLE / IDENTIFIER)? Block
 fn expectTestDecl(
     ast: *abstract.SyntaxTree,
@@ -553,7 +515,6 @@ fn expectTestDecl(
         },
     });
 }
-
 fn expectTestDeclRecoverable(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -572,7 +533,6 @@ fn expectTestDeclRecoverable(
         else => |mem_error| return mem_error,
     };
 }
-
 /// TopLevelDecl
 ///     <- (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE? / (KEYWORD_inline / KEYWORD_noinline))? FnProto (SEMICOLON / Block)
 ///      / (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE?)? KEYWORD_threadlocal? VarDecl
@@ -613,7 +573,6 @@ fn expectTopLevelDecl(
                 }
                 const fn_decl_index = try reserveNode(ast, allocator_n, .fn_decl);
                 errdefer unreserveNode(ast, allocator_n, fn_decl_index);
-
                 const body_block = try parseBlock(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
                 builtin.assert(body_block != 0);
                 return setNode(ast, allocator_n, fn_decl_index, .{
@@ -638,7 +597,6 @@ fn expectTopLevelDecl(
         try warn(ast, allocator_e, .expected_fn);
         return error.ParseError;
     }
-
     const thread_local_token = eatToken(ast, .keyword_threadlocal);
     const var_decl = try parseVarDecl(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (var_decl != 0) {
@@ -656,7 +614,6 @@ fn expectTopLevelDecl(
     }
     return expectUsingNamespace(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
 }
-
 fn expectTopLevelDeclRecoverable(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -675,7 +632,6 @@ fn expectTopLevelDeclRecoverable(
         else => |mem_error| return mem_error,
     };
 }
-
 fn expectUsingNamespace(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -696,7 +652,6 @@ fn expectUsingNamespace(
         },
     });
 }
-
 fn expectUsingNamespaceRecoverable(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -715,7 +670,6 @@ fn expectUsingNamespaceRecoverable(
         else => |mem_error| return mem_error,
     };
 }
-
 /// FnProto <- KEYWORD_fn IDENTIFIER? LPAREN ParamDeclList RPAREN ByteAlign? AddrSpace? LinkSection? CallConv? EXCLAMATIONMARK? TypeExpr
 fn parseFnProto(
     ast: *abstract.SyntaxTree,
@@ -726,11 +680,9 @@ fn parseFnProto(
     array_s: *zig.StateArray,
 ) Error!u32 {
     const fn_token = eatToken(ast, .keyword_fn) orelse return null_node;
-
     // We want the fn proto node to be before its children in the array.
     const fn_proto_index = try reserveNode(ast, allocator_n, .fn_proto);
     errdefer unreserveNode(ast, allocator_n, fn_proto_index);
-
     _ = eatToken(ast, .identifier);
     const params = try parseParamDeclList(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     const align_expr = try parseByteAlign(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -738,14 +690,12 @@ fn parseFnProto(
     const section_expr = try parseLinkSection(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     const callconv_expr = try parseCallconv(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     _ = eatToken(ast, .bang);
-
     const return_type_expr = try parseTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (return_type_expr == 0) {
         // most likely the user forgot to specify the return type.
         // Mark return type as invalid and try to continue.
         try warn(ast, allocator_e, .expected_return_type);
     }
-
     if (align_expr == 0 and section_expr == 0 and callconv_expr == 0 and addrspace_expr == 0) {
         switch (params) {
             .zero_or_one => |param| return setNode(ast, allocator_n, fn_proto_index, .{
@@ -761,7 +711,7 @@ fn parseFnProto(
                     .tag = .fn_proto_multi,
                     .main_token = fn_token,
                     .data = .{
-                        .lhs = try addExtra(ast, allocator_x, SubRange{
+                        .lhs = try addExtra(ast, allocator_x, zig.AstNode.SubRange{
                             .start = span.start,
                             .end = span.end,
                         }),
@@ -805,7 +755,6 @@ fn parseFnProto(
         },
     }
 }
-
 /// VarDecl <- (KEYWORD_const / KEYWORD_var) IDENTIFIER (COLON TypeExpr)? ByteAlign? AddrSpace? LinkSection? (EQUAL Expr)? SEMICOLON
 fn parseVarDecl(
     ast: *abstract.SyntaxTree,
@@ -818,7 +767,6 @@ fn parseVarDecl(
     const mut_token = eatToken(ast, .keyword_const) orelse
         eatToken(ast, .keyword_var) orelse
         return null_node;
-
     _ = try expectToken(ast, allocator_e, .identifier);
     const type_node: u32 = if (eatToken(ast, .colon) == null) 0 else try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     const align_node = try parseByteAlign(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -884,7 +832,6 @@ fn parseVarDecl(
         });
     }
 }
-
 /// ContainerField <- KEYWORD_comptime? IDENTIFIER (COLON TypeExpr ByteAlign?)? (EQUAL Expr)?
 fn expectContainerField(
     ast: *abstract.SyntaxTree,
@@ -900,16 +847,13 @@ fn expectContainerField(
     if (!tuple_like) {
         main_token = assertToken(ast, .identifier);
     }
-
     var align_expr: u32 = 0;
     var type_expr: u32 = 0;
     if (eatToken(ast, .colon) != null or tuple_like) {
         type_expr = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         align_expr = try parseByteAlign(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     }
-
     const value_expr: u32 = if (eatToken(ast, .equal) == null) 0 else try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-
     if (align_expr == 0) {
         return addNode(ast, allocator_n, .{
             .tag = .container_field_init,
@@ -942,7 +886,6 @@ fn expectContainerField(
         });
     }
 }
-
 /// Statement
 ///     <- KEYWORD_comptime? VarDecl
 ///      / KEYWORD_comptime BlockExprStatement
@@ -964,7 +907,6 @@ fn parseStatement(
     allow_defer_var: bool,
 ) Error!u32 {
     const comptime_token = eatToken(ast, .keyword_comptime);
-
     if (allow_defer_var) {
         const var_decl = try parseVarDecl(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         if (var_decl != 0) {
@@ -972,7 +914,6 @@ fn parseStatement(
             return var_decl;
         }
     }
-
     if (comptime_token) |token| {
         return addNode(ast, allocator_n, .{
             .tag = .@"comptime",
@@ -983,7 +924,6 @@ fn parseStatement(
             },
         });
     }
-
     switch (readTagAhead(ast)) {
         .keyword_nosuspend => {
             return addNode(ast, allocator_n, .{
@@ -1041,19 +981,15 @@ fn parseStatement(
         },
         else => {},
     }
-
     const labeled_statement = try parseLabeledStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (labeled_statement != 0) return labeled_statement;
-
     const assign_expr = try parseAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (assign_expr != 0) {
         try expectSemicolon(ast, allocator_e, .expected_semi_after_stmt, true);
         return assign_expr;
     }
-
     return null_node;
 }
-
 fn expectStatement(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -1069,7 +1005,6 @@ fn expectStatement(
     }
     return statement;
 }
-
 /// If a parse error occurs, reports an error, but then finds the next statement
 /// and returns that one instead. If a parse error occurs but there is no following
 /// statement, returns 0.
@@ -1097,7 +1032,6 @@ fn expectStatementRecoverable(
         };
     }
 }
-
 /// IfStatement
 ///     <- IfPrefix BlockExpr ( KEYWORD_else Payload? Statement )?
 ///      / IfPrefix AssignExpr ( SEMICOLON / KEYWORD_else Payload? Statement )
@@ -1114,7 +1048,6 @@ fn expectIfStatement(
     const condition = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     _ = try expectToken(ast, allocator_e, .r_paren);
     _ = try parsePtrPayload(ast, allocator_e);
-
     // TODO propose to change the syntax so that semicolons are always required
     // inside if statements, even if there is an `else`.
     var else_required = false;
@@ -1165,7 +1098,6 @@ fn expectIfStatement(
         },
     });
 }
-
 /// LabeledStatement <- BlockLabel? (Block / LoopStatement)
 fn parseLabeledStatement(
     ast: *abstract.SyntaxTree,
@@ -1180,10 +1112,8 @@ fn parseLabeledStatement(
     );
     const block = try parseBlock(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (block != 0) return block;
-
     const loop_stmt = try parseLoopStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (loop_stmt != 0) return loop_stmt;
-
     if (label_token != 0) {
         const after_colon = tokenIndex(ast);
         const node = try parseTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -1198,10 +1128,8 @@ fn parseLabeledStatement(
         }
         return failMsg(ast, allocator_e, .{ .tag = .expected_labelable, .token = after_colon });
     }
-
     return null_node;
 }
-
 /// LoopStatement <- KEYWORD_inline? (ForStatement / WhileStatement)
 fn parseLoopStatement(
     ast: *abstract.SyntaxTree,
@@ -1212,19 +1140,14 @@ fn parseLoopStatement(
     array_s: *zig.StateArray,
 ) Error!u32 {
     const inline_token = eatToken(ast, .keyword_inline);
-
     const for_statement = try parseForStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (for_statement != 0) return for_statement;
-
     const while_statement = try parseWhileStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (while_statement != 0) return while_statement;
-
     if (inline_token == null) return null_node;
-
     // If we've seen "inline", there should have been a "for" or "while"
     return fail(ast, allocator_e, .expected_inlinable);
 }
-
 /// ForPrefix <- KEYWORD_for LPAREN Expr RPAREN PtrIndexPayload
 /// ForStatement
 ///     <- ForPrefix BlockExpr ( KEYWORD_else Statement )?
@@ -1243,7 +1166,6 @@ fn parseForStatement(
     _ = try expectToken(ast, allocator_e, .r_paren);
     const found_payload = try parsePtrIndexPayload(ast, allocator_e);
     if (found_payload == 0) try warn(ast, allocator_e, .expected_loop_payload);
-
     // TODO propose to change the syntax so that semicolons are always required
     // inside while statements, even if there is an `else`.
     var else_required = false;
@@ -1292,7 +1214,6 @@ fn parseForStatement(
         },
     });
 }
-
 /// WhilePrefix <- KEYWORD_while LPAREN Expr RPAREN PtrPayload? WhileContinueExpr?
 /// WhileStatement
 ///     <- WhilePrefix BlockExpr ( KEYWORD_else Payload? Statement )?
@@ -1311,7 +1232,6 @@ fn parseWhileStatement(
     _ = try expectToken(ast, allocator_e, .r_paren);
     _ = try parsePtrPayload(ast, allocator_e);
     const cont_expr = try parseWhileContinueExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-
     // TODO propose to change the syntax so that semicolons are always required
     // inside while statements, even if there is an `else`.
     var else_required = false;
@@ -1391,7 +1311,6 @@ fn parseWhileStatement(
         },
     });
 }
-
 /// BlockExprStatement
 ///     <- BlockExpr
 ///      / AssignExpr SEMICOLON
@@ -1414,7 +1333,6 @@ fn parseBlockExprStatement(
     }
     return null_node;
 }
-
 fn expectBlockExprStatement(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -1429,7 +1347,6 @@ fn expectBlockExprStatement(
     }
     return node;
 }
-
 /// BlockExpr <- BlockLabel? Block
 fn parseBlockExpr(
     ast: *abstract.SyntaxTree,
@@ -1454,7 +1371,6 @@ fn parseBlockExpr(
         else => return null_node,
     }
 }
-
 /// AssignExpr <- Expr (AssignOp Expr)?
 /// AssignOp
 ///     <- ASTERISKEQUAL
@@ -1481,7 +1397,6 @@ fn parseAssignExpr(
 ) Error!u32 {
     const expr = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (expr == 0) return null_node;
-
     const tag: zig.AstNode.Tag = switch (readTagAhead(ast)) {
         .asterisk_equal => .assign_mul,
         .slash_equal => .assign_div,
@@ -1512,7 +1427,6 @@ fn parseAssignExpr(
         },
     });
 }
-
 fn expectAssignExpr(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -1527,7 +1441,6 @@ fn expectAssignExpr(
     }
     return expr;
 }
-
 fn parseExpr(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -1538,7 +1451,6 @@ fn parseExpr(
 ) Error!u32 {
     return parseExprPrecedence(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, 0);
 }
-
 fn expectExpr(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -1554,43 +1466,35 @@ fn expectExpr(
         return node;
     }
 }
-
 const Assoc = enum {
     left,
     none,
 };
-
 const OperInfo = struct {
     prec: i8,
     tag: zig.AstNode.Tag,
     assoc: Assoc = Assoc.left,
 };
-
 // A table of binary operator information. Higher precedence numbers are
 // stickier. All operators at the same precedence level should have the same
 // associativity.
 const operTable = directEnumArrayDefault(zig.Token.Tag, OperInfo, .{ .prec = -1, .tag = zig.AstNode.Tag.root }, 0, .{
     .keyword_or = .{ .prec = 10, .tag = .bool_or },
-
     .keyword_and = .{ .prec = 20, .tag = .bool_and },
-
     .equal_equal = .{ .prec = 30, .tag = .equal_equal, .assoc = Assoc.none },
     .bang_equal = .{ .prec = 30, .tag = .bang_equal, .assoc = Assoc.none },
     .angle_bracket_left = .{ .prec = 30, .tag = .less_than, .assoc = Assoc.none },
     .angle_bracket_right = .{ .prec = 30, .tag = .greater_than, .assoc = Assoc.none },
     .angle_bracket_left_equal = .{ .prec = 30, .tag = .less_or_equal, .assoc = Assoc.none },
     .angle_bracket_right_equal = .{ .prec = 30, .tag = .greater_or_equal, .assoc = Assoc.none },
-
     .ampersand = .{ .prec = 40, .tag = .bit_and },
     .caret = .{ .prec = 40, .tag = .bit_xor },
     .pipe = .{ .prec = 40, .tag = .bit_or },
     .keyword_orelse = .{ .prec = 40, .tag = .@"orelse" },
     .keyword_catch = .{ .prec = 40, .tag = .@"catch" },
-
     .angle_bracket_angle_bracket_left = .{ .prec = 50, .tag = .shl },
     .angle_bracket_angle_bracket_left_pipe = .{ .prec = 50, .tag = .shl_sat },
     .angle_bracket_angle_bracket_right = .{ .prec = 50, .tag = .shr },
-
     .plus = .{ .prec = 60, .tag = .add },
     .minus = .{ .prec = 60, .tag = .sub },
     .plus_plus = .{ .prec = 60, .tag = .array_cat },
@@ -1598,7 +1502,6 @@ const operTable = directEnumArrayDefault(zig.Token.Tag, OperInfo, .{ .prec = -1,
     .minus_percent = .{ .prec = 60, .tag = .sub_wrap },
     .plus_pipe = .{ .prec = 60, .tag = .add_sat },
     .minus_pipe = .{ .prec = 60, .tag = .sub_sat },
-
     .pipe_pipe = .{ .prec = 70, .tag = .merge_error_sets },
     .asterisk = .{ .prec = 70, .tag = .mul },
     .slash = .{ .prec = 70, .tag = .div },
@@ -1607,7 +1510,6 @@ const operTable = directEnumArrayDefault(zig.Token.Tag, OperInfo, .{ .prec = -1,
     .asterisk_percent = .{ .prec = 70, .tag = .mul_wrap },
     .asterisk_pipe = .{ .prec = 70, .tag = .mul_sat },
 });
-
 fn parseExprPrecedence(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -1622,9 +1524,7 @@ fn parseExprPrecedence(
     if (node == 0) {
         return null_node;
     }
-
     var banned_prec: i8 = -1;
-
     while (true) {
         const tok_tag = readTagAhead(ast);
         const info = operTable[@intCast(usize, @enumToInt(tok_tag))];
@@ -1634,7 +1534,6 @@ fn parseExprPrecedence(
         if (info.prec == banned_prec) {
             return fail(ast, allocator_e, .chained_comparison_operators);
         }
-
         const oper_token = nextToken(ast);
         // Special-case handling for "catch"
         if (tok_tag == .keyword_catch) {
@@ -1645,17 +1544,14 @@ fn parseExprPrecedence(
             try warn(ast, allocator_e, .expected_expr);
             return node;
         }
-
         {
             const tok_len = tok_tag.lexeme().?.len;
             const b_idx: u64 = ast.tokens.readOneAt(oper_token).start - 1;
             const a_idx: u64 = ast.tokens.readOneAt(oper_token).start + tok_len;
             const b_char: u8 = ast.source[b_idx];
             const a_char: u8 = ast.source[a_idx];
-
             // const char_before = ast.source[parser.token_starts[oper_token] - 1];
             // const char_after = ast.source[parser.token_starts[oper_token] + tok_len];
-
             if (tok_tag == .ampersand and a_char == '&') {
                 // without types we don't know if '&&' was intended as 'bitwise_and address_of', or a c-style logical_and
                 // The best the parser can do is recommend changing it to 'and' or ' & &'
@@ -1664,7 +1560,6 @@ fn parseExprPrecedence(
                 try warnMsg(ast, allocator_e, .{ .tag = .mismatched_binary_op_whitespace, .token = oper_token });
             }
         }
-
         node = try addNode(ast, allocator_n, .{
             .tag = info.tag,
             .main_token = oper_token,
@@ -1673,15 +1568,12 @@ fn parseExprPrecedence(
                 .rhs = rhs,
             },
         });
-
         if (info.assoc == Assoc.none) {
             banned_prec = info.prec;
         }
     }
-
     return node;
 }
-
 /// PrefixExpr <- PrefixOp* PrimaryExpr
 /// PrefixOp
 ///     <- EXCLAMATIONMARK
@@ -1718,7 +1610,6 @@ fn parsePrefixExpr(
         },
     });
 }
-
 fn expectPrefixExpr(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -1733,7 +1624,6 @@ fn expectPrefixExpr(
     }
     return node;
 }
-
 /// TypeExpr <- PrefixTypeOp* ErrorUnionExpr
 /// PrefixTypeOp
 ///     <- QUESTIONMARK
@@ -1882,6 +1772,7 @@ fn parseTypeExpr(
                         const end: usize = ast.tokens.readOneAt(ident + 1).start;
                         const ident_slice: []const u8 = ast.source[start..end];
                         // XXX: Maybe trouble
+                        // const ident_slice = ast.source[parser.token_starts[ident]..parser.token_starts[ident + 1]];
                         if (!mem.testEqualMany(u8, trimRight(u8, &tokenizer.whitespace, ident_slice), "c")) {
                             ast.tokens.unstream(1);
                         }
@@ -2044,7 +1935,6 @@ fn expectTypeExpr(
     }
     return node;
 }
-
 /// PrimaryExpr
 ///     <- AsmExpr
 ///      / IfExpr
@@ -2177,7 +2067,6 @@ fn parsePrimaryExpr(
         else => return parseCurlySuffixExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
     }
 }
-
 /// IfExpr <- IfPrefix Expr (KEYWORD_else Payload? Expr)?
 fn parseIfExpr(
     ast: *abstract.SyntaxTree,
@@ -2189,7 +2078,6 @@ fn parseIfExpr(
 ) Error!u32 {
     return parseIf(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, expectExpr);
 }
-
 /// Block <- LBRACE Statement* RBRACE
 fn parseBlock(
     ast: *abstract.SyntaxTree,
@@ -2210,8 +2098,7 @@ fn parseBlock(
     }
     _ = try expectToken(ast, allocator_e, .r_brace);
     const semicolon = (relativeTagBehind(ast, 2) == .semicolon);
-    // XXX: Maybe trouble
-    const statements = array_s.readManyAt(allocator_s.*, state_top);
+    const statements = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
     switch (statements.len) {
         0 => return addNode(ast, allocator_n, .{
             .tag = .block_two,
@@ -2250,7 +2137,6 @@ fn parseBlock(
         },
     }
 }
-
 /// ForPrefix <- KEYWORD_for LPAREN Expr RPAREN PtrIndexPayload
 /// ForExpr <- ForPrefix Expr (KEYWORD_else Expr)?
 fn parseForExpr(
@@ -2267,7 +2153,6 @@ fn parseForExpr(
     _ = try expectToken(ast, allocator_e, .r_paren);
     const found_payload = try parsePtrIndexPayload(ast, allocator_e);
     if (found_payload == 0) try warn(ast, allocator_e, .expected_loop_payload);
-
     const then_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     _ = eatToken(ast, .keyword_else) orelse {
         return addNode(ast, allocator_n, .{
@@ -2292,7 +2177,6 @@ fn parseForExpr(
         },
     });
 }
-
 /// WhilePrefix <- KEYWORD_while LPAREN Expr RPAREN PtrPayload? WhileContinueExpr?
 /// WhileExpr <- WhilePrefix Expr (KEYWORD_else Payload? Expr)?
 fn parseWhileExpr(
@@ -2309,7 +2193,6 @@ fn parseWhileExpr(
     _ = try expectToken(ast, allocator_e, .r_paren);
     _ = try parsePtrPayload(ast, allocator_e);
     const cont_expr = try parseWhileContinueExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-
     const then_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     _ = eatToken(ast, .keyword_else) orelse {
         if (cont_expr == 0) {
@@ -2350,7 +2233,6 @@ fn parseWhileExpr(
         },
     });
 }
-
 /// CurlySuffixExpr <- TypeExpr InitList?
 /// InitList
 ///     <- LBRACE FieldInit (COMMA FieldInit)* COMMA? RBRACE
@@ -2367,10 +2249,8 @@ fn parseCurlySuffixExpr(
     const lhs = try parseTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (lhs == 0) return null_node;
     const lbrace = eatToken(ast, .l_brace) orelse return lhs;
-
     // If there are 0 or 1 items, we can use ArrayInitOne/StructInitOne;
     // otherwise we use the full ArrayInit/StructInit.
-
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
     const field_init = try parseFieldInit(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2392,8 +2272,7 @@ fn parseCurlySuffixExpr(
             try array_s.appendOne(allocator_s, next);
         }
         const comma = (relativeTagBehind(ast, 2) == .comma);
-        // XXX: Maybe trouble
-        const inits = array_s.readManyAt(allocator_s.*, state_top);
+        const inits = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
         switch (inits.len) {
             0 => unreachable,
             1 => return addNode(ast, allocator_n, .{
@@ -2414,7 +2293,6 @@ fn parseCurlySuffixExpr(
             }),
         }
     }
-
     while (true) {
         if (eatToken(ast, .r_brace)) |_| break;
         const elem_init = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2431,8 +2309,7 @@ fn parseCurlySuffixExpr(
         }
     }
     const comma = (relativeTagBehind(ast, 2) == .comma);
-    // XXX: Maybe trouble
-    const inits = array_s.readManyAt(allocator_s.*, state_top);
+    const inits = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
     switch (inits.len) {
         0 => return addNode(ast, allocator_n, .{
             .tag = .struct_init_one,
@@ -2460,7 +2337,6 @@ fn parseCurlySuffixExpr(
         }),
     }
 }
-
 /// ErrorUnionExpr <- SuffixExpr (EXCLAMATIONMARK TypeExpr)?
 fn parseErrorUnionExpr(
     ast: *abstract.SyntaxTree,
@@ -2482,7 +2358,6 @@ fn parseErrorUnionExpr(
         },
     });
 }
-
 /// SuffixExpr
 ///     <- KEYWORD_async PrimaryTypeExpr SuffixOp* FnCallArguments
 ///      / PrimaryTypeExpr (SuffixOp / FnCallArguments)*
@@ -2525,8 +2400,7 @@ fn parseSuffixExpr(
             }
         }
         const comma = (relativeTagBehind(ast, 2) == .comma);
-        // XXX: Maybe trouble
-        const params = array_s.readManyAt(allocator_s.*, state_top);
+        const params = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
         switch (params.len) {
             0 => return addNode(ast, allocator_n, .{
                 .tag = if (comma) .async_call_one_comma else .async_call_one,
@@ -2554,7 +2428,6 @@ fn parseSuffixExpr(
             }),
         }
     }
-
     var res = try parsePrimaryTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (res == 0) return res;
     while (true) {
@@ -2582,8 +2455,7 @@ fn parseSuffixExpr(
             }
         }
         const comma = (relativeTagBehind(ast, 2) == .comma);
-        // XXX: Maybe trouble
-        const params = array_s.readManyAt(allocator_s.*, state_top);
+        const params = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
         res = switch (params.len) {
             0 => try addNode(ast, allocator_n, .{
                 .tag = if (comma) .call_one_comma else .call_one,
@@ -2612,7 +2484,6 @@ fn parseSuffixExpr(
         };
     }
 }
-
 /// PrimaryTypeExpr
 ///     <- BUILTINIDENTIFIER FnCallArguments
 ///      / CHAR_LITERAL
@@ -2698,25 +2569,21 @@ fn parsePrimaryTypeExpr(
                 },
             });
         },
-
         .builtin => return parseBuiltinCall(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
         .keyword_fn => return parseFnProto(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
         .keyword_if => return parseIf(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, expectTypeExpr),
         .keyword_switch => return expectSwitchExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-
         .keyword_extern,
         .keyword_packed,
         => {
             ast.tokens.stream(1);
             return parseContainerDeclAuto(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         },
-
         .keyword_struct,
         .keyword_opaque,
         .keyword_enum,
         .keyword_union,
         => return parseContainerDeclAuto(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-
         .keyword_comptime => return addNode(ast, allocator_n, .{
             .tag = .@"comptime",
             .main_token = nextToken(ast),
@@ -2802,10 +2669,8 @@ fn parsePrimaryTypeExpr(
                 const lbrace = tokenIndex(ast) + 1;
                 // tokenIndex(ast) = lbrace + 1;
                 ast.tokens.stream(2);
-
                 // If there are 0, 1, or 2 items, we can use ArrayInitDotTwo/StructInitDotTwo;
                 // otherwise we use the full ArrayInitDot/StructInitDot.
-
                 const state_top: usize = array_s.len(allocator_s.*);
                 defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
                 const field_init = try parseFieldInit(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2827,8 +2692,7 @@ fn parsePrimaryTypeExpr(
                         try array_s.appendOne(allocator_s, next);
                     }
                     const comma = (relativeTagBehind(ast, 2) == .comma);
-                    // XXX: Maybe trouble
-                    const inits = array_s.readManyAt(allocator_s.*, state_top);
+                    const inits = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
                     switch (inits.len) {
                         0 => unreachable,
                         1 => return addNode(ast, allocator_n, .{
@@ -2860,7 +2724,6 @@ fn parsePrimaryTypeExpr(
                         },
                     }
                 }
-
                 while (true) {
                     if (eatToken(ast, .r_brace)) |_| break;
                     const elem_init = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2877,8 +2740,7 @@ fn parsePrimaryTypeExpr(
                     }
                 }
                 const comma = (relativeTagBehind(ast, 2) == .comma);
-                // XXX: Maybe trouble
-                const inits = array_s.readManyAt(allocator_s.*, state_top);
+                const inits = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
                 switch (inits.len) {
                     0 => return addNode(ast, allocator_n, .{
                         .tag = .struct_init_dot_two,
@@ -2974,7 +2836,6 @@ fn parsePrimaryTypeExpr(
         else => return null_node,
     }
 }
-
 fn expectPrimaryTypeExpr(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -2989,7 +2850,6 @@ fn expectPrimaryTypeExpr(
     }
     return node;
 }
-
 /// ForPrefix <- KEYWORD_for LPAREN Expr RPAREN PtrIndexPayload
 /// ForTypeExpr <- ForPrefix TypeExpr (KEYWORD_else TypeExpr)?
 fn parseForTypeExpr(
@@ -3006,7 +2866,6 @@ fn parseForTypeExpr(
     _ = try expectToken(ast, allocator_e, .r_paren);
     const found_payload = try parsePtrIndexPayload(ast, allocator_e);
     if (found_payload == 0) try warn(ast, allocator_e, .expected_loop_payload);
-
     const then_expr = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     _ = eatToken(ast, .keyword_else) orelse {
         return addNode(ast, allocator_n, .{
@@ -3031,7 +2890,6 @@ fn parseForTypeExpr(
         },
     });
 }
-
 /// WhilePrefix <- KEYWORD_while LPAREN Expr RPAREN PtrPayload? WhileContinueExpr?
 /// WhileTypeExpr <- WhilePrefix TypeExpr (KEYWORD_else Payload? TypeExpr)?
 fn parseWhileTypeExpr(
@@ -3048,7 +2906,6 @@ fn parseWhileTypeExpr(
     _ = try expectToken(ast, allocator_e, .r_paren);
     _ = try parsePtrPayload(ast, allocator_e);
     const cont_expr = try parseWhileContinueExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-
     const then_expr = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     _ = eatToken(ast, .keyword_else) orelse {
         if (cont_expr == 0) {
@@ -3089,7 +2946,6 @@ fn parseWhileTypeExpr(
         },
     });
 }
-
 /// SwitchExpr <- KEYWORD_switch LPAREN Expr RPAREN LBRACE SwitchProngList RBRACE
 fn expectSwitchExpr(
     ast: *abstract.SyntaxTree,
@@ -3107,20 +2963,18 @@ fn expectSwitchExpr(
     const cases = try parseSwitchProngList(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     const trailing_comma = relativeTagBehind(ast, 1) == .comma;
     _ = try expectToken(ast, allocator_e, .r_brace);
-
     return addNode(ast, allocator_n, .{
         .tag = if (trailing_comma) .switch_comma else .@"switch",
         .main_token = switch_token,
         .data = .{
             .lhs = expr_node,
-            .rhs = try addExtra(ast, allocator_x, SubRange{
+            .rhs = try addExtra(ast, allocator_x, zig.AstNode.SubRange{
                 .start = cases.start,
                 .end = cases.end,
             }),
         },
     });
 }
-
 /// AsmExpr <- KEYWORD_asm KEYWORD_volatile? LPAREN Expr AsmOutput? RPAREN
 /// AsmOutput <- COLON AsmOutputList AsmInput?
 /// AsmInput <- COLON AsmInputList AsmClobbers?
@@ -3140,7 +2994,6 @@ fn expectAsmExpr(
     _ = eatToken(ast, .keyword_volatile);
     _ = try expectToken(ast, allocator_e, .l_paren);
     const template = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-
     if (eatToken(ast, .r_paren)) |rparen| {
         return addNode(ast, allocator_n, .{
             .tag = .asm_simple,
@@ -3151,12 +3004,9 @@ fn expectAsmExpr(
             },
         });
     }
-
     _ = try expectToken(ast, allocator_e, .colon);
-
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
-
     while (true) {
         const output_item = try parseAsmOutputItem(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         if (output_item == 0) break;
@@ -3209,7 +3059,6 @@ fn expectAsmExpr(
         },
     });
 }
-
 /// AsmOutputItem <- LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN (MINUSRARROW TypeExpr / IDENTIFIER) RPAREN
 fn parseAsmOutputItem(
     ast: *abstract.SyntaxTree,
@@ -3242,7 +3091,6 @@ fn parseAsmOutputItem(
         },
     });
 }
-
 /// AsmInputItem <- LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN Expr RPAREN
 fn parseAsmInputItem(
     ast: *abstract.SyntaxTree,
@@ -3268,13 +3116,11 @@ fn parseAsmInputItem(
         },
     });
 }
-
 /// BreakLabel <- COLON IDENTIFIER
 fn parseBreakLabel(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = eatToken(ast, .colon) orelse return @as(u32, 0);
     return expectToken(ast, allocator_e, .identifier);
 }
-
 /// BlockLabel <- IDENTIFIER COLON
 fn parseBlockLabel(ast: *abstract.SyntaxTree) u32 {
     if (readTagAhead(ast) == .identifier and
@@ -3286,7 +3132,6 @@ fn parseBlockLabel(ast: *abstract.SyntaxTree) u32 {
     }
     return null_node;
 }
-
 /// FieldInit <- DOT IDENTIFIER EQUAL Expr
 fn parseFieldInit(
     ast: *abstract.SyntaxTree,
@@ -3306,7 +3151,6 @@ fn parseFieldInit(
         return null_node;
     }
 }
-
 fn expectFieldInit(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -3319,11 +3163,9 @@ fn expectFieldInit(
         relativeTagAhead(ast, 1) != .identifier or
         relativeTagAhead(ast, 2) != .equal)
         return fail(ast, allocator_e, .expected_initializer);
-
     ast.tokens.stream(3);
     return expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
 }
-
 /// WhileContinueExpr <- COLON LPAREN AssignExpr RPAREN
 fn parseWhileContinueExpr(
     ast: *abstract.SyntaxTree,
@@ -3345,7 +3187,6 @@ fn parseWhileContinueExpr(
     _ = try expectToken(ast, allocator_e, .r_paren);
     return node;
 }
-
 /// LinkSection <- KEYWORD_linksection LPAREN Expr RPAREN
 fn parseLinkSection(
     ast: *abstract.SyntaxTree,
@@ -3361,7 +3202,6 @@ fn parseLinkSection(
     _ = try expectToken(ast, allocator_e, .r_paren);
     return expr_node;
 }
-
 /// CallConv <- KEYWORD_callconv LPAREN Expr RPAREN
 fn parseCallconv(
     ast: *abstract.SyntaxTree,
@@ -3377,7 +3217,6 @@ fn parseCallconv(
     _ = try expectToken(ast, allocator_e, .r_paren);
     return expr_node;
 }
-
 /// AddrSpace <- KEYWORD_addrspace LPAREN Expr RPAREN
 fn parseAddrSpace(
     ast: *abstract.SyntaxTree,
@@ -3393,7 +3232,6 @@ fn parseAddrSpace(
     _ = try expectToken(ast, allocator_e, .r_paren);
     return expr_node;
 }
-
 fn relativeTagAhead(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
     return ast.tokens.readOneAt(tokenIndex(ast) +% offset).tag;
 }
@@ -3406,7 +3244,6 @@ fn relativeStartAhead(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
 fn relativeStartBehind(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
     return ast.tokens.readOneAt(tokenIndex(ast) -% offset).start;
 }
-
 /// ParamDecl
 ///     <- (KEYWORD_noalias / KEYWORD_comptime)? (IDENTIFIER COLON)? ParamType
 ///     / DOT3
@@ -3446,7 +3283,6 @@ fn expectParamDecl(
         else => return expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
     }
 }
-
 /// Payload <- PIPE IDENTIFIER PIPE
 fn parsePayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
@@ -3454,7 +3290,6 @@ fn parsePayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = try expectToken(ast, allocator_e, .pipe);
     return identifier;
 }
-
 /// PtrPayload <- PIPE ASTERISK? IDENTIFIER PIPE
 fn parsePtrPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
@@ -3463,7 +3298,6 @@ fn parsePtrPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u3
     _ = try expectToken(ast, allocator_e, .pipe);
     return identifier;
 }
-
 /// PtrIndexPayload <- PIPE ASTERISK? IDENTIFIER (COMMA IDENTIFIER)? PIPE
 /// Returns the first identifier token, if any.
 fn parsePtrIndexPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
@@ -3476,7 +3310,6 @@ fn parsePtrIndexPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Err
     _ = try expectToken(ast, allocator_e, .pipe);
     return identifier;
 }
-
 /// SwitchProng <- KEYWORD_inline? SwitchCase EQUALRARROW PtrIndexPayload? AssignExpr
 /// SwitchCase
 ///     <- SwitchItem (COMMA SwitchItem)* COMMA?
@@ -3491,9 +3324,7 @@ fn parseSwitchProng(
 ) Error!u32 {
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
-
     const is_inline = eatToken(ast, .keyword_inline) != null;
-
     if (eatToken(ast, .keyword_else) == null) {
         while (true) {
             const item = try parseSwitchItem(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -3508,8 +3339,7 @@ fn parseSwitchProng(
     }
     const arrow_token = try expectToken(ast, allocator_e, .equal_angle_bracket_right);
     _ = try parsePtrIndexPayload(ast, allocator_e);
-    // XXX: Maybe trouble
-    const items = array_s.readManyAt(allocator_s.*, state_top);
+    const items = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
     switch (items.len) {
         0 => return addNode(ast, allocator_n, .{
             .tag = if (is_inline) .switch_case_inline_one else .switch_case_one,
@@ -3537,7 +3367,6 @@ fn parseSwitchProng(
         }),
     }
 }
-
 /// SwitchItem <- Expr (DOT3 Expr)?
 fn parseSwitchItem(
     ast: *abstract.SyntaxTree,
@@ -3549,7 +3378,6 @@ fn parseSwitchItem(
 ) Error!u32 {
     const expr = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (expr == 0) return null_node;
-
     if (eatToken(ast, .ellipsis3)) |token| {
         return addNode(ast, allocator_n, .{
             .tag = .switch_range,
@@ -3562,14 +3390,12 @@ fn parseSwitchItem(
     }
     return expr;
 }
-
 const PtrModifiers = struct {
     align_node: u32,
     addrspace_node: u32,
     bit_range_start: u32,
     bit_range_end: u32,
 };
-
 fn parsePtrModifiers(
     ast: *abstract.SyntaxTree,
     allocator_n: *AllocatorN,
@@ -3597,13 +3423,11 @@ fn parsePtrModifiers(
                 ast.tokens.stream(1);
                 _ = try expectToken(ast, allocator_e, .l_paren);
                 result.align_node = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-
                 if (eatToken(ast, .colon)) |_| {
                     result.bit_range_start = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
                     _ = try expectToken(ast, allocator_e, .colon);
                     result.bit_range_end = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
                 }
-
                 _ = try expectToken(ast, allocator_e, .r_paren);
             },
             .keyword_const => {
@@ -3637,7 +3461,6 @@ fn parsePtrModifiers(
         }
     }
 }
-
 /// SuffixOp
 ///     <- LBRACKET Expr (DOT2 (Expr? (COLON Expr)?)?)? RBRACKET
 ///      / DOT IDENTIFIER
@@ -3656,7 +3479,6 @@ fn parseSuffixOp(
         .l_bracket => {
             const lbracket = nextToken(ast);
             const index_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-
             if (eatToken(ast, .ellipsis2)) |_| {
                 const end_expr = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
                 if (eatToken(ast, .colon)) |_| {
@@ -3757,7 +3579,6 @@ fn parseSuffixOp(
         else => return null_node,
     }
 }
-
 /// Caller must have already verified the first token.
 /// ContainerDeclAuto <- ContainerDeclType LBRACE container_doc_comment? ContainerMembers RBRACE
 ///
@@ -3793,7 +3614,6 @@ fn parseContainerDeclAuto(
                         const enum_tag_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
                         _ = try expectToken(ast, allocator_e, .r_paren);
                         _ = try expectToken(ast, allocator_e, .r_paren);
-
                         _ = try expectToken(ast, allocator_e, .l_brace);
                         const members = try parseContainerMembers(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
                         const members_span = try members.toSpan(ast, allocator_x);
@@ -3811,7 +3631,6 @@ fn parseContainerDeclAuto(
                         });
                     } else {
                         _ = try expectToken(ast, allocator_e, .r_paren);
-
                         _ = try expectToken(ast, allocator_e, .l_brace);
                         const members = try parseContainerMembers(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
                         _ = try expectToken(ast, allocator_e, .r_brace);
@@ -3896,7 +3715,7 @@ fn parseContainerDeclAuto(
             .main_token = main_token,
             .data = .{
                 .lhs = arg_expr,
-                .rhs = try addExtra(ast, allocator_x, SubRange{
+                .rhs = try addExtra(ast, allocator_x, zig.AstNode.SubRange{
                     .start = span.start,
                     .end = span.end,
                 }),
@@ -3904,7 +3723,6 @@ fn parseContainerDeclAuto(
         });
     }
 }
-
 /// Give a helpful error message for those transitioning from
 /// C's 'struct Foo {};' to Zig's 'const Foo = struct {};'.
 fn parseCStyleContainer(
@@ -3923,7 +3741,6 @@ fn parseCStyleContainer(
     const identifier = tokenIndex(ast) + 1;
     if (readTagAt(ast, identifier) != .identifier) return false;
     ast.tokens.stream(2);
-
     try warnMsg(ast, allocator_e, .{
         .tag = .c_style_container,
         .token = identifier,
@@ -3935,14 +3752,12 @@ fn parseCStyleContainer(
         .token = identifier,
         .extra = .{ .expected_tag = readTagAt(ast, main_token) },
     });
-
     _ = try expectToken(ast, allocator_e, .l_brace);
     _ = try parseContainerMembers(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     _ = try expectToken(ast, allocator_e, .r_brace);
     try expectSemicolon(ast, allocator_e, .expected_semi_after_decl, true);
     return true;
 }
-
 /// Holds temporary data until we are ready to construct the full ContainerDecl AST node.
 /// ByteAlign <- KEYWORD_align LPAREN Expr RPAREN
 fn parseByteAlign(
@@ -3959,7 +3774,6 @@ fn parseByteAlign(
     _ = try expectToken(ast, allocator_e, .r_paren);
     return expr;
 }
-
 /// SwitchProngList <- (SwitchProng COMMA)* SwitchProng?
 fn parseSwitchProngList(
     ast: *abstract.SyntaxTree,
@@ -3968,16 +3782,13 @@ fn parseSwitchProngList(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) !SubRange {
+) !zig.AstNode.SubRange {
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
-
     while (true) {
         const item = try parseSwitchProng(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         if (item == 0) break;
-
         try array_s.appendOne(allocator_s, item);
-
         switch (readTagAhead(ast)) {
             .comma => ast.tokens.stream(1),
             // All possible delimiters.
@@ -3988,7 +3799,6 @@ fn parseSwitchProngList(
     }
     return listToSpan(ast, allocator_x, array_s.readManyAt(allocator_s.*, state_top));
 }
-
 /// ParamDeclList <- (ParamDecl COMMA)* ParamDecl?
 fn parseParamDeclList(
     ast: *abstract.SyntaxTree,
@@ -3997,7 +3807,7 @@ fn parseParamDeclList(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) !SmallSpan {
+) !zig.AstNode.SmallSpan {
     _ = try expectToken(ast, allocator_e, .l_paren);
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
@@ -4025,15 +3835,13 @@ fn parseParamDeclList(
     if (varargs == .nonfinal) {
         try warnMsg(ast, allocator_e, .{ .tag = .varargs_nonfinal, .token = varargs.nonfinal });
     }
-    // XXX: Maybe trouble
-    const params = array_s.readManyAt(allocator_s.*, state_top);
+    const params = array_s.readManyAt(allocator_s.*, state_top); // XXX: Maybe trouble
     return switch (params.len) {
-        0 => SmallSpan{ .zero_or_one = 0 },
-        1 => SmallSpan{ .zero_or_one = params[0] },
-        else => SmallSpan{ .multi = try listToSpan(ast, allocator_x, params) },
+        0 => zig.AstNode.SmallSpan{ .zero_or_one = 0 },
+        1 => zig.AstNode.SmallSpan{ .zero_or_one = params[0] },
+        else => zig.AstNode.SmallSpan{ .multi = try listToSpan(ast, allocator_x, params) },
     };
 }
-
 /// FnCallArguments <- LPAREN ExprList RPAREN
 /// ExprList <- (Expr COMMA)* Expr?
 fn parseBuiltinCall(
@@ -4115,7 +3923,6 @@ fn parseBuiltinCall(
         },
     }
 }
-
 /// KEYWORD_if LPAREN Expr RPAREN PtrPayload? Body (KEYWORD_else Payload? Body)?
 fn parseIf(
     ast: *abstract.SyntaxTree,
@@ -4163,8 +3970,6 @@ fn parseIf(
         },
     });
 }
-
-/// Skips over doc comment tokens. Returns the first one, if any.
 fn eatDocComments(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) !?u32 {
     if (eatToken(ast, .doc_comment)) |tok| {
         var first_line = tok;
@@ -4228,7 +4033,6 @@ fn nextToken(ast: *abstract.SyntaxTree) u32 {
     ast.tokens.stream(1);
     return @intCast(u32, result);
 }
-
 pub fn directEnumArrayDefault(
     comptime E: type,
     comptime Data: type,
@@ -4279,12 +4083,10 @@ pub fn directEnumArrayLen(comptime E: type, comptime max_unused_slots: comptime_
             max_value = f.value;
         }
     }
-
     const unused_slots = max_value + 1 - fields.len;
     if (unused_slots > max_unused_slots) {
         @compileError("???");
     }
-
     return max_value + 1;
 }
 pub fn trimLeft(comptime T: type, slice: []const T, values_to_strip: []const T) []const T {
