@@ -150,6 +150,12 @@ pub const Advice = meta.EnumBitField(enum(u64) {
     const MADV = sys.MADV;
     const Tag = @This();
 });
+pub const Fd = meta.EnumBitField(enum(u64) {
+    allow_sealing = MFD.ALLOW_SEALING,
+    huge_tlb = MFD.HUGETLB,
+    close_on_exec = MFD.CLOEXEC,
+    const MFD = sys.MFD;
+});
 pub const PartSpec = struct {
     options: Options = .{},
     errors: ?type = ArenaError,
@@ -424,6 +430,34 @@ pub const AdviseSpec = struct {
         return "(unknown advise)";
     }
     pub usingnamespace sys.FunctionInterfaceSpec(AdviseSpec);
+};
+pub const FdSpec = struct {
+    options: Options = .{},
+    errors: ?[]const sys.ErrorCode = sys.memfd_create_errors,
+    return_type: type = u64,
+    logging: builtin.Logging = .{},
+
+    const Specification = @This();
+    const Options = struct {
+        allow_sealing: bool = false,
+        huge_tlb: bool = false,
+        close_on_exec: bool = true,
+    };
+    const Visibility = enum { shared, shared_validate, private };
+    pub fn flags(comptime spec: FdSpec) mem.Fd {
+        var flags_bitfield: Fd = .{ .val = 0 };
+        if (spec.options.allow_sealing) {
+            flags_bitfield.set(.allow_sealing);
+        }
+        if (spec.options.huge_tlb) {
+            flags_bitfield.set(.huge_tlb);
+        }
+        if (spec.options.close_on_exec) {
+            flags_bitfield.set(.close_on_exec);
+        }
+        return flags_bitfield;
+    }
+    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const Bytes = struct {
     count: u64,
@@ -815,13 +849,34 @@ pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) spec.Unwrapped(.ma
         return madvise_error;
     }
 }
+pub fn fd(comptime spec: FdSpec, name: [:0]const u8) spec.Unwrapped(.memfd_create) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const flags: mem.Fd = spec.flags();
+    if (spec.call(.memfd_create, .{ name_buf_addr, flags.val })) |mem_fd| {
+        if (spec.logging.Acquire) {
+            mem.debug.memFdNotice(name, mem_fd);
+        }
+        return mem_fd;
+    } else |memfd_create_error| {
+        if (spec.logging.Error) {
+            mem.debug.memFdError(memfd_create_error, name);
+        }
+        return memfd_create_error;
+    }
+}
 pub const debug = opaque {
     const about_map_0_s: []const u8 = "map:            ";
     const about_map_1_s: []const u8 = "map-error:      ";
     const about_brk_1_s: []const u8 = "brk-error:      ";
+    const about_acq_0_s: []const u8 = "acq:            arena-";
+    const about_acq_1_s: []const u8 = "acq-error:      arena-";
+    const about_rel_0_s: []const u8 = "rel:            arena-";
+    const about_rel_1_s: []const u8 = "rel-error:      arena-";
     const about_unmap_0_s: []const u8 = "unmap:          ";
     const about_unmap_1_s: []const u8 = "unmap-error:    ";
     const about_remap_0_s: []const u8 = "remap:          ";
+    const about_memfd_0_s: []const u8 = "memfd:          ";
+    const about_memfd_1_s: []const u8 = "memfd-error:    ";
     const about_remap_1_s: []const u8 = "remap-error:    ";
     const about_resize_0_s: []const u8 = "resize:         ";
     const about_resize_1_s: []const u8 = "resize-error:   ";
@@ -939,10 +994,6 @@ pub const debug = opaque {
             ")\n",
         });
     }
-    const about_acq_0_s: []const u8 = "acq:            arena-";
-    const about_acq_1_s: []const u8 = "acq-error:      arena-";
-    const about_rel_0_s: []const u8 = "rel:            arena-";
-    const about_rel_1_s: []const u8 = "rel-error:      arena-";
     fn arenaAcquireNotice(index: u8) void {
         const begin: u64 = AddressSpace.begin(index);
         const end: u64 = AddressSpace.end(index);
@@ -995,9 +1046,20 @@ pub const debug = opaque {
             ")\n",
         });
     }
+    fn memFdError(memfd_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_memfd_1_s, pathname, " (", @errorName(memfd_error), ")\n" });
+    }
+    fn memFdNotice(name: [:0]const u8, mem_fd: u64) void {
+        var buf: [4096 + 32]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_memfd_0_s, "fd=", builtin.fmt.ud64(mem_fd).readAll(), ", ", name, "\n" });
+    }
 };
 pub fn set(dst_addr: u64, src_value: anytype, count: u64) void {
     for (@intToPtr([*]@TypeOf(src_value), dst_addr)[0..count]) |*dst_value| dst_value.* = src_value;
+}
+pub fn view(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
+    return .{ .impl = .{ .auto = @ptrCast(*const [s.len:0]u8, s.ptr).* } };
 }
 pub fn StaticArray(comptime child: type, comptime count: u64) type {
     return mem.StructuredAutomaticVector(child, null, count, @alignOf(child), .{});

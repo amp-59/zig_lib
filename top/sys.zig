@@ -22,6 +22,11 @@ pub const MAP = opaque {
     pub const SYNC: usize = 0x80000;
     pub const FIXED_NOREPLACE: usize = 0x100000;
 };
+pub const MFD = opaque {
+    pub const CLOEXEC: usize = 0x1;
+    pub const ALLOW_SEALING: usize = 0x2;
+    pub const HUGETLB: usize = 0x4;
+};
 pub const PROT = opaque {
     pub const NONE: usize = 0x0;
     pub const READ: usize = 0x1;
@@ -1559,6 +1564,11 @@ pub const mmap_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AGAIN,  .BADF, .EXIST, .INVAL, .NFILE, .NODEV, .NOMEM, .OVERFLOW,
     .PERM,  .TXTBSY,
 };
+pub const memfd_create_errors: []const ErrorCode = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
+pub const truncate_errors: []const ErrorCode = &[_]ErrorCode{
+    .ACCES,  .FAULT, .FBIG, .INTR,   .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
+    .NOTDIR, .PERM,  .ROFS, .TXTBSY, .BADF, .INVAL, .BADF,
+};
 pub const munmap_errors: []const ErrorCode = &[_]ErrorCode{.INVAL};
 pub const mknod_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .INVAL, .LOOP, .NAMETOOLONG,
@@ -1889,6 +1899,7 @@ const config = opaque {
     const munmap: Config = .{ .tag = .munmap, .args = 2, .errors = munmap_errors, .return_type = void };
     const mremap: Config = .{ .tag = .mremap, .args = 5, .errors = mremap_errors, .return_type = usize };
     const madvise: Config = .{ .tag = .madvise, .args = 3, .errors = madvise_errors, .return_type = void };
+    const memfd_create: Config = .{ .tag = .memfd_create, .args = 2, .errors = memfd_create_errors, .return_type = usize };
     const stat: Config = .{ .tag = .stat, .args = 2, .errors = stat_errors, .return_type = void };
     const fstat: Config = .{ .tag = .fstat, .args = 2, .errors = stat_errors, .return_type = void };
     const lstat: Config = .{ .tag = .lstat, .args = 2, .errors = stat_errors, .return_type = void };
@@ -1907,6 +1918,8 @@ const config = opaque {
     const getrandom: Config = .{ .tag = .getrandom, .args = 3, .errors = getrandom_errors, .return_type = void };
     const unlink: Config = .{ .tag = .unlink, .args = 1, .errors = unlink_errors, .return_type = void };
     const unlinkat: Config = .{ .tag = .unlinkat, .args = 3, .errors = unlink_errors, .return_type = void };
+    const truncate: Config = .{ .tag = .truncate, .args = 2, .errors = truncate_errors, .return_type = void };
+    const ftruncate: Config = .{ .tag = .ftruncate, .args = 2, .errors = truncate_errors, .return_type = void };
     const mkdir: Config = .{ .tag = .mkdir, .args = 2, .errors = mkdir_errors, .return_type = void };
     const mkdirat: Config = .{ .tag = .mkdirat, .args = 3, .errors = mkdir_errors, .return_type = void };
     const rmdir: Config = .{ .tag = .rmdir, .args = 1, .errors = rmdir_errors, .return_type = void };
