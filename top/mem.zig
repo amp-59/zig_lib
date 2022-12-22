@@ -1454,7 +1454,18 @@ pub fn readBeforeLastEqualOneOrElse(comptime T: type, value: T, values: []const 
 pub fn readAfterLastEqualOneOrElse(comptime T: type, value: T, values: []const T) []const T {
     return readAfterLastEqualOne(T, value, values) orelse values;
 }
-
+// XXX: The following two `trim*` functions were taken from the standard to get the
+// XXX: parser running. Revisit later for optimisation and renaming.
+pub fn trimLeft(comptime T: type, values_to_strip: []const T, values: []const T) []const T {
+    var begin: usize = 0;
+    while (begin < values.len and mem.indexOfFirstEqualOne(T, values_to_strip, values[begin]) != null) : (begin += 1) {}
+    return values[begin..];
+}
+pub fn trimRight(comptime T: type, values_to_strip: []const T, values: []const T) []const T {
+    var end: usize = values.len;
+    while (end > 0 and mem.indexOfFirstEqualOne(T, values[end - 1], values_to_strip) != null) : (end -= 1) {}
+    return values[0..end];
+}
 pub fn propagateSearch(needle: anytype, haystack: anytype, index: u64) ?u64 {
     var spread: u64 = 0;
     while (spread != haystack.len) : (spread += 1) {
