@@ -129,11 +129,18 @@ fn mainBoth() !void {
         var node_index: u32 = 0;
         const node_count: u64 = lib_res.ast.nodes.len(allocator_n);
         while (node_index != node_count) : (node_index += 1) {
-            const n: zig.AstNode = lib_res.ast.nodes.readOneAt(allocator_n, node_index);
-            if (n.tag == .fn_decl) {
-                const x: []const u8 = lib_res.ast.getNodeSource(&allocator_n, &allocator_x, node_index);
-                const y: []const u8 = std_res.ast.getNodeSource(node_index);
-                try testing.expectEqualMany(u8, y, x);
+            const x: []const u8 = lib_res.ast.getNodeSource(&allocator_n, &allocator_x, node_index);
+            const y: []const u8 = std_res.ast.getNodeSource(node_index);
+            try testing.expectEqualMany(u8, y, x);
+            switch (lib_res.ast.nodes.readOneAt(allocator_n, node_index).tag) {
+                .@"if" => {
+                    _ = lib_res.ast.ifFull(&allocator_n, &allocator_x, node_index);
+                },
+                .if_simple => {
+                    _ = lib_res.ast.ifSimple(&allocator_n, &allocator_x, node_index);
+                },
+
+                else => {},
             }
         }
     }
