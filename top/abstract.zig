@@ -1755,9 +1755,9 @@ pub const SyntaxTree = struct {
             .rparen = extra.rparen,
         });
     }
-    pub fn whileSimple(ast: SyntaxTree, allocator_n: *const AllocatorN, node: zig.Index) full.While {
+    pub fn whileSimple(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.While {
         const data: zig.AstNode.Data = ast.nodeData(allocator_n, node);
-        return ast.fullWhile(.{
+        return ast.fullWhile(allocator_n, allocator_x, .{
             .while_token = ast.nodeMainToken(allocator_n, node),
             .cond_expr = data.lhs,
             .cont_expr = 0,
@@ -1768,7 +1768,7 @@ pub const SyntaxTree = struct {
     pub fn whileCont(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.While {
         const data: zig.AstNode.Data = ast.nodeData(allocator_n, node);
         const extra = ast.extraData(allocator_x, data.rhs, zig.AstNode.WhileCont);
-        return ast.fullWhile(.{
+        return ast.fullWhile(allocator_n, allocator_x, .{
             .while_token = ast.nodeMainToken(allocator_n, node),
             .cond_expr = data.lhs,
             .cont_expr = extra.cont_expr,
@@ -1779,7 +1779,7 @@ pub const SyntaxTree = struct {
     pub fn whileFull(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.While {
         const data: zig.AstNode.Data = ast.nodeData(allocator_n, node);
         const extra = ast.extraData(allocator_x, data.rhs, zig.AstNode.While);
-        return ast.fullWhile(.{
+        return ast.fullWhile(allocator_n, allocator_x, .{
             .while_token = ast.nodeMainToken(allocator_n, node),
             .cond_expr = data.lhs,
             .cont_expr = extra.cont_expr,
@@ -1787,9 +1787,9 @@ pub const SyntaxTree = struct {
             .else_expr = extra.else_expr,
         });
     }
-    pub fn forSimple(ast: SyntaxTree, allocator_n: *const AllocatorN, node: zig.Index) full.While {
+    pub fn forSimple(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.While {
         const data: zig.AstNode.Data = ast.nodeData(allocator_n, node);
-        return ast.fullWhile(.{
+        return ast.fullWhile(allocator_n, allocator_x, .{
             .while_token = ast.nodeMainToken(allocator_n, node),
             .cond_expr = data.lhs,
             .cont_expr = 0,
@@ -1800,7 +1800,7 @@ pub const SyntaxTree = struct {
     pub fn forFull(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.While {
         const data: zig.AstNode.Data = ast.nodeData(allocator_n, node);
         const extra = ast.extraData(allocator_x, data.rhs, zig.AstNode.If);
-        return ast.fullWhile(.{
+        return ast.fullWhile(allocator_n, allocator_x, .{
             .while_token = ast.nodeMainToken(allocator_n, node),
             .cond_expr = data.lhs,
             .cont_expr = 0,
@@ -1929,7 +1929,7 @@ pub const SyntaxTree = struct {
         };
         return result;
     }
-    fn fullPtrType(ast: SyntaxTree, info: full.PtrType.Components) full.PtrType {
+    fn fullPtrType(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, info: full.PtrType.Components) full.PtrType {
         const Size = builtin.Type.Pointer.Size;
         const size: Size = switch (ast.tokenTag(info.main_token)) {
             .asterisk,
@@ -1953,8 +1953,8 @@ pub const SyntaxTree = struct {
         // here while looking for modifiers as that could result in false
         // positives. Therefore, start after a sentinel if there is one and
         // skip over any align node and bit range nodes.
-        var i = if (info.sentinel != 0) ast.lastToken(info.sentinel) + 1 else info.main_token;
-        const end = ast.firstToken(info.child_type);
+        var i = if (info.sentinel != 0) ast.lastToken(allocator_n, allocator_x, info.sentinel) + 1 else info.main_token;
+        const end = ast.lastToken(allocator_n, allocator_x, info.child_type);
         while (i < end) : (i += 1) {
             switch (ast.tokenTag(i)) {
                 .keyword_allowzero => result.allowzero_token = i,
@@ -1964,9 +1964,9 @@ pub const SyntaxTree = struct {
                     builtin.assert(info.align_node != 0);
                     if (info.bit_range_end != 0) {
                         builtin.assert(info.bit_range_start != 0);
-                        i = ast.lastToken(info.bit_range_end) + 1;
+                        i = ast.lastToken(allocator_n, allocator_x, info.bit_range_end) + 1;
                     } else {
-                        i = ast.lastToken(info.align_node) + 1;
+                        i = ast.lastToken(allocator_n, allocator_x, info.align_node) + 1;
                     }
                 },
                 else => {},
@@ -2063,7 +2063,7 @@ pub const SyntaxTree = struct {
         }
         return result;
     }
-    fn fullWhile(ast: SyntaxTree, info: full.While.Components) full.While {
+    fn fullWhile(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, info: full.While.Components) full.While {
         var result: full.While = .{
             .ast = info,
             .inline_token = null,
@@ -2082,26 +2082,26 @@ pub const SyntaxTree = struct {
         {
             result.label_token = tok_i - 1;
         }
-        const last_cond_token = ast.lastToken(info.cond_expr);
+        const last_cond_token = ast.lastToken(allocator_n, allocator_x, info.cond_expr);
         if (ast.tokenTag(last_cond_token + 2) == .pipe) {
             result.payload_token = last_cond_token + 3;
         }
         if (info.else_expr != 0) {
             // then_expr else |x|
             //           ^    ^
-            result.else_token = ast.lastToken(info.then_expr) + 1;
+            result.else_token = ast.lastToken(allocator_n, allocator_x, info.then_expr) + 1;
             if (ast.tokenTag(result.else_token + 1) == .pipe) {
                 result.error_token = result.else_token + 2;
             }
         }
         return result;
     }
-    fn fullCall(ast: SyntaxTree, info: full.Call.Components) full.Call {
+    fn fullCall(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, info: full.Call.Components) full.Call {
         var result: full.Call = .{
             .ast = info,
             .async_token = null,
         };
-        const maybe_async_token = ast.firstToken(info.fn_expr) - 1;
+        const maybe_async_token = ast.lastToken(allocator_n, allocator_x, info.fn_expr) - 1;
         if (ast.tokenTag(maybe_async_token) == .keyword_async) {
             result.async_token = maybe_async_token;
         }
@@ -2124,7 +2124,7 @@ pub const SyntaxTree = struct {
                 section_node: zig.Index,
                 init_node: zig.Index,
             };
-            pub fn firstToken(var_decl: VarDecl) zig.Index {
+            pub fn lastToken(var_decl: VarDecl) zig.Index {
                 return var_decl.visib_token orelse
                     var_decl.extern_export_token orelse
                     var_decl.threadlocal_token orelse
@@ -2174,7 +2174,7 @@ pub const SyntaxTree = struct {
                 align_expr: zig.Index,
                 tuple_like: bool,
             };
-            pub fn firstToken(cf: ContainerField) zig.Index {
+            pub fn lastToken(cf: ContainerField) zig.Index {
                 return cf.comptime_token orelse cf.ast.main_token;
             }
             pub fn convertToNonTupleLike(cf: *ContainerField, nodes: zig.NodeArray.Slice) void {
@@ -2211,7 +2211,7 @@ pub const SyntaxTree = struct {
                 anytype_ellipsis3: ?zig.Index,
                 type_expr: zig.Index,
             };
-            pub fn firstToken(fn_proto: FnProto) zig.Index {
+            pub fn lastToken(fn_proto: FnProto) zig.Index {
                 return fn_proto.visib_token orelse
                     fn_proto.extern_export_inline_token orelse
                     fn_proto.ast.fn_token;
@@ -2225,7 +2225,7 @@ pub const SyntaxTree = struct {
                 param_i: usize,
                 tok_i: zig.Index,
                 tok_flag: bool,
-                pub fn next(it: *Iterator) ?Param {
+                pub fn next(it: *Iterator, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX) ?Param {
                     while (true) {
                         var first_doc_comment: ?zig.Index = null;
                         var comptime_noalias: ?zig.Index = null;
@@ -2235,7 +2235,7 @@ pub const SyntaxTree = struct {
                                 return null;
                             }
                             const param_type = it.fn_proto.ast.params[it.param_i];
-                            var tok_i = it.ast.firstToken(param_type) - 1;
+                            var tok_i = it.ast.lastToken(allocator_n, allocator_x, param_type) - 1;
                             while (true) : (tok_i -= 1) switch (it.ast.tokenTag(tok_i)) {
                                 .colon => continue,
                                 .identifier => name_token = tok_i,
@@ -2244,7 +2244,7 @@ pub const SyntaxTree = struct {
                                 else => break,
                             };
                             it.param_i += 1;
-                            it.tok_i = it.ast.lastToken(param_type) + 1;
+                            it.tok_i = it.ast.lastToken(allocator_n, allocator_x, param_type) + 1;
                             // Look for anytype and ... params afterwards.
                             if (it.ast.tokenTag(it.tok_i) == .comma) {
                                 it.tok_i += 1;
