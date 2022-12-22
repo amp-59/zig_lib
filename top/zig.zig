@@ -8,11 +8,7 @@ pub const Allocator = struct {
         .count_branches = false,
         .count_useful_bytes = false,
     };
-    const preset_errors: mem.AllocatorErrors = .{
-        .map = null,
-        .unmap = null,
-        .remap = null,
-    };
+    const preset_errors: mem.AllocatorErrors = .{};
     pub const Node = mem.GenericArenaAllocator(.{
         .arena_index = 0,
         .options = preset_debug,
@@ -39,7 +35,7 @@ pub const Allocator = struct {
     });
 };
 
-pub const SourceArray = Allocator.Node.StructuredStreamView(u8);
+pub const SourceArray = Allocator.Node.StructuredStreamViewWithSentinel(u8, 0);
 pub const ProtoTokenArray = Allocator.Node.StructuredHolder(Token.Info);
 pub const TokenArray = Allocator.Node.StructuredStreamView(Token.Info);
 pub const ErrorArray = Allocator.Error.StructuredHolder(AstError);
@@ -485,6 +481,10 @@ pub const AstNode = struct {
         // Goal is to keep this under one byte for efficiency.
         builtin.static.assert(@sizeOf(Tag) == 1);
     }
+    pub const SmallSpan = union(enum) {
+        zero_or_one: u32,
+        multi: SubRange,
+    };
     /// Note: The FooComma/FooSemicolon variants exist to ease the implementation of
     /// SyntaxTree.lastToken()
     pub const Tag = enum {
