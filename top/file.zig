@@ -75,7 +75,6 @@ const Mode = meta.EnumBitField(enum(u16) {
     named_pipe = MODE.IFIFO,
     socket = MODE.IFSOCK,
     symbolic_link = MODE.IFLNK,
-
     const MODE = sys.S;
 });
 pub const Stat = extern struct {
@@ -493,7 +492,6 @@ pub const ReadLinkSpec = struct {
     }
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
-
 // TODO: Define default options suited to mapping files.
 pub const MapSpec = struct {
     options: Options,
@@ -551,7 +549,13 @@ pub const MapSpec = struct {
     }
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
-
+pub const TruncateSpec = struct {
+    errors: ?[]const sys.ErrorCode = sys.truncate_errors,
+    return_type: type = void,
+    logging: builtin.Logging = .{},
+    const Specification = @This();
+    usingnamespace sys.FunctionInterfaceSpec(Specification);
+};
 pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
     if (sys.read(fd, read_buf_addr, count)) |ret| {
@@ -626,14 +630,12 @@ pub fn indexOfBasenameStart(pathname: []const u8) u64 {
 
     return index + builtin.int(u64, pathname[index] == '/');
 }
-
 pub fn dirname(pathname: []const u8) []const u8 {
     return pathname[0..indexOfDirnameFinish(pathname)];
 }
 pub fn basename(pathname: []const u8) []const u8 {
     return pathname[indexOfBasenameStart(pathname)..];
 }
-
 pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
@@ -826,7 +828,32 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Replaced(.mmap, u64)
         return map_error;
     }
 }
-
+pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) spec.Unwrapped(.truncate) {
+    if (spec.call(.truncate, .{ pathname, offset })) |ret| {
+        if (spec.logging.Success) {
+            debug.truncateNotice(pathname, offset);
+        }
+        return ret;
+    } else |truncate_error| {
+        if (spec.logging.Error) {
+            debug.ftruncateError(truncate_error, pathname, offset);
+        }
+        return truncate_error;
+    }
+}
+pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) spec.Unwrapped(.ftruncate) {
+    if (spec.call(.ftruncate, .{ fd, offset })) |ret| {
+        if (spec.logging.Success) {
+            debug.ftruncateNotice(fd, offset);
+        }
+        return ret;
+    } else |truncate_error| {
+        if (spec.logging.Error) {
+            debug.ftruncateError(truncate_error, fd, offset);
+        }
+        return truncate_error;
+    }
+}
 pub const noexcept = opaque {
     pub fn write(fd: u64, buf: []const u8) void {
         sys.noexcept.write(fd, @ptrToInt(buf.ptr), buf.len);
@@ -963,6 +990,8 @@ const debug = opaque {
     const about_fstatat_1_s: []const u8 = "fstatat-error:  ";
     const about_fexecve_1_s: []const u8 = "fexecve-error:  ";
     const about_readlink_1_s: []const u8 = "readlink-error: ";
+    const about_truncate_0_s: []const u8 = "truncate:       ";
+    const about_truncate_1_s: []const u8 = "truncate-error: ";
 
     fn print(buf: []u8, ss: []const []const u8) void {
         var len: u64 = 0;
@@ -1070,5 +1099,30 @@ const debug = opaque {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_fstatat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(stat_error), ")\n" });
+    }
+    fn truncateNotice(pathname: [:0]const u8, offset: u64) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", builtin.fmt.ud64(offset).readAll(), "\n" });
+    }
+    fn ftruncateNotice(fd: u64, offset: u64) void {
+        var buf: [16 + 64 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{
+            about_truncate_0_s,                 "fd=",
+            builtin.fmt.ud64(fd).readAll(),     ", offset=",
+            builtin.fmt.ud64(offset).readAll(), "\n",
+        });
+    }
+    fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", builtin.fmt.ud64(offset), " (", @errorName(truncate_error), ")\n" });
+    }
+    fn ftruncateError(truncate_error: anytype, fd: u64, offset: u64) void {
+        var buf: [16 + 64 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{
+            about_truncate_1_s,                 "fd=",
+            builtin.fmt.ud64(fd).readAll(),     ", offset=",
+            builtin.fmt.ud64(offset).readAll(), ", (",
+            @errorName(truncate_error),         ")\n",
+        });
     }
 };
