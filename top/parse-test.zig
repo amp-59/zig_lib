@@ -12,6 +12,8 @@ const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 const tokenizer = @import("./tokenizer.zig");
 
+// pub usingnamespace proc.start;
+
 // Just this once.
 const std = @import("std");
 
@@ -43,7 +45,20 @@ fn fileBuf(allocator: *zig.Allocator.Node, pathname: [:0]const u8) !zig.SourceAr
     builtin.assertEqual(u64, st.size, try file.read(fd, file_buf.referAllDefined(), st.size));
     return file_buf;
 }
-const StdResults = struct { ast: std.zig.Ast, t: u64 };
+
+fn timeDiff(arg1: time.TimeSpec, arg2: time.TimeSpec) time.TimeSpec {
+    var ret: time.TimeSpec = .{
+        .sec = arg1.sec -% arg2.sec,
+        .nsec = arg1.nsec -% arg2.nsec,
+    };
+    if (ret.nsec >= 1_000_000_000) {
+        ret.sec -= 1;
+        ret.nsec += 1_000_000_000;
+    }
+    return ret;
+}
+
+const StdResults = struct { ast: std.zig.Ast, ts: time.TimeSpec };
 pub fn timeStd(target: [:0]const u8) !StdResults {
     const GPA: type = std.heap.GeneralPurposeAllocator(.{});
     const t0: time.TimeSpec = try time.realClock(null);
@@ -54,10 +69,9 @@ pub fn timeStd(target: [:0]const u8) !StdResults {
     var gpa_allocator: std.mem.Allocator = gpa.allocator();
     const ast = try std.zig.parse(gpa_allocator, buf);
     const t1: time.TimeSpec = try time.realClock(null);
-    const std_nsec = t1.nsec - t0.nsec;
-    return .{ .ast = ast, .t = std_nsec };
+    return .{ .ast = ast, .ts = timeDiff(t1, t0) };
 }
-const LibResults = struct { ast: abstract.SyntaxTree, t: u64 };
+const LibResults = struct { ast: abstract.SyntaxTree, ts: time.TimeSpec };
 fn timeLib(
     target: [:0]const u8,
     allocator_n: *zig.Allocator.Node,
@@ -74,9 +88,9 @@ fn timeLib(
         try fileBuf(allocator_n, target),
     );
     const t1: time.TimeSpec = try time.realClock(null);
-    const lib_nsec: u64 = t1.nsec - t0.nsec;
-    return .{ .ast = lib_ast, .t = lib_nsec };
+    return .{ .ast = lib_ast, .ts = timeDiff(t1, t0) };
 }
+
 fn mainBoth() !void {
     for (targets) |target| {
         var address_space: mem.AddressSpace = .{};
@@ -124,36 +138,34 @@ fn mainBoth() !void {
             break :blk count;
         };
         debug(.{ "bytes: ", fmt.udh(source.len), ", lines: ", fmt.udh(lines), ", path: '.", target[builtin.build_root.?.len..], "\n" });
-        debug(.{ "lib: ", fmt.udh(lib_res.t), ", nodes: ", fmt.udh(lib_res.ast.nodes.len(allocator_n)), '\n' });
-        debug(.{ "std: ", fmt.udh(std_res.t), ", nodes: ", fmt.udh(std_res.ast.nodes.len), '\n' });
+        debug(.{ "lib: ", fmt.any(lib_res.ts), ", nodes: ", fmt.udh(lib_res.ast.nodes.len(allocator_n)), '\n' });
+        debug(.{ "std: ", fmt.any(std_res.ts), ", nodes: ", fmt.udh(std_res.ast.nodes.len), '\n' });
         var node_index: u32 = 0;
         const node_count: u64 = lib_res.ast.nodes.len(allocator_n);
         while (node_index != node_count) : (node_index += 1) {
             const x: []const u8 = lib_res.ast.getNodeSource(&allocator_n, &allocator_x, node_index);
             const y: []const u8 = std_res.ast.getNodeSource(node_index);
             try testing.expectEqualMany(u8, y, x);
-            switch (lib_res.ast.nodes.readOneAt(allocator_n, node_index).tag) {
-                .@"if" => {
-                    _ = lib_res.ast.ifFull(&allocator_n, &allocator_x, node_index);
-                },
-                .if_simple => {
-                    _ = lib_res.ast.ifSimple(&allocator_n, &allocator_x, node_index);
-                },
-                .switch_case_one => {
-                    _ = lib_res.ast.switchCaseOne(&allocator_n, &allocator_x, node_index);
-                },
-                .switch_case => {
-                    _ = lib_res.ast.switchCase(&allocator_n, &allocator_x, node_index);
-                },
-                .@"asm" => {
-                    _ = lib_res.ast.asmFull(&allocator_n, &allocator_x, node_index);
-                },
-                .@"while" => {
-                    _ = lib_res.ast.whileFull(&allocator_n, &allocator_x, node_index);
-                },
+            _ = switch (lib_res.ast.nodes.readOneAt(allocator_n, node_index).tag) {
+                .if_simple => lib_res.ast.ifSimple(&allocator_n, &allocator_x, node_index),
+                .@"if" => lib_res.ast.ifFull(&allocator_n, &allocator_x, node_index),
+                .switch_case_inline_one,
+                .switch_case_inline,
+                .switch_range,
+                .switch_case_one,
+                => lib_res.ast.switchCaseOne(&allocator_n, &allocator_x, node_index),
+                .switch_case => lib_res.ast.switchCase(&allocator_n, &allocator_x, node_index),
 
+                .while_simple => lib_res.ast.whileSimple(&allocator_n, &allocator_x, node_index),
+                .while_cont => lib_res.ast.whileCont(&allocator_n, &allocator_x, node_index),
+                .@"while" => lib_res.ast.whileFull(&allocator_n, &allocator_x, node_index),
+
+                .for_simple => lib_res.ast.forSimple(&allocator_n, &allocator_x, node_index),
+                .@"for" => lib_res.ast.forFull(&allocator_n, &allocator_x, node_index),
+
+                .@"asm" => lib_res.ast.asmFull(&allocator_n, &allocator_x, node_index),
                 else => {},
-            }
+            };
         }
     }
 }
