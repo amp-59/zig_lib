@@ -145,6 +145,13 @@ fn mainBoth() !void {
                 .switch_case => {
                     _ = lib_res.ast.switchCase(&allocator_n, &allocator_x, node_index);
                 },
+                .@"asm" => {
+                    _ = lib_res.ast.asmFull(&allocator_n, &allocator_x, node_index);
+                },
+                .@"while" => {
+                    _ = lib_res.ast.whileFull(&allocator_n, &allocator_x, node_index);
+                },
+
                 else => {},
             }
         }

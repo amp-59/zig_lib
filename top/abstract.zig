@@ -1748,10 +1748,10 @@ pub const SyntaxTree = struct {
     pub fn asmFull(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, node: zig.Index) full.Asm {
         const data: zig.AstNode.Data = ast.nodeData(allocator_n, node);
         const extra = ast.extraData(allocator_x, data.rhs, zig.AstNode.Asm);
-        return ast.fullAsm(.{
+        return ast.fullAsm(allocator_n, allocator_x, .{
             .asm_token = ast.nodeMainToken(allocator_n, node),
             .template = data.lhs,
-            .items = ast.extras.readAll()[extra.items_start..extra.items_end],
+            .items = ast.extras.readAll(allocator_x.*)[extra.items_start..extra.items_end],
             .rparen = extra.rparen,
         });
     }
@@ -2006,7 +2006,7 @@ pub const SyntaxTree = struct {
         }
         return result;
     }
-    fn fullAsm(ast: SyntaxTree, allocator_n: *const AllocatorN, info: full.Asm.Components) full.Asm {
+    fn fullAsm(ast: SyntaxTree, allocator_n: *const AllocatorN, allocator_x: *const AllocatorX, info: full.Asm.Components) full.Asm {
         var result: full.Asm = .{
             .ast = info,
             .volatile_token = null,
@@ -2027,7 +2027,7 @@ pub const SyntaxTree = struct {
         result.inputs = info.items[outputs_end..];
         if (info.items.len == 0) {
             // asm ("foo" ::: "a", "b");
-            const template_token = ast.lastToken(info.template);
+            const template_token = ast.lastToken(allocator_n, allocator_x, info.template);
             if (ast.tokenTag(template_token + 1) == .colon and
                 ast.tokenTag(template_token + 2) == .colon and
                 ast.tokenTag(template_token + 3) == .colon and
@@ -2038,7 +2038,7 @@ pub const SyntaxTree = struct {
         } else if (result.inputs.len != 0) {
             // asm ("foo" :: [_] "" (y) : "a", "b");
             const last_input = result.inputs[result.inputs.len - 1];
-            const rparen = ast.lastToken(last_input);
+            const rparen = ast.lastToken(allocator_n, allocator_x, last_input);
             var i = rparen + 1;
             // Allow a (useless) comma right after the closing parenthesis.
             if (ast.tokenTag(i) == .comma) i += 1;
@@ -2050,7 +2050,7 @@ pub const SyntaxTree = struct {
         } else {
             // asm ("foo" : [_] "" (x) :: "a", "b");
             const last_output = result.outputs[result.outputs.len - 1];
-            const rparen = ast.lastToken(last_output);
+            const rparen = ast.lastToken(allocator_n, allocator_x, last_output);
             var i = rparen + 1;
             // Allow a (useless) comma right after the closing parenthesis.
             if (ast.tokenTag(i) == .comma) i += 1;
