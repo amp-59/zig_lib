@@ -1108,7 +1108,7 @@ pub const Specification1 = struct {
 };
 pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
+        auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         comptime bytes: *const Static = &allocated_byte_count,
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
@@ -1142,7 +1142,7 @@ pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification
 }
 pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
+        auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         comptime bytes: *const Static = &allocated_byte_count,
         comptime capacity: *const Static = &writable_byte_count,
@@ -1197,7 +1197,7 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
 }
 pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
+        auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         ub_word: u64,
         comptime bytes: *const Static = &allocated_byte_count,
@@ -1275,7 +1275,7 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
 }
 pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
-        auto: [spec.count + 1]spec.child align(low_alignment) = undefined,
+        auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ub_word: u64,
         comptime bytes: *const Static = &allocated_byte_count,
         comptime capacity: *const Static = &writable_byte_count,
