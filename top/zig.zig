@@ -1,40 +1,35 @@
 const mem = @import("./mem.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
 pub const Index = u32;
 pub const Offset = u32;
 
 pub const Allocator = struct {
-    const preset_debug: mem.AllocatorOptions = .{
-        .trace_state = false,
-        .count_allocations = false,
-        .count_branches = false,
-        .count_useful_bytes = false,
-    };
     const preset_errors: mem.AllocatorErrors = .{};
     pub const Node = mem.GenericArenaAllocator(.{
         .arena_index = 0,
-        .options = preset_debug,
-        .logging = mem.alloc_preset.silent,
-        .errors = preset_errors,
+        .options = preset.allocator.options.small,
+        .logging = preset.allocator.logging.silent,
+        .errors = preset.allocator.errors.uniform,
     });
     pub const Error = mem.GenericArenaAllocator(.{
         .arena_index = 8,
-        .options = preset_debug,
-        .logging = mem.alloc_preset.silent,
-        .errors = preset_errors,
+        .options = preset.allocator.options.small,
+        .logging = preset.allocator.logging.silent,
+        .errors = preset.allocator.errors.uniform,
     });
     pub const Extra = mem.GenericArenaAllocator(.{
         .arena_index = 16,
-        .options = preset_debug,
-        .logging = mem.alloc_preset.silent,
-        .errors = preset_errors,
+        .options = preset.allocator.options.small,
+        .logging = preset.allocator.logging.silent,
+        .errors = preset.allocator.errors.uniform,
     });
     pub const State = mem.GenericArenaAllocator(.{
         .arena_index = 24,
-        .options = preset_debug,
-        .logging = mem.alloc_preset.silent,
-        .errors = preset_errors,
+        .options = preset.allocator.options.small,
+        .logging = preset.allocator.logging.silent,
+        .errors = preset.allocator.errors.uniform,
     });
 };
 
