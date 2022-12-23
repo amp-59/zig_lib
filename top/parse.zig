@@ -17,36 +17,37 @@ const Error = meta.ReturnErrorSet(.{
     error{ParseError},
 });
 
-const null_node: u32 = 0;
+const null_node: zig.Index = 0;
+
 pub const Members = struct {
     len: usize,
-    lhs: u32,
-    rhs: u32,
+    lhs: zig.Index,
+    rhs: zig.Index,
     trailing: bool,
     pub fn toSpan(self: Members, ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX) !zig.AstNode.SubRange {
         if (self.len <= 2) {
-            const nodes = [2]u32{ self.lhs, self.rhs };
+            const nodes = [2]zig.Index{ self.lhs, self.rhs };
             return listToSpan(ast, allocator_x, nodes[0..self.len]);
         } else {
             return zig.AstNode.SubRange{ .start = self.lhs, .end = self.rhs };
         }
     }
 };
-fn listToSpan(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, list: []const u32) !zig.AstNode.SubRange {
-    try ast.extras.appendMany(allocator_x, list);
+fn listToSpan(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, list: []const zig.Index) !zig.AstNode.SubRange {
+    try ast.extras.appendMany(zig.Index, allocator_x, list);
     return zig.AstNode.SubRange{
-        .start = @intCast(u32, ast.extras.len(allocator_x.*) - list.len),
-        .end = @intCast(u32, ast.extras.len(allocator_x.*)),
+        .start = @intCast(zig.Index, ast.extras.len(zig.Index, allocator_x.*) - list.len),
+        .end = @intCast(zig.Index, ast.extras.len(zig.Index, allocator_x.*)),
     };
 }
-fn addNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, elem: zig.AstNode) Error!u32 {
-    const result = @intCast(u32, ast.nodes.len(allocator_n.*));
+fn addNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, elem: zig.AstNode) Error!zig.Index {
+    const result = @intCast(zig.Index, ast.nodes.len(allocator_n.*));
     try ast.nodes.appendOne(allocator_n, elem);
     return result;
 }
-fn setNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, i: usize, elem: zig.AstNode) u32 {
+fn setNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, i: usize, elem: zig.AstNode) zig.Index {
     ast.nodes.overwriteOneAt(allocator_n.*, i, elem);
-    return @intCast(u32, i);
+    return @intCast(zig.Index, i);
 }
 fn reserveNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, tag: zig.AstNode.Tag) Error!usize {
     try ast.nodes.increment(allocator_n, 1);
@@ -62,9 +63,9 @@ fn unreserveNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, node_
         ast.nodes.referOneAt(allocator_n.*, node_index).main_token = tokenIndex(ast);
     }
 }
-fn addExtra(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, extra: anytype) Error!u32 {
-    const result = @intCast(u32, ast.extras.len(allocator_x.*));
-    try ast.extras.appendAny(.{}, allocator_x, extra);
+fn addExtra(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, extra: anytype) Error!zig.Index {
+    const result: zig.Index = @intCast(zig.Index, ast.extras.len(zig.Index, allocator_x.*));
+    try ast.extras.appendOne(@TypeOf(extra), allocator_x, extra);
     return result;
 }
 pub fn warnExpected(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, expected_token: zig.Token.Tag) !void {
@@ -156,8 +157,8 @@ pub fn parseContainerMembers(
 ) Error!Members {
     const state_top: u64 = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
-    var field_state: union(enum) { none, seen, end: u32, err } = .none;
-    var last_field: u32 = undefined;
+    var field_state: union(enum) { none, seen, end: zig.Index, err } = .none;
+    var last_field: zig.Index = undefined;
     // Skip container doc comments.
     while (eatToken(ast, .container_doc_comment)) |_| {}
     var trailing = false;
@@ -196,10 +197,7 @@ pub fn parseContainerMembers(
                         const comptime_node = try addNode(ast, allocator_n, .{
                             .tag = .@"comptime",
                             .main_token = comptime_token,
-                            .data = .{
-                                .lhs = block,
-                                .rhs = undefined,
-                            },
+                            .data = .{ .lhs = block, .rhs = undefined },
                         });
                         if (field_state == .seen) {
                             field_state = .{ .end = comptime_node };
@@ -407,7 +405,7 @@ pub fn parseContainerMembers(
 }
 /// Attempts to find next container member by searching for certain tokens
 fn findNextContainerMember(ast: *abstract.ProtoSyntaxTree) void {
-    var level: u32 = 0;
+    var level: zig.Index = 0;
     while (true) {
         const tok = nextToken(ast);
         switch (readTagAt(ast, tok)) {
@@ -464,7 +462,7 @@ fn findNextContainerMember(ast: *abstract.ProtoSyntaxTree) void {
 }
 /// Attempts to find the next statement by searching for a semicolon
 fn findNextStmt(ast: *abstract.ProtoSyntaxTree) void {
-    var level: u32 = 0;
+    var level: zig.Index = 0;
     while (true) {
         const tok = nextToken(ast);
         switch (readTagAt(ast, tok)) {
@@ -497,7 +495,7 @@ fn expectTestDecl(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const test_token = assertToken(ast, .keyword_test);
     const name_token = switch (readTagAt(ast, nextToken(ast))) {
         .string_literal, .identifier => tokenIndex(ast) - 1,
@@ -511,10 +509,7 @@ fn expectTestDecl(
     return addNode(ast, allocator_n, .{
         .tag = .test_decl,
         .main_token = test_token,
-        .data = .{
-            .lhs = name_token orelse 0,
-            .rhs = block_node,
-        },
+        .data = .{ .lhs = name_token orelse 0, .rhs = block_node },
     });
 }
 fn expectTestDeclRecoverable(
@@ -524,7 +519,7 @@ fn expectTestDeclRecoverable(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     return expectTestDecl(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
         error.ParseError => {
             findNextContainerMember(
@@ -546,7 +541,7 @@ fn expectTopLevelDecl(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const extern_export_inline_token = nextToken(ast);
     var is_extern: bool = false;
     var expect_fn: bool = false;
@@ -580,10 +575,7 @@ fn expectTopLevelDecl(
                 return setNode(ast, allocator_n, fn_decl_index, .{
                     .tag = .fn_decl,
                     .main_token = ast.nodes.readOneAt(allocator_n.*, fn_proto).main_token,
-                    .data = .{
-                        .lhs = fn_proto,
-                        .rhs = body_block,
-                    },
+                    .data = .{ .lhs = fn_proto, .rhs = body_block },
                 });
             },
             else => {
@@ -623,7 +615,7 @@ fn expectTopLevelDeclRecoverable(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     return expectTopLevelDecl(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
         error.ParseError => {
             findNextContainerMember(
@@ -641,17 +633,14 @@ fn expectUsingNamespace(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const usingnamespace_token = assertToken(ast, .keyword_usingnamespace);
     const expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     try expectSemicolon(ast, allocator_e, .expected_semi_after_decl, false);
     return addNode(ast, allocator_n, .{
         .tag = .@"usingnamespace",
         .main_token = usingnamespace_token,
-        .data = .{
-            .lhs = expr,
-            .rhs = undefined,
-        },
+        .data = .{ .lhs = expr, .rhs = undefined },
     });
 }
 fn expectUsingNamespaceRecoverable(
@@ -661,7 +650,7 @@ fn expectUsingNamespaceRecoverable(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     return expectUsingNamespace(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
         error.ParseError => {
             findNextContainerMember(
@@ -680,7 +669,7 @@ fn parseFnProto(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const fn_token = eatToken(ast, .keyword_fn) orelse return null_node;
     // We want the fn proto node to be before its children in the array.
     const fn_proto_index = try reserveNode(ast, allocator_n, .fn_proto);
@@ -703,22 +692,16 @@ fn parseFnProto(
             .zero_or_one => |param| return setNode(ast, allocator_n, fn_proto_index, .{
                 .tag = .fn_proto_simple,
                 .main_token = fn_token,
-                .data = .{
-                    .lhs = param,
-                    .rhs = return_type_expr,
-                },
+                .data = .{ .lhs = param, .rhs = return_type_expr },
             }),
             .multi => |span| {
                 return setNode(ast, allocator_n, fn_proto_index, .{
                     .tag = .fn_proto_multi,
                     .main_token = fn_token,
-                    .data = .{
-                        .lhs = try addExtra(ast, allocator_x, zig.AstNode.SubRange{
-                            .start = span.start,
-                            .end = span.end,
-                        }),
-                        .rhs = return_type_expr,
-                    },
+                    .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.SubRange{
+                        .start = span.start,
+                        .end = span.end,
+                    }), .rhs = return_type_expr },
                 });
             },
         }
@@ -727,32 +710,26 @@ fn parseFnProto(
         .zero_or_one => |param| return setNode(ast, allocator_n, fn_proto_index, .{
             .tag = .fn_proto_one,
             .main_token = fn_token,
-            .data = .{
-                .lhs = try addExtra(ast, allocator_x, zig.AstNode.FnProtoOne{
-                    .param = param,
-                    .align_expr = align_expr,
-                    .addrspace_expr = addrspace_expr,
-                    .section_expr = section_expr,
-                    .callconv_expr = callconv_expr,
-                }),
-                .rhs = return_type_expr,
-            },
+            .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.FnProtoOne{
+                .param = param,
+                .align_expr = align_expr,
+                .addrspace_expr = addrspace_expr,
+                .section_expr = section_expr,
+                .callconv_expr = callconv_expr,
+            }), .rhs = return_type_expr },
         }),
         .multi => |span| {
             return setNode(ast, allocator_n, fn_proto_index, .{
                 .tag = .fn_proto,
                 .main_token = fn_token,
-                .data = .{
-                    .lhs = try addExtra(ast, allocator_x, zig.AstNode.FnProto{
-                        .params_start = span.start,
-                        .params_end = span.end,
-                        .align_expr = align_expr,
-                        .addrspace_expr = addrspace_expr,
-                        .section_expr = section_expr,
-                        .callconv_expr = callconv_expr,
-                    }),
-                    .rhs = return_type_expr,
-                },
+                .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.FnProto{
+                    .params_start = span.start,
+                    .params_end = span.end,
+                    .align_expr = align_expr,
+                    .addrspace_expr = addrspace_expr,
+                    .section_expr = section_expr,
+                    .callconv_expr = callconv_expr,
+                }), .rhs = return_type_expr },
             });
         },
     }
@@ -765,16 +742,16 @@ fn parseVarDecl(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const mut_token = eatToken(ast, .keyword_const) orelse
         eatToken(ast, .keyword_var) orelse
         return null_node;
     _ = try expectToken(ast, allocator_e, .identifier);
-    const type_node: u32 = if (eatToken(ast, .colon) == null) 0 else try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
+    const type_node: zig.Index = if (eatToken(ast, .colon) == null) 0 else try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     const align_node = try parseByteAlign(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     const addrspace_node = try parseAddrSpace(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     const section_node = try parseLinkSection(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-    const init_node: u32 = switch (readTagAhead(ast)) {
+    const init_node: zig.Index = switch (readTagAhead(ast)) {
         .equal_equal => blk: {
             try warn(ast, allocator_e, .wrong_equal_var_decl);
             ast.tokens.stream(1);
@@ -791,46 +768,34 @@ fn parseVarDecl(
             return addNode(ast, allocator_n, .{
                 .tag = .simple_var_decl,
                 .main_token = mut_token,
-                .data = .{
-                    .lhs = type_node,
-                    .rhs = init_node,
-                },
+                .data = .{ .lhs = type_node, .rhs = init_node },
             });
         } else if (type_node == 0) {
             return addNode(ast, allocator_n, .{
                 .tag = .aligned_var_decl,
                 .main_token = mut_token,
-                .data = .{
-                    .lhs = align_node,
-                    .rhs = init_node,
-                },
+                .data = .{ .lhs = align_node, .rhs = init_node },
             });
         } else {
             return addNode(ast, allocator_n, .{
                 .tag = .local_var_decl,
                 .main_token = mut_token,
-                .data = .{
-                    .lhs = try addExtra(ast, allocator_x, zig.AstNode.LocalVarDecl{
-                        .type_node = type_node,
-                        .align_node = align_node,
-                    }),
-                    .rhs = init_node,
-                },
+                .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.LocalVarDecl{
+                    .type_node = type_node,
+                    .align_node = align_node,
+                }), .rhs = init_node },
             });
         }
     } else {
         return addNode(ast, allocator_n, .{
             .tag = .global_var_decl,
             .main_token = mut_token,
-            .data = .{
-                .lhs = try addExtra(ast, allocator_x, zig.AstNode.GlobalVarDecl{
-                    .type_node = type_node,
-                    .align_node = align_node,
-                    .addrspace_node = addrspace_node,
-                    .section_node = section_node,
-                }),
-                .rhs = init_node,
-            },
+            .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.GlobalVarDecl{
+                .type_node = type_node,
+                .align_node = align_node,
+                .addrspace_node = addrspace_node,
+                .section_node = section_node,
+            }), .rhs = init_node },
         });
     }
 }
@@ -842,37 +807,31 @@ fn expectContainerField(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     var main_token = tokenIndex(ast);
     _ = eatToken(ast, .keyword_comptime);
     const tuple_like = readTagAhead(ast) != .identifier or relativeTagAhead(ast, 1) != .colon;
     if (!tuple_like) {
         main_token = assertToken(ast, .identifier);
     }
-    var align_expr: u32 = 0;
-    var type_expr: u32 = 0;
+    var align_expr: zig.Index = 0;
+    var type_expr: zig.Index = 0;
     if (eatToken(ast, .colon) != null or tuple_like) {
         type_expr = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         align_expr = try parseByteAlign(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     }
-    const value_expr: u32 = if (eatToken(ast, .equal) == null) 0 else try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
+    const value_expr: zig.Index = if (eatToken(ast, .equal) == null) 0 else try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (align_expr == 0) {
         return addNode(ast, allocator_n, .{
             .tag = .container_field_init,
             .main_token = main_token,
-            .data = .{
-                .lhs = type_expr,
-                .rhs = value_expr,
-            },
+            .data = .{ .lhs = type_expr, .rhs = value_expr },
         });
     } else if (value_expr == 0) {
         return addNode(ast, allocator_n, .{
             .tag = .container_field_align,
             .main_token = main_token,
-            .data = .{
-                .lhs = type_expr,
-                .rhs = align_expr,
-            },
+            .data = .{ .lhs = type_expr, .rhs = align_expr },
         });
     } else {
         return addNode(ast, allocator_n, .{
@@ -907,7 +866,7 @@ fn parseStatement(
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
     allow_defer_var: bool,
-) Error!u32 {
+) Error!zig.Index {
     const comptime_token = eatToken(ast, .keyword_comptime);
     if (allow_defer_var) {
         const var_decl = try parseVarDecl(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -920,10 +879,7 @@ fn parseStatement(
         return addNode(ast, allocator_n, .{
             .tag = .@"comptime",
             .main_token = token,
-            .data = .{
-                .lhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
         });
     }
     switch (readTagAhead(ast)) {
@@ -931,10 +887,7 @@ fn parseStatement(
             return addNode(ast, allocator_n, .{
                 .tag = .@"nosuspend",
                 .main_token = nextToken(ast),
-                .data = .{
-                    .lhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
             });
         },
         .keyword_suspend => {
@@ -943,27 +896,18 @@ fn parseStatement(
             return addNode(ast, allocator_n, .{
                 .tag = .@"suspend",
                 .main_token = token,
-                .data = .{
-                    .lhs = block_expr,
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = block_expr, .rhs = undefined },
             });
         },
         .keyword_defer => if (allow_defer_var) return addNode(ast, allocator_n, .{
             .tag = .@"defer",
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = undefined,
-                .rhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-            },
+            .data = .{ .lhs = undefined, .rhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
         }),
         .keyword_errdefer => if (allow_defer_var) return addNode(ast, allocator_n, .{
             .tag = .@"errdefer",
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = try parsePayload(ast, allocator_e),
-                .rhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-            },
+            .data = .{ .lhs = try parsePayload(ast, allocator_e), .rhs = try expectBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
         }),
         .keyword_switch => return expectSwitchExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
         .keyword_if => return expectIfStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
@@ -974,10 +918,7 @@ fn parseStatement(
                 return addNode(ast, allocator_n, .{
                     .tag = .identifier,
                     .main_token = identifier,
-                    .data = .{
-                        .lhs = undefined,
-                        .rhs = undefined,
-                    },
+                    .data = .{ .lhs = undefined, .rhs = undefined },
                 });
             }
         },
@@ -1000,7 +941,7 @@ fn expectStatement(
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
     allow_defer_var: bool,
-) Error!u32 {
+) Error!zig.Index {
     const statement = try parseStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, allow_defer_var);
     if (statement == 0) {
         return fail(ast, allocator_e, .expected_statement);
@@ -1017,7 +958,7 @@ fn expectStatementRecoverable(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     while (true) {
         return expectStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, true) catch |err| switch (err) {
             error.ParseError => {
@@ -1044,7 +985,7 @@ fn expectIfStatement(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const if_token = assertToken(ast, .keyword_if);
     _ = try expectToken(ast, allocator_e, .l_paren);
     const condition = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -1064,10 +1005,7 @@ fn expectIfStatement(
             return addNode(ast, allocator_n, .{
                 .tag = .if_simple,
                 .main_token = if_token,
-                .data = .{
-                    .lhs = condition,
-                    .rhs = assign_expr,
-                },
+                .data = .{ .lhs = condition, .rhs = assign_expr },
             });
         }
         else_required = true;
@@ -1080,10 +1018,7 @@ fn expectIfStatement(
         return addNode(ast, allocator_n, .{
             .tag = .if_simple,
             .main_token = if_token,
-            .data = .{
-                .lhs = condition,
-                .rhs = then_expr,
-            },
+            .data = .{ .lhs = condition, .rhs = then_expr },
         });
     };
     _ = try parsePayload(ast, allocator_e);
@@ -1108,7 +1043,7 @@ fn parseLabeledStatement(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const label_token = parseBlockLabel(
         ast,
     );
@@ -1140,7 +1075,7 @@ fn parseLoopStatement(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const inline_token = eatToken(ast, .keyword_inline);
     const for_statement = try parseForStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (for_statement != 0) return for_statement;
@@ -1161,7 +1096,7 @@ fn parseForStatement(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const for_token = eatToken(ast, .keyword_for) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const array_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -1182,10 +1117,7 @@ fn parseForStatement(
             return addNode(ast, allocator_n, .{
                 .tag = .for_simple,
                 .main_token = for_token,
-                .data = .{
-                    .lhs = array_expr,
-                    .rhs = assign_expr,
-                },
+                .data = .{ .lhs = array_expr, .rhs = assign_expr },
             });
         }
         else_required = true;
@@ -1198,10 +1130,7 @@ fn parseForStatement(
         return addNode(ast, allocator_n, .{
             .tag = .for_simple,
             .main_token = for_token,
-            .data = .{
-                .lhs = array_expr,
-                .rhs = then_expr,
-            },
+            .data = .{ .lhs = array_expr, .rhs = then_expr },
         });
     };
     return addNode(ast, allocator_n, .{
@@ -1227,7 +1156,7 @@ fn parseWhileStatement(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const while_token = eatToken(ast, .keyword_while) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const condition = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -1249,10 +1178,7 @@ fn parseWhileStatement(
                 return addNode(ast, allocator_n, .{
                     .tag = .while_simple,
                     .main_token = while_token,
-                    .data = .{
-                        .lhs = condition,
-                        .rhs = assign_expr,
-                    },
+                    .data = .{ .lhs = condition, .rhs = assign_expr },
                 });
             } else {
                 return addNode(ast, allocator_n, .{
@@ -1279,10 +1205,7 @@ fn parseWhileStatement(
             return addNode(ast, allocator_n, .{
                 .tag = .while_simple,
                 .main_token = while_token,
-                .data = .{
-                    .lhs = condition,
-                    .rhs = then_expr,
-                },
+                .data = .{ .lhs = condition, .rhs = then_expr },
             });
         } else {
             return addNode(ast, allocator_n, .{
@@ -1323,7 +1246,7 @@ fn parseBlockExprStatement(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const block_expr = try parseBlockExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (block_expr != 0) {
         return block_expr;
@@ -1342,7 +1265,7 @@ fn expectBlockExprStatement(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const node = try parseBlockExprStatement(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (node == 0) {
         return fail(ast, allocator_e, .expected_block_or_expr);
@@ -1357,7 +1280,7 @@ fn parseBlockExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     switch (readTagAhead(ast)) {
         .identifier => {
             if (relativeTagAhead(ast, 1) == .colon and
@@ -1396,7 +1319,7 @@ fn parseAssignExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const expr = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (expr == 0) return null_node;
     const tag: zig.AstNode.Tag = switch (readTagAhead(ast)) {
@@ -1423,10 +1346,7 @@ fn parseAssignExpr(
     return addNode(ast, allocator_n, .{
         .tag = tag,
         .main_token = nextToken(ast),
-        .data = .{
-            .lhs = expr,
-            .rhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-        },
+        .data = .{ .lhs = expr, .rhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
     });
 }
 fn expectAssignExpr(
@@ -1436,7 +1356,7 @@ fn expectAssignExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const expr = try parseAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (expr == 0) {
         return fail(ast, allocator_e, .expected_expr_or_assignment);
@@ -1450,7 +1370,7 @@ fn parseExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     return parseExprPrecedence(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, 0);
 }
 fn expectExpr(
@@ -1460,7 +1380,7 @@ fn expectExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const node = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (node == 0) {
         return fail(ast, allocator_e, .expected_expr);
@@ -1520,7 +1440,7 @@ fn parseExprPrecedence(
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
     min_prec: i32,
-) Error!u32 {
+) Error!zig.Index {
     builtin.assert(min_prec >= 0);
     var node = try parsePrefixExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (node == 0) {
@@ -1561,10 +1481,7 @@ fn parseExprPrecedence(
         node = try addNode(ast, allocator_n, .{
             .tag = info.tag,
             .main_token = oper_token,
-            .data = .{
-                .lhs = node,
-                .rhs = rhs,
-            },
+            .data = .{ .lhs = node, .rhs = rhs },
         });
         if (info.assoc == Assoc.none) {
             banned_prec = info.prec;
@@ -1588,7 +1505,7 @@ fn parsePrefixExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const tag: zig.AstNode.Tag = switch (readTagAhead(ast)) {
         .bang => .bool_not,
         .minus => .negation,
@@ -1602,10 +1519,7 @@ fn parsePrefixExpr(
     return addNode(ast, allocator_n, .{
         .tag = tag,
         .main_token = nextToken(ast),
-        .data = .{
-            .lhs = try expectPrefixExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-            .rhs = undefined,
-        },
+        .data = .{ .lhs = try expectPrefixExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
     });
 }
 fn expectPrefixExpr(
@@ -1615,7 +1529,7 @@ fn expectPrefixExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const node = try parsePrefixExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (node == 0) {
         return fail(ast, allocator_e, .expected_prefix_expr);
@@ -1642,24 +1556,18 @@ fn parseTypeExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     switch (readTagAhead(ast)) {
         .question_mark => return addNode(ast, allocator_n, .{
             .tag = .optional_type,
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
         }),
         .keyword_anyframe => switch (relativeTagAhead(ast, 1)) {
             .arrow => return addNode(ast, allocator_n, .{
                 .tag = .anyframe_type,
                 .main_token = nextToken(ast),
-                .data = .{
-                    .lhs = nextToken(ast),
-                    .rhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                },
+                .data = .{ .lhs = nextToken(ast), .rhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
             }),
             else => return parseErrorUnionExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
         },
@@ -1671,38 +1579,29 @@ fn parseTypeExpr(
                 return addNode(ast, allocator_n, .{
                     .tag = .ptr_type_bit_range,
                     .main_token = asterisk,
-                    .data = .{
-                        .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrTypeBitRange{
-                            .sentinel = 0,
-                            .align_node = mods.align_node,
-                            .addrspace_node = mods.addrspace_node,
-                            .bit_range_start = mods.bit_range_start,
-                            .bit_range_end = mods.bit_range_end,
-                        }),
-                        .rhs = elem_type,
-                    },
+                    .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrTypeBitRange{
+                        .sentinel = 0,
+                        .align_node = mods.align_node,
+                        .addrspace_node = mods.addrspace_node,
+                        .bit_range_start = mods.bit_range_start,
+                        .bit_range_end = mods.bit_range_end,
+                    }), .rhs = elem_type },
                 });
             } else if (mods.addrspace_node != 0) {
                 return addNode(ast, allocator_n, .{
                     .tag = .ptr_type,
                     .main_token = asterisk,
-                    .data = .{
-                        .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
-                            .sentinel = 0,
-                            .align_node = mods.align_node,
-                            .addrspace_node = mods.addrspace_node,
-                        }),
-                        .rhs = elem_type,
-                    },
+                    .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
+                        .sentinel = 0,
+                        .align_node = mods.align_node,
+                        .addrspace_node = mods.addrspace_node,
+                    }), .rhs = elem_type },
                 });
             } else {
                 return addNode(ast, allocator_n, .{
                     .tag = .ptr_type_aligned,
                     .main_token = asterisk,
-                    .data = .{
-                        .lhs = mods.align_node,
-                        .rhs = elem_type,
-                    },
+                    .data = .{ .lhs = mods.align_node, .rhs = elem_type },
                 });
             }
         },
@@ -1710,61 +1609,49 @@ fn parseTypeExpr(
             const asterisk = nextToken(ast);
             const mods = try parsePtrModifiers(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
             const elem_type = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-            const inner: u32 = inner: {
+            const inner: zig.Index = inner: {
                 if (mods.bit_range_start != 0) {
                     break :inner try addNode(ast, allocator_n, .{
                         .tag = .ptr_type_bit_range,
                         .main_token = asterisk,
-                        .data = .{
-                            .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrTypeBitRange{
-                                .sentinel = 0,
-                                .align_node = mods.align_node,
-                                .addrspace_node = mods.addrspace_node,
-                                .bit_range_start = mods.bit_range_start,
-                                .bit_range_end = mods.bit_range_end,
-                            }),
-                            .rhs = elem_type,
-                        },
+                        .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrTypeBitRange{
+                            .sentinel = 0,
+                            .align_node = mods.align_node,
+                            .addrspace_node = mods.addrspace_node,
+                            .bit_range_start = mods.bit_range_start,
+                            .bit_range_end = mods.bit_range_end,
+                        }), .rhs = elem_type },
                     });
                 } else if (mods.addrspace_node != 0) {
                     break :inner try addNode(ast, allocator_n, .{
                         .tag = .ptr_type,
                         .main_token = asterisk,
-                        .data = .{
-                            .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
-                                .sentinel = 0,
-                                .align_node = mods.align_node,
-                                .addrspace_node = mods.addrspace_node,
-                            }),
-                            .rhs = elem_type,
-                        },
+                        .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
+                            .sentinel = 0,
+                            .align_node = mods.align_node,
+                            .addrspace_node = mods.addrspace_node,
+                        }), .rhs = elem_type },
                     });
                 } else {
                     break :inner try addNode(ast, allocator_n, .{
                         .tag = .ptr_type_aligned,
                         .main_token = asterisk,
-                        .data = .{
-                            .lhs = mods.align_node,
-                            .rhs = elem_type,
-                        },
+                        .data = .{ .lhs = mods.align_node, .rhs = elem_type },
                     });
                 }
             };
             return addNode(ast, allocator_n, .{
                 .tag = .ptr_type_aligned,
                 .main_token = asterisk,
-                .data = .{
-                    .lhs = 0,
-                    .rhs = inner,
-                },
+                .data = .{ .lhs = 0, .rhs = inner },
             });
         },
         .l_bracket => {
             switch (ast.tokens.readOneAt(ast.tokens.index() + 1).tag) {
                 .asterisk => {
                     _ = nextToken(ast);
-                    const asterisk: u32 = nextToken(ast);
-                    var sentinel: u32 = 0;
+                    const asterisk: zig.Index = nextToken(ast);
+                    var sentinel: zig.Index = 0;
                     if (eatToken(ast, .identifier)) |ident| {
                         const start: usize = ast.tokens.readOneAt(ident).start;
                         const end: usize = ast.tokens.readOneAt(ident + 1).start;
@@ -1783,55 +1670,43 @@ fn parseTypeExpr(
                             return addNode(ast, allocator_n, .{
                                 .tag = .ptr_type_aligned,
                                 .main_token = asterisk,
-                                .data = .{
-                                    .lhs = mods.align_node,
-                                    .rhs = elem_type,
-                                },
+                                .data = .{ .lhs = mods.align_node, .rhs = elem_type },
                             });
                         } else if (mods.align_node == 0 and mods.addrspace_node == 0) {
                             return addNode(ast, allocator_n, .{
                                 .tag = .ptr_type_sentinel,
                                 .main_token = asterisk,
-                                .data = .{
-                                    .lhs = sentinel,
-                                    .rhs = elem_type,
-                                },
+                                .data = .{ .lhs = sentinel, .rhs = elem_type },
                             });
                         } else {
                             return addNode(ast, allocator_n, .{
                                 .tag = .ptr_type,
                                 .main_token = asterisk,
-                                .data = .{
-                                    .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
-                                        .sentinel = sentinel,
-                                        .align_node = mods.align_node,
-                                        .addrspace_node = mods.addrspace_node,
-                                    }),
-                                    .rhs = elem_type,
-                                },
+                                .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
+                                    .sentinel = sentinel,
+                                    .align_node = mods.align_node,
+                                    .addrspace_node = mods.addrspace_node,
+                                }), .rhs = elem_type },
                             });
                         }
                     } else {
                         return addNode(ast, allocator_n, .{
                             .tag = .ptr_type_bit_range,
                             .main_token = asterisk,
-                            .data = .{
-                                .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrTypeBitRange{
-                                    .sentinel = sentinel,
-                                    .align_node = mods.align_node,
-                                    .addrspace_node = mods.addrspace_node,
-                                    .bit_range_start = mods.bit_range_start,
-                                    .bit_range_end = mods.bit_range_end,
-                                }),
-                                .rhs = elem_type,
-                            },
+                            .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrTypeBitRange{
+                                .sentinel = sentinel,
+                                .align_node = mods.align_node,
+                                .addrspace_node = mods.addrspace_node,
+                                .bit_range_start = mods.bit_range_start,
+                                .bit_range_end = mods.bit_range_end,
+                            }), .rhs = elem_type },
                         });
                     }
                 },
                 else => {
                     const lbracket = nextToken(ast);
                     const len_expr = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
-                    const sentinel: u32 = if (eatToken(ast, .colon)) |_|
+                    const sentinel: zig.Index = if (eatToken(ast, .colon)) |_|
                         try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s)
                     else
                         0;
@@ -1849,32 +1724,23 @@ fn parseTypeExpr(
                             return addNode(ast, allocator_n, .{
                                 .tag = .ptr_type_aligned,
                                 .main_token = lbracket,
-                                .data = .{
-                                    .lhs = mods.align_node,
-                                    .rhs = elem_type,
-                                },
+                                .data = .{ .lhs = mods.align_node, .rhs = elem_type },
                             });
                         } else if (mods.align_node == 0 and mods.addrspace_node == 0) {
                             return addNode(ast, allocator_n, .{
                                 .tag = .ptr_type_sentinel,
                                 .main_token = lbracket,
-                                .data = .{
-                                    .lhs = sentinel,
-                                    .rhs = elem_type,
-                                },
+                                .data = .{ .lhs = sentinel, .rhs = elem_type },
                             });
                         } else {
                             return addNode(ast, allocator_n, .{
                                 .tag = .ptr_type,
                                 .main_token = lbracket,
-                                .data = .{
-                                    .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
-                                        .sentinel = sentinel,
-                                        .align_node = mods.align_node,
-                                        .addrspace_node = mods.addrspace_node,
-                                    }),
-                                    .rhs = elem_type,
-                                },
+                                .data = .{ .lhs = try addExtra(ast, allocator_x, zig.AstNode.PtrType{
+                                    .sentinel = sentinel,
+                                    .align_node = mods.align_node,
+                                    .addrspace_node = mods.addrspace_node,
+                                }), .rhs = elem_type },
                             });
                         }
                     } else {
@@ -1892,10 +1758,7 @@ fn parseTypeExpr(
                             return addNode(ast, allocator_n, .{
                                 .tag = .array_type,
                                 .main_token = lbracket,
-                                .data = .{
-                                    .lhs = len_expr,
-                                    .rhs = elem_type,
-                                },
+                                .data = .{ .lhs = len_expr, .rhs = elem_type },
                             });
                         } else {
                             return addNode(ast, allocator_n, .{
@@ -1924,7 +1787,7 @@ fn expectTypeExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const node = try parseTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (node == 0) {
         return fail(ast, allocator_e, .expected_type_expr);
@@ -1950,7 +1813,7 @@ fn parsePrimaryExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     switch (readTagAhead(ast)) {
         .keyword_asm => return expectAsmExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
         .keyword_if => return parseIfExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
@@ -1958,11 +1821,8 @@ fn parsePrimaryExpr(
             ast.tokens.stream(1);
             return addNode(ast, allocator_n, .{
                 .tag = .@"break",
-                .main_token = @intCast(u32, tokenIndex(ast) - 1),
-                .data = .{
-                    .lhs = try parseBreakLabel(ast, allocator_e),
-                    .rhs = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                },
+                .main_token = @intCast(zig.Index, tokenIndex(ast) - 1),
+                .data = .{ .lhs = try parseBreakLabel(ast, allocator_e), .rhs = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
             });
         },
         .keyword_continue => {
@@ -1970,10 +1830,7 @@ fn parsePrimaryExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .@"continue",
                 .main_token = tokenIndex(ast) - 1,
-                .data = .{
-                    .lhs = try parseBreakLabel(ast, allocator_e),
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = try parseBreakLabel(ast, allocator_e), .rhs = undefined },
             });
         },
         .keyword_comptime => {
@@ -1981,10 +1838,7 @@ fn parsePrimaryExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .@"comptime",
                 .main_token = tokenIndex(ast) - 1,
-                .data = .{
-                    .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
             });
         },
         .keyword_nosuspend => {
@@ -1992,10 +1846,7 @@ fn parsePrimaryExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .@"nosuspend",
                 .main_token = tokenIndex(ast) - 1,
-                .data = .{
-                    .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
             });
         },
         .keyword_resume => {
@@ -2003,10 +1854,7 @@ fn parsePrimaryExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .@"resume",
                 .main_token = tokenIndex(ast) - 1,
-                .data = .{
-                    .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
             });
         },
         .keyword_return => {
@@ -2014,10 +1862,7 @@ fn parsePrimaryExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .@"return",
                 .main_token = tokenIndex(ast) - 1,
-                .data = .{
-                    .lhs = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
             });
         },
         .identifier => {
@@ -2071,7 +1916,7 @@ fn parseIfExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     return parseIf(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, expectExpr);
 }
 /// Block <- LBRACE Statement* RBRACE
@@ -2082,7 +1927,7 @@ fn parseBlock(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const lbrace = eatToken(ast, .l_brace) orelse return null_node;
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
@@ -2099,36 +1944,24 @@ fn parseBlock(
         0 => return addNode(ast, allocator_n, .{
             .tag = .block_two,
             .main_token = lbrace,
-            .data = .{
-                .lhs = 0,
-                .rhs = 0,
-            },
+            .data = .{ .lhs = 0, .rhs = 0 },
         }),
         1 => return addNode(ast, allocator_n, .{
             .tag = if (semicolon) .block_two_semicolon else .block_two,
             .main_token = lbrace,
-            .data = .{
-                .lhs = statements[0],
-                .rhs = 0,
-            },
+            .data = .{ .lhs = statements[0], .rhs = 0 },
         }),
         2 => return addNode(ast, allocator_n, .{
             .tag = if (semicolon) .block_two_semicolon else .block_two,
             .main_token = lbrace,
-            .data = .{
-                .lhs = statements[0],
-                .rhs = statements[1],
-            },
+            .data = .{ .lhs = statements[0], .rhs = statements[1] },
         }),
         else => {
             const span = try listToSpan(ast, allocator_x, statements);
             return addNode(ast, allocator_n, .{
                 .tag = if (semicolon) .block_semicolon else .block,
                 .main_token = lbrace,
-                .data = .{
-                    .lhs = span.start,
-                    .rhs = span.end,
-                },
+                .data = .{ .lhs = span.start, .rhs = span.end },
             });
         },
     }
@@ -2142,7 +1975,7 @@ fn parseForExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const for_token = eatToken(ast, .keyword_for) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const array_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2154,10 +1987,7 @@ fn parseForExpr(
         return addNode(ast, allocator_n, .{
             .tag = .for_simple,
             .main_token = for_token,
-            .data = .{
-                .lhs = array_expr,
-                .rhs = then_expr,
-            },
+            .data = .{ .lhs = array_expr, .rhs = then_expr },
         });
     };
     const else_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2182,7 +2012,7 @@ fn parseWhileExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const while_token = eatToken(ast, .keyword_while) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const condition = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2195,10 +2025,7 @@ fn parseWhileExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .while_simple,
                 .main_token = while_token,
-                .data = .{
-                    .lhs = condition,
-                    .rhs = then_expr,
-                },
+                .data = .{ .lhs = condition, .rhs = then_expr },
             });
         } else {
             return addNode(ast, allocator_n, .{
@@ -2241,7 +2068,7 @@ fn parseCurlySuffixExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const lhs = try parseTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (lhs == 0) return null_node;
     const lbrace = eatToken(ast, .l_brace) orelse return lhs;
@@ -2274,18 +2101,12 @@ fn parseCurlySuffixExpr(
             1 => return addNode(ast, allocator_n, .{
                 .tag = if (comma) .struct_init_one_comma else .struct_init_one,
                 .main_token = lbrace,
-                .data = .{
-                    .lhs = lhs,
-                    .rhs = inits[0],
-                },
+                .data = .{ .lhs = lhs, .rhs = inits[0] },
             }),
             else => return addNode(ast, allocator_n, .{
                 .tag = if (comma) .struct_init_comma else .struct_init,
                 .main_token = lbrace,
-                .data = .{
-                    .lhs = lhs,
-                    .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, inits)),
-                },
+                .data = .{ .lhs = lhs, .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, inits)) },
             }),
         }
     }
@@ -2310,26 +2131,17 @@ fn parseCurlySuffixExpr(
         0 => return addNode(ast, allocator_n, .{
             .tag = .struct_init_one,
             .main_token = lbrace,
-            .data = .{
-                .lhs = lhs,
-                .rhs = 0,
-            },
+            .data = .{ .lhs = lhs, .rhs = 0 },
         }),
         1 => return addNode(ast, allocator_n, .{
             .tag = if (comma) .array_init_one_comma else .array_init_one,
             .main_token = lbrace,
-            .data = .{
-                .lhs = lhs,
-                .rhs = inits[0],
-            },
+            .data = .{ .lhs = lhs, .rhs = inits[0] },
         }),
         else => return addNode(ast, allocator_n, .{
             .tag = if (comma) .array_init_comma else .array_init,
             .main_token = lbrace,
-            .data = .{
-                .lhs = lhs,
-                .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, inits)),
-            },
+            .data = .{ .lhs = lhs, .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, inits)) },
         }),
     }
 }
@@ -2341,17 +2153,14 @@ fn parseErrorUnionExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const suffix_expr = try parseSuffixExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (suffix_expr == 0) return null_node;
     const bang = eatToken(ast, .bang) orelse return suffix_expr;
     return addNode(ast, allocator_n, .{
         .tag = .error_union,
         .main_token = bang,
-        .data = .{
-            .lhs = suffix_expr,
-            .rhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-        },
+        .data = .{ .lhs = suffix_expr, .rhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
     });
 }
 /// SuffixExpr
@@ -2366,7 +2175,7 @@ fn parseSuffixExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     if (eatToken(ast, .keyword_async)) |_| {
         var res = try expectPrimaryTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         while (true) {
@@ -2401,26 +2210,17 @@ fn parseSuffixExpr(
             0 => return addNode(ast, allocator_n, .{
                 .tag = if (comma) .async_call_one_comma else .async_call_one,
                 .main_token = lparen,
-                .data = .{
-                    .lhs = res,
-                    .rhs = 0,
-                },
+                .data = .{ .lhs = res, .rhs = 0 },
             }),
             1 => return addNode(ast, allocator_n, .{
                 .tag = if (comma) .async_call_one_comma else .async_call_one,
                 .main_token = lparen,
-                .data = .{
-                    .lhs = res,
-                    .rhs = params[0],
-                },
+                .data = .{ .lhs = res, .rhs = params[0] },
             }),
             else => return addNode(ast, allocator_n, .{
                 .tag = if (comma) .async_call_comma else .async_call,
                 .main_token = lparen,
-                .data = .{
-                    .lhs = res,
-                    .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, params)),
-                },
+                .data = .{ .lhs = res, .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, params)) },
             }),
         }
     }
@@ -2456,26 +2256,17 @@ fn parseSuffixExpr(
             0 => try addNode(ast, allocator_n, .{
                 .tag = if (comma) .call_one_comma else .call_one,
                 .main_token = lparen,
-                .data = .{
-                    .lhs = res,
-                    .rhs = 0,
-                },
+                .data = .{ .lhs = res, .rhs = 0 },
             }),
             1 => try addNode(ast, allocator_n, .{
                 .tag = if (comma) .call_one_comma else .call_one,
                 .main_token = lparen,
-                .data = .{
-                    .lhs = res,
-                    .rhs = params[0],
-                },
+                .data = .{ .lhs = res, .rhs = params[0] },
             }),
             else => try addNode(ast, allocator_n, .{
                 .tag = if (comma) .call_comma else .call,
                 .main_token = lparen,
-                .data = .{
-                    .lhs = res,
-                    .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, params)),
-                },
+                .data = .{ .lhs = res, .rhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, params)) },
             }),
         };
     }
@@ -2520,49 +2311,34 @@ fn parsePrimaryTypeExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     switch (readTagAhead(ast)) {
         .char_literal => return addNode(ast, allocator_n, .{
             .tag = .char_literal,
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = undefined,
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = undefined, .rhs = undefined },
         }),
         .number_literal => return addNode(ast, allocator_n, .{
             .tag = .number_literal,
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = undefined,
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = undefined, .rhs = undefined },
         }),
         .keyword_unreachable => return addNode(ast, allocator_n, .{
             .tag = .unreachable_literal,
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = undefined,
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = undefined, .rhs = undefined },
         }),
         .keyword_anyframe => return addNode(ast, allocator_n, .{
             .tag = .anyframe_literal,
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = undefined,
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = undefined, .rhs = undefined },
         }),
         .string_literal => {
             const main_token = nextToken(ast);
             return addNode(ast, allocator_n, .{
                 .tag = .string_literal,
                 .main_token = main_token,
-                .data = .{
-                    .lhs = undefined,
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = undefined, .rhs = undefined },
             });
         },
         .builtin => return parseBuiltinCall(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
@@ -2583,10 +2359,7 @@ fn parsePrimaryTypeExpr(
         .keyword_comptime => return addNode(ast, allocator_n, .{
             .tag = .@"comptime",
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = undefined },
         }),
         .multiline_string_literal_line => {
             const first_line = nextToken(ast);
@@ -2596,10 +2369,7 @@ fn parsePrimaryTypeExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .multiline_string_literal,
                 .main_token = first_line,
-                .data = .{
-                    .lhs = first_line,
-                    .rhs = tokenIndex(ast) - 1,
-                },
+                .data = .{ .lhs = first_line, .rhs = tokenIndex(ast) - 1 },
             });
         },
         .identifier => switch (relativeTagAhead(ast, 1)) {
@@ -2627,19 +2397,13 @@ fn parsePrimaryTypeExpr(
                 else => return addNode(ast, allocator_n, .{
                     .tag = .identifier,
                     .main_token = nextToken(ast),
-                    .data = .{
-                        .lhs = undefined,
-                        .rhs = undefined,
-                    },
+                    .data = .{ .lhs = undefined, .rhs = undefined },
                 }),
             },
             else => return addNode(ast, allocator_n, .{
                 .tag = .identifier,
                 .main_token = nextToken(ast),
-                .data = .{
-                    .lhs = undefined,
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = undefined, .rhs = undefined },
             }),
         },
         .keyword_inline => {
@@ -2694,28 +2458,19 @@ fn parsePrimaryTypeExpr(
                         1 => return addNode(ast, allocator_n, .{
                             .tag = if (comma) .struct_init_dot_two_comma else .struct_init_dot_two,
                             .main_token = lbrace,
-                            .data = .{
-                                .lhs = inits[0],
-                                .rhs = 0,
-                            },
+                            .data = .{ .lhs = inits[0], .rhs = 0 },
                         }),
                         2 => return addNode(ast, allocator_n, .{
                             .tag = if (comma) .struct_init_dot_two_comma else .struct_init_dot_two,
                             .main_token = lbrace,
-                            .data = .{
-                                .lhs = inits[0],
-                                .rhs = inits[1],
-                            },
+                            .data = .{ .lhs = inits[0], .rhs = inits[1] },
                         }),
                         else => {
                             const span = try listToSpan(ast, allocator_x, inits);
                             return addNode(ast, allocator_n, .{
                                 .tag = if (comma) .struct_init_dot_comma else .struct_init_dot,
                                 .main_token = lbrace,
-                                .data = .{
-                                    .lhs = span.start,
-                                    .rhs = span.end,
-                                },
+                                .data = .{ .lhs = span.start, .rhs = span.end },
                             });
                         },
                     }
@@ -2741,36 +2496,24 @@ fn parsePrimaryTypeExpr(
                     0 => return addNode(ast, allocator_n, .{
                         .tag = .struct_init_dot_two,
                         .main_token = lbrace,
-                        .data = .{
-                            .lhs = 0,
-                            .rhs = 0,
-                        },
+                        .data = .{ .lhs = 0, .rhs = 0 },
                     }),
                     1 => return addNode(ast, allocator_n, .{
                         .tag = if (comma) .array_init_dot_two_comma else .array_init_dot_two,
                         .main_token = lbrace,
-                        .data = .{
-                            .lhs = inits[0],
-                            .rhs = 0,
-                        },
+                        .data = .{ .lhs = inits[0], .rhs = 0 },
                     }),
                     2 => return addNode(ast, allocator_n, .{
                         .tag = if (comma) .array_init_dot_two_comma else .array_init_dot_two,
                         .main_token = lbrace,
-                        .data = .{
-                            .lhs = inits[0],
-                            .rhs = inits[1],
-                        },
+                        .data = .{ .lhs = inits[0], .rhs = inits[1] },
                     }),
                     else => {
                         const span = try listToSpan(ast, allocator_x, inits);
                         return addNode(ast, allocator_n, .{
                             .tag = if (comma) .array_init_dot_comma else .array_init_dot,
                             .main_token = lbrace,
-                            .data = .{
-                                .lhs = span.start,
-                                .rhs = span.end,
-                            },
+                            .data = .{ .lhs = span.start, .rhs = span.end },
                         });
                     },
                 }
@@ -2814,20 +2557,14 @@ fn parsePrimaryTypeExpr(
                 return addNode(ast, allocator_n, .{
                     .tag = .error_value,
                     .main_token = main_token,
-                    .data = .{
-                        .lhs = period orelse 0,
-                        .rhs = identifier orelse 0,
-                    },
+                    .data = .{ .lhs = period orelse 0, .rhs = identifier orelse 0 },
                 });
             },
         },
         .l_paren => return addNode(ast, allocator_n, .{
             .tag = .grouped_expression,
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-                .rhs = try expectToken(ast, allocator_e, .r_paren),
-            },
+            .data = .{ .lhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s), .rhs = try expectToken(ast, allocator_e, .r_paren) },
         }),
         else => return null_node,
     }
@@ -2839,7 +2576,7 @@ fn expectPrimaryTypeExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const node = try parsePrimaryTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (node == 0) {
         return fail(ast, allocator_e, .expected_primary_type_expr);
@@ -2855,7 +2592,7 @@ fn parseForTypeExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const for_token = eatToken(ast, .keyword_for) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const array_expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2867,10 +2604,7 @@ fn parseForTypeExpr(
         return addNode(ast, allocator_n, .{
             .tag = .for_simple,
             .main_token = for_token,
-            .data = .{
-                .lhs = array_expr,
-                .rhs = then_expr,
-            },
+            .data = .{ .lhs = array_expr, .rhs = then_expr },
         });
     };
     const else_expr = try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2895,7 +2629,7 @@ fn parseWhileTypeExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const while_token = eatToken(ast, .keyword_while) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const condition = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2908,10 +2642,7 @@ fn parseWhileTypeExpr(
             return addNode(ast, allocator_n, .{
                 .tag = .while_simple,
                 .main_token = while_token,
-                .data = .{
-                    .lhs = condition,
-                    .rhs = then_expr,
-                },
+                .data = .{ .lhs = condition, .rhs = then_expr },
             });
         } else {
             return addNode(ast, allocator_n, .{
@@ -2950,7 +2681,7 @@ fn expectSwitchExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const switch_token = assertToken(ast, .keyword_switch);
     _ = try expectToken(ast, allocator_e, .l_paren);
     const expr_node = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -2985,7 +2716,7 @@ fn expectAsmExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const asm_token = assertToken(ast, .keyword_asm);
     _ = eatToken(ast, .keyword_volatile);
     _ = try expectToken(ast, allocator_e, .l_paren);
@@ -2994,10 +2725,7 @@ fn expectAsmExpr(
         return addNode(ast, allocator_n, .{
             .tag = .asm_simple,
             .main_token = asm_token,
-            .data = .{
-                .lhs = template,
-                .rhs = rparen,
-            },
+            .data = .{ .lhs = template, .rhs = rparen },
         });
     }
     _ = try expectToken(ast, allocator_e, .colon);
@@ -3063,13 +2791,13 @@ fn parseAsmOutputItem(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = eatToken(ast, .l_bracket) orelse return null_node;
     const identifier = try expectToken(ast, allocator_e, .identifier);
     _ = try expectToken(ast, allocator_e, .r_bracket);
     _ = try expectToken(ast, allocator_e, .string_literal);
     _ = try expectToken(ast, allocator_e, .l_paren);
-    const type_expr: u32 = blk: {
+    const type_expr: zig.Index = blk: {
         if (eatToken(ast, .arrow)) |_| {
             break :blk try expectTypeExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
         } else {
@@ -3081,10 +2809,7 @@ fn parseAsmOutputItem(
     return addNode(ast, allocator_n, .{
         .tag = .asm_output,
         .main_token = identifier,
-        .data = .{
-            .lhs = type_expr,
-            .rhs = rparen,
-        },
+        .data = .{ .lhs = type_expr, .rhs = rparen },
     });
 }
 /// AsmInputItem <- LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN Expr RPAREN
@@ -3095,7 +2820,7 @@ fn parseAsmInputItem(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = eatToken(ast, .l_bracket) orelse return null_node;
     const identifier = try expectToken(ast, allocator_e, .identifier);
     _ = try expectToken(ast, allocator_e, .r_bracket);
@@ -3106,19 +2831,16 @@ fn parseAsmInputItem(
     return addNode(ast, allocator_n, .{
         .tag = .asm_input,
         .main_token = identifier,
-        .data = .{
-            .lhs = expr,
-            .rhs = rparen,
-        },
+        .data = .{ .lhs = expr, .rhs = rparen },
     });
 }
 /// BreakLabel <- COLON IDENTIFIER
-fn parseBreakLabel(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
-    _ = eatToken(ast, .colon) orelse return @as(u32, 0);
+fn parseBreakLabel(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!zig.Index {
+    _ = eatToken(ast, .colon) orelse return @as(zig.Index, 0);
     return expectToken(ast, allocator_e, .identifier);
 }
 /// BlockLabel <- IDENTIFIER COLON
-fn parseBlockLabel(ast: *abstract.ProtoSyntaxTree) u32 {
+fn parseBlockLabel(ast: *abstract.ProtoSyntaxTree) zig.Index {
     if (readTagAhead(ast) == .identifier and
         relativeTagAhead(ast, 1) == .colon)
     {
@@ -3136,7 +2858,7 @@ fn parseFieldInit(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     if (relativeTagAhead(ast, 0) == .period and
         relativeTagAhead(ast, 1) == .identifier and
         relativeTagAhead(ast, 2) == .equal)
@@ -3154,7 +2876,7 @@ fn expectFieldInit(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     if (readTagAhead(ast) != .period or
         relativeTagAhead(ast, 1) != .identifier or
         relativeTagAhead(ast, 2) != .equal)
@@ -3170,7 +2892,7 @@ fn parseWhileContinueExpr(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = eatToken(ast, .colon) orelse {
         if (readTagAhead(ast) == .l_paren and
             tokensOnSameLine(ast, tokenIndex(ast) - 1, tokenIndex(ast)))
@@ -3191,7 +2913,7 @@ fn parseLinkSection(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = eatToken(ast, .keyword_linksection) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const expr_node = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -3206,7 +2928,7 @@ fn parseCallconv(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = eatToken(ast, .keyword_callconv) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const expr_node = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -3221,7 +2943,7 @@ fn parseAddrSpace(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = eatToken(ast, .keyword_addrspace) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const expr_node = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -3256,7 +2978,7 @@ fn expectParamDecl(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = try eatDocComments(ast, allocator_e);
     switch (readTagAhead(ast)) {
         .keyword_noalias, .keyword_comptime => ast.tokens.stream(1),
@@ -3280,15 +3002,15 @@ fn expectParamDecl(
     }
 }
 /// Payload <- PIPE IDENTIFIER PIPE
-fn parsePayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
-    _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
+fn parsePayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!zig.Index {
+    _ = eatToken(ast, .pipe) orelse return @as(zig.Index, 0);
     const identifier = try expectToken(ast, allocator_e, .identifier);
     _ = try expectToken(ast, allocator_e, .pipe);
     return identifier;
 }
 /// PtrPayload <- PIPE ASTERISK? IDENTIFIER PIPE
-fn parsePtrPayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
-    _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
+fn parsePtrPayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!zig.Index {
+    _ = eatToken(ast, .pipe) orelse return @as(zig.Index, 0);
     _ = eatToken(ast, .asterisk);
     const identifier = try expectToken(ast, allocator_e, .identifier);
     _ = try expectToken(ast, allocator_e, .pipe);
@@ -3296,8 +3018,8 @@ fn parsePtrPayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Err
 }
 /// PtrIndexPayload <- PIPE ASTERISK? IDENTIFIER (COMMA IDENTIFIER)? PIPE
 /// Returns the first identifier token, if any.
-fn parsePtrIndexPayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
-    _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
+fn parsePtrIndexPayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!zig.Index {
+    _ = eatToken(ast, .pipe) orelse return @as(zig.Index, 0);
     _ = eatToken(ast, .asterisk);
     const identifier = try expectToken(ast, allocator_e, .identifier);
     if (eatToken(ast, .comma) != null) {
@@ -3317,7 +3039,7 @@ fn parseSwitchProng(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
     const is_inline = eatToken(ast, .keyword_inline) != null;
@@ -3340,26 +3062,17 @@ fn parseSwitchProng(
         0 => return addNode(ast, allocator_n, .{
             .tag = if (is_inline) .switch_case_inline_one else .switch_case_one,
             .main_token = arrow_token,
-            .data = .{
-                .lhs = 0,
-                .rhs = try expectAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-            },
+            .data = .{ .lhs = 0, .rhs = try expectAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
         }),
         1 => return addNode(ast, allocator_n, .{
             .tag = if (is_inline) .switch_case_inline_one else .switch_case_one,
             .main_token = arrow_token,
-            .data = .{
-                .lhs = items[0],
-                .rhs = try expectAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-            },
+            .data = .{ .lhs = items[0], .rhs = try expectAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
         }),
         else => return addNode(ast, allocator_n, .{
             .tag = if (is_inline) .switch_case_inline else .switch_case,
             .main_token = arrow_token,
-            .data = .{
-                .lhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, items)),
-                .rhs = try expectAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-            },
+            .data = .{ .lhs = try addExtra(ast, allocator_x, try listToSpan(ast, allocator_x, items)), .rhs = try expectAssignExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
         }),
     }
 }
@@ -3371,26 +3084,23 @@ fn parseSwitchItem(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const expr = try parseExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
     if (expr == 0) return null_node;
     if (eatToken(ast, .ellipsis3)) |token| {
         return addNode(ast, allocator_n, .{
             .tag = .switch_range,
             .main_token = token,
-            .data = .{
-                .lhs = expr,
-                .rhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s),
-            },
+            .data = .{ .lhs = expr, .rhs = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) },
         });
     }
     return expr;
 }
 const PtrModifiers = struct {
-    align_node: u32,
-    addrspace_node: u32,
-    bit_range_start: u32,
-    bit_range_end: u32,
+    align_node: zig.Index,
+    addrspace_node: zig.Index,
+    bit_range_start: zig.Index,
+    bit_range_end: zig.Index,
 };
 fn parsePtrModifiers(
     ast: *abstract.ProtoSyntaxTree,
@@ -3469,8 +3179,8 @@ fn parseSuffixOp(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-    lhs: u32,
-) Error!u32 {
+    lhs: zig.Index,
+) Error!zig.Index {
     switch (readTagAhead(ast)) {
         .l_bracket => {
             const lbracket = nextToken(ast);
@@ -3498,10 +3208,7 @@ fn parseSuffixOp(
                     return addNode(ast, allocator_n, .{
                         .tag = .slice_open,
                         .main_token = lbracket,
-                        .data = .{
-                            .lhs = lhs,
-                            .rhs = index_expr,
-                        },
+                        .data = .{ .lhs = lhs, .rhs = index_expr },
                     });
                 }
                 return addNode(ast, allocator_n, .{
@@ -3520,47 +3227,32 @@ fn parseSuffixOp(
             return addNode(ast, allocator_n, .{
                 .tag = .array_access,
                 .main_token = lbracket,
-                .data = .{
-                    .lhs = lhs,
-                    .rhs = index_expr,
-                },
+                .data = .{ .lhs = lhs, .rhs = index_expr },
             });
         },
         .period_asterisk => return addNode(ast, allocator_n, .{
             .tag = .deref,
             .main_token = nextToken(ast),
-            .data = .{
-                .lhs = lhs,
-                .rhs = undefined,
-            },
+            .data = .{ .lhs = lhs, .rhs = undefined },
         }),
         .invalid_periodasterisks => {
             try warn(ast, allocator_e, .asterisk_after_ptr_deref);
             return addNode(ast, allocator_n, .{
                 .tag = .deref,
                 .main_token = nextToken(ast),
-                .data = .{
-                    .lhs = lhs,
-                    .rhs = undefined,
-                },
+                .data = .{ .lhs = lhs, .rhs = undefined },
             });
         },
         .period => switch (relativeTagAhead(ast, 1)) {
             .identifier => return addNode(ast, allocator_n, .{
                 .tag = .field_access,
                 .main_token = nextToken(ast),
-                .data = .{
-                    .lhs = lhs,
-                    .rhs = nextToken(ast),
-                },
+                .data = .{ .lhs = lhs, .rhs = nextToken(ast) },
             }),
             .question_mark => return addNode(ast, allocator_n, .{
                 .tag = .unwrap_optional,
                 .main_token = nextToken(ast),
-                .data = .{
-                    .lhs = lhs,
-                    .rhs = nextToken(ast),
-                },
+                .data = .{ .lhs = lhs, .rhs = nextToken(ast) },
             }),
             .l_brace => {
                 // this a misplaced `.{`, handle the error somewhere else
@@ -3590,7 +3282,7 @@ fn parseContainerDeclAuto(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const main_token = nextToken(ast);
     const arg_expr = switch (readTagAt(ast, main_token)) {
         .keyword_opaque => null_node,
@@ -3620,10 +3312,7 @@ fn parseContainerDeclAuto(
                                 false => .tagged_union_enum_tag,
                             },
                             .main_token = main_token,
-                            .data = .{
-                                .lhs = enum_tag_expr,
-                                .rhs = try addExtra(ast, allocator_x, members_span),
-                            },
+                            .data = .{ .lhs = enum_tag_expr, .rhs = try addExtra(ast, allocator_x, members_span) },
                         });
                     } else {
                         _ = try expectToken(ast, allocator_e, .r_paren);
@@ -3637,10 +3326,7 @@ fn parseContainerDeclAuto(
                                     false => .tagged_union_two,
                                 },
                                 .main_token = main_token,
-                                .data = .{
-                                    .lhs = members.lhs,
-                                    .rhs = members.rhs,
-                                },
+                                .data = .{ .lhs = members.lhs, .rhs = members.rhs },
                             });
                         } else {
                             const span = try members.toSpan(ast, allocator_x);
@@ -3650,10 +3336,7 @@ fn parseContainerDeclAuto(
                                     false => .tagged_union,
                                 },
                                 .main_token = main_token,
-                                .data = .{
-                                    .lhs = span.start,
-                                    .rhs = span.end,
-                                },
+                                .data = .{ .lhs = span.start, .rhs = span.end },
                             });
                         }
                     }
@@ -3682,10 +3365,7 @@ fn parseContainerDeclAuto(
                     false => .container_decl_two,
                 },
                 .main_token = main_token,
-                .data = .{
-                    .lhs = members.lhs,
-                    .rhs = members.rhs,
-                },
+                .data = .{ .lhs = members.lhs, .rhs = members.rhs },
             });
         } else {
             const span = try members.toSpan(ast, allocator_x);
@@ -3695,10 +3375,7 @@ fn parseContainerDeclAuto(
                     false => .container_decl,
                 },
                 .main_token = main_token,
-                .data = .{
-                    .lhs = span.start,
-                    .rhs = span.end,
-                },
+                .data = .{ .lhs = span.start, .rhs = span.end },
             });
         }
     } else {
@@ -3763,7 +3440,7 @@ fn parseByteAlign(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     _ = eatToken(ast, .keyword_align) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const expr = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -3807,7 +3484,7 @@ fn parseParamDeclList(
     _ = try expectToken(ast, allocator_e, .l_paren);
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
-    var varargs: union(enum) { none, seen, nonfinal: u32 } = .none;
+    var varargs: union(enum) { none, seen, nonfinal: zig.Index } = .none;
     while (true) {
         if (eatToken(ast, .r_paren)) |_| break;
         if (varargs == .seen) varargs = .{ .nonfinal = tokenIndex(ast) };
@@ -3847,20 +3524,13 @@ fn parseBuiltinCall(
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
-) Error!u32 {
+) Error!zig.Index {
     const builtin_token = assertToken(ast, .builtin);
     if (readTagAt(ast, nextToken(ast)) != .l_paren) {
         ast.tokens.unstream(1);
         try warn(ast, allocator_e, .expected_param_list);
         // Pretend this was an identifier so we can continue parsing.
-        return addNode(ast, allocator_n, .{
-            .tag = .identifier,
-            .main_token = builtin_token,
-            .data = .{
-                .lhs = undefined,
-                .rhs = undefined,
-            },
-        });
+        return addNode(ast, allocator_n, .{ .tag = .identifier, .main_token = builtin_token, .data = .{ .lhs = undefined, .rhs = undefined } });
     }
     const state_top: usize = array_s.len(allocator_s.*);
     defer array_s.undefine(array_s.len(allocator_s.*) - state_top);
@@ -3882,40 +3552,12 @@ fn parseBuiltinCall(
     // XXX: Maybe trouble
     const params = array_s.readManyAt(allocator_s.*, state_top);
     switch (params.len) {
-        0 => return addNode(ast, allocator_n, .{
-            .tag = .builtin_call_two,
-            .main_token = builtin_token,
-            .data = .{
-                .lhs = 0,
-                .rhs = 0,
-            },
-        }),
-        1 => return addNode(ast, allocator_n, .{
-            .tag = if (comma) .builtin_call_two_comma else .builtin_call_two,
-            .main_token = builtin_token,
-            .data = .{
-                .lhs = params[0],
-                .rhs = 0,
-            },
-        }),
-        2 => return addNode(ast, allocator_n, .{
-            .tag = if (comma) .builtin_call_two_comma else .builtin_call_two,
-            .main_token = builtin_token,
-            .data = .{
-                .lhs = params[0],
-                .rhs = params[1],
-            },
-        }),
+        0 => return addNode(ast, allocator_n, .{ .tag = .builtin_call_two, .main_token = builtin_token, .data = .{ .lhs = 0, .rhs = 0 } }),
+        1 => return addNode(ast, allocator_n, .{ .tag = if (comma) .builtin_call_two_comma else .builtin_call_two, .main_token = builtin_token, .data = .{ .lhs = params[0], .rhs = 0 } }),
+        2 => return addNode(ast, allocator_n, .{ .tag = if (comma) .builtin_call_two_comma else .builtin_call_two, .main_token = builtin_token, .data = .{ .lhs = params[0], .rhs = params[1] } }),
         else => {
             const span = try listToSpan(ast, allocator_x, params);
-            return addNode(ast, allocator_n, .{
-                .tag = if (comma) .builtin_call_comma else .builtin_call,
-                .main_token = builtin_token,
-                .data = .{
-                    .lhs = span.start,
-                    .rhs = span.end,
-                },
-            });
+            return addNode(ast, allocator_n, .{ .tag = if (comma) .builtin_call_comma else .builtin_call, .main_token = builtin_token, .data = .{ .lhs = span.start, .rhs = span.end } });
         },
     }
 }
@@ -3934,8 +3576,8 @@ fn parseIf(
         allocator_x: *AllocatorX,
         allocator_s: *AllocatorS,
         array_s: *zig.StateArray,
-    ) Error!u32,
-) Error!u32 {
+    ) Error!zig.Index,
+) Error!zig.Index {
     const if_token = eatToken(ast, .keyword_if) orelse return null_node;
     _ = try expectToken(ast, allocator_e, .l_paren);
     const condition = try expectExpr(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -3946,10 +3588,7 @@ fn parseIf(
     _ = eatToken(ast, .keyword_else) orelse return addNode(ast, allocator_n, .{
         .tag = .if_simple,
         .main_token = if_token,
-        .data = .{
-            .lhs = condition,
-            .rhs = then_expr,
-        },
+        .data = .{ .lhs = condition, .rhs = then_expr },
     });
     _ = try parsePayload(ast, allocator_e);
     const else_expr = try bodyParseFn(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
@@ -3966,7 +3605,7 @@ fn parseIf(
         },
     });
 }
-fn eatDocComments(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) !?u32 {
+fn eatDocComments(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) !?zig.Index {
     if (eatToken(ast, .doc_comment)) |tok| {
         var first_line = tok;
         if (tok > 0 and tokensOnSameLine(ast, tok - 1, tok)) {
@@ -3981,13 +3620,13 @@ fn eatDocComments(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) !?u3
     }
     return null;
 }
-fn tokensOnSameLine(ast: *abstract.ProtoSyntaxTree, token1: u32, token2: u32) bool {
-    const start_1: u32 = ast.tokens.readOneAt(token1).start;
-    const start_2: u32 = ast.tokens.readOneAt(token2).start;
+fn tokensOnSameLine(ast: *abstract.ProtoSyntaxTree, token1: zig.Index, token2: zig.Index) bool {
+    const start_1: zig.Index = ast.tokens.readOneAt(token1).start;
+    const start_2: zig.Index = ast.tokens.readOneAt(token2).start;
     return mem.indexOfFirstEqualOne(u8, '\n', ast.source.readAll()[start_1..start_2]) == null;
 }
-fn tokenIndex(ast: *abstract.ProtoSyntaxTree) u32 {
-    return @intCast(u32, ast.tokens.index());
+fn tokenIndex(ast: *abstract.ProtoSyntaxTree) zig.Index {
+    return @intCast(zig.Index, ast.tokens.index());
 }
 fn readTagAhead(ast: *abstract.ProtoSyntaxTree) zig.Token.Tag {
     return ast.tokens.readOneAhead().tag;
@@ -3998,15 +3637,15 @@ fn readStartAhead(ast: *abstract.ProtoSyntaxTree) zig.Token.Tag {
 fn readTagAt(ast: *abstract.ProtoSyntaxTree, index: usize) zig.Token.Tag {
     return ast.tokens.readOneAt(index).tag;
 }
-fn eatToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) ?u32 {
+fn eatToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) ?zig.Index {
     return if (readTagAhead(ast) == tag) nextToken(ast) else null;
 }
-fn assertToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) u32 {
+fn assertToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) zig.Index {
     const token = nextToken(ast);
     builtin.assert(readTagAt(ast, token) == tag);
     return token;
 }
-fn expectToken(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, tag: zig.Token.Tag) Error!u32 {
+fn expectToken(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, tag: zig.Token.Tag) Error!zig.Index {
     if (readTagAhead(ast) != tag) {
         return failMsg(ast, allocator_e, .{
             .tag = .expected_token,
@@ -4024,10 +3663,10 @@ fn expectSemicolon(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, err
     try warn(ast, allocator_e, error_tag);
     if (!recoverable) return error.ParseError;
 }
-fn nextToken(ast: *abstract.ProtoSyntaxTree) u32 {
+fn nextToken(ast: *abstract.ProtoSyntaxTree) zig.Index {
     const result = tokenIndex(ast);
     ast.tokens.stream(1);
-    return @intCast(u32, result);
+    return @intCast(zig.Index, result);
 }
 pub fn directEnumArrayDefault(
     comptime E: type,

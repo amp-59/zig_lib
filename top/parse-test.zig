@@ -116,7 +116,7 @@ fn mainBoth() !void {
             }
             try testing.expectEqualMany(u8, lib_tag, std_tag);
         }
-        const source: [:0]const u8 = lib_res.ast.source;
+        const source: [:0]const u8 = lib_res.ast.source.readAllWithSentinel(0);
         const lines: u64 = blk: {
             var count: u64 = 0;
             var index: u64 = 0;
