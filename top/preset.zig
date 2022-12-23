@@ -1,4 +1,5 @@
 const mem = @import("./mem.zig");
+const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const builtin = @import("./builtin.zig");
 
@@ -6,7 +7,7 @@ pub const allocator = opaque {
     pub const options = opaque {
         pub const small: mem.AllocatorOptions = .{
             .count_branches = false,
-            .count_allocations = false,
+            .count_allocations = true,
             .count_useful_bytes = false,
             .check_parametric_binding = false,
         };
@@ -41,6 +42,31 @@ pub const allocator = opaque {
             .reallocate = false,
             .reinterpret = false,
             .deallocate = false,
+        };
+    };
+    pub const errors = opaque {
+        pub const noexcept: mem.AllocatorErrors = .{
+            // This should not be allowed, but no consistency within library to
+            // enforce yet.
+            .acquire = null,
+            .release = null,
+            .map = null,
+            .remap = null,
+            .unmap = null,
+        };
+        pub const uniform: mem.AllocatorErrors = .{
+            .acquire = error{OpaqueSystemError},
+            .release = null,
+            .map = &.{},
+            .remap = &.{},
+            .unmap = null,
+        };
+        pub const critical: mem.AllocatorErrors = .{
+            .map = sys.mmap_errors,
+            .remap = sys.mremap_errors,
+            .release = error{OverSupply},
+            .acquire = error{UnderSupply},
+            .unmap = sys.munmap_errors,
         };
     };
 };
