@@ -110,7 +110,16 @@ pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) spec.Unwrapped(.nanosleep) 
         return nanosleep_error;
     }
 }
-
+pub fn diff(arg1: TimeSpec, arg2: TimeSpec) TimeSpec {
+    var ret: TimeSpec = .{
+        .sec = arg1.sec -% arg2.sec,
+        .nsec = arg1.nsec -% arg2.nsec,
+    };
+    const j: bool = ret.nsec >= 1_000_000_000;
+    ret.sec -%= mach.cmov64z(j, 1);
+    ret.nsec +%= mach.cmov64z(j, 1_000_000_000);
+    return ret;
+}
 pub const DateTime = extern struct {
     sec: u8,
     min: u8,
