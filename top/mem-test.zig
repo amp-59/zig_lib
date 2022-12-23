@@ -73,10 +73,6 @@ fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.advise(advise_spec, addr, len));
     try meta.wrap(mem.unmap(unmap_spec, addr, len));
 }
-fn view(comptime s: []const u8) mem.StructuredAutomaticView(u8, null, s.len, null, .{}) {
-    return .{ .impl = .{ .auto = @ptrCast(*const [s.len]u8, s.ptr).* } };
-}
-
 fn testAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericArenaAllocator(.{
@@ -131,10 +127,9 @@ fn testAllocatedImplementation() !void {
     }
     try testing.expectEqualMany(u8, array_ab.readAll(), array_b.readAll());
 }
-
 fn testAutomaticImplementation() !void {
     {
-        const array = view("Hello, World!12340x1fee1dead");
+        const array = mem.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, "World!", &array.readCountAt("Hello, ".len, "World!".len));
         try builtin.expectEqual(u64, array.readAll().len, array.impl.bytes());
