@@ -799,7 +799,7 @@ pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const any
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn len(array: *const Array) u64 {
             return array.impl.capacity() / child_size;
@@ -1010,7 +1010,7 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
@@ -1191,7 +1191,7 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
@@ -1318,7 +1318,7 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.capacity() / @sizeOf(child);
@@ -1528,7 +1528,7 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
@@ -1708,7 +1708,7 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
@@ -3488,7 +3488,7 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn index(array: *const Array, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / child_size;
@@ -3709,7 +3709,7 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn len(array: *const Array, allocator: Allocator) u64 {
             return array.impl.length(allocator) / child_size;
@@ -3995,7 +3995,7 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn index(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / @sizeOf(child);
@@ -4215,7 +4215,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
-            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
+            return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub inline fn len(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.length(allocator) / @sizeOf(child);
@@ -4764,6 +4764,9 @@ const Reinterpret = struct {
         if (child != u8) {
             @compileError("invalid destination type for format write: " ++ @typeName(child));
         }
+        if (@hasDecl(Format, "readAll")) {
+            return memory.writeMany(format.readAll());
+        }
         if (!@hasDecl(Format, "formatWrite")) {
             @compileError("invalid interface for formatter type: " ++ @typeName(Format));
         }
@@ -4952,8 +4955,13 @@ const Reinterpret = struct {
         }
         if (@hasDecl(Format, "max_len")) {
             if (builtin.is_perf) return Format.max_len;
+        }  
+        if (@hasDecl(Format, "len")) {
+            return format.len();
         }
-        return format.formatLength();
+        if (@hasDecl(Format, "formatLength")) {
+            return format.formatLength();
+        }
     }
     pub fn lengthFields(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) u64 {
         var len: u64 = 0;
