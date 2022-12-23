@@ -105,7 +105,6 @@ pub fn StructuredAutomaticView(comptime child: type, comptime sentinel: ?*const 
         impl: Implementation = .{},
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_auto, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters0;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -178,7 +177,6 @@ pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*
         impl: Implementation = .{ .ss_word = 0 },
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_auto, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters0;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -305,7 +303,6 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
         impl: Implementation = .{ .ub_word = 0, .ss_word = 0 },
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_push_pop_auto, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters0;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -526,7 +523,6 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
         impl: Implementation = .{ .ub_word = 0 },
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_push_pop_auto, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters0;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -741,7 +737,6 @@ pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const any
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters1;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -803,6 +798,9 @@ pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const any
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn len(array: *const Array) u64 {
             return array.impl.capacity() / child_size;
         }
@@ -820,7 +818,6 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters1;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1012,6 +1009,9 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
         }
@@ -1047,7 +1047,6 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters1;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1191,6 +1190,9 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
         }
@@ -1255,7 +1257,6 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters2;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1316,6 +1317,9 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.capacity() / @sizeOf(child);
         }
@@ -1333,7 +1337,6 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters2;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1524,6 +1527,9 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
         }
@@ -1559,7 +1565,6 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters2;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1702,6 +1707,9 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
         }
@@ -1792,7 +1800,6 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters3;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2059,7 +2066,6 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters3;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2198,7 +2204,6 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters3;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2411,7 +2416,6 @@ pub fn StructuredView(comptime child: type, comptime sentinel: ?*const anyopaque
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters3;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2525,7 +2529,6 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters4;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2791,7 +2794,6 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters4;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2929,7 +2931,6 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters4;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3141,7 +3142,6 @@ pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters4;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3256,7 +3256,6 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters5;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3488,6 +3487,9 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn index(array: *const Array, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / child_size;
         }
@@ -3523,7 +3525,6 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters5;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3707,6 +3708,9 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn len(array: *const Array, allocator: Allocator) u64 {
             return array.impl.length(allocator) / child_size;
         }
@@ -3760,7 +3764,6 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters6;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3991,6 +3994,9 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
         }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
+        }
         pub inline fn index(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / @sizeOf(child);
         }
@@ -4026,7 +4032,6 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
-        pub const Reference: type = Implementation;
         pub const Parameters: type = Parameters6;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -4208,6 +4213,9 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         }
         pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
+        }
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+            return .{ .impl = try allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl) };
         }
         pub inline fn len(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.length(allocator) / @sizeOf(child);
