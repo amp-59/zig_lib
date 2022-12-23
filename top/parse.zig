@@ -1,5 +1,6 @@
 const mem = @import("./mem.zig");
 const zig = @import("./zig.zig");
+const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
@@ -9,6 +10,7 @@ const AllocatorN: type = zig.Allocator.Node;
 const AllocatorE: type = zig.Allocator.Error;
 const AllocatorX: type = zig.Allocator.Extra;
 const AllocatorS: type = zig.Allocator.State;
+
 const Error = meta.ReturnErrorSet(.{
     AllocatorN.allocate_void, AllocatorE.allocate_void,
     AllocatorX.allocate_void, AllocatorS.allocate_void,
@@ -21,7 +23,7 @@ pub const Members = struct {
     lhs: u32,
     rhs: u32,
     trailing: bool,
-    pub fn toSpan(self: Members, ast: *abstract.SyntaxTree, allocator_x: *AllocatorX) !zig.AstNode.SubRange {
+    pub fn toSpan(self: Members, ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX) !zig.AstNode.SubRange {
         if (self.len <= 2) {
             const nodes = [2]u32{ self.lhs, self.rhs };
             return listToSpan(ast, allocator_x, nodes[0..self.len]);
@@ -30,29 +32,29 @@ pub const Members = struct {
         }
     }
 };
-fn listToSpan(ast: *abstract.SyntaxTree, allocator_x: *AllocatorX, list: []const u32) !zig.AstNode.SubRange {
+fn listToSpan(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, list: []const u32) !zig.AstNode.SubRange {
     try ast.extras.appendMany(allocator_x, list);
     return zig.AstNode.SubRange{
         .start = @intCast(u32, ast.extras.len(allocator_x.*) - list.len),
         .end = @intCast(u32, ast.extras.len(allocator_x.*)),
     };
 }
-fn addNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, elem: zig.AstNode) Error!u32 {
+fn addNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, elem: zig.AstNode) Error!u32 {
     const result = @intCast(u32, ast.nodes.len(allocator_n.*));
     try ast.nodes.appendOne(allocator_n, elem);
     return result;
 }
-fn setNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, i: usize, elem: zig.AstNode) u32 {
+fn setNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, i: usize, elem: zig.AstNode) u32 {
     ast.nodes.overwriteOneAt(allocator_n.*, i, elem);
     return @intCast(u32, i);
 }
-fn reserveNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, tag: zig.AstNode.Tag) Error!usize {
+fn reserveNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, tag: zig.AstNode.Tag) Error!usize {
     try ast.nodes.increment(allocator_n, 1);
     ast.nodes.define(1);
     ast.nodes.referOneBack().tag = tag;
     return ast.nodes.len(allocator_n.*) - 1;
 }
-fn unreserveNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, node_index: usize) void {
+fn unreserveNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, node_index: usize) void {
     if (ast.nodes.len(allocator_n.*) == node_index) {
         ast.nodes.undefine(1);
     } else {
@@ -60,12 +62,12 @@ fn unreserveNode(ast: *abstract.SyntaxTree, allocator_n: *AllocatorN, node_index
         ast.nodes.referOneAt(allocator_n.*, node_index).main_token = tokenIndex(ast);
     }
 }
-fn addExtra(ast: *abstract.SyntaxTree, allocator_x: *AllocatorX, extra: anytype) Error!u32 {
+fn addExtra(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, extra: anytype) Error!u32 {
     const result = @intCast(u32, ast.extras.len(allocator_x.*));
     try ast.extras.appendAny(.{}, allocator_x, extra);
     return result;
 }
-pub fn warnExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expected_token: zig.Token.Tag) !void {
+pub fn warnExpected(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, expected_token: zig.Token.Tag) !void {
     @setCold(true);
     try warnMsg(ast, allocator_e, .{
         .tag = .expected_token,
@@ -73,11 +75,11 @@ pub fn warnExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expecte
         .extra = .{ .expected_tag = expected_token },
     });
 }
-fn warn(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, error_tag: zig.AstError.Tag) !void {
+fn warn(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, error_tag: zig.AstError.Tag) !void {
     @setCold(true);
     try warnMsg(ast, allocator_e, .{ .tag = error_tag, .token = tokenIndex(ast) });
 }
-fn warnMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstError) !void {
+fn warnMsg(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, msg: zig.AstError) !void {
     @setCold(true);
     switch (msg.tag) {
         .expected_semi_after_decl,
@@ -110,7 +112,7 @@ fn warnMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstErro
         .expected_var_decl_or_fn,
         .expected_loop_payload,
         .expected_container,
-        => if (msg.token != 0 and !ast.tokensOnSameLine(msg.token - 1, msg.token)) {
+        => if (msg.token != 0 and !tokensOnSameLine(ast, msg.token - 1, msg.token)) {
             var copy = msg;
             copy.token_is_prev = true;
             copy.token -= 1;
@@ -120,11 +122,11 @@ fn warnMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstErro
     }
     try ast.errors.appendOne(allocator_e, msg);
 }
-fn fail(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, tag: zig.AstError.Tag) Error {
+fn fail(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, tag: zig.AstError.Tag) Error {
     @setCold(true);
     return failMsg(ast, allocator_e, .{ .tag = tag, .token = tokenIndex(ast) });
 }
-fn failExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expected_token: zig.Token.Tag) Error {
+fn failExpected(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, expected_token: zig.Token.Tag) Error {
     @setCold(true);
     return failMsg(ast, allocator_e, .{
         .tag = .expected_token,
@@ -132,7 +134,7 @@ fn failExpected(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, expected_to
         .extra = .{ .expected_tag = expected_token },
     });
 }
-fn failMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstError) Error {
+fn failMsg(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, msg: zig.AstError) Error {
     @setCold(true);
     try warnMsg(ast, allocator_e, msg);
     return error.ParseError;
@@ -145,7 +147,7 @@ fn failMsg(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, msg: zig.AstErro
 ///      /
 /// TopLevelComptime <- KEYWORD_comptime Block
 pub fn parseContainerMembers(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -404,7 +406,7 @@ pub fn parseContainerMembers(
     }
 }
 /// Attempts to find next container member by searching for certain tokens
-fn findNextContainerMember(ast: *abstract.SyntaxTree) void {
+fn findNextContainerMember(ast: *abstract.ProtoSyntaxTree) void {
     var level: u32 = 0;
     while (true) {
         const tok = nextToken(ast);
@@ -461,7 +463,7 @@ fn findNextContainerMember(ast: *abstract.SyntaxTree) void {
     }
 }
 /// Attempts to find the next statement by searching for a semicolon
-fn findNextStmt(ast: *abstract.SyntaxTree) void {
+fn findNextStmt(ast: *abstract.ProtoSyntaxTree) void {
     var level: u32 = 0;
     while (true) {
         const tok = nextToken(ast);
@@ -489,7 +491,7 @@ fn findNextStmt(ast: *abstract.SyntaxTree) void {
 }
 /// TestDecl <- KEYWORD_test (STRINGLITERALSINGLE / IDENTIFIER)? Block
 fn expectTestDecl(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -516,7 +518,7 @@ fn expectTestDecl(
     });
 }
 fn expectTestDeclRecoverable(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -538,7 +540,7 @@ fn expectTestDeclRecoverable(
 ///      / (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE?)? KEYWORD_threadlocal? VarDecl
 ///      / KEYWORD_usingnamespace Expr SEMICOLON
 fn expectTopLevelDecl(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -615,7 +617,7 @@ fn expectTopLevelDecl(
     return expectUsingNamespace(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s);
 }
 fn expectTopLevelDeclRecoverable(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -633,7 +635,7 @@ fn expectTopLevelDeclRecoverable(
     };
 }
 fn expectUsingNamespace(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -653,7 +655,7 @@ fn expectUsingNamespace(
     });
 }
 fn expectUsingNamespaceRecoverable(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -672,7 +674,7 @@ fn expectUsingNamespaceRecoverable(
 }
 /// FnProto <- KEYWORD_fn IDENTIFIER? LPAREN ParamDeclList RPAREN ByteAlign? AddrSpace? LinkSection? CallConv? EXCLAMATIONMARK? TypeExpr
 fn parseFnProto(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -757,7 +759,7 @@ fn parseFnProto(
 }
 /// VarDecl <- (KEYWORD_const / KEYWORD_var) IDENTIFIER (COLON TypeExpr)? ByteAlign? AddrSpace? LinkSection? (EQUAL Expr)? SEMICOLON
 fn parseVarDecl(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -834,7 +836,7 @@ fn parseVarDecl(
 }
 /// ContainerField <- KEYWORD_comptime? IDENTIFIER (COLON TypeExpr ByteAlign?)? (EQUAL Expr)?
 fn expectContainerField(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -898,7 +900,7 @@ fn expectContainerField(
 ///      / SwitchExpr
 ///      / AssignExpr SEMICOLON
 fn parseStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -991,7 +993,7 @@ fn parseStatement(
     return null_node;
 }
 fn expectStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1009,7 +1011,7 @@ fn expectStatement(
 /// and returns that one instead. If a parse error occurs but there is no following
 /// statement, returns 0.
 fn expectStatementRecoverable(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1036,7 +1038,7 @@ fn expectStatementRecoverable(
 ///     <- IfPrefix BlockExpr ( KEYWORD_else Payload? Statement )?
 ///      / IfPrefix AssignExpr ( SEMICOLON / KEYWORD_else Payload? Statement )
 fn expectIfStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1100,7 +1102,7 @@ fn expectIfStatement(
 }
 /// LabeledStatement <- BlockLabel? (Block / LoopStatement)
 fn parseLabeledStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1132,7 +1134,7 @@ fn parseLabeledStatement(
 }
 /// LoopStatement <- KEYWORD_inline? (ForStatement / WhileStatement)
 fn parseLoopStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1153,7 +1155,7 @@ fn parseLoopStatement(
 ///     <- ForPrefix BlockExpr ( KEYWORD_else Statement )?
 ///      / ForPrefix AssignExpr ( SEMICOLON / KEYWORD_else Statement )
 fn parseForStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1219,7 +1221,7 @@ fn parseForStatement(
 ///     <- WhilePrefix BlockExpr ( KEYWORD_else Payload? Statement )?
 ///      / WhilePrefix AssignExpr ( SEMICOLON / KEYWORD_else Payload? Statement )
 fn parseWhileStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1315,7 +1317,7 @@ fn parseWhileStatement(
 ///     <- BlockExpr
 ///      / AssignExpr SEMICOLON
 fn parseBlockExprStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1334,7 +1336,7 @@ fn parseBlockExprStatement(
     return null_node;
 }
 fn expectBlockExprStatement(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1349,7 +1351,7 @@ fn expectBlockExprStatement(
 }
 /// BlockExpr <- BlockLabel? Block
 fn parseBlockExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1388,7 +1390,7 @@ fn parseBlockExpr(
 ///      / MINUSPERCENTEQUAL
 ///      / EQUAL
 fn parseAssignExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1428,7 +1430,7 @@ fn parseAssignExpr(
     });
 }
 fn expectAssignExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1442,7 +1444,7 @@ fn expectAssignExpr(
     return expr;
 }
 fn parseExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1452,7 +1454,7 @@ fn parseExpr(
     return parseExprPrecedence(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s, 0);
 }
 fn expectExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1511,7 +1513,7 @@ const operTable = directEnumArrayDefault(zig.Token.Tag, OperInfo, .{ .prec = -1,
     .asterisk_pipe = .{ .prec = 70, .tag = .mul_sat },
 });
 fn parseExprPrecedence(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1584,7 +1586,7 @@ fn parseExprPrecedence(
 ///      / KEYWORD_try
 ///      / KEYWORD_await
 fn parsePrefixExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1611,7 +1613,7 @@ fn parsePrefixExpr(
     });
 }
 fn expectPrefixExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1638,7 +1640,7 @@ fn expectPrefixExpr(
 ///      / LBRACKET ASTERISK (LETTERC / COLON Expr)? RBRACKET
 /// ArrayTypeStart <- LBRACKET Expr (COLON Expr)? RBRACKET
 fn parseTypeExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1773,7 +1775,7 @@ fn parseTypeExpr(
                         const ident_slice: []const u8 = ast.source[start..end];
                         // XXX: Maybe trouble
                         // const ident_slice = ast.source[parser.token_starts[ident]..parser.token_starts[ident + 1]];
-                        if (!mem.testEqualMany(u8, trimRight(u8, &tokenizer.whitespace, ident_slice), "c")) {
+                        if (!mem.testEqualMany(u8, trimRight(u8, &lit.whitespace, ident_slice), "c")) {
                             ast.tokens.unstream(1);
                         }
                     } else if (eatToken(ast, .colon)) |_| {
@@ -1922,7 +1924,7 @@ fn parseTypeExpr(
     }
 }
 fn expectTypeExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -1948,7 +1950,7 @@ fn expectTypeExpr(
 ///      / Block
 ///      / CurlySuffixExpr
 fn parsePrimaryExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2069,7 +2071,7 @@ fn parsePrimaryExpr(
 }
 /// IfExpr <- IfPrefix Expr (KEYWORD_else Payload? Expr)?
 fn parseIfExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2080,7 +2082,7 @@ fn parseIfExpr(
 }
 /// Block <- LBRACE Statement* RBRACE
 fn parseBlock(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2140,7 +2142,7 @@ fn parseBlock(
 /// ForPrefix <- KEYWORD_for LPAREN Expr RPAREN PtrIndexPayload
 /// ForExpr <- ForPrefix Expr (KEYWORD_else Expr)?
 fn parseForExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2180,7 +2182,7 @@ fn parseForExpr(
 /// WhilePrefix <- KEYWORD_while LPAREN Expr RPAREN PtrPayload? WhileContinueExpr?
 /// WhileExpr <- WhilePrefix Expr (KEYWORD_else Payload? Expr)?
 fn parseWhileExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2239,7 +2241,7 @@ fn parseWhileExpr(
 ///      / LBRACE Expr (COMMA Expr)* COMMA? RBRACE
 ///      / LBRACE RBRACE
 fn parseCurlySuffixExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2339,7 +2341,7 @@ fn parseCurlySuffixExpr(
 }
 /// ErrorUnionExpr <- SuffixExpr (EXCLAMATIONMARK TypeExpr)?
 fn parseErrorUnionExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2364,7 +2366,7 @@ fn parseErrorUnionExpr(
 /// FnCallArguments <- LPAREN ExprList RPAREN
 /// ExprList <- (Expr COMMA)* Expr?
 fn parseSuffixExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2518,7 +2520,7 @@ fn parseSuffixExpr(
 ///      / BlockLabel? LoopTypeExpr
 /// LoopTypeExpr <- KEYWORD_inline? (ForTypeExpr / WhileTypeExpr)
 fn parsePrimaryTypeExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2837,7 +2839,7 @@ fn parsePrimaryTypeExpr(
     }
 }
 fn expectPrimaryTypeExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2853,7 +2855,7 @@ fn expectPrimaryTypeExpr(
 /// ForPrefix <- KEYWORD_for LPAREN Expr RPAREN PtrIndexPayload
 /// ForTypeExpr <- ForPrefix TypeExpr (KEYWORD_else TypeExpr)?
 fn parseForTypeExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2893,7 +2895,7 @@ fn parseForTypeExpr(
 /// WhilePrefix <- KEYWORD_while LPAREN Expr RPAREN PtrPayload? WhileContinueExpr?
 /// WhileTypeExpr <- WhilePrefix TypeExpr (KEYWORD_else Payload? TypeExpr)?
 fn parseWhileTypeExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2948,7 +2950,7 @@ fn parseWhileTypeExpr(
 }
 /// SwitchExpr <- KEYWORD_switch LPAREN Expr RPAREN LBRACE SwitchProngList RBRACE
 fn expectSwitchExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -2983,7 +2985,7 @@ fn expectSwitchExpr(
 /// AsmOutputList <- (AsmOutputItem COMMA)* AsmOutputItem?
 /// AsmInputList <- (AsmInputItem COMMA)* AsmInputItem?
 fn expectAsmExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3061,7 +3063,7 @@ fn expectAsmExpr(
 }
 /// AsmOutputItem <- LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN (MINUSRARROW TypeExpr / IDENTIFIER) RPAREN
 fn parseAsmOutputItem(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3093,7 +3095,7 @@ fn parseAsmOutputItem(
 }
 /// AsmInputItem <- LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN Expr RPAREN
 fn parseAsmInputItem(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3117,12 +3119,12 @@ fn parseAsmInputItem(
     });
 }
 /// BreakLabel <- COLON IDENTIFIER
-fn parseBreakLabel(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
+fn parseBreakLabel(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = eatToken(ast, .colon) orelse return @as(u32, 0);
     return expectToken(ast, allocator_e, .identifier);
 }
 /// BlockLabel <- IDENTIFIER COLON
-fn parseBlockLabel(ast: *abstract.SyntaxTree) u32 {
+fn parseBlockLabel(ast: *abstract.ProtoSyntaxTree) u32 {
     if (readTagAhead(ast) == .identifier and
         relativeTagAhead(ast, 1) == .colon)
     {
@@ -3134,7 +3136,7 @@ fn parseBlockLabel(ast: *abstract.SyntaxTree) u32 {
 }
 /// FieldInit <- DOT IDENTIFIER EQUAL Expr
 fn parseFieldInit(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3152,7 +3154,7 @@ fn parseFieldInit(
     }
 }
 fn expectFieldInit(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3168,7 +3170,7 @@ fn expectFieldInit(
 }
 /// WhileContinueExpr <- COLON LPAREN AssignExpr RPAREN
 fn parseWhileContinueExpr(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3177,7 +3179,7 @@ fn parseWhileContinueExpr(
 ) Error!u32 {
     _ = eatToken(ast, .colon) orelse {
         if (readTagAhead(ast) == .l_paren and
-            ast.tokensOnSameLine(tokenIndex(ast) - 1, tokenIndex(ast)))
+            tokensOnSameLine(ast, tokenIndex(ast) - 1, tokenIndex(ast)))
             return fail(ast, allocator_e, .expected_continue_expr);
         return null_node;
     };
@@ -3189,7 +3191,7 @@ fn parseWhileContinueExpr(
 }
 /// LinkSection <- KEYWORD_linksection LPAREN Expr RPAREN
 fn parseLinkSection(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3204,7 +3206,7 @@ fn parseLinkSection(
 }
 /// CallConv <- KEYWORD_callconv LPAREN Expr RPAREN
 fn parseCallconv(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3219,7 +3221,7 @@ fn parseCallconv(
 }
 /// AddrSpace <- KEYWORD_addrspace LPAREN Expr RPAREN
 fn parseAddrSpace(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3232,16 +3234,16 @@ fn parseAddrSpace(
     _ = try expectToken(ast, allocator_e, .r_paren);
     return expr_node;
 }
-fn relativeTagAhead(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
+fn relativeTagAhead(ast: *abstract.ProtoSyntaxTree, offset: u64) zig.Token.Tag {
     return ast.tokens.readOneAt(tokenIndex(ast) +% offset).tag;
 }
-fn relativeTagBehind(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
+fn relativeTagBehind(ast: *abstract.ProtoSyntaxTree, offset: u64) zig.Token.Tag {
     return ast.tokens.readOneAt(tokenIndex(ast) -% offset).tag;
 }
-fn relativeStartAhead(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
+fn relativeStartAhead(ast: *abstract.ProtoSyntaxTree, offset: u64) zig.Token.Tag {
     return ast.tokens.readOneAt(tokenIndex(ast) +% offset).start;
 }
-fn relativeStartBehind(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
+fn relativeStartBehind(ast: *abstract.ProtoSyntaxTree, offset: u64) zig.Token.Tag {
     return ast.tokens.readOneAt(tokenIndex(ast) -% offset).start;
 }
 /// ParamDecl
@@ -3254,7 +3256,7 @@ fn relativeStartBehind(ast: *abstract.SyntaxTree, offset: u64) zig.Token.Tag {
 /// such as in the case of anytype and `...`. Caller must look for rparen to find
 /// out when there are no more param decls left.
 fn expectParamDecl(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3284,14 +3286,14 @@ fn expectParamDecl(
     }
 }
 /// Payload <- PIPE IDENTIFIER PIPE
-fn parsePayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
+fn parsePayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
     const identifier = try expectToken(ast, allocator_e, .identifier);
     _ = try expectToken(ast, allocator_e, .pipe);
     return identifier;
 }
 /// PtrPayload <- PIPE ASTERISK? IDENTIFIER PIPE
-fn parsePtrPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
+fn parsePtrPayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
     _ = eatToken(ast, .asterisk);
     const identifier = try expectToken(ast, allocator_e, .identifier);
@@ -3300,7 +3302,7 @@ fn parsePtrPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u3
 }
 /// PtrIndexPayload <- PIPE ASTERISK? IDENTIFIER (COMMA IDENTIFIER)? PIPE
 /// Returns the first identifier token, if any.
-fn parsePtrIndexPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Error!u32 {
+fn parsePtrIndexPayload(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) Error!u32 {
     _ = eatToken(ast, .pipe) orelse return @as(u32, 0);
     _ = eatToken(ast, .asterisk);
     const identifier = try expectToken(ast, allocator_e, .identifier);
@@ -3315,7 +3317,7 @@ fn parsePtrIndexPayload(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) Err
 ///     <- SwitchItem (COMMA SwitchItem)* COMMA?
 ///      / KEYWORD_else
 fn parseSwitchProng(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3369,7 +3371,7 @@ fn parseSwitchProng(
 }
 /// SwitchItem <- Expr (DOT3 Expr)?
 fn parseSwitchItem(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3397,7 +3399,7 @@ const PtrModifiers = struct {
     bit_range_end: u32,
 };
 fn parsePtrModifiers(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3467,7 +3469,7 @@ fn parsePtrModifiers(
 ///      / DOTASTERISK
 ///      / DOTQUESTIONMARK
 fn parseSuffixOp(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3588,7 +3590,7 @@ fn parseSuffixOp(
 ///      / KEYWORD_enum (LPAREN Expr RPAREN)?
 ///      / KEYWORD_union (LPAREN (KEYWORD_enum (LPAREN Expr RPAREN)? / Expr) RPAREN)?
 fn parseContainerDeclAuto(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3726,7 +3728,7 @@ fn parseContainerDeclAuto(
 /// Give a helpful error message for those transitioning from
 /// C's 'struct Foo {};' to Zig's 'const Foo = struct {};'.
 fn parseCStyleContainer(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3761,7 +3763,7 @@ fn parseCStyleContainer(
 /// Holds temporary data until we are ready to construct the full ContainerDecl AST node.
 /// ByteAlign <- KEYWORD_align LPAREN Expr RPAREN
 fn parseByteAlign(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3776,7 +3778,7 @@ fn parseByteAlign(
 }
 /// SwitchProngList <- (SwitchProng COMMA)* SwitchProng?
 fn parseSwitchProngList(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3801,7 +3803,7 @@ fn parseSwitchProngList(
 }
 /// ParamDeclList <- (ParamDecl COMMA)* ParamDecl?
 fn parseParamDeclList(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3845,7 +3847,7 @@ fn parseParamDeclList(
 /// FnCallArguments <- LPAREN ExprList RPAREN
 /// ExprList <- (Expr COMMA)* Expr?
 fn parseBuiltinCall(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
@@ -3925,14 +3927,14 @@ fn parseBuiltinCall(
 }
 /// KEYWORD_if LPAREN Expr RPAREN PtrPayload? Body (KEYWORD_else Payload? Body)?
 fn parseIf(
-    ast: *abstract.SyntaxTree,
+    ast: *abstract.ProtoSyntaxTree,
     allocator_n: *AllocatorN,
     allocator_e: *AllocatorE,
     allocator_x: *AllocatorX,
     allocator_s: *AllocatorS,
     array_s: *zig.StateArray,
     comptime bodyParseFn: fn (
-        ast: *abstract.SyntaxTree,
+        ast: *abstract.ProtoSyntaxTree,
         allocator_n: *AllocatorN,
         allocator_e: *AllocatorE,
         allocator_x: *AllocatorX,
@@ -3970,7 +3972,7 @@ fn parseIf(
         },
     });
 }
-fn eatDocComments(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) !?u32 {
+fn eatDocComments(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) !?u32 {
     if (eatToken(ast, .doc_comment)) |tok| {
         var first_line = tok;
         if (tok > 0 and tokensOnSameLine(ast, tok - 1, tok)) {
@@ -3985,32 +3987,32 @@ fn eatDocComments(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE) !?u32 {
     }
     return null;
 }
-fn tokensOnSameLine(ast: *abstract.SyntaxTree, token1: u32, token2: u32) bool {
+fn tokensOnSameLine(ast: *abstract.ProtoSyntaxTree, token1: u32, token2: u32) bool {
     const start_1: u32 = ast.tokens.readOneAt(token1).start;
     const start_2: u32 = ast.tokens.readOneAt(token2).start;
     return mem.indexOfFirstEqualOne(u8, '\n', ast.source[start_1..start_2]) == null;
 }
-fn tokenIndex(ast: *abstract.SyntaxTree) u32 {
+fn tokenIndex(ast: *abstract.ProtoSyntaxTree) u32 {
     return @intCast(u32, ast.tokens.index());
 }
-fn readTagAhead(ast: *abstract.SyntaxTree) zig.Token.Tag {
+fn readTagAhead(ast: *abstract.ProtoSyntaxTree) zig.Token.Tag {
     return ast.tokens.readOneAhead().tag;
 }
-fn readStartAhead(ast: *abstract.SyntaxTree) zig.Token.Tag {
+fn readStartAhead(ast: *abstract.ProtoSyntaxTree) zig.Token.Tag {
     return ast.tokens.readOneAhead().start;
 }
-fn readTagAt(ast: *abstract.SyntaxTree, index: usize) zig.Token.Tag {
+fn readTagAt(ast: *abstract.ProtoSyntaxTree, index: usize) zig.Token.Tag {
     return ast.tokens.readOneAt(index).tag;
 }
-fn eatToken(ast: *abstract.SyntaxTree, tag: zig.Token.Tag) ?u32 {
+fn eatToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) ?u32 {
     return if (readTagAhead(ast) == tag) nextToken(ast) else null;
 }
-fn assertToken(ast: *abstract.SyntaxTree, tag: zig.Token.Tag) u32 {
+fn assertToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) u32 {
     const token = nextToken(ast);
     builtin.assert(readTagAt(ast, token) == tag);
     return token;
 }
-fn expectToken(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, tag: zig.Token.Tag) Error!u32 {
+fn expectToken(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, tag: zig.Token.Tag) Error!u32 {
     if (readTagAhead(ast) != tag) {
         return failMsg(ast, allocator_e, .{
             .tag = .expected_token,
@@ -4020,7 +4022,7 @@ fn expectToken(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, tag: zig.Tok
     }
     return nextToken(ast);
 }
-fn expectSemicolon(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, error_tag: zig.AstError.Tag, recoverable: bool) !void {
+fn expectSemicolon(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, error_tag: zig.AstError.Tag, recoverable: bool) !void {
     if (readTagAhead(ast) == .semicolon) {
         _ = nextToken(ast);
         return;
@@ -4028,7 +4030,7 @@ fn expectSemicolon(ast: *abstract.SyntaxTree, allocator_e: *AllocatorE, error_ta
     try warn(ast, allocator_e, error_tag);
     if (!recoverable) return error.ParseError;
 }
-fn nextToken(ast: *abstract.SyntaxTree) u32 {
+fn nextToken(ast: *abstract.ProtoSyntaxTree) u32 {
     const result = tokenIndex(ast);
     ast.tokens.stream(1);
     return @intCast(u32, result);

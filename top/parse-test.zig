@@ -106,7 +106,7 @@ fn mainBoth() !void {
         }
         const std_res: StdResults = try timeStd(target);
         const lib_res: LibResults = try timeLib(target, &allocator_n, &allocator_e, &allocator_x, &allocator_s);
-        for (lib_res.ast.nodes.readAll(allocator_n)) |node, i| {
+        for (lib_res.ast.nodes.readAll()) |node, i| {
             const lib_tag: []const u8 = @tagName(node.tag);
             const std_tag: []const u8 = @tagName(std_res.ast.nodes.items(.tag)[i]);
             const std_main: u32 = std_res.ast.nodes.items(.main_token)[i];
@@ -138,32 +138,32 @@ fn mainBoth() !void {
             break :blk count;
         };
         debug(.{ "bytes: ", fmt.udh(source.len), ", lines: ", fmt.udh(lines), ", path: '.", target[builtin.build_root.?.len..], "\n" });
-        debug(.{ "lib: ", fmt.any(lib_res.ts), ", nodes: ", fmt.udh(lib_res.ast.nodes.len(allocator_n)), '\n' });
+        debug(.{ "lib: ", fmt.any(lib_res.ts), ", nodes: ", fmt.udh(lib_res.ast.nodes.len()), '\n' });
         debug(.{ "std: ", fmt.any(std_res.ts), ", nodes: ", fmt.udh(std_res.ast.nodes.len), '\n' });
         var node_index: u32 = 0;
-        const node_count: u64 = lib_res.ast.nodes.len(allocator_n);
+        const node_count: u64 = lib_res.ast.nodes.len();
         while (node_index != node_count) : (node_index += 1) {
-            const x: []const u8 = lib_res.ast.getNodeSource(&allocator_n, &allocator_x, node_index);
+            const x: []const u8 = lib_res.ast.getNodeSource(node_index);
             const y: []const u8 = std_res.ast.getNodeSource(node_index);
             try testing.expectEqualMany(u8, y, x);
-            _ = switch (lib_res.ast.nodes.readOneAt(allocator_n, node_index).tag) {
-                .if_simple => lib_res.ast.ifSimple(&allocator_n, &allocator_x, node_index),
-                .@"if" => lib_res.ast.ifFull(&allocator_n, &allocator_x, node_index),
+            _ = switch (lib_res.ast.nodes.readOneAt(node_index).tag) {
+                .if_simple => lib_res.ast.ifSimple(node_index),
+                .@"if" => lib_res.ast.ifFull(node_index),
                 .switch_case_inline_one,
                 .switch_case_inline,
                 .switch_range,
                 .switch_case_one,
-                => lib_res.ast.switchCaseOne(&allocator_n, &allocator_x, node_index),
-                .switch_case => lib_res.ast.switchCase(&allocator_n, &allocator_x, node_index),
+                => lib_res.ast.switchCaseOne(node_index),
+                .switch_case => lib_res.ast.switchCase(node_index),
 
-                .while_simple => lib_res.ast.whileSimple(&allocator_n, &allocator_x, node_index),
-                .while_cont => lib_res.ast.whileCont(&allocator_n, &allocator_x, node_index),
-                .@"while" => lib_res.ast.whileFull(&allocator_n, &allocator_x, node_index),
+                .while_simple => lib_res.ast.whileSimple(node_index),
+                .while_cont => lib_res.ast.whileCont(node_index),
+                .@"while" => lib_res.ast.whileFull( node_index),
 
-                .for_simple => lib_res.ast.forSimple(&allocator_n, &allocator_x, node_index),
-                .@"for" => lib_res.ast.forFull(&allocator_n, &allocator_x, node_index),
+                .for_simple => lib_res.ast.forSimple(node_index),
+                .@"for" => lib_res.ast.forFull(node_index),
 
-                .@"asm" => lib_res.ast.asmFull(&allocator_n, &allocator_x, node_index),
+                .@"asm" => lib_res.ast.asmFull(node_index),
                 else => {},
             };
         }
