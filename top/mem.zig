@@ -15,6 +15,8 @@ pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
 
+pub const lib_feature = opaque {};
+
 pub const flat_wr_spec: mem.ReinterpretSpec = .{};
 pub const ptr_wr_spec: mem.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
@@ -42,48 +44,6 @@ pub const follow_wr_spec: mem.ReinterpretSpec = blk: {
         .dereference = &rs_1,
     } };
     break :blk rs_1;
-};
-
-pub const alloc_preset = opaque {
-    /// Defines the 'options' field
-    pub const small: mem.AllocatorOptions = .{
-        .count_branches = false,
-        .count_allocations = false,
-        .count_useful_bytes = false,
-        .check_parametric_binding = false,
-    };
-    /// Defines the 'logging' field
-    pub const silent: mem.AllocatorLogging = .{
-        .arena = builtin.Logging.silent,
-        .head = false,
-        .sentinel = false,
-        .metadata = false,
-        .branches = false,
-        .map = builtin.Logging.silent,
-        .unmap = builtin.Logging.silent,
-        .remap = builtin.Logging.silent,
-        .advise = builtin.Logging.silent,
-        .allocate = false,
-        .reallocate = false,
-        .reinterpret = false,
-        .deallocate = false,
-    };
-    /// Defines the 'logging' field
-    pub const verbose: mem.AllocatorLogging = .{
-        .arena = builtin.Logging.verbose,
-        .head = true,
-        .sentinel = true,
-        .metadata = true,
-        .branches = true,
-        .map = builtin.Logging.verbose,
-        .unmap = builtin.Logging.verbose,
-        .remap = builtin.Logging.verbose,
-        .advise = builtin.Logging.verbose,
-        .allocate = true,
-        .reallocate = true,
-        .reinterpret = true,
-        .deallocate = true,
-    };
 };
 
 pub const ArenaError = error{ UnderSupply, OverSupply };
@@ -494,6 +454,17 @@ pub const Bytes = struct {
         return amt.count * @enumToInt(amt.unit);
     }
 };
+
+const ThreadAllocatorSpec = struct {
+    arena_index: u8,
+    stack_size: u64,
+};
+pub fn GenericThreadAllocator(comptime spec: ThreadAllocatorSpec) type {
+    return struct {
+        const _ = spec;
+    };
+}
+
 pub const AddressSpace = extern struct {
     bits: [2]u64 = .{ 0, 0 },
     const Index: type = u8;
