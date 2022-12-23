@@ -3,7 +3,8 @@ const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 const reference = @import("./reference.zig");
 pub const Amount = union(enum) { bytes: u64, count: u64 };
-
+const _0: Amount = .{ .count = 0 };
+const _1: Amount = .{ .count = 1 };
 pub fn amountToCountOfType(amt: Amount, comptime child: type) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes / @sizeOf(child),
@@ -1261,16 +1262,16 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -1341,22 +1342,22 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __ad(array, 0), __rem(array, 0));
+            return reference.pointerMany(child, __ad(array, child, _0), __rem(array, child, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, 0), __rem(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, _0), __rem(array, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -1569,22 +1570,22 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __ad(array, 0), __rem(array, 0));
+            return reference.pointerMany(child, __ad(array, child, _0), __rem(array, child, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, 0), __rem(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, _0), __rem(array, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -2533,22 +2534,22 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __ad(array, 0), __rem(array, 0));
+            return reference.pointerMany(child, __ad(array, child, _0), __rem(array, child, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, 0), __rem(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, _0), __rem(array, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -2747,17 +2748,17 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateMany(Implementation, array.impl));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, add_amount));
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+            try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
-            try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, sub_amount));
+        pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
-            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub inline fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
@@ -2798,16 +2799,16 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -2902,11 +2903,11 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateMany(Implementation, array.impl));
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
-            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub inline fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
@@ -2935,22 +2936,22 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __ad(array, 0), __rem(array, 0));
+            return reference.pointerMany(child, __ad(array, child, _0), __rem(array, child, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, 0), __rem(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, _0), __rem(array, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -3101,17 +3102,17 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateMany(Implementation, array.impl));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, add_amount));
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+            try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
-            try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, sub_amount));
+        pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, new_amount));
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+            try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
-            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub inline fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
@@ -3146,16 +3147,16 @@ pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type) []const child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type) []child {
-            return reference.pointerMany(child, __at(array, 0), __len(array, 0));
+            return reference.pointerMany(child, __at(array, child, _0), __len(array, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, 0), __len(array, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, _0), __len(array, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -3768,22 +3769,22 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return reference.pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, allocator, 0), __rem(array, allocator, 0));
+            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, allocator, 0), __rem(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -3982,17 +3983,17 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateHolder(Implementation, array.impl));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
-            try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, add_amount));
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+            try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
-            try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, sub_amount));
+        pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
+            try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, new_amount));
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
-            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
@@ -4036,22 +4037,22 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return reference.pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __at(array, allocator, 0), __len(array, allocator, 0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, allocator, 0), __rem(array, allocator, 0));
+            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, allocator, 0), __rem(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -4202,17 +4203,17 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateHolder(Implementation, array.impl));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_amount: Amount) !void {
-            try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, add_amount));
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+            try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
-        pub fn decrement(array: *Array, allocator: *Allocator, sub_amount: Amount) void {
-            try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, sub_amount));
+        pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
+            try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_amount: Amount) !void {
-            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, new_amount));
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+            try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn shrink(array: *Array, allocator: *Allocator, new_amount: Amount) void {
-            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, new_amount));
+        pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
+            try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
@@ -4955,7 +4956,7 @@ const Reinterpret = struct {
         }
         if (@hasDecl(Format, "max_len")) {
             if (builtin.is_perf) return Format.max_len;
-        }  
+        }
         if (@hasDecl(Format, "len")) {
             return format.len();
         }
