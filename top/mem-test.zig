@@ -9,6 +9,7 @@ const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
+
 pub const is_correct: bool = true;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
@@ -133,7 +134,7 @@ fn testAutomaticImplementation() !void {
         const array = mem.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, "World!", &array.readCountAt("Hello, ".len, "World!".len));
-        try builtin.expectEqual(u64, array.readAll().len, array.impl.bytes());
+        try builtin.expectEqual(u64, array.readAll().len + 1, array.impl.bytes());
     }
     {
         const StaticString = mem.StructuredAutomaticStreamVector(u8, null, 256, 1, .{});
