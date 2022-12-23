@@ -44,8 +44,8 @@ pub const ErrorArray = Allocator.Error.StructuredView(AstError);
 pub const ProtoNodeArray = Allocator.Node.StructuredHolder(AstNode);
 pub const NodeArray = Allocator.Node.StructuredView(AstNode);
 
-pub const ProtoExtraArray = Allocator.Extra.StructuredHolder(u32);
-pub const ExtraArray = Allocator.Extra.StructuredView(u32);
+pub const ProtoExtraArray = Allocator.Extra.UnstructuredHolder(4, 4);
+pub const ExtraArray = Allocator.Extra.UnstructuredView(4, 4);
 
 pub const StateArray = Allocator.State.StructuredHolder(u32);
 
