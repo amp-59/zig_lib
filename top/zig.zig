@@ -39,11 +39,19 @@ pub const Allocator = struct {
 };
 
 pub const SourceArray = Allocator.Node.StructuredStreamViewWithSentinel(u8, 0);
+
 pub const ProtoTokenArray = Allocator.Node.StructuredHolder(Token.Info);
 pub const TokenArray = Allocator.Node.StructuredStreamView(Token.Info);
-pub const ErrorArray = Allocator.Error.StructuredHolder(AstError);
-pub const NodeArray = Allocator.Node.StructuredHolder(AstNode);
-pub const ExtraArray = Allocator.Extra.StructuredHolder(u32);
+
+pub const ProtoErrorArray = Allocator.Error.StructuredHolder(AstError);
+pub const ErrorArray = Allocator.Error.StructuredView(AstError);
+
+pub const ProtoNodeArray = Allocator.Node.StructuredHolder(AstNode);
+pub const NodeArray = Allocator.Node.StructuredView(AstNode);
+
+pub const ProtoExtraArray = Allocator.Extra.StructuredHolder(u32);
+pub const ExtraArray = Allocator.Extra.StructuredView(u32);
+
 pub const StateArray = Allocator.State.StructuredHolder(u32);
 
 pub const Token = struct {
