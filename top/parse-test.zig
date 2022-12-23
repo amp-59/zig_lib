@@ -23,12 +23,13 @@ pub const is_verbose: bool = false;
 pub const input_open_spec: file.OpenSpec = .{ .errors = null, .options = .{ .read = true, .write = null } };
 pub const input_close_spec: file.CloseSpec = .{ .errors = null };
 
-const targets: [7][:0]const u8 = .{
+const targets: [8][:0]const u8 = .{
     builtin.lib_build_root ++ "/top/parse-test.zig",
     builtin.lib_build_root ++ "/top/mach.zig",
     builtin.lib_build_root ++ "/top/tokenizer.zig",
     builtin.lib_build_root ++ "/top/abstract.zig",
     builtin.lib_build_root ++ "/top/parse.zig",
+    builtin.lib_build_root ++ "/top/sys.zig",
     builtin.lib_build_root ++ "/top/allocator.zig",
     builtin.lib_build_root ++ "/top/reference.zig",
 };
@@ -45,19 +46,6 @@ fn fileBuf(allocator: *zig.Allocator.Node, pathname: [:0]const u8) !zig.SourceAr
     builtin.assertEqual(u64, st.size, try file.read(fd, file_buf.referAllDefined(), st.size));
     return file_buf;
 }
-
-fn timeDiff(arg1: time.TimeSpec, arg2: time.TimeSpec) time.TimeSpec {
-    var ret: time.TimeSpec = .{
-        .sec = arg1.sec -% arg2.sec,
-        .nsec = arg1.nsec -% arg2.nsec,
-    };
-    if (ret.nsec >= 1_000_000_000) {
-        ret.sec -= 1;
-        ret.nsec += 1_000_000_000;
-    }
-    return ret;
-}
-
 const StdResults = struct { ast: std.zig.Ast, ts: time.TimeSpec };
 pub fn timeStd(target: [:0]const u8) !StdResults {
     const GPA: type = std.heap.GeneralPurposeAllocator(.{});
@@ -69,7 +57,7 @@ pub fn timeStd(target: [:0]const u8) !StdResults {
     var gpa_allocator: std.mem.Allocator = gpa.allocator();
     const ast = try std.zig.parse(gpa_allocator, buf);
     const t1: time.TimeSpec = try time.realClock(null);
-    return .{ .ast = ast, .ts = timeDiff(t1, t0) };
+    return .{ .ast = ast, .ts = time.diff(t1, t0) };
 }
 const LibResults = struct { ast: abstract.SyntaxTree, ts: time.TimeSpec };
 fn timeLib(
@@ -88,7 +76,7 @@ fn timeLib(
         try fileBuf(allocator_n, target),
     );
     const t1: time.TimeSpec = try time.realClock(null);
-    return .{ .ast = lib_ast, .ts = timeDiff(t1, t0) };
+    return .{ .ast = lib_ast, .ts = time.diff(t1, t0) };
 }
 
 fn mainBoth() !void {
@@ -155,14 +143,11 @@ fn mainBoth() !void {
                 .switch_case_one,
                 => lib_res.ast.switchCaseOne(node_index),
                 .switch_case => lib_res.ast.switchCase(node_index),
-
                 .while_simple => lib_res.ast.whileSimple(node_index),
                 .while_cont => lib_res.ast.whileCont(node_index),
-                .@"while" => lib_res.ast.whileFull( node_index),
-
+                .@"while" => lib_res.ast.whileFull(node_index),
                 .for_simple => lib_res.ast.forSimple(node_index),
                 .@"for" => lib_res.ast.forFull(node_index),
-
                 .@"asm" => lib_res.ast.asmFull(node_index),
                 else => {},
             };

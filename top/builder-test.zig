@@ -5,6 +5,7 @@ const time = @import("./time.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const thread = @import("./thread.zig");
+const preset = @import("./preset.zig");
 const builder = @import("./builder.zig");
 const builtin = @import("./builtin.zig");
 
@@ -12,7 +13,10 @@ pub usingnamespace proc.start;
 
 pub const is_verbose: bool = true;
 
-const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .logging = mem.alloc_preset.silent });
+const Allocator = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .logging = preset.allocator.logging.silent,
+});
 
 const try_multi_threaded: bool = false;
 

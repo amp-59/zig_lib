@@ -6,6 +6,7 @@ const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
@@ -23,7 +24,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .count_branches = false,
         .count_useful_bytes = false,
     },
-    .logging = mem.alloc_preset.silent,
+    .logging = preset.allocator.logging.silent,
 });
 
 const PrintArray = mem.StructuredAutomaticVector(u8, null, 4096, 1, .{});

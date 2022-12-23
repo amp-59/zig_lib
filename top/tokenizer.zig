@@ -7,26 +7,42 @@ const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
+const Utf8Decode2Error = error{
+    Utf8ExpectedContinuation,
+    Utf8OverlongEncoding,
+};
+const Utf8Decode3Error = error{
+    Utf8ExpectedContinuation,
+    Utf8OverlongEncoding,
+    Utf8EncodesSurrogateHalf,
+};
+const Utf8Decode4Error = error{
+    Utf8ExpectedContinuation,
+    Utf8OverlongEncoding,
+    Utf8CodepointTooLarge,
+};
+const Utf8DecodeError = Utf8Decode2Error || Utf8Decode3Error || Utf8Decode4Error;
+
 pub fn isAlphanumeric(c: u8) bool {
-    return switch (c) {
-        '0'...'9', 'A'...'Z', 'a'...'z' => true,
-        else => false,
-    };
+    return builtin.int3v(
+        bool,
+        builtin.int2a(bool, c >= 'a', c <= 'z'),
+        builtin.int2a(bool, c >= 'A', c <= 'Z'),
+        builtin.int2a(bool, c >= '0', c <= '9'),
+    );
 }
 pub fn isAlphabetic(c: u8) bool {
-    return switch (c) {
-        'A'...'Z', 'a'...'z' => true,
-        else => false,
-    };
+    return builtin.int2v(
+        bool,
+        builtin.int2a(bool, c >= 'a', c <= 'z'),
+        builtin.int2a(bool, c >= 'A', c <= 'Z'),
+    );
 }
 pub fn isControl(c: u8) bool {
     return builtin.int2v(bool, c <= 0x1f, c == 0x7f);
 }
 pub fn isDigit(c: u8) bool {
-    return switch (c) {
-        '0'...'9' => true,
-        else => false,
-    };
+    return builtin.int2a(bool, c >= '0', c <= '9');
 }
 pub fn isLower(c: u8) bool {
     return switch (c) {
@@ -45,6 +61,63 @@ pub fn isWhitespace(c: u8) bool {
 }
 pub fn isASCII(c: u8) bool {
     return c < 128;
+}
+fn utf8ByteSequenceLength(first_byte: u8) !u3 {
+    return switch (first_byte) {
+        0b0000_0000...0b0111_1111 => 1,
+        0b1100_0000...0b1101_1111 => 2,
+        0b1110_0000...0b1110_1111 => 3,
+        0b1111_0000...0b1111_0111 => 4,
+        else => error.Utf8InvalidStartByte,
+    };
+}
+fn utf8Decode(bytes: []const u8) Utf8DecodeError!u21 {
+    return switch (bytes.len) {
+        1 => @as(u21, bytes[0]),
+        2 => utf8Decode2(bytes),
+        3 => utf8Decode3(bytes),
+        4 => utf8Decode4(bytes),
+        else => unreachable,
+    };
+}
+fn utf8Decode2(bytes: []const u8) Utf8Decode2Error!u21 {
+    var value: u21 = bytes[0] & 0b00011111;
+    if (bytes[1] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
+    value <<= 6;
+    value |= bytes[1] & 0b00111111;
+    if (value < 0x80) return error.Utf8OverlongEncoding;
+    return value;
+}
+fn utf8Decode3(bytes: []const u8) Utf8Decode3Error!u21 {
+    builtin.assertEqual(u64, bytes.len, 3);
+    builtin.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
+    var value: u21 = bytes[0] & 0b00001111;
+    if (bytes[1] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
+    value <<= 6;
+    value |= bytes[1] & 0b00111111;
+    if (bytes[2] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
+    value <<= 6;
+    value |= bytes[2] & 0b00111111;
+    if (value < 0x800) return error.Utf8OverlongEncoding;
+    if (0xd800 <= value and value <= 0xdfff) return error.Utf8EncodesSurrogateHalf;
+    return value;
+}
+fn utf8Decode4(bytes: []const u8) Utf8Decode4Error!u21 {
+    builtin.assertEqual(u64, bytes.len, 4);
+    builtin.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
+    var value: u21 = bytes[0] & 0b00000111;
+    if (bytes[1] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
+    value <<= 6;
+    value |= bytes[1] & 0b00111111;
+    if (bytes[2] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
+    value <<= 6;
+    value |= bytes[2] & 0b00111111;
+    if (bytes[3] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
+    value <<= 6;
+    value |= bytes[3] & 0b00111111;
+    if (value < 0x10000) return error.Utf8OverlongEncoding;
+    if (value > 0x10FFFF) return error.Utf8CodepointTooLarge;
+    return value;
 }
 
 pub const Tokenizer = struct {
@@ -68,19 +141,8 @@ pub const Tokenizer = struct {
             });
             if (token.tag == .eof) break;
         }
-        return .{ .impl = try meta.wrap(allocator.convertHolderMany(
-            zig.ProtoTokenArray.Implementation,
-            zig.TokenArray.Implementation,
-            tokens.impl,
-        )) };
+        return tokens.dynamic(allocator, zig.TokenArray);
     }
-
-    /// For debugging purposes
-    pub fn dump(self: *Tokenizer, token: *const zig.Token) void {
-        file.noexcept.write(2, @tagName(token.tag));
-        file.noexcept.write(self.buffer[token.loc.start..token.loc.end]);
-    }
-
     const State = enum {
         start,
         identifier,
@@ -992,90 +1054,3 @@ pub const Tokenizer = struct {
         }
     }
 };
-
-/// Given the first byte of a UTF-8 codepoint,
-/// returns a number 1-4 indicating the total length of the codepoint in bytes.
-/// If this byte does not match the form of a UTF-8 start byte, returns Utf8InvalidStartByte.
-fn utf8ByteSequenceLength(first_byte: u8) !u3 {
-    // The switch is optimized much better than a "smart" approach using @clz
-    return switch (first_byte) {
-        0b0000_0000...0b0111_1111 => 1,
-        0b1100_0000...0b1101_1111 => 2,
-        0b1110_0000...0b1110_1111 => 3,
-        0b1111_0000...0b1111_0111 => 4,
-        else => error.Utf8InvalidStartByte,
-    };
-}
-
-const Utf8Decode2Error = error{
-    Utf8ExpectedContinuation,
-    Utf8OverlongEncoding,
-};
-const Utf8Decode3Error = error{
-    Utf8ExpectedContinuation,
-    Utf8OverlongEncoding,
-    Utf8EncodesSurrogateHalf,
-};
-const Utf8Decode4Error = error{
-    Utf8ExpectedContinuation,
-    Utf8OverlongEncoding,
-    Utf8CodepointTooLarge,
-};
-const Utf8DecodeError = Utf8Decode2Error || Utf8Decode3Error || Utf8Decode4Error;
-
-/// Decodes the UTF-8 codepoint encoded in the given slice of bytes.
-/// bytes.len must be equal to utf8ByteSequenceLength(bytes[0]) catch unreachable.
-/// If you already know the length at comptime, you can call one of
-/// utf8Decode2,utf8Decode3,utf8Decode4 directly instead of this function.
-fn utf8Decode(bytes: []const u8) Utf8DecodeError!u21 {
-    return switch (bytes.len) {
-        1 => @as(u21, bytes[0]),
-        2 => utf8Decode2(bytes),
-        3 => utf8Decode3(bytes),
-        4 => utf8Decode4(bytes),
-        else => unreachable,
-    };
-}
-fn utf8Decode2(bytes: []const u8) Utf8Decode2Error!u21 {
-    var value: u21 = bytes[0] & 0b00011111;
-
-    if (bytes[1] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
-    value <<= 6;
-    value |= bytes[1] & 0b00111111;
-
-    if (value < 0x80) return error.Utf8OverlongEncoding;
-
-    return value;
-}
-fn utf8Decode3(bytes: []const u8) Utf8Decode3Error!u21 {
-    builtin.assertEqual(u64, bytes.len, 3);
-    builtin.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
-    var value: u21 = bytes[0] & 0b00001111;
-    if (bytes[1] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
-    value <<= 6;
-    value |= bytes[1] & 0b00111111;
-    if (bytes[2] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
-    value <<= 6;
-    value |= bytes[2] & 0b00111111;
-    if (value < 0x800) return error.Utf8OverlongEncoding;
-    if (0xd800 <= value and value <= 0xdfff) return error.Utf8EncodesSurrogateHalf;
-    return value;
-}
-
-fn utf8Decode4(bytes: []const u8) Utf8Decode4Error!u21 {
-    builtin.assertEqual(u64, bytes.len, 4);
-    builtin.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
-    var value: u21 = bytes[0] & 0b00000111;
-    if (bytes[1] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
-    value <<= 6;
-    value |= bytes[1] & 0b00111111;
-    if (bytes[2] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
-    value <<= 6;
-    value |= bytes[2] & 0b00111111;
-    if (bytes[3] & 0b11000000 != 0b10000000) return error.Utf8ExpectedContinuation;
-    value <<= 6;
-    value |= bytes[3] & 0b00111111;
-    if (value < 0x10000) return error.Utf8OverlongEncoding;
-    if (value > 0x10FFFF) return error.Utf8CodepointTooLarge;
-    return value;
-}

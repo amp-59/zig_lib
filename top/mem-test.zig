@@ -4,6 +4,7 @@ const mem = @import("./mem.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
@@ -82,7 +83,7 @@ fn testAllocatedImplementation() !void {
         // address space.
         .arena_index = 0,
         .options = .{ .trace_state = true },
-        .logging = mem.alloc_preset.silent,
+        .logging = preset.allocator.logging.silent,
     });
     var address_space: mem.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
