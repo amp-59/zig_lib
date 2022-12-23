@@ -8,8 +8,11 @@ const time = srg.time;
 const meta = srg.meta;
 const mach = srg.mach;
 const proc = srg.proc;
+const preset = srg.preset;
 const builder = srg.builder;
 const builtin = srg.builtin;
+
+const opts = @import("./opts.zig");
 
 pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
@@ -39,12 +42,6 @@ const show_dynamic_section_entries: bool = is_verbose;
 const show_program_header: bool = is_verbose;
 const show_up_to_date: bool = is_verbose;
 
-const Options = struct {
-    jit_mode: bool = false,
-    direct_lookup: bool = false,
-    env_src: ?[:0]const u8 = null,
-};
-
 var random: Random = .{};
 
 const unlink_spec: file.UnlinkSpec = .{
@@ -56,8 +53,8 @@ const so_open_spec: file.OpenSpec = .{
     .logging = .{},
 };
 const so_map_spec: file.MapSpec = .{
+    .options = preset.map.options.object,
     .logging = .{},
-    .options = file.so_map_opts,
 };
 const close_spec: file.CloseSpec = .{
     .errors = null,
@@ -125,14 +122,6 @@ fn appendIO(allocator_1: *SecondaryAllocator, ref: *Many8I, fd: u64) !void {
         }
         ref.define(read_amt);
     }
-}
-fn sigFigOnly(s: []const u8) []const u8 {
-    for (s) |c, i| {
-        if (c != '0') {
-            return s[i..];
-        }
-    }
-    return s;
 }
 fn getLineOffsets(allocator_1: *SecondaryAllocator, many_8: Many8) !Many64 {
     var holder_64: Holder64 = Holder64.init(allocator_1);
@@ -276,6 +265,7 @@ fn mload(header_array: anytype, fn_name: [:0]const u8, comptime T: type) !T {
     const vaddr: u64 = try getSectionAddress(header_array, fn_name, elf_header);
     return @intToPtr(T, header_array.impl.start() +% vaddr +% offset);
 }
+
 fn fload(fd: u64, fn_name: [:0]const u8, comptime T: type) !T {
     const arena: mem.Arena = mem.Arena{ .index = 1 };
     const s_lb_addr: u64 = arena.begin();
@@ -294,34 +284,26 @@ fn fload(fd: u64, fn_name: [:0]const u8, comptime T: type) !T {
 fn load(so_path: [:0]const u8, fn_name: [:0]const u8, comptime T: type) !T {
     return fload(try file.open(so_open_spec, so_path), fn_name, T);
 }
-fn getOpts(args: *[][*:0]u8) Options {
-    var options: Options = .{};
-    var i: u64 = 0;
-    while (i != args.len) {
-        if (mem.readAfterFirstEqualMany(u8, "-f=", meta.manyToSlice(args.*[i]))) |env| {
-            options.env_src = env[0.. :0];
-            proc.shift(args, i);
-        } else if (mem.testEqualMany(u8, "-e", meta.manyToSlice(args.*[i]))) {
-            options.jit_mode = true;
-            proc.shift(args, i);
-        } else if (mem.testEqualMany(u8, "-F", meta.manyToSlice(args.*[i]))) {
-            options.direct_lookup = true;
-            proc.shift(args, i);
-        } else if (mem.testEqualMany(u8, "--", meta.manyToSlice(args.*[i]))) {
-            proc.shift(args, i);
-            break;
-        } else {
-            i += 1;
-        }
-    }
-    return options;
-}
+
+const Options = struct {
+    jit_mode: bool = false,
+    direct_lookup: bool = false,
+    env_src: ?[:0]const u8 = null,
+};
 pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
     var result_array: PrintArray = .{};
     if (args.len == 0) {
         return;
     }
+    // zig fmt: off
+    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){
+        .{ .decl = .env_src,        .short = "-f",  .long = "--file",   .assign = .argument },
+        .{ .decl = .direct_lookup,  .short = "-l",                      .assign = .{ .boolean = false } },
+        .{ .decl = .jit_mode,       .long = "--no-fixed",               .assign = .{ .boolean = false } },
+    });
+    // zig fmt: on
+
     var allocator: PrimaryAllocator = try PrimaryAllocator.init(address_space);
     defer allocator.deinit(address_space);
     var tmp_dir_path: StaticPath = .{};
@@ -333,7 +315,6 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
     };
     var so_path: StaticPath = tmp_dir_path;
     so_path.writeAny(mem.fmt_wr_spec, .{ "/elf", fmt.ux16(random.readOne(u16)), ".so" });
-    const options: Options = getOpts(&args);
 
     if (options.direct_lookup) {
         if (args.len > 2) {
@@ -389,7 +370,6 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
                 const src_root: [:0]const u8 = meta.manyToSlice(args[1]);
                 const fn_name: [:0]const u8 = meta.manyToSlice(args[2]);
                 var src_path: StaticPath = .{};
-                src_path.writeMany(builtin.lib_build_root ++ "/");
                 src_path.writeMany(src_root);
                 try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
@@ -405,7 +385,6 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
                 const arg0_s: [:0]const u8 = meta.manyToSlice(args[3]);
                 const arg0: u64 = try builtin.parse.any(u64, arg0_s);
                 var src_path: StaticPath = .{};
-                src_path.writeMany(builtin.lib_build_root ++ "/");
                 src_path.writeMany(src_root);
                 try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
@@ -424,7 +403,6 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
                 const arg0: u64 = try builtin.parse.any(u64, arg0_s);
                 const arg1: u64 = try builtin.parse.any(u64, arg1_s);
                 var src_path: StaticPath = .{};
-                src_path.writeMany(builtin.lib_build_root ++ "/");
                 src_path.writeMany(src_root);
                 try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
