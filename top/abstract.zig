@@ -12,7 +12,7 @@ const AllocatorX: type = zig.Allocator.Extra;
 const AllocatorS: type = zig.Allocator.State;
 
 pub const ProtoSyntaxTree = struct {
-    source: [:0]const u8,
+    source: zig.SourceArray,
     tokens: zig.TokenArray,
     nodes: zig.ProtoNodeArray,
     extras: zig.ProtoExtraArray,
@@ -34,7 +34,7 @@ pub const ProtoSyntaxTree = struct {
 };
 
 pub const SyntaxTree = struct {
-    source: [:0]const u8,
+    source: zig.SourceArray,
     tokens: zig.TokenArray,
     nodes: zig.NodeArray,
     extras: zig.ExtraArray,
@@ -61,10 +61,9 @@ pub const SyntaxTree = struct {
         allocator_s: *AllocatorS,
         array_n: zig.SourceArray,
     ) !SyntaxTree {
-        const source: [:0]const u8 = array_n.readAllWithSentinel(0);
         var ret: ProtoSyntaxTree = .{
-            .source = source,
-            .tokens = try tokenizer.Tokenizer.init(allocator_n, source),
+            .source = array_n,
+            .tokens = try tokenizer.Tokenizer.init(allocator_n, array_n.readAllWithSentinel(0)),
             .nodes = zig.ProtoNodeArray.init(allocator_n),
             .errors = zig.ProtoErrorArray.init(allocator_e),
             .extras = zig.ProtoExtraArray.init(allocator_x),
@@ -153,7 +152,7 @@ pub const SyntaxTree = struct {
         var result: T = undefined;
         inline for (meta.resolve(@typeInfo(T)).fields) |field, i| {
             builtin.static.assert(field.field_type == zig.Index);
-            @field(result, field.name) = ast.extraDataAt( index + i);
+            @field(result, field.name) = ast.extraDataAt(index + i);
         }
         return result;
     }
@@ -419,12 +418,12 @@ pub const SyntaxTree = struct {
         return ast.nodes.readOneAt(index).data.rhs;
     }
     fn extraDataAt(ast: SyntaxTree, index: usize) u32 {
-        return ast.extras.readOneAt( index);
+        return ast.extras.readOneAt(index);
     }
     pub fn firstToken(ast: SyntaxTree, node: zig.Index) zig.Index {
         var end_offset: zig.Index = 0;
         var n = node;
-        while (true) switch (ast.nodeTag( n)) {
+        while (true) switch (ast.nodeTag(n)) {
             .root => return 0,
             .test_decl,
             .@"errdefer",
@@ -467,7 +466,7 @@ pub const SyntaxTree = struct {
             .array_type,
             .array_type_sentinel,
             .error_value,
-            => return ast.nodeMainToken( n) - end_offset,
+            => return ast.nodeMainToken(n) - end_offset,
             .array_init_dot,
             .array_init_dot_comma,
             .array_init_dot_two,
@@ -477,7 +476,7 @@ pub const SyntaxTree = struct {
             .struct_init_dot_two,
             .struct_init_dot_two_comma,
             .enum_literal,
-            => return ast.nodeMainToken( n) - 1 - end_offset,
+            => return ast.nodeMainToken(n) - 1 - end_offset,
             .@"catch",
             .field_access,
             .unwrap_optional,
@@ -547,14 +546,14 @@ pub const SyntaxTree = struct {
             .call_comma,
             .switch_range,
             .error_union,
-            => n = ast.nodeLHS( n),
+            => n = ast.nodeLHS(n),
             .fn_decl,
             .fn_proto_simple,
             .fn_proto_multi,
             .fn_proto_one,
             .fn_proto,
             => {
-                var i = ast.nodeMainToken( n); // fn token
+                var i = ast.nodeMainToken(n); // fn token
                 while (i > 0) {
                     i -= 1;
                     switch (ast.tokenTag(i)) {
@@ -571,7 +570,7 @@ pub const SyntaxTree = struct {
                 return i - end_offset;
             },
             .@"usingnamespace" => {
-                const main_token = ast.nodeMainToken( n);
+                const main_token = ast.nodeMainToken(n);
                 if (main_token > 0 and ast.tokenTag(main_token - 1) == .keyword_pub) {
                     end_offset += 1;
                 }
@@ -583,13 +582,13 @@ pub const SyntaxTree = struct {
             .async_call_comma,
             => {
                 end_offset += 1; // async token
-                n = ast.nodeLHS( n);
+                n = ast.nodeLHS(n);
             },
             .container_field_init,
             .container_field_align,
             .container_field,
             => {
-                const name_token = ast.nodeMainToken( n);
+                const name_token = ast.nodeMainToken(n);
                 if (ast.tokenTag(name_token + 1) != .colon) return name_token - end_offset;
                 if (name_token > 0 and ast.tokenTag(name_token - 1) == .keyword_comptime) {
                     end_offset += 1;
@@ -601,7 +600,7 @@ pub const SyntaxTree = struct {
             .simple_var_decl,
             .aligned_var_decl,
             => {
-                var i = ast.nodeMainToken( n); // mut token
+                var i = ast.nodeMainToken(n); // mut token
                 while (i > 0) {
                     i -= 1;
                     switch (ast.tokenTag(i)) {
@@ -623,7 +622,7 @@ pub const SyntaxTree = struct {
             .block_two_semicolon,
             => {
                 // Look for a label.
-                const lbrace = ast.nodeMainToken( n);
+                const lbrace = ast.nodeMainToken(n);
                 if (ast.tokenTag(lbrace - 1) == .colon and
                     ast.tokenTag(lbrace - 2) == .identifier)
                 {
@@ -644,7 +643,7 @@ pub const SyntaxTree = struct {
             .tagged_union_enum_tag,
             .tagged_union_enum_tag_trailing,
             => {
-                const main_token = ast.nodeMainToken( n);
+                const main_token = ast.nodeMainToken(n);
                 switch (ast.tokenTag(main_token - 1)) {
                     .keyword_packed, .keyword_extern => end_offset += 1,
                     else => {},
@@ -656,7 +655,7 @@ pub const SyntaxTree = struct {
             .ptr_type,
             .ptr_type_bit_range,
             => {
-                const main_token = ast.nodeMainToken( n);
+                const main_token = ast.nodeMainToken(n);
                 return switch (ast.tokenTag(main_token)) {
                     .asterisk,
                     .asterisk_asterisk,
@@ -669,32 +668,32 @@ pub const SyntaxTree = struct {
                 } - end_offset;
             },
             .switch_case_one => {
-                if (ast.nodeLHS( n) == 0) {
-                    return ast.nodeMainToken( n) - 1 - end_offset; // else token
+                if (ast.nodeLHS(n) == 0) {
+                    return ast.nodeMainToken(n) - 1 - end_offset; // else token
                 } else {
-                    n = ast.nodeLHS( n);
+                    n = ast.nodeLHS(n);
                 }
             },
             .switch_case_inline_one => {
-                if (ast.nodeLHS( n) == 0) {
-                    return ast.nodeMainToken( n) - 2 - end_offset; // else token
+                if (ast.nodeLHS(n) == 0) {
+                    return ast.nodeMainToken(n) - 2 - end_offset; // else token
                 } else {
-                    return ast.firstToken(ast.nodeLHS( n)) - 1;
+                    return ast.firstToken(ast.nodeLHS(n)) - 1;
                 }
             },
             .switch_case => {
-                const extra = ast.extraData( ast.nodeLHS( n), zig.AstNode.SubRange);
+                const extra = ast.extraData(ast.nodeLHS(n), zig.AstNode.SubRange);
                 builtin.assert(extra.end - extra.start > 0);
-                n = ast.extraDataAt( extra.start);
+                n = ast.extraDataAt(extra.start);
             },
             .switch_case_inline => {
-                const extra = ast.extraData( ast.nodeLHS( n), zig.AstNode.SubRange);
+                const extra = ast.extraData(ast.nodeLHS(n), zig.AstNode.SubRange);
                 builtin.assert(extra.end - extra.start > 0);
-                return ast.firstToken(ast.extraDataAt( extra.start)) - 1;
+                return ast.firstToken(ast.extraDataAt(extra.start)) - 1;
             },
             .asm_output, .asm_input => {
-                builtin.assert(ast.tokenTag(ast.nodeMainToken( n) - 1) == .l_bracket);
-                return ast.nodeMainToken( n) - 1 - end_offset;
+                builtin.assert(ast.tokenTag(ast.nodeMainToken(n) - 1) == .l_bracket);
+                return ast.nodeMainToken(n) - 1 - end_offset;
             },
             .while_simple,
             .while_cont,
@@ -703,7 +702,7 @@ pub const SyntaxTree = struct {
             .@"for",
             => {
                 // Look for a label and inline.
-                const main_token = ast.nodeMainToken( n);
+                const main_token = ast.nodeMainToken(n);
                 var result = main_token;
                 if (ast.tokenTag(result - 1) == .keyword_inline) {
                     result -= 1;
@@ -718,7 +717,7 @@ pub const SyntaxTree = struct {
     pub fn lastToken(ast: SyntaxTree, node: zig.Index) zig.Index {
         var n = node;
         var end_offset: zig.Index = 0;
-        while (true) switch (ast.nodeTag( n)) {
+        while (true) switch (ast.nodeTag(n)) {
             .root => return @intCast(zig.Index, ast.tokens.len() - 1),
             .@"usingnamespace",
             .bool_not,
@@ -732,7 +731,7 @@ pub const SyntaxTree = struct {
             .@"resume",
             .@"nosuspend",
             .@"comptime",
-            => n = ast.nodeLHS( n),
+            => n = ast.nodeLHS(n),
             .test_decl,
             .@"errdefer",
             .@"defer",
@@ -801,7 +800,7 @@ pub const SyntaxTree = struct {
             .switch_case,
             .switch_case_inline,
             .switch_range,
-            => n = ast.nodeRHS( n),
+            => n = ast.nodeRHS(n),
             .field_access,
             .unwrap_optional,
             .grouped_expression,
@@ -811,7 +810,7 @@ pub const SyntaxTree = struct {
             .asm_output,
             .asm_input,
             .error_value,
-            => return ast.nodeRHS( n) + end_offset,
+            => return ast.nodeRHS(n) + end_offset,
             .anyframe_literal,
             .char_literal,
             .number_literal,
@@ -820,28 +819,28 @@ pub const SyntaxTree = struct {
             .deref,
             .enum_literal,
             .string_literal,
-            => return ast.nodeMainToken( n) + end_offset,
-            .@"return" => if (ast.nodeLHS( n) != 0) {
-                n = ast.nodeLHS( n);
+            => return ast.nodeMainToken(n) + end_offset,
+            .@"return" => if (ast.nodeLHS(n) != 0) {
+                n = ast.nodeLHS(n);
             } else {
-                return ast.nodeMainToken( n) + end_offset;
+                return ast.nodeMainToken(n) + end_offset;
             },
             .call, .async_call => {
                 end_offset += 1; // for the rparen
-                const params = ast.extraData( ast.nodeRHS( n), zig.AstNode.SubRange);
+                const params = ast.extraData(ast.nodeRHS(n), zig.AstNode.SubRange);
                 if (params.end - params.start == 0) {
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
-                n = ast.extraDataAt( params.end - 1); // last parameter
+                n = ast.extraDataAt(params.end - 1); // last parameter
             },
             .tagged_union_enum_tag => {
-                const members = ast.extraData( ast.nodeRHS( n), zig.AstNode.SubRange);
+                const members = ast.extraData(ast.nodeRHS(n), zig.AstNode.SubRange);
                 if (members.end - members.start == 0) {
                     end_offset += 4; // for the rparen + rparen + lbrace + rbrace
-                    n = ast.nodeLHS( n);
+                    n = ast.nodeLHS(n);
                 } else {
                     end_offset += 1; // for the rbrace
-                    n = ast.extraDataAt( members.end - 1); // last parameter
+                    n = ast.extraDataAt(members.end - 1); // last parameter
                 }
             },
             .call_comma,
@@ -849,51 +848,51 @@ pub const SyntaxTree = struct {
             .tagged_union_enum_tag_trailing,
             => {
                 end_offset += 2; // for the comma/semicolon + rparen/rbrace
-                const params = ast.extraData( ast.nodeRHS( n), zig.AstNode.SubRange);
+                const params = ast.extraData(ast.nodeRHS(n), zig.AstNode.SubRange);
                 builtin.assert(params.end > params.start);
-                n = ast.extraDataAt( params.end - 1); // last parameter
+                n = ast.extraDataAt(params.end - 1); // last parameter
             },
             .@"switch" => {
-                const cases = ast.extraData( ast.nodeRHS( n), zig.AstNode.SubRange);
+                const cases = ast.extraData(ast.nodeRHS(n), zig.AstNode.SubRange);
                 if (cases.end - cases.start == 0) {
                     end_offset += 3; // rparen, lbrace, rbrace
-                    n = ast.nodeLHS( n); // condition expression
+                    n = ast.nodeLHS(n); // condition expression
                 } else {
                     end_offset += 1; // for the rbrace
-                    n = ast.extraDataAt( cases.end - 1); // last case
+                    n = ast.extraDataAt(cases.end - 1); // last case
                 }
             },
             .container_decl_arg => {
-                const members = ast.extraData( ast.nodeRHS( n), zig.AstNode.SubRange);
+                const members = ast.extraData(ast.nodeRHS(n), zig.AstNode.SubRange);
                 if (members.end - members.start == 0) {
                     end_offset += 3; // for the rparen + lbrace + rbrace
-                    n = ast.nodeLHS( n);
+                    n = ast.nodeLHS(n);
                 } else {
                     end_offset += 1; // for the rbrace
-                    n = ast.extraDataAt( members.end - 1); // last parameter
+                    n = ast.extraDataAt(members.end - 1); // last parameter
                 }
             },
             .@"asm" => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.Asm);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.Asm);
                 return extra.rparen + end_offset;
             },
             .array_init,
             .struct_init,
             => {
-                const elements = ast.extraData( ast.nodeRHS( n), zig.AstNode.SubRange);
+                const elements = ast.extraData(ast.nodeRHS(n), zig.AstNode.SubRange);
                 builtin.assert(elements.end - elements.start > 0);
                 end_offset += 1; // for the rbrace
-                n = ast.extraDataAt( elements.end - 1); // last element
+                n = ast.extraDataAt(elements.end - 1); // last element
             },
             .array_init_comma,
             .struct_init_comma,
             .container_decl_arg_trailing,
             .switch_comma,
             => {
-                const members = ast.extraData( ast.nodeRHS( n), zig.AstNode.SubRange);
+                const members = ast.extraData(ast.nodeRHS(n), zig.AstNode.SubRange);
                 builtin.assert(members.end - members.start > 0);
                 end_offset += 2; // for the comma + rbrace
-                n = ast.extraDataAt( members.end - 1); // last parameter
+                n = ast.extraDataAt(members.end - 1); // last parameter
             },
             .array_init_dot,
             .struct_init_dot,
@@ -902,9 +901,9 @@ pub const SyntaxTree = struct {
             .tagged_union,
             .builtin_call,
             => {
-                builtin.assert(ast.nodeRHS( n) - ast.nodeLHS( n) > 0);
+                builtin.assert(ast.nodeRHS(n) - ast.nodeLHS(n) > 0);
                 end_offset += 1; // for the rbrace
-                n = ast.extraDataAt( ast.nodeRHS( n) - 1); // last statement
+                n = ast.extraDataAt(ast.nodeRHS(n) - 1); // last statement
             },
             .array_init_dot_comma,
             .struct_init_dot_comma,
@@ -913,19 +912,19 @@ pub const SyntaxTree = struct {
             .tagged_union_trailing,
             .builtin_call_comma,
             => {
-                builtin.assert(ast.nodeRHS( n) - ast.nodeLHS( n) > 0);
+                builtin.assert(ast.nodeRHS(n) - ast.nodeLHS(n) > 0);
                 end_offset += 2; // for the comma/semicolon + rbrace/rparen
-                n = ast.extraDataAt( ast.nodeRHS( n) - 1); // last member
+                n = ast.extraDataAt(ast.nodeRHS(n) - 1); // last member
             },
             .call_one,
             .async_call_one,
             .array_access,
             => {
                 end_offset += 1; // for the rparen/rbracket
-                if (ast.nodeRHS( n) == 0) {
-                    return ast.nodeMainToken( n) + end_offset;
+                if (ast.nodeRHS(n) == 0) {
+                    return ast.nodeMainToken(n) + end_offset;
                 }
-                n = ast.nodeRHS( n);
+                n = ast.nodeRHS(n);
             },
             .array_init_dot_two,
             .block_two,
@@ -934,14 +933,14 @@ pub const SyntaxTree = struct {
             .container_decl_two,
             .tagged_union_two,
             => {
-                if (ast.nodeRHS( n) != 0) {
+                if (ast.nodeRHS(n) != 0) {
                     end_offset += 1; // for the rparen/rbrace
-                    n = ast.nodeRHS( n);
-                } else if (ast.nodeLHS( n) != 0) {
+                    n = ast.nodeRHS(n);
+                } else if (ast.nodeLHS(n) != 0) {
                     end_offset += 1; // for the rparen/rbrace
-                    n = ast.nodeLHS( n);
+                    n = ast.nodeLHS(n);
                 } else {
-                    switch (ast.nodeTag( n)) {
+                    switch (ast.nodeTag(n)) {
                         .array_init_dot_two,
                         .block_two,
                         .struct_init_dot_two,
@@ -949,17 +948,17 @@ pub const SyntaxTree = struct {
                         .builtin_call_two => end_offset += 2, // lparen/lbrace + rparen/rbrace
                         .container_decl_two => {
                             var i: u32 = 2; // lbrace + rbrace
-                            while (ast.tokenTag(ast.nodeMainToken( n) + i) == .container_doc_comment) i += 1;
+                            while (ast.tokenTag(ast.nodeMainToken(n) + i) == .container_doc_comment) i += 1;
                             end_offset += i;
                         },
                         .tagged_union_two => {
                             var i: u32 = 5; // (enum) {}
-                            while (ast.tokenTag(ast.nodeMainToken( n) + i) == .container_doc_comment) i += 1;
+                            while (ast.tokenTag(ast.nodeMainToken(n) + i) == .container_doc_comment) i += 1;
                             end_offset += i;
                         },
                         else => unreachable,
                     }
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .array_init_dot_two_comma,
@@ -970,40 +969,40 @@ pub const SyntaxTree = struct {
             .tagged_union_two_trailing,
             => {
                 end_offset += 2; // for the comma/semicolon + rbrace/rparen
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
-                } else if (ast.nodeLHS( n) != 0) {
-                    n = ast.nodeLHS( n);
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
+                } else if (ast.nodeLHS(n) != 0) {
+                    n = ast.nodeLHS(n);
                 } else {
                     unreachable;
                 }
             },
             .simple_var_decl => {
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
-                } else if (ast.nodeLHS( n) != 0) {
-                    n = ast.nodeLHS( n);
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
+                } else if (ast.nodeLHS(n) != 0) {
+                    n = ast.nodeLHS(n);
                 } else {
                     end_offset += 1; // from mut token to name
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .aligned_var_decl => {
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
-                } else if (ast.nodeLHS( n) != 0) {
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
+                } else if (ast.nodeLHS(n) != 0) {
                     end_offset += 1; // for the rparen
-                    n = ast.nodeLHS( n);
+                    n = ast.nodeLHS(n);
                 } else {
                     end_offset += 1; // from mut token to name
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .global_var_decl => {
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
                 } else {
-                    const extra = ast.extraData( ast.nodeLHS( n), zig.AstNode.GlobalVarDecl);
+                    const extra = ast.extraData(ast.nodeLHS(n), zig.AstNode.GlobalVarDecl);
                     if (extra.section_node != 0) {
                         end_offset += 1; // for the rparen
                         n = extra.section_node;
@@ -1014,15 +1013,15 @@ pub const SyntaxTree = struct {
                         n = extra.type_node;
                     } else {
                         end_offset += 1; // from mut token to name
-                        return ast.nodeMainToken( n) + end_offset;
+                        return ast.nodeMainToken(n) + end_offset;
                     }
                 }
             },
             .local_var_decl => {
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
                 } else {
-                    const extra = ast.extraData( ast.nodeLHS( n), zig.AstNode.LocalVarDecl);
+                    const extra = ast.extraData(ast.nodeLHS(n), zig.AstNode.LocalVarDecl);
                     if (extra.align_node != 0) {
                         end_offset += 1; // for the rparen
                         n = extra.align_node;
@@ -1030,50 +1029,50 @@ pub const SyntaxTree = struct {
                         n = extra.type_node;
                     } else {
                         end_offset += 1; // from mut token to name
-                        return ast.nodeMainToken( n) + end_offset;
+                        return ast.nodeMainToken(n) + end_offset;
                     }
                 }
             },
             .container_field_init => {
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
-                } else if (ast.nodeLHS( n) != 0) {
-                    n = ast.nodeLHS( n);
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
+                } else if (ast.nodeLHS(n) != 0) {
+                    n = ast.nodeLHS(n);
                 } else {
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .container_field_align => {
-                if (ast.nodeRHS( n) != 0) {
+                if (ast.nodeRHS(n) != 0) {
                     end_offset += 1; // for the rparen
-                    n = ast.nodeRHS( n);
-                } else if (ast.nodeLHS( n) != 0) {
-                    n = ast.nodeLHS( n);
+                    n = ast.nodeRHS(n);
+                } else if (ast.nodeLHS(n) != 0) {
+                    n = ast.nodeLHS(n);
                 } else {
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .container_field => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.ContainerField);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.ContainerField);
                 if (extra.value_expr != 0) {
                     n = extra.value_expr;
                 } else if (extra.align_expr != 0) {
                     end_offset += 1; // for the rparen
                     n = extra.align_expr;
-                } else if (ast.nodeLHS( n) != 0) {
-                    n = ast.nodeLHS( n);
+                } else if (ast.nodeLHS(n) != 0) {
+                    n = ast.nodeLHS(n);
                 } else {
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .array_init_one,
             .struct_init_one,
             => {
                 end_offset += 1; // rbrace
-                if (ast.nodeRHS( n) == 0) {
-                    return ast.nodeMainToken( n) + end_offset;
+                if (ast.nodeRHS(n) == 0) {
+                    return ast.nodeMainToken(n) + end_offset;
                 } else {
-                    n = ast.nodeRHS( n);
+                    n = ast.nodeRHS(n);
                 }
             },
             .slice_open,
@@ -1083,53 +1082,53 @@ pub const SyntaxTree = struct {
             .struct_init_one_comma,
             => {
                 end_offset += 2; // ellipsis2 + rbracket, or comma + rparen
-                n = ast.nodeRHS( n);
+                n = ast.nodeRHS(n);
                 builtin.assert(n != 0);
             },
             .slice => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.Slice);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.Slice);
                 builtin.assert(extra.end != 0); // should have used slice_open
                 end_offset += 1; // rbracket
                 n = extra.end;
             },
             .slice_sentinel => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.SliceSentinel);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.SliceSentinel);
                 builtin.assert(extra.sentinel != 0); // should have used slice
                 end_offset += 1; // rbracket
                 n = extra.sentinel;
             },
             .@"continue" => {
-                if (ast.nodeLHS( n) != 0) {
-                    return ast.nodeLHS( n) + end_offset;
+                if (ast.nodeLHS(n) != 0) {
+                    return ast.nodeLHS(n) + end_offset;
                 } else {
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .@"break" => {
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
-                } else if (ast.nodeLHS( n) != 0) {
-                    return ast.nodeLHS( n) + end_offset;
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
+                } else if (ast.nodeLHS(n) != 0) {
+                    return ast.nodeLHS(n) + end_offset;
                 } else {
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .fn_decl => {
-                if (ast.nodeRHS( n) != 0) {
-                    n = ast.nodeRHS( n);
+                if (ast.nodeRHS(n) != 0) {
+                    n = ast.nodeRHS(n);
                 } else {
-                    n = ast.nodeLHS( n);
+                    n = ast.nodeLHS(n);
                 }
             },
             .fn_proto_one => {
-                const extra = ast.extraData( ast.nodeLHS( n), zig.AstNode.FnProtoOne);
+                const extra = ast.extraData(ast.nodeLHS(n), zig.AstNode.FnProtoOne);
                 // addrspace, linksection, callconv, align can appear in any order, so we
                 // find the last one here.
-                var max_node: zig.Index = ast.nodeRHS( n);
-                var max_start = ast.tokenStart(ast.nodeMainToken( max_node));
+                var max_node: zig.Index = ast.nodeRHS(n);
+                var max_start = ast.tokenStart(ast.nodeMainToken(max_node));
                 var max_offset: zig.Index = 0;
                 if (extra.align_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.align_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.align_expr));
                     if (start > max_start) {
                         max_node = extra.align_expr;
                         max_start = start;
@@ -1137,7 +1136,7 @@ pub const SyntaxTree = struct {
                     }
                 }
                 if (extra.addrspace_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.addrspace_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.addrspace_expr));
                     if (start > max_start) {
                         max_node = extra.addrspace_expr;
                         max_start = start;
@@ -1145,7 +1144,7 @@ pub const SyntaxTree = struct {
                     }
                 }
                 if (extra.section_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.section_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.section_expr));
                     if (start > max_start) {
                         max_node = extra.section_expr;
                         max_start = start;
@@ -1153,7 +1152,7 @@ pub const SyntaxTree = struct {
                     }
                 }
                 if (extra.callconv_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.callconv_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.callconv_expr));
                     if (start > max_start) {
                         max_node = extra.callconv_expr;
                         max_start = start;
@@ -1164,14 +1163,14 @@ pub const SyntaxTree = struct {
                 end_offset += max_offset;
             },
             .fn_proto => {
-                const extra = ast.extraData( ast.nodeLHS( n), zig.AstNode.FnProto);
+                const extra = ast.extraData(ast.nodeLHS(n), zig.AstNode.FnProto);
                 // addrspace, linksection, callconv, align can appear in any order, so we
                 // find the last one here.
-                var max_node: zig.Index = ast.nodeRHS( n);
-                var max_start = ast.tokenStart(ast.nodeMainToken( max_node));
+                var max_node: zig.Index = ast.nodeRHS(n);
+                var max_start = ast.tokenStart(ast.nodeMainToken(max_node));
                 var max_offset: zig.Index = 0;
                 if (extra.align_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.align_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.align_expr));
                     if (start > max_start) {
                         max_node = extra.align_expr;
                         max_start = start;
@@ -1179,7 +1178,7 @@ pub const SyntaxTree = struct {
                     }
                 }
                 if (extra.addrspace_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.addrspace_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.addrspace_expr));
                     if (start > max_start) {
                         max_node = extra.addrspace_expr;
                         max_start = start;
@@ -1187,7 +1186,7 @@ pub const SyntaxTree = struct {
                     }
                 }
                 if (extra.section_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.section_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.section_expr));
                     if (start > max_start) {
                         max_node = extra.section_expr;
                         max_start = start;
@@ -1195,7 +1194,7 @@ pub const SyntaxTree = struct {
                     }
                 }
                 if (extra.callconv_expr != 0) {
-                    const start = ast.tokenStart(ast.nodeMainToken( extra.callconv_expr));
+                    const start = ast.tokenStart(ast.nodeMainToken(extra.callconv_expr));
                     if (start > max_start) {
                         max_node = extra.callconv_expr;
                         max_start = start;
@@ -1206,29 +1205,29 @@ pub const SyntaxTree = struct {
                 end_offset += max_offset;
             },
             .while_cont => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.WhileCont);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.WhileCont);
                 builtin.assert(extra.then_expr != 0);
                 n = extra.then_expr;
             },
             .@"while" => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.While);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.While);
                 builtin.assert(extra.else_expr != 0);
                 n = extra.else_expr;
             },
             .@"if", .@"for" => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.If);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.If);
                 builtin.assert(extra.else_expr != 0);
                 n = extra.else_expr;
             },
             .@"suspend" => {
-                if (ast.nodeLHS( n) != 0) {
-                    n = ast.nodeLHS( n);
+                if (ast.nodeLHS(n) != 0) {
+                    n = ast.nodeLHS(n);
                 } else {
-                    return ast.nodeMainToken( n) + end_offset;
+                    return ast.nodeMainToken(n) + end_offset;
                 }
             },
             .array_type_sentinel => {
-                const extra = ast.extraData( ast.nodeRHS( n), zig.AstNode.ArrayTypeSentinel);
+                const extra = ast.extraData(ast.nodeRHS(n), zig.AstNode.ArrayTypeSentinel);
                 n = extra.elem_type;
             },
         };
@@ -1245,81 +1244,81 @@ pub const SyntaxTree = struct {
         return ast.source[start..end];
     }
     pub fn globalVarDecl(ast: SyntaxTree, node: zig.Index) full.VarDecl {
-        builtin.assert(ast.nodeTag( node) == .global_var_decl);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.lhs, zig.AstNode.GlobalVarDecl);
+        builtin.assert(ast.nodeTag(node) == .global_var_decl);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.lhs, zig.AstNode.GlobalVarDecl);
         return ast.fullVarDecl(.{
             .type_node = extra.type_node,
             .align_node = extra.align_node,
             .addrspace_node = extra.addrspace_node,
             .section_node = extra.section_node,
             .init_node = data.rhs,
-            .mut_token = ast.nodeMainToken( node),
+            .mut_token = ast.nodeMainToken(node),
         });
     }
     pub fn localVarDecl(ast: SyntaxTree, node: zig.Index) full.VarDecl {
-        builtin.assert(ast.nodeTag( node) == .local_var_decl);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.lhs, zig.AstNode.LocalVarDecl);
+        builtin.assert(ast.nodeTag(node) == .local_var_decl);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.lhs, zig.AstNode.LocalVarDecl);
         return ast.fullVarDecl(.{
             .type_node = extra.type_node,
             .align_node = extra.align_node,
             .addrspace_node = 0,
             .section_node = 0,
             .init_node = data.rhs,
-            .mut_token = ast.nodeMainToken( node),
+            .mut_token = ast.nodeMainToken(node),
         });
     }
     pub fn simpleVarDecl(ast: SyntaxTree, node: zig.Index) full.VarDecl {
-        builtin.assert(ast.nodeTag( node) == .simple_var_decl);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .simple_var_decl);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullVarDecl(.{
             .type_node = data.lhs,
             .align_node = 0,
             .addrspace_node = 0,
             .section_node = 0,
             .init_node = data.rhs,
-            .mut_token = ast.nodeMainToken( node),
+            .mut_token = ast.nodeMainToken(node),
         });
     }
     pub fn alignedVarDecl(ast: SyntaxTree, node: zig.Index) full.VarDecl {
-        builtin.assert(ast.nodeTag( node) == .aligned_var_decl);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .aligned_var_decl);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullVarDecl(.{
             .type_node = 0,
             .align_node = data.lhs,
             .addrspace_node = 0,
             .section_node = 0,
             .init_node = data.rhs,
-            .mut_token = ast.nodeMainToken( node),
+            .mut_token = ast.nodeMainToken(node),
         });
     }
     pub fn ifSimple(ast: SyntaxTree, node: zig.Index) full.If {
-        builtin.assert(ast.nodeTag( node) == .if_simple);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .if_simple);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullIf(.{
             .cond_expr = data.lhs,
             .then_expr = data.rhs,
             .else_expr = 0,
-            .if_token = ast.nodeMainToken( node),
+            .if_token = ast.nodeMainToken(node),
         });
     }
     pub fn ifFull(ast: SyntaxTree, node: zig.Index) full.If {
-        builtin.assert(ast.nodeTag( node) == .@"if");
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.If);
+        builtin.assert(ast.nodeTag(node) == .@"if");
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.If);
         return ast.fullIf(.{
             .cond_expr = data.lhs,
             .then_expr = extra.then_expr,
             .else_expr = extra.else_expr,
-            .if_token = ast.nodeMainToken( node),
+            .if_token = ast.nodeMainToken(node),
         });
     }
     pub fn containerField(ast: SyntaxTree, node: zig.Index) full.ContainerField {
-        builtin.assert(ast.nodeTag( node) == .container_field);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.ContainerField);
-        const main_token = ast.nodeMainToken( node);
+        builtin.assert(ast.nodeTag(node) == .container_field);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.ContainerField);
+        const main_token = ast.nodeMainToken(node);
         return ast.fullContainerField(.{
             .main_token = main_token,
             .type_expr = data.lhs,
@@ -1329,9 +1328,9 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn containerFieldInit(ast: SyntaxTree, node: zig.Index) full.ContainerField {
-        builtin.assert(ast.nodeTag( node) == .container_field_init);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const main_token = ast.nodeMainToken( node);
+        builtin.assert(ast.nodeTag(node) == .container_field_init);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const main_token = ast.nodeMainToken(node);
         return ast.fullContainerField(.{
             .main_token = main_token,
             .type_expr = data.lhs,
@@ -1341,9 +1340,9 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn containerFieldAlign(ast: SyntaxTree, node: zig.Index) full.ContainerField {
-        builtin.assert(ast.nodeTag( node) == .container_field_align);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const main_token = ast.nodeMainToken( node);
+        builtin.assert(ast.nodeTag(node) == .container_field_align);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const main_token = ast.nodeMainToken(node);
         return ast.fullContainerField(.{
             .main_token = main_token,
             .type_expr = data.lhs,
@@ -1353,13 +1352,13 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn fnProtoSimple(ast: SyntaxTree, buffer: *[1]zig.Index, node: zig.Index) full.FnProto {
-        builtin.assert(ast.nodeTag( node) == .fn_proto_simple);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .fn_proto_simple);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer[0] = data.lhs;
         const params = if (data.lhs == 0) buffer[0..0] else buffer[0..1];
         return ast.fullFnProto(.{
             .proto_node = node,
-            .fn_token = ast.nodeMainToken( node),
+            .fn_token = ast.nodeMainToken(node),
             .return_type = data.rhs,
             .params = params,
             .align_expr = 0,
@@ -1369,13 +1368,13 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn fnProtoMulti(ast: SyntaxTree, node: zig.Index) full.FnProto {
-        builtin.assert(ast.nodeTag( node) == .fn_proto_multi);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const params_range = ast.extraData( data.lhs, zig.AstNode.SubRange);
+        builtin.assert(ast.nodeTag(node) == .fn_proto_multi);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const params_range = ast.extraData(data.lhs, zig.AstNode.SubRange);
         const params = ast.extras.readAll()[params_range.start..params_range.end];
         return ast.fullFnProto(.{
             .proto_node = node,
-            .fn_token = ast.nodeMainToken( node),
+            .fn_token = ast.nodeMainToken(node),
             .return_type = data.rhs,
             .params = params,
             .align_expr = 0,
@@ -1385,14 +1384,14 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn fnProtoOne(ast: SyntaxTree, buffer: *[1]zig.Index, node: zig.Index) full.FnProto {
-        builtin.assert(ast.nodeTag( node) == .fn_proto_one);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.lhs, zig.AstNode.FnProtoOne);
+        builtin.assert(ast.nodeTag(node) == .fn_proto_one);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.lhs, zig.AstNode.FnProtoOne);
         buffer[0] = extra.param;
         const params = if (extra.param == 0) buffer[0..0] else buffer[0..1];
         return ast.fullFnProto(.{
             .proto_node = node,
-            .fn_token = ast.nodeMainToken( node),
+            .fn_token = ast.nodeMainToken(node),
             .return_type = data.rhs,
             .params = params,
             .align_expr = extra.align_expr,
@@ -1402,13 +1401,13 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn fnProto(ast: SyntaxTree, node: zig.Index) full.FnProto {
-        builtin.assert(ast.nodeTag( node) == .fn_proto);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.lhs, zig.AstNode.FnProto);
+        builtin.assert(ast.nodeTag(node) == .fn_proto);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.lhs, zig.AstNode.FnProto);
         const params = ast.extras.readAll()[extra.params_start..extra.params_end];
         return ast.fullFnProto(.{
             .proto_node = node,
-            .fn_token = ast.nodeMainToken( node),
+            .fn_token = ast.nodeMainToken(node),
             .return_type = data.rhs,
             .params = params,
             .align_expr = extra.align_expr,
@@ -1418,21 +1417,21 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn structInitOne(ast: SyntaxTree, buffer: *[1]zig.Index, node: zig.Index) full.StructInit {
-        builtin.assert(ast.nodeTag( node) == .struct_init_one or
-            ast.nodeTag( node) == .struct_init_one_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .struct_init_one or
+            ast.nodeTag(node) == .struct_init_one_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer[0] = data.rhs;
         const fields = if (data.rhs == 0) buffer[0..0] else buffer[0..1];
         return ast.fullStructInit(.{
-            .lbrace = ast.nodeMainToken( node),
+            .lbrace = ast.nodeMainToken(node),
             .fields = fields,
             .type_expr = data.lhs,
         });
     }
     pub fn structInitDotTwo(ast: SyntaxTree, buffer: *[2]zig.Index, node: zig.Index) full.StructInit {
-        builtin.assert(ast.nodeTag( node) == .struct_init_dot_two or
-            ast.nodeTag( node) == .struct_init_dot_two_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .struct_init_dot_two or
+            ast.nodeTag(node) == .struct_init_dot_two_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer.* = .{ data.lhs, data.rhs };
         const fields = if (data.rhs != 0)
             buffer[0..2]
@@ -1441,50 +1440,50 @@ pub const SyntaxTree = struct {
         else
             buffer[0..0];
         return ast.fullStructInit(.{
-            .lbrace = ast.nodeMainToken( node),
+            .lbrace = ast.nodeMainToken(node),
             .fields = fields,
             .type_expr = 0,
         });
     }
     pub fn structInitDot(ast: SyntaxTree, node: zig.Index) full.StructInit {
-        builtin.assert(ast.nodeTag( node) == .struct_init_dot or
-            ast.nodeTag( node) == .struct_init_dot_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .struct_init_dot or
+            ast.nodeTag(node) == .struct_init_dot_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullStructInit(.{
-            .lbrace = ast.nodeMainToken( node),
+            .lbrace = ast.nodeMainToken(node),
             .fields = ast.extras.readAll()[data.lhs..data.rhs],
             .type_expr = 0,
         });
     }
     pub fn structInit(ast: SyntaxTree, node: zig.Index) full.StructInit {
-        builtin.assert(ast.nodeTag( node) == .struct_init or
-            ast.nodeTag( node) == .struct_init_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const fields_range = ast.extraData( data.rhs, zig.AstNode.SubRange);
+        builtin.assert(ast.nodeTag(node) == .struct_init or
+            ast.nodeTag(node) == .struct_init_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const fields_range = ast.extraData(data.rhs, zig.AstNode.SubRange);
         return ast.fullStructInit(.{
-            .lbrace = ast.nodeMainToken( node),
+            .lbrace = ast.nodeMainToken(node),
             .fields = ast.extras.readAll()[fields_range.start..fields_range.end],
             .type_expr = data.lhs,
         });
     }
     pub fn arrayInitOne(ast: SyntaxTree, buffer: *[1]zig.Index, node: zig.Index) full.ArrayInit {
-        builtin.assert(ast.nodeTag( node) == .array_init_one or
-            ast.nodeTag( node) == .array_init_one_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .array_init_one or
+            ast.nodeTag(node) == .array_init_one_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer[0] = data.rhs;
         const elements = if (data.rhs == 0) buffer[0..0] else buffer[0..1];
         return .{
             .ast = .{
-                .lbrace = ast.nodeMainToken( node),
+                .lbrace = ast.nodeMainToken(node),
                 .elements = elements,
                 .type_expr = data.lhs,
             },
         };
     }
     pub fn arrayInitDotTwo(ast: SyntaxTree, buffer: *[2]zig.Index, node: zig.Index) full.ArrayInit {
-        builtin.assert(ast.nodeTag( node) == .array_init_dot_two or
-            ast.nodeTag( node) == .array_init_dot_two_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .array_init_dot_two or
+            ast.nodeTag(node) == .array_init_dot_two_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer.* = .{ data.lhs, data.rhs };
         const elements = if (data.rhs != 0)
             buffer[0..2]
@@ -1494,43 +1493,43 @@ pub const SyntaxTree = struct {
             buffer[0..0];
         return .{
             .ast = .{
-                .lbrace = ast.nodeMainToken( node),
+                .lbrace = ast.nodeMainToken(node),
                 .elements = elements,
                 .type_expr = 0,
             },
         };
     }
     pub fn arrayInitDot(ast: SyntaxTree, node: zig.Index) full.ArrayInit {
-        builtin.assert(ast.nodeTag( node) == .array_init_dot or
-            ast.nodeTag( node) == .array_init_dot_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .array_init_dot or
+            ast.nodeTag(node) == .array_init_dot_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return .{
             .ast = .{
-                .lbrace = ast.nodeMainToken( node),
+                .lbrace = ast.nodeMainToken(node),
                 .elements = ast.extras.readAll()[data.lhs..data.rhs],
                 .type_expr = 0,
             },
         };
     }
     pub fn arrayInit(ast: SyntaxTree, node: zig.Index) full.ArrayInit {
-        builtin.assert(ast.nodeTag( node) == .array_init or
-            ast.nodeTag( node) == .array_init_comma);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const elem_range = ast.extraData( data.rhs, zig.AstNode.SubRange);
+        builtin.assert(ast.nodeTag(node) == .array_init or
+            ast.nodeTag(node) == .array_init_comma);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const elem_range = ast.extraData(data.rhs, zig.AstNode.SubRange);
         return .{
             .ast = .{
-                .lbrace = ast.nodeMainToken( node),
+                .lbrace = ast.nodeMainToken(node),
                 .elements = ast.extras.readAll()[elem_range.start..elem_range.end],
                 .type_expr = data.lhs,
             },
         };
     }
     pub fn arrayType(ast: SyntaxTree, node: zig.Index) full.ArrayType {
-        builtin.assert(ast.nodeTag( node) == .array_type);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .array_type);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return .{
             .ast = .{
-                .lbracket = ast.nodeMainToken( node),
+                .lbracket = ast.nodeMainToken(node),
                 .elem_count = data.lhs,
                 .sentinel = 0,
                 .elem_type = data.rhs,
@@ -1538,13 +1537,13 @@ pub const SyntaxTree = struct {
         };
     }
     pub fn arrayTypeSentinel(ast: SyntaxTree, node: zig.Index) full.ArrayType {
-        builtin.assert(ast.nodeTag( node) == .array_type_sentinel);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.ArrayTypeSentinel);
+        builtin.assert(ast.nodeTag(node) == .array_type_sentinel);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.ArrayTypeSentinel);
         builtin.assert(extra.sentinel != 0);
         return .{
             .ast = .{
-                .lbracket = ast.nodeMainToken( node),
+                .lbracket = ast.nodeMainToken(node),
                 .elem_count = data.lhs,
                 .sentinel = extra.sentinel,
                 .elem_type = extra.elem_type,
@@ -1552,10 +1551,10 @@ pub const SyntaxTree = struct {
         };
     }
     pub fn ptrTypeAligned(ast: SyntaxTree, node: zig.Index) full.PtrType {
-        builtin.assert(ast.nodeTag( node) == .ptr_type_aligned);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .ptr_type_aligned);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullPtrType(.{
-            .main_token = ast.nodeMainToken( node),
+            .main_token = ast.nodeMainToken(node),
             .align_node = data.lhs,
             .addrspace_node = 0,
             .sentinel = 0,
@@ -1565,10 +1564,10 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn ptrTypeSentinel(ast: SyntaxTree, node: zig.Index) full.PtrType {
-        builtin.assert(ast.nodeTag( node) == .ptr_type_sentinel);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .ptr_type_sentinel);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullPtrType(.{
-            .main_token = ast.nodeMainToken( node),
+            .main_token = ast.nodeMainToken(node),
             .align_node = 0,
             .addrspace_node = 0,
             .sentinel = data.lhs,
@@ -1578,11 +1577,11 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn ptrType(ast: SyntaxTree, node: zig.Index) full.PtrType {
-        builtin.assert(ast.nodeTag( node) == .ptr_type);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.lhs, zig.AstNode.PtrType);
+        builtin.assert(ast.nodeTag(node) == .ptr_type);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.lhs, zig.AstNode.PtrType);
         return ast.fullPtrType(.{
-            .main_token = ast.nodeMainToken( node),
+            .main_token = ast.nodeMainToken(node),
             .align_node = extra.align_node,
             .addrspace_node = extra.addrspace_node,
             .sentinel = extra.sentinel,
@@ -1592,11 +1591,11 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn ptrTypeBitRange(ast: SyntaxTree, node: zig.Index) full.PtrType {
-        builtin.assert(ast.nodeTag( node) == .ptr_type_bit_range);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.lhs, zig.AstNode.PtrTypeBitRange);
+        builtin.assert(ast.nodeTag(node) == .ptr_type_bit_range);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.lhs, zig.AstNode.PtrTypeBitRange);
         return ast.fullPtrType(.{
-            .main_token = ast.nodeMainToken( node),
+            .main_token = ast.nodeMainToken(node),
             .align_node = extra.align_node,
             .addrspace_node = extra.addrspace_node,
             .sentinel = extra.sentinel,
@@ -1606,12 +1605,12 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn sliceOpen(ast: SyntaxTree, node: zig.Index) full.Slice {
-        builtin.assert(ast.nodeTag( node) == .slice_open);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .slice_open);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return .{
             .ast = .{
                 .sliced = data.lhs,
-                .lbracket = ast.nodeMainToken( node),
+                .lbracket = ast.nodeMainToken(node),
                 .start = data.rhs,
                 .end = 0,
                 .sentinel = 0,
@@ -1619,13 +1618,13 @@ pub const SyntaxTree = struct {
         };
     }
     pub fn slice(ast: SyntaxTree, node: zig.Index) full.Slice {
-        builtin.assert(ast.nodeTag( node) == .slice);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.Slice);
+        builtin.assert(ast.nodeTag(node) == .slice);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.Slice);
         return .{
             .ast = .{
                 .sliced = data.lhs,
-                .lbracket = ast.nodeMainToken( node),
+                .lbracket = ast.nodeMainToken(node),
                 .start = extra.start,
                 .end = extra.end,
                 .sentinel = 0,
@@ -1633,13 +1632,13 @@ pub const SyntaxTree = struct {
         };
     }
     pub fn sliceSentinel(ast: SyntaxTree, node: zig.Index) full.Slice {
-        builtin.assert(ast.nodeTag( node) == .slice_sentinel);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.SliceSentinel);
+        builtin.assert(ast.nodeTag(node) == .slice_sentinel);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.SliceSentinel);
         return .{
             .ast = .{
                 .sliced = data.lhs,
-                .lbracket = ast.nodeMainToken( node),
+                .lbracket = ast.nodeMainToken(node),
                 .start = extra.start,
                 .end = extra.end,
                 .sentinel = extra.sentinel,
@@ -1647,9 +1646,9 @@ pub const SyntaxTree = struct {
         };
     }
     pub fn containerDeclTwo(ast: SyntaxTree, buffer: *[2]zig.Index, node: zig.Index) full.ContainerDecl {
-        builtin.assert(ast.nodeTag( node) == .container_decl_two or
-            ast.nodeTag( node) == .container_decl_two_trailing);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .container_decl_two or
+            ast.nodeTag(node) == .container_decl_two_trailing);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer.* = .{ data.lhs, data.rhs };
         const members = if (data.rhs != 0)
             buffer[0..2]
@@ -1658,30 +1657,30 @@ pub const SyntaxTree = struct {
         else
             buffer[0..0];
         return ast.fullContainerDecl(.{
-            .main_token = ast.nodeMainToken( node),
+            .main_token = ast.nodeMainToken(node),
             .enum_token = null,
             .members = members,
             .arg = 0,
         });
     }
     pub fn containerDecl(ast: SyntaxTree, node: zig.Index) full.ContainerDecl {
-        builtin.assert(ast.nodeTag( node) == .container_decl or
-            ast.nodeTag( node) == .container_decl_trailing);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .container_decl or
+            ast.nodeTag(node) == .container_decl_trailing);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullContainerDecl(.{
-            .main_token = ast.nodeMainToken( node),
+            .main_token = ast.nodeMainToken(node),
             .enum_token = null,
             .members = ast.extras.readAll()[data.lhs..data.rhs],
             .arg = 0,
         });
     }
     pub fn containerDeclArg(ast: SyntaxTree, node: zig.Index) full.ContainerDecl {
-        builtin.assert(ast.nodeTag( node) == .container_decl_arg or
-            ast.nodeTag( node) == .container_decl_arg_trailing);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const members_range = ast.extraData( data.rhs, zig.AstNode.SubRange);
+        builtin.assert(ast.nodeTag(node) == .container_decl_arg or
+            ast.nodeTag(node) == .container_decl_arg_trailing);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const members_range = ast.extraData(data.rhs, zig.AstNode.SubRange);
         return ast.fullContainerDecl(.{
-            .main_token = ast.nodeMainToken( node),
+            .main_token = ast.nodeMainToken(node),
             .enum_token = null,
             .members = ast.extras.readAll()[members_range.start..members_range.end],
             .arg = data.lhs,
@@ -1699,9 +1698,9 @@ pub const SyntaxTree = struct {
         };
     }
     pub fn taggedUnionTwo(ast: SyntaxTree, buffer: *[2]zig.Index, node: zig.Index) full.ContainerDecl {
-        builtin.assert(ast.nodeTag( node) == .tagged_union_two or
-            ast.nodeTag( node) == .tagged_union_two_trailing);
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        builtin.assert(ast.nodeTag(node) == .tagged_union_two or
+            ast.nodeTag(node) == .tagged_union_two_trailing);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer.* = .{ data.lhs, data.rhs };
         const members = if (data.rhs != 0)
             buffer[0..2]
@@ -1709,7 +1708,7 @@ pub const SyntaxTree = struct {
             buffer[0..1]
         else
             buffer[0..0];
-        const main_token = ast.nodeMainToken( node);
+        const main_token = ast.nodeMainToken(node);
         return ast.fullContainerDecl(.{
             .main_token = main_token,
             .enum_token = main_token + 2, // union lparen enum
@@ -1718,10 +1717,10 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn taggedUnion(ast: SyntaxTree, node: zig.Index) full.ContainerDecl {
-        builtin.assert(ast.nodeTag( node) == .tagged_union or
-            ast.nodeTag( node) == .tagged_union_trailing);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const main_token = ast.nodeMainToken( node);
+        builtin.assert(ast.nodeTag(node) == .tagged_union or
+            ast.nodeTag(node) == .tagged_union_trailing);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const main_token = ast.nodeMainToken(node);
         return ast.fullContainerDecl(.{
             .main_token = main_token,
             .enum_token = main_token + 2, // union lparen enum
@@ -1730,11 +1729,11 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn taggedUnionEnumTag(ast: SyntaxTree, node: zig.Index) full.ContainerDecl {
-        builtin.assert(ast.nodeTag( node) == .tagged_union_enum_tag or
-            ast.nodeTag( node) == .tagged_union_enum_tag_trailing);
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const members_range = ast.extraData( data.rhs, zig.AstNode.SubRange);
-        const main_token = ast.nodeMainToken( node);
+        builtin.assert(ast.nodeTag(node) == .tagged_union_enum_tag or
+            ast.nodeTag(node) == .tagged_union_enum_tag_trailing);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const members_range = ast.extraData(data.rhs, zig.AstNode.SubRange);
+        const main_token = ast.nodeMainToken(node);
         return ast.fullContainerDecl(.{
             .main_token = main_token,
             .enum_token = main_token + 2, // union lparen enum
@@ -1747,42 +1746,42 @@ pub const SyntaxTree = struct {
         const values: *[1]zig.Index = &data.lhs;
         return ast.fullSwitchCase(.{
             .values = if (data.lhs == 0) values[0..0] else values[0..1],
-            .arrow_token = ast.nodeMainToken( node),
+            .arrow_token = ast.nodeMainToken(node),
             .target_expr = data.rhs,
         }, node);
     }
     pub fn switchCase(ast: SyntaxTree, node: zig.Index) full.SwitchCase {
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.lhs, zig.AstNode.SubRange);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.lhs, zig.AstNode.SubRange);
         return ast.fullSwitchCase(.{
             .values = ast.extras.readAll()[extra.start..extra.end],
-            .arrow_token = ast.nodeMainToken( node),
+            .arrow_token = ast.nodeMainToken(node),
             .target_expr = data.rhs,
         }, node);
     }
     pub fn asmSimple(ast: SyntaxTree, node: zig.Index) full.Asm {
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullAsm(.{
-            .asm_token = ast.nodeMainToken( node),
+            .asm_token = ast.nodeMainToken(node),
             .template = data.lhs,
             .items = &.{},
             .rparen = data.rhs,
         });
     }
     pub fn asmFull(ast: SyntaxTree, node: zig.Index) full.Asm {
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.Asm);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.Asm);
         return ast.fullAsm(.{
-            .asm_token = ast.nodeMainToken( node),
+            .asm_token = ast.nodeMainToken(node),
             .template = data.lhs,
             .items = ast.extras.readAll()[extra.items_start..extra.items_end],
             .rparen = extra.rparen,
         });
     }
     pub fn whileSimple(ast: SyntaxTree, node: zig.Index) full.While {
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullWhile(.{
-            .while_token = ast.nodeMainToken( node),
+            .while_token = ast.nodeMainToken(node),
             .cond_expr = data.lhs,
             .cont_expr = 0,
             .then_expr = data.rhs,
@@ -1790,10 +1789,10 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn whileCont(ast: SyntaxTree, node: zig.Index) full.While {
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.WhileCont);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.WhileCont);
         return ast.fullWhile(.{
-            .while_token = ast.nodeMainToken( node),
+            .while_token = ast.nodeMainToken(node),
             .cond_expr = data.lhs,
             .cont_expr = extra.cont_expr,
             .then_expr = extra.then_expr,
@@ -1801,10 +1800,10 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn whileFull(ast: SyntaxTree, node: zig.Index) full.While {
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.While);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.While);
         return ast.fullWhile(.{
-            .while_token = ast.nodeMainToken( node),
+            .while_token = ast.nodeMainToken(node),
             .cond_expr = data.lhs,
             .cont_expr = extra.cont_expr,
             .then_expr = extra.then_expr,
@@ -1812,9 +1811,9 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn forSimple(ast: SyntaxTree, node: zig.Index) full.While {
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         return ast.fullWhile(.{
-            .while_token = ast.nodeMainToken( node),
+            .while_token = ast.nodeMainToken(node),
             .cond_expr = data.lhs,
             .cont_expr = 0,
             .then_expr = data.rhs,
@@ -1825,7 +1824,7 @@ pub const SyntaxTree = struct {
         const data: zig.AstNode.Data = ast.nodeData(node);
         const extra = ast.extraData(data.rhs, zig.AstNode.If);
         return ast.fullWhile(.{
-            .while_token = ast.nodeMainToken( node),
+            .while_token = ast.nodeMainToken(node),
             .cond_expr = data.lhs,
             .cont_expr = 0,
             .then_expr = extra.then_expr,
@@ -1833,20 +1832,20 @@ pub const SyntaxTree = struct {
         });
     }
     pub fn callOne(ast: SyntaxTree, buffer: *[1]zig.Index, node: zig.Index) full.Call {
-        const data: zig.AstNode.Data = ast.nodeData( node);
+        const data: zig.AstNode.Data = ast.nodeData(node);
         buffer.* = .{data.rhs};
         const params = if (data.rhs != 0) buffer[0..1] else buffer[0..0];
         return ast.fullCall(.{
-            .lparen = ast.nodeMainToken( node),
+            .lparen = ast.nodeMainToken(node),
             .fn_expr = data.lhs,
             .params = params,
         });
     }
     pub fn callFull(ast: SyntaxTree, node: zig.Index) full.Call {
-        const data: zig.AstNode.Data = ast.nodeData( node);
-        const extra = ast.extraData( data.rhs, zig.AstNode.SubRange);
+        const data: zig.AstNode.Data = ast.nodeData(node);
+        const extra = ast.extraData(data.rhs, zig.AstNode.SubRange);
         return ast.fullCall(.{
-            .lparen = ast.nodeMainToken( node),
+            .lparen = ast.nodeMainToken(node),
             .fn_expr = data.lhs,
             .params = ast.extras.readAll()[extra.start..extra.end],
         });
@@ -2022,7 +2021,7 @@ pub const SyntaxTree = struct {
         if (ast.tokenTag(info.arrow_token + 1) == .pipe) {
             result.payload_token = info.arrow_token + 2;
         }
-        switch (ast.nodeTag( node)) {
+        switch (ast.nodeTag(node)) {
             .switch_case_inline, .switch_case_inline_one => result.inline_token = ast.firstToken(node),
             else => {},
         }
@@ -2040,7 +2039,7 @@ pub const SyntaxTree = struct {
             result.volatile_token = info.asm_token + 1;
         }
         const outputs_end: usize = for (info.items) |item, i| {
-            switch (ast.nodeTag( item)) {
+            switch (ast.nodeTag(item)) {
                 .asm_output => continue,
                 else => break i,
             }
