@@ -161,3 +161,5 @@ pub const fx = struct {
         return code[0 .. code.len - 1] ++ "m";
     }
 };
+
+pub const whitespace = [_]u8{ ' ', '\t', '\n', '\r', 0x0b, 0x0a };

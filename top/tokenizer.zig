@@ -1,12 +1,11 @@
 const fmt = @import("./fmt.zig");
 const zig = @import("./zig.zig");
+const lit = @import("./lit.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
-
-pub const whitespace = [_]u8{ ' ', '\t', '\n', '\r', 0x0b, 0x0a };
 
 pub fn isAlphanumeric(c: u8) bool {
     return switch (c) {
@@ -39,7 +38,7 @@ pub fn isPrint(c: u8) bool {
     return builtin.int2a(bool, isASCII(c), !isControl(c));
 }
 pub fn isWhitespace(c: u8) bool {
-    return for (whitespace) |other| {
+    return for (lit.whitespace) |other| {
         if (c == other)
             break true;
     } else false;
