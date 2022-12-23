@@ -4,6 +4,7 @@ const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
@@ -32,7 +33,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = mem.alloc_preset.silent,
+    .logging = preset.allocator.logging.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 2,
@@ -46,7 +47,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = mem.alloc_preset.silent,
+    .logging = preset.allocator.logging.silent,
 });
 const Allocator = Allocator0;
 const LinkedList = mem.XorLinkedListAdv(.{

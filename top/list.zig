@@ -3,6 +3,7 @@ const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const file = @import("./file.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 pub const ListSpec = struct {
     child: type,
@@ -17,7 +18,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
         save: ?Block = null,
         const List = @This();
         const Allocator = list_spec.Allocator;
-        const Block = Allocator.UnstructuredStaticViewLowAligned(Node.size, Node.alignment).Reference;
+        const Block = Allocator.UnstructuredStaticViewLowAligned(Node.size, Node.alignment).Implementation;
         pub const Node = struct {
             blk: Block,
             pub fn read(s_node: Node) child {
@@ -559,7 +560,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .arena_index = 32,
                 .errors = .{ .map = null, .unmap = null },
-                .logging = mem.alloc_preset.silent,
+                .logging = preset.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.StructuredHolder(u8);
             pub fn show(list: List, address_space: *mem.AddressSpace) !void {
