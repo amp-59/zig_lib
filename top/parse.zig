@@ -1550,13 +1550,9 @@ fn parseExprPrecedence(
             const tok_len = tok_tag.lexeme().?.len;
             const b_idx: u64 = ast.tokens.readOneAt(oper_token).start - 1;
             const a_idx: u64 = ast.tokens.readOneAt(oper_token).start + tok_len;
-            const b_char: u8 = ast.source[b_idx];
-            const a_char: u8 = ast.source[a_idx];
-            // const char_before = ast.source[parser.token_starts[oper_token] - 1];
-            // const char_after = ast.source[parser.token_starts[oper_token] + tok_len];
+            const b_char: u8 = ast.source.readOneAt(b_idx);
+            const a_char: u8 = ast.source.readOneAt(a_idx);
             if (tok_tag == .ampersand and a_char == '&') {
-                // without types we don't know if '&&' was intended as 'bitwise_and address_of', or a c-style logical_and
-                // The best the parser can do is recommend changing it to 'and' or ' & &'
                 try warnMsg(ast, allocator_e, .{ .tag = .invalid_ampersand_ampersand, .token = oper_token });
             } else if (tokenizer.isWhitespace(b_char) != tokenizer.isWhitespace(a_char)) {
                 try warnMsg(ast, allocator_e, .{ .tag = .mismatched_binary_op_whitespace, .token = oper_token });
@@ -1772,10 +1768,8 @@ fn parseTypeExpr(
                     if (eatToken(ast, .identifier)) |ident| {
                         const start: usize = ast.tokens.readOneAt(ident).start;
                         const end: usize = ast.tokens.readOneAt(ident + 1).start;
-                        const ident_slice: []const u8 = ast.source[start..end];
-                        // XXX: Maybe trouble
-                        // const ident_slice = ast.source[parser.token_starts[ident]..parser.token_starts[ident + 1]];
-                        if (!mem.testEqualMany(u8, trimRight(u8, &lit.whitespace, ident_slice), "c")) {
+                        const ident_slice: []const u8 = ast.source.readAll()[start..end];
+                        if (!mem.testEqualMany(u8, "c", trimRight(u8, &lit.whitespace, ident_slice))) {
                             ast.tokens.unstream(1);
                         }
                     } else if (eatToken(ast, .colon)) |_| {
@@ -3990,7 +3984,7 @@ fn eatDocComments(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE) !?u3
 fn tokensOnSameLine(ast: *abstract.ProtoSyntaxTree, token1: u32, token2: u32) bool {
     const start_1: u32 = ast.tokens.readOneAt(token1).start;
     const start_2: u32 = ast.tokens.readOneAt(token2).start;
-    return mem.indexOfFirstEqualOne(u8, '\n', ast.source[start_1..start_2]) == null;
+    return mem.indexOfFirstEqualOne(u8, '\n', ast.source.readAll()[start_1..start_2]) == null;
 }
 fn tokenIndex(ast: *abstract.ProtoSyntaxTree) u32 {
     return @intCast(u32, ast.tokens.index());
