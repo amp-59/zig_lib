@@ -16,29 +16,6 @@ const fmode_owner: Perms = .{ .read = true, .write = true, .execute = false };
 const fmode_group: Perms = .{ .read = true, .write = false, .execute = false };
 const fmode_other: Perms = .{ .read = false, .write = false, .execute = false };
 
-/// Tentative mapped IO default options
-pub const file_map_opts: MapSpec.Options = .{
-    .visibility = .shared,
-    .anonymous = false,
-    .read = true,
-    .write = true,
-    .exec = false,
-    .populate = true,
-    .grows_down = false,
-    .sync = false,
-};
-/// Tentative dynamic load default options
-pub const so_map_opts: MapSpec.Options = .{
-    .visibility = .private,
-    .anonymous = false,
-    .read = true,
-    .write = false,
-    .exec = true,
-    .populate = true,
-    .grows_down = false,
-    .sync = false,
-};
-
 pub const Open = meta.EnumBitField(enum(u64) {
     no_cache = OPEN.DIRECT,
     no_atime = OPEN.NOATIME,
@@ -500,14 +477,14 @@ pub const MapSpec = struct {
     logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
-        anonymous: bool,
-        visibility: Visibility,
-        read: bool,
-        write: bool,
-        exec: bool,
-        populate: bool,
-        grows_down: bool,
-        sync: bool,
+        anonymous: bool = false,
+        visibility: Visibility = .shared,
+        read: bool = true,
+        write: bool = true,
+        exec: bool = false,
+        populate: bool = true,
+        grows_down: bool = false,
+        sync: bool = false,
     };
     const Visibility = enum { shared, shared_validate, private };
     pub fn flags(comptime spec: MapSpec) mem.Map {
