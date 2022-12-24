@@ -241,6 +241,9 @@ fn parseAndWalk(address_space: *mem.AddressSpace, arg: [:0]const u8) !u64 {
 }
 
 pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
+    if (builtin.is_debug) {
+        return;
+    }
     var args: [][*:0]u8 = args_in;
     var names: Names = .{};
     var i: u64 = 1;
