@@ -42,6 +42,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
+    _ = addProjectExecutable(builder, "parsedir", "test/parsedir.zig", .{ .build_mode = .ReleaseFast, .build_root = true });
 
     // Other test programs:
     _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .is_large_test = true, .build_root = true });
