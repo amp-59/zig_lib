@@ -5,8 +5,10 @@ const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const render = @import("./render.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
+const tokenizer = @import("./tokenizer.zig");
 
 const std = @import("std");
 
@@ -14,8 +16,8 @@ pub usingnamespace proc.start;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .logging = mem.alloc_preset.silent,
-    .options = mem.alloc_preset.small,
+    .logging = preset.allocator.logging.silent,
+    .options = preset.allocator.options.small,
 });
 const Array = Allocator.StructuredHolder(u8);
 const PrintArray = mem.StaticString(1024 * 1024);
@@ -56,8 +58,6 @@ fn testSpecificCases() !void {
     try runTest(&allocator, &array, render.EnumLiteralFormat{ .value = .EnumLiteral }, ".EnumLiteral");
     try runTest(&allocator, &array, render.NullFormat{}, "null");
     try runTest(&allocator, &array, render.VoidFormat{}, "{}");
-    try array.appendFormat(&allocator, render.StructFormat(@import("std").Target){ .value = @import("builtin").target });
-    file.noexcept.write(2, array.readAll(allocator));
 }
 
 pub fn main() !void {
