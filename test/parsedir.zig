@@ -74,13 +74,16 @@ const Allocator1 = mem.GenericArenaAllocator(.{
     },
     .logging = preset.allocator.logging.silent,
 });
-const test_standard: bool = false;
+const test_subject_name: []const u8 = builtin.config("test_subject", []const u8, "std");
+const test_standard: bool = mem.testEqualMany(u8, "std", test_subject_name);
 const print_times: bool = false;
+
+const Ast: type = if (test_standard) std.zig.Ast else abstract.SyntaxTree;
 
 const Root = struct {
     ts: time.TimeSpec = .{},
     name: mem.StaticString(128) = .{},
-    ast: if (test_standard) std.zig.Ast else abstract.SyntaxTree = undefined,
+    ast: Ast = undefined,
 };
 const SyntaxTreeArray = Allocator1.StructuredHolder(Root);
 
@@ -113,7 +116,7 @@ fn fileBuf(allocator: *zig.Allocator.Node, dir_fd: u64, name: [:0]const u8) !zig
     return file_buf;
 }
 
-noinline fn writeAndWalkInternal(
+noinline fn parseAndWalkInternal(
     allocator_0: *Allocator0,
     allocator_1: *Allocator1,
     allocator_n: *zig.Allocator.Node,
@@ -136,7 +139,7 @@ noinline fn writeAndWalkInternal(
         const base_name: [:0]const u8 = entry.name();
         switch (entry.kind) {
             .directory => {
-                @call(.auto, writeAndWalkInternal, .{
+                @call(.auto, parseAndWalkInternal, .{
                     allocator_0, allocator_1, allocator_n, allocator_e, allocator_x, allocator_s,
                     array,       dir.fd,      base_name,
                 }) catch |walk_error| {
@@ -178,7 +181,7 @@ fn countLines(source: []const u8) u64 {
     }
     return count;
 }
-fn writeAndWalk(address_space: *mem.AddressSpace, arg: [:0]const u8) !u64 {
+fn parseAndWalk(address_space: *mem.AddressSpace, arg: [:0]const u8) !u64 {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     var allocator_0: Allocator0 = try Allocator0.init(address_space);
     var allocator_1: Allocator1 = try Allocator1.init(address_space);
@@ -197,7 +200,7 @@ fn writeAndWalk(address_space: *mem.AddressSpace, arg: [:0]const u8) !u64 {
     const allocator = if (test_standard) allocator_e else &allocator_e;
     try allocator_0.map(4096);
     try allocator_1.map(4096);
-    try @call(.auto, writeAndWalkInternal, .{
+    try @call(.auto, parseAndWalkInternal, .{
         &allocator_0, &allocator_1, &allocator_n, allocator, &allocator_x, &allocator_s,
         &ast_array,   null,         arg,
     });
@@ -251,10 +254,10 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
     var sum: u64 = 0;
     while (i != repeats) : (i += 1) {
         for (names.readAll()) |arg| {
-            sum += try writeAndWalk(address_space, arg);
+            sum += try parseAndWalk(address_space, arg);
         }
     }
-    file.noexcept.write(2, "average: ");
+    file.noexcept.write(2, "average for " ++ @typeName(Ast) ++ ": ");
     file.noexcept.write(2, fmt.udh(sum / repeats).formatConvert().readAll());
     file.noexcept.write(2, "\n");
 }
