@@ -61,10 +61,14 @@ pub const SyntaxTree = struct {
         allocator_s: *AllocatorS,
         array_n: zig.SourceArray,
     ) !SyntaxTree {
+        const source: [:0]const u8 = array_n.readAllWithSentinel(0);
+        const tokens: zig.TokenArray = try tokenizer.Tokenizer.init(allocator_n, source);
+        var nodes: zig.ProtoNodeArray = zig.ProtoNodeArray.init(allocator_n);
+        try nodes.increment(allocator_n, tokens.len() * 8);
         var ret: ProtoSyntaxTree = .{
             .source = array_n,
-            .tokens = try tokenizer.Tokenizer.init(allocator_n, array_n.readAllWithSentinel(0)),
-            .nodes = zig.ProtoNodeArray.init(allocator_n),
+            .tokens = tokens,
+            .nodes = nodes,
             .errors = zig.ProtoErrorArray.init(allocator_e),
             .extras = zig.ProtoExtraArray.init(allocator_x),
         };
