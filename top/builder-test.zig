@@ -47,13 +47,19 @@ const thread_spec = proc.CloneSpec{
         .io = false,
     },
 };
-fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8, macros: builder.Macros) !void {
+fn runTest(
+    vars: [][*:0]u8,
+    name: [:0]const u8,
+    pathname: [:0]const u8,
+    mode: anytype,
+    macros: builder.Macros,
+) !void {
     var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
     var cmd: builder.BuildCmd(.{}) = .{
         .root = pathname,
         .cmd = .run,
         .name = name,
-        .O = builtin.zig.mode,
+        .O = mode,
         .strip = true,
         .enable_cache = false,
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
@@ -66,13 +72,20 @@ fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8, macros: 
     };
     _ = try cmd.exec(vars);
 }
-fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8, macros: builder.Macros) !void {
+fn runTestTestUsingAllocator(
+    vars: [][*:0]u8,
+    allocator: *Allocator,
+    name: [:0]const u8,
+    pathname: [:0]const u8,
+    mode: anytype,
+    macros: builder.Macros,
+) !void {
     var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
     var cmd: builder.BuildCmd(.{ .Allocator = Allocator }) = .{
         .root = pathname,
         .cmd = .run,
         .name = name,
-        .O = builtin.zig.mode,
+        .O = mode,
         .strip = true,
         .enable_cache = false,
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
@@ -97,9 +110,9 @@ const parsedir_lib_macros: builder.Macros = general_macros ++ [1]builder.Macro{.
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
     {
         const arg_set = .{
-            .{ vars, "readelf", "test/readelf.zig", general_macros },
-            .{ vars, "parsedir", "test/parsedir.zig", parsedir_std_macros },
-            .{ vars, "parsedir", "test/parsedir.zig", parsedir_lib_macros },
+            .{ vars, "readelf", "test/readelf.zig", builtin.zig.mode, general_macros },
+            .{ vars, "parsedir", "test/parsedir.zig", .ReleaseFast, parsedir_std_macros },
+            .{ vars, "parsedir", "test/parsedir.zig", .ReleaseFast, parsedir_lib_macros },
         };
         inline for (arg_set) |args, i| {
             if (try_multi_threaded) {
@@ -115,7 +128,7 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
         var address_space: mem.AddressSpace = .{};
         var allocator: Allocator = try Allocator.init(&address_space);
         const arg_set = .{
-            .{ vars, &allocator, "treez", "test/treez.zig", general_macros },
+            .{ vars, &allocator, "treez", "test/treez.zig", builtin.zig.mode, general_macros },
         };
         inline for (arg_set) |args, i| {
             if (try_multi_threaded) {

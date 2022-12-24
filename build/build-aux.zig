@@ -45,7 +45,6 @@ pub fn main(builder: *build.Builder) !void {
 
     // Other test programs:
     _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .is_large_test = true, .build_root = true });
-    _ = addProjectExecutable(builder, "parse_test", "test/parsedir.zig", .{ .is_large_test = true, .build_root = true, .build_mode = .ReleaseFast });
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
