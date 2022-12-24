@@ -1353,11 +1353,13 @@ pub fn testEqualOneFront(comptime T: type, value: T, values: []const T) bool {
     if (values.len != 0) {
         return values[0] == value;
     }
+    return false;
 }
 pub fn testEqualOneBack(comptime T: type, value: T, values: []const T) bool {
     if (values.len != 0) {
-        return values[-1] == value;
+        return values[values.len - 1] == value;
     }
+    return false;
 }
 pub fn testEqualManyFront(comptime T: type, prefix_values: []const T, values: []const T) bool {
     if (builtin.int2v(bool, prefix_values.len == 0, prefix_values.len > values.len)) {
