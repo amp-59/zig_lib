@@ -20,6 +20,8 @@ const Allocator = mem.GenericArenaAllocator(.{
 
 const try_multi_threaded: bool = false;
 
+const cache_dir: [:0]const u8 = builtin.lib_build_root ++ "/zig-cache";
+
 fn globalCacheDir(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
     const home_pathname: [:0]const u8 = try file.home(vars);
     var len: u64 = 0;
@@ -45,7 +47,7 @@ const thread_spec = proc.CloneSpec{
         .io = false,
     },
 };
-fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8) !void {
+fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8, macros: builder.Macros) !void {
     var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
     var cmd: builder.BuildCmd(.{}) = .{
         .root = pathname,
@@ -57,18 +59,14 @@ fn runTest(vars: [][*:0]u8, name: [:0]const u8, pathname: [:0]const u8) !void {
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
         .cache_dir = builtin.lib_build_root ++ "/zig-cache",
         .stack = 8388608,
-        .macros = &.{
-            .{ .name = "is_verbose", .value = "0" },
-            .{ .name = "is_correct", .value = "1" },
-            .{ .name = "build_root", .value = "\"" ++ builtin.lib_build_root ++ "\"" },
-        },
+        .macros = macros,
         .packages = &.{
             .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
         },
     };
     _ = try cmd.exec(vars);
 }
-fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) !void {
+fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8, macros: builder.Macros) !void {
     var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
     var cmd: builder.BuildCmd(.{ .Allocator = Allocator }) = .{
         .root = pathname,
@@ -78,13 +76,9 @@ fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]c
         .strip = true,
         .enable_cache = false,
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
-        .cache_dir = builtin.lib_build_root ++ "/zig-cache",
+        .cache_dir = cache_dir,
         .stack = 8388608,
-        .macros = &.{
-            .{ .name = "is_verbose", .value = "0" },
-            .{ .name = "is_correct", .value = "1" },
-            .{ .name = "build_root", .value = "\"" ++ builtin.lib_build_root ++ "\"" },
-        },
+        .macros = macros,
         .packages = &.{
             .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
         },
@@ -92,15 +86,20 @@ fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]c
     _ = try cmd.allocateExec(vars, allocator);
 }
 
+const general_macros: builder.Macros = &.{
+    .{ .name = "is_verbose", .value = "0" },
+    .{ .name = "is_correct", .value = "0" },
+    .{ .name = "build_root", .value = "\"" ++ builtin.lib_build_root ++ "\"" },
+};
+const parsedir_std_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"std\"" }};
+const parsedir_lib_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"lib\"" }};
+
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
     {
         const arg_set = .{
-            .{ vars, "builtin_test", "top/builtin-test.zig" },
-            .{ vars, "elf_test", "test/readelf.zig" },
-            .{ vars, "mem_test", "top/mem-test.zig" },
-            .{ vars, "file_test", "top/file-test.zig" },
-            .{ vars, "fmt_test", "top/fmt-test.zig" },
-            .{ vars, "list_test", "top/list-test.zig" },
+            .{ vars, "readelf", "test/readelf.zig", general_macros },
+            .{ vars, "parsedir", "test/parsedir.zig", parsedir_std_macros },
+            .{ vars, "parsedir", "test/parsedir.zig", parsedir_lib_macros },
         };
         inline for (arg_set) |args, i| {
             if (try_multi_threaded) {
@@ -116,12 +115,7 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
         var address_space: mem.AddressSpace = .{};
         var allocator: Allocator = try Allocator.init(&address_space);
         const arg_set = .{
-            .{ vars, &allocator, "builtin_test", "top/builtin-test.zig" },
-            .{ vars, &allocator, "elf_test", "test/readelf.zig" },
-            .{ vars, &allocator, "mem_test", "top/mem-test.zig" },
-            .{ vars, &allocator, "file_test", "top/file-test.zig" },
-            .{ vars, &allocator, "fmt_test", "top/fmt-test.zig" },
-            .{ vars, &allocator, "list_test", "top/list-test.zig" },
+            .{ vars, &allocator, "treez", "test/treez.zig", general_macros },
         };
         inline for (arg_set) |args, i| {
             if (try_multi_threaded) {
