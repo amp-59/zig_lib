@@ -74,7 +74,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
     },
     .logging = preset.allocator.logging.silent,
 });
-const test_subject_name: []const u8 = builtin.config("test_subject", []const u8, "std");
+const test_subject_name: []const u8 = builtin.config("test_subject", []const u8, "lib");
 const test_standard: bool = mem.testEqualMany(u8, "std", test_subject_name);
 const print_times: bool = false;
 
