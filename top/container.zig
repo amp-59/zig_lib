@@ -438,14 +438,14 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -622,14 +622,14 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -953,14 +953,14 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -1146,14 +1146,14 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -1375,7 +1375,7 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readOneBehind(array: *const Array, comptime child: type) child {
             return reference.pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
@@ -1387,13 +1387,13 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBehind(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __behind(array, child, offset), offset);
+            return reference.pointerMany(child, __behind(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readCountAhead(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, array.impl.position(), read_count).*;
         }
         pub fn readManyAhead(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, array.impl.position(), offset);
+            return reference.pointerMany(child, array.impl.position(), amountToCountOfType(offset, child));
         }
         pub fn readCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value).*;
@@ -1405,19 +1405,19 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn readCountWithSentinelBehind(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn readCountWithSentinelAhead(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, array.impl.position(), read_count, value).*;
         }
         pub fn readManyWithSentinelAhead(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, array.impl.position(), offset, value);
+            return reference.pointerManyWithSentinel(child, array.impl.position(), amountToCountOfType(offset, child), value);
         }
         pub fn referOneAt(array: *const Array, comptime child: type, offset: Amount) *child {
             return reference.pointerOne(child, __at(array, child, offset));
@@ -1435,7 +1435,7 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count);
         }
         pub fn referManyBack(array: *const Array, comptime child: type, offset: Amount) []child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn referCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value);
@@ -1447,13 +1447,13 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn referCountWithSentinelBehind(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn overwriteOneAt(array: *Array, comptime child: type, offset: Amount, value: child) void {
             reference.pointerOne(child, __at(array, child, offset)).* = value;
@@ -1471,14 +1471,14 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             for (reference.pointerMany(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, child, .{ .count = write_count }), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, comptime child: type, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(@sizeOf(child));
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * @sizeOf(child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
@@ -1603,7 +1603,7 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value).*;
@@ -1615,7 +1615,7 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn referOneAt(array: *const Array, comptime child: type, offset: Amount) *child {
             return reference.pointerOne(child, __at(array, child, offset));
@@ -1633,7 +1633,7 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count);
         }
         pub fn referManyBack(array: *const Array, comptime child: type, offset: Amount) []child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn referCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value);
@@ -1645,7 +1645,7 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn overwriteOneAt(array: *Array, comptime child: type, offset: Amount, value: child) void {
             reference.pointerOne(child, __at(array, child, offset)).* = value;
@@ -1663,14 +1663,14 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             for (reference.pointerMany(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, child, .{ .count = write_count }), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, comptime child: type, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(@sizeOf(child));
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * @sizeOf(child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
@@ -1935,14 +1935,14 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -1962,31 +1962,31 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
             array.writeOne(value);
         }
-        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
             array.writeCount(write_count, values);
         }
-        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
             array.writeMany(values);
         }
-        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
             array.writeFormat(format);
         }
-        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             array.writeArgs(write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
             array.writeFields(write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
             array.writeAny(write_spec, any);
         }
@@ -2303,14 +2303,14 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -2330,31 +2330,31 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
             array.writeOne(value);
         }
-        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
             array.writeCount(write_count, values);
         }
-        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
             array.writeMany(values);
         }
-        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
             array.writeFormat(format);
         }
-        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             array.writeArgs(write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
             array.writeFields(write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
             array.writeAny(write_spec, any);
         }
@@ -2567,7 +2567,7 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readOneBehind(array: *const Array, comptime child: type) child {
             return reference.pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
@@ -2579,13 +2579,13 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBehind(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __behind(array, child, offset), offset);
+            return reference.pointerMany(child, __behind(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readCountAhead(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, array.impl.position(), read_count).*;
         }
         pub fn readManyAhead(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, array.impl.position(), offset);
+            return reference.pointerMany(child, array.impl.position(), amountToCountOfType(offset, child));
         }
         pub fn readCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value).*;
@@ -2597,19 +2597,19 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn readCountWithSentinelBehind(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn readCountWithSentinelAhead(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, array.impl.position(), read_count, value).*;
         }
         pub fn readManyWithSentinelAhead(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, array.impl.position(), offset, value);
+            return reference.pointerManyWithSentinel(child, array.impl.position(), amountToCountOfType(offset, child), value);
         }
         pub fn referOneAt(array: *const Array, comptime child: type, offset: Amount) *child {
             return reference.pointerOne(child, __at(array, child, offset));
@@ -2627,7 +2627,7 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count);
         }
         pub fn referManyBack(array: *const Array, comptime child: type, offset: Amount) []child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn referCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value);
@@ -2639,13 +2639,13 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn referCountWithSentinelBehind(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn overwriteOneAt(array: *Array, comptime child: type, offset: Amount, value: child) void {
             reference.pointerOne(child, __at(array, child, offset)).* = value;
@@ -2663,14 +2663,14 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             for (reference.pointerMany(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, child, .{ .count = write_count }), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, comptime child: type, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(@sizeOf(child));
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * @sizeOf(child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
@@ -2690,31 +2690,31 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
             array.writeOne(child, value);
         }
-        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
             array.writeCount(child, write_count, values);
         }
-        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
             array.writeMany(child, values);
         }
-        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
             array.writeFormat(child, format);
         }
-        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             array.writeArgs(child, write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
             array.writeFields(child, write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
             array.writeAny(child, write_spec, any);
         }
@@ -2829,13 +2829,13 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBehind(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __behind(array, child, offset), offset);
+            return reference.pointerMany(child, __behind(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readCountAhead(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, array.impl.position(), read_count).*;
         }
         pub fn readManyAhead(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, array.impl.position(), offset);
+            return reference.pointerMany(child, array.impl.position(), amountToCountOfType(offset, child));
         }
         pub fn readCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value).*;
@@ -2847,13 +2847,13 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn readCountWithSentinelAhead(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, array.impl.position(), read_count, value).*;
         }
         pub fn readManyWithSentinelAhead(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, array.impl.position(), offset, value);
+            return reference.pointerManyWithSentinel(child, array.impl.position(), amountToCountOfType(offset, child), value);
         }
         pub fn referOneAt(array: *const Array, comptime child: type, offset: Amount) *child {
             return reference.pointerOne(child, __at(array, child, offset));
@@ -2874,7 +2874,7 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn overwriteOneAt(array: *Array, comptime child: type, offset: Amount, value: child) void {
             reference.pointerOne(child, __at(array, child, offset)).* = value;
@@ -2969,7 +2969,7 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value).*;
@@ -2981,7 +2981,7 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn referOneAt(array: *const Array, comptime child: type, offset: Amount) *child {
             return reference.pointerOne(child, __at(array, child, offset));
@@ -2999,7 +2999,7 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count);
         }
         pub fn referManyBack(array: *const Array, comptime child: type, offset: Amount) []child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn referCountWithSentinelAt(array: *const Array, comptime child: type, offset: Amount, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, offset), read_count, value);
@@ -3011,7 +3011,7 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn overwriteOneAt(array: *Array, comptime child: type, offset: Amount, value: child) void {
             reference.pointerOne(child, __at(array, child, offset)).* = value;
@@ -3029,14 +3029,14 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             for (reference.pointerMany(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, child, .{ .count = write_count }), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, comptime child: type, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(@sizeOf(child));
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * @sizeOf(child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
@@ -3056,31 +3056,31 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
             array.writeOne(child, value);
         }
-        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
             array.writeCount(child, write_count, values);
         }
-        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
             array.writeMany(child, values);
         }
-        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
             array.writeFormat(child, format);
         }
-        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             array.writeArgs(child, write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
             array.writeFields(child, write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
             array.writeAny(child, write_spec, any);
         }
@@ -3391,14 +3391,14 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -3418,31 +3418,31 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
             array.writeOne(value);
         }
-        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
             array.writeCount(write_count, values);
         }
-        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
             array.writeMany(values);
         }
-        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
             array.writeFormat(format);
         }
-        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             array.writeArgs(write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
             array.writeFields(write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
             array.writeAny(write_spec, any);
         }
@@ -3624,14 +3624,14 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             for (reference.pointerMany(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, values.len), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, write_count), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(child_size);
         }
         pub fn writeCount(array: *Array, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * child_size);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
@@ -3651,31 +3651,31 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
             array.writeOne(value);
         }
-        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
             array.writeCount(write_count, values);
         }
-        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
             array.writeMany(values);
         }
-        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
             array.writeFormat(format);
         }
-        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
             array.writeArgs(write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
             array.writeFields(write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
             array.writeAny(write_spec, any);
         }
@@ -3769,22 +3769,22 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
+            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
+            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0));
+            return reference.pointerMany(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -3802,7 +3802,7 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readOneBehind(array: *const Array, comptime child: type) child {
             return reference.pointerOne(child, __behind(array, child, .{ .count = 1 })).*;
@@ -3814,13 +3814,13 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerCount(child, __behind(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBehind(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __behind(array, child, offset), offset);
+            return reference.pointerMany(child, __behind(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readCountAhead(array: *const Array, comptime child: type, comptime read_count: usize) [read_count]child {
             return reference.pointerCount(child, array.impl.position(), read_count).*;
         }
         pub fn readManyAhead(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, array.impl.position(), offset);
+            return reference.pointerMany(child, array.impl.position(), amountToCountOfType(offset, child));
         }
         pub fn readCountWithSentinelAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, allocator, offset), read_count, value).*;
@@ -3832,19 +3832,19 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn readCountWithSentinelBehind(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn readCountWithSentinelAhead(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, array.impl.position(), read_count, value).*;
         }
         pub fn readManyWithSentinelAhead(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, array.impl.position(), offset, value);
+            return reference.pointerManyWithSentinel(child, array.impl.position(), amountToCountOfType(offset, child), value);
         }
         pub fn referOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) *child {
             return reference.pointerOne(child, __at(array, child, allocator, offset));
@@ -3862,7 +3862,7 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count);
         }
         pub fn referManyBack(array: *const Array, comptime child: type, offset: Amount) []child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn referCountWithSentinelAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, allocator, offset), read_count, value);
@@ -3874,13 +3874,13 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn referCountWithSentinelBehind(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __behind(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBehind(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __behind(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn overwriteOneAt(array: *Array, comptime child: type, allocator: Allocator, offset: Amount, value: child) void {
             reference.pointerOne(child, __at(array, child, allocator, offset)).* = value;
@@ -3898,14 +3898,14 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             for (reference.pointerMany(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, child, .{ .count = write_count }), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, comptime child: type, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(@sizeOf(child));
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * @sizeOf(child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
@@ -3925,31 +3925,31 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
             array.writeOne(child, value);
         }
-        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
             array.writeCount(child, write_count, values);
         }
-        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
             array.writeMany(child, values);
         }
-        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
             array.writeFormat(child, format);
         }
-        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             array.writeArgs(child, write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
             array.writeFields(child, write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
             array.writeAny(child, write_spec, any);
         }
@@ -4037,22 +4037,22 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
+            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
+            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0));
+            return reference.pointerMany(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -4070,7 +4070,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count).*;
         }
         pub fn readManyBack(array: *const Array, comptime child: type, offset: Amount) []const child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn readCountWithSentinelAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount, comptime read_count: usize, comptime value: child) [read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, allocator, offset), read_count, value).*;
@@ -4082,7 +4082,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value).*;
         }
         pub fn readManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn referOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) *child {
             return reference.pointerOne(child, __at(array, child, allocator, offset));
@@ -4100,7 +4100,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return reference.pointerCount(child, __prev(array, child, .{ .count = read_count }), read_count);
         }
         pub fn referManyBack(array: *const Array, comptime child: type, offset: Amount) []child {
-            return reference.pointerMany(child, __prev(array, child, offset), offset);
+            return reference.pointerMany(child, __prev(array, child, offset), amountToCountOfType(offset, child));
         }
         pub fn referCountWithSentinelAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount, comptime read_count: usize, comptime value: child) *[read_count:value]child {
             return reference.pointerCountWithSentinel(child, __at(array, child, allocator, offset), read_count, value);
@@ -4112,7 +4112,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return reference.pointerCountWithSentinel(child, __prev(array, child, .{ .count = read_count }), read_count, value);
         }
         pub fn referManyWithSentinelBack(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), offset, value);
+            return reference.pointerManyWithSentinel(child, __prev(array, child, offset), amountToCountOfType(offset, child), value);
         }
         pub fn overwriteOneAt(array: *Array, comptime child: type, allocator: Allocator, offset: Amount, value: child) void {
             reference.pointerOne(child, __at(array, child, allocator, offset)).* = value;
@@ -4130,14 +4130,14 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             for (reference.pointerMany(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
         }
         pub fn overwriteCountBack(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, __prev(array, child, .{ .count = values.len }), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, __prev(array, child, .{ .count = write_count }), write_count)) |*value, i| value.* = values[i];
         }
         pub fn writeOne(array: *Array, comptime child: type, value: child) void {
             reference.pointerOne(child, array.impl.next()).* = value;
             array.impl.define(@sizeOf(child));
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: usize, values: [write_count]child) void {
-            for (reference.pointerCount(child, array.impl.next(), values.len)) |*value, i| value.* = values[i];
+            for (reference.pointerCount(child, array.impl.next(), write_count)) |*value, i| value.* = values[i];
             array.impl.define(write_count * @sizeOf(child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
@@ -4157,31 +4157,31 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             Reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) !void {
+        pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
             array.writeOne(child, value);
         }
-        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) !void {
+        pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
             array.writeCount(child, write_count, values);
         }
-        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) !void {
+        pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
             array.writeMany(child, values);
         }
-        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) !void {
+        pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
             array.writeFormat(child, format);
         }
-        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) !void {
+        pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
             array.writeArgs(child, write_spec, args);
         }
-        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) !void {
+        pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
             array.writeFields(child, write_spec, fields);
         }
-        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) !void {
+        pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
             array.writeAny(child, write_spec, any);
         }
