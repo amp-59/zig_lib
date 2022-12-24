@@ -7,7 +7,7 @@ pub const allocator = opaque {
     pub const options = opaque {
         pub const small: mem.AllocatorOptions = .{
             .count_branches = false,
-            .count_allocations = true,
+            .count_allocations = false,
             .count_useful_bytes = false,
             .check_parametric_binding = false,
         };
