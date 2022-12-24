@@ -3781,10 +3781,10 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0));
+            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -4049,10 +4049,10 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0));
+            return reference.pointerMany(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, allocator, _0), __rem(array, child, allocator, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
