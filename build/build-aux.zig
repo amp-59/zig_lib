@@ -6,6 +6,7 @@ const Context = opaque {
     var output_mode: std.builtin.OutputMode = undefined;
     var builder: *build.Builder = undefined;
     var test_step: *build.Step = undefined;
+    var test_all_step: *build.Step = undefined;
     var run_step: *build.Step = undefined;
     var install_step: *build.Step = undefined;
     var fmt_step: *build.Step = undefined;
@@ -13,7 +14,9 @@ const Context = opaque {
     fn init() void {
         Context.builder.reference_trace = 100;
         Context.build_mode = builder.standardReleaseOptions();
-        Context.test_step = builder.step("test", "Run tests");
+        Context.test_step = builder.step("test", "Run most tests");
+        Context.test_all_step = builder.step("test-all", "Run all tests");
+        Context.test_all_step.dependOn(Context.test_step);
         Context.run_step = builder.step("run", "Run programs");
     }
 };
@@ -33,7 +36,6 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "list_test", "top/list-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "render_test", "top/render-test.zig", .{ .is_correct = true, .is_verbose = true });
-    _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .build_root = true });
 
     // More complete test programs:
     _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{ .is_correct = false, .is_verbose = false });
@@ -42,8 +44,8 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
 
     // Other test programs:
-    _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{});
-    _ = addProjectExecutable(builder, "parse_test", "top/parse-test.zig", .{ .build_root = true, .build_mode = .ReleaseFast });
+    _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .is_large_test = true, .build_root = true });
+    _ = addProjectExecutable(builder, "parse_test", "test/parsedir.zig", .{ .is_large_test = true, .build_root = true, .build_mode = .ReleaseFast });
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
@@ -94,6 +96,7 @@ pub fn Args(comptime name: [:0]const u8) type {
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
         is_tolerant: ?bool = null,
+        is_large_test: bool = false,
         strip: bool = Context.always_strip,
     };
 }
@@ -142,8 +145,14 @@ fn addProjectExecutable(
     if (args.is_support orelse Utility.endsWith("-aux.zig", path)) {
         Context.run_step.dependOn(&ret.run().step);
     }
-    if (args.is_test orelse Utility.endsWith("-test.zig", path)) {
-        Context.test_step.dependOn(&ret.run().step);
+    if (args.is_large_test or
+        args.is_test orelse Utility.endsWith("-test.zig", path))
+    {
+        if (args.is_large_test) {
+            Context.test_all_step.dependOn(&ret.run().step);
+        } else {
+            Context.test_step.dependOn(&ret.run().step);
+        }
     }
     return ret;
 }
