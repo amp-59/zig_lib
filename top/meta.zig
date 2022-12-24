@@ -670,7 +670,6 @@ pub fn fieldId(comptime T: type, t: T) u64 {
     }
     return ret;
 }
-
 pub inline fn analysisBegin(comptime name: []const u8) void {
     asm volatile ("# LLVM-MCA-BEGIN " ++ name);
 }

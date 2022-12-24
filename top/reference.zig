@@ -194,6 +194,7 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0)
             return mach.mul64(spec.count, high_alignment);
         }
         pub const start: Value = aligned_byte_address;
+        pub const position: Value = unstreamed_byte_address;
         pub const finish: Value = unwritable_byte_address;
         pub const behind: Value = streamed_byte_count;
         pub const capacity: Static = writable_byte_count;
@@ -1180,6 +1181,7 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
             return mach.mul64(spec.count, high_alignment);
         }
         pub const start: Value = aligned_byte_address;
+        pub const position: Value = unstreamed_byte_address;
         pub const finish: Value = unwritable_byte_address;
         pub const behind: Value = streamed_byte_count;
         pub const capacity: Static = writable_byte_count;
