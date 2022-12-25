@@ -862,12 +862,8 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
             const s_up_addr: u64 = s_ab_addr + high_alignment;
             if (s_up_addr > random.data.impl.finish()) {
-                sys.noexcept.getrandom(random.data.impl.start(), bytes, dev);
-                const t_lb_addr: u64 = random.data.impl.next();
-                const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
-                const t_up_addr: u64 = t_ab_addr + high_alignment;
-                random.data.impl.ub_word = t_up_addr - t_lb_addr;
-                return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
+                random.data.undefineAll();
+                return random.readOne(T);
             }
             random.data.impl.define(s_up_addr - s_lb_addr);
             return @truncate(T, @intToPtr(*const child, s_ab_addr).*);
