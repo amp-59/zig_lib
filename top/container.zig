@@ -50,17 +50,9 @@ fn writeManyImpl(comptime T: type, dst: []T, src: []const T) void {
 }
 fn writeCountImpl(comptime T: type, comptime count: u64, dst: *[count]T, src: [count]T) void {
     if (builtin.is_small) {
-        @call(
-            .{ .modifier = .always_inline },
-            writeManyImpl,
-            .{ T, dst, &src },
-        );
+        @call(.always_inline, writeManyImpl, .{ T, dst, &src });
     } else {
-        @call(
-            .{ .modifier = .always_inline },
-            writeOneImpl,
-            .{ [count]T, dst, src },
-        );
+        @call(.always_inline, writeOneImpl, .{ [count]T, dst, src });
     }
 }
 pub const Parameters0 = struct {
@@ -161,13 +153,13 @@ pub fn StructuredAutomaticView(comptime child: type, comptime sentinel: ?*const 
         pub fn overwriteManyAt(array: *Array, offset: usize, values: []const child) void {
             for (reference.pointerMany(child, __at(array, offset), __len(array, offset))) |*value, i| value.* = values[i];
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.capacity() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
     };
@@ -281,19 +273,19 @@ pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
         }
-        pub inline fn index(array: *const Array) u64 {
+        pub fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.capacity() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __behind(array: *const Array, offset: u64) u64 {
+        fn __behind(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.position(), offset * child_size);
         }
     };
@@ -489,31 +481,31 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.behind());
         }
-        pub inline fn index(array: *const Array) u64 {
+        pub fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
         }
-        pub inline fn avail(array: *const Array) u64 {
+        pub fn avail(array: *const Array) u64 {
             return array.impl.available() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __rem(array: *const Array, offset: u64) u64 {
+        fn __rem(array: *const Array, offset: u64) u64 {
             return mach.sub64(avail(array), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
-        inline fn __behind(array: *const Array, offset: u64) u64 {
+        fn __behind(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.position(), offset * child_size);
         }
     };
@@ -661,25 +653,25 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
         pub fn undefineAll(array: *Array) void {
             array.impl.undefine(array.impl.length());
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
         }
-        pub inline fn avail(array: *const Array) u64 {
+        pub fn avail(array: *const Array) u64 {
             return array.impl.available() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __rem(array: *const Array, offset: u64) u64 {
+        fn __rem(array: *const Array, offset: u64) u64 {
             return mach.sub64(avail(array), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
     };
@@ -802,13 +794,13 @@ pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const any
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.capacity() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
     };
@@ -1013,31 +1005,31 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn index(array: *const Array) u64 {
+        pub fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
         }
-        pub inline fn avail(array: *const Array) u64 {
+        pub fn avail(array: *const Array) u64 {
             return array.impl.available() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __rem(array: *const Array, offset: u64) u64 {
+        fn __rem(array: *const Array, offset: u64) u64 {
             return mach.sub64(avail(array), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
-        inline fn __behind(array: *const Array, offset: u64) u64 {
+        fn __behind(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.position(), offset * child_size);
         }
     };
@@ -1194,25 +1186,25 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
         }
-        pub inline fn avail(array: *const Array) u64 {
+        pub fn avail(array: *const Array) u64 {
             return array.impl.available() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __rem(array: *const Array, offset: u64) u64 {
+        fn __rem(array: *const Array, offset: u64) u64 {
             return mach.sub64(avail(array), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
     };
@@ -1321,13 +1313,13 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn len(array: *const Array, comptime child: type) u64 {
+        pub fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.capacity() / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.start(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(len(array, child), amountToCountOfType(offset, child));
         }
     };
@@ -1531,31 +1523,31 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn index(array: *const Array, comptime child: type) u64 {
+        pub fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
         }
-        pub inline fn len(array: *const Array, comptime child: type) u64 {
+        pub fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
         }
-        pub inline fn avail(array: *const Array, comptime child: type) u64 {
+        pub fn avail(array: *const Array, comptime child: type) u64 {
             return array.impl.available() / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.start(), amountToBytesOfType(offset, child));
         }
-        inline fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(len(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
     };
@@ -1711,25 +1703,25 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn len(array: *const Array, comptime child: type) u64 {
+        pub fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
         }
-        pub inline fn avail(array: *const Array, comptime child: type) u64 {
+        pub fn avail(array: *const Array, comptime child: type) u64 {
             return array.impl.available() / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.start(), amountToBytesOfType(offset, child));
         }
-        inline fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(len(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
     };
@@ -1964,31 +1956,31 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
-            array.writeOne(value);
+            try meta.wrap(array.writeOne(value));
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
-            array.writeCount(write_count, values);
+            try meta.wrap(array.writeCount(write_count, values));
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
-            array.writeMany(values);
+            try meta.wrap(array.writeMany(values));
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
-            array.writeFormat(format);
+            try meta.wrap(array.writeFormat(format));
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
-            array.writeArgs(write_spec, args);
+            try meta.wrap(array.writeArgs(write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
-            array.writeFields(write_spec, fields);
+            try meta.wrap(array.writeFields(write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
-            array.writeAny(write_spec, any);
+            try meta.wrap(array.writeAny(write_spec, any));
         }
         pub fn define(array: *Array, define_count: usize) void {
             array.impl.define(define_count * child_size);
@@ -2032,31 +2024,31 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub inline fn index(array: *const Array) u64 {
+        pub fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
         }
-        pub inline fn avail(array: *const Array) u64 {
+        pub fn avail(array: *const Array) u64 {
             return array.impl.available() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __rem(array: *const Array, offset: u64) u64 {
+        fn __rem(array: *const Array, offset: u64) u64 {
             return mach.sub64(avail(array), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
-        inline fn __behind(array: *const Array, offset: u64) u64 {
+        fn __behind(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.position(), offset * child_size);
         }
     };
@@ -2182,19 +2174,19 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub inline fn index(array: *const Array) u64 {
+        pub fn index(array: *const Array) u64 {
             return array.impl.behind() / child_size;
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.capacity() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __behind(array: *const Array, offset: u64) u64 {
+        fn __behind(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.position(), offset * child_size);
         }
     };
@@ -2332,31 +2324,31 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
-            array.writeOne(value);
+            try meta.wrap(array.writeOne(value));
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
-            array.writeCount(write_count, values);
+            try meta.wrap(array.writeCount(write_count, values));
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
-            array.writeMany(values);
+            try meta.wrap(array.writeMany(values));
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
-            array.writeFormat(format);
+            try meta.wrap(array.writeFormat(format));
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
-            array.writeArgs(write_spec, args);
+            try meta.wrap(array.writeArgs(write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
-            array.writeFields(write_spec, fields);
+            try meta.wrap(array.writeFields(write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
-            array.writeAny(write_spec, any);
+            try meta.wrap(array.writeAny(write_spec, any));
         }
         pub fn define(array: *Array, define_count: usize) void {
             array.impl.define(define_count * child_size);
@@ -2388,25 +2380,25 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.length() / child_size;
         }
-        pub inline fn avail(array: *const Array) u64 {
+        pub fn avail(array: *const Array) u64 {
             return array.impl.available() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
-        inline fn __rem(array: *const Array, offset: u64) u64 {
+        fn __rem(array: *const Array, offset: u64) u64 {
             return mach.sub64(avail(array), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
     };
@@ -2478,13 +2470,13 @@ pub fn StructuredView(comptime child: type, comptime sentinel: ?*const anyopaque
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateMany(Implementation, array.impl));
         }
-        pub inline fn len(array: *const Array) u64 {
+        pub fn len(array: *const Array) u64 {
             return array.impl.capacity() / child_size;
         }
-        inline fn __at(array: *const Array, offset: u64) u64 {
+        fn __at(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.start(), offset * child_size);
         }
-        inline fn __len(array: *const Array, offset: u64) u64 {
+        fn __len(array: *const Array, offset: u64) u64 {
             return mach.sub64(len(array), offset);
         }
     };
@@ -2692,31 +2684,31 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
-            array.writeOne(child, value);
+            try meta.wrap(array.writeOne(child, value));
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
-            array.writeCount(child, write_count, values);
+            try meta.wrap(array.writeCount(child, write_count, values));
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
-            array.writeMany(child, values);
+            try meta.wrap(array.writeMany(child, values));
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
-            array.writeFormat(child, format);
+            try meta.wrap(array.writeFormat(child, format));
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
-            array.writeArgs(child, write_spec, args);
+            try meta.wrap(array.writeArgs(child, write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
-            array.writeFields(child, write_spec, fields);
+            try meta.wrap(array.writeFields(child, write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
-            array.writeAny(child, write_spec, any);
+            try meta.wrap(array.writeAny(child, write_spec, any));
         }
         pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
             array.impl.define(amountToBytesOfType(define_amount, child));
@@ -2760,31 +2752,31 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub inline fn index(array: *const Array, comptime child: type) u64 {
+        pub fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
         }
-        pub inline fn len(array: *const Array, comptime child: type) u64 {
+        pub fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
         }
-        pub inline fn avail(array: *const Array, comptime child: type) u64 {
+        pub fn avail(array: *const Array, comptime child: type) u64 {
             return array.impl.available() / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.start(), amountToBytesOfType(offset, child));
         }
-        inline fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(len(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
     };
@@ -2909,19 +2901,19 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub inline fn index(array: *const Array, comptime child: type) u64 {
+        pub fn index(array: *const Array, comptime child: type) u64 {
             return array.impl.behind() / @sizeOf(child);
         }
-        pub inline fn len(array: *const Array, comptime child: type) u64 {
+        pub fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.capacity() / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.start(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(len(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
     };
@@ -3058,31 +3050,31 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
-            array.writeOne(child, value);
+            try meta.wrap(array.writeOne(child, value));
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
-            array.writeCount(child, write_count, values);
+            try meta.wrap(array.writeCount(child, write_count, values));
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
-            array.writeMany(child, values);
+            try meta.wrap(array.writeMany(child, values));
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
-            array.writeFormat(child, format);
+            try meta.wrap(array.writeFormat(child, format));
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
-            array.writeArgs(child, write_spec, args);
+            try meta.wrap(array.writeArgs(child, write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
-            array.writeFields(child, write_spec, fields);
+            try meta.wrap(array.writeFields(child, write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
-            array.writeAny(child, write_spec, any);
+            try meta.wrap(array.writeAny(child, write_spec, any));
         }
         pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
             array.impl.define(amountToBytesOfType(define_amount, child));
@@ -3114,25 +3106,25 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub inline fn len(array: *const Array, comptime child: type) u64 {
+        pub fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.length() / @sizeOf(child);
         }
-        pub inline fn avail(array: *const Array, comptime child: type) u64 {
+        pub fn avail(array: *const Array, comptime child: type) u64 {
             return array.impl.available() / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.start(), amountToBytesOfType(offset, child));
         }
-        inline fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(len(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
-        inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
     };
@@ -3203,13 +3195,13 @@ pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateMany(Implementation, array.impl));
         }
-        pub inline fn len(array: *const Array, comptime child: type) u64 {
+        pub fn len(array: *const Array, comptime child: type) u64 {
             return array.impl.capacity() / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.start(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(len(array, child), amountToCountOfType(offset, child));
         }
     };
@@ -3274,10 +3266,10 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             return reference.pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), value);
         }
         pub fn referAllUndefined(array: *const Array, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, allocator, 0), __rem(array, allocator, 0));
+            return reference.pointerMany(child, __ad(array, 0), __rem(array, allocator, 0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, allocator, 0), __rem(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, 0), __rem(array, allocator, 0), value);
         }
         pub fn readOneAt(array: *const Array, allocator: Allocator, offset: usize) child {
             return reference.pointerOne(child, __at(array, allocator, offset)).*;
@@ -3420,31 +3412,31 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
-            array.writeOne(value);
+            try meta.wrap(array.writeOne(value));
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
-            array.writeCount(write_count, values);
+            try meta.wrap(array.writeCount(write_count, values));
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
-            array.writeMany(values);
+            try meta.wrap(array.writeMany(values));
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
-            array.writeFormat(format);
+            try meta.wrap(array.writeFormat(format));
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
-            array.writeArgs(write_spec, args);
+            try meta.wrap(array.writeArgs(write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
-            array.writeFields(write_spec, fields);
+            try meta.wrap(array.writeFields(write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
-            array.writeAny(write_spec, any);
+            try meta.wrap(array.writeAny(write_spec, any));
         }
         pub fn define(array: *Array, define_count: usize) void {
             array.impl.define(define_count * child_size);
@@ -3491,31 +3483,31 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn index(array: *const Array, allocator: Allocator) u64 {
+        pub fn index(array: *const Array, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / child_size;
         }
-        pub inline fn len(array: *const Array, allocator: Allocator) u64 {
+        pub fn len(array: *const Array, allocator: Allocator) u64 {
             return array.impl.length(allocator) / child_size;
         }
-        pub inline fn avail(array: *const Array, allocator: Allocator) u64 {
+        pub fn avail(array: *const Array, allocator: Allocator) u64 {
             return array.impl.available(allocator) / child_size;
         }
-        inline fn __at(array: *const Array, allocator: Allocator, offset: u64) u64 {
+        fn __at(array: *const Array, allocator: Allocator, offset: u64) u64 {
             return mach.add64(array.impl.start(allocator), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, allocator: Allocator, offset: u64) u64 {
+        fn __len(array: *const Array, allocator: Allocator, offset: u64) u64 {
             return mach.sub64(len(array, allocator), offset);
         }
-        inline fn __rem(array: *const Array, allocator: Allocator, offset: u64) u64 {
+        fn __rem(array: *const Array, allocator: Allocator, offset: u64) u64 {
             return mach.sub64(avail(array, allocator), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
-        inline fn __behind(array: *const Array, offset: u64) u64 {
+        fn __behind(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.position(), offset * child_size);
         }
     };
@@ -3543,10 +3535,10 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             return reference.pointerManyWithSentinel(child, __at(array, allocator, 0), __len(array, allocator, 0), value);
         }
         pub fn referAllUndefined(array: *const Array, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, allocator, 0), __rem(array, allocator, 0));
+            return reference.pointerMany(child, __ad(array, 0), __rem(array, allocator, 0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, allocator, 0), __rem(array, allocator, 0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, 0), __rem(array, allocator, 0), value);
         }
         pub fn readOneAt(array: *const Array, allocator: Allocator, offset: usize) child {
             return reference.pointerOne(child, __at(array, allocator, offset)).*;
@@ -3653,31 +3645,31 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(allocator, 1);
-            array.writeOne(value);
+            try meta.wrap(array.writeOne(value));
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(allocator, write_count);
-            array.writeCount(write_count, values);
+            try meta.wrap(array.writeCount(write_count, values));
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(allocator, values.len);
-            array.writeMany(values);
+            try meta.wrap(array.writeMany(values));
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFormat(child, format));
-            array.writeFormat(format);
+            try meta.wrap(array.writeFormat(format));
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthArgs(child, write_spec, args));
-            array.writeArgs(write_spec, args);
+            try meta.wrap(array.writeArgs(write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthFields(child, write_spec, fields));
-            array.writeFields(write_spec, fields);
+            try meta.wrap(array.writeFields(write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(allocator, Reinterpret.lengthAny(child, write_spec, any));
-            array.writeAny(write_spec, any);
+            try meta.wrap(array.writeAny(write_spec, any));
         }
         pub fn define(array: *Array, define_count: usize) void {
             array.impl.define(define_count * child_size);
@@ -3712,25 +3704,25 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn len(array: *const Array, allocator: Allocator) u64 {
+        pub fn len(array: *const Array, allocator: Allocator) u64 {
             return array.impl.length(allocator) / child_size;
         }
-        pub inline fn avail(array: *const Array, allocator: Allocator) u64 {
+        pub fn avail(array: *const Array, allocator: Allocator) u64 {
             return array.impl.available(allocator) / child_size;
         }
-        inline fn __at(array: *const Array, allocator: Allocator, offset: u64) u64 {
+        fn __at(array: *const Array, allocator: Allocator, offset: u64) u64 {
             return mach.add64(array.impl.start(allocator), offset * child_size);
         }
-        inline fn __ad(array: *const Array, offset: u64) u64 {
+        fn __ad(array: *const Array, offset: u64) u64 {
             return mach.add64(array.impl.next(), offset * child_size);
         }
-        inline fn __len(array: *const Array, allocator: Allocator, offset: u64) u64 {
+        fn __len(array: *const Array, allocator: Allocator, offset: u64) u64 {
             return mach.sub64(len(array, allocator), offset);
         }
-        inline fn __rem(array: *const Array, allocator: Allocator, offset: u64) u64 {
+        fn __rem(array: *const Array, allocator: Allocator, offset: u64) u64 {
             return mach.sub64(avail(array, allocator), offset);
         }
-        inline fn __prev(array: *const Array, offset: u64) u64 {
+        fn __prev(array: *const Array, offset: u64) u64 {
             return mach.sub64(array.impl.next(), offset * child_size);
         }
     };
@@ -3769,22 +3761,22 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0));
+            return reference.pointerMany(child, __ad(array, child, _0), __rem(array, child, allocator, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, _0), __rem(array, child, allocator, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -3927,31 +3919,31 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
-            array.writeOne(child, value);
+            try meta.wrap(array.writeOne(child, value));
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
-            array.writeCount(child, write_count, values);
+            try meta.wrap(array.writeCount(child, write_count, values));
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
-            array.writeMany(child, values);
+            try meta.wrap(array.writeMany(child, values));
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
-            array.writeFormat(child, format);
+            try meta.wrap(array.writeFormat(child, format));
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
-            array.writeArgs(child, write_spec, args);
+            try meta.wrap(array.writeArgs(child, write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
-            array.writeFields(child, write_spec, fields);
+            try meta.wrap(array.writeFields(child, write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
-            array.writeAny(child, write_spec, any);
+            try meta.wrap(array.writeAny(child, write_spec, any));
         }
         pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
             array.impl.define(amountToBytesOfType(define_amount, child));
@@ -3998,31 +3990,31 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn index(array: *const Array, comptime child: type, allocator: Allocator) u64 {
+        pub fn index(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.behind(allocator) / @sizeOf(child);
         }
-        pub inline fn len(array: *const Array, comptime child: type, allocator: Allocator) u64 {
+        pub fn len(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.length(allocator) / @sizeOf(child);
         }
-        pub inline fn avail(array: *const Array, comptime child: type, allocator: Allocator) u64 {
+        pub fn avail(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.available(allocator) / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
             return mach.add64(array.impl.start(allocator), amountToBytesOfType(offset, child));
         }
-        inline fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
             return mach.sub64(len(array, child, allocator), amountToCountOfType(offset, child));
         }
-        inline fn __rem(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
+        fn __rem(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
             return mach.sub64(avail(array, child, allocator), amountToCountOfType(offset, child));
         }
-        inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.position(), amountToBytesOfType(offset, child));
         }
     };
@@ -4037,22 +4029,22 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
-            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn readAllWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]const child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllDefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0));
+            return reference.pointerMany(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0));
         }
         pub fn referAllDefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __at(array, allocator, child, _0), __len(array, allocator, child, _0), value);
+            return reference.pointerManyWithSentinel(child, __at(array, child, allocator, _0), __len(array, child, allocator, _0), value);
         }
         pub fn referAllUndefined(array: *const Array, comptime child: type, allocator: Allocator) []child {
-            return reference.pointerMany(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0));
+            return reference.pointerMany(child, __ad(array, child, _0), __rem(array, child, allocator, _0));
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
-            return reference.pointerManyWithSentinel(child, __ad(array, allocator, child, _0), __rem(array, allocator, child, _0), value);
+            return reference.pointerManyWithSentinel(child, __ad(array, child, _0), __rem(array, child, allocator, _0), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -4159,31 +4151,31 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = 1 });
-            array.writeOne(child, value);
+            try meta.wrap(array.writeOne(child, value));
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: usize, values: [write_count]child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = write_count });
-            array.writeCount(child, write_count, values);
+            try meta.wrap(array.writeCount(child, write_count, values));
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = values.len });
-            array.writeMany(child, values);
+            try meta.wrap(array.writeMany(child, values));
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFormat(child, format) });
-            array.writeFormat(child, format);
+            try meta.wrap(array.writeFormat(child, format));
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthArgs(child, write_spec, args) });
-            array.writeArgs(child, write_spec, args);
+            try meta.wrap(array.writeArgs(child, write_spec, args));
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthFields(child, write_spec, fields) });
-            array.writeFields(child, write_spec, fields);
+            try meta.wrap(array.writeFields(child, write_spec, fields));
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
             try array.increment(child, allocator, .{ .count = Reinterpret.lengthAny(child, write_spec, any) });
-            array.writeAny(child, write_spec, any);
+            try meta.wrap(array.writeAny(child, write_spec, any));
         }
         pub fn define(array: *Array, comptime child: type, define_amount: Amount) void {
             array.impl.define(amountToBytesOfType(define_amount, child));
@@ -4218,25 +4210,25 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub inline fn len(array: *const Array, comptime child: type, allocator: Allocator) u64 {
+        pub fn len(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.length(allocator) / @sizeOf(child);
         }
-        pub inline fn avail(array: *const Array, comptime child: type, allocator: Allocator) u64 {
+        pub fn avail(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.available(allocator) / @sizeOf(child);
         }
-        inline fn __at(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
+        fn __at(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
             return mach.add64(array.impl.start(allocator), amountToBytesOfType(offset, child));
         }
-        inline fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.add64(array.impl.next(), amountToBytesOfType(offset, child));
         }
-        inline fn __len(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
+        fn __len(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
             return mach.sub64(len(array, child, allocator), amountToCountOfType(offset, child));
         }
-        inline fn __rem(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
+        fn __rem(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
             return mach.sub64(avail(array, child, allocator), amountToCountOfType(offset, child));
         }
-        inline fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
+        fn __prev(array: *const Array, comptime child: type, offset: Amount) u64 {
             return mach.sub64(array.impl.next(), amountToBytesOfType(offset, child));
         }
     };
