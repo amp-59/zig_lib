@@ -76,14 +76,14 @@ fn announceAnalysis(comptime impl_type: type) void {
     @setEvalBranchQuota(10_000);
     var array: PrintArray = .{};
     if (@hasDecl(impl_type, "child")) {
-        const low_alignment: u64 = if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
-        const layout_align_s: []const u8 = ": " ++ @typeName(impl_type.child) ++ " align(" ++ lit.ud8[low_alignment] ++ ")";
+        const low_alignment: u64 = comptime if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
+        const layout_align_s: []const u8 = comptime ": " ++ @typeName(impl_type.child) ++ " align(" ++ builtin.fmt.ci(low_alignment) ++ ")";
         array.writeMany(lit.fx.color.fg.hi_blue ++ lit.fx.style.bold);
         array.writeMany(comptime fmt.typeName(impl_type));
         array.writeMany(layout_align_s ++ lit.fx.none ++ "\n");
     } else {
-        const low_alignment: u64 = if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
-        const aligns_s: []const u8 = ": align(" ++ lit.ud8[low_alignment] ++ ") align(" ++ lit.ud8[impl_type.high_alignment] ++ ")";
+        const low_alignment: u64 = comptime if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
+        const aligns_s: []const u8 = comptime ": align(" ++ lit.ud8[low_alignment] ++ ") align(" ++ builtin.fmt.ci(low_alignment) ++ ")";
         array.writeMany(lit.fx.color.fg.hi_blue ++ lit.fx.style.bold);
         array.writeMany(comptime fmt.typeName(impl_type));
         array.writeMany(aligns_s ++ lit.fx.none ++ "\n");
@@ -551,16 +551,16 @@ pub fn RWSTestPair(comptime impl_type: type) type {
             return s_values;
         }
         fn testAllocateOperation(allocator: *Allocator0) !Pair {
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) }));
             defer allocator.deallocateMany(Dummy, dummy);
             if (is_verbose) announceAnalysis(impl_type);
-            const impl: impl_type = try allocator.allocateStatic(impl_type, .{ .count = 1 });
+            const impl: impl_type = try meta.wrap(allocator.allocateStatic(impl_type, .{ .count = 1 }));
             sys.noexcept.getrandom(impl.start(), impl.capacity(), sys.GRND.RANDOM);
             const values: Values = memoise(impl, .{ .count = 1 });
             return construct(impl, values);
         }
         fn testMoveOperation(pair: *Pair, allocator: *Allocator0) !Values {
-            try allocator.moveStatic(impl_type, &pair.impl);
+            try meta.wrap(allocator.moveStatic(impl_type, &pair.impl));
             return pair.modify(null, @src());
         }
         fn testDeallocateOperation(pair: *Pair, allocator: *Allocator0) void {
@@ -569,7 +569,7 @@ pub fn RWSTestPair(comptime impl_type: type) type {
         pub fn analyse(pair: *Pair, allocator: *Allocator0) !void {
             defer pair.testDeallocateOperation(allocator);
             pair.values.assertConsistent();
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = 256 });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = 256 }));
             const values_1: Values = try pair.testMoveOperation(allocator);
             allocator.deallocateMany(Dummy, dummy);
             const values_2: Values = try pair.testMoveOperation(allocator);
@@ -621,16 +621,16 @@ pub fn RWPPSTestPair(comptime impl_type: type) type {
             return s_values;
         }
         fn testAllocateOperation(allocator: *Allocator0) !Pair {
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) }));
             defer allocator.deallocateMany(Dummy, dummy);
             if (is_verbose) announceAnalysis(impl_type);
             const n_amt: mem.Amount = .{ .count = 1 };
-            const impl: impl_type = try allocator.allocateStatic(impl_type, n_amt);
+            const impl: impl_type = try meta.wrap(allocator.allocateStatic(impl_type, n_amt));
             const values: Values = memoise(impl, n_amt);
             return construct(impl, values);
         }
         fn testMoveOperation(pair: *Pair, allocator: *Allocator0) !Values {
-            try allocator.moveStatic(impl_type, &pair.impl);
+            try meta.wrap(allocator.moveStatic(impl_type, &pair.impl));
             return pair.modify(pair.values.amount(), @src());
         }
         fn testDeallocateOperation(pair: *Pair, allocator: *Allocator0) void {
@@ -639,7 +639,7 @@ pub fn RWPPSTestPair(comptime impl_type: type) type {
         pub fn analyse(pair: *Pair, allocator: *Allocator0) !void {
             defer pair.testDeallocateOperation(allocator);
             pair.values.assertConsistent();
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = 256 });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = 256 }));
             const values_1: Values = try pair.testMoveOperation(allocator);
             allocator.deallocateMany(Dummy, dummy);
             const values_2: Values = try pair.testMoveOperation(allocator);
@@ -658,11 +658,11 @@ pub fn RWDTestPair(comptime impl_type: type) type {
         const Values = RWDValues;
         const factor = impl_type.high_alignment;
         fn testAllocateOperation(allocator: *Allocator0) !Pair {
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) }));
             defer allocator.deallocateMany(Dummy, dummy);
             if (is_verbose) announceAnalysis(impl_type);
             const n_amt: mem.Amount = .{ .count = getBetween(u16, 8, 2048) };
-            const impl: impl_type = try allocator.allocateMany(impl_type, n_amt);
+            const impl: impl_type = try meta.wrap(allocator.allocateMany(impl_type, n_amt));
             const values: Values = memoise(impl, n_amt);
             return construct(impl, values);
         }
@@ -697,7 +697,7 @@ pub fn RWDTestPair(comptime impl_type: type) type {
             return s_values;
         }
         fn testResizeAboveOperation(pair: *Pair, allocator: *Allocator0, n_amt: mem.Amount) !Values {
-            try allocator.resizeManyAbove(impl_type, &pair.impl, n_amt);
+            try meta.wrap(allocator.resizeManyAbove(impl_type, &pair.impl, n_amt));
             return pair.modify(n_amt, @src());
         }
         fn testResizeBelowOperation(pair: *Pair, allocator: *Allocator0, n_amt: mem.Amount) !Values {
@@ -705,7 +705,7 @@ pub fn RWDTestPair(comptime impl_type: type) type {
             return pair.modify(n_amt, @src());
         }
         fn testMoveOperation(pair: *Pair, allocator: *Allocator0) !Values {
-            try allocator.moveMany(impl_type, &pair.impl);
+            try meta.wrap(allocator.moveMany(impl_type, &pair.impl));
             return pair.modify(null, @src());
         }
         fn testDeallocateOperation(pair: *Pair, allocator: *Allocator0) void {
@@ -716,7 +716,7 @@ pub fn RWDTestPair(comptime impl_type: type) type {
             pair.values.assertConsistent();
             const amt_1: mem.Amount = .{ .count = getBetween(u16, pair.values.count, pair.values.count * 2) };
             const values_0: Values = try pair.testResizeAboveOperation(allocator, amt_1);
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = 256 });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = 256 }));
             const values_1: Values = try pair.testMoveOperation(allocator);
             allocator.deallocateMany(Dummy, dummy);
             const values_2: Values = try pair.testMoveOperation(allocator);
@@ -768,16 +768,16 @@ pub fn RWPPDTestPair(comptime impl_type: type) type {
             return s_values;
         }
         fn testAllocateOperation(allocator: *Allocator0) !Pair {
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) }));
             defer allocator.deallocateMany(Dummy, dummy);
             if (is_verbose) announceAnalysis(impl_type);
             const n_amt: mem.Amount = .{ .count = getBetween(u7, 8, null) };
-            const impl: impl_type = try allocator.allocateMany(impl_type, n_amt);
+            const impl: impl_type = try meta.wrap(allocator.allocateMany(impl_type, n_amt));
             const values: Values = memoise(impl, n_amt);
             return construct(impl, values);
         }
         fn testResizeAboveOperation(pair: *Pair, allocator: *Allocator0, n_amt: mem.Amount) !Values {
-            try allocator.resizeManyAbove(impl_type, &pair.impl, n_amt);
+            try meta.wrap(allocator.resizeManyAbove(impl_type, &pair.impl, n_amt));
             return pair.modify(n_amt, @src());
         }
         fn testResizeBelowOperation(pair: *Pair, allocator: *Allocator0, n_amt: mem.Amount) !Values {
@@ -785,7 +785,7 @@ pub fn RWPPDTestPair(comptime impl_type: type) type {
             return pair.modify(n_amt, @src());
         }
         fn testMoveOperation(pair: *Pair, allocator: *Allocator0) !Values {
-            try allocator.moveMany(impl_type, &pair.impl);
+            try meta.wrap(allocator.moveMany(impl_type, &pair.impl));
             return pair.modify(pair.values.amount(), @src());
         }
         fn testDeallocateOperation(pair: *Pair, allocator: *Allocator0) void {
@@ -796,7 +796,7 @@ pub fn RWPPDTestPair(comptime impl_type: type) type {
             pair.values.assertConsistent();
             const amt_1: mem.Amount = .{ .count = getBetween(u16, pair.values.count, pair.values.count * 2) };
             const values_0: Values = try pair.testResizeAboveOperation(allocator, amt_1);
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = 256 });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = 256 }));
             const values_1: Values = try pair.testMoveOperation(allocator);
             allocator.deallocateMany(Dummy, dummy);
             const values_2: Values = try pair.testMoveOperation(allocator);
@@ -856,7 +856,7 @@ pub fn RWPPXTestPair(comptime impl_type: type) type {
             _ = values_1;
         }
         fn testAllocateOperation(allocator: *Allocator0) !Pair {
-            var dummy: Dummy = try allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) });
+            var dummy: Dummy = try meta.wrap(allocator.allocateMany(Dummy, .{ .count = random.readOne(u8) }));
             defer allocator.deallocateMany(Dummy, dummy);
             if (is_verbose) announceAnalysis(impl_type);
             const impl: impl_type = allocator.allocateHolder(impl_type);
@@ -864,7 +864,7 @@ pub fn RWPPXTestPair(comptime impl_type: type) type {
             return construct(impl, values);
         }
         fn testResizeOperation(pair: *Pair, allocator: *Allocator0, n_amt: mem.Amount) !Values {
-            try allocator.resizeHolderAbove(impl_type, &pair.impl, n_amt);
+            try meta.wrap(allocator.resizeHolderAbove(impl_type, &pair.impl, n_amt));
             return modify(pair, allocator.*, @src());
         }
         fn testDeallocateOperation(pair: *Pair, allocator: *Allocator0) void {
