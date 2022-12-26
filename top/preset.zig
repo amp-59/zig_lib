@@ -112,12 +112,28 @@ pub const mmap = opaque {
     };
 };
 pub const mremap = opaque {
-    pub const functions = opaque {
+    pub const config = opaque {
         pub const default: sys.Config = .{ .tag = .mremap, .args = 5, .errors = errors.all, .return_type = usize };
+        pub const noexcept: sys.Config = .{ .tag = .mremap, .args = 5, .errors = null, .return_type = void };
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
     };
     pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .AGAIN, .FAULT, .INVAL, .NOMEM,
-        });
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{ .AGAIN, .FAULT, .INVAL, .NOMEM });
+    };
+};
+pub const munmap = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .munmap, .args = 2, .errors = errors.all, .return_type = void };
+        pub const noexcept: sys.Config = function.noexcept.munmap.function();
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
+    };
+    pub const errors = opaque {
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{.INVAL});
     };
 };
