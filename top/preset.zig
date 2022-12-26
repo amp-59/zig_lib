@@ -1,6 +1,7 @@
 const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
 const file = @import("./file.zig");
+const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
 pub const allocator = opaque {
@@ -62,15 +63,18 @@ pub const allocator = opaque {
             .unmap = null,
         };
         pub const critical: mem.AllocatorErrors = .{
-            .map = sys.mmap_errors,
-            .remap = sys.mremap_errors,
+            .map = mmap.errors.mem,
+            .remap = mremap.errors.all,
             .release = error{OverSupply},
             .acquire = error{UnderSupply},
-            .unmap = sys.munmap_errors,
+            .unmap = munmap.errors.all,
         };
     };
 };
-pub const map = opaque {
+pub const mmap = opaque {
+    pub const function = opaque {
+        pub const default: sys.Config = .{ .tag = .mmap, .args = 6, .errors = errors.all, .return_type = usize };
+    };
     pub const options = opaque {
         pub const object: file.MapSpec.Options = .{
             .visibility = .private,
@@ -82,5 +86,38 @@ pub const map = opaque {
             .grows_down = false,
             .sync = false,
         };
+    };
+    pub const errors = opaque {
+        pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .ACCES,    .AGAIN,
+            .BADF,     .EXIST,
+            .INVAL,    .NFILE,
+            .NODEV,    .NOMEM,
+            .OVERFLOW, .PERM,
+            .TXTBSY,
+        });
+        pub const mem: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .EXIST,
+            .INVAL,
+            .NOMEM,
+        });
+        pub const file: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .EXIST,
+            .INVAL,
+            .NOMEM,
+            .NFILE,
+            .NODEV,
+            .TXTBSY,
+        });
+    };
+};
+pub const mremap = opaque {
+    pub const functions = opaque {
+        pub const default: sys.Config = .{ .tag = .mremap, .args = 5, .errors = errors.all, .return_type = usize };
+    };
+    pub const errors = opaque {
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .AGAIN, .FAULT, .INVAL, .NOMEM,
+        });
     };
 };
