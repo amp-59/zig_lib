@@ -3,13 +3,6 @@ const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
-pub const logging: builtin.Logging = .{
-    .Success = false,
-    .Error = false,
-    .Acquire = false,
-    .Release = false,
-};
-
 pub const clone_opts: CloneSpec.Options = .{
     .address_space = true,
     .thread = true,
@@ -729,7 +722,13 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
     );
 }
 
-pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr: anytype, comptime function: anytype, args: anytype) spec.Unwrapped(.clone3) {
+pub noinline fn callClone(
+    comptime spec: CloneSpec,
+    stack_addr: u64,
+    result_ptr: anytype,
+    comptime function: anytype,
+    args: anytype,
+) spec.Unwrapped(.clone3) {
     const Fn: type = @TypeOf(function);
     const cl_args: CloneArgs = spec.args(stack_addr);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
@@ -786,7 +785,6 @@ pub noinline fn callClone(comptime spec: CloneSpec, stack_addr: u64, result_ptr:
                 @intToPtr(*Args(Fn), args_addr).*,
             );
         }
-
         asm volatile (
             \\movq  $60,    %rax
             \\movq  $0,     %rdi
