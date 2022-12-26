@@ -176,14 +176,29 @@ pub const chdir = opaque {
         });
     };
 };
+
 pub const close = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .close, .args = 1, .errors = errors.all, .return_type = void };
+        pub const noexcept: sys.Config = .{ .tag = .close, .args = 1, .errors = null, .return_type = void };
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
+    };
     pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .INTR, .IO, .BADF, .NOSPC,
-        });
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{ .INTR, .IO, .BADF, .NOSPC });
     };
 };
-pub const clone = opaque {
+pub const clone3 = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .clone3, .args = 2, .errors = errors.all, .return_type = usize };
+        pub const noexcept: sys.Config = .{ .tag = .clone3, .args = 2, .errors = null, .return_type = void };
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
+    };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .PERM, .AGAIN, .INVAL, .EXIST, .USERS, .OPNOTSUPP, .NOMEM, .RESTART,
@@ -191,6 +206,26 @@ pub const clone = opaque {
         });
     };
 };
+pub const open = opaque {
+    pub const config = opaque {
+        pub const open: sys.Config = .{ .tag = .open, .args = 3, .errors = errors.all, .return_type = usize };
+        pub const noexcept_nodiscard: sys.Config = .{ .tag = .open, .args = 3, .errors = null, .return_type = isize };
+    };
+    pub const errors = opaque {
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
+            .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
+            .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
+            .PERM,  .FAULT,       .INVAL,    .NXIO,   .BUSY,
+        });
+    };
+};
+pub const openat = opaque {
+    pub const config = opaque {
+        const default: sys.Config = .{ .tag = .openat, .args = 3, .errors = open.errors.all, .return_type = usize };
+    };
+};
+
 pub const clock_get = opaque {
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
@@ -296,16 +331,6 @@ pub const mknod = opaque {
     };
 };
 
-pub const open = opaque {
-    pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
-            .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
-            .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
-            .PERM,  .FAULT,       .INVAL,    .NXIO,   .BUSY,
-        });
-    };
-};
 pub const open_by_handle_at = opaque {
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = open.all ++ meta.slice(sys.ErrorCode, .{
@@ -423,9 +448,6 @@ pub const no = opaque {
 /// discard any non-error return value when *_FIXED_NOREPLACE is set, as any
 /// non-error return value will be equal to the input address.
 pub const functions = opaque {
-    pub const open: sys.Config = .{ .tag = .open, .args = 3, .errors = errors.all, .return_type = usize };
-    pub const openat: sys.Config = .{ .tag = .openat, .args = 3, .errors = errors.all, .return_type = usize };
-    pub const close: sys.Config = .{ .tag = .close, .args = 1, .errors = errors.all, .return_type = void };
     pub const ioctl: sys.Config = .{ .tag = .ioctl, .args = 3, .errors = errors.all, .return_type = void };
     pub const madvise: sys.Config = .{ .tag = .madvise, .args = 3, .errors = errors.all, .return_type = void };
     pub const memfd_create: sys.Config = .{ .tag = .memfd_create, .args = 2, .errors = errors.all, .return_type = usize };
@@ -460,13 +482,13 @@ pub const functions = opaque {
     pub const wait4: sys.Config = .{ .tag = .wait4, .args = 5, .errors = errors.all, .return_type = void };
     pub const waitid: sys.Config = .{ .tag = .waitid, .args = 5, .errors = errors.all, .return_type = void };
     pub const clone: sys.Config = .{ .tag = .clone, .args = 5, .errors = errors.all, .return_type = usize };
-    pub const clone3: sys.Config = .{ .tag = .clone3, .args = 2, .errors = errors.all, .return_type = usize };
     pub const execve: sys.Config = .{ .tag = .execve, .args = 3, .errors = errors.all, .return_type = usize };
     pub const execveat: sys.Config = .{ .tag = .execveat, .args = 5, .errors = errors.all, .return_type = usize };
     pub const rt_sigaction: sys.Config = .{ .tag = .rt_sigaction, .args = 4, .errors = errors.all, .return_type = void };
     pub const name_to_handle_at: sys.Config = .{ .tag = .name_to_handle_at, .args = 5, .errors = errors.all, .return_type = usize };
     pub const open_by_handle_at: sys.Config = .{ .tag = .open_by_handle_at, .args = 3, .errors = errors.all, .return_type = usize };
     pub const exit: sys.Config = .{ .tag = .exit, .args = 1, .errors = null, .return_type = noreturn };
+
     pub const noexcept = opaque {
         // Called before main
         pub const rt_sigaction = function.rt_sigaction.reconfigure(null, void);
