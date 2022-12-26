@@ -755,9 +755,11 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
             if (build.z) |how| {
                 array.writeAny(fmt_spec, .{ "-z\x00", how, "\x00" });
             }
+
             array.writeAny(mem.ptr_wr_spec, .{ build.root, "\x00" });
             return array;
         }
+
         pub fn allocateShow(build: Builder, allocator: *Allocator) !void {
             var ad: BuildCmd.ArgData = try build.parcelDataV(&allocator);
             for (ad.ptrs.readAll()) |argp| {
@@ -793,6 +795,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
         }
     };
 }
+
 pub const Packages = []const Pkg;
 pub const Macros = []const Macro;
 

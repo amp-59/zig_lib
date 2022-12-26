@@ -39,12 +39,15 @@ pub fn main(builder: *build.Builder) !void {
 
     // More complete test programs:
     _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{ .is_correct = false, .is_verbose = false });
+    _ = addProjectExecutable(builder, "mca", "test/mca.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
     _ = addProjectExecutable(builder, "parsedir", "test/parsedir.zig", .{ .build_mode = .ReleaseFast, .build_root = true });
 
     // Other test programs:
+    _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{ .is_large_test = true, .build_root = true });
+    _ = addProjectExecutable(builder, "container_test", "top/container-test.zig", .{ .is_large_test = true, .build_root = true });
     _ = addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .is_large_test = true, .build_root = true });
 }
 
