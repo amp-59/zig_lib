@@ -10,7 +10,7 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_correct: bool = true;
+pub const is_correct: bool = false;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 const invalid_holder_state: u64 = (0b110000110000 << 48);
@@ -155,6 +155,18 @@ fn testAutomaticImplementation() !void {
         try testing.expectEqualMany(bool, bit_set.readAll(), &.{ true, false, false, true });
     }
 }
+
+const AllocatorX = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .options = preset.allocator.options.small,
+    .errors = preset.allocator.errors.noexcept,
+    .logging = preset.allocator.logging.silent,
+});
+
+export fn resizeMany(allocator: *AllocatorX, array: *AllocatorX.StructuredHolder(u8), x: u64) void {
+    try meta.wrap(array.increment(allocator, x));
+}
+
 fn testUtilityTestFunctions() !void {
     { // strings
         { // true
