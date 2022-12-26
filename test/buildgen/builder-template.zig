@@ -10,7 +10,6 @@ const fmt_spec: mem.ReinterpretSpec = blk: {
     tmp.integral = .{ .format = .dec };
     break :blk tmp;
 };
-
 pub const BuildCmdSpec = struct {
     max_len: u64 = 1024 * 1024,
     max_args: u64 = 1024,
@@ -61,3 +60,13 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
         }
     };
 }
+/// Environment variables needed to find user home directory
+pub fn zigCacheDirGlobal(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
+    const home_pathname: [:0]const u8 = try file.home(vars);
+    var len: u64 = 0;
+    for (home_pathname) |c, i| buf[len + i] = c;
+    len += home_pathname.len;
+    for ("/.cache/zig") |c, i| buf[len + i] = c;
+    return buf[0 .. len + 11 :0];
+}
+pub fn zigCacheDir(_: ?[][*:0]u8, _: [:0]u8) void {}
