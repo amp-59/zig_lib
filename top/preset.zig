@@ -246,12 +246,8 @@ pub const clone3 = opaque {
             .errors = errors.all,
             .return_type = usize,
         };
-        pub const noexcept: sys.Config = .{
-            .tag = .clone3,
-            .args = 2,
-            .errors = null,
-            .return_type = void,
-        };
+        pub const noexcept: sys.Config = default.reconfigure(null, isize);
+        pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
     };
     pub const function = opaque {
         pub const default = config.default.function();
@@ -266,18 +262,32 @@ pub const clone3 = opaque {
 };
 pub const open = opaque {
     pub const config = opaque {
-        pub const open: sys.Config = .{
+        pub const default: sys.Config = .{
             .tag = .open,
             .args = 3,
             .errors = errors.all,
             .return_type = usize,
         };
-        pub const noexcept_nodiscard: sys.Config = .{
-            .tag = .open,
+        const dir: sys.Config = .{
+            .tag = .openat,
             .args = 3,
-            .errors = null,
-            .return_type = isize,
+            .errors = open.errors.all,
+            .return_type = usize,
         };
+        pub const noexcept: sys.Config = default.reconfigure(null, isize);
+        pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
+
+        pub const dir_noexcept: sys.Config = default.reconfigure(null, isize);
+        pub const dir_discard_noexcept: sys.Config = default.reconfigure(null, void);
+    };
+    pub const function = opaque {
+        const default = config.default.function();
+        const noexcept = config.noexcept.function();
+        const discard_noexcept = config.noexcept.function();
+
+        const dir_default = config.dir_default.function();
+        const dir_noexcept = config.dir_noexcept.function();
+        const dir_discard_noexcept = config.dir_noexcept.function();
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
@@ -289,14 +299,7 @@ pub const open = opaque {
     };
 };
 pub const openat = opaque {
-    pub const config = opaque {
-        const default: sys.Config = .{
-            .tag = .openat,
-            .args = 3,
-            .errors = open.errors.all,
-            .return_type = usize,
-        };
-    };
+    pub const config = opaque {};
 };
 pub const read = opaque {
     pub const function = opaque {
@@ -338,24 +341,27 @@ pub const clock_get = opaque {
     };
 };
 pub const execve = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{
+            .tag = .execve,
+            .args = 3,
+            .errors = errors.all,
+            .return_type = usize,
+        };
+        pub const dir_default: sys.Config = .{
+            .tag = .execveat,
+            .args = 5,
+            .errors = errors.all,
+            .return_type = usize,
+        };
+        pub const noexcept: sys.Config = default.reconfigure(null, void);
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
-    };
-    pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
-            .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
-            .INVAL, .NOEXEC,
-        });
-    };
-};
-pub const execveat = opaque {
-    pub const config = opaque {};
-    pub const function = opaque {
-        pub const default = config.default.function();
-        pub const noexcept = config.noexcept.function();
+
+        pub const dir_default = config.dir_default.function();
+        pub const dir_noexcept = config.dir_noexcept.function();
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
@@ -378,7 +384,10 @@ pub const fork = opaque {
     };
 };
 pub const getcwd = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .getcwd, .args = 1, .errors = errors.all, .return_type = usize };
+        pub const noexcept: sys.Config = default.reconfigure(null, isize);
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -390,7 +399,9 @@ pub const getcwd = opaque {
     };
 };
 pub const getdents = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .getdents64, .args = 3, .errors = errors.all, .return_type = usize };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -402,7 +413,9 @@ pub const getdents = opaque {
     };
 };
 pub const getrandom = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .getrandom, .args = 3, .errors = errors.all, .return_type = void };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -454,7 +467,10 @@ pub const madvise = opaque {
     };
 };
 pub const mkdir = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .mkdir, .args = 2, .errors = errors.all, .return_type = void };
+        pub const dir_default: sys.Config = .{ .tag = .mkdirat, .args = 3, .errors = errors.all, .return_type = void };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -468,7 +484,12 @@ pub const mkdir = opaque {
 };
 pub const memfd_create = opaque {
     pub const config = opaque {
-        pub const default: sys.Config = .{ .tag = .memfd_create, .args = 2, .errors = errors.all, .return_type = usize };
+        pub const default: sys.Config = .{
+            .tag = .memfd_create,
+            .args = 2,
+            .errors = errors.all,
+            .return_type = usize,
+        };
     };
     pub const function = opaque {
         pub const default = config.default.function();
@@ -479,7 +500,10 @@ pub const memfd_create = opaque {
     };
 };
 pub const truncate = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .truncate, .args = 2, .errors = errors.all, .return_type = void };
+        pub const file_default: sys.Config = .{ .tag = .ftruncate, .args = 2, .errors = errors.all, .return_type = void };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -492,10 +516,27 @@ pub const truncate = opaque {
     };
 };
 pub const mknod = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{
+            .tag = .mknod,
+            .args = 3,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const dir_default: sys.Config = .{
+            .tag = .mknodat,
+            .args = 4,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const noexcept: sys.Config = default.reconfigure(null, void);
+        pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
+        pub const dir_default = config.dir_default.function();
+        pub const dir_noexcept = config.dir_noexcept.function();
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
@@ -542,7 +583,18 @@ pub const nanosleep = opaque {
 };
 pub const readlink = opaque {
     pub const function = opaque {
-        pub const default: sys.Config = .{ .tag = .readlink, .args = 3, .errors = errors.all, .return_type = usize };
+        pub const default: sys.Config = .{
+            .tag = .readlink,
+            .args = 3,
+            .errors = errors.all,
+            .return_type = usize,
+        };
+        pub const dir_default: sys.Config = .{
+            .tag = .readlinkat,
+            .args = 4,
+            .errors = errors.all,
+            .return_type = usize,
+        };
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
@@ -551,19 +603,10 @@ pub const readlink = opaque {
         });
     };
 };
-pub const readlinkat = opaque {
-    pub const config = opaque {
-        pub const default: sys.Config = .{ .tag = .readlinkat, .args = 4, .errors = errors.all, .return_type = usize };
-    };
-    pub const function = opaque {
-        pub const default = config.default.function();
-    };
-    pub const errors = opaque {
-        pub const all: []const sys.ErrorCode = readlink.errors.all;
-    };
-};
 pub const rmdir = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .rmdir, .args = 1, .errors = errors.all, .return_type = void };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -576,7 +619,10 @@ pub const rmdir = opaque {
     };
 };
 pub const sigaction = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .rt_sigaction, .args = 4, .errors = errors.all, .return_type = void };
+        pub const noexcept: sys.Config = default.reconfigure(null, void);
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -589,13 +635,44 @@ pub const sigaction = opaque {
 };
 pub const stat = opaque {
     pub const config = opaque {
-        pub const default: sys.Config = .{ .tag = .stat, .args = 2, .errors = errors.all, .return_type = void };
-        pub const file: sys.Config = .{ .tag = .fstat, .args = 2, .errors = errors.all, .return_type = void };
-        pub const dir: sys.Config = .{ .tag = .newfstatat, .args = 4, .errors = errors.all, .return_type = void };
+        pub const default: sys.Config = .{
+            .tag = .stat,
+            .args = 2,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const file_default: sys.Config = .{
+            .tag = .fstat,
+            .args = 2,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const dir_default: sys.Config = .{
+            .tag = .newfstatat,
+            .args = 4,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const link_default: sys.Config = .{
+            .tag = .lstat,
+            .args = 2,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const noexcept: sys.Config = default.reconfigure(null, void);
+        pub const file_noexcept: sys.Config = file_default.reconfigure(null, void);
+        pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
+        pub const link_noexcept: sys.Config = link_default.reconfigure(null, void);
     };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
+        pub const file_default = config.file_default.function();
+        pub const file_noexcept = config.file_noexcept.function();
+        pub const dir_default = config.dir_default.function();
+        pub const dir_noexcept = config.dir_noexcept.function();
+        pub const link_default = config.link_default.function();
+        pub const link_noexcept = config.link_noexcept.function();
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
@@ -604,9 +681,23 @@ pub const stat = opaque {
         });
     };
 };
-
 pub const unlink = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{
+            .tag = .unlink,
+            .args = 1,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const dir_default: sys.Config = .{
+            .tag = .unlinkat,
+            .args = 3,
+            .errors = errors.all,
+            .return_type = void,
+        };
+        pub const noexcept = default.reconfigure(null, void);
+        pub const dir_noexcept = default.reconfigure(null, void);
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -644,20 +735,39 @@ pub const waitid = opaque {
 };
 pub const write = opaque {
     pub const config = opaque {
-        pub const default: sys.Config = .{ .tag = .write, .args = 3, .errors = errors.all, .return_type = usize };
-        pub const noexcept: sys.Config = .{ .tag = .write, .args = 3, .errors = null, .return_type = void };
-        pub const noexcept_nodiscard: sys.Config = .{ .tag = .write, .args = 3, .errors = null, .return_type = isize };
+        pub const default: sys.Config = .{
+            .tag = .write,
+            .args = 3,
+            .errors = errors.all,
+            .return_type = usize,
+        };
+        pub const noexcept: sys.Config = default.reconfigure(null, isize);
+        pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
     };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
-        pub const noexcept_nodiscard = config.noexcept_nodiscard.function();
+        pub const discard_noexcept = config.discard_noexcept.function();
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .AGAIN, .BADF, .DESTADDRREQ, .DQUOT, .FAULT, .FBIG, .INTR, .INVAL, .IO,
             .NOSPC, .PERM, .PIPE,
         });
+    };
+};
+pub const getid = opaque {
+    pub const config = opaque {
+        pub const user: sys.Config = .{ .tag = .getuid, .args = 0, .errors = null, .return_type = u16 };
+        pub const group: sys.Config = .{ .tag = .getgid, .args = 0, .errors = null, .return_type = u16 };
+        pub const effective_user: sys.Config = .{ .tag = .geteuid, .args = 0, .errors = null, .return_type = u16 };
+        pub const effective_group: sys.Config = .{ .tag = .getegid, .args = 0, .errors = null, .return_type = u16 };
+    };
+    pub const function = opaque {
+        pub const user = config.user.function();
+        pub const group = config.group.function();
+        pub const effective_user = config.effective_user.function();
+        pub const effective_group = config.effective_group.function();
     };
 };
 pub const no = opaque {
@@ -670,45 +780,32 @@ pub const no = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{});
     };
 };
+
 /// Higher level functions give options to configure which errors are handled
 /// or lumped into a catch-all, or ignored entirely. With this interface it is
 /// also possible to configure to discard return values. e.g. mmap or mremap can
 /// discard any non-error return value when *_FIXED_NOREPLACE is set, as any
 /// non-error return value will be equal to the input address.
 pub const functions = opaque {
-    pub const default: sys.Config = .{ .tag = .lstat, .args = 2, .errors = errors.all, .return_type = void };
     pub const default: sys.Config = .{ .tag = .statx, .args = 5, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .mknod, .args = 3, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .mknodat, .args = 4, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .getcwd, .args = 1, .errors = errors.all, .return_type = usize };
-    pub const default: sys.Config = .{ .tag = .getdents64, .args = 3, .errors = errors.all, .return_type = usize };
-    pub const default: sys.Config = .{ .tag = .getuid, .args = 0, .errors = null, .return_type = u16 };
-    pub const default: sys.Config = .{ .tag = .getgid, .args = 0, .errors = null, .return_type = u16 };
-    pub const default: sys.Config = .{ .tag = .geteuid, .args = 0, .errors = null, .return_type = u16 };
-    pub const default: sys.Config = .{ .tag = .getegid, .args = 0, .errors = null, .return_type = u16 };
-    pub const default: sys.Config = .{ .tag = .getrandom, .args = 3, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .unlink, .args = 1, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .unlinkat, .args = 3, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .truncate, .args = 2, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .ftruncate, .args = 2, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .mkdir, .args = 2, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .mkdirat, .args = 3, .errors = errors.all, .return_type = void };
-    pub const default: sys.Config = .{ .tag = .rmdir, .args = 1, .errors = errors.all, .return_type = void };
+
     pub const default: sys.Config = .{ .tag = .clock_gettime, .args = 2, .errors = errors.all, .return_type = void };
     pub const default: sys.Config = .{ .tag = .nanosleep, .args = 2, .errors = errors.all, .return_type = void };
+
     pub const default: sys.Config = .{ .tag = .dup, .args = 1, .errors = errors.all, .return_type = usize };
     pub const default: sys.Config = .{ .tag = .dup2, .args = 2, .errors = errors.all, .return_type = usize };
     pub const default: sys.Config = .{ .tag = .dup3, .args = 3, .errors = errors.all, .return_type = usize };
+
     pub const default: sys.Config = .{ .tag = .fork, .args = 0, .errors = errors.all, .return_type = usize };
+
     pub const default: sys.Config = .{ .tag = .wait4, .args = 5, .errors = errors.all, .return_type = void };
     pub const default: sys.Config = .{ .tag = .waitid, .args = 5, .errors = errors.all, .return_type = void };
     pub const default: sys.Config = .{ .tag = .clone, .args = 5, .errors = errors.all, .return_type = usize };
-    pub const default: sys.Config = .{ .tag = .execve, .args = 3, .errors = errors.all, .return_type = usize };
-    pub const default: sys.Config = .{ .tag = .execveat, .args = 5, .errors = errors.all, .return_type = usize };
-    pub const default: sys.Config = .{ .tag = .rt_sigaction, .args = 4, .errors = errors.all, .return_type = void };
+
     pub const default: sys.Config = .{ .tag = .name_to_handle_at, .args = 5, .errors = errors.all, .return_type = usize };
     pub const default: sys.Config = .{ .tag = .open_by_handle_at, .args = 3, .errors = errors.all, .return_type = usize };
     pub const default: sys.Config = .{ .tag = .exit, .args = 1, .errors = null, .return_type = noreturn };
+
     pub const noexcept = opaque {
         // Called before main
         pub const noexcept = function.rt_sigaction.reconfigure(null, void);
