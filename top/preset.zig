@@ -709,30 +709,6 @@ pub const unlink = opaque {
         });
     };
 };
-pub const wait = opaque {
-    pub const config = opaque {};
-    pub const function = opaque {
-        pub const default = config.default.function();
-        pub const noexcept = config.noexcept.function();
-    };
-    pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
-        });
-    };
-};
-pub const waitid = opaque {
-    pub const config = opaque {};
-    pub const function = opaque {
-        pub const default = config.default.function();
-        pub const noexcept = config.noexcept.function();
-    };
-    pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
-        });
-    };
-};
 pub const write = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
@@ -768,6 +744,34 @@ pub const getid = opaque {
         pub const group = config.group.function();
         pub const effective_user = config.effective_user.function();
         pub const effective_group = config.effective_group.function();
+    };
+};
+pub const wait = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .wait4, .args = 5, .errors = errors.all, .return_type = void };
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
+    };
+    pub const errors = opaque {
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
+        });
+    };
+};
+pub const waitid = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .waitid, .args = 5, .errors = errors.all, .return_type = void };
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
+    };
+    pub const errors = opaque {
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
+        });
     };
 };
 pub const no = opaque {
