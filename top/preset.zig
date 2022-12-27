@@ -9,7 +9,7 @@ pub const allocator = opaque {
             .count_branches = false,
             .count_allocations = false,
             .count_useful_bytes = false,
-            .check_parametric_binding = false,
+            .check_parametric = false,
         };
     };
     pub const logging = opaque {
