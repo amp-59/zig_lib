@@ -10,7 +10,7 @@ const container = @import("./container.zig");
 
 pub const AllocatorOptions = struct {
     /// Experimental feature:
-    check_parametric_binding: bool = builtin.is_debug,
+    check_parametric: bool = builtin.is_debug,
     /// Count concurrent allocations, return to head if zero.
     count_allocations: bool = builtin.is_debug,
     /// Count each unique set of side-effects.
@@ -91,7 +91,7 @@ const _1: mem.Amount = .{ .count = 1 };
 fn Metadata(comptime options: AllocatorOptions) type {
     return struct {
         branches: meta.maybe(options.count_branches, Branches) = .{},
-        holder: meta.maybe(options.check_parametric_binding, u64) = 0,
+        holder: meta.maybe(options.check_parametric, u64) = 0,
         saved: meta.maybe(options.trace_saved_addresses, u64) = 0,
         count: meta.maybe(options.count_allocations, u64) = 0,
         utility: meta.maybe(options.count_useful_bytes, u64) = 0,
@@ -102,7 +102,7 @@ fn Reference(comptime options: AllocatorOptions) type {
         branches: meta.maybe(options.trace_state, Branches) = .{},
         ub_addr: meta.maybe(options.trace_state, u64) = 0,
         up_addr: meta.maybe(options.trace_state, u64) = 0,
-        holder: meta.maybe(options.check_parametric_binding, u64) = 0,
+        holder: meta.maybe(options.check_parametric, u64) = 0,
         saved: meta.maybe(options.trace_saved_addresses, u64) = 0,
         count: meta.maybe(options.count_allocations, u64) = 0,
         utility: meta.maybe(options.count_useful_bytes, u64) = 0,
@@ -298,7 +298,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         }
         pub fn discard(allocator: *Allocator) void {
             defer Graphics.showWithReference(allocator, @src());
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 allocator.metadata.holder = 0;
             }
             if (Allocator.allocator_spec.options.count_allocations) {
@@ -522,7 +522,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         }
         pub fn discard(allocator: *Allocator) void {
             defer Graphics.showWithReference(allocator, @src());
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 allocator.metadata.holder = 0;
             }
             if (Allocator.allocator_spec.options.count_allocations) {
@@ -2300,7 +2300,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.allocate.holder.any_aligned += 1;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = s_lb_addr;
             }
@@ -2310,7 +2310,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.allocate.holder.unit_aligned += 1;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = s_lb_addr;
             }
@@ -2634,7 +2634,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2651,7 +2651,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2669,7 +2669,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2686,7 +2686,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2704,7 +2704,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2721,7 +2721,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2739,7 +2739,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2756,7 +2756,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += t_aligned_bytes;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2884,7 +2884,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.deallocate.holder.any_aligned += 1;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -2894,7 +2894,7 @@ fn GenericImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.deallocate.holder.unit_aligned += 1;
             }
-            if (Allocator.allocator_spec.options.check_parametric_binding) {
+            if (Allocator.allocator_spec.options.check_parametric) {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
@@ -3568,7 +3568,7 @@ fn GenericAllocatorGraphics(comptime Allocator: type) type {
                     array.writeFormat(fmt.ud64(allocator.span()));
                     array.writeOne('\n');
                 }
-                if (Allocator.allocator_spec.options.check_parametric_binding) {
+                if (Allocator.allocator_spec.options.check_parametric) {
                     array.writeMany(debug.about_holder_s);
                     array.writeFormat(fmt.ux64(allocator.metadata.holder));
                     array.writeOne('\n');
@@ -3625,7 +3625,7 @@ fn GenericAllocatorGraphics(comptime Allocator: type) type {
                         array.writeOne('\n');
                         allocator.reference.utility = allocator.metadata.utility;
                     }
-                    if (Allocator.allocator_spec.options.check_parametric_binding and
+                    if (Allocator.allocator_spec.options.check_parametric and
                         allocator.reference.holder != allocator.metadata.holder)
                     {
                         array.writeMany(debug.about_holder_s);

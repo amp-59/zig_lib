@@ -53,7 +53,7 @@ const so_open_spec: file.OpenSpec = .{
     .logging = .{},
 };
 const so_map_spec: file.MapSpec = .{
-    .options = preset.map.options.object,
+    .options = preset.mmap.options.object,
     .logging = .{},
 };
 const close_spec: file.CloseSpec = .{

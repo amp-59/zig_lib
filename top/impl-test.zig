@@ -24,6 +24,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .count_branches = false,
         .count_useful_bytes = false,
     },
+    .errors = preset.allocator.errors.noexcept,
     .logging = preset.allocator.logging.silent,
 });
 

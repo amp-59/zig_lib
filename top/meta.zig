@@ -54,8 +54,8 @@ else
         return any;
     }
 }
-pub fn slice(any: anytype) []const @TypeOf(any[0]) {
-    return @as([any.len]@TypeOf(any), any);
+pub fn slice(comptime T: type, any: anytype) []const T {
+    return @as([any.len]T, any);
 }
 /// A parceled value can be concatenated using `++`
 pub fn parcel(any: anytype) []const @TypeOf(any) {
