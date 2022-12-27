@@ -141,7 +141,9 @@ pub const mremap = opaque {
         pub const noexcept = config.noexcept.function();
     };
     pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{ .AGAIN, .FAULT, .INVAL, .NOMEM });
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .AGAIN, .FAULT, .INVAL, .NOMEM,
+        });
     };
 };
 pub const munmap = opaque {
@@ -235,7 +237,9 @@ pub const close = opaque {
         pub const noexcept = config.noexcept.function();
     };
     pub const errors = opaque {
-        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{ .INTR, .IO, .BADF, .NOSPC });
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .INTR, .IO, .BADF, .NOSPC,
+        });
     };
 };
 pub const clone3 = opaque {
@@ -255,8 +259,8 @@ pub const clone3 = opaque {
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .PERM, .AGAIN, .INVAL, .EXIST, .USERS, .OPNOTSUPP, .NOMEM, .RESTART,
-            .BUSY, .NOSPC,
+            .PERM,      .AGAIN, .INVAL,   .EXIST, .USERS,
+            .OPNOTSUPP, .NOMEM, .RESTART, .BUSY,  .NOSPC,
         });
     };
 };
@@ -283,11 +287,9 @@ pub const open = opaque {
     pub const function = opaque {
         const default = config.default.function();
         const noexcept = config.noexcept.function();
-        const discard_noexcept = config.noexcept.function();
 
         const dir_default = config.dir_default.function();
         const dir_noexcept = config.dir_noexcept.function();
-        const dir_discard_noexcept = config.dir_noexcept.function();
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
@@ -325,8 +327,11 @@ pub const read = opaque {
         });
     };
 };
-pub const clock_get = opaque {
-    pub const config = opaque {};
+pub const clock_gettime = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .clock_gettime, .args = 2, .errors = errors.all, .return_type = void };
+        pub const noexcept: sys.Config = default.reconfigure(null, void);
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -369,7 +374,14 @@ pub const execve = opaque {
     };
 };
 pub const fork = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{
+            .tag = .fork,
+            .args = 0,
+            .errors = errors.all,
+            .return_type = usize,
+        };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -571,8 +583,8 @@ pub const mknod = opaque {
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .INVAL, .LOOP, .NAMETOOLONG,
-            .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
+            .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP,
+            .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
         });
     };
 };
@@ -635,8 +647,8 @@ pub const readlink = opaque {
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES,  .BADF, .FAULT, .INVAL, .IO, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
-            .NOTDIR,
+            .ACCES,       .BADF,  .FAULT, .INVAL,  .IO, .LOOP,
+            .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR,
         });
     };
 };
@@ -650,8 +662,8 @@ pub const rmdir = opaque {
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES,  .BUSY,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
-            .NOTDIR, .NOTEMPTY, .PERM,  .ROFS,
+            .ACCES, .BUSY,  .FAULT,  .INVAL,    .LOOP, .NAMETOOLONG,
+            .NOENT, .NOMEM, .NOTDIR, .NOTEMPTY, .PERM, .ROFS,
         });
     };
 };
@@ -713,8 +725,8 @@ pub const stat = opaque {
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES,  .BADF,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
-            .NOTDIR, .OVERFLOW,
+            .ACCES,       .BADF,  .FAULT, .INVAL,  .LOOP,
+            .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .OVERFLOW,
         });
     };
 };
@@ -741,8 +753,8 @@ pub const unlink = opaque {
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES,  .BUSY, .FAULT, .IO,   .ISDIR, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
-            .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
+            .ACCES, .BUSY,  .FAULT,  .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
+            .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
         });
     };
 };
@@ -764,8 +776,8 @@ pub const write = opaque {
     };
     pub const errors = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .AGAIN, .BADF, .DESTADDRREQ, .DQUOT, .FAULT, .FBIG, .INTR, .INVAL, .IO,
-            .NOSPC, .PERM, .PIPE,
+            .AGAIN, .BADF,  .DESTADDRREQ, .DQUOT, .FAULT, .FBIG,
+            .INTR,  .INVAL, .IO,          .NOSPC, .PERM,  .PIPE,
         });
     };
 };
@@ -785,7 +797,12 @@ pub const getid = opaque {
 };
 pub const wait = opaque {
     pub const config = opaque {
-        pub const default: sys.Config = .{ .tag = .wait4, .args = 5, .errors = errors.all, .return_type = void };
+        pub const default: sys.Config = .{
+            .tag = .wait4,
+            .args = 5,
+            .errors = errors.all,
+            .return_type = void,
+        };
     };
     pub const function = opaque {
         pub const default = config.default.function();
@@ -799,7 +816,12 @@ pub const wait = opaque {
 };
 pub const waitid = opaque {
     pub const config = opaque {
-        pub const default: sys.Config = .{ .tag = .waitid, .args = 5, .errors = errors.all, .return_type = void };
+        pub const default: sys.Config = .{
+            .tag = .waitid,
+            .args = 5,
+            .errors = errors.all,
+            .return_type = void,
+        };
     };
     pub const function = opaque {
         pub const default = config.default.function();
@@ -809,6 +831,16 @@ pub const waitid = opaque {
         pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
         });
+    };
+};
+pub const exit = opaque {
+    pub const config = struct {
+        pub const default: sys.Config = .{
+            .tag = .exit,
+            .args = 1,
+            .errors = null,
+            .return_type = noreturn,
+        };
     };
 };
 pub const no = opaque {
