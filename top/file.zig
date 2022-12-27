@@ -604,7 +604,6 @@ pub fn indexOfDirnameFinish(pathname: []const u8) u64 {
 }
 pub fn indexOfBasenameStart(pathname: []const u8) u64 {
     const index: u64 = pathnameLimit(pathname);
-
     return index + builtin.int(u64, pathname[index] == '/');
 }
 pub fn dirname(pathname: []const u8) []const u8 {
