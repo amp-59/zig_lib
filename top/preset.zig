@@ -298,9 +298,6 @@ pub const open = opaque {
         });
     };
 };
-pub const openat = opaque {
-    pub const config = opaque {};
-};
 pub const read = opaque {
     pub const function = opaque {
         pub const default: sys.Config = .{
@@ -427,7 +424,10 @@ pub const getrandom = opaque {
     };
 };
 pub const dup = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .dup, .args = 1, .errors = errors.all, .return_type = usize };
+        pub const noexcept: sys.Config = default.reconfigure(null, isize);
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -438,6 +438,37 @@ pub const dup = opaque {
         });
     };
 };
+pub const dup2 = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .dup2, .args = 2, .errors = errors.all, .return_type = usize };
+        pub const noexcept: sys.Config = default.reconfigure(null, isize);
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
+    };
+    pub const errors = opaque {
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .BADF, .BUSY, .INTR, .INVAL, .MFILE,
+        });
+    };
+};
+pub const dup3 = opaque {
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .dup3, .args = 3, .errors = errors.all, .return_type = usize };
+        pub const noexcept: sys.Config = default.reconfigure(null, isize);
+    };
+    pub const function = opaque {
+        pub const default = config.default.function();
+        pub const noexcept = config.noexcept.function();
+    };
+    pub const errors = opaque {
+        pub const all: []sys.ErrorCode = meta.slice(sys.ErrorCode, .{
+            .BADF, .BUSY, .INTR, .INVAL, .MFILE,
+        });
+    };
+};
+
 pub const ioctl = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{ .tag = .ioctl, .args = 3, .errors = errors.all, .return_type = void };
@@ -546,7 +577,9 @@ pub const mknod = opaque {
     };
 };
 pub const open_by_handle_at = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .open_by_handle_at, .args = 3, .errors = errors.all, .return_type = usize };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -558,7 +591,9 @@ pub const open_by_handle_at = opaque {
     };
 };
 pub const name_to_handle_at = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .name_to_handle_at, .args = 5, .errors = errors.all, .return_type = usize };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
@@ -570,7 +605,9 @@ pub const name_to_handle_at = opaque {
     };
 };
 pub const nanosleep = opaque {
-    pub const config = opaque {};
+    pub const config = opaque {
+        pub const default: sys.Config = .{ .tag = .nanosleep, .args = 2, .errors = errors.all, .return_type = void };
+    };
     pub const function = opaque {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
