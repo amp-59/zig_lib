@@ -3,6 +3,7 @@ const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
+
 pub const allocator = opaque {
     pub const options = opaque {
         pub const small: mem.AllocatorOptions = .{
@@ -99,25 +100,14 @@ pub const mmap = opaque {
     };
     pub const errors = opaque {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .ACCES,    .AGAIN,
-            .BADF,     .EXIST,
-            .INVAL,    .NFILE,
-            .NODEV,    .NOMEM,
-            .OVERFLOW, .PERM,
-            .TXTBSY,
+            .ACCES, .AGAIN, .BADF,     .EXIST, .INVAL,  .NFILE,
+            .NODEV, .NOMEM, .OVERFLOW, .PERM,  .TXTBSY,
         });
         pub const mem: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .EXIST,
-            .INVAL,
-            .NOMEM,
+            .EXIST, .INVAL, .NOMEM,
         });
         pub const file: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
-            .EXIST,
-            .INVAL,
-            .NOMEM,
-            .NFILE,
-            .NODEV,
-            .TXTBSY,
+            .EXIST, .INVAL, .NOMEM, .NFILE, .NODEV, .TXTBSY,
         });
     };
 };
