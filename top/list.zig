@@ -7,7 +7,7 @@ const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 pub const ListSpec = struct {
     child: type,
-    low_alignment: u64,
+    low_alignment: ?u64,
     Allocator: type,
 };
 pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
@@ -122,7 +122,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
             const link_size: u64 = @sizeOf(u64);
             const link_alignment: u64 = @alignOf(u64);
             const unit_size: u64 = @sizeOf(child);
-            const low_alignment: u64 = @alignOf(child);
+            const low_alignment: u64 = spec.low_alignment orelse @alignOf(child);
             const alignment: u64 = builtin.max(u64, link_alignment, low_alignment);
             const offset: u64 = builtin.max(u64, Link.end, Data.end);
             const size: u64 = mach.alignA64(offset, if (link_after) link_alignment else low_alignment);
