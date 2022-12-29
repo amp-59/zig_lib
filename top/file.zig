@@ -874,9 +874,11 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
         pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
             var ret: T = random.readOne(T);
             if (meta.Return(function) == bool) {
-                while (!function(ret)) {
-                    ret = random.readOne(T);
-                }
+                if (meta.FnParam0(function) != *T) {
+                    while (!function(ret)) {
+                        ret = random.readOne(T);
+                    }
+                } else while (!function(&ret)) {}
             } else if (meta.Return(function) == T) {
                 return function(ret);
             } else {
