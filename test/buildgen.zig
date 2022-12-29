@@ -60,8 +60,9 @@ const close_spec: file.CloseSpec = .{
     .errors = null,
 };
 const ws: [28]u8 = .{' '} ** 28;
-pub const input_open_spec: file.OpenSpec = .{ .read = true, .write = null };
-pub const input_close_spec: file.CloseSpec = .{};
+pub const open_spec: file.OpenSpec = .{
+    .options = .{ .read = true, .write = null },
+};
 pub const OptionSpec = struct {
     /// Command line flag/switch
     string: ?[]const u8 = null,
@@ -998,6 +999,14 @@ const Options = struct {
     output: ?[:0]const u8 = null,
 };
 
+fn srcString(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticString(count) {
+    var ret: mem.StaticString(count) = .{};
+    const fd: u64 = try file.open(open_spec, builtin.absolutePath(pathname));
+    defer file.close(close_spec, fd);
+    ret.define(try file.read(fd, ret.referAllUndefined(), count));
+    return ret;
+}
+
 pub fn main(args_in: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
 
@@ -1030,9 +1039,9 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     var array: String0 = String0.init(&allocator);
     defer array.deinit(&allocator);
 
-    const guess_i: u64 = 1220;
-    const guess_j: u64 = 599;
-    const guess_k: u64 = 470;
+    const guess_i: u64 = 971;
+    const guess_j: u64 = 593;
+    const guess_k: u64 = 458;
 
     const members_offset: u64 = try guessSourceOffset(template_src, members_loc_token, guess_i);
     try array.appendMany(&allocator, template_src[0 .. members_offset - 8]);
