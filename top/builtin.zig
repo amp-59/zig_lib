@@ -52,11 +52,11 @@ pub fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void {
         dest[index] = value;
     }
 }
-pub fn __zig_probe_stack() void {}
+pub fn __zig_probe_stack() callconv(.C) void {}
 comptime {
     @export(memcpy, .{ .name = "memcpy" });
     @export(memset, .{ .name = "memset" });
-    if (is_debug or is_safe) @export(memset, .{ .name = "__zig_probe_stack" });
+    if (is_debug or is_safe) @export(__zig_probe_stack, .{ .name = "__zig_probe_stack" });
 }
 pub const Exception = error{
     SubCausedOverflow,
