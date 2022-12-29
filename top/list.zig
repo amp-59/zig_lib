@@ -54,14 +54,14 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                 fn addr(t_node_blk: Block) u64 {
                     return t_node_blk.start() + Node.Link.begin;
                 }
-                fn refer(s_node_blk: Block) *u64 {
-                    return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk));
-                }
                 fn read(s_node_blk: Block) u64 {
                     return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk)).*;
                 }
                 fn write(t_node_blk: Block, b_node_blk: Block, a_node_blk: Block) void {
                     builtin.intToPtr(*u64, Node.Link.addr(t_node_blk)).* = (b_node_blk.lb_word ^ a_node_blk.lb_word);
+                }
+                fn refer(s_node_blk: Block) *u64 {
+                    return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk));
                 }
                 fn mutate(t_node_blk: Block, b_node_blk: Block, a_node_blk: Block) void {
                     builtin.intToPtr(*u64, Node.Link.addr(t_node_blk)).* = (b_node_blk.lb_word ^ a_node_blk.lb_word);
