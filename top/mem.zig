@@ -1337,6 +1337,9 @@ pub const AbstractSpec = union(enum) {
 // These should be in builtin.zig, but cannot adhere to the test-error-fault
 // standard yet--that is, their assert* and expect* counterparts cannot be added
 // to builtin--so they are here temporarily as utility functions.
+//
+// TODO: Move the following functions to builtin, and create aliases with common
+// names. e.g. `startsWith` instead of `testEqualManyFront`.
 pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T) bool {
     if (l_values.len != r_values.len) {
         return false;

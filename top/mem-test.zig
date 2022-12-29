@@ -167,6 +167,13 @@ export fn resizeMany(allocator: *AllocatorX, array: *AllocatorX.StructuredHolder
     try meta.wrap(array.increment(allocator, x));
 }
 
+noinline fn getViewOfRaw(x: []const u8, begin: u64, end: u64) []const u8 {
+    return x[begin..end];
+}
+noinline fn getViewOfView(x: anytype, begin: u64, end: u64) []const u8 {
+    return x.readAll()[begin..end];
+}
+
 fn testUtilityTestFunctions() !void {
     { // strings
         { // true
@@ -204,6 +211,24 @@ fn testUtilityTestFunctions() !void {
             try testing.expectEqualMany(u8, "", mem.readBeforeFirstEqualMany(u8, " = ", " = value,").?);
         }
     }
+}
+pub fn testNoImpact() !void {
+    var rng: file.DeviceRandomBytes(16384) = .{};
+    const S = struct {
+        const src = @embedFile("./mem-test.zig");
+        fn between(x: *u64) bool {
+            if (!(x.* < src.len and x.* > 0)) {
+                x.* /= 2;
+                return false;
+            }
+            return true;
+        }
+    };
+    const x: u64 = rng.readOneConditionally(u64, S.between);
+    const y: u64 = rng.readOneConditionally(u64, S.between);
+    const low: u64 = @min(x, y);
+    const high: u64 = @max(x, y);
+    try testing.expectEqualMany(u8, getViewOfRaw(S.src, low, high), getViewOfView(&mem.view(S.src), low, high));
 }
 pub fn main() !void {
     try meta.wrap(testLowSystemMemoryOperations());

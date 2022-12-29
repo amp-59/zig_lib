@@ -23,6 +23,7 @@ pub fn GenericOptions(comptime Options: type) type {
             convert: fn (*Options, [:0]const u8) void,
         },
         descr: ?[]const u8 = null,
+        clobber: bool = true,
 
         const Option = @This();
         fn getOptInternal(comptime flag: Option, options: *Options, args: *[][*:0]u8, idx: u64, off: u64) void {
@@ -99,6 +100,7 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, all_options: []const Ge
 const debug = opaque {
     const about_opt_0_s: []const u8 = "opt:            '";
     const about_opt_1_s: []const u8 = "opt-error:      '";
+
     fn badLongSwitchHelp(comptime Options: type, comptime all_options: []const GenericOptions(Options), arg: [:0]const u8) void {
         var array: mem.StaticString(4096) = .{};
         const bad_arg: []const u8 = mem.readBeforeFirstEqualManyOrElse(u8, "=", arg);
