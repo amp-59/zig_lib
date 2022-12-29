@@ -1,41 +1,63 @@
 pub const root = @import("root");
 pub const zig = @import("builtin");
 
-pub const native_endian = zig.cpu.arch.endian();
-pub const is_little: bool = native_endian == .Little;
-pub const is_big: bool = native_endian == .Big;
-pub const is_debug: bool = config("is_debug", bool, zig.mode == .Debug);
-pub const is_safe: bool = config("is_safe", bool, zig.mode == .ReleaseSafe);
-pub const is_small: bool = config("is_small", bool, zig.mode == .ReleaseSmall);
-pub const is_fast: bool = config("is_fast", bool, zig.mode == .ReleaseFast);
-/// Perform runtime assertions
-pub const is_correct: bool = config("is_correct", bool, is_debug or is_safe);
-pub const is_perf: bool = config("is_perf", bool, is_small or is_fast);
-pub const is_verbose: bool = config("is_verbose", bool, is_debug);
-pub const build_root: ?[:0]const u8 = config("build_root", ?[:0]const u8, null);
-/// Global default logging policy
-pub const logging: Logging = config("logging", Logging, .{});
-
-pub const Type = @TypeOf(@typeInfo(void));
-pub const TypeId = @typeInfo(Type).Union.tag_type.?;
-pub const TypeKind = enum { type, type_type };
-pub const StructField = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.fields)).Pointer.child;
-pub const EnumField = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
-pub const UnionField = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
-pub const AddressSpace = @TypeOf(@typeInfo(*void).Pointer.address_space);
-pub const Size = @TypeOf(@typeInfo(*void).Pointer.size);
-pub const Signedness = @TypeOf(@typeInfo(u0).Int.signedness);
-pub const ContainerLayout = @TypeOf(@typeInfo(struct {}).Struct.layout);
-pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
-pub const Declaration = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
-pub const FnParam = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.args)).Pointer.child;
-pub const DeclLiteral = @Type(.EnumLiteral);
-pub const Endian = @TypeOf(zig.cpu.arch.endian());
-pub const SourceLocation = Src();
+// zig fmt: off
+pub const native_endian                   = zig.cpu.arch.endian();
+pub const is_little: bool                 = native_endian == .Little;
+pub const is_big: bool                    = native_endian == .Big;
+pub const is_safe: bool                   = config("is_safe",       bool,           zig.mode == .ReleaseSafe);
+pub const is_small: bool                  = config("is_small",      bool,           zig.mode == .ReleaseSmall);
+pub const is_fast: bool                   = config("is_fast",       bool,           zig.mode == .ReleaseFast);
+pub const is_debug: bool                  = config("is_debug",      bool,           zig.mode == .Debug);
+pub const is_correct: bool                = config("is_correct",    bool,           is_debug or is_safe);
+pub const is_perf: bool                   = config("is_perf",       bool,           is_small or is_fast);
+pub const is_verbose: bool                = config("is_verbose",    bool,           is_debug);
+pub const logging: Logging                = config("logging",       Logging, .{});
+pub const build_root: ?[:0]const u8       = config("build_root",    ?[:0]const u8,  null);
+pub const root_src_file: ?[:0]const u8    = config("root_src_file", ?[:0]const u8,  null);
+pub const AddressSpace: type              = config("AddressSpace",  type, @import("mem.zig").AddressSpace);
+pub const SourceLocation                  = Src();
+pub const Type                            = @TypeOf(@typeInfo(void));
+pub const Size                            = @TypeOf(@typeInfo(*void).Pointer.size);
+pub const Signedness                      = @TypeOf(@typeInfo(u0).Int.signedness);
+pub const TypeId                                  = @typeInfo(Type).Union.tag_type.?;
+pub const StructField           = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.fields)).Pointer.child;
+pub const ContainerLayout                 = @TypeOf(@typeInfo(struct {}).Struct.layout);
+pub const Declaration           = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
+pub const EnumField             = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
+pub const UnionField            = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
+pub const CallingConvention               = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
+pub const FnParam               = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.args)).Pointer.child;
+pub const DeclLiteral                             = @Type(.EnumLiteral);
+pub const Endian                                  = @TypeOf(zig.cpu.arch.endian());
+// zig fmt: on
 fn Src() type {
     return @TypeOf(@src());
 }
-
+/// Return an absolute path to a project file.
+pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
+    return build_root.? ++ "/" ++ relative;
+}
+pub fn memcpy(dest: [*]u8, source: [*]const u8, count: usize) callconv(.C) void {
+    @setRuntimeSafety(false);
+    var index: usize = 0;
+    while (index != count) : (index += 1) {
+        dest[index] = source[index];
+    }
+}
+pub fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void {
+    @setRuntimeSafety(false);
+    var index: usize = 0;
+    while (index != count) : (index += 1) {
+        dest[index] = value;
+    }
+}
+pub fn __zig_probe_stack() void {}
+comptime {
+    @export(memcpy, .{ .name = "memcpy" });
+    @export(memset, .{ .name = "memset" });
+    if (is_debug or is_safe) @export(memset, .{ .name = "__zig_probe_stack" });
+}
 pub const Exception = error{
     SubCausedOverflow,
     AddCausedOverflow,
@@ -65,7 +87,6 @@ pub const Logging = extern struct {
         .Fault = false,
     };
 };
-
 pub const lib_build_root: [:0]const u8 = blk: {
     const symbol: [:0]const u8 = "build_root";
     if (@hasDecl(root, symbol)) {
@@ -1530,7 +1551,7 @@ pub const fmt = opaque {
             .Frame => "frame",
             .AnyFrame => "anyframe",
             .Vector => "vector",
-            .EnumLiteral => "(enum literal)",
+            .EnumLiteral => "enum literal",
         };
     }
     pub fn typeDeclSpecifier(comptime any: Type) []const u8 {
@@ -1669,14 +1690,6 @@ pub const Version = struct {
             .minor = @intCast(u32, minor_val),
             .patch = @intCast(u32, patch_val),
         };
-    }
-    pub fn format(
-        _: Version,
-        comptime _: []const u8,
-        _: anytype,
-        _: anytype,
-    ) !void {
-        @compileError("TODO: Print version number");
     }
 };
 test {
