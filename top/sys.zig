@@ -1509,6 +1509,63 @@ pub const Function = enum(u9) {
     landlock_add_rule = 445,
     landlock_restrict_self = 446,
     memfd_secret = 447,
+
+    fn args(comptime function: Function) comptime_int {
+        return switch (function) {
+            .read => 3,
+            .write => 3,
+            .open => 3,
+            .openat => 3,
+            .close => 1,
+            .ioctl => 3,
+            .brk => 1,
+            .mmap => 6,
+            .munmap => 2,
+            .mremap => 5,
+            .madvise => 3,
+            .memfd_create => 2,
+            .stat => 2,
+            .fstat => 2,
+            .lstat => 2,
+            .statx => 5,
+            .newfstatat => 4,
+            .mknod => 3,
+            .mknodat => 4,
+            .getcwd => 1,
+            .getdents64 => 3,
+            .readlink => 3,
+            .readlinkat => 4,
+            .getuid => 0,
+            .getgid => 0,
+            .geteuid => 0,
+            .getegid => 0,
+            .getrandom => 3,
+            .unlink => 1,
+            .unlinkat => 3,
+            .truncate => 2,
+            .ftruncate => 2,
+            .mkdir => 2,
+            .mkdirat => 3,
+            .rmdir => 1,
+            .clock_gettime => 2,
+            .nanosleep => 2,
+            .dup => 1,
+            .dup2 => 2,
+            .dup3 => 3,
+            .fork => 0,
+            .wait4 => 5,
+            .waitid => 5,
+            .clone => 5,
+            .clone3 => 2,
+            .execve => 3,
+            .execveat => 5,
+            .rt_sigaction => 4,
+            .name_to_handle_at => 5,
+            .open_by_handle_at => 3,
+            .exit => 1,
+            else => undefined,
+        };
+    }
 };
 
 pub const brk_errors: []const ErrorCode = &[_]ErrorCode{.NOMEM};
@@ -1654,6 +1711,7 @@ pub const no_errors: []const ErrorCode = &[_]ErrorCode{};
 //    x86-64        rdi   rsi   rdx   r10   r8    r9    -     X
 //    x32           rdi   rsi   rdx   r10   r8    r9    -
 //    xtensa        a6    a3    a4    a5    a8    a9    -
+
 inline fn syscall0(comptime sysno: usize) isize {
     return asm volatile ("syscall"
         : [ret] "={rax}" (-> isize),
@@ -1761,7 +1819,7 @@ fn ConfiguredSystemCall(comptime fn_conf: Config) type {
         inline fn syscallWithError6(arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize, arg6: usize) Unwrapped {
             return fn_conf.wrap(syscall6(sysno, arg1, arg2, arg3, arg4, arg5, arg6));
         }
-        const function = syscallWithError[fn_conf.args];
+        const function = syscallWithError[fn_conf.tag.args()];
         const Function = @TypeOf(function);
     };
 }
@@ -1782,7 +1840,6 @@ pub fn zigError(comptime errors: []const ErrorCode, ret: isize) ZigError(errors)
 }
 pub const Config = struct {
     tag: Function,
-    args: u3,
     errors: ?[]const ErrorCode,
     return_type: type,
 
@@ -1826,7 +1883,6 @@ pub const Config = struct {
     ) Config {
         return .{
             .tag = fn_conf.tag,
-            .args = fn_conf.args,
             .errors = errors,
             .return_type = return_type orelse fn_conf.return_type,
         };
@@ -1847,7 +1903,7 @@ pub const Config = struct {
         unreachable;
     }
     pub fn call(comptime fn_conf: Config, args: anytype) Wrapped(fn_conf) {
-        return fn_conf.wrap(@call(.always_inline, syscalls[fn_conf.args], .{@enumToInt(fn_conf.tag)} ++ args));
+        return fn_conf.wrap(@call(.always_inline, syscalls[fn_conf.tag.args()], .{@enumToInt(fn_conf.tag)} ++ args));
     }
 };
 pub fn FunctionInterfaceSpec(comptime Specification: type) type {
@@ -1888,57 +1944,57 @@ pub fn FunctionInterfaceSpec(comptime Specification: type) type {
 /// discard any non-error return value when *_FIXED_NOREPLACE is set, as any
 /// non-error return value will be equal to the input address.
 const config = opaque {
-    const read: Config = .{ .tag = .read, .args = 3, .errors = read_errors, .return_type = usize };
-    const write: Config = .{ .tag = .write, .args = 3, .errors = write_errors, .return_type = usize };
-    const open: Config = .{ .tag = .open, .args = 3, .errors = open_errors, .return_type = usize };
-    const openat: Config = .{ .tag = .openat, .args = 3, .errors = open_errors, .return_type = usize };
-    const close: Config = .{ .tag = .close, .args = 1, .errors = close_errors, .return_type = void };
-    const ioctl: Config = .{ .tag = .ioctl, .args = 3, .errors = ioctl_errors, .return_type = void };
-    const brk: Config = .{ .tag = .brk, .args = 1, .errors = brk_errors, .return_type = usize };
-    const mmap: Config = .{ .tag = .mmap, .args = 6, .errors = mmap_errors, .return_type = usize };
-    const munmap: Config = .{ .tag = .munmap, .args = 2, .errors = munmap_errors, .return_type = void };
-    const mremap: Config = .{ .tag = .mremap, .args = 5, .errors = mremap_errors, .return_type = usize };
-    const madvise: Config = .{ .tag = .madvise, .args = 3, .errors = madvise_errors, .return_type = void };
-    const memfd_create: Config = .{ .tag = .memfd_create, .args = 2, .errors = memfd_create_errors, .return_type = usize };
-    const stat: Config = .{ .tag = .stat, .args = 2, .errors = stat_errors, .return_type = void };
-    const fstat: Config = .{ .tag = .fstat, .args = 2, .errors = stat_errors, .return_type = void };
-    const lstat: Config = .{ .tag = .lstat, .args = 2, .errors = stat_errors, .return_type = void };
-    const statx: Config = .{ .tag = .statx, .args = 5, .errors = stat_errors, .return_type = void };
-    const newfstatat: Config = .{ .tag = .newfstatat, .args = 4, .errors = stat_errors, .return_type = void };
-    const mknod: Config = .{ .tag = .mknod, .args = 3, .errors = mknod_errors, .return_type = void };
-    const mknodat: Config = .{ .tag = .mknodat, .args = 4, .errors = mknod_errors, .return_type = void };
-    const getcwd: Config = .{ .tag = .getcwd, .args = 1, .errors = getcwd_errors, .return_type = usize };
-    const getdents64: Config = .{ .tag = .getdents64, .args = 3, .errors = getdents_errors, .return_type = usize };
-    const readlink: Config = .{ .tag = .readlink, .args = 3, .errors = readlink_errors, .return_type = usize };
-    const readlinkat: Config = .{ .tag = .readlinkat, .args = 4, .errors = readlink_errors, .return_type = usize };
-    const getuid: Config = .{ .tag = .getuid, .args = 0, .errors = null, .return_type = u16 };
-    const getgid: Config = .{ .tag = .getgid, .args = 0, .errors = null, .return_type = u16 };
-    const geteuid: Config = .{ .tag = .geteuid, .args = 0, .errors = null, .return_type = u16 };
-    const getegid: Config = .{ .tag = .getegid, .args = 0, .errors = null, .return_type = u16 };
-    const getrandom: Config = .{ .tag = .getrandom, .args = 3, .errors = getrandom_errors, .return_type = void };
-    const unlink: Config = .{ .tag = .unlink, .args = 1, .errors = unlink_errors, .return_type = void };
-    const unlinkat: Config = .{ .tag = .unlinkat, .args = 3, .errors = unlink_errors, .return_type = void };
-    const truncate: Config = .{ .tag = .truncate, .args = 2, .errors = truncate_errors, .return_type = void };
-    const ftruncate: Config = .{ .tag = .ftruncate, .args = 2, .errors = truncate_errors, .return_type = void };
-    const mkdir: Config = .{ .tag = .mkdir, .args = 2, .errors = mkdir_errors, .return_type = void };
-    const mkdirat: Config = .{ .tag = .mkdirat, .args = 3, .errors = mkdir_errors, .return_type = void };
-    const rmdir: Config = .{ .tag = .rmdir, .args = 1, .errors = rmdir_errors, .return_type = void };
-    const clock_gettime: Config = .{ .tag = .clock_gettime, .args = 2, .errors = clock_get_errors, .return_type = void };
-    const nanosleep: Config = .{ .tag = .nanosleep, .args = 2, .errors = nanosleep_errors, .return_type = void };
-    const dup: Config = .{ .tag = .dup, .args = 1, .errors = dup_errors, .return_type = usize };
-    const dup2: Config = .{ .tag = .dup2, .args = 2, .errors = dup_errors, .return_type = usize };
-    const dup3: Config = .{ .tag = .dup3, .args = 3, .errors = dup_errors, .return_type = usize };
-    const fork: Config = .{ .tag = .fork, .args = 0, .errors = fork_errors, .return_type = usize };
-    const wait4: Config = .{ .tag = .wait4, .args = 5, .errors = wait_errors, .return_type = void };
-    const waitid: Config = .{ .tag = .waitid, .args = 5, .errors = wait_errors, .return_type = void };
-    const clone: Config = .{ .tag = .clone, .args = 5, .errors = clone_errors, .return_type = usize };
-    const clone3: Config = .{ .tag = .clone3, .args = 2, .errors = clone_errors, .return_type = usize };
-    const execve: Config = .{ .tag = .execve, .args = 3, .errors = execve_errors, .return_type = usize };
-    const execveat: Config = .{ .tag = .execveat, .args = 5, .errors = execveat_errors, .return_type = usize };
-    const rt_sigaction: Config = .{ .tag = .rt_sigaction, .args = 4, .errors = sigaction_errors, .return_type = void };
-    const name_to_handle_at: Config = .{ .tag = .name_to_handle_at, .args = 5, .errors = name_to_handle_at_errors, .return_type = usize };
-    const open_by_handle_at: Config = .{ .tag = .open_by_handle_at, .args = 3, .errors = open_by_handle_at_errors, .return_type = usize };
-    const exit: Config = .{ .tag = .exit, .args = 1, .errors = null, .return_type = noreturn };
+    const read: Config = .{ .tag = .read, .errors = read_errors, .return_type = usize };
+    const write: Config = .{ .tag = .write, .errors = write_errors, .return_type = usize };
+    const open: Config = .{ .tag = .open, .errors = open_errors, .return_type = usize };
+    const openat: Config = .{ .tag = .openat, .errors = open_errors, .return_type = usize };
+    const close: Config = .{ .tag = .close, .errors = close_errors, .return_type = void };
+    const ioctl: Config = .{ .tag = .ioctl, .errors = ioctl_errors, .return_type = void };
+    const brk: Config = .{ .tag = .brk, .errors = brk_errors, .return_type = usize };
+    const mmap: Config = .{ .tag = .mmap, .errors = mmap_errors, .return_type = usize };
+    const munmap: Config = .{ .tag = .munmap, .errors = munmap_errors, .return_type = void };
+    const mremap: Config = .{ .tag = .mremap, .errors = mremap_errors, .return_type = usize };
+    const madvise: Config = .{ .tag = .madvise, .errors = madvise_errors, .return_type = void };
+    const memfd_create: Config = .{ .tag = .memfd_create, .errors = memfd_create_errors, .return_type = usize };
+    const stat: Config = .{ .tag = .stat, .errors = stat_errors, .return_type = void };
+    const fstat: Config = .{ .tag = .fstat, .errors = stat_errors, .return_type = void };
+    const lstat: Config = .{ .tag = .lstat, .errors = stat_errors, .return_type = void };
+    const statx: Config = .{ .tag = .statx, .errors = stat_errors, .return_type = void };
+    const newfstatat: Config = .{ .tag = .newfstatat, .errors = stat_errors, .return_type = void };
+    const mknod: Config = .{ .tag = .mknod, .errors = mknod_errors, .return_type = void };
+    const mknodat: Config = .{ .tag = .mknodat, .errors = mknod_errors, .return_type = void };
+    const getcwd: Config = .{ .tag = .getcwd, .errors = getcwd_errors, .return_type = usize };
+    const getdents64: Config = .{ .tag = .getdents64, .errors = getdents_errors, .return_type = usize };
+    const readlink: Config = .{ .tag = .readlink, .errors = readlink_errors, .return_type = usize };
+    const readlinkat: Config = .{ .tag = .readlinkat, .errors = readlink_errors, .return_type = usize };
+    const getuid: Config = .{ .tag = .getuid, .errors = null, .return_type = u16 };
+    const getgid: Config = .{ .tag = .getgid, .errors = null, .return_type = u16 };
+    const geteuid: Config = .{ .tag = .geteuid, .errors = null, .return_type = u16 };
+    const getegid: Config = .{ .tag = .getegid, .errors = null, .return_type = u16 };
+    const getrandom: Config = .{ .tag = .getrandom, .errors = getrandom_errors, .return_type = void };
+    const unlink: Config = .{ .tag = .unlink, .errors = unlink_errors, .return_type = void };
+    const unlinkat: Config = .{ .tag = .unlinkat, .errors = unlink_errors, .return_type = void };
+    const truncate: Config = .{ .tag = .truncate, .errors = truncate_errors, .return_type = void };
+    const ftruncate: Config = .{ .tag = .ftruncate, .errors = truncate_errors, .return_type = void };
+    const mkdir: Config = .{ .tag = .mkdir, .errors = mkdir_errors, .return_type = void };
+    const mkdirat: Config = .{ .tag = .mkdirat, .errors = mkdir_errors, .return_type = void };
+    const rmdir: Config = .{ .tag = .rmdir, .errors = rmdir_errors, .return_type = void };
+    const clock_gettime: Config = .{ .tag = .clock_gettime, .errors = clock_get_errors, .return_type = void };
+    const nanosleep: Config = .{ .tag = .nanosleep, .errors = nanosleep_errors, .return_type = void };
+    const dup: Config = .{ .tag = .dup, .errors = dup_errors, .return_type = usize };
+    const dup2: Config = .{ .tag = .dup2, .errors = dup_errors, .return_type = usize };
+    const dup3: Config = .{ .tag = .dup3, .errors = dup_errors, .return_type = usize };
+    const fork: Config = .{ .tag = .fork, .errors = fork_errors, .return_type = usize };
+    const wait4: Config = .{ .tag = .wait4, .errors = wait_errors, .return_type = void };
+    const waitid: Config = .{ .tag = .waitid, .errors = wait_errors, .return_type = void };
+    const clone: Config = .{ .tag = .clone, .errors = clone_errors, .return_type = usize };
+    const clone3: Config = .{ .tag = .clone3, .errors = clone_errors, .return_type = usize };
+    const execve: Config = .{ .tag = .execve, .errors = execve_errors, .return_type = usize };
+    const execveat: Config = .{ .tag = .execveat, .errors = execveat_errors, .return_type = usize };
+    const rt_sigaction: Config = .{ .tag = .rt_sigaction, .errors = sigaction_errors, .return_type = void };
+    const name_to_handle_at: Config = .{ .tag = .name_to_handle_at, .errors = name_to_handle_at_errors, .return_type = usize };
+    const open_by_handle_at: Config = .{ .tag = .open_by_handle_at, .errors = open_by_handle_at_errors, .return_type = usize };
+    const exit: Config = .{ .tag = .exit, .errors = null, .return_type = noreturn };
     const noexcept = opaque {
         // Called before main
         pub const rt_sigaction = config.rt_sigaction.reconfigure(null, void);
