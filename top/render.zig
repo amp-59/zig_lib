@@ -1,13 +1,18 @@
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
 const lit = @import("./lit.zig");
+const zig = @import("./zig.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
+const abstract = @import("./abstract.zig");
 
-const render_composite_field_type_recursively: bool = true;
 const render_string_literal: bool = true;
 const render_multi_line_string_literal: bool = false;
 const attempt_short_type_names: bool = true;
+const omit_default_fields: bool = true;
+const omit_compiler_given_names: bool = true;
+const render_composite_field_type_recursively: bool = true;
+const render_radix: u16 = builtin.config("render_radix", u16, 10);
 
 fn typeName(comptime T: type) []const u8 {
     if (attempt_short_type_names) {
@@ -58,11 +63,6 @@ fn GenericRenderFormat(comptime Format: type) type {
         }
     };
 }
-const RenderSpec = struct {
-    type: type,
-    options: Options,
-    const Options = struct {};
-};
 pub fn ArrayFormat(comptime Array: type) type {
     return struct {
         value: Array,
@@ -255,8 +255,7 @@ pub fn StructFormat(comptime Struct: type) type {
         const Format = @This();
         const type_name: []const u8 = typeName(Struct);
         const fields: []const builtin.StructField = @typeInfo(Struct).Struct.fields;
-        const omit_default_fields: bool = true;
-        const omit_compiler_given_names: bool = true;
+
         const max_len: u64 = blk: {
             var len: u64 = 0;
             if (omit_compiler_given_names and mem.testEqualManyFront(u8, "struct:", type_name)) {
@@ -537,7 +536,7 @@ pub fn IntFormat(comptime Int: type) type {
         const Format = @This();
         const Abs: type = @Type(.{ .Int = .{ .bits = type_info.Int.bits, .signedness = .unsigned } });
         const type_info: builtin.Type = @typeInfo(Int);
-        const radix: Abs = 10;
+        const radix: Abs = render_radix;
         const max_abs_value: Abs = ~@as(Abs, 0);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, radix);
         const prefix: [2]u8 = lit.int_prefixes[radix].*;
@@ -851,22 +850,24 @@ pub fn VectorFormat(comptime Vector: type) type {
         const max_len: u64 = (type_name.len + 2) +
             vector_info.Array.len * (ChildFormat.max_len + 2);
         pub fn formatWrite(format: Format, array: anytype) void {
-            array.writeMany(type_name ++ "{ ");
-            var i: u64 = 0;
-            while (i != vector_info.Vector.len) : (i += 1) {
-                const element: child = format.value[i];
-                const element_format: ChildFormat = .{ .value = element };
-                element_format.formatWrite(array);
-                array.writeMany(", ");
+            if (format.value.len == 0) {
+                array.writeMany(type_name ++ "{}");
+            } else {
+                array.writeMany(type_name ++ "{ ");
+                var i: u64 = 0;
+                while (i != vector_info.Vector.len) : (i += 1) {
+                    const element_format: ChildFormat = .{ .value = format.value[i] };
+                    element_format.formatWrite(array);
+                    array.writeMany(", ");
+                }
+                array.overwriteManyBack(" }");
             }
-            array.overwriteManyBack(" }");
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = type_name.len + 2;
             var i: u64 = 0;
             while (i != vector_info.Vector.len) : (i += 1) {
-                const element: child = format.value[i];
-                const element_format: ChildFormat = .{ .value = element };
+                const element_format: ChildFormat = .{ .value = format.value[i] };
                 len += element_format.formatLength() + 2;
             }
             return len;
