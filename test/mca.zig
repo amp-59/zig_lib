@@ -12,95 +12,95 @@ pub usingnamespace proc.start;
 
 pub const is_verbose: bool = false;
 
-pub const input_open_spec: file.OpenSpec = .{
+const prune_weak: bool = false;
+const prune_fmt: bool = true;
+const prune_std: bool = true;
+const input_open_spec: file.OpenSpec = .{
     .options = .{
         .read = true,
         .write = null,
     },
 };
-pub const input_close_spec: file.CloseSpec = .{
+const input_close_spec: file.CloseSpec = .{
     .errors = null,
 };
-pub const output_file_spec: file.CreateSpec = .{
+const output_file_spec: file.CreateSpec = .{
     .options = .{
         .read = false,
         .write = .truncate,
         .exclusive = false,
     },
 };
-pub const output_close_spec: file.CloseSpec = .{
+const output_close_spec: file.CloseSpec = .{
     .errors = null,
 };
-pub const Stdio = enum(u2) {
+const Stdio = enum(u2) {
     stdin = 0,
     stdout = 1,
     stderr = 2,
 };
-pub const strict_write_spec: mem.WriteSpec = .{
+const strict_write_spec: mem.WriteSpec = .{
     .integral = .{},
     .symbol = null,
     .aggregate = null,
     .composite = .{},
     .reference = null,
 };
-const prune_weak: bool = false;
-const prune_fmt: bool = true;
-const prune_std: bool = true;
-pub const Data = union(enum) {
+const Data = union(enum) {
     stdio: Stdio,
     filesystem: File,
-    pub fn fd(data: Data) u64 {
+    fn fd(data: Data) u64 {
         return switch (data) {
             .filesystem => |fs| fs.fd.?,
             .stdio => |stdio| @enumToInt(stdio),
         };
     }
-    pub fn open(data: *Data, comptime open_spec: file.OpenSpec) !void {
+    fn open(data: *Data, comptime open_spec: file.OpenSpec) !void {
         if (data.* == .filesystem) {
             try data.filesystem.open(open_spec);
         }
     }
-    pub fn create(data: *Data, comptime file_spec: file.CreateSpec) !void {
+    fn create(data: *Data, comptime file_spec: file.CreateSpec) !void {
         if (data.* == .filesystem) {
             try data.filesystem.create(file_spec);
         }
     }
-    pub fn close(data: *Data, comptime close_spec: file.CloseSpec) void {
+    fn close(data: *Data, comptime close_spec: file.CloseSpec) void {
         if (data.* == .filesystem) {
             data.filesystem.close(close_spec);
         }
     }
 };
-pub const File = struct {
+const File = struct {
     pathname: [:0]const u8,
     fd: ?u64 = null,
-    pub fn open(filesystem: *File, comptime open_spec: file.OpenSpec) !void {
+    fn open(filesystem: *File, comptime open_spec: file.OpenSpec) !void {
         filesystem.fd = try file.open(open_spec, filesystem.pathname);
     }
-    pub fn create(filesystem: *File, comptime file_spec: file.CreateSpec) !void {
+    fn create(filesystem: *File, comptime file_spec: file.CreateSpec) !void {
         filesystem.fd = try file.create(file_spec, filesystem.pathname);
     }
-    pub fn close(filesystem: *File, comptime close_spec: file.CloseSpec) void {
+    fn close(filesystem: *File, comptime close_spec: file.CloseSpec) void {
         if (filesystem.fd) |fd| {
             file.close(close_spec, fd);
             filesystem.fd = null;
         }
     }
 };
-pub const Argv = Allocator.StructuredVectorLowAligned([:0]u8, 8);
-pub const Job = struct {
+const Argv = Allocator.StructuredVectorLowAligned([:0]u8, 8);
+const Job = struct {
     input: Data,
     output: Data,
 };
-pub const Jobs = mem.XorLinkedListAdv(.{
+const Jobs = mem.XorLinkedListAdv(.{
     .child = Job,
     .low_alignment = 8,
     .Allocator = Allocator,
 });
-pub const String = Allocator.StructuredHolder(u8);
-pub const FixedString = Allocator.StructuredVector(u8);
-pub const SmallString = Allocator.StructuredHolder(u8);
-pub const Allocator = mem.GenericArenaAllocator(.{
+const String = Allocator.StructuredHolder(u8);
+const FixedString = Allocator.StructuredVector(u8);
+const SmallString = Allocator.StructuredHolder(u8);
+const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .options = .{
         .count_allocations = true,
@@ -360,7 +360,6 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     if (args_in.len == 1) {
         return printHelpText();
     }
-
     var address_space: mem.AddressSpace = .{};
     var allocator_0: Allocator = try Allocator.init(&address_space);
     defer allocator_0.deinit(&address_space);
