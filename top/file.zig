@@ -840,9 +840,8 @@ pub const noexcept = opaque {
 };
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
-        data: mem.StaticString(4096) = .{},
+        data: mem.StaticString(bytes) = .{},
         const Random = @This();
-
         const dev: u64 = if (builtin.is_perf)
             sys.GRND.INSECURE
         else
@@ -851,7 +850,7 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             const child: type = meta.AlignSizeAW(T);
             const high_alignment: u64 = @sizeOf(child);
             const low_alignment: u64 = @alignOf(child);
-            if (random.data.impl.ub_word == 0) {
+            if (random.data.len() == 0) {
                 sys.noexcept.getrandom(random.data.impl.start(), bytes, dev);
             }
             if (high_alignment + low_alignment > bytes) {
@@ -860,9 +859,14 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             const s_lb_addr: u64 = random.data.impl.next();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
             const s_up_addr: u64 = s_ab_addr + high_alignment;
-            if (s_up_addr > random.data.impl.finish()) {
+            if (s_up_addr >= random.data.impl.finish()) {
                 random.data.undefineAll();
-                return random.readOne(T);
+                const t_lb_addr: u64 = random.data.impl.next();
+                const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
+                const t_up_addr: u64 = t_ab_addr + high_alignment;
+                sys.noexcept.getrandom(random.data.impl.start(), bytes, dev);
+                random.data.define(t_up_addr - t_lb_addr);
+                return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
             }
             random.data.impl.define(s_up_addr - s_lb_addr);
             return @truncate(T, @intToPtr(*const child, s_ab_addr).*);
@@ -870,7 +874,7 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
         pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
             var ret: T = random.readOne(T);
             if (meta.Return(function) == bool) {
-                while (function(ret)) {
+                while (!function(ret)) {
                     ret = random.readOne(T);
                 }
             } else if (meta.Return(function) == T) {
