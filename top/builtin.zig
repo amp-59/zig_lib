@@ -161,7 +161,7 @@ pub fn int(comptime T: type, value: bool) T {
 pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
     const ret: u1 = @boolToInt(value1) & @boolToInt(value2);
     if (T == bool) {
-        return intCast(bool, ret);
+        return @bitCast(bool, ret);
     } else {
         return intCast(T, ret);
     }

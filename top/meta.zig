@@ -71,7 +71,7 @@ pub fn wrap(any: anytype) blk: {
 } {
     return any;
 }
-/// Returns T if cond is true, else a type of the same kind with zero size.
+/// Return T if cond is true, else a type of the same kind with zero size.
 pub fn maybe(comptime cond: bool, comptime T: type) type {
     if (cond) return T;
     const type_info: builtin.Type = @typeInfo(T);
@@ -208,12 +208,13 @@ pub fn AlignSizeBW(comptime T: type) type { // Needs a better name
     return @Type(.{ .Int = int_type_info });
 }
 
-pub fn LeastBitSize(comptime any: anytype) type {
-    const T: type = @TypeOf(any);
+/// Return the smallest integer type capable of storing `value`
+pub fn LeastBitSize(comptime value: anytype) type {
+    const T: type = @TypeOf(value);
     if (@sizeOf(T) == 0) {
-        if (any < 0) {
+        if (value < 0) {
             var U: type = i1;
-            while (any < @truncate(U, any)) {
+            while (value < @truncate(U, value)) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) + 1,
                     .signedness = .signed,
@@ -222,7 +223,7 @@ pub fn LeastBitSize(comptime any: anytype) type {
             return U;
         } else {
             var U: type = u1;
-            while (any > @truncate(U, any)) {
+            while (value > @truncate(U, value)) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) + 1,
                     .signedness = .unsigned,
@@ -233,17 +234,18 @@ pub fn LeastBitSize(comptime any: anytype) type {
     }
     return @Type(.{
         .Int = .{
-            .bits = @bitSizeOf(T) - @clz(any),
+            .bits = @bitSizeOf(T) - @clz(value),
             .signedness = .unsigned,
         },
     });
 }
-pub fn LeastRealBitSize(comptime any: anytype) type {
-    const T: type = @TypeOf(any);
+/// Return the smallest register sized integer type capable of storing `value`
+pub fn LeastRealBitSize(comptime value: anytype) type {
+    const T: type = @TypeOf(value);
     if (@sizeOf(T) == 0) {
-        if (any < 0) {
+        if (value < 0) {
             var U: type = i8;
-            while (any < @truncate(U, any)) {
+            while (value < @truncate(U, value)) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) << 1,
                     .signedness = .signed,
@@ -252,7 +254,7 @@ pub fn LeastRealBitSize(comptime any: anytype) type {
             return U;
         } else {
             var U: type = u8;
-            while (any > @truncate(U, any)) {
+            while (value > @truncate(U, value)) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) << 1,
                     .signedness = .unsigned,
@@ -263,7 +265,7 @@ pub fn LeastRealBitSize(comptime any: anytype) type {
     }
     return @Type(.{
         .Int = .{
-            .bits = alignAW(@bitSizeOf(T) - @clz(any)),
+            .bits = alignAW(@bitSizeOf(T) - @clz(value)),
             .signedness = .unsigned,
         },
     });
@@ -566,7 +568,7 @@ pub fn maxNameLength(comptime T: type) u64 {
     }
     return len;
 }
-/// Returns whether values of this type can be compared for equality.
+/// Return whether values of this type can be compared for equality.
 pub fn isTriviallyComparable(comptime T: type) bool {
     const type_info = @typeInfo(T);
     return switch (type_info) {
