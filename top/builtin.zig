@@ -149,15 +149,21 @@ pub fn lzcnt(comptime T: type, value: T) BitCount(T) {
 pub fn popcnt(comptime T: type, value: T) BitCount(T) {
     return @popCount(value);
 }
+pub fn mod(comptime T: type, numerator: anytype, denominator: anytype) T {
+    return intCast(T, @mod(numerator, denominator));
+}
+pub fn rem(comptime T: type, numerator: anytype, denominator: anytype) T {
+    return intCast(T, @rem(numerator, denominator));
+}
 pub fn int(comptime T: type, value: bool) T {
     return @boolToInt(value);
 }
 pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
     const ret: u1 = @boolToInt(value1) & @boolToInt(value2);
     if (T == bool) {
-        return @bitCast(bool, ret);
+        return intCast(bool, ret);
     } else {
-        return @intCast(T, ret);
+        return intCast(T, ret);
     }
 }
 pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
@@ -165,7 +171,7 @@ pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
     if (T == bool) {
         return @bitCast(bool, ret);
     } else {
-        return @intCast(T, ret);
+        return intCast(T, ret);
     }
 }
 pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
@@ -173,7 +179,7 @@ pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
     if (T == bool) {
         return @bitCast(bool, ret);
     } else {
-        return @intCast(T, ret);
+        return intCast(T, ret);
     }
 }
 pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
@@ -181,7 +187,7 @@ pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
     if (T == bool) {
         return @bitCast(bool, ret);
     } else {
-        return @intCast(T, ret);
+        return intCast(T, ret);
     }
 }
 fn ArithWithOverflowReturn(comptime T: type) type {
@@ -225,9 +231,9 @@ inline fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
-    const rem: T = normalSubReturn(T, arg1, (result * arg2));
-    if (is_debug and rem != 0) {
-        debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, rem);
+    const remainder: T = normalSubReturn(T, arg1, (result * arg2));
+    if (is_debug and remainder != 0) {
+        debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder);
     }
     return result;
 }
@@ -292,16 +298,16 @@ inline fn normalXorAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* ^= arg2;
 }
 inline fn normalShrReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 >> @intCast(ShiftAmount(T), arg2);
+    return arg1 >> intCast(ShiftAmount(T), arg2);
 }
 inline fn normalShrAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* >>= @intCast(ShiftAmount(T), arg2);
+    arg1.* >>= intCast(ShiftAmount(T), arg2);
 }
 inline fn normalShlReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 << @intCast(ShiftAmount(T), arg2);
+    return arg1 << intCast(ShiftAmount(T), arg2);
 }
 inline fn normalShlAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* <<= @intCast(ShiftAmount(T), arg2);
+    arg1.* <<= intCast(ShiftAmount(T), arg2);
 }
 inline fn truncatedDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = @divTrunc(arg1.*, arg2);
@@ -316,16 +322,16 @@ inline fn flooredDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     return @divFloor(arg1, arg2);
 }
 inline fn exactShrReturn(comptime T: type, arg1: T, arg2: T) T {
-    return @shrExact(arg1, @intCast(ShiftAmount(T), arg2));
+    return @shrExact(arg1, intCast(ShiftAmount(T), arg2));
 }
 inline fn exactShrAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = @shrExact(arg1.*, @intCast(ShiftAmount(T), arg2));
+    arg1.* = @shrExact(arg1.*, intCast(ShiftAmount(T), arg2));
 }
 inline fn exactShlReturn(comptime T: type, arg1: T, arg2: T) T {
-    return @shlExact(arg1, @intCast(ShiftAmount(T), arg2));
+    return @shlExact(arg1, intCast(ShiftAmount(T), arg2));
 }
 inline fn exactShlAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = @shlExact(arg1.*, @intCast(ShiftAmount(T), arg2));
+    arg1.* = @shlExact(arg1.*, intCast(ShiftAmount(T), arg2));
 }
 inline fn overflowingAddAssign(comptime T: type, arg1: *T, arg2: T) bool {
     return @addWithOverflow(T, arg1.*, arg2, arg1);
@@ -362,14 +368,14 @@ inline fn overflowingMulReturn(comptime T: type, arg1: T, arg2: T) ArithWithOver
 }
 inline fn overflowingShlReturn(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
     var result: T = undefined;
-    const overflowed: bool = @shlWithOverflow(T, arg1, @intCast(ShiftAmount(T), arg2), &result);
+    const overflowed: bool = @shlWithOverflow(T, arg1, intCast(ShiftAmount(T), arg2), &result);
     return .{
         .overflowed = overflowed,
         .value = result,
     };
 }
 inline fn overflowingShlAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    return @shlWithOverflow(T, arg1.*, @intCast(ShiftAmount(T), arg2), arg1);
+    return @shlWithOverflow(T, arg1.*, intCast(ShiftAmount(T), arg2), arg1);
 }
 pub fn add(comptime T: type, arg1: T, arg2: T) T {
     return normalAddReturn(T, arg1, arg2);
@@ -608,8 +614,19 @@ pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Exception!void {
         return debug.comparisonFailedException(T, " > ", arg1, arg2);
     }
 }
-pub fn intToPtr(comptime Pointer: type, address: u64) Pointer {
-    return @intToPtr(Pointer, address);
+pub fn intToPtr(comptime P: type, address: u64) P {
+    return @intToPtr(P, address);
+}
+pub fn intCast(comptime T: type, value: anytype) T {
+    @setRuntimeSafety(false);
+    const U: type = @TypeOf(value);
+    if (@bitSizeOf(T) > @bitSizeOf(U)) {
+        return value;
+    }
+    if (value > ~@as(T, 0)) {
+        debug.intCastTruncatedBitsFault(T, U, value);
+    }
+    return @truncate(T, value);
 }
 pub const static = opaque {
     pub fn assert(comptime b: bool) void {
@@ -666,17 +683,17 @@ pub const static = opaque {
     }
     inline fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: T = arg1.* / arg2;
-        const rem: T = static.normalSubReturn(T, arg1.*, (result * arg2));
-        if (is_debug and rem != 0) {
-            debug.static.exactDivisionWithRemainder(T, arg1.*, arg2, result, rem);
+        const remainder: T = static.normalSubReturn(T, arg1.*, (result * arg2));
+        if (is_debug and remainder != 0) {
+            debug.static.exactDivisionWithRemainder(T, arg1.*, arg2, result, remainder);
         }
         arg1.* = result;
     }
     inline fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: T = arg1 / arg2;
-        const rem: T = static.normalSubReturn(T, arg1, (result * arg2));
-        if (is_debug and rem != 0) {
-            debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, rem);
+        const remainder: T = static.normalSubReturn(T, arg1, (result * arg2));
+        if (is_debug and remainder != 0) {
+            debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
         }
         return result;
     }
@@ -801,6 +818,14 @@ const debug = opaque {
         }
         return len;
     }
+    fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: *[size]u8, arg1: U) u64 {
+        const minimum: T = 0;
+        return write(buf, &[_][]const u8{
+            about_fault_p0_s,           "integer cast truncated bits: ",
+            tos(U, arg1).readAll(),     " greater than " ++ @typeName(T) ++ " maximum (",
+            tos(T, ~minimum).readAll(), ")\n",
+        });
+    }
     fn subCausedOverflowString(comptime T: type, about: []const u8, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
@@ -836,24 +861,30 @@ const debug = opaque {
             tos(T, arg2).readAll(), "\n",
         });
     }
-    fn exactDivisionWithRemainderString(comptime T: type, about: []const u8, buf: *[size]u8, arg1: T, arg2: T, result: T, rem: T) u64 {
+    fn exactDivisionWithRemainderString(comptime T: type, about: []const u8, buf: *[size]u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
         return write(buf, &[_][]const u8{
-            about,                    ": exact division had a remainder: ",
-            tos(T, arg1).readAll(),   "/",
-            tos(T, arg2).readAll(),   " == ",
-            tos(T, result).readAll(), "r",
-            tos(T, rem).readAll(),    "\n",
+            about,                       ": exact division had a remainder: ",
+            tos(T, arg1).readAll(),      "/",
+            tos(T, arg2).readAll(),      " == ",
+            tos(T, result).readAll(),    "r",
+            tos(T, remainder).readAll(), "\n",
         });
     }
-    fn incorrectAlignmentString(comptime Pointer: type, about: []const u8, buf: *[size]u8, address: usize, alignment: usize, rem: u64) u64 {
+    fn incorrectAlignmentString(comptime Pointer: type, about: []const u8, buf: *[size]u8, address: usize, alignment: usize, remainder: u64) u64 {
         return write(buf, &[_][]const u8{
-            about,                             ": incorrect alignment: ",
-            @typeName(Pointer),                " align(",
-            tos(u64, alignment).readAll(),     "): ",
-            tos(u64, address).readAll(),       " == ",
-            tos(u64, address - rem).readAll(), "+",
-            tos(u64, rem).readAll(),           "\n",
+            about,                                   ": incorrect alignment: ",
+            @typeName(Pointer),                      " align(",
+            tos(u64, alignment).readAll(),           "): ",
+            tos(u64, address).readAll(),             " == ",
+            tos(u64, address - remainder).readAll(), "+",
+            tos(u64, remainder).readAll(),           "\n",
         });
+    }
+    noinline fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U) noreturn {
+        @setCold(true);
+        var buf: [size]u8 = undefined;
+        const len: u64 = debug.intCastTruncatedBitsString(T, U, &buf, arg);
+        panic(buf[0..len]);
     }
     noinline fn subCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
@@ -894,32 +925,32 @@ const debug = opaque {
         const len: u64 = mulCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2);
         panic(buf[0..len]);
     }
-    noinline fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, rem: T) Exception {
+    noinline fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), &buf, arg1, arg2, result, rem);
+        const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), &buf, arg1, arg2, result, remainder);
         print(buf[0..len]);
         return error.DivisionWithRemainder;
     }
-    noinline fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, rem: T) noreturn {
+    noinline fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), &buf, arg1, arg2, result, rem);
+        const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), &buf, arg1, arg2, result, remainder);
         panic(buf[0..len]);
     }
     noinline fn incorrectAlignmentException(comptime T: type, address: usize, alignment: usize) Exception {
         @setCold(true);
-        const rem: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
+        const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
-        const len: u64 = incorrectAlignmentString(T, aboutError(T), &buf, address, alignment, rem);
+        const len: u64 = incorrectAlignmentString(T, aboutError(T), &buf, address, alignment, remainder);
         print(buf[0..len]);
         return error.IncorrectAlignment;
     }
     noinline fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize) noreturn {
         @setCold(true);
-        const rem: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
+        const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
-        const len: u64 = incorrectAlignmentString(T, aboutFault(T), &buf, address, alignment, rem);
+        const len: u64 = incorrectAlignmentString(T, aboutFault(T), &buf, address, alignment, remainder);
         panic(buf[0..len]);
     }
     noinline fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
@@ -953,16 +984,16 @@ const debug = opaque {
             comptime arg1: T,
             comptime arg2: T,
             comptime result: T,
-            comptime rem: T,
+            comptime remainder: T,
         ) noreturn {
             var msg: [size]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
-                @typeName(T),             ": exact division had a remainder: ",
-                tos(T, arg1).readAll(),   "/",
-                tos(T, arg2).readAll(),   " == ",
-                tos(T, result).readAll(), "r",
-                tos(T, rem).readAll(),    "\n",
+                @typeName(T),                ": exact division had a remainder: ",
+                tos(T, arg1).readAll(),      "/",
+                tos(T, arg2).readAll(),      " == ",
+                tos(T, result).readAll(),    "r",
+                tos(T, remainder).readAll(), "\n",
             }) |s| {
                 for (s) |c, i| msg[len +% i] = c;
                 len +%= s.len;
@@ -975,7 +1006,7 @@ const debug = opaque {
             comptime address: T,
             comptime alignment: T,
             comptime result: T,
-            comptime rem: T,
+            comptime remainder: T,
         ) noreturn {
             var msg: [size]u8 = undefined;
             var len: u64 = 0;
@@ -986,7 +1017,7 @@ const debug = opaque {
                 tos(T, alignment).readAll(), "): ",
                 tos(T, address).readAll(),   " == ",
                 tos(T, result).readAll(),    "+",
-                tos(T, rem).readAll(),       "\n",
+                tos(T, remainder).readAll(), "\n",
             }) |s| {
                 for (s) |c, i| msg[len +% i] = c;
                 len +%= s.len;
@@ -1686,9 +1717,9 @@ pub const Version = struct {
             return error.InvalidVersion;
         }
         return Version{
-            .major = @intCast(u32, major_val),
-            .minor = @intCast(u32, minor_val),
-            .patch = @intCast(u32, patch_val),
+            .major = intCast(u32, major_val),
+            .minor = intCast(u32, minor_val),
+            .patch = intCast(u32, patch_val),
         };
     }
 };
