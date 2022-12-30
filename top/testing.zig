@@ -105,10 +105,10 @@ fn sizeBreakDownLengthInternal(comptime T: type, depth: u64) u64 {
                 len += depthLength(depth);
                 if (type_info == .Struct and field.is_comptime) {
                     len += ("comptime " ++ field.name ++ ": ").len;
-                    len += (@typeName(field.field_type) ++ ",\t// 0 bytes\n").len;
+                    len += (@typeName(field.type) ++ ",\t// 0 bytes\n").len;
                 } else {
                     len += (field.name ++ ": ").len;
-                    len += sizeBreakDownLengthInternal(field.field_type, depth + 1);
+                    len += sizeBreakDownLengthInternal(field.type, depth + 1);
                 }
             }
             len += depthLength(depth - 1);
@@ -142,10 +142,10 @@ fn sizeBreakDownLength(comptime T: type, type_rename: ?[:0]const u8) u64 {
                 len += depthLength(depth);
                 if (type_info == .Struct and field.is_comptime) {
                     len += ("comptime " ++ field.name ++ ": ").len;
-                    len += (@typeName(field.field_type) ++ ",\t// 0 bytes\n").len;
+                    len += (@typeName(field.type) ++ ",\t// 0 bytes\n").len;
                 } else {
                     len += (field.name ++ ": ").len;
-                    len += sizeBreakDownLengthInternal(field.field_type, depth + 1);
+                    len += sizeBreakDownLengthInternal(field.type, depth + 1);
                 }
             }
             len += ("};").len;
@@ -175,10 +175,10 @@ fn sizeBreakDownInternal(comptime T: type, array: *mem.StaticString(1048576), de
                 writeDepth(array, depth);
                 if (type_info == .Struct and field.is_comptime) {
                     array.writeMany("comptime " ++ field.name ++ ": ");
-                    array.writeMany(@typeName(field.field_type) ++ ",\t// 0 bytes\n");
+                    array.writeMany(@typeName(field.type) ++ ",\t// 0 bytes\n");
                 } else {
                     array.writeMany(field.name ++ ": ");
-                    sizeBreakDownInternal(field.field_type, array, depth + 1);
+                    sizeBreakDownInternal(field.type, array, depth + 1);
                 }
             }
             writeDepth(array, depth - 1);
@@ -211,10 +211,10 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
                 writeDepth(&array, depth);
                 if (type_info == .Struct and field.is_comptime) {
                     array.writeMany("comptime " ++ field.name ++ ": ");
-                    array.writeMany(@typeName(field.field_type) ++ ",\t// 0 bytes\n");
+                    array.writeMany(@typeName(field.type) ++ ",\t// 0 bytes\n");
                 } else {
                     array.writeMany(field.name ++ ": ");
-                    sizeBreakDownInternal(field.field_type, &array, depth + 1);
+                    sizeBreakDownInternal(field.type, &array, depth + 1);
                 }
             }
             array.writeMany("};");
