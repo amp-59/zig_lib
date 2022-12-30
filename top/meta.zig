@@ -94,7 +94,7 @@ pub fn Field(comptime T: type, comptime field_name: []const u8) type {
 /// Return a simple struct field
 pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value: ?T) builtin.StructField {
     const default_value_ptr: ?*const anyopaque = if (default_value) |value| &value else null;
-    return .{ .name = field_name, .field_type = T, .default_value = default_value_ptr, .is_comptime = false, .alignment = 0 };
+    return .{ .name = field_name, .type = T, .default_value = default_value_ptr, .is_comptime = false, .alignment = 0 };
 }
 /// Assist creation of struct types
 pub fn structInfo(comptime fields: []const builtin.StructField) builtin.Type {
@@ -104,9 +104,9 @@ pub fn structInfo(comptime fields: []const builtin.StructField) builtin.Type {
 pub fn tupleInfo(comptime fields: []const builtin.StructField) builtin.Type {
     return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = true } };
 }
-pub fn defaultValue(comptime struct_field: builtin.StructField) ?struct_field.field_type {
+pub fn defaultValue(comptime struct_field: builtin.StructField) ?struct_field.type {
     if (struct_field.default_value) |default_value_ptr| {
-        return @ptrCast(*const struct_field.field_type, @alignCast(@alignOf(struct_field.field_type), default_value_ptr)).*;
+        return @ptrCast(*const struct_field.type, @alignCast(@alignOf(struct_field.type), default_value_ptr)).*;
     }
     return null;
 }
@@ -439,22 +439,22 @@ pub fn EnumBitField(comptime E: type) type {
 }
 
 pub fn fnParams(comptime function: anytype) []const builtin.FnParam {
-    return @typeInfo(@TypeOf(function)).Fn.args;
+    return @typeInfo(@TypeOf(function)).Fn.params;
 }
 pub fn FnParam0(comptime function: anytype) type {
-    return fnParams(function)[0].arg_type.?;
+    return fnParams(function)[0].type.?;
 }
 pub fn FnParam1(comptime function: anytype) type {
-    return fnParams(function)[1].arg_type.?;
+    return fnParams(function)[1].type.?;
 }
 pub fn FnParam2(comptime function: anytype) type {
-    return fnParams(function)[2].arg_type.?;
+    return fnParams(function)[2].type.?;
 }
 pub fn FnParam3(comptime function: anytype) type {
-    return fnParams(function)[3].arg_type.?;
+    return fnParams(function)[3].type.?;
 }
 pub fn FnParamN(comptime function: anytype, comptime index: u64) type {
-    return fnParams(function)[index].arg_type.?;
+    return fnParams(function)[index].type.?;
 }
 pub fn Return(comptime function: anytype) type {
     if (@TypeOf(function) == type) {
@@ -605,7 +605,7 @@ fn fieldIdInternalNoOp(comptime T: type, id: u64) u64 {
     var ret: u64 = id;
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
-            ret = fieldIdInternalNoOp(field.field_type, ret);
+            ret = fieldIdInternalNoOp(field.type, ret);
         }
     }
     if (type_info == .Enum) {
@@ -620,7 +620,7 @@ pub fn fieldIdNoOp(comptime T: type) u64 {
     var ret: u64 = 0;
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
-            ret = fieldIdInternalNoOp(field.field_type, ret);
+            ret = fieldIdInternalNoOp(field.type, ret);
         }
     }
     if (type_info == .Enum) {
@@ -636,9 +636,9 @@ fn fieldIdInternal(comptime T: type, t: T, id: u64) u64 {
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
             if (static.testEqualString(field.name, @tagName(t))) {
-                return fieldIdInternal(field.field_type, @field(t, field.name), ret);
+                return fieldIdInternal(field.type, @field(t, field.name), ret);
             } else {
-                ret = fieldIdInternalNoOp(field.field_type, ret);
+                ret = fieldIdInternalNoOp(field.type, ret);
             }
         }
     }
@@ -658,10 +658,10 @@ pub fn fieldId(comptime T: type, t: T) u64 {
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
             if (static.testEqualString(field.name, @tagName(t))) {
-                ret = fieldIdInternal(field.field_type, @field(t, field.name), ret);
+                ret = fieldIdInternal(field.type, @field(t, field.name), ret);
                 break;
             } else {
-                ret = fieldIdInternalNoOp(field.field_type, ret);
+                ret = fieldIdInternalNoOp(field.type, ret);
             }
         }
     }
