@@ -639,16 +639,16 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
         const main_return_type: type = main_type_info.Fn.return_type.?;
         const main_return_type_info: Type = @typeInfo(main_return_type);
         const params = blk_0: {
-            if (main_type_info.Fn.args.len == 0) {
+            if (main_type_info.Fn.params.len == 0) {
                 break :blk_0 .{};
             }
-            if (main_type_info.Fn.args.len == 1) {
+            if (main_type_info.Fn.params.len == 1) {
                 const args_len: u64 = @intToPtr(*u64, stack_addr).*;
                 const args_addr: u64 = stack_addr + 8;
                 const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
                 break :blk_0 .{args[0..args_len]};
             }
-            if (main_type_info.Fn.args.len == 2) {
+            if (main_type_info.Fn.params.len == 2) {
                 const args_len: u64 = @intToPtr(*u64, stack_addr).*;
                 const args_addr: u64 = stack_addr + 8;
                 const vars_addr: u64 = stack_addr + 16 + (args_len * 8);
@@ -661,8 +661,8 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
                 };
                 break :blk_0 .{ args[0..args_len], vars[0..vars_len] };
             }
-            if (main_type_info.Fn.args.len == 3) {
-                const auxv_type: type = main_type_info.Fn.args[2].arg_type.?;
+            if (main_type_info.Fn.params.len == 3) {
+                const auxv_type: type = main_type_info.Fn.params[2].type.?;
                 const args_len: u64 = @intToPtr(*u64, stack_addr).*;
                 const args_addr: u64 = stack_addr + 8;
                 const vars_addr: u64 = args_addr + 8 + (args_len * 8);
@@ -805,8 +805,8 @@ pub noinline fn callClone(
 }
 pub fn Args(comptime Fn: type) type {
     var fields: []const builtin.StructField = meta.empty;
-    inline for (@typeInfo(Fn).Fn.args) |arg, i| {
-        fields = fields ++ meta.parcel(meta.structField(arg.arg_type.?, lit.ud8[i], null));
+    inline for (@typeInfo(Fn).Fn.params) |arg, i| {
+        fields = fields ++ meta.parcel(meta.structField(arg.type.?, lit.ud8[i], null));
     }
     return @Type(meta.tupleInfo(fields));
 }
