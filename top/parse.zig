@@ -3690,7 +3690,7 @@ pub fn EnumFieldStruct(comptime E: type, comptime Data: type, comptime field_def
     for (meta.resolve(@typeInfo(E)).fields) |field| {
         fields = fields ++ &[_]StructField{.{
             .name = field.name,
-            .field_type = Data,
+            .type = Data,
             .default_value = if (field_default) |d| @ptrCast(?*const anyopaque, &d) else null,
             .is_comptime = false,
             .alignment = if (@sizeOf(Data) > 0) @alignOf(Data) else 0,
