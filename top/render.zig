@@ -11,7 +11,7 @@ const render_multi_line_string_literal: bool = false;
 const attempt_short_type_names: bool = true;
 const omit_default_fields: bool = true;
 const omit_compiler_given_names: bool = true;
-const render_composite_field_type_recursively: bool = true;
+const render_composite_type_recursively: bool = true;
 const render_radix: u16 = builtin.config("render_radix", u16, 10);
 
 fn typeName(comptime T: type) []const u8 {
@@ -123,13 +123,13 @@ pub const TypeFormat = struct {
                 } else {
                     array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
                     inline for (struct_info.fields) |field| {
-                        const FieldFormat = AnyFormat(field.field_type);
-                        if (render_composite_field_type_recursively) {
-                            const field_type_format: TypeFormat = .{ .value = field.field_type };
+                        const FieldFormat = AnyFormat(field.type);
+                        if (render_composite_type_recursively) {
+                            const type_format: TypeFormat = .{ .value = field.type };
                             array.writeMany(field.name ++ ": ");
-                            field_type_format.formatWrite(array);
+                            type_format.formatWrite(array);
                         } else {
-                            array.writeMany(field.name ++ ": " ++ comptime typeName(field.field_type));
+                            array.writeMany(field.name ++ ": " ++ comptime typeName(field.type));
                         }
                         if (meta.defaultValue(field)) |default_value| {
                             const field_format: FieldFormat = .{ .value = default_value };
@@ -147,15 +147,15 @@ pub const TypeFormat = struct {
                 } else {
                     array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
                     inline for (union_info.fields) |field| {
-                        if (field.field_type == void) {
+                        if (field.type == void) {
                             array.writeMany(field.name ++ ", ");
                         } else {
-                            if (render_composite_field_type_recursively) {
+                            if (render_composite_type_recursively) {
                                 array.writeMany(field.name ++ ": ");
-                                const field_type_format: TypeFormat = .{ .value = field.field_type };
-                                field_type_format.formatWrite(array);
+                                const type_format: TypeFormat = .{ .value = field.type };
+                                type_format.formatWrite(array);
                             } else {
-                                array.writeMany(field.name ++ ": " ++ comptime typeName(field.field_type));
+                                array.writeMany(field.name ++ ": " ++ comptime typeName(field.type));
                             }
                             array.writeMany(", ");
                         }
@@ -190,13 +190,13 @@ pub const TypeFormat = struct {
                 } else {
                     len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                     inline for (struct_info.fields) |field| {
-                        const FieldFormat = AnyFormat(field.field_type);
-                        if (render_composite_field_type_recursively) {
-                            const field_type_format: TypeFormat = .{ .value = field.field_type };
+                        const FieldFormat = AnyFormat(field.type);
+                        if (render_composite_type_recursively) {
+                            const type_format: TypeFormat = .{ .value = field.type };
                             len += field.name.len + 2;
-                            len += field_type_format.formatLength();
+                            len += type_format.formatLength();
                         } else {
-                            len += field.name.len + 2 + typeName(field.field_type).len;
+                            len += field.name.len + 2 + typeName(field.type).len;
                         }
                         if (meta.defaultValue(field)) |default_value| {
                             const field_format: FieldFormat = .{ .value = default_value };
@@ -214,15 +214,15 @@ pub const TypeFormat = struct {
                 } else {
                     len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                     inline for (union_info.fields) |field| {
-                        if (field.field_type == void) {
+                        if (field.type == void) {
                             len += field.name.len + 2;
                         } else {
-                            if (render_composite_field_type_recursively) {
+                            if (render_composite_type_recursively) {
                                 len += field.name.len + 2;
-                                const field_type_format: TypeFormat = .{ .value = field.field_type };
-                                len += field_type_format.formatLength();
+                                const type_format: TypeFormat = .{ .value = field.type };
+                                len += type_format.formatLength();
                             } else {
-                                len += field.name.len + 2 + typeName(field.field_type).len;
+                                len += field.name.len + 2 + typeName(field.type).len;
                             }
                             len += 2;
                         }
@@ -268,7 +268,7 @@ pub fn StructFormat(comptime Struct: type) type {
             } else {
                 inline for (fields) |field| {
                     len += 1 + field.name.len + 3;
-                    len += AnyFormat(field.field_type).max_len;
+                    len += AnyFormat(field.type).max_len;
                     len += 2;
                 }
             }
@@ -288,13 +288,13 @@ pub fn StructFormat(comptime Struct: type) type {
                     array.writeMany(type_name ++ "{ ");
                 }
                 inline for (fields) |field| {
-                    const FieldFormat = AnyFormat(field.field_type);
-                    const field_value: field.field_type = @field(format.value, field.name);
+                    const FieldFormat = AnyFormat(field.type);
+                    const field_value: field.type = @field(format.value, field.name);
                     if (omit_default_fields and field.default_value != null and
-                        comptime meta.isTriviallyComparable(field.field_type))
+                        comptime meta.isTriviallyComparable(field.type))
                     {
-                        const default_value: field.field_type =
-                            mem.pointerOpaque(field.field_type, field.default_value.?).*;
+                        const default_value: field.type =
+                            mem.pointerOpaque(field.type, field.default_value.?).*;
                         if (field_value != default_value) {
                             const field_format: FieldFormat = .{ .value = field_value };
                             array.writeMany(("." ++ field.name ++ " = "));
@@ -323,13 +323,13 @@ pub fn StructFormat(comptime Struct: type) type {
                 len += type_name.len + 2;
             }
             inline for (fields) |field| {
-                const FieldFormat = AnyFormat(field.field_type);
-                const field_value: field.field_type = @field(format.value, field.name);
+                const FieldFormat = AnyFormat(field.type);
+                const field_value: field.type = @field(format.value, field.name);
                 if (omit_default_fields and field.default_value != null and
-                    comptime meta.isTriviallyComparable(field.field_type))
+                    comptime meta.isTriviallyComparable(field.type))
                 {
-                    const default_value: field.field_type =
-                        mem.pointerOpaque(field.field_type, field.default_value.?).*;
+                    const default_value: field.type =
+                        mem.pointerOpaque(field.type, field.default_value.?).*;
                     if (field_value != default_value) {
                         const field_format: FieldFormat = .{ .value = field_value };
                         len += 1 + field.name.len + 3 + field_format.formatLength() + 2;
@@ -350,15 +350,15 @@ pub fn UnionFormat(comptime Union: type) type {
         const Format = @This();
         const fields: []const builtin.UnionField = @typeInfo(Union).Union.fields;
         const type_name: []const u8 = typeName(Union);
-        const show_enum_field: bool = fields.len == 2 and (@typeInfo(fields[0].field_type) == .Enum and
-            fields[1].field_type == @typeInfo(fields[0].field_type).Enum.tag_type);
+        const show_enum_field: bool = fields.len == 2 and (@typeInfo(fields[0].type) == .Enum and
+            fields[1].type == @typeInfo(fields[0].type).Enum.tag_type);
         const max_len: u64 = blk: {
             if (show_enum_field) {
                 // e.g. bit_field(u32){ .PHDR | .NOTE | .DYNAMIC }
                 // The combined length of every field name + 3; every name has
                 // a space and a dot to its left, and a space to its right.
                 var len: u64 = 0;
-                const enum_info: builtin.Type = @typeInfo(fields[0].field_type);
+                const enum_info: builtin.Type = @typeInfo(fields[0].type);
                 inline for (enum_info.Enum.fields) |field| {
                     len += field.len;
                 }
@@ -382,13 +382,13 @@ pub fn UnionFormat(comptime Union: type) type {
             } else {
                 var max_field_len: u64 = 0;
                 inline for (fields) |field| {
-                    max_field_len = @max(max_field_len, AnyFormat(field.field_type).max_len);
+                    max_field_len = @max(max_field_len, AnyFormat(field.type).max_len);
                 }
                 break :blk (type_name.len + 2) + 1 + meta.maxDeclLength(Union) + 3 + max_field_len + 2;
             }
         };
         pub fn formatWriteEnumField(format: Format, array: anytype) void {
-            const enum_info: builtin.Type = @typeInfo(fields[0].field_type);
+            const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
             array.writeMany("bit_field(" ++ comptime typeName(enum_info.Enum.tag_type) ++ "){ ");
             var x: enum_info.Enum.tag_type = w;
@@ -422,7 +422,7 @@ pub fn UnionFormat(comptime Union: type) type {
             }
         }
         pub fn formatLengthEnumField(format: Format) u64 {
-            const enum_info: builtin.Type = @typeInfo(fields[0].field_type);
+            const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
             var len: u64 = 10 + typeName(enum_info.Enum.tag_type).len + 3;
             var x: enum_info.Enum.tag_type = w;
@@ -454,7 +454,7 @@ pub fn UnionFormat(comptime Union: type) type {
                 if (comptime @typeInfo(Union).Union.tag_type) |tag_type| {
                     inline for (fields) |field| {
                         if (format.value == @field(tag_type, field.name)) {
-                            const FieldFormat = AnyFormat(field.field_type);
+                            const FieldFormat = AnyFormat(field.type);
                             const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
                             array.writeMany("." ++ field.name ++ " = ");
                             field_format.formatWrite(array);
@@ -475,7 +475,7 @@ pub fn UnionFormat(comptime Union: type) type {
             if (comptime @typeInfo(Union).Union.tag_type) |tag_type| {
                 inline for (fields) |field| {
                     if (format.value == @field(tag_type, field.name)) {
-                        const FieldFormat = AnyFormat(field.field_type);
+                        const FieldFormat = AnyFormat(field.type);
                         const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
                         len += 1 + field.name.len + 3 + field_format.formatLength() + 2;
                     }
@@ -536,10 +536,10 @@ pub fn IntFormat(comptime Int: type) type {
         const Format = @This();
         const Abs: type = @Type(.{ .Int = .{ .bits = type_info.Int.bits, .signedness = .unsigned } });
         const type_info: builtin.Type = @typeInfo(Int);
-        const radix: Abs = render_radix;
         const max_abs_value: Abs = ~@as(Abs, 0);
+        const radix: Abs = @min(max_abs_value, render_radix);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, radix);
-        const prefix: [2]u8 = lit.int_prefixes[radix].*;
+        const prefix: []const u8 = lit.int_prefixes[radix];
         const max_len: u64 = blk: {
             var len: u64 = max_digits_count;
             if (radix != 10) {
@@ -568,7 +568,8 @@ pub fn IntFormat(comptime Int: type) type {
             }
             next += @boolToInt(format.value < 0);
             if (radix != 10) {
-                @intToPtr(*[prefix.len]u8, next).* = prefix;
+                @intToPtr(*[prefix.len]u8, next).* =
+                    @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
                 next += prefix.len;
             }
             var value: Abs = format.absolute();
@@ -850,7 +851,7 @@ pub fn VectorFormat(comptime Vector: type) type {
         const max_len: u64 = (type_name.len + 2) +
             vector_info.Array.len * (ChildFormat.max_len + 2);
         pub fn formatWrite(format: Format, array: anytype) void {
-            if (format.value.len == 0) {
+            if (vector_info.Vector.len == 0) {
                 array.writeMany(type_name ++ "{}");
             } else {
                 array.writeMany(type_name ++ "{ ");
