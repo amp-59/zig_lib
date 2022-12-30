@@ -122,7 +122,7 @@ pub fn main() !void {
     builtin.addEqu(T, &arg1, arg2);
     builtin.addEquSat(T, &arg1, arg2);
     builtin.addEquWrap(T, &arg1, arg2);
-    arg2 = builtin.addWithOverflow(T, arg1, arg2).value;
+    arg2 = builtin.addWithOverflow(T, arg1, arg2)[0];
     b = builtin.addEquWithOverflow(T, &arg1, arg2);
     arg2 = builtin.sub(T, arg1, arg2);
     arg2 = builtin.subSat(T, arg1, arg2);
@@ -130,7 +130,7 @@ pub fn main() !void {
     builtin.subEqu(T, &arg1, arg2);
     builtin.subEquSat(T, &arg1, arg2);
     builtin.subEquWrap(T, &arg1, arg2);
-    arg2 = builtin.subWithOverflow(T, arg1, arg2).value;
+    arg2 = builtin.subWithOverflow(T, arg1, arg2)[0];
     b = builtin.subEquWithOverflow(T, &arg1, arg2);
     arg1 = builtin.mul(T, arg1, arg2);
     arg1 = builtin.mulSat(T, arg1, arg2);
@@ -138,7 +138,7 @@ pub fn main() !void {
     builtin.mulEqu(T, &arg1, arg2);
     builtin.mulEquSat(T, &arg1, arg2);
     builtin.mulEquWrap(T, &arg1, arg2);
-    arg1 = builtin.mulWithOverflow(T, arg1, arg2).value;
+    arg1 = builtin.mulWithOverflow(T, arg1, arg2)[0];
     b = builtin.mulEquWithOverflow(T, &arg1, arg2);
     arg1 = builtin.div(T, arg1, arg2);
     builtin.divEqu(T, &arg1, arg2);
@@ -162,7 +162,7 @@ pub fn main() !void {
     builtin.shlEqu(T, &arg1, arg2);
     arg1 = builtin.shlExact(T, arg1, arg2);
     builtin.shlEquExact(T, &arg1, arg2);
-    arg1 = builtin.shlWithOverflow(T, arg1, arg2).value;
+    arg1 = builtin.shlWithOverflow(T, arg1, arg2)[0];
     b = builtin.shlEquWithOverflow(T, &arg1, arg2);
     arg1 = builtin.min(T, arg1, arg2);
     arg1 = builtin.max(T, arg1, arg2);
