@@ -235,9 +235,11 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 }
                 try file.write(fd, section_text);
             } else {
-                const sub_region: [*:':']const u8 = file_buf.readManyWithSentinelAt(begin + 1, ':').ptr;
+                const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
                 name_buf.undefineAll();
-                name_buf.writeAny(mem.ptr_wr_spec, .{ mca_begin_s.*, sub_region, '\n' });
+                if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
+                    name_buf.writeAny(mem.ptr_wr_spec, .{ mca_begin_s.*, sub_region[0..colon], '\n' });
+                }
                 try file.write(fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
                 if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
@@ -245,14 +247,19 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 }
                 try file.write(fd, section_text);
                 name_buf.undefineAll();
-                name_buf.writeAny(mem.ptr_wr_spec, .{ mca_end_s.*, sub_region, '\n' });
+
+                if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
+                    name_buf.writeAny(mem.ptr_wr_spec, .{ mca_end_s.*, sub_region[0..colon], '\n' });
+                }
                 try file.write(fd, name_buf.readAll());
             }
             begin = idx_1;
         }
-        const sub_region: [*:':']const u8 = file_buf.readManyWithSentinelAt(begin + 1, ':').ptr;
+        const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
         name_buf.undefineAll();
-        name_buf.writeAny(mem.ptr_wr_spec, .{ mca_begin_s.*, sub_region, '\n' });
+        if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
+            name_buf.writeAny(mem.ptr_wr_spec, .{ mca_begin_s.*, sub_region[0..colon], '\n' });
+        }
         try file.write(fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[begin..x.body.end];
         if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
@@ -260,7 +267,9 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         }
         try file.write(fd, section_text);
         name_buf.undefineAll();
-        name_buf.writeAny(mem.ptr_wr_spec, .{ mca_end_s.*, sub_region, '\n', mca_end_s.*, name, '\n' });
+        if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
+            name_buf.writeAny(mem.ptr_wr_spec, .{ mca_end_s.*, sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
+        }
         try file.write(fd, name_buf.readAll());
     } else {
         name_buf.undefineAll();
