@@ -27,12 +27,15 @@ pub const Declaration           = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.
 pub const EnumField             = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
 pub const UnionField            = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
 pub const CallingConvention               = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
-pub const FnParam               = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.args)).Pointer.child;
+pub const FnParam               = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.params)).Pointer.child;
 pub const DeclLiteral                             = @Type(.EnumLiteral);
 pub const Endian                                  = @TypeOf(zig.cpu.arch.endian());
 // zig fmt: on
 fn Src() type {
     return @TypeOf(@src());
+}
+fn Overflow(comptime T: type) type {
+    return struct { T, u1 };
 }
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
@@ -196,40 +199,40 @@ fn ArithWithOverflowReturn(comptime T: type) type {
         overflowed: bool,
     };
 }
-inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalAddReturn(T, arg1.*, arg2);
 }
-inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: ArithWithOverflowReturn(T) = overflowingAddReturn(T, arg1, arg2);
-    if (is_debug and result.overflowed) {
+fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
+    const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
+    if (is_debug and result[1] != 0) {
         debug.addCausedOverflowFault(T, arg1, arg2);
     }
-    return result.value;
+    return result[0];
 }
-inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalSubReturn(T, arg1.*, arg2);
 }
-inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: ArithWithOverflowReturn(T) = overflowingSubReturn(T, arg1, arg2);
-    if (is_debug and result.overflowed) {
+fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
+    const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
+    if (is_debug and result[1] != 0) {
         debug.subCausedOverflowFault(T, arg1, arg2);
     }
-    return result.value;
+    return result[0];
 }
-inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalMulReturn(T, arg1.*, arg2);
 }
-inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: ArithWithOverflowReturn(T) = overflowingMulReturn(T, arg1, arg2);
-    if (is_debug and result.overflowed) {
+fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
+    const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
+    if (is_debug and result[1] != 0) {
         debug.mulCausedOverflowFault(T, arg1, arg2);
     }
-    return result.value;
+    return result[0];
 }
-inline fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = exactDivisionReturn(T, arg1.*, arg2);
 }
-inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
     const remainder: T = normalSubReturn(T, arg1, (result * arg2));
     if (is_debug and remainder != 0) {
@@ -237,145 +240,133 @@ inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     }
     return result;
 }
-inline fn saturatingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn saturatingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* +|= arg2;
 }
-inline fn saturatingAddReturn(comptime T: type, arg1: T, arg2: T) T {
+fn saturatingAddReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 +| arg2;
 }
-inline fn saturatingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn saturatingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* -|= arg2;
 }
-inline fn saturatingSubReturn(comptime T: type, arg1: T, arg2: T) T {
+fn saturatingSubReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 -| arg2;
 }
-inline fn saturatingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn saturatingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* *|= arg2;
 }
-inline fn saturatingMulReturn(comptime T: type, arg1: T, arg2: T) T {
+fn saturatingMulReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 *| arg2;
 }
-inline fn wrappingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn wrappingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* +%= arg2;
 }
-inline fn wrappingAddReturn(comptime T: type, arg1: T, arg2: T) T {
+fn wrappingAddReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 +% arg2;
 }
-inline fn wrappingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn wrappingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* -%= arg2;
 }
-inline fn wrappingSubReturn(comptime T: type, arg1: T, arg2: T) T {
+fn wrappingSubReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 -% arg2;
 }
-inline fn wrappingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn wrappingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* *%= arg2;
 }
-inline fn wrappingMulReturn(comptime T: type, arg1: T, arg2: T) T {
+fn wrappingMulReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 *% arg2;
 }
-inline fn normalDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* /= arg2;
 }
-inline fn normalDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 / arg2;
 }
-inline fn normalOrReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalOrReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 | arg2;
 }
-inline fn normalOrAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalOrAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* |= arg2;
 }
-inline fn normalAndReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalAndReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 & arg2;
 }
-inline fn normalAndAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalAndAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* &= arg2;
 }
-inline fn normalXorReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalXorReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 ^ arg2;
 }
-inline fn normalXorAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalXorAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* ^= arg2;
 }
-inline fn normalShrReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalShrReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 >> intCast(ShiftAmount(T), arg2);
 }
-inline fn normalShrAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalShrAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* >>= intCast(ShiftAmount(T), arg2);
 }
-inline fn normalShlReturn(comptime T: type, arg1: T, arg2: T) T {
+fn normalShlReturn(comptime T: type, arg1: T, arg2: T) T {
     return arg1 << intCast(ShiftAmount(T), arg2);
 }
-inline fn normalShlAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn normalShlAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* <<= intCast(ShiftAmount(T), arg2);
 }
-inline fn truncatedDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn truncatedDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = @divTrunc(arg1.*, arg2);
 }
-inline fn truncatedDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+fn truncatedDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     return @divTrunc(arg1, arg2);
 }
-inline fn flooredDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn flooredDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = @divFloor(arg1.*, arg2);
 }
-inline fn flooredDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+fn flooredDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     return @divFloor(arg1, arg2);
 }
-inline fn exactShrReturn(comptime T: type, arg1: T, arg2: T) T {
+fn exactShrReturn(comptime T: type, arg1: T, arg2: T) T {
     return @shrExact(arg1, intCast(ShiftAmount(T), arg2));
 }
-inline fn exactShrAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn exactShrAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = @shrExact(arg1.*, intCast(ShiftAmount(T), arg2));
 }
-inline fn exactShlReturn(comptime T: type, arg1: T, arg2: T) T {
+fn exactShlReturn(comptime T: type, arg1: T, arg2: T) T {
     return @shlExact(arg1, intCast(ShiftAmount(T), arg2));
 }
-inline fn exactShlAssign(comptime T: type, arg1: *T, arg2: T) void {
+fn exactShlAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = @shlExact(arg1.*, intCast(ShiftAmount(T), arg2));
 }
-inline fn overflowingAddAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    return @addWithOverflow(T, arg1.*, arg2, arg1);
+fn overflowingAddAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result: Overflow(T) = @addWithOverflow(arg1.*, arg2);
+    arg1.* = result[0];
+    return result[1] != 0;
 }
-inline fn overflowingAddReturn(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
-    var result: T = undefined;
-    const overflowed: bool = @addWithOverflow(T, arg1, arg2, &result);
-    return .{
-        .overflowed = overflowed,
-        .value = result,
-    };
+fn overflowingAddReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
+    return @addWithOverflow(arg1, arg2);
 }
-inline fn overflowingSubAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    return @subWithOverflow(T, arg1.*, arg2, arg1);
+fn overflowingSubAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result: Overflow(T) = @subWithOverflow(arg1.*, arg2);
+    arg1.* = result[0];
+    return result[1] != 0;
 }
-inline fn overflowingSubReturn(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
-    var result: T = undefined;
-    const overflowed: bool = @subWithOverflow(T, arg1, arg2, &result);
-    return .{
-        .overflowed = overflowed,
-        .value = result,
-    };
+fn overflowingSubReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
+    return @subWithOverflow(arg1, arg2);
 }
-inline fn overflowingMulAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    return @mulWithOverflow(T, arg1.*, arg2, arg1);
+fn overflowingMulAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result: Overflow(T) = @mulWithOverflow(arg1.*, arg2);
+    arg1.* = result[0];
+    return result[1] != 0;
 }
-inline fn overflowingMulReturn(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
-    var result: T = undefined;
-    const overflowed: bool = @mulWithOverflow(T, arg1, arg2, &result);
-    return .{
-        .overflowed = overflowed,
-        .value = result,
-    };
+fn overflowingMulReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
+    return @mulWithOverflow(arg1, arg2);
 }
-inline fn overflowingShlReturn(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
-    var result: T = undefined;
-    const overflowed: bool = @shlWithOverflow(T, arg1, intCast(ShiftAmount(T), arg2), &result);
-    return .{
-        .overflowed = overflowed,
-        .value = result,
-    };
+fn overflowingShlAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result: Overflow(T) = @shlWithOverflow(arg1.*, intCast(ShiftAmount(T), arg2));
+    arg1.* = result[0];
+    return result[1] != 0;
 }
-inline fn overflowingShlAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    return @shlWithOverflow(T, arg1.*, intCast(ShiftAmount(T), arg2), arg1);
+fn overflowingShlReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
+    return @shlWithOverflow(arg1, intCast(ShiftAmount(T), arg2));
 }
 pub fn add(comptime T: type, arg1: T, arg2: T) T {
     return normalAddReturn(T, arg1, arg2);
@@ -395,7 +386,7 @@ pub fn addEquSat(comptime T: type, arg1: *T, arg2: T) void {
 pub fn addEquWrap(comptime T: type, arg1: *T, arg2: T) void {
     wrappingAddAssign(T, arg1, arg2);
 }
-pub fn addWithOverflow(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
+pub fn addWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
     return overflowingAddReturn(T, arg1, arg2);
 }
 pub fn addEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
@@ -419,7 +410,7 @@ pub fn subEquSat(comptime T: type, arg1: *T, arg2: T) void {
 pub fn subEquWrap(comptime T: type, arg1: *T, arg2: T) void {
     wrappingSubAssign(T, arg1, arg2);
 }
-pub fn subWithOverflow(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
+pub fn subWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
     return overflowingSubReturn(T, arg1, arg2);
 }
 pub fn subEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
@@ -443,7 +434,7 @@ pub fn mulEquSat(comptime T: type, arg1: *T, arg2: T) void {
 pub fn mulEquWrap(comptime T: type, arg1: *T, arg2: T) void {
     wrappingMulAssign(T, arg1, arg2);
 }
-pub fn mulWithOverflow(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
+pub fn mulWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
     return overflowingMulReturn(T, arg1, arg2);
 }
 pub fn mulEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
@@ -515,7 +506,7 @@ pub fn shlExact(comptime T: type, arg1: T, arg2: T) T {
 pub fn shlEquExact(comptime T: type, arg1: *T, arg2: T) void {
     exactShlAssign(T, arg1, arg2);
 }
-pub fn shlWithOverflow(comptime T: type, arg1: T, arg2: T) ArithWithOverflowReturn(T) {
+pub fn shlWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
     return overflowingShlReturn(T, arg1, arg2);
 }
 pub fn shlEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
@@ -527,7 +518,7 @@ pub fn min(comptime T: type, arg1: T, arg2: T) T {
 pub fn max(comptime T: type, arg1: T, arg2: T) T {
     return @max(arg1, arg2);
 }
-pub inline fn isComptime() bool {
+pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
@@ -639,49 +630,49 @@ pub const static = opaque {
             return error.Unexpected;
         }
     }
-    inline fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
-        const result: ArithWithOverflowReturn(T) = overflowingAddReturn(T, arg1.*, arg2);
-        if (is_debug and result.overflowed) {
+    fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
+        const result: Overflow(T) = overflowingAddReturn(T, arg1.*, arg2);
+        if (is_debug and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1.*, arg2);
         }
-        arg1.* = result.value;
+        arg1.* = result[0];
     }
-    inline fn normalAddReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        const result: ArithWithOverflowReturn(T) = overflowingAddReturn(T, arg1, arg2);
-        if (is_debug and result.overflowed) {
+    fn normalAddReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
+        const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
+        if (is_debug and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1, arg2);
         }
-        return result.value;
+        return result[0];
     }
-    inline fn normalSubAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
-        const result: ArithWithOverflowReturn(T) = overflowingSubReturn(T, arg1.*, arg2);
+    fn normalSubAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
+        const result: Overflow(T) = overflowingSubReturn(T, arg1.*, arg2);
         if (is_debug and arg1.* < arg2) {
             debug.static.subCausedOverflow(T, arg1.*, arg2);
         }
-        arg1.* = result.value;
+        arg1.* = result[0];
     }
-    inline fn normalSubReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        const result: ArithWithOverflowReturn(T) = overflowingSubReturn(T, arg1, arg2);
-        if (is_debug and result.overflowed) {
+    fn normalSubReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
+        const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
+        if (is_debug and result[1] != 0) {
             debug.static.subCausedOverflow(T, arg1, arg2);
         }
-        return result.value;
+        return result[0];
     }
-    inline fn normalMulAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
-        const result: ArithWithOverflowReturn(T) = overflowingMulReturn(T, arg1.*, arg2);
-        if (is_debug and result.overflowed) {
+    fn normalMulAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
+        const result: Overflow(T) = overflowingMulReturn(T, arg1.*, arg2);
+        if (is_debug and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1.*, arg2);
         }
-        arg1.* = result.value;
+        arg1.* = result[0];
     }
-    inline fn normalMulReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        const result: ArithWithOverflowReturn(T) = overflowingMulReturn(T, arg1, arg2);
-        if (is_debug and result.overflowed) {
+    fn normalMulReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
+        const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
+        if (is_debug and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1, arg2);
         }
-        return result.value;
+        return result[0];
     }
-    inline fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
+    fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: T = arg1.* / arg2;
         const remainder: T = static.normalSubReturn(T, arg1.*, (result * arg2));
         if (is_debug and remainder != 0) {
@@ -689,7 +680,7 @@ pub const static = opaque {
         }
         arg1.* = result;
     }
-    inline fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
+    fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: T = arg1 / arg2;
         const remainder: T = static.normalSubReturn(T, arg1, (result * arg2));
         if (is_debug and remainder != 0) {
@@ -880,65 +871,65 @@ const debug = opaque {
             tos(u64, remainder).readAll(),           "\n",
         });
     }
-    noinline fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U) noreturn {
+    fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.intCastTruncatedBitsString(T, U, &buf, arg);
         panic(buf[0..len]);
     }
-    noinline fn subCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
+    fn subCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         print(buf[0..len]);
         return error.SubCausedOverflow;
     }
-    noinline fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
+    fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         panic(buf[0..len]);
     }
-    noinline fn addCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
+    fn addCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, aboutError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         print(buf[0..len]);
         return error.AddCausedOverflow;
     }
-    noinline fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
+    fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         panic(buf[0..len]);
     }
-    noinline fn mulCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
+    fn mulCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, aboutError(T), &buf, arg1, arg2);
         print(buf[0..len]);
         return error.MulCausedOverflow;
     }
-    noinline fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
+    fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2);
         panic(buf[0..len]);
     }
-    noinline fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
+    fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), &buf, arg1, arg2, result, remainder);
         print(buf[0..len]);
         return error.DivisionWithRemainder;
     }
-    noinline fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
+    fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), &buf, arg1, arg2, result, remainder);
         panic(buf[0..len]);
     }
-    noinline fn incorrectAlignmentException(comptime T: type, address: usize, alignment: usize) Exception {
+    fn incorrectAlignmentException(comptime T: type, address: usize, alignment: usize) Exception {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
@@ -946,21 +937,21 @@ const debug = opaque {
         print(buf[0..len]);
         return error.IncorrectAlignment;
     }
-    noinline fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize) noreturn {
+    fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize) noreturn {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
         const len: u64 = incorrectAlignmentString(T, aboutFault(T), &buf, address, alignment, remainder);
         panic(buf[0..len]);
     }
-    noinline fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
+    fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = comparisonFailedString(T, aboutError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         print(buf[0..len]);
         return error.UnexpectedValue;
     }
-    noinline fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
+    fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
@@ -1068,7 +1059,7 @@ const debug = opaque {
     }
 };
 pub const parse = opaque {
-    pub noinline fn ub(comptime T: type, str: []const u8) T {
+    pub fn ub(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
         const sig_fig_list: []const T = comptime sigFigList(T, 2);
         var idx: u64 = 0;
@@ -1080,7 +1071,7 @@ pub const parse = opaque {
         }
         return value;
     }
-    pub noinline fn uo(comptime T: type, str: []const u8) T {
+    pub fn uo(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
         const sig_fig_list: []const T = comptime sigFigList(T, 8);
         var idx: u64 = 0;
@@ -1092,7 +1083,7 @@ pub const parse = opaque {
         }
         return value;
     }
-    pub noinline fn ud(comptime T: type, str: []const u8) T {
+    pub fn ud(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
         const sig_fig_list: []const T = comptime sigFigList(T, 10);
         var idx: u64 = 0;
@@ -1102,7 +1093,7 @@ pub const parse = opaque {
         }
         return value;
     }
-    pub noinline fn ux(comptime T: type, str: []const u8) T {
+    pub fn ux(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
         const sig_fig_list: []const T = comptime sigFigList(T, 16);
         var idx: u64 = 0;
@@ -1114,7 +1105,7 @@ pub const parse = opaque {
         }
         return value;
     }
-    pub noinline fn ib(comptime T: type, str: []const u8) T {
+    pub fn ib(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
         const sig_fig_list: []const T = comptime sigFigList(T, 2);
         var idx: u64 = 0;
@@ -1127,7 +1118,7 @@ pub const parse = opaque {
         }
         return if (str[0] == '-') -value else value;
     }
-    pub noinline fn io(comptime T: type, str: []const u8) T {
+    pub fn io(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
         const sig_fig_list: []const T = comptime sigFigList(T, 8);
         var idx: u64 = 0;
@@ -1140,7 +1131,7 @@ pub const parse = opaque {
         }
         return if (str[0] == '-') -value else value;
     }
-    pub noinline fn id(comptime T: type, str: []const u8) T {
+    pub fn id(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
         const sig_fig_list: []const T = comptime sigFigList(T, 10);
         var idx: u64 = 0;
@@ -1151,7 +1142,7 @@ pub const parse = opaque {
         }
         return if (str[0] == '-') -value else value;
     }
-    pub noinline fn ix(comptime T: type, str: []const u8) T {
+    pub fn ix(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
         const sig_fig_list: []const T = comptime sigFigList(T, 16);
         var idx: u64 = 0;
@@ -1175,15 +1166,16 @@ pub const parse = opaque {
             return c -% ('9' - 9);
         }
     }
-    fn nextSigFig(comptime T: type, prev: T, comptime radix: u16) ?T {
-        var ret: T = undefined;
-        if (@mulWithOverflow(T, prev, radix, &ret)) {
+    fn nextSigFig(comptime T: type, prev: T, comptime radix: T) ?T {
+        const mul_result: Overflow(T) = @mulWithOverflow(prev, radix);
+        if (mul_result[1] != 0) {
             return null;
         }
-        if (@addWithOverflow(T, ret, radix -% 1, &ret)) {
+        const add_result: Overflow(T) = @addWithOverflow(mul_result[0], radix -% 1);
+        if (add_result[1] != 0) {
             return null;
         }
-        return ret;
+        return add_result[0];
     }
     fn sigFigList(comptime T: type, comptime radix: u16) []const T {
         var value: T = 0;
@@ -1196,7 +1188,7 @@ pub const parse = opaque {
         }
         return ret;
     }
-    pub noinline fn any(comptime T: type, str: []const u8) !T {
+    pub fn any(comptime T: type, str: []const u8) !T {
         const signed: bool = str[0] == '-';
         if (signed and @typeInfo(T).Int.signedness == .unsigned) {
             return error.InvalidInputParity;
@@ -1392,124 +1384,124 @@ pub const fmt = opaque {
         }
         return array;
     }
-    pub noinline fn ub(comptime T: type, value: T) StaticString(T, 2) {
+    pub fn ub(comptime T: type, value: T) StaticString(T, 2) {
         return b(T, value);
     }
-    pub noinline fn uo(comptime T: type, value: T) StaticString(T, 8) {
+    pub fn uo(comptime T: type, value: T) StaticString(T, 8) {
         return o(T, value);
     }
-    pub noinline fn ud(comptime T: type, value: T) StaticString(T, 10) {
+    pub fn ud(comptime T: type, value: T) StaticString(T, 10) {
         return d(T, value);
     }
-    pub noinline fn ux(comptime T: type, value: T) StaticString(T, 16) {
+    pub fn ux(comptime T: type, value: T) StaticString(T, 16) {
         return x(T, value);
     }
-    pub noinline fn ib(comptime T: type, value: T) StaticString(T, 2) {
+    pub fn ib(comptime T: type, value: T) StaticString(T, 2) {
         return b(T, value);
     }
-    pub noinline fn io(comptime T: type, value: T) StaticString(T, 8) {
+    pub fn io(comptime T: type, value: T) StaticString(T, 8) {
         return o(T, value);
     }
-    pub noinline fn id(comptime T: type, value: T) StaticString(T, 10) {
+    pub fn id(comptime T: type, value: T) StaticString(T, 10) {
         return d(T, value);
     }
-    pub noinline fn ix(comptime T: type, value: T) StaticString(T, 16) {
+    pub fn ix(comptime T: type, value: T) StaticString(T, 16) {
         return x(T, value);
     }
-    pub noinline fn ub8(value: u8) StaticString(u8, 2) {
+    pub fn ub8(value: u8) StaticString(u8, 2) {
         return ub(u8, value);
     }
-    pub noinline fn ub16(value: u16) StaticString(u16, 2) {
+    pub fn ub16(value: u16) StaticString(u16, 2) {
         return ub(u16, value);
     }
-    pub noinline fn ub32(value: u32) StaticString(u32, 2) {
+    pub fn ub32(value: u32) StaticString(u32, 2) {
         return ub(u32, value);
     }
-    pub noinline fn ub64(value: u64) StaticString(u64, 2) {
+    pub fn ub64(value: u64) StaticString(u64, 2) {
         return ub(u64, value);
     }
-    pub noinline fn uo8(value: u8) StaticString(u8, 8) {
+    pub fn uo8(value: u8) StaticString(u8, 8) {
         return uo(u8, value);
     }
-    pub noinline fn uo16(value: u16) StaticString(u16, 8) {
+    pub fn uo16(value: u16) StaticString(u16, 8) {
         return uo(u16, value);
     }
-    pub noinline fn uo32(value: u32) StaticString(u32, 8) {
+    pub fn uo32(value: u32) StaticString(u32, 8) {
         return uo(u32, value);
     }
-    pub noinline fn uo64(value: u64) StaticString(u64, 8) {
+    pub fn uo64(value: u64) StaticString(u64, 8) {
         return uo(u64, value);
     }
-    pub noinline fn ud8(value: u8) StaticString(u8, 10) {
+    pub fn ud8(value: u8) StaticString(u8, 10) {
         return ud(u8, value);
     }
-    pub noinline fn ud16(value: u16) StaticString(u16, 10) {
+    pub fn ud16(value: u16) StaticString(u16, 10) {
         return ud(u16, value);
     }
-    pub noinline fn ud32(value: u32) StaticString(u32, 10) {
+    pub fn ud32(value: u32) StaticString(u32, 10) {
         return ud(u32, value);
     }
-    pub noinline fn ud64(value: u64) StaticString(u64, 10) {
+    pub fn ud64(value: u64) StaticString(u64, 10) {
         return ud(u64, value);
     }
-    pub noinline fn ux8(value: u8) StaticString(u8, 16) {
+    pub fn ux8(value: u8) StaticString(u8, 16) {
         return ux(u8, value);
     }
-    pub noinline fn ux16(value: u16) StaticString(u16, 16) {
+    pub fn ux16(value: u16) StaticString(u16, 16) {
         return ux(u16, value);
     }
-    pub noinline fn ux32(value: u32) StaticString(u32, 16) {
+    pub fn ux32(value: u32) StaticString(u32, 16) {
         return ux(u32, value);
     }
-    pub noinline fn ux64(value: u64) StaticString(u64, 16) {
+    pub fn ux64(value: u64) StaticString(u64, 16) {
         return ux(u64, value);
     }
-    pub noinline fn ib8(value: i8) StaticString(i8, 2) {
+    pub fn ib8(value: i8) StaticString(i8, 2) {
         return ib(i8, value);
     }
-    pub noinline fn ib16(value: i16) StaticString(i16, 2) {
+    pub fn ib16(value: i16) StaticString(i16, 2) {
         return ib(i16, value);
     }
-    pub noinline fn ib32(value: i32) StaticString(i32, 2) {
+    pub fn ib32(value: i32) StaticString(i32, 2) {
         return ib(i32, value);
     }
-    pub noinline fn ib64(value: i64) StaticString(i64, 2) {
+    pub fn ib64(value: i64) StaticString(i64, 2) {
         return ib(i64, value);
     }
-    pub noinline fn io8(value: i8) StaticString(i8, 8) {
+    pub fn io8(value: i8) StaticString(i8, 8) {
         return io(i8, value);
     }
-    pub noinline fn io16(value: i16) StaticString(i16, 8) {
+    pub fn io16(value: i16) StaticString(i16, 8) {
         return io(i16, value);
     }
-    pub noinline fn io32(value: i32) StaticString(i32, 8) {
+    pub fn io32(value: i32) StaticString(i32, 8) {
         return io(i32, value);
     }
-    pub noinline fn io64(value: i64) StaticString(i64, 8) {
+    pub fn io64(value: i64) StaticString(i64, 8) {
         return io(i64, value);
     }
-    pub noinline fn id8(value: i8) StaticString(i8, 10) {
+    pub fn id8(value: i8) StaticString(i8, 10) {
         return id(i8, value);
     }
-    pub noinline fn id16(value: i16) StaticString(i16, 10) {
+    pub fn id16(value: i16) StaticString(i16, 10) {
         return id(i16, value);
     }
-    pub noinline fn id32(value: i32) StaticString(i32, 10) {
+    pub fn id32(value: i32) StaticString(i32, 10) {
         return id(i32, value);
     }
-    pub noinline fn id64(value: i64) StaticString(i64, 10) {
+    pub fn id64(value: i64) StaticString(i64, 10) {
         return id(i64, value);
     }
-    pub noinline fn ix8(value: i8) StaticString(i8, 16) {
+    pub fn ix8(value: i8) StaticString(i8, 16) {
         return ix(i8, value);
     }
-    pub noinline fn ix16(value: i16) StaticString(i16, 16) {
+    pub fn ix16(value: i16) StaticString(i16, 16) {
         return ix(i16, value);
     }
-    pub noinline fn ix32(value: i32) StaticString(i32, 16) {
+    pub fn ix32(value: i32) StaticString(i32, 16) {
         return ix(i32, value);
     }
-    pub noinline fn ix64(value: i64) StaticString(i64, 16) {
+    pub fn ix64(value: i64) StaticString(i64, 16) {
         return ix(i64, value);
     }
 
