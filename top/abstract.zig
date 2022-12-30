@@ -147,7 +147,7 @@ pub const SyntaxTree = struct {
     pub fn extraData(ast: SyntaxTree, index: usize, comptime T: type) T {
         var result: T = undefined;
         inline for (meta.resolve(@typeInfo(T)).fields) |field, i| {
-            builtin.static.assert(field.field_type == zig.Index);
+            builtin.static.assert(field.type == zig.Index);
             @field(result, field.name) = ast.extraDataAt(index + i);
         }
         return result;
