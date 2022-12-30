@@ -357,9 +357,6 @@ fn printHelpText() void {
 const Options = struct {
     output: ?[:0]const u8 = null,
 };
-
-fn zigSourceToAssembly(path: [:0]const u8) [:0]const u8 {}
-
 pub fn main(args_in: [][*:0]u8) anyerror!void {
     if (args_in.len == 1) {
         return printHelpText();
