@@ -109,6 +109,7 @@ fn Reference(comptime options: AllocatorOptions) type {
     };
 }
 pub const ArenaAllocatorSpec = struct {
+    AddressSpace: type = builtin.AddressSpace,
     arena_index: u8,
     options: AllocatorOptions = .{},
     errors: AllocatorErrors = .{},
@@ -309,7 +310,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             }
             allocator.ub_addr = lb_addr;
         }
-        pub fn init(address_space: *mem.AddressSpace) !Allocator {
+        pub fn init(address_space: *spec.AddressSpace) !Allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             allocator = Allocator{ .ub_addr = lb_addr, .up_addr = lb_addr };
@@ -324,7 +325,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             }
             return allocator;
         }
-        pub fn deinit(allocator: *Allocator, address_space: *mem.AddressSpace) void {
+        pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) void {
             defer Graphics.showWithReference(allocator, @src());
             allocator.release(allocator.start());
             mem.noexcept.release(rel_part_spec, address_space, arena.index);
@@ -338,6 +339,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
     };
 }
 pub const RtArenaAllocatorSpec = struct {
+    AddressSpace: type = builtin.AddressSpace,
     options: AllocatorOptions = .{},
     errors: AllocatorErrors = .{},
     logging: AllocatorLogging = .{},
@@ -533,7 +535,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             }
             allocator.ub_addr = allocator.lb_addr;
         }
-        pub fn init(address_space: *mem.AddressSpace, arena_index: u8) !Allocator {
+        pub fn init(address_space: *spec.AddressSpace, arena_index: u8) !Allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             const arena: mem.Arena = mem.Arena{ .index = arena_index };
@@ -551,9 +553,9 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             }
             return allocator;
         }
-        pub fn deinit(allocator: *Allocator, address_space: *mem.AddressSpace) void {
+        pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) void {
             defer Graphics.showWithReference(allocator, @src());
-            const arena_index: u8 = mem.AddressSpace.invert(allocator.lb_addr);
+            const arena_index: u8 = spec.AddressSpace.invert(allocator.lb_addr);
             allocator.release(allocator.start());
             mem.noexcept.release(rel_part_spec, address_space, arena_index);
         }
@@ -803,9 +805,9 @@ const Branches = struct {
         ) void {
             inline for (@typeInfo(@TypeOf(branch)).Struct.fields) |field| {
                 const branch_label: [:0]const u8 = branch_name ++ field.name ++ ",";
-                const value: field.field_type = @field(branch, field.name);
-                if (@typeInfo(field.field_type) == .Struct) {
-                    showWriteInternal(field.field_type, value, array, branch_label, super_branch_name);
+                const value: field.type = @field(branch, field.name);
+                if (@typeInfo(field.type) == .Struct) {
+                    showWriteInternal(field.type, value, array, branch_label, super_branch_name);
                 } else if (value != 0) {
                     if (super_branch_name) |super_branch_name_s| {
                         array.writeMany(super_branch_name_s);
@@ -828,10 +830,10 @@ const Branches = struct {
         ) void {
             inline for (@typeInfo(@TypeOf(t_branch)).Struct.fields) |field| {
                 const branch_label: [:0]const u8 = branch_name ++ field.name ++ ",";
-                const t_value: field.field_type = @field(t_branch, field.name);
-                const s_value: *field.field_type = &@field(s_branch, field.name);
-                if (@typeInfo(field.field_type) == .Struct) {
-                    showWithReferenceWriteInternal(field.field_type, t_value, s_value, array, branch_label, super_branch_name);
+                const t_value: field.type = @field(t_branch, field.name);
+                const s_value: *field.type = &@field(s_branch, field.name);
+                if (@typeInfo(field.type) == .Struct) {
+                    showWithReferenceWriteInternal(field.type, t_value, s_value, array, branch_label, super_branch_name);
                     s_value.* = t_value;
                 } else if (s_value.* != t_value) {
                     if (super_branch_name) |super_branch_name_s| {
