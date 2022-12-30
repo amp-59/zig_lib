@@ -27,13 +27,13 @@ const PrintArray = mem.StaticString(4096);
 const StaticPath = mem.StructuredAutomaticVector(u8, &@as(u8, 0), 4096, 1, .{});
 
 const Mapping = SecondaryAllocator.UnstructuredStreamVector(64, 64);
-const MappingI = @typeInfo(Mapping).Struct.fields[0].field_type;
+const MappingI = @typeInfo(Mapping).Struct.fields[0].type;
 const Holder64 = SecondaryAllocator.StructuredHolder(u64);
-const Holder64I = @typeInfo(Holder64).Struct.fields[0].field_type;
+const Holder64I = @typeInfo(Holder64).Struct.fields[0].type;
 const Many8 = SecondaryAllocator.StructuredVector(u8);
-const Many8I = @typeInfo(Many8).Struct.fields[0].field_type;
+const Many8I = @typeInfo(Many8).Struct.fields[0].type;
 const Many64 = SecondaryAllocator.StructuredVector(u64);
-const Many64I = @typeInfo(Many64).Struct.fields[0].field_type;
+const Many64I = @typeInfo(Many64).Struct.fields[0].type;
 
 const build_dynamic: bool = false;
 const show_elf_header: bool = is_verbose;
