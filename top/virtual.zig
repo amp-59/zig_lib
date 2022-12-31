@@ -2,9 +2,11 @@
 //!
 //! The address space is currently divided 127 times to allow allocators and
 //! threads to manage mapped segments without possibility of collision.
+//!
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
+
 pub const Arena = struct {
     low: usize,
     high: usize,
@@ -13,9 +15,10 @@ pub const Arena = struct {
         thread_safe: bool = false,
     };
 };
-/// Maybe make generic on Endian.
-/// Right now it is difficult to get Zig vectors to produce consistent results,
-/// so this is not an option.
+
+// Maybe make generic on Endian.
+// Right now it is difficult to get Zig vectors to produce consistent results,
+// so this is not an option.
 pub fn DiscreteBitSet(comptime bits: u16) type {
     return struct {
         bits: Data = if (data_info == .Array) [1]usize{0} ** data_info.Array.len else 0,
@@ -67,14 +70,14 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
 }
 pub fn ThreadSafeSet(comptime divisions: u16) type {
     return struct {
-        bits: Data = .{0} ** divisions,
+        bytes: Data = .{0} ** divisions,
         const SafeSet: type = @This();
         const Data: type = [divisions]u8;
         pub fn set(safe_set: *SafeSet, index: usize) void {
-            safe_set.bits[index] = 255;
+            safe_set.bytes[index] = 255;
         }
         pub fn unset(safe_set: *SafeSet, index: usize) void {
-            safe_set.bits[index] = 0;
+            safe_set.bytes[index] = 0;
         }
         pub fn atomicSet(safe_set: *SafeSet, index: usize) bool {
             return asm volatile (
@@ -83,7 +86,7 @@ pub fn ThreadSafeSet(comptime divisions: u16) type {
                 \\lock cmpxchg  %dl,    %[ptr]
                 \\sete          %[ret]
                 : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bits[index]),
+                : [ptr] "p" (&safe_set.bytes[index]),
                 : "rax", "rdx", "memory"
             );
         }
@@ -94,38 +97,38 @@ pub fn ThreadSafeSet(comptime divisions: u16) type {
                 \\lock cmpxchg  %dl,    %[ptr]
                 \\sete          %[ret]
                 : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bits[index]),
+                : [ptr] "p" (&safe_set.bytes[index]),
                 : "rax", "rdx", "memory"
             );
         }
         pub fn check(safe_set: SafeSet, pos: usize) bool {
-            return safe_set.bits[pos] == 255;
+            return safe_set.bytes[pos] == 255;
         }
     };
 }
 fn GenericMultiSet(
     comptime spec: ExactAddressSpaceSpec,
     comptime directory: ExactAddressSpaceSpec.Directory(spec),
-    comptime Set: type,
+    comptime Fields: type,
 ) type {
     return struct {
-        bits: Set = .{},
+        fields: Fields = .{},
         const MultiSet: type = @This();
         const Index: type = ExactAddressSpaceSpec.Index(spec);
         pub fn set(multi_set: *MultiSet, comptime index: Index) void {
-            return multi_set.bits[directory[index].field_index].set(directory[index].arena_index);
+            return multi_set.fields[directory[index].field_index].set(directory[index].arena_index);
         }
         pub fn unset(multi_set: *MultiSet, comptime index: Index) void {
-            return multi_set.bits[directory[index].field_index].unset(directory[index].arena_index);
+            return multi_set.fields[directory[index].field_index].unset(directory[index].arena_index);
         }
         pub fn atomicSet(multi_set: *MultiSet, comptime index: Index) bool {
-            return multi_set.bits[directory[index].field_index].atomicSet(directory[index].arena_index);
+            return multi_set.fields[directory[index].field_index].atomicSet(directory[index].arena_index);
         }
         pub fn atomicUnset(multi_set: *MultiSet, comptime index: Index) bool {
-            return multi_set.bits[directory[index].field_index].atomicUnset(directory[index].arena_index);
+            return multi_set.fields[directory[index].field_index].atomicUnset(directory[index].arena_index);
         }
         fn check(multi_set: *MultiSet, comptime index: Index) bool {
-            return multi_set.bits[directory[index].field_index].check(directory[index].arena_index);
+            return multi_set.fields[directory[index].field_index].check(directory[index].arena_index);
         }
     };
 }
@@ -174,6 +177,9 @@ pub const ExactAddressSpaceSpec = struct {
         } else {
             const T: type = DiscreteBitSet(arena_index + 1);
             fields = fields ++ meta.parcel(meta.structField(T, builtin.fmt.ci(fields.len), .{}));
+        }
+        if (fields.len == 1) {
+            return fields[0].type;
         }
         const T: type = @Type(meta.tupleInfo(fields));
         return GenericMultiSet(spec, directory, T);
@@ -304,7 +310,7 @@ pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
         pub fn set(address_space: *AddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.check(index);
             if (!ret) address_space.impl.set(index);
-            return ret;
+            return !ret;
         }
         pub fn acquire(address_space: *AddressSpace, index: Index) !void {
             if (!address_space.set(index)) {
