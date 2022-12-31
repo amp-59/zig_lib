@@ -314,7 +314,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             allocator = Allocator{ .ub_addr = lb_addr, .up_addr = lb_addr };
-            try mem.acquire(acq_part_spec, address_space, arena.index);
+            try mem.static.acquire(acq_part_spec, address_space, arena.index);
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -328,7 +328,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) void {
             defer Graphics.showWithReference(allocator, @src());
             allocator.release(allocator.start());
-            mem.noexcept.release(rel_part_spec, address_space, arena.index);
+            mem.static.release(rel_part_spec, address_space, arena.index);
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -542,7 +542,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             const lb_addr: u64 = arena.begin();
             const ua_addr: u64 = arena.end();
             allocator = Allocator{ .lb_addr = lb_addr, .ub_addr = lb_addr, .up_addr = lb_addr, .ua_addr = ua_addr };
-            try mem.acquire(acq_part_spec, address_space, arena.index);
+            try mem.static.acquire(acq_part_spec, address_space, arena.index);
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -557,7 +557,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             defer Graphics.showWithReference(allocator, @src());
             const arena_index: u8 = spec.AddressSpace.invert(allocator.lb_addr);
             allocator.release(allocator.start());
-            mem.noexcept.release(rel_part_spec, address_space, arena_index);
+            mem.static.release(rel_part_spec, address_space, arena_index);
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);

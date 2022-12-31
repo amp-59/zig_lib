@@ -120,9 +120,14 @@ pub const PartSpec = struct {
     options: Options = .{},
     errors: ?type = ArenaError,
     logging: builtin.Logging = .{},
+
+    const Specification = @This();
     const Options = struct {
         thread_safe: bool = true,
     };
+    fn Unwrapped(comptime spec: Specification) type {
+        return if (spec.errors) |Error| Error!void else void;
+    }
 };
 pub const MapSpec = struct {
     options: Options,
@@ -704,7 +709,8 @@ pub noinline fn monitor(comptime T: type, ptr: *volatile T) void {
         else => @compileError("???"),
     }
 }
-pub fn acquire(comptime part_spec: PartSpec, address_space: anytype, index: u8) !void {
+
+pub fn acquire(comptime part_spec: PartSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) PartSpec.Unwrapped(part_spec) {
     if (if (part_spec.options.thread_safe)
         address_space.atomicAcquire(index)
     else
@@ -720,7 +726,7 @@ pub fn acquire(comptime part_spec: PartSpec, address_space: anytype, index: u8) 
         return arena_error;
     }
 }
-pub fn release(comptime part_spec: PartSpec, address_space: anytype, index: u8) !void {
+pub fn release(comptime part_spec: PartSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) PartSpec.Unwrapped(part_spec) {
     if (if (part_spec.options.thread_safe)
         address_space.atomicRelease(index)
     else
@@ -736,6 +742,40 @@ pub fn release(comptime part_spec: PartSpec, address_space: anytype, index: u8) 
         return arena_error;
     }
 }
+pub const static = opaque {
+    pub fn acquire(comptime part_spec: PartSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) PartSpec.Unwrapped(part_spec) {
+        if (if (part_spec.options.thread_safe)
+            address_space.atomicAcquire(index)
+        else
+            address_space.acquire(index))
+        {
+            if (part_spec.logging.Acquire) {
+                debug.arenaAcquireNotice(index);
+            }
+        } else |arena_error| {
+            if (part_spec.logging.Error) {
+                debug.arenaAcquireError(arena_error, index);
+            }
+            return arena_error;
+        }
+    }
+    pub fn release(comptime part_spec: PartSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) PartSpec.Unwrapped(part_spec) {
+        if (if (part_spec.options.thread_safe)
+            address_space.atomicRelease(index)
+        else
+            address_space.release(index))
+        {
+            if (part_spec.logging.Release) {
+                debug.arenaReleaseNotice(index);
+            }
+        } else |arena_error| {
+            if (part_spec.logging.Error) {
+                return debug.arenaReleaseError(arena_error, index);
+            }
+            return arena_error;
+        }
+    }
+};
 pub const noexcept = opaque {
     pub fn acquire(comptime part_spec: PartSpec, address_space: anytype, index: u8) void {
         const ret: bool = if (part_spec.options.thread_safe)
