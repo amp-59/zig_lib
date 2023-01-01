@@ -56,7 +56,7 @@ pub const allocator = opaque {
             .unmap = null,
         };
         pub const uniform: mem.AllocatorErrors = .{
-            .acquire = error{OpaqueSystemError},
+            .acquire = error.UnderSupply,
             .release = null,
             .map = &.{},
             .remap = &.{},
@@ -65,8 +65,8 @@ pub const allocator = opaque {
         pub const critical: mem.AllocatorErrors = .{
             .map = mmap.errors.mem,
             .remap = mremap.errors.all,
-            .release = error{OverSupply},
-            .acquire = error{UnderSupply},
+            .release = error.OverSupply,
+            .acquire = error.UnderSupply,
             .unmap = munmap.errors.all,
         };
     };
