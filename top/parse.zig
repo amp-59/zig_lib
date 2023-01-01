@@ -3663,6 +3663,24 @@ fn expectSemicolon(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, err
     try warn(ast, allocator_e, error_tag);
     if (!recoverable) return error.ParseError;
 }
+pub fn isValidId(values: []const u8) bool {
+    if (values.len == 0) return false;
+    if (mem.testEqualMany(u8, "_", values)) {
+        return false;
+    }
+    for (values) |c, i| {
+        switch (c) {
+            '_', 'a'...'z', 'A'...'Z' => {},
+            '0'...'9' => if (i == 0) {
+                return false;
+            },
+            else => {
+                return false;
+            },
+        }
+    }
+    return zig.Token.getKeyword(values) == null;
+}
 fn nextToken(ast: *abstract.ProtoSyntaxTree) zig.Index {
     const result = tokenIndex(ast);
     ast.tokens.stream(1);
