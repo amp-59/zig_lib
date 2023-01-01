@@ -12,7 +12,7 @@ const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 const tokenizer = @import("./tokenizer.zig");
 
-// pub usingnamespace proc.start;
+pub usingnamespace proc.start;
 
 // Just this once.
 const std = @import("std");
@@ -78,7 +78,6 @@ fn timeLib(
     const t1: time.TimeSpec = try time.realClock(null);
     return .{ .ast = lib_ast, .ts = time.diff(t1, t0) };
 }
-
 fn mainBoth() !void {
     for (targets) |target| {
         var address_space: mem.AddressSpace = .{};
@@ -154,4 +153,34 @@ fn mainBoth() !void {
         }
     }
 }
-pub const main = mainBoth;
+
+pub fn main(args: [][*:0]u8) !void {
+    var address_space: mem.AddressSpace = .{};
+    if (args.len > 1) {
+        for (args[1..]) |arg| {
+            var allocator_n = try zig.Allocator.Node.init(&address_space);
+            defer allocator_n.deinit(&address_space);
+            var allocator_e = try zig.Allocator.Error.init(&address_space);
+            defer allocator_e.deinit(&address_space);
+            var allocator_x = try zig.Allocator.Extra.init(&address_space);
+            defer allocator_x.deinit(&address_space);
+            var allocator_s = try zig.Allocator.State.init(&address_space);
+            defer allocator_s.deinit(&address_space);
+            const ast: abstract.SyntaxTree = try abstract.SyntaxTree.init(
+                &allocator_n,
+                &allocator_e,
+                &allocator_x,
+                &allocator_s,
+                try fileBuf(&allocator_n, meta.manyToSlice(arg)),
+            );
+            var index: usize = 0;
+            while (index != ast.nodes.len()) : (index += 1) {
+                const node: zig.AstNode = ast.nodes.readOneAt(index);
+                file.noexcept.write(2, @tagName(node.tag));
+                file.noexcept.write(2, ":\n");
+                file.noexcept.write(2, ast.getNodeSource(@intCast(u32, index)));
+                file.noexcept.write(2, "\n\n");
+            }
+        }
+    }
+}
