@@ -2,7 +2,8 @@ const std = @import("std");
 const build = std.build;
 const srg: std.build.Pkg = .{ .name = "zig_lib", .source = .{ .path = "zig_lib.zig" } };
 const Context = opaque {
-    var build_mode: std.builtin.Mode = undefined;
+    var build_mode: std.builtin.Mode = .Debug;
+    var build_mode_explicit: bool = undefined;
     var output_mode: std.builtin.OutputMode = undefined;
     var builder: *build.Builder = undefined;
     var test_step: *build.Step = undefined;
@@ -18,6 +19,7 @@ const Context = opaque {
         Context.test_all_step = builder.step("test-all", "Run all tests");
         Context.test_all_step.dependOn(Context.test_step);
         Context.run_step = builder.step("run", "Run programs");
+        Context.build_mode_explicit = build_mode != .Debug;
     }
 };
 
@@ -36,6 +38,8 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "list_test", "top/list-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
     _ = addProjectExecutable(builder, "render_test", "top/render-test.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = addProjectExecutable(builder, "parse_test", "top/parse-test.zig", .{ .is_correct = true, .is_verbose = true, .is_test = false });
+    _ = addProjectExecutable(builder, "virtual_test", "top/virtual-test.zig", .{ .is_correct = true, .is_verbose = true });
 
     // More complete test programs:
     _ = addProjectExecutable(builder, "buildgen", "test/buildgen.zig", .{ .is_correct = false, .is_verbose = false });
@@ -76,6 +80,23 @@ fn defineBuildRoot(builder: *build.Builder, exe: *build.LibExeObjStep) void {
         build_root_s[len] = 0;
     }
 }
+fn defineRootSourceAboslutePath(builder: *build.Builder, exe: *build.LibExeObjStep) void {
+    var root_source_s: [4098]u8 = .{0} ** 4098;
+    {
+        var len: u64 = 0;
+        root_source_s[len] = '"';
+        len += 1;
+        for (builder.build_root) |c, i| root_source_s[i + 1] = c;
+        len += builder.build_root.len;
+        root_source_s[len] = '/';
+        len += 1;
+        for (exe.root_src.?.path) |c, i| root_source_s[i + 1] = c;
+        len += exe.root_src.?.path.len;
+        root_source_s[len + 1] = '"';
+        exe.defineCMacro("root_src_file", root_source_s[0 .. len + 2]);
+        root_source_s[len] = 0;
+    }
+}
 fn defineConfig(exe: *build.LibExeObjStep, name: []const u8, value: bool) void {
     if (value) {
         exe.defineCMacro(name, "1");
@@ -94,7 +115,9 @@ pub fn Args(comptime name: [:0]const u8) type {
         emit_asm_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".s",
         emit_analysis_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".analysis",
         build_mode: ?std.builtin.Mode = null,
-        build_root: bool = false,
+        build_root: bool = true,
+        root_src_file: bool = true,
+        build_working_directory: bool = false,
         is_correct: ?bool = null,
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
@@ -103,19 +126,15 @@ pub fn Args(comptime name: [:0]const u8) type {
         strip: bool = Context.always_strip,
     };
 }
-fn addProjectExecutable(
-    builder: *build.Builder,
-    comptime name: [:0]const u8,
-    comptime path: [:0]const u8,
-    args: Args(name),
-) *build.LibExeObjStep {
+fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8, comptime path: [:0]const u8, args: Args(name)) *build.LibExeObjStep {
     const ret: *build.LibExeObjStep = builder.addExecutableSource(name, build.FileSource.relative(path));
-    ret.build_mode = args.build_mode orelse Context.build_mode;
+    ret.build_mode = if (Context.build_mode_explicit) Context.build_mode else args.build_mode orelse Context.build_mode;
     ret.omit_frame_pointer = false;
     ret.single_threaded = false;
     ret.image_base = 0x10000;
     ret.linkage = .static;
     ret.main_pkg_path = builder.build_root;
+    ret.bundle_compiler_rt = false;
     ret.strip = (args.strip or
         Context.build_mode == .ReleaseFast or
         Context.build_mode == .ReleaseSmall) or
