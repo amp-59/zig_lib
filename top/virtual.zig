@@ -3,6 +3,7 @@
 //! The address space is currently divided 127 times to allow allocators and
 //! threads to manage mapped segments without possibility of collision.
 //!
+const mem = @import("./mem.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
@@ -139,7 +140,12 @@ pub const ExactAddressSpaceSpec = struct {
     const List = []const Arena;
     const Options = struct {
         prefer_word_size: bool = true,
+        /// Constructing the implementation at compile time can be expensive, so
+        /// in polished programs consider rendering the required values. Try
+        /// file.noexcept.write(2, fmt.any().formatConvert());
+        preset: ?Preset = null,
     };
+    const Preset = struct { directory: *const anyopaque, Fields: type };
     fn Index(comptime spec: ExactAddressSpaceSpec) type {
         return meta.LeastRealBitSize(spec.list.len);
     }
@@ -150,39 +156,44 @@ pub const ExactAddressSpaceSpec = struct {
         return [spec.list.len]Metadata(spec);
     }
     fn Implementation(comptime spec: ExactAddressSpaceSpec) type {
-        var directory: Directory(spec) = undefined;
-        var fields: []const builtin.StructField = meta.empty;
-        var thread_safe_state: bool = spec.list[0].options.thread_safe;
-        var arena_index: Index(spec) = 0;
-        for (spec.list) |arena, index| {
-            if (thread_safe_state and !arena.options.thread_safe) {
+        if (spec.options.preset) |preset| {
+            const directory: Directory(spec) = mem.pointerOpaque(Directory(spec), preset.directory).*;
+            return GenericMultiSet(spec, directory, preset.Fields);
+        } else {
+            var directory: Directory(spec) = undefined;
+            var fields: []const builtin.StructField = meta.empty;
+            var thread_safe_state: bool = spec.list[0].options.thread_safe;
+            var arena_index: Index(spec) = 0;
+            for (spec.list) |arena, index| {
+                if (thread_safe_state and !arena.options.thread_safe) {
+                    const T: type = ThreadSafeSet(arena_index + 1);
+                    fields = fields ++ meta.parcel(meta.structField(T, builtin.fmt.ci(fields.len), .{}));
+                    directory[index] = .{ .arena_index = 0, .field_index = fields.len };
+                    arena_index = 1;
+                } else if (!thread_safe_state and arena.options.thread_safe) {
+                    const T: type = DiscreteBitSet(arena_index + 1);
+                    fields = fields ++ meta.parcel(meta.structField(T, builtin.fmt.ci(fields.len), .{}));
+                    directory[index] = .{ .arena_index = 0, .field_index = fields.len };
+                    arena_index = 1;
+                } else {
+                    directory[index] = .{ .arena_index = arena_index, .field_index = fields.len };
+                    arena_index += 1;
+                }
+                thread_safe_state = arena.options.thread_safe;
+            }
+            if (thread_safe_state) {
                 const T: type = ThreadSafeSet(arena_index + 1);
                 fields = fields ++ meta.parcel(meta.structField(T, builtin.fmt.ci(fields.len), .{}));
-                directory[index] = .{ .arena_index = 0, .field_index = fields.len };
-                arena_index = 1;
-            } else if (!thread_safe_state and arena.options.thread_safe) {
+            } else {
                 const T: type = DiscreteBitSet(arena_index + 1);
                 fields = fields ++ meta.parcel(meta.structField(T, builtin.fmt.ci(fields.len), .{}));
-                directory[index] = .{ .arena_index = 0, .field_index = fields.len };
-                arena_index = 1;
-            } else {
-                directory[index] = .{ .arena_index = arena_index, .field_index = fields.len };
-                arena_index += 1;
             }
-            thread_safe_state = arena.options.thread_safe;
+            if (fields.len == 1) {
+                return fields[0].type;
+            }
+            const T: type = @Type(meta.tupleInfo(fields));
+            return GenericMultiSet(spec, directory, T);
         }
-        if (thread_safe_state) {
-            const T: type = ThreadSafeSet(arena_index + 1);
-            fields = fields ++ meta.parcel(meta.structField(T, builtin.fmt.ci(fields.len), .{}));
-        } else {
-            const T: type = DiscreteBitSet(arena_index + 1);
-            fields = fields ++ meta.parcel(meta.structField(T, builtin.fmt.ci(fields.len), .{}));
-        }
-        if (fields.len == 1) {
-            return fields[0].type;
-        }
-        const T: type = @Type(meta.tupleInfo(fields));
-        return GenericMultiSet(spec, directory, T);
     }
 };
 /// Exact:
@@ -220,13 +231,13 @@ pub fn ExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
                 return error.OverSupply;
             }
         }
-        fn atomicUnset(address_space: *AddressSpace, comptime index: Index) bool {
+        pub fn atomicUnset(address_space: *AddressSpace, comptime index: Index) bool {
             if (!spec.list[index].options.thread_safe) {
                 @compileError("arena is not thread safe");
             }
             return address_space.impl.atomicUnset(index);
         }
-        fn atomicSet(address_space: *AddressSpace, comptime index: Index) bool {
+        pub fn atomicSet(address_space: *AddressSpace, comptime index: Index) bool {
             if (!spec.list[index].options.thread_safe) {
                 @compileError("arena is not thread safe");
             }
@@ -322,13 +333,13 @@ pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
                 return error.OverSupply;
             }
         }
-        fn atomicUnset(address_space: *AddressSpace, index: Index) bool {
+        pub fn atomicUnset(address_space: *AddressSpace, index: Index) bool {
             if (!spec.options.thread_safe) {
                 @compileError("address space is not thread safe");
             }
             return address_space.impl.atomicUnset(index);
         }
-        fn atomicSet(address_space: *AddressSpace, index: Index) bool {
+        pub fn atomicSet(address_space: *AddressSpace, index: Index) bool {
             if (!spec.options.thread_safe) {
                 @compileError("address space is not thread safe");
             }
