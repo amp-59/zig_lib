@@ -570,7 +570,7 @@ pub fn maxNameLength(comptime T: type) u64 {
 }
 /// Return whether values of this type can be compared for equality.
 pub fn isTriviallyComparable(comptime T: type) bool {
-    const type_info = @typeInfo(T);
+    const type_info: builtin.Type = @typeInfo(T);
     return switch (type_info) {
         .Type => true,
         .Void => true,
@@ -615,9 +615,9 @@ fn fieldIdInternalNoOp(comptime T: type, id: u64) u64 {
     }
     return ret;
 }
-pub fn fieldIdNoOp(comptime T: type) u64 {
+pub fn fieldIdNoOp(comptime T: type) usize {
     const type_info: builtin.Type = @typeInfo(T);
-    var ret: u64 = 0;
+    var ret: usize = 0;
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
             ret = fieldIdInternalNoOp(field.type, ret);
@@ -630,7 +630,7 @@ pub fn fieldIdNoOp(comptime T: type) u64 {
     }
     return ret;
 }
-fn fieldIdInternal(comptime T: type, t: T, id: u64) u64 {
+fn fieldIdInternal(comptime T: type, t: T, id: usize) usize {
     const type_info: builtin.Type = @typeInfo(T);
     var ret: u64 = id;
     if (type_info == .Union) {
@@ -652,9 +652,9 @@ fn fieldIdInternal(comptime T: type, t: T, id: u64) u64 {
     }
     return ret;
 }
-pub fn fieldId(comptime T: type, t: T) u64 {
+pub fn fieldId(comptime T: type, t: T) usize {
     const type_info: builtin.Type = @typeInfo(T);
-    var ret: u64 = 0;
+    var ret: usize = 0;
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
             if (static.testEqualString(field.name, @tagName(t))) {
@@ -680,6 +680,22 @@ pub inline fn analysisBegin(comptime name: []const u8) void {
 }
 pub inline fn analysisEnd(comptime name: []const u8) void {
     asm volatile ("# LLVM-MCA-END " ++ name);
+}
+
+pub fn UniformData(comptime bits: u16) type {
+    const word_size: u16 = @bitSizeOf(usize);
+    const real_bits: u16 = alignAW(bits);
+    switch (bits) {
+        0...word_size => {
+            return @Type(.{ .Int = .{ .bits = real_bits, .signedness = .unsigned } });
+        },
+        else => {
+            return [(bits / word_size) + builtin.int(u16, builtin.rem(u16, bits, word_size) != 0)]usize;
+        },
+    }
+}
+pub fn uniformData(comptime any: anytype) UniformData(@TypeOf(any)) {
+    return @ptrCast(*const UniformData(@bitSizeOf(@TypeOf(any))), &any).*;
 }
 
 const debug = opaque {
