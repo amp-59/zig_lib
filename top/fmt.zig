@@ -2,6 +2,7 @@ const lit = @import("./lit.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const time = @import("./time.zig");
+const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 
 const render = @import("./render.zig");
@@ -392,7 +393,7 @@ pub const PolynomialFormatSpec = struct {
 pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
     return struct {
         value: Int,
-        const Format = @This();
+        const Format: type = @This();
         const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
         const fmt_spec: PolynomialFormatSpec = spec;
@@ -507,7 +508,7 @@ pub fn uo(value: anytype) PolynomialFormat(.{
 pub const SourceLocationFormat = struct {
     value: builtin.SourceLocation,
     return_address: u32,
-    const Format = @This();
+    const Format: type = @This();
     const LineColFormat = PolynomialFormat(.{
         .bits = 32,
         .signedness = .unsigned,
@@ -579,7 +580,7 @@ pub const SourceLocationFormat = struct {
 };
 pub const Bytes = struct {
     value: Value,
-    const Format = @This();
+    const Format: type = @This();
     const Value = struct {
         integer: mem.Bytes,
         remainder: mem.Bytes,
@@ -669,7 +670,7 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
     return struct {
         old_value: Old,
         new_value: New,
-        const Format = @This();
+        const Format: type = @This();
         const Old: type = @Type(.{ .Int = .{ .bits = fmt_spec.old_fmt_spec.bits, .signedness = fmt_spec.old_fmt_spec.signedness } });
         const New: type = @Type(.{ .Int = .{ .bits = fmt_spec.new_fmt_spec.bits, .signedness = fmt_spec.new_fmt_spec.signedness } });
         const OldIntFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
@@ -748,7 +749,7 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
     return struct {
         old_value: u64,
         new_value: u64,
-        const Format = @This();
+        const Format: type = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
@@ -808,7 +809,7 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
     return struct {
         lower: SubFormat.Int,
         upper: SubFormat.Int,
-        const Format = @This();
+        const Format: type = @This();
         pub const SubFormat = PolynomialFormat(blk: {
             var tmp: PolynomialFormatSpec = fmt_spec;
             tmp.prefix = false;
@@ -924,7 +925,7 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
         old_upper: OldPolynomialFormat.Int,
         new_lower: NewPolynomialFormat.Int,
         new_upper: NewPolynomialFormat.Int,
-        const Format = @This();
+        const Format: type = @This();
         const OldPolynomialFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
         const NewPolynomialFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
         const DelPolynomialFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
@@ -1058,7 +1059,7 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
 pub fn DateTimeFormat(comptime DateTime: type) type {
     return struct {
         value: DateTime,
-        const Format = @This();
+        const Format: type = @This();
         pub const max_len: u64 = 19;
         pub fn formatConvert(format: Format) mem.StaticString(max_len) {
             var array: mem.StaticString(max_len) = .{};
@@ -1113,6 +1114,30 @@ pub fn DateTimeFormat(comptime DateTime: type) type {
         }
     };
 }
+pub const IdentifierFormat = struct {
+    value: []const u8,
+    const Format: type = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        if (parse.isValidId(format.value)) {
+            array.writeMany(format.value);
+        } else {
+            array.writeMany("@\"");
+            array.writeMany(format.value);
+            array.writeMany("\"");
+        }
+    }
+    pub fn formatLength(format: Format) usize {
+        var len: usize = 0;
+        if (parse.isValidId(format.value)) {
+            len += format.value.len;
+        } else {
+            len += 2;
+            len += format.value.len;
+            len += 1;
+        }
+        return len;
+    }
+};
 /// This function attempts to shorten type names, to improve readability, and
 /// makes no attempt to accomodate for extreme names, such as enabled by @"".
 pub fn typeName(comptime T: type) []const u8 {
@@ -1129,24 +1154,29 @@ pub fn typeName(comptime T: type) []const u8 {
     // Cannot be parsed, because () is essentially a black box:
     // ns.Generic().Within()        => ???
     comptime {
-        if (type_name.len < 64) {
+        if (type_name.len < 16) {
             return type_name;
         }
-        if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
-            if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
-                return type_name[last_dot..];
-            }
-            if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
-                if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
-                    return type_name[last_dot + 1 .. first_op];
+        const shortened_type_name: []const u8 = blk: {
+            if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
+                if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
+                    break :blk type_name[last_dot..];
+                }
+                if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
+                    if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
+                        break :blk type_name[last_dot + 1 .. first_op];
+                    }
+                }
+            } else {
+                if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
+                    break :blk type_name[last_dot..];
                 }
             }
-        } else {
-            if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
-                return type_name[last_dot..];
-            }
+        };
+        if (mem.indexOfLastEqualOne(u8, '.', shortened_type_name)) |last_dot| {
+            return "@\"" ++ shortened_type_name[last_dot..] ++ "\"";
         }
-        return type_name;
+        return "@\"" ++ shortened_type_name ++ "\"";
     }
 }
 fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
