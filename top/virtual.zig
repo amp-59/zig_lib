@@ -24,14 +24,8 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
     return struct {
         bits: Data = if (data_info == .Array) [1]usize{0} ** data_info.Array.len else 0,
         const BitSet: type = @This();
-        const Data: type = switch (bits) {
-            0...word_size => @Type(.{ .Int = .{ .bits = real_bit_size, .signedness = .unsigned } }),
-            else => [(bits / word_size) + builtin.int(u16, builtin.rem(u16, bits, word_size) != 0)]usize,
-        };
-        const Word: type = switch (data_info) {
-            .Array => |array_info| array_info.child,
-            else => Data,
-        };
+        const Data: type = meta.UniformData(bits);
+        const Word: type = if (data_info == .Array) data_info.Array.child else Data;
         const Index: type = meta.LeastRealBitSize(bits);
         const word_size: u8 = @bitSizeOf(usize);
         const real_bit_size: u16 = meta.alignAW(bits);
@@ -116,6 +110,7 @@ fn GenericMultiSet(
         fields: Fields = .{},
         const MultiSet: type = @This();
         const Index: type = ExactAddressSpaceSpec.Index(spec);
+        pub const params: struct { @TypeOf(directory), type } = .{ directory, Fields };
         pub fn set(multi_set: *MultiSet, comptime index: Index) void {
             return multi_set.fields[directory[index].field_index].set(directory[index].arena_index);
         }
@@ -197,13 +192,13 @@ pub const ExactAddressSpaceSpec = struct {
     }
 };
 /// Exact:
-/// Pro: * Arbitrary ranges.
-///      * Maps directly to an arena.
-///
-/// Con: * Arena index must be known at compile time.
-///      * Inversion is expensive.
-///      * Constructing the bit set fields can be expensive at compile time.
-///
+/// Good:
+///     * Arbitrary ranges.
+///     * Maps directly to an arena.
+/// Bad:
+///     * Arena index must be known at compile time.
+///     * Inversion is expensive.
+///     * Constructing the bit set fields can be expensive at compile time.
 pub fn ExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
     return struct {
         impl: Implementation = .{},
@@ -221,16 +216,6 @@ pub fn ExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
             if (!ret) address_space.impl.set(index);
             return !ret;
         }
-        pub fn acquire(address_space: *AddressSpace, comptime index: Index) !void {
-            if (!address_space.set(index)) {
-                return error.UnderSupply;
-            }
-        }
-        pub fn release(address_space: *AddressSpace, comptime index: Index) !void {
-            if (!address_space.unset(index)) {
-                return error.OverSupply;
-            }
-        }
         pub fn atomicUnset(address_space: *AddressSpace, comptime index: Index) bool {
             if (!spec.list[index].options.thread_safe) {
                 @compileError("arena is not thread safe");
@@ -243,30 +228,29 @@ pub fn ExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
             }
             return address_space.impl.atomicSet(index);
         }
-        pub fn atomicAcquire(address_space: *AddressSpace, comptime index: Index) !void {
-            if (!address_space.atomicSet(index)) {
-                return error.UnderSupply;
-            }
-        }
-        pub fn atomicRelease(address_space: *AddressSpace, comptime index: Index) !void {
-            if (!address_space.atomicUnset(index)) {
-                return error.OverSupply;
-            }
-        }
-        pub fn low(index: Index) usize {
+        pub fn low(comptime index: Index) usize {
             return spec.list[index].low;
         }
-        pub fn high(index: Index) usize {
+        pub fn high(comptime index: Index) usize {
             return spec.list[index].high;
+        }
+        pub fn arena(comptime index: Index) Arena {
+            return spec.list[index];
         }
     };
 }
 const FormulaicAddressSpaceSpec = struct {
-    low: usize = 0x40000000,
-    high: usize = ~@as(usize, 0),
+    low: usize = 0,
+    start: usize = safe_zone,
+    finish: usize = (1 << shift_amt) - safe_zone,
+    high: usize = 1 << shift_amt,
     divisions: usize = 8,
     alignment: usize = 4096,
     options: Options = .{},
+
+    const shift_amt: comptime_int = @min(48, @bitSizeOf(usize)) - 1;
+    const safe_zone: comptime_int = 0x40000000;
+
     const Options = struct {
         /// All arenas thread safe
         thread_safe: bool = true,
@@ -285,17 +269,17 @@ const FormulaicAddressSpaceSpec = struct {
     }
 };
 /// Formulaic:
-///  Pro: * Good locality associated with computing the begin and end addresses
-///         using the arena index alone.
-///       * Thread safety is all-or-nothing, therefore requesting atomic
-///         operations from a thread-unsafe address space yields a compile error.
-///
-///  Con: * Poor flexibility.
-///       * Formula results must be tightly constrained or checked.
-///       * Arenas can not be independently configured.
-///       * Thread safety is all-or-nothing, which increases the metadata size
-///         required by each arena from 1 to 8 bits.
-///
+/// Good:
+///     * Good locality associated with computing the begin and end addresses
+///       using the arena index alone.
+///     * Thread safety is all-or-nothing, therefore requesting atomic
+///       operations from a thread-unsafe address space yields a compile error.
+/// Bad:
+///     * Poor flexibility.
+///     * Formula results must be tightly constrained or checked.
+///     * Arenas can not be independently configured.
+///     * Thread safety is all-or-nothing, which increases the metadata size
+///       required by each arena from 1 to 8 bits.
 pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
     return struct {
         impl: Implementation = .{},
@@ -303,15 +287,16 @@ pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
         pub const Index: type = meta.AlignSizeAW(builtin.ShiftAmount(u64));
         pub const Implementation: type = spec.Implementation();
         pub const addr_spec: FormulaicAddressSpaceSpec = spec;
-        const max_bit: usize = 1 << 47;
         const len: usize = blk: {
             const mask: usize = spec.alignment - 1;
-            const value: usize = max_bit / spec.divisions;
+            const value: usize = spec.high / spec.divisions;
             break :blk (value + mask) & ~mask;
         };
         comptime {
-            builtin.static.assertBelowOrEqual(usize, spec.low, high(0));
-            builtin.static.assertAboveOrEqual(usize, spec.high, low(spec.divisions));
+            builtin.static.assertAboveOrEqual(usize, spec.start, spec.low);
+            builtin.static.assertBelowOrEqual(usize, spec.finish, spec.high);
+            builtin.static.assertEqual(usize, spec.start, low(0));
+            builtin.static.assertEqual(usize, spec.high, low(spec.divisions));
         }
         pub fn unset(address_space: *AddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.check(index);
@@ -322,16 +307,6 @@ pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
             const ret: bool = address_space.impl.check(index);
             if (!ret) address_space.impl.set(index);
             return !ret;
-        }
-        pub fn acquire(address_space: *AddressSpace, index: Index) !void {
-            if (!address_space.set(index)) {
-                return error.UnderSupply;
-            }
-        }
-        pub fn release(address_space: *AddressSpace, index: Index) !void {
-            if (!address_space.unset(index)) {
-                return error.OverSupply;
-            }
         }
         pub fn atomicUnset(address_space: *AddressSpace, index: Index) bool {
             if (!spec.options.thread_safe) {
@@ -345,33 +320,71 @@ pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
             }
             return address_space.impl.atomicSet(index);
         }
-        pub fn atomicAcquire(address_space: *AddressSpace, index: Index) !void {
-            if (!address_space.atomicSet(index)) {
-                return error.UnderSupply;
-            }
-        }
-        pub fn atomicRelease(address_space: *AddressSpace, index: Index) !void {
-            if (!address_space.atomicUnset(index)) {
-                return error.OverSupply;
-            }
-        }
         pub fn low(index: Index) usize {
-            return len * index;
+            return @max(spec.start, len * index);
         }
         pub fn high(index: Index) usize {
-            return len * (index + 1);
+            return @min(spec.finish, len * (index + 1));
         }
         pub fn invert(addr: usize) Index {
             return @intCast(u7, addr / len);
         }
-        pub const Arena = struct {
-            index: Index,
-            fn low(arena: AddressSpace.Arena) usize {
-                return @max(spec.low, AddressSpace.low(arena.index));
-            }
-            fn high(arena: AddressSpace.Arena) usize {
-                return @min(spec.high, AddressSpace.high(arena.index));
-            }
-        };
+        pub fn arena(index: Index) Arena {
+            return .{
+                .high = high(index),
+                .low = low(index),
+                .options = .{ .thread_safe = spec.options.thread_safe },
+            };
+        }
     };
 }
+
+/// If the list of indices is continuous and the safety of all the sub space
+/// can be formulaic, otherwise an exact sub space must be constructed.
+const SubArena = struct {
+    index: comptime_int,
+    options: Options = .{},
+
+    const Options = struct {
+        thread_safe: ?bool = null,
+    };
+};
+const SubSpaceSpec = struct {
+    AddressSpace: type,
+    list: []const SubArena,
+
+    fn isContinuous(comptime spec: SubSpaceSpec) bool {
+        var index: ?usize = null;
+        for (spec.list) |item| {
+            if (index) |prev| {
+                if (item.index == prev + 1) {
+                    prev = item.index;
+                } else {
+                    return false;
+                }
+            } else {
+                index = item.index;
+            }
+        }
+        return true;
+    }
+    fn isUniformSafety(comptime spec: SubSpaceSpec) bool {
+        var safety: ?usize = null;
+        for (spec.list) |item| {
+            if (safety) |prev| {
+                if (item.options.thread_safe != prev) {
+                    return false;
+                }
+            } else {
+                safety = item.options.thread_safe;
+            }
+        }
+        return true;
+    }
+    fn isParentFormulaic(comptime spec: SubSpaceSpec) bool {
+        return @TypeOf(spec.AddressSpace.addr_spec) == FormulaicAddressSpaceSpec;
+    }
+    fn isFormulaic(comptime spec: SubSpaceSpec) bool {
+        return isParentFormulaic(spec) and isContinuous(spec) and isUniformSafety(spec);
+    }
+};
