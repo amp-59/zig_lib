@@ -901,12 +901,12 @@ pub fn appendImportTypeName(allocator: *Allocator0, array: *String0, comptime im
 pub fn appendStructMembers(allocator: *Allocator0, array: *String0) anyerror!void {
     inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
         const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
-        const type: type = getOptType(opt_spec);
+        const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
         try array.appendMany(allocator, "        " ++ what_field ++ ": ");
-        switch (@typeInfo(type)) {
+        switch (@typeInfo(field_type)) {
             .Bool => {
-                try array.appendMany(allocator, @typeName(type) ++ " = false");
+                try array.appendMany(allocator, @typeName(field_type) ++ " = false");
             },
             .Optional => |optional_info| {
                 try array.appendOne(allocator, '?');
