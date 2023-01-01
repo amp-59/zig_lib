@@ -513,34 +513,24 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             if (allocator_spec.options.require_mremap) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.capacity(), s_bytes);
-                    try meta.wrap(special.resize(
-                        remap_spec,
-                        mapped_byte_address(allocator),
-                        mapped_byte_count(allocator),
-                        mapped_byte_count(allocator) + t_bytes,
-                    ));
+                    try meta.wrap(special.resize(remap_spec, allocator.start(), allocator.capacity(), allocator.capacity() + t_bytes));
                     allocator.up_addr += t_bytes;
                 } else {
-                    try meta.wrap(special.resize(
-                        remap_spec,
-                        mapped_byte_address(allocator),
-                        mapped_byte_count(allocator),
-                        mapped_byte_count(allocator) + s_bytes,
-                    ));
+                    try meta.wrap(special.resize(remap_spec, allocator.start(), allocator.capacity(), allocator.capacity() + s_bytes));
                     allocator.up_addr += s_bytes;
                 }
             } else if (s_bytes >= 4096) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.capacity(), s_bytes);
-                    try meta.wrap(special.map(map_spec, unmapped_byte_address(allocator), t_bytes));
+                    try meta.wrap(special.map(map_spec, allocator.finish(), t_bytes));
                     allocator.up_addr += t_bytes;
                 } else {
-                    try meta.wrap(special.map(map_spec, unmapped_byte_address(allocator), s_bytes));
+                    try meta.wrap(special.map(map_spec, allocator.finish(), s_bytes));
                     allocator.up_addr += s_bytes;
                 }
             }
         }
-        pub fn unmap(allocator: *Allocator, s_bytes: u64) void {
+       pub fn unmap(allocator: *Allocator, s_bytes: u64) void {
             builtin.assertEqual(u64, s_bytes & 4095, 0);
             if (s_bytes >= 4096) {
                 allocator.up_addr -= s_bytes;
