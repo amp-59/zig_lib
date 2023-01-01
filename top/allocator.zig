@@ -84,8 +84,8 @@ pub const AllocatorErrors = struct {
     map: ?[]const sys.ErrorCode = sys.mmap_errors,
     remap: ?[]const sys.ErrorCode = sys.mremap_errors,
     unmap: ?[]const sys.ErrorCode = null,
-    acquire: ?type = mem.ArenaError,
-    release: ?type = null,
+    acquire: ?mem.FixedResourceError = error.UnderSupply,
+    release: ?mem.FixedResourceError = null,
 };
 const _1: mem.Amount = .{ .count = 1 };
 fn Metadata(comptime options: AllocatorOptions) type {
@@ -143,12 +143,12 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         const resize_spec: ResizeSpec = if (allocator_spec.options.require_mremap) remap_spec else map_spec;
         const lb_addr: u64 = arena.begin();
         const ua_addr: u64 = arena.end();
-        const acq_part_spec: mem.PartSpec = .{
+        const acq_part_spec: mem.AcquireSpec = .{
             .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.acquire,
             .logging = allocator_spec.logging.arena,
         };
-        const rel_part_spec: mem.PartSpec = .{
+        const rel_part_spec: mem.ReleaseSpec = .{
             .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.release,
             .logging = allocator_spec.logging.arena,
@@ -211,6 +211,40 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 allocator.ub_addr = mach.cmov64(allocator.reusable(), allocator.lb_addr, allocator.ub_addr);
             }
         }
+        const MMapError: type = map_spec.Errors(.mmap);
+        const MUnmapError: type = map_spec.Errors(.munmap);
+        const MRemapError: type = remap_spec.Errors(.mremap);
+        pub const acquire_allocator: type = blk: {
+            if (spec.errors.acquire != null) {
+                if (spec.errors.map != null and
+                    spec.options.init_commit != null or
+                    spec.options.require_mremap)
+                {
+                    break :blk (MMapError || mem.FixedResourceError)!Allocator;
+                }
+                break :blk mem.FixedResourceError!Allocator;
+            } else {
+                if (spec.errors.map != null and
+                    spec.options.init_commit != null or
+                    spec.options.require_mremap)
+                {
+                    break :blk MMapError!Allocator;
+                }
+            }
+        };
+        pub const release_allocator: type = blk: {
+            if (spec.errors.release != null) {
+                if (spec.errors.unmap != null) {
+                    break :blk (MUnmapError || mem.FixedResourceError)!void;
+                }
+                break :blk mem.FixedResourceError!void;
+            } else {
+                if (spec.errors.unmap != null) {
+                    break :blk MUnmapError!void;
+                }
+                break :blk void;
+            }
+        };
         pub fn allocate_payload(comptime s_impl_type: type) type {
             if (Allocator.allocator_spec.options.require_mremap) {
                 return resize_spec.Replaced(.mmap, s_impl_type);
@@ -218,7 +252,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 return resize_spec.Replaced(.mremap, s_impl_type);
             }
         }
-        pub const allocate_void = blk: {
+        pub const allocate_void: type = blk: {
             if (Allocator.allocator_spec.options.require_mremap) {
                 break :blk resize_spec.Unwrapped(.mmap);
             } else {
@@ -230,29 +264,19 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             if (allocator_spec.options.require_mremap) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.capacity(), s_bytes);
-                    try meta.wrap(special.resize(
-                        remap_spec,
-                        mapped_byte_address(allocator),
-                        mapped_byte_count(allocator),
-                        mapped_byte_count(allocator) + t_bytes,
-                    ));
+                    try meta.wrap(special.resize(remap_spec, allocator.start(), allocator.capacity(), allocator.capacity() + t_bytes));
                     allocator.up_addr += t_bytes;
                 } else {
-                    try meta.wrap(special.resize(
-                        remap_spec,
-                        mapped_byte_address(allocator),
-                        mapped_byte_count(allocator),
-                        mapped_byte_count(allocator) + s_bytes,
-                    ));
+                    try meta.wrap(special.resize(remap_spec, allocator.start(), allocator.capacity(), allocator.capacity() + s_bytes));
                     allocator.up_addr += s_bytes;
                 }
             } else if (s_bytes >= 4096) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.capacity(), s_bytes);
-                    try meta.wrap(special.map(map_spec, unmapped_byte_address(allocator), t_bytes));
+                    try meta.wrap(special.map(map_spec, allocator.finish(), t_bytes));
                     allocator.up_addr += t_bytes;
                 } else {
-                    try meta.wrap(special.map(map_spec, unmapped_byte_address(allocator), s_bytes));
+                    try meta.wrap(special.map(map_spec, allocator.finish(), s_bytes));
                     allocator.up_addr += s_bytes;
                 }
             }
@@ -261,7 +285,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             builtin.assertEqual(u64, s_bytes & 4095, 0);
             if (s_bytes >= 4096) {
                 allocator.up_addr -= s_bytes;
-                try meta.wrap(special.unmap(unmap_spec, unmapped_byte_address(allocator), s_bytes));
+                try meta.wrap(special.unmap(unmap_spec, allocator.finish(), s_bytes));
             }
         }
         pub fn release(allocator: *Allocator, s_up_addr: u64) void {
@@ -310,11 +334,11 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             }
             allocator.ub_addr = lb_addr;
         }
-        pub fn init(address_space: *spec.AddressSpace) !Allocator {
+        pub fn init(address_space: *spec.AddressSpace) acquire_allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             allocator = Allocator{ .ub_addr = lb_addr, .up_addr = lb_addr };
-            try mem.static.acquire(acq_part_spec, address_space, arena.index);
+            try meta.wrap(mem.static.acquire(acq_part_spec, address_space, arena.index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -325,10 +349,10 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             }
             return allocator;
         }
-        pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) void {
+        pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) release_allocator {
             defer Graphics.showWithReference(allocator, @src());
             allocator.release(allocator.start());
-            mem.static.release(rel_part_spec, address_space, arena.index);
+            try meta.wrap(mem.static.release(rel_part_spec, address_space, arena.index));
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -368,12 +392,12 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         pub const allocator_spec: RtArenaAllocatorSpec = spec;
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
         const resize_spec: ResizeSpec = if (allocator_spec.options.require_mremap) remap_spec else map_spec;
-        const acq_part_spec: mem.PartSpec = .{
+        const acq_part_spec: mem.AcquireSpec = .{
             .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.acquire,
             .logging = allocator_spec.logging.arena,
         };
-        const rel_part_spec: mem.PartSpec = .{
+        const rel_part_spec: mem.ReleaseSpec = .{
             .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.release,
             .logging = allocator_spec.logging.arena,
@@ -436,6 +460,40 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
                 allocator.ub_addr = mach.cmov64(allocator.reusable(), allocator.lb_addr, allocator.ub_addr);
             }
         }
+        const MMapError: type = map_spec.Errors(.mmap);
+        const MUnmapError: type = map_spec.Errors(.munmap);
+        const MRemapError: type = remap_spec.Errors(.mremap);
+        pub const acquire_allocator: type = blk: {
+            if (spec.errors.acquire != null) {
+                if (spec.errors.map != null and
+                    spec.options.init_commit != null or
+                    spec.options.require_mremap)
+                {
+                    break :blk (MMapError || mem.FixedResourceError)!Allocator;
+                }
+                break :blk mem.FixedResourceError!Allocator;
+            } else {
+                if (spec.errors.map != null and
+                    spec.options.init_commit != null or
+                    spec.options.require_mremap)
+                {
+                    break :blk MMapError!Allocator;
+                }
+            }
+        };
+        pub const release_allocator: type = blk: {
+            if (spec.errors.release != null) {
+                if (spec.errors.unmap != null) {
+                    break :blk (MUnmapError || mem.FixedResourceError)!void;
+                }
+                break :blk mem.FixedResourceError!void;
+            } else {
+                if (spec.errors.unmap != null) {
+                    break :blk MUnmapError!void;
+                }
+                break :blk void;
+            }
+        };
         pub fn allocate_payload(comptime s_impl_type: type) type {
             if (Allocator.allocator_spec.options.require_mremap) {
                 return resize_spec.Replaced(.mmap, s_impl_type);
@@ -443,7 +501,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
                 return resize_spec.Replaced(.mremap, s_impl_type);
             }
         }
-        pub const allocate_void = blk: {
+        pub const allocate_void: type = blk: {
             if (Allocator.allocator_spec.options.require_mremap) {
                 break :blk resize_spec.Unwrapped(.mmap);
             } else {
@@ -542,7 +600,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             const lb_addr: u64 = arena.begin();
             const ua_addr: u64 = arena.end();
             allocator = Allocator{ .lb_addr = lb_addr, .ub_addr = lb_addr, .up_addr = lb_addr, .ua_addr = ua_addr };
-            try mem.acquire(acq_part_spec, address_space, arena.index);
+            try meta.wrap(mem.acquire(acq_part_spec, address_space, arena.index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -557,7 +615,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             defer Graphics.showWithReference(allocator, @src());
             const arena_index: u8 = spec.AddressSpace.invert(allocator.lb_addr);
             allocator.release(allocator.start());
-            mem.release(rel_part_spec, address_space, arena_index);
+            try meta.wrap(mem.release(rel_part_spec, address_space, arena_index));
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
