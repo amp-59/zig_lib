@@ -1171,6 +1171,7 @@ pub fn typeName(comptime T: type) []const u8 {
                 if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
                     break :blk type_name[last_dot..];
                 }
+                break :blk type_name;
             }
         };
         if (mem.indexOfLastEqualOne(u8, '.', shortened_type_name)) |last_dot| {
