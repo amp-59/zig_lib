@@ -530,7 +530,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
                 }
             }
         }
-       pub fn unmap(allocator: *Allocator, s_bytes: u64) void {
+        pub fn unmap(allocator: *Allocator, s_bytes: u64) void {
             builtin.assertEqual(u64, s_bytes & 4095, 0);
             if (s_bytes >= 4096) {
                 allocator.up_addr -= s_bytes;
