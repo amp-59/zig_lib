@@ -341,7 +341,7 @@ pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
 
 /// If the list of indices is continuous and the safety of all the sub space
 /// can be formulaic, otherwise an exact sub space must be constructed.
-const SubArena = struct {
+pub const SubArena = struct {
     index: comptime_int,
     options: Options = .{},
 
@@ -349,7 +349,7 @@ const SubArena = struct {
         thread_safe: ?bool = null,
     };
 };
-const SubSpaceSpec = struct {
+pub const SubSpaceSpec = struct {
     AddressSpace: type,
     list: []const SubArena,
 
@@ -364,6 +364,21 @@ const SubSpaceSpec = struct {
                 }
             } else {
                 index = item.index;
+            }
+        }
+        return true;
+    }
+    fn isContiguous(comptime spec: SubSpaceSpec) bool {
+        var addr: ?usize = null;
+        for (spec.list) |item| {
+            if (addr) |prev| {
+                if (spec.AddressSpace.low(item.index) == prev) {
+                    addr = spec.AddressSpace.high(item.index);
+                } else {
+                    return false;
+                }
+            } else {
+                addr = spec.AddressSpace.high(item.index);
             }
         }
         return true;
@@ -385,6 +400,6 @@ const SubSpaceSpec = struct {
         return @TypeOf(spec.AddressSpace.addr_spec) == FormulaicAddressSpaceSpec;
     }
     fn isFormulaic(comptime spec: SubSpaceSpec) bool {
-        return isParentFormulaic(spec) and isContinuous(spec) and isUniformSafety(spec);
+        return isParentFormulaic(spec) and isContiguous(spec) and isUniformSafety(spec);
     }
 };
