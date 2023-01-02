@@ -6,12 +6,13 @@ const mach = @import("./mach.zig");
 const file = @import("./file.zig");
 const virtual = @import("./virtual.zig");
 const builtin = @import("./builtin.zig");
+const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
 pub const is_verbose: bool = false;
-pub const render_type_names: bool = true;
-pub const render_radix: u16 = 2;
+pub const render_type_names: bool = false;
+pub const render_radix: u16 = 16;
 
 pub const trivial_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
     .{ .low = 0x40000000, .high = 0x10000000000 },
@@ -212,7 +213,34 @@ fn testExactAddressSpace() !void {
         array.undefineAll();
     }
 }
+fn testMakeFormulaicFromExactByUnifyingSafety() !void {
+    const AddressSpace = virtual.ExactAddressSpace(.{ .list = simple_list });
+    var address_space: AddressSpace = .{};
+    const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
+    const Array = Allocator.StructuredVector(u8);
+    var allocator: Allocator = try Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+    var array: Array = try Array.init(&allocator, 8192);
+    defer array.deinit(&allocator);
+    comptime var i: u8 = 1;
+    try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
+    inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
+        try mem.static.acquire(.{ .options = .{ .thread_safe = AddressSpace.addr_spec.list[i].options.thread_safe } }, &address_space, i);
+        try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
+        file.noexcept.write(2, array.readAll());
+        array.undefineAll();
+    }
+    i = 1;
+    inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
+        try mem.static.release(.{ .options = .{ .thread_safe = AddressSpace.addr_spec.list[i].options.thread_safe } }, &address_space, i);
+        try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
+        file.noexcept.write(2, array.readAll());
+        array.undefineAll();
+    }
+}
+
 pub fn main() !void {
     try meta.wrap(testExactAddressSpace());
     try meta.wrap(testFormulaicAddressSpace());
+    try meta.wrap(testMakeFormulaicFromExactByUnifyingSafety());
 }
