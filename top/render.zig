@@ -7,13 +7,20 @@ const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 
 const Options = struct {
-    render_string_literal: bool = true,
-    render_multi_line_string_literal: bool = false,
+    radix: u16 = 10,
+    radix_field_name_suffixes: ?[]const RadixSuffix = null,
+    string_literal: bool = true,
+    multi_line_string_literal: bool = false,
     trailing_comma: ?bool = null,
     omit_default_fields: bool = true,
     omit_compiler_given_names: bool = true,
     render_composite_field_type_recursively: bool = true,
     enable_comptime_iterator: bool = false,
+
+    const RadixSuffix = struct {
+        radix: u16,
+        suffix: []const u8,
+    };
 };
 
 const render_type_names: bool = builtin.config("render_type_names", bool, true);
@@ -41,7 +48,7 @@ fn AnyFormat(comptime Type: type, comptime options: Options) type {
         .Enum => EnumFormat(Type),
         .EnumLiteral => EnumLiteralFormat(Type, options),
         .ComptimeInt => ComptimeIntFormat,
-        .Int => IntFormat(Type),
+        .Int => IntFormat(Type, options),
         .Pointer => |pointer_info| switch (pointer_info.size) {
             .One => PointerOneFormat(Type, options),
             .Many => PointerManyFormat(Type, options),
@@ -587,29 +594,31 @@ pub const EnumLiteralFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-pub const ComptimeIntFormat = struct {
+pub fn ComptimeIntFormat(comptime options: Options) type {
+    return struct {
     value: comptime_int,
     const Format: type = @This();
     pub fn formatWrite(comptime format: Format, array: anytype) void {
         const Int: type = meta.LeastRealBitSize(format.value);
-        const real_format: IntFormat(Int) = .{ .value = format.value };
+        const real_format: IntFormat(Int, options) = .{ .value = format.value };
         return real_format.formatWrite(array);
     }
     pub fn formatLength(comptime format: Format) u64 {
         const Int: type = meta.LeastRealBitSize(format.value);
-        const real_format: IntFormat(Int) = .{ .value = format.value };
+        const real_format: IntFormat(Int, options) = .{ .value = format.value };
         return real_format.formatLength();
     }
     pub usingnamespace GenericRenderFormat(Format);
-};
-fn IntFormat(comptime Int: type) type {
+    };
+}
+fn IntFormat(comptime Int: type, comptime options: Options) type {
     return struct {
         value: Int,
         const Format: type = @This();
         const Abs: type = @Type(.{ .Int = .{ .bits = type_info.Int.bits, .signedness = .unsigned } });
         const type_info: builtin.Type = @typeInfo(Int);
         const max_abs_value: Abs = ~@as(Abs, 0);
-        const radix: Abs = @min(max_abs_value, render_radix);
+        const radix: Abs = @min(max_abs_value, options.radix );
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, radix);
         const prefix: []const u8 = lit.int_prefixes[radix];
         const max_len: u64 = blk: {
