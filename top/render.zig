@@ -369,7 +369,7 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
                     array.overwriteOneBack('}');
                 } else {
                     if (trailing_comma) {
-                        array.overwriteOneBack('}');
+                        array.writeOne('}');
                     } else {
                         array.overwriteManyBack(" }");
                     }
