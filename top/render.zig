@@ -8,7 +8,7 @@ const abstract = @import("./abstract.zig");
 
 const Options = struct {
     radix: u16 = 10,
-    radix_field_name_suffixes: ?[]const RadixSuffix = null,
+    radix_field_name_suffixes: ?[]const RadixFieldName = null,
     string_literal: bool = true,
     multi_line_string_literal: bool = false,
     trailing_comma: ?bool = null,
@@ -17,9 +17,10 @@ const Options = struct {
     render_composite_field_type_recursively: bool = true,
     enable_comptime_iterator: bool = false,
 
-    const RadixSuffix = struct {
-        radix: u16,
-        suffix: []const u8,
+    const RadixFieldName = struct {
+        radix: u16 = 10,
+        prefix: ?[]const u8 = null,
+        suffix: ?[]const u8 = null,
     };
     const default: Options = .{};
 };
