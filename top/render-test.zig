@@ -52,8 +52,8 @@ fn testSpecificCases() !void {
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed union { a: u64, b: u64 } }, "packed union { a: u64, b: u64, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = enum { a, b } }, "enum(u1) { a, b, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = u64 }, "u64");
-    try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = 111111111 }, "111111111");
-    try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = -111111111 }, "-111111111");
+    try runTest(&allocator, &array, render.ComptimeIntFormat(.{}){ .value = 111111111 }, "111111111");
+    try runTest(&allocator, &array, render.ComptimeIntFormat(.{}){ .value = -111111111 }, "-111111111");
     try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{}){ .value = &.{ 1, 2, 3, 4, 5, 6 } }, "[]const u64{ 1, 2, 3, 4, 5, 6 }");
     try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{ .trailing_comma = true }){ .value = &.{ 7, 8, 9, 10, 11, 12 } }, "[]const u64{ 7, 8, 9, 10, 11, 12, }");
     try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{}){ .value = &.{} }, "[]const u64{}");
