@@ -444,31 +444,17 @@ fn unhandledSpecification(what_field: []const u8, comptime opt_spec: OptionSpec)
 
 pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime T: type) anyerror!void {
     const type_name: []const u8 = @typeName(T);
-    switch (@typeInfo(T)) {
+    const type_info: builtin.Type = @typeInfo(T);
+    try array.appendMany(allocator, comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {");
+    switch (type_info) {
         .Enum => |enum_info| {
-            try array.appendAny(mem.ptr_wr_spec, allocator, .{ "enum(", @typeName(enum_info.tag_type), ") {" });
             inline for (enum_info.fields) |field| {
-                try array.appendAny(mem.fmt_wr_spec, allocator, .{ ' ', field.name, " = ", fmt.any(field.value), ',' });
+                try array.appendAny(mem.fmt_wr_spec, allocator, .{ ' ', field.name, " = ", comptime fmt.any(field.value), ',' });
             }
             array.undefine(1);
             try array.appendMany(allocator, " }");
         },
         .Union => |union_info| {
-            switch (union_info.layout) {
-                .Auto => {
-                    if (union_info.tag_type) |_| {
-                        try array.appendMany(allocator, "union(enum) {");
-                    } else {
-                        try array.appendMany(allocator, "union {");
-                    }
-                },
-                .Extern => {
-                    try array.appendMany(allocator, "extern union {");
-                },
-                .Packed => {
-                    try array.appendMany(allocator, "packed union {");
-                },
-            }
             inline for (union_info.fields) |field| {
                 try array.appendAny(mem.ptr_wr_spec, allocator, .{ ' ', field.name, ": " });
                 switch (@typeInfo(field.type)) {
@@ -485,17 +471,6 @@ pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime 
             try array.appendMany(allocator, " }");
         },
         .Struct => |struct_info| {
-            switch (struct_info.layout) {
-                .Auto => {
-                    try array.appendMany(allocator, "struct {");
-                },
-                .Extern => {
-                    try array.appendMany(allocator, "extern struct {");
-                },
-                .Packed => {
-                    try array.appendMany(allocator, "packed struct {");
-                },
-            }
             inline for (struct_info.fields) |field| {
                 try array.appendAny(mem.ptr_wr_spec, allocator, .{ ' ', field.name, ": " });
                 switch (@typeInfo(field.type)) {
