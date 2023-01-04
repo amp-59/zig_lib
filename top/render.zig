@@ -21,18 +21,18 @@ const Options = struct {
         radix: u16,
         suffix: []const u8,
     };
+    const default: Options = .{};
 };
 
 const render_type_names: bool = builtin.config("render_type_names", bool, true);
 const render_radix: u16 = builtin.config("render_radix", u16, 10);
 
-pub fn any(value: anytype) AnyFormat(@TypeOf(value), .{}) {
+pub fn any(value: anytype) AnyFormat(@TypeOf(value), Options.default) {
     return .{ .value = value };
 }
 pub fn render(comptime options: Options, value: anytype) AnyFormat(@TypeOf(value), options) {
     return .{ .value = value };
 }
-
 fn typeName(comptime T: type) []const u8 {
     return @typeName(T);
 }
@@ -40,14 +40,13 @@ fn typeName(comptime T: type) []const u8 {
 fn AnyFormat(comptime Type: type, comptime options: Options) type {
     return switch (@typeInfo(Type)) {
         .Array => ArrayFormat(Type, options),
-        //            .Fn => FnFormat(Type),
         .Bool => BoolFormat,
         .Type => TypeFormat(options),
         .Struct => StructFormat(Type, options),
         .Union => UnionFormat(Type, options),
         .Enum => EnumFormat(Type),
         .EnumLiteral => EnumLiteralFormat(Type, options),
-        .ComptimeInt => ComptimeIntFormat,
+        .ComptimeInt => ComptimeIntFormat(options),
         .Int => IntFormat(Type, options),
         .Pointer => |pointer_info| switch (pointer_info.size) {
             .One => PointerOneFormat(Type, options),
@@ -96,9 +95,7 @@ pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
             } else {
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
-                if (options.enable_comptime_iterator and
-                    comptime fmt.requireComptime(child))
-                {
+                if (comptime options.enable_comptime_iterator and fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: AnyFormat(child, options) = .{ .value = element };
                         sub_format.formatWrite(array);
@@ -120,10 +117,7 @@ pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
         }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = type_name.len + 2;
-
-            if (options.enable_comptime_iterator and
-                comptime fmt.requireComptime(child))
-            {
+            if (comptime options.enable_comptime_iterator and fmt.requireComptime(child)) {
                 inline for (format.value) |value| {
                     len += ChildFormat.formatLength(.{ .value = value }) + 2;
                 }
@@ -478,18 +472,18 @@ fn UnionFormat(comptime Union: type, comptime options: Options) type {
             }
             if (x != w) {
                 if (x != 0) {
-                    array.writeFormat(IntFormat(enum_info.Enum.tag_type){ .value = x });
+                    array.writeFormat(IntFormat(enum_info.Enum.tag_type, options){ .value = x });
                     array.writeCount(2, " }".*);
                 } else {
                     array.undefine(1);
-                    array.overwriteManyBack(" }");
+                    array.overwriteCountBack(2, " }".*);
                 }
             } else {
                 if (x != 0) {
-                    array.writeFormat(IntFormat(enum_info.Enum.tag_type){ .value = x });
+                    array.writeFormat(IntFormat(enum_info.Enum.tag_type, options){ .value = x });
                     array.writeCount(2, " }".*);
                 } else {
-                    array.overwriteManyBack("}");
+                    array.overwriteOneBack('}');
                 }
             }
         }
@@ -596,19 +590,19 @@ pub const EnumLiteralFormat = struct {
 };
 pub fn ComptimeIntFormat(comptime options: Options) type {
     return struct {
-    value: comptime_int,
-    const Format: type = @This();
-    pub fn formatWrite(comptime format: Format, array: anytype) void {
-        const Int: type = meta.LeastRealBitSize(format.value);
-        const real_format: IntFormat(Int, options) = .{ .value = format.value };
-        return real_format.formatWrite(array);
-    }
-    pub fn formatLength(comptime format: Format) u64 {
-        const Int: type = meta.LeastRealBitSize(format.value);
-        const real_format: IntFormat(Int, options) = .{ .value = format.value };
-        return real_format.formatLength();
-    }
-    pub usingnamespace GenericRenderFormat(Format);
+        value: comptime_int,
+        const Format: type = @This();
+        pub fn formatWrite(comptime format: Format, array: anytype) void {
+            const Int: type = meta.LeastRealBitSize(format.value);
+            const real_format: IntFormat(Int, options) = .{ .value = format.value };
+            return real_format.formatWrite(array);
+        }
+        pub fn formatLength(comptime format: Format) u64 {
+            const Int: type = meta.LeastRealBitSize(format.value);
+            const real_format: IntFormat(Int, options) = .{ .value = format.value };
+            return real_format.formatLength();
+        }
+        pub usingnamespace GenericRenderFormat(Format);
     };
 }
 fn IntFormat(comptime Int: type, comptime options: Options) type {
@@ -618,7 +612,7 @@ fn IntFormat(comptime Int: type, comptime options: Options) type {
         const Abs: type = @Type(.{ .Int = .{ .bits = type_info.Int.bits, .signedness = .unsigned } });
         const type_info: builtin.Type = @typeInfo(Int);
         const max_abs_value: Abs = ~@as(Abs, 0);
-        const radix: Abs = @min(max_abs_value, options.radix );
+        const radix: Abs = @min(max_abs_value, options.radix);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, radix);
         const prefix: []const u8 = lit.int_prefixes[radix];
         const max_len: u64 = blk: {
