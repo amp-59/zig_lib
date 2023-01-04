@@ -5,7 +5,9 @@ const time = @import("./time.zig");
 const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 
-const render = @import("./render.zig");
+const _render = @import("./render.zig");
+
+pub usingnamespace _render;
 
 pub fn ud(value: anytype) PolynomialFormat(.{
     .bits = blk: {
@@ -224,9 +226,6 @@ pub fn bytes(count: usize) Bytes {
 }
 pub fn src(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
-}
-pub fn any(value: anytype) render.AnyFormat(@TypeOf(value)) {
-    return .{ .value = value };
 }
 pub fn yr(year: u64) PolynomialFormat(.{
     .bits = 64,
@@ -1154,30 +1153,35 @@ pub fn typeName(comptime T: type) []const u8 {
     // Cannot be parsed, because () is essentially a black box:
     // ns.Generic().Within()        => ???
     comptime {
-        if (type_name.len < 16) {
-            return type_name;
-        }
-        const shortened_type_name: []const u8 = blk: {
-            if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
-                if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
-                    break :blk type_name[last_dot..];
+        switch (@typeInfo(T)) {
+            .Struct, .Enum, .Union, .Opaque => {
+                if (type_name.len < 16) {
+                    return type_name;
                 }
-                if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
-                    if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
-                        break :blk type_name[last_dot + 1 .. first_op];
+                const shortened_type_name: []const u8 = blk: {
+                    if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
+                        if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
+                            break :blk type_name[last_dot..];
+                        }
+                        if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
+                            if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
+                                break :blk type_name[last_dot + 1 .. first_op];
+                            }
+                        }
+                    } else {
+                        if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
+                            break :blk type_name[last_dot..];
+                        }
+                        break :blk type_name;
                     }
+                };
+                if (mem.indexOfLastEqualOne(u8, '.', shortened_type_name)) |last_dot| {
+                    return "@\"" ++ shortened_type_name[last_dot..] ++ "\"";
                 }
-            } else {
-                if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
-                    break :blk type_name[last_dot..];
-                }
-                break :blk type_name;
-            }
-        };
-        if (mem.indexOfLastEqualOne(u8, '.', shortened_type_name)) |last_dot| {
-            return "@\"" ++ shortened_type_name[last_dot..] ++ "\"";
+                return "@\"" ++ shortened_type_name ++ "\"";
+            },
+            else => return type_name,
         }
-        return "@\"" ++ shortened_type_name ++ "\"";
     }
 }
 fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
@@ -1258,6 +1262,38 @@ pub fn untitle(comptime name: []const u8) []const u8 {
         },
         else => {
             return name;
+        },
+    }
+}
+pub fn requireComptime(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .ComptimeFloat, .ComptimeInt, .Type => {
+            return true;
+        },
+        .Pointer => |pointer_info| {
+            return requireComptime(pointer_info.child);
+        },
+        .Array => |array_info| {
+            return requireComptime(array_info.child);
+        },
+        .Struct => {
+            inline for (@typeInfo(T).Struct.fields) |field| {
+                if (requireComptime(field.type)) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        .Union => {
+            inline for (@typeInfo(T).Union.fields) |field| {
+                if (requireComptime(field.type)) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        else => {
+            return false;
         },
     }
 }
