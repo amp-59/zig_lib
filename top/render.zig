@@ -363,6 +363,7 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
                         array.writeMany(" = ");
                         field_format.formatWrite(array);
                         array.writeCount(2, ", ".*);
+                        fields_len += 1;
                     }
                 }
                 if (fields_len == 0) {
@@ -399,6 +400,7 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
                 } else {
                     const field_format: FieldFormat = .{ .value = field_value };
                     len += 1 + field_name_format.formatLength() + 3 + field_format.formatLength() + 2;
+                    fields_len += 1;
                 }
             }
             if (trailing_comma and fields_len != 0) {
