@@ -1602,13 +1602,21 @@ pub const fmt = opaque {
             .Union => |union_info| {
                 switch (union_info.layout) {
                     .Packed => {
-                        return "packed union";
+                        if (union_info.tag_type != null) {
+                            return "packed union(enum)";
+                        } else {
+                            return "packed union";
+                        }
                     },
                     .Extern => {
                         return "extern union";
                     },
                     .Auto => {
-                        return "union";
+                        if (union_info.tag_type != null) {
+                            return "union(enum)";
+                        } else {
+                            return "union";
+                        }
                     },
                 }
             },
