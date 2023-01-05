@@ -395,7 +395,7 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
         const Format: type = @This();
         const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
-        const fmt_spec: PolynomialFormatSpec = spec;
+        pub const fmt_spec: PolynomialFormatSpec = spec;
         const min_abs_value: Abs = fmt_spec.range.min orelse 0;
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: u16 = builtin.fmt.length(Abs, min_abs_value, fmt_spec.radix);
@@ -675,7 +675,7 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
         const OldIntFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
         const NewIntFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
         const DeltaIntFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
-        const fmt_spec: ChangedIntFormatSpec = spec;
+        pub const fmt_spec: ChangedIntFormatSpec = spec;
         pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +
             OldIntFormat.max_len + 1 + DeltaIntFormat.max_len + 5 + fmt_spec.no_style.len + NewIntFormat.max_len;
         fn formatWriteDelta(format: Format, array: anytype) void {
@@ -814,7 +814,7 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             tmp.prefix = false;
             break :blk tmp;
         });
-        const fmt_spec: PolynomialFormatSpec = spec;
+        pub const fmt_spec: PolynomialFormatSpec = spec;
         pub const max_len: u64 = (SubFormat.max_len) * 2 + 4;
         pub fn formatLength(format: Format) u64 {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
