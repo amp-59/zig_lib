@@ -822,9 +822,9 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (comptime child == u8) {
-                if (options.render_multi_line_string_literal) {
+                if (options.multi_line_string_literal) {
                     return formatWriteMultiLineStringLiteral(format, array);
-                } else if (options.render_string_literal) {
+                } else if (options.string_literal) {
                     return formatWriteStringLiteral(format, array);
                 }
             }
@@ -832,9 +832,9 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
         }
         pub fn formatLength(format: anytype) u64 {
             if (comptime child == u8) {
-                if (options.render_multi_line_string_literal) {
+                if (options.multi_line_string_literal) {
                     return formatLengthMultiLineStringLiteral(format);
-                } else if (options.render_string_literal) {
+                } else if (options.string_literal) {
                     return formatLengthStringLiteral(format);
                 }
             } else {
