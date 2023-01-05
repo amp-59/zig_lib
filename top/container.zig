@@ -691,13 +691,9 @@ pub const Parameters1 = struct {
     };
     fn Specification(comptime params: Parameters) type {
         if (params.sentinel != null) {
-            if (params.arenaIndex() != null) {
-                return reference.Specification3;
-            }
+            return reference.Specification3;
         } else {
-            if (params.arenaIndex() != null) {
-                return reference.Specification2;
-            }
+            return reference.Specification2;
         }
     }
     fn specification(comptime params: Parameters) params.Specification() {
@@ -1746,12 +1742,11 @@ pub const Parameters3 = struct {
             } else {
                 return reference.Specification7;
             }
+        }
+        if (params.arenaIndex() != null) {
+            return reference.Specification8;
         } else {
-            if (params.arenaIndex() != null) {
-                return reference.Specification8;
-            } else {
-                return reference.Specification6;
-            }
+            return reference.Specification6;
         }
     }
     fn specification(comptime params: Parameters) params.Specification() {
