@@ -58,8 +58,10 @@ fn AnyFormat(comptime Type: type, comptime options: Options) type {
         .Optional => OptionalFormat(Type, options),
         .Null => NullFormat,
         .Void => VoidFormat,
+        .NoReturn => NoReturnFormat,
         .Vector => VectorFormat(Type, options),
         .ErrorUnion => ErrorUnionFormat(Type),
+        .ErrorSet => ErrorSetFormat(Type, options),
         else => @compileError(typeName(Type)),
     };
 }
@@ -221,7 +223,7 @@ pub fn TypeFormat(comptime options: Options) type {
                         array.writeMany("}");
                     }
                 },
-                .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer, .Array => {
+                .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer, .Array, .NoReturn, .Void => {
                     array.writeMany(typeName(format.value));
                 },
                 else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
@@ -291,7 +293,7 @@ pub fn TypeFormat(comptime options: Options) type {
                         len += 1;
                     }
                 },
-                .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer, .Array => {
+                .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer, .Array, .NoReturn, .Void => {
                     len += typeName(format.value).len;
                 },
                 else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
@@ -568,12 +570,11 @@ fn EnumFormat(comptime T: type) type {
         const Format: type = @This();
         const max_len: u64 = 1 + meta.maxDeclLength(T);
         pub fn formatWrite(format: Format, array: anytype) void {
-            const tag_name = @tagName(format.value);
             array.writeOne('.');
-            array.writeMany(tag_name);
+            array.writeFormat(fmt.IdentifierFormat{ .value = @tagName(format.value) });
         }
         pub fn formatLength(format: Format) u64 {
-            return 1 + @tagName(format.value).len;
+            return 1 + fmt.IdentifierFormat.formatLength(.{ .value = @tagName(format.value) });
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
@@ -948,6 +949,20 @@ pub const VoidFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
+pub const NoReturnFormat = struct {
+    comptime value: void = {},
+    comptime formatWrite: fn (anytype) void = formatWrite,
+    comptime formatLength: fn () u64 = formatLength,
+    const Format: type = @This();
+    const max_len: u64 = 8;
+    pub fn formatWrite(array: anytype) void {
+        array.writeCount(2, "noreturn".*);
+    }
+    pub fn formatLength() u64 {
+        return 8;
+    }
+    pub usingnamespace GenericRenderFormat(Format);
+};
 fn VectorFormat(comptime Vector: type, comptime options: Options) type {
     return struct {
         value: Vector,
@@ -1011,6 +1026,20 @@ fn ErrorUnionFormat(comptime ErrorUnion: type, comptime options: Options) type {
                 len += @errorName(any_error).len;
             }
             return len;
+        }
+        pub usingnamespace GenericRenderFormat(Format);
+    };
+}
+fn ErrorSetFormat(comptime ErrorSet: type, comptime _: Options) type {
+    return struct {
+        value: ErrorSet,
+        const Format: type = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            array.writeMany("error.");
+            array.writeMany(@errorName(format.value));
+        }
+        pub fn formatLength(format: Format) u64 {
+            return 6 + @errorName(format.value).len;
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
