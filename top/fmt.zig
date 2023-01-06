@@ -400,9 +400,13 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: u16 = builtin.fmt.length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, fmt_spec.radix);
-        const prefix: [2]u8 = lit.int_prefixes[fmt_spec.radix].*;
+        const prefix: []const u8 = lit.int_prefixes[fmt_spec.radix];
         const max_len: u64 = blk: {
-            var len: u64 = max_digits_count;
+            var len: u64 = prefix.len;
+            if (fmt_spec.radix > max_abs_value) {
+                break :blk len + 1;
+            }
+            len += max_digits_count;
             if (fmt_spec.radix != 10) {
                 len += prefix.len;
             }
@@ -422,6 +426,9 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
             }
         }
         inline fn digits(format: Format) u64 {
+            if (fmt_spec.radix > max_abs_value) {
+                return 1;
+            }
             const digits_len: u64 = switch (fmt_spec.width) {
                 .min => builtin.fmt.length(Abs, format.absolute(), fmt_spec.radix),
                 .max => max_digits_count,
@@ -439,49 +446,48 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
             if (Abs != Int) {
                 @intToPtr(*u8, next).* = '-';
             }
-            next += @boolToInt(format.value < 0);
+            next +%= @boolToInt(format.value < 0);
             if (fmt_spec.radix != 10) {
-                @intToPtr(*[prefix.len]u8, next).* = prefix;
-                next += prefix.len;
+                @intToPtr(*[prefix.len]u8, next).* =
+                    @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
+                next +%= prefix.len;
             }
-            if (format.value == 0) {
-                @intToPtr(*u8, next).* = '0';
-            }
-            if (fmt_spec.separator) |separator| {
+            if (fmt_spec.radix > max_abs_value) {
+                @intToPtr(*u8, next).* = @as(u8, '0') +
+                    @boolToInt(format.value != 0);
+                next += 1;
+            } else if (fmt_spec.separator) |separator| {
                 const count: u64 = format.digits();
                 var value: Abs = format.absolute();
-                next += count;
+                next +%= count;
                 var len: u64 = 0;
                 var sep: u64 = 0;
-                while (sep + len != count) : (value /= fmt_spec.radix) {
+                while (sep +% len != count) : (value /= fmt_spec.radix) {
                     len +%= 1;
-                    @intToPtr(*u8, next - (sep + len)).* = separator.character;
+                    @intToPtr(*u8, next -% (sep +% len)).* = separator.character;
                     const b0: bool = len / separator.digits != 0;
                     const b1: bool = len % separator.digits == 1;
-                    sep += builtin.int2a(u64, b0, b1);
-                    @intToPtr(*u8, next - (sep + len)).* =
+                    sep +%= builtin.int2a(u64, b0, b1);
+                    @intToPtr(*u8, next -% (sep +% len)).* =
                         builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
                 }
             } else {
                 const count: u64 = format.digits();
                 var value: Abs = format.absolute();
-                next += count;
+                next +%= count;
                 var len: u64 = 0;
                 while (len != count) : (value /= fmt_spec.radix) {
                     len +%= 1;
-                    @intToPtr(*u8, next - len).* =
+                    @intToPtr(*u8, next -% len).* =
                         builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
                 }
             }
-            array.impl.define(next - start);
+            array.impl.define(next -% start);
         }
         pub fn formatLength(format: Format) u64 {
-            var len: u64 = 0;
-            if (fmt_spec.radix != 10) {
-                len += prefix.len;
-            }
+            var len: u64 = prefix.len;
             if (format.value < 0) {
-                len += 1;
+                len +%= 1;
             }
             return len + format.digits();
         }
@@ -586,13 +592,13 @@ pub const Bytes = struct {
     };
     const Unit = mem.Bytes.Unit;
     const MajorIntFormat = PolynomialFormat(.{
-        .bits = 10,
+        .bits = 16,
         .signedness = .unsigned,
         .radix = 10,
         .width = .min,
     });
     const MinorIntFormat = PolynomialFormat(.{
-        .bits = 10,
+        .bits = 16,
         .signedness = .unsigned,
         .radix = 10,
         .width = .{ .fixed = 3 },
