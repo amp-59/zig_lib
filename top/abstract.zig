@@ -111,7 +111,7 @@ pub const SyntaxTree = struct {
             .line_start = start_offset,
             .line_end = ast.source.len(),
         };
-        const token_start: zig.Index = ast.tokens.items(.start)[token_index];
+        const token_start: zig.Index = ast.tokenStart(token_index);
         for (ast.source.readManyAt(start_offset)) |c, i| {
             if (i + start_offset == token_start) {
                 loc.line_end = i + start_offset;
