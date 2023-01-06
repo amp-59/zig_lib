@@ -2084,8 +2084,10 @@ fn GenericIntermediate(comptime Allocator: type) type {
                 } else {
                     Implementation.resizeManyAboveUnitAlignedAddressable(allocator, s_up_addr, t_up_addr);
                 }
+            } else if (Allocator.allocate_void != void) {
+                return error.OpaqueSystemError;
             } else {
-                if (Allocator.allocate_void != void) return error.CannotAllocateMemory else @breakpoint();
+                @breakpoint();
             }
         }
         fn resizeManyAboveAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
@@ -2095,8 +2097,10 @@ fn GenericIntermediate(comptime Allocator: type) type {
                 } else {
                     Implementation.resizeManyAboveAnyAlignedAddressable(allocator, s_up_addr, t_up_addr);
                 }
+            } else if (Allocator.allocate_void != void) {
+                return error.OpaqueSystemError;
             } else {
-                if (Allocator.allocate_void != void) return error.CannotAllocateMemory else @breakpoint();
+                @breakpoint();
             }
         }
         fn resizeManyBelowUnitAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
@@ -2216,8 +2220,10 @@ fn GenericIntermediate(comptime Allocator: type) type {
                 } else {
                     Implementation.convertAnyManyUnitAlignedAddressable(allocator);
                 }
+            } else if (Allocator.allocate_void != void) {
+                return error.OpaqueSystemError;
             } else {
-                if (Allocator.allocate_void != void) return error.CannotAllocateMemory else @breakpoint();
+                @breakpoint();
             }
         }
         fn convertAnyManyAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
@@ -2227,8 +2233,10 @@ fn GenericIntermediate(comptime Allocator: type) type {
                 } else {
                     Implementation.convertAnyManyAnyAlignedAddressable(allocator);
                 }
+            } else if (Allocator.allocate_void != void) {
+                return error.OpaqueSystemError;
             } else {
-                if (Allocator.allocate_void != void) return error.CannotAllocateMemory else @breakpoint();
+                @breakpoint();
             }
         }
     };
