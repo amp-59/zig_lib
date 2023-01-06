@@ -7,7 +7,7 @@ const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 
 const Options = struct {
-    radix: u16 = 10,
+    radix: u16 = render_radix,
     radix_field_name_suffixes: ?[]const RadixFieldName = null,
     string_literal: bool = true,
     multi_line_string_literal: bool = false,
@@ -18,7 +18,7 @@ const Options = struct {
     enable_comptime_iterator: bool = false,
 
     const RadixFieldName = struct {
-        radix: u16 = 10,
+        radix: u16 = render_radix,
         prefix: ?[]const u8 = null,
         suffix: ?[]const u8 = null,
     };
@@ -622,10 +622,10 @@ fn IntFormat(comptime Int: type, comptime options: Options) type {
         const max_len: u64 = blk: {
             var len: u64 = max_digits_count;
             if (radix != 10) {
-                len += prefix.len;
+                len +%= prefix.len;
             }
             if (type_info.Int.signedness == .signed) {
-                len += 1;
+                len +%= 1;
             }
             break :blk len;
         };
@@ -649,31 +649,34 @@ fn IntFormat(comptime Int: type, comptime options: Options) type {
             if (radix != 10) {
                 @intToPtr(*[prefix.len]u8, next).* =
                     @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
-                next += prefix.len;
+                next +%= prefix.len;
             }
             var value: Abs = format.absolute();
-            if (format.value == 0) {
-                @intToPtr(*u8, next).* = '0';
-            }
-            const count: u64 = format.digits();
-            next += count;
-            var len: u64 = 0;
-            while (len != count) : (value /= radix) {
-                len +%= 1;
-                @intToPtr(*u8, next - len).* =
-                    builtin.fmt.toSymbol(Abs, value, radix);
+            if (radix > max_abs_value) {
+                @intToPtr(*u8, next).* = @as(u8, '0') +
+                    @boolToInt(format.value != 0);
+                next += 1;
+            } else {
+                const count: u64 = format.digits();
+                next += count;
+                var len: u64 = 0;
+                while (len != count) : (value /= radix) {
+                    len +%= 1;
+                    @intToPtr(*u8, next -% len).* =
+                        builtin.fmt.toSymbol(Abs, value, radix);
+                }
             }
             array.impl.define(next - start);
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = 0;
             if (radix != 10) {
-                len += prefix.len;
+                len +%= prefix.len;
             }
             if (format.value < 0) {
-                len += 1;
+                len +%= 1;
             }
-            return len + format.digits();
+            return len +% format.digits();
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
@@ -972,7 +975,7 @@ fn VectorFormat(comptime Vector: type, comptime options: Options) type {
         const child: type = vector_info.Vector.child;
         const type_name: []const u8 = typeName(Vector);
         const max_len: u64 = (type_name.len + 2) +
-            vector_info.Array.len * (ChildFormat.max_len + 2);
+            vector_info.Vector.len * (ChildFormat.max_len + 2);
         pub fn formatWrite(format: Format, array: anytype) void {
             if (vector_info.Vector.len == 0) {
                 array.writeMany(type_name);
@@ -980,8 +983,8 @@ fn VectorFormat(comptime Vector: type, comptime options: Options) type {
             } else {
                 array.writeMany(type_name);
                 array.writeMany("{ ");
-                var i: u64 = 0;
-                while (i != vector_info.Vector.len) : (i += 1) {
+                comptime var i: u64 = 0;
+                inline while (i != vector_info.Vector.len) : (i += 1) {
                     const element_format: ChildFormat = .{ .value = format.value[i] };
                     element_format.formatWrite(array);
                     array.writeCount(2, ", ".*);
@@ -991,8 +994,8 @@ fn VectorFormat(comptime Vector: type, comptime options: Options) type {
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = type_name.len + 2;
-            var i: u64 = 0;
-            while (i != vector_info.Vector.len) : (i += 1) {
+            comptime var i: u64 = 0;
+            inline while (i != vector_info.Vector.len) : (i += 1) {
                 const element_format: ChildFormat = .{ .value = format.value[i] };
                 len += element_format.formatLength() + 2;
             }
