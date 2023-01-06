@@ -20,6 +20,8 @@ const std = @import("std");
 pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
 
+const PrintArray = mem.StaticString(4096);
+
 pub const input_open_spec: file.OpenSpec = .{ .errors = null, .options = .{ .read = true, .write = null } };
 pub const input_close_spec: file.CloseSpec = .{ .errors = null };
 
@@ -173,13 +175,52 @@ pub fn main(args: [][*:0]u8) !void {
                 &allocator_s,
                 try fileBuf(&allocator_n, meta.manyToSlice(arg)),
             );
-            var index: usize = 0;
-            while (index != ast.nodes.len()) : (index += 1) {
-                const node: zig.AstNode = ast.nodes.readOneAt(index);
-                file.noexcept.write(2, @tagName(node.tag));
-                file.noexcept.write(2, ":\n");
-                file.noexcept.write(2, ast.getNodeSource(@intCast(u32, index)));
-                file.noexcept.write(2, "\n\n");
+
+            const Duplicate = mem.StaticArray(u32, 64);
+            const DuplicateIndices = zig.Allocator.Node.StructuredVector(Duplicate);
+            var duplicates: DuplicateIndices = try DuplicateIndices.init(&allocator_n, 128);
+            defer duplicates.deinit(&allocator_n);
+
+            var l_index: u32 = 0;
+            while (l_index != ast.nodes.len()) : (l_index += 1) {
+                var ptr: ?*Duplicate = null;
+                const l_node: zig.AstNode = ast.nodes.readOneAt(l_index);
+                if (l_node.tag == .fn_decl) {
+                    var r_index: u32 = l_index + 1;
+                    lo: while (r_index != ast.nodes.len()) : (r_index += 1) {
+                        const r_node: zig.AstNode = ast.nodes.readOneAt(r_index);
+                        if (r_node.tag == .fn_decl) {
+                            for (duplicates.readAll()) |indices| {
+                                for (indices.readAll()) |index| {
+                                    if (r_index == index) {
+                                        break :lo;
+                                    }
+                                }
+                            }
+                            const l_source: []const u8 = ast.getNodeSource(l_index);
+                            const r_source: []const u8 = ast.getNodeSource(r_index);
+                            if (mem.testEqualMany(u8, l_source, r_source)) {
+                                if (ptr) |indices| {
+                                    indices.writeOne(r_index);
+                                } else {
+                                    try duplicates.appendOne(&allocator_n, .{});
+                                    const indices: *Duplicate = duplicates.referOneBack();
+                                    indices.writeCount(2, .{ l_index, r_index });
+                                    ptr = indices;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (duplicates.readAll()) |indices| {
+                for (indices.readAll()) |index| {
+                    const loc: abstract.SyntaxTree.Location = ast.tokenLocation(0, ast.firstToken(index));
+                    var array: PrintArray = .{};
+                    array.writeAny(mem.fmt_wr_spec, .{ '\n', arg, ": line: ", fmt.ud(loc.line), ", column: ", fmt.ud(loc.column), '\n' });
+                    file.noexcept.write(2, array.readAll());
+                    file.noexcept.write(2, ast.getNodeSource(index));
+                }
             }
         }
     }
