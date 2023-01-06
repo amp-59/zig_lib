@@ -16,6 +16,13 @@ pub const Arena = struct {
         thread_safe: bool = false,
     };
 };
+pub const ArenaReference = struct {
+    index: comptime_int,
+    options: Options = .{},
+    const Options = struct {
+        thread_safe: ?bool = null,
+    };
+};
 
 // Maybe make generic on Endian.
 // Right now it is difficult to get Zig vectors to produce consistent results,
@@ -191,6 +198,140 @@ pub const ExactAddressSpaceSpec = struct {
         }
     }
 };
+const FormulaicAddressSpaceSpec = struct {
+    low: usize = 0,
+    start: usize = safe_zone,
+    finish: usize = (1 << shift_amt) - safe_zone,
+    high: usize = 1 << shift_amt,
+    divisions: usize = 8,
+    alignment: usize = 4096,
+    options: Options = .{},
+
+    const shift_amt: comptime_int = @min(48, @bitSizeOf(usize)) - 1;
+    const safe_zone: comptime_int = 0x40000000;
+
+    const Options = struct {
+        /// All arenas thread safe
+        thread_safe: bool = true,
+        /// Use bytes instead of bits when efficient
+        prefer_word_size: bool = true,
+    };
+    fn Implementation(comptime spec: FormulaicAddressSpaceSpec) type {
+        const BitSet: type = DiscreteBitSet(spec.divisions);
+        if (spec.options.prefer_word_size) {
+            const SafeSet: type = ThreadSafeSet(spec.divisions);
+            if (@sizeOf(SafeSet) <= @sizeOf(usize) or spec.options.thread_safe) {
+                return SafeSet;
+            }
+        }
+        return BitSet;
+    }
+};
+pub const SubSpaceSpec = struct {
+    AddressSpace: type,
+
+    list: ?[]const ArenaReference,
+    redefine: ?Redefine,
+
+    const Redefine = union(enum) {
+        list: []const Arena,
+        formula: Formula,
+    };
+    const Formula = struct {
+        low: usize,
+        start: usize,
+        finish: usize,
+        high: usize,
+        divisions: usize,
+        alignment: usize,
+    };
+    // Make exact with hints or bust
+    fn userHelperListRedefineList(
+        comptime AddressSpace: type,
+        comptime super_list: []const ArenaReference,
+        comptime sub_list: []const Arena,
+    ) void {
+        _ = AddressSpace;
+        _ = super_list;
+        _ = sub_list;
+    }
+    // Make formulaic with hints or bust
+    fn userHelperListRedefineFormula(
+        comptime AddressSpace: type,
+        comptime super_list: []const ArenaReference,
+        comptime formula: Formula,
+    ) void {
+        _ = AddressSpace;
+        _ = super_list;
+        _ = formula;
+    }
+    // Make exact or error
+    fn userHelperRedefineList(comptime AddressSpace: type, sub_list: []const Arena) void {
+        _ = AddressSpace;
+        _ = sub_list;
+    }
+    // Make formulaic or error
+    fn userHelperRedefineFormula(comptime AddressSpace: type, sub_list: []const Arena) void {
+        _ = AddressSpace;
+        _ = sub_list;
+    }
+    // Make it work with hint
+    fn userHelperList(comptime AddressSpace: type, super_list: []const ArenaReference) void {
+        _ = AddressSpace;
+        _ = super_list;
+    }
+
+    fn isContinuous(comptime spec: SubSpaceSpec) bool {
+        var index: ?usize = null;
+        for (spec.list) |item| {
+            if (index) |prev| {
+                if (item.index == prev + 1) {
+                    prev = item.index;
+                } else {
+                    return false;
+                }
+            } else {
+                index = item.index;
+            }
+        }
+        return true;
+    }
+    fn isContiguous(comptime spec: SubSpaceSpec) bool {
+        var addr: ?usize = null;
+        for (spec.list) |item| {
+            if (addr) |prev| {
+                if (spec.AddressSpace.low(item.index) == prev) {
+                    addr = spec.AddressSpace.high(item.index);
+                } else {
+                    return false;
+                }
+            } else {
+                addr = spec.AddressSpace.high(item.index);
+            }
+        }
+        return true;
+    }
+    fn isUniformSafety(comptime spec: SubSpaceSpec) bool {
+        var safety: ?usize = null;
+        for (spec.list) |item| {
+            if (safety) |prev| {
+                if (item.options.thread_safe != prev) {
+                    return false;
+                }
+            } else {
+                safety = item.options.thread_safe;
+            }
+        }
+        return true;
+    }
+    fn isSuperFormulaic(comptime spec: SubSpaceSpec) bool {
+        return @TypeOf(spec.AddressSpace.addr_spec) == FormulaicAddressSpaceSpec;
+    }
+    fn isFormulaic(comptime spec: SubSpaceSpec) bool {
+        return isSuperFormulaic(spec) and isContiguous(spec) and isUniformSafety(spec);
+    }
+};
+
 /// Exact:
 /// Good:
 ///     * Arbitrary ranges.
@@ -199,7 +340,7 @@ pub const ExactAddressSpaceSpec = struct {
 ///     * Arena index must be known at compile time.
 ///     * Inversion is expensive.
 ///     * Constructing the bit set fields can be expensive at compile time.
-pub fn ExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
+pub fn GenericExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
     return struct {
         impl: Implementation = .{},
         const AddressSpace = @This();
@@ -239,35 +380,6 @@ pub fn ExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
         }
     };
 }
-const FormulaicAddressSpaceSpec = struct {
-    low: usize = 0,
-    start: usize = safe_zone,
-    finish: usize = (1 << shift_amt) - safe_zone,
-    high: usize = 1 << shift_amt,
-    divisions: usize = 8,
-    alignment: usize = 4096,
-    options: Options = .{},
-
-    const shift_amt: comptime_int = @min(48, @bitSizeOf(usize)) - 1;
-    const safe_zone: comptime_int = 0x40000000;
-
-    const Options = struct {
-        /// All arenas thread safe
-        thread_safe: bool = true,
-        /// Use bytes instead of bits when efficient
-        prefer_word_size: bool = true,
-    };
-    fn Implementation(comptime spec: FormulaicAddressSpaceSpec) type {
-        const BitSet: type = DiscreteBitSet(spec.divisions);
-        if (spec.options.prefer_word_size) {
-            const SafeSet: type = ThreadSafeSet(spec.divisions);
-            if (@sizeOf(SafeSet) <= @sizeOf(usize) or spec.options.thread_safe) {
-                return SafeSet;
-            }
-        }
-        return BitSet;
-    }
-};
 /// Formulaic:
 /// Good:
 ///     * Good locality associated with computing the begin and end addresses
@@ -280,7 +392,7 @@ const FormulaicAddressSpaceSpec = struct {
 ///     * Arenas can not be independently configured.
 ///     * Thread safety is all-or-nothing, which increases the metadata size
 ///       required by each arena from 1 to 8 bits.
-pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
+pub fn GenericFormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
     return struct {
         impl: Implementation = .{},
         const AddressSpace = @This();
@@ -338,68 +450,25 @@ pub fn FormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) type {
         }
     };
 }
-
-/// If the list of indices is continuous and the safety of all the sub space
-/// can be formulaic, otherwise an exact sub space must be constructed.
-pub const SubArena = struct {
-    index: comptime_int,
-    options: Options = .{},
-
-    const Options = struct {
-        thread_safe: ?bool = null,
+pub fn GenericSubSpace(comptime spec: SubSpaceSpec) type {
+    return struct {
+        const SubSpace = @This();
+        fn init(address_space: *spec.AddressSpace) SubSpace {
+            _ = address_space;
+            if (spec.isSuperFormulaic()) {
+                if (spec.AddressSpace.addr_spec.options.thread_safe) {}
+            } else {
+                inline for (spec.list) |arena| {
+                    if (arena.options.thread_safe) {}
+                }
+                inline for (spec.list) |arena| {
+                    if (!arena.options.thread_safe) {}
+                }
+            }
+        }
+        fn deinit(sub_space: *SubSpace, address_space: *spec.AddressSpace) void {
+            _ = sub_space;
+            _ = address_space;
+        }
     };
-};
-pub const SubSpaceSpec = struct {
-    AddressSpace: type,
-    list: []const SubArena,
-
-    fn isContinuous(comptime spec: SubSpaceSpec) bool {
-        var index: ?usize = null;
-        for (spec.list) |item| {
-            if (index) |prev| {
-                if (item.index == prev + 1) {
-                    prev = item.index;
-                } else {
-                    return false;
-                }
-            } else {
-                index = item.index;
-            }
-        }
-        return true;
-    }
-    fn isContiguous(comptime spec: SubSpaceSpec) bool {
-        var addr: ?usize = null;
-        for (spec.list) |item| {
-            if (addr) |prev| {
-                if (spec.AddressSpace.low(item.index) == prev) {
-                    addr = spec.AddressSpace.high(item.index);
-                } else {
-                    return false;
-                }
-            } else {
-                addr = spec.AddressSpace.high(item.index);
-            }
-        }
-        return true;
-    }
-    fn isUniformSafety(comptime spec: SubSpaceSpec) bool {
-        var safety: ?usize = null;
-        for (spec.list) |item| {
-            if (safety) |prev| {
-                if (item.options.thread_safe != prev) {
-                    return false;
-                }
-            } else {
-                safety = item.options.thread_safe;
-            }
-        }
-        return true;
-    }
-    fn isParentFormulaic(comptime spec: SubSpaceSpec) bool {
-        return @TypeOf(spec.AddressSpace.addr_spec) == FormulaicAddressSpaceSpec;
-    }
-    fn isFormulaic(comptime spec: SubSpaceSpec) bool {
-        return isParentFormulaic(spec) and isContiguous(spec) and isUniformSafety(spec);
-    }
-};
+}
