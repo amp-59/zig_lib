@@ -1534,7 +1534,10 @@ pub const fmt = opaque {
         while (value != 0) : (len += 1) value /= radix;
         return len;
     }
-    pub fn length(comptime U: type, abs_value: U, radix: U) u64 {
+    pub fn length(comptime U: type, abs_value: U, radix: anytype) usize {
+        if (@bitSizeOf(U) == 1) {
+            return 1;
+        }
         var value: U = abs_value;
         var count: u64 = 0;
         while (value != 0) : (value /= radix) {

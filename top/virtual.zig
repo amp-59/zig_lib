@@ -521,25 +521,3 @@ pub fn GenericFormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) ty
         }
     };
 }
-pub fn GenericSubSpace(comptime spec: SubSpaceSpec) type {
-    return struct {
-        const SubSpace = @This();
-        fn init(address_space: *spec.AddressSpace) SubSpace {
-            _ = address_space;
-            if (spec.isSuperFormulaic()) {
-                if (spec.AddressSpace.addr_spec.options.thread_safe) {}
-            } else {
-                inline for (spec.list) |arena| {
-                    if (arena.options.thread_safe) {}
-                }
-                inline for (spec.list) |arena| {
-                    if (!arena.options.thread_safe) {}
-                }
-            }
-        }
-        fn deinit(sub_space: *SubSpace, address_space: *spec.AddressSpace) void {
-            _ = sub_space;
-            _ = address_space;
-        }
-    };
-}

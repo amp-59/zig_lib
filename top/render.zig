@@ -669,10 +669,7 @@ fn IntFormat(comptime Int: type, comptime options: Options) type {
             array.impl.define(next - start);
         }
         pub fn formatLength(format: Format) u64 {
-            var len: u64 = 0;
-            if (radix != 10) {
-                len +%= prefix.len;
-            }
+            var len: u64 = prefix.len;
             if (format.value < 0) {
                 len +%= 1;
             }
