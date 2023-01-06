@@ -61,6 +61,9 @@ pub fn slice(comptime T: type, any: anytype) []const T {
 pub fn parcel(any: anytype) []const @TypeOf(any) {
     return &[1]@TypeOf(any){any};
 }
+pub fn concat(comptime any: anytype, comptime value: resolve(@typeInfo(@TypeOf(any))).child) @TypeOf(any) {
+    return any ++ parcel(value);
+}
 /// A wrapped value can be unwrapped using `try`
 pub fn wrap(any: anytype) blk: {
     const T: type = @TypeOf(any);
@@ -694,7 +697,7 @@ pub fn UniformData(comptime bits: u16) type {
         },
     }
 }
-pub fn uniformData(comptime any: anytype) UniformData(@TypeOf(any)) {
+pub fn uniformData(any: anytype) UniformData(@bitSizeOf(@TypeOf(any))) {
     return @ptrCast(*const UniformData(@bitSizeOf(@TypeOf(any))), &any).*;
 }
 
