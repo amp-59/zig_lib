@@ -8,9 +8,11 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_correct: bool = true;
+pub const is_correct: bool = test_size;
 
-const PrintArray = mem.StaticString(1024 * 1024);
+const PrintArray = mem.StaticString(4096);
+
+const test_size: bool = false;
 
 fn testNonChildIntegers() !void {
     var array: PrintArray = .{};
@@ -71,7 +73,14 @@ fn testBytesFormat() !void {
     try testing.expectEqualMany(u8, "15.999EiB", fmt.bytes(~@as(u64, 0)).formatConvert().readAll());
 }
 fn testEquivalentIntToStringFormat() !void {
+    const ubin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max });
+    const sbin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max });
     var uint: u64 = 0;
+    try testing.expectEqualMany(u8, "0b0", (sbin{ .value = 0 }).formatConvert().readAll());
+    try testing.expectEqualMany(u8, "-0b1", (sbin{ .value = -1 }).formatConvert().readAll());
+    try testing.expectEqualMany(u8, "0b0", (ubin{ .value = 0 }).formatConvert().readAll());
+    try testing.expectEqualMany(u8, "0b1", (ubin{ .value = 1 }).formatConvert().readAll());
+    try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
     while (uint < 0x10000) : (uint += 99) {
         const uint_32: u32 = @truncate(u32, uint);
         const uint_16: u16 = @truncate(u16, uint);
@@ -114,8 +123,18 @@ fn testEquivalentIntToStringFormat() !void {
         try testing.expectEqualMany(u8, builtin.fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
     }
 }
+fn testBinarySize() void {
+    var array: PrintArray = .{};
+    array.writeFormat(fmt.ux64(@ptrToInt(&array)));
+    file.noexcept.write(2, array.readAll());
+}
+
 pub fn main() !void {
-    try meta.wrap(testEquivalentIntToStringFormat());
-    try meta.wrap(testBytesFormat());
-    try meta.wrap(testNonChildIntegers());
+    if (test_size) {
+        try meta.wrap(testBinarySize());
+    } else {
+        try meta.wrap(testEquivalentIntToStringFormat());
+        try meta.wrap(testBytesFormat());
+        try meta.wrap(testNonChildIntegers());
+    }
 }
