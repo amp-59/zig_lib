@@ -278,6 +278,173 @@ pub const SIG = opaque {
     pub const SETMASK: usize = 0x2;
     pub const BLOCK: usize = 0x0;
 };
+pub const TIOC = opaque {
+    pub const EXCL: usize = 0x540C;
+    pub const NXCL: usize = 0x540D;
+    pub const SCTTY: usize = 0x540E;
+    pub const GPGRP: usize = 0x540F;
+    pub const SPGRP: usize = 0x5410;
+    pub const OUTQ: usize = 0x5411;
+    pub const STI: usize = 0x5412;
+    pub const GWINSZ: usize = 0x5413;
+    pub const SWINSZ: usize = 0x5414;
+    pub const MGET: usize = 0x5415;
+    pub const MBIS: usize = 0x5416;
+    pub const MBIC: usize = 0x5417;
+    pub const MSET: usize = 0x5418;
+    pub const GSOFTCAR: usize = 0x5419;
+    pub const SSOFTCAR: usize = 0x541A;
+    pub const INQ: usize = 0x541B;
+    pub const LINUX: usize = 0x541C;
+    pub const CONS: usize = 0x541D;
+    pub const GSERIAL: usize = 0x541E;
+    pub const SSERIAL: usize = 0x541F;
+    pub const PKT: usize = 0x5420;
+    pub const NOTTY: usize = 0x5422;
+    pub const SETD: usize = 0x5423;
+    pub const GETD: usize = 0x5424;
+    pub const SBRK: usize = 0x5427;
+    pub const CBRK: usize = 0x5428;
+    pub const GSID: usize = 0x5429;
+    pub const GRS485: usize = 0x542E;
+    pub const SRS485: usize = 0x542F;
+    pub const SERCONFIG: usize = 0x5453;
+    pub const SERGWILD: usize = 0x5454;
+    pub const SERSWILD: usize = 0x5455;
+    pub const GLCKTRMIOS: usize = 0x5456;
+    pub const SLCKTRMIOS: usize = 0x5457;
+    pub const SERGSTRUCT: usize = 0x5458;
+    pub const SERGETLSR: usize = 0x5459;
+    pub const SERGETMULTI: usize = 0x545A;
+    pub const SERSETMULTI: usize = 0x545B;
+    pub const MIWAIT: usize = 0x545C;
+    pub const GICOUNT: usize = 0x545D;
+    pub const PKT_DATA: usize = 0;
+    pub const PKT_FLUSHREAD: usize = 1;
+    pub const PKT_FLUSHWRITE: usize = 2;
+    pub const PKT_STOP: usize = 4;
+    pub const PKT_START: usize = 8;
+    pub const PKT_NOSTOP: usize = 16;
+    pub const PKT_DOSTOP: usize = 32;
+    pub const PKT_IOCTL: usize = 64;
+    pub const SER_TEMT: usize = 0x01;
+};
+pub const FIO = opaque {
+    pub const NBIO: usize = 0x5421;
+    pub const NCLEX: usize = 0x5450;
+    pub const CLEX: usize = 0x5451;
+    pub const ASYNC: usize = 0x5452;
+    pub const QSIZE: usize = 0x5460;
+};
+pub const TC = opaque {
+    pub const GETS: usize = 0x5401;
+    pub const SETS: usize = 0x5402;
+    pub const SETSW: usize = 0x5403;
+    pub const SETSF: usize = 0x5404;
+    pub const GETA: usize = 0x5405;
+    pub const SETA: usize = 0x5406;
+    pub const SETAW: usize = 0x5407;
+    pub const SETAF: usize = 0x5408;
+    pub const SBRK: usize = 0x5409;
+    pub const XONC: usize = 0x540A;
+    pub const FLSH: usize = 0x540B;
+    pub const SBRKP: usize = 0x5425;
+    pub const GETX: usize = 0x5432;
+    pub const SETX: usize = 0x5433;
+    pub const SETXF: usize = 0x5434;
+    pub const SETXW: usize = 0x5435;
+    pub const I = opaque {
+        pub const IGNBRK: usize = 0x1;
+        pub const BRKINT: usize = 0x2;
+        pub const IGNPAR: usize = 0x4;
+        pub const PARMRK: usize = 0x8;
+        pub const INPCK: usize = 0x10;
+        pub const STRIP: usize = 0x20;
+        pub const NLCR: usize = 0x40;
+        pub const IGNCR: usize = 0x80;
+        pub const CRNL: usize = 0x100;
+        pub const UCLC: usize = 0x200;
+        pub const XON: usize = 0x400;
+        pub const XANY: usize = 0x800;
+        pub const XOFF: usize = 0x1000;
+        pub const MAXBEL: usize = 0x2000;
+        pub const UTF8: usize = undefined;
+    };
+    pub const O = opaque {
+        pub const POST: usize = 0x1;
+        pub const LCUC: usize = 0x2;
+        pub const NLCR: usize = 0x4;
+        pub const CRNL: usize = 0x8;
+        pub const NOCR: usize = 0x10;
+        pub const NLRET: usize = 0x20;
+        pub const FILL: usize = 0x40;
+        pub const FDEL: usize = 0x80;
+        pub const NLDLY: usize = 0x100;
+        pub const CRDLY: usize = 0x600;
+        pub const TABDLY: usize = 0x1800;
+        pub const BSDLY: usize = 0x2000;
+        pub const VTDLY: usize = 0x4000;
+        pub const FFDLY: usize = 0x8000;
+    };
+    pub const C = opaque {
+        pub const BAUD: usize = 0x100f;
+        pub const BAUDEX: usize = 0x1000;
+        pub const SIZE: usize = 0x30;
+        pub const STOPB: usize = 0x40;
+        pub const READ: usize = 0x80;
+        pub const PARENB: usize = 0x100;
+        pub const PARODD: usize = 0x200;
+        pub const HUPCL: usize = 0x400;
+        pub const LOCAL: usize = 0x800;
+        pub const IBAUD: usize = 0x100f0000;
+        pub const MSPAR: usize = 0x40000000;
+        pub const RTSCTS: usize = 0x80000000;
+    };
+    pub const L = opaque {
+        pub const ISIG: usize = 0x1;
+        pub const ICANON: usize = 0x2;
+        pub const XCASE: usize = 0x4;
+        pub const ECHO: usize = 0x8;
+        pub const ECHOE: usize = 0x10;
+        pub const ECHOK: usize = 0x20;
+        pub const ECHONL: usize = 0x40;
+        pub const ECHOCTL: usize = 0x200;
+        pub const ECHOPRT: usize = 0x400;
+        pub const ECHOKE: usize = 0x800;
+        pub const FLUSHO: usize = 0x1000;
+        pub const NOFLSH: usize = 0x80;
+        pub const TOSTOP: usize = 0x100;
+        pub const PENDIN: usize = 0x4000;
+        pub const IEXTEN: usize = 0x8000;
+    };
+    pub const V = opaque {
+        pub const DISCARD: usize = 0xd;
+        pub const EOF: usize = 0x4;
+        pub const EOL: usize = 0xb;
+        pub const ERASE: usize = 0x2;
+        pub const INTR: usize = 0x0;
+        pub const KILL: usize = 0x3;
+        pub const LNEXT: usize = 0xf;
+        pub const MIN: usize = 0x6;
+        pub const QUIT: usize = 0x1;
+        pub const REPRINT: usize = 0xc;
+        pub const START: usize = 0x8;
+        pub const STOP: usize = 0x9;
+        pub const SUSP: usize = 0xa;
+        pub const TIME: usize = 0x5;
+        pub const WERASE: usize = 0xe;
+    };
+    pub const SANOW: usize = 0x0;
+    pub const SADRAIN: usize = 0x1;
+    pub const SAFLUSH: usize = 0x2;
+    pub const IFLUSH: usize = 0x0;
+    pub const IOFLUSH: usize = 0x2;
+    pub const OFLUSH: usize = 0x1;
+    pub const OOFF: usize = 0x0;
+    pub const OON: usize = 0x1;
+    pub const IOFF: usize = 0x2;
+    pub const ION: usize = 0x3;
+};
 pub const ARCH = opaque {
     pub const SET = opaque {
         pub const CPUID: usize = 0x1012;
@@ -1563,7 +1730,8 @@ pub const Function = enum(u9) {
             .name_to_handle_at => 5,
             .open_by_handle_at => 3,
             .exit => 1,
-            else => undefined,
+            .chdir => 1,
+            else => @compileError(@tagName(function)),
         };
     }
 };
@@ -1873,7 +2041,7 @@ pub const Config = struct {
             return T;
         }
     }
-    fn function(comptime fn_conf: Config) ConfiguredSystemCall(fn_conf).Function {
+    pub fn function(comptime fn_conf: Config) ConfiguredSystemCall(fn_conf).Function {
         return ConfiguredSystemCall(fn_conf).function;
     }
     pub fn reconfigure(
