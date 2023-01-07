@@ -8,14 +8,30 @@ const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
-const Options = struct {
+pub const ArenaOptions = struct {
     thread_safe: bool = false,
 };
+pub const SuperArena = struct {
+    lb_addr: usize = lb_addr,
+    ab_addr: usize = ab_addr,
+    xb_addr: usize = xb_addr,
+    up_addr: usize = up_addr,
+    divisions: usize = 8,
+    alignment: usize = page_size,
 
+    const lb_addr: usize = 0;
+    const ab_addr: usize = safe_zone;
+    const up_addr: usize = 1 << shift_amt;
+    const xb_addr: usize = up_addr - safe_zone;
+    const divisions: u16 = 8;
+    const page_size: u16 = 4096;
+    const shift_amt: u16 = @min(48, @bitSizeOf(usize)) - 1;
+    const safe_zone: u64 = 0x40000000;
+};
 pub const Arena = struct {
     lb_addr: usize,
     up_addr: usize,
-    options: Options = .{},
+    options: ArenaOptions = .{},
 
     pub fn low(arena: Arena) usize {
         return arena.lb_addr;
@@ -59,7 +75,7 @@ pub const Arena = struct {
 };
 pub const ArenaReference = struct {
     index: comptime_int,
-    options: Options = .{},
+    options: ?ArenaOptions = null,
     fn arena(comptime arena_ref: ArenaReference, comptime AddressSpace: type) Arena {
         return AddressSpace.arena(arena_ref.index);
     }
@@ -178,13 +194,20 @@ fn GenericMultiSet(
 }
 pub const ExactAddressSpaceSpec = struct {
     list: List,
-    options: Options = .{},
     /// Constructing the implementation at compile time can be expensive, so
     /// in polished programs consider rendering the required values. Try
     /// file.noexcept.write(2, fmt.any().formatConvert());
     preset: ?Preset = null,
+    super: ?SuperSpace = null,
 
-    const Preset = struct { directory: *const anyopaque, Fields: type };
+    const Preset = struct {
+        directory: *const anyopaque,
+        Fields: type,
+    };
+    const SuperSpace = struct {
+        AddressSpace: type,
+        list: []const ArenaReference,
+    };
 
     const Specification: type = @This();
     const List = []const Arena;
@@ -239,113 +262,7 @@ pub const ExactAddressSpaceSpec = struct {
             return GenericMultiSet(spec, directory, T);
         }
     }
-};
-const Formula = struct {
-    lb_addr: usize = lb_addr,
-    ab_addr: usize = ab_addr,
-    xb_addr: usize = xb_addr,
-    up_addr: usize = up_addr,
-    divisions: usize = 8,
-    alignment: usize = page_size,
-
-    const lb_addr: usize = 0;
-    const ab_addr: usize = safe_zone;
-    const up_addr: usize = 1 << shift_amt;
-    const xb_addr: usize = up_addr - safe_zone;
-    const divisions: u16 = 8;
-    const page_size: u16 = 4096;
-    const shift_amt: u16 = @min(48, @bitSizeOf(usize)) - 1;
-    const safe_zone: u64 = 0x40000000;
-};
-const FormulaicAddressSpaceSpec = struct {
-    formula: Formula = .{},
-    options: Options = .{},
-    fn Implementation(comptime spec: FormulaicAddressSpaceSpec) type {
-        if (spec.options.thread_safe) {
-            return ThreadSafeSet(spec.formula.divisions);
-        } else {
-            return DiscreteBitSet(spec.formula.divisions);
-        }
-    }
-};
-
-pub const SubInitializer = struct {
-    super_list: []const ArenaReference,
-    addr_spec: union(enum) {
-        formulaic: FormulaicAddressSpaceSpec,
-        exact: ExactAddressSpaceSpec,
-    },
-    pub fn AddressSpace(comptime sub_init: SubInitializer) type {
-        switch (sub_init.addr_spec) {
-            .formulaic => |spec| {
-                return GenericFormulaicAddressSpace(spec);
-            },
-            .exact => |spec| {
-                return GenericExactAddressSpace(spec);
-            },
-        }
-    }
-};
-
-pub const SubSpaceSpec = struct {
-    AddressSpace: type,
-
-    list: ?[]const ArenaReference,
-    redefine: ?Redefine,
-
-    const Redefine = union(enum) {
-        list: []const Arena,
-        formula: Formula,
-    };
-
-    fn isFormulaic(comptime AddressSpace: type, list: []const ArenaReference) bool {
-        var safety: ?bool = null;
-        var addr: ?usize = null;
-        for (list) |item| {
-            if (safety) |prev| {
-                if (item.options.thread_safe != prev) {
-                    return false;
-                }
-            } else {
-                safety = item.options.thread_safe;
-            }
-            if (addr) |prev| {
-                if (AddressSpace.low(item.index) == prev) {
-                    addr = AddressSpace.high(item.index);
-                } else {
-                    return false;
-                }
-            } else {
-                addr = AddressSpace.high(item.index);
-            }
-        }
-        return true;
-    }
-
-    // Make formulaic with hints or bust
-    fn userHelperListRedefineFormula(
-        comptime AddressSpace: type,
-        comptime super_list: []const ArenaReference,
-        comptime spec: FormulaicAddressSpaceSpec,
-    ) void {
-        return struct {
-            const SubAddressSpace = GenericExactAddressSpace(spec);
-            comptime {
-                if (builtin.is_correct) {}
-            }
-            pub fn reserve(comptime address_space: *AddressSpace) SubAddressSpace {
-                var s_index: AddressSpace.Index = 0;
-                while (s_index != super_list.len) : (s_index += 1) {
-                    if (super_list[s_index].options.thread_safe) {
-                        if (!address_space.set(s_index)) break;
-                    }
-                }
-                return .{};
-            }
-        };
-    }
-    // Make exact or error
-    pub fn userHelperRedefineExact(comptime AddressSpace: type, comptime spec: ExactAddressSpaceSpec) SubInitializer {
+    fn mapSuperList(comptime spec: ExactAddressSpaceSpec, comptime AddressSpace: type) []const ArenaReference {
         var super_list: []const ArenaReference = meta.empty;
         var t_index: AddressSpace.Index = 0;
         if (@TypeOf(AddressSpace.addr_spec) == ExactAddressSpaceSpec) {
@@ -355,13 +272,15 @@ pub const SubSpaceSpec = struct {
                 while (s_index != AddressSpace.addr_spec.list.len) : (s_index += 1) {
                     if (spec.list[t_index].intersection(AddressSpace.addr_spec.list[s_index])) |intrs| {
                         capacity += intrs.capacity();
-                        super_list = meta.concat(super_list, .{ .index = s_index, .options = AddressSpace.arena(s_index).options });
+                        super_list = meta.concat(super_list, .{
+                            .index = s_index,
+                            .options = AddressSpace.arena(s_index).options,
+                        });
                     }
                     if (capacity == spec.list[t_index].capacity()) {
                         continue :lo;
                     }
                 }
-                builtin.assertEqual(usize, capacity, spec.list[t_index].capacity());
             }
         } else {
             var max_index: AddressSpace.Index = 0;
@@ -372,23 +291,57 @@ pub const SubSpaceSpec = struct {
             }
             var s_index: AddressSpace.Index = min_index;
             while (s_index <= max_index) : (s_index += 1) {
-                super_list = meta.concat(super_list, .{ .index = s_index, .options = AddressSpace.arena(s_index).options });
+                super_list = meta.concat(super_list, .{
+                    .index = s_index,
+                    .options = AddressSpace.arena(s_index).options,
+                });
             }
         }
-        return .{ .super_list = super_list, .addr_spec = .{ .exact = spec } };
-    }
-    // Make formulaic or error
-    fn userHelperRedefineFormulaic(comptime AddressSpace: type, comptime spec: FormulaicAddressSpaceSpec) void {
-        if (@TypeOf(AddressSpace.addr_spec) == ExactAddressSpaceSpec) {} else {}
-        AddressSpace.invert(spec.formula.low);
-        AddressSpace.invert(spec.formula.high);
-    }
-    // Make it work with hint
-    fn userHelperList(comptime AddressSpace: type, comptime super_list: []const ArenaReference) void {
-        if (isFormulaic(AddressSpace, super_list)) {}
+        return super_list;
     }
 };
-
+pub fn GenericExactSubAddressSpace(comptime spec: ExactAddressSpaceSpec, comptime AddressSpace: type) type {
+    var sub_spec: ExactAddressSpaceSpec = spec;
+    sub_spec.super = .{
+        .AddressSpace = AddressSpace,
+        .list = spec.mapSuperList(AddressSpace),
+    };
+    return GenericExactAddressSpace(sub_spec);
+}
+const FormulaicAddressSpaceSpec = struct {
+    params: SuperArena = .{},
+    options: ArenaOptions = .{},
+    fn Implementation(comptime spec: FormulaicAddressSpaceSpec) type {
+        if (spec.options.thread_safe) {
+            return ThreadSafeSet(spec.params.divisions);
+        } else {
+            return DiscreteBitSet(spec.params.divisions);
+        }
+    }
+};
+fn isFormulaic(comptime AddressSpace: type, list: []const ArenaReference) bool {
+    var safety: ?bool = null;
+    var addr: ?usize = null;
+    for (list) |item| {
+        if (safety) |prev| {
+            if (item.options.thread_safe != prev) {
+                return false;
+            }
+        } else {
+            safety = item.options.thread_safe;
+        }
+        if (addr) |prev| {
+            if (AddressSpace.low(item.index) == prev) {
+                addr = AddressSpace.high(item.index);
+            } else {
+                return false;
+            }
+        } else {
+            addr = AddressSpace.high(item.index);
+        }
+    }
+    return true;
+}
 /// Exact:
 /// Good:
 ///     * Arbitrary ranges.
@@ -443,18 +396,7 @@ pub fn GenericExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
         pub fn arena(comptime index: Index) Arena {
             return spec.list[index];
         }
-        pub fn reserve(
-            comptime address_space: *AddressSpace,
-            comptime sub_init: SubInitializer,
-        ) SubInitializer.AddressSpace(sub_init) {
-            comptime var s_index: AddressSpace.Index = 0;
-            inline while (s_index != sub_init.super_list.len) : (s_index += 1) {
-                if (sub_init.super_list[s_index].options.thread_safe) {
-                    if (!address_space.set(s_index)) break;
-                }
-            }
-            return .{};
-        }
+        pub usingnamespace GenericAddressSpace(AddressSpace);
     };
 }
 /// Formulaic:
@@ -465,7 +407,7 @@ pub fn GenericExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
 ///       operations from a thread-unsafe address space yields a compile error.
 /// Bad:
 ///     * Poor flexibility.
-///     * Formula results must be tightly constrained or checked.
+///     * params results must be tightly constrained or checked.
 ///     * Arenas can not be independently configured.
 ///     * Thread safety is all-or-nothing, which increases the metadata size
 ///       required by each arena from 1 to 8 bits.
@@ -477,8 +419,8 @@ pub fn GenericFormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) ty
         pub const Implementation: type = spec.Implementation();
         pub const addr_spec: FormulaicAddressSpaceSpec = spec;
         const len: usize = blk: {
-            const mask: usize = spec.alignment - 1;
-            const value: usize = spec.high / spec.divisions;
+            const mask: usize = spec.params.alignment - 1;
+            const value: usize = spec.params.xb_addr / spec.params.divisions;
             break :blk (value + mask) & ~mask;
         };
         pub fn unset(address_space: *AddressSpace, index: Index) bool {
@@ -518,6 +460,22 @@ pub fn GenericFormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) ty
                 .up_addr = high(index),
                 .options = addr_spec.options.thread_safe,
             };
+        }
+        pub usingnamespace GenericAddressSpace(AddressSpace);
+    };
+}
+fn GenericAddressSpace(comptime AddressSpace: type) type {
+    return struct {
+        pub fn reserve(comptime address_space: *AddressSpace, comptime SubAddressSpace: type) SubAddressSpace {
+            comptime {
+                var s_index: AddressSpace.Index = 0;
+                while (s_index != SubAddressSpace.addr_spec.super.?.list.len) : (s_index += 1) {
+                    if (!address_space.set(s_index)) {
+                        break;
+                    }
+                }
+                return .{};
+            }
         }
     };
 }
