@@ -12,7 +12,7 @@ const builtin = @import("./builtin.zig");
 pub usingnamespace proc.start;
 
 pub const is_correct: bool = true;
-pub const is_verbose: bool = false;
+pub const is_verbose: bool = true;
 pub const is_perf: bool = false;
 
 const Allocator0 = mem.GenericArenaAllocator(.{
@@ -164,20 +164,20 @@ const RWAddresses = extern struct {
             .capacity = mach.sub64(addresses.finish, addresses.start),
         };
     }
-    noinline fn assertEqual(s_addresses: Addresses, t_addresses: Addresses) void {
+    fn assertEqual(s_addresses: Addresses, t_addresses: Addresses) void {
         builtin.assertEqual(u64, s_addresses.low, t_addresses.low);
         builtin.assertEqual(u64, s_addresses.start, t_addresses.start);
         builtin.assertEqual(u64, s_addresses.finish, t_addresses.finish);
         builtin.assertEqual(u64, s_addresses.high, t_addresses.high);
     }
     const showWithReferenceWrite = showTwo;
-    noinline fn showTwo(s_addresses: Addresses, t_addresses: Addresses, array: *PrintArray) void {
+    fn showTwo(s_addresses: Addresses, t_addresses: Addresses, array: *PrintArray) void {
         writeAddresses2Always(Addresses, "low", s_addresses, t_addresses, array);
         writeAddresses2Always(Addresses, "start", s_addresses, t_addresses, array);
         writeAddresses2Always(Addresses, "finish", s_addresses, t_addresses, array);
         writeAddresses2Always(Addresses, "high", s_addresses, t_addresses, array);
     }
-    noinline fn showFour(s_addresses: Addresses, t_addresses: Addresses, u_addresses: Addresses, v_addresses: Addresses, array: *PrintArray) void {
+    fn showFour(s_addresses: Addresses, t_addresses: Addresses, u_addresses: Addresses, v_addresses: Addresses, array: *PrintArray) void {
         writeAddresses4Always(Addresses, "low", s_addresses, t_addresses, u_addresses, v_addresses, array);
         writeAddresses4Always(Addresses, "start", s_addresses, t_addresses, u_addresses, v_addresses, array);
         writeAddresses4Always(Addresses, "finish", s_addresses, t_addresses, u_addresses, v_addresses, array);
@@ -203,7 +203,7 @@ const RWPPAddresses = extern struct {
             .available = mach.sub64(addresses.finish, addresses.next),
         };
     }
-    noinline fn assertEqual(s_addresses: Addresses, t_addresses: Addresses) void {
+    fn assertEqual(s_addresses: Addresses, t_addresses: Addresses) void {
         builtin.assertEqual(u64, s_addresses.low, t_addresses.low);
         builtin.assertEqual(u64, s_addresses.start, t_addresses.start);
         builtin.assertEqual(u64, s_addresses.next, t_addresses.next);
@@ -211,14 +211,14 @@ const RWPPAddresses = extern struct {
         builtin.assertEqual(u64, s_addresses.high, t_addresses.high);
     }
     const showWithReferenceWrite = showTwo;
-    noinline fn showTwo(s_addresses: Addresses, t_addresses: Addresses, array: *PrintArray) void {
+    fn showTwo(s_addresses: Addresses, t_addresses: Addresses, array: *PrintArray) void {
         writeAddresses2Always(Addresses, "low", s_addresses, t_addresses, array);
         writeAddresses2Always(Addresses, "start", s_addresses, t_addresses, array);
         writeAddresses2Always(Addresses, "next", s_addresses, t_addresses, array);
         writeAddresses2Always(Addresses, "finish", s_addresses, t_addresses, array);
         writeAddresses2Always(Addresses, "high", s_addresses, t_addresses, array);
     }
-    noinline fn showFour(s_addresses: Addresses, t_addresses: Addresses, u_addresses: Addresses, v_addresses: Addresses, array: *PrintArray) void {
+    fn showFour(s_addresses: Addresses, t_addresses: Addresses, u_addresses: Addresses, v_addresses: Addresses, array: *PrintArray) void {
         writeAddresses4Always(Addresses, "low", s_addresses, t_addresses, u_addresses, v_addresses, array);
         writeAddresses4Always(Addresses, "start", s_addresses, t_addresses, u_addresses, v_addresses, array);
         writeAddresses4Always(Addresses, "next", s_addresses, t_addresses, u_addresses, v_addresses, array);
@@ -241,7 +241,7 @@ const RWOffsets = extern struct {
         builtin.assertEqual(u64, s_offsets.bytes, t_offsets.bytes);
     }
     const showWithReferenceWrite = showTwo;
-    noinline fn showTwo(s_offsets: Offsets, t_offsets: Offsets, array: *PrintArray) void {
+    fn showTwo(s_offsets: Offsets, t_offsets: Offsets, array: *PrintArray) void {
         writeOffsets2Always(Offsets, "bytes", s_offsets, t_offsets, array);
         writeOffsets2Always(Offsets, "capacity", s_offsets, t_offsets, array);
     }
@@ -262,20 +262,20 @@ const RWPPOffsets = extern struct {
     fn maxCount(offsets: Offsets, factor: u64) u64 {
         return offsets.capacity / factor;
     }
-    noinline fn assertEqual(s_offsets: Offsets, t_offsets: Offsets) void {
+    fn assertEqual(s_offsets: Offsets, t_offsets: Offsets) void {
         builtin.assertEqual(u64, s_offsets.capacity, t_offsets.capacity);
         builtin.assertEqual(u64, s_offsets.bytes, t_offsets.bytes);
         builtin.assertEqual(u64, s_offsets.length, t_offsets.length);
         builtin.assertEqual(u64, s_offsets.available, t_offsets.available);
     }
     const showWithReferenceWrite = showTwo;
-    noinline fn showTwo(s_offsets: Offsets, t_offsets: Offsets, array: *PrintArray) void {
+    fn showTwo(s_offsets: Offsets, t_offsets: Offsets, array: *PrintArray) void {
         writeOffsets2Always(Offsets, "bytes", s_offsets, t_offsets, array);
         writeOffsets2Always(Offsets, "capacity", s_offsets, t_offsets, array);
         writeOffsets2Always(Offsets, "length", s_offsets, t_offsets, array);
         writeOffsets2Always(Offsets, "available", s_offsets, t_offsets, array);
     }
-    noinline fn showFour(s_offsets: Offsets, t_offsets: Offsets, u_offsets: Offsets, v_offsets: Offsets, array: *PrintArray) void {
+    fn showFour(s_offsets: Offsets, t_offsets: Offsets, u_offsets: Offsets, v_offsets: Offsets, array: *PrintArray) void {
         writeOffsets4Always(Offsets, "bytes", s_offsets, t_offsets, u_offsets, v_offsets, array);
         writeOffsets4Always(Offsets, "capacity", s_offsets, t_offsets, u_offsets, v_offsets, array);
         writeOffsets4Always(Offsets, "length", s_offsets, t_offsets, u_offsets, v_offsets, array);
@@ -292,10 +292,10 @@ const RWDValues = extern struct {
     fn amount(values: Values) mem.Amount {
         return .{ .count = values.count };
     }
-    noinline fn assertConsistent(values: Values) void {
+    fn assertConsistent(values: Values) void {
         values.offsets.assertEqual(values.addresses.offsets());
     }
-    noinline fn assertEqualMemory(s_values: Values, t_values: Values) void {
+    fn assertEqualMemory(s_values: Values, t_values: Values) void {
         const capacity: u64 = @min(s_values.offsets.capacity, t_values.offsets.capacity);
         const s_memory: []u8 = @intToPtr([*]u8, s_values.addresses.start)[0..capacity];
         const t_memory: []u8 = @intToPtr([*]u8, t_values.addresses.start)[0..capacity];
@@ -382,7 +382,7 @@ const RWPPDValues = extern struct {
         builtin.assertEqual(u64, values.offsets.available, values.offsets.capacity);
         builtin.assertEqual(u64, values.offsets.next, values.offsets.start);
     }
-    noinline fn assertConsistent(values: Values) void {
+    fn assertConsistent(values: Values) void {
         builtin.assertNotEqual(u64, 0, values.addresses.low);
         builtin.assertAboveOrEqual(u64, values.addresses.start, values.addresses.low);
         builtin.assertAboveOrEqual(u64, values.addresses.next, values.addresses.start);
@@ -390,7 +390,7 @@ const RWPPDValues = extern struct {
         builtin.assertAboveOrEqual(u64, values.addresses.high, values.addresses.finish);
         values.offsets.assertEqual(values.addresses.offsets());
     }
-    noinline fn assertEqualMemory(s_values: Values, t_values: Values) void {
+    fn assertEqualMemory(s_values: Values, t_values: Values) void {
         const min_length: u64 = @min(s_values.offsets.length, t_values.offsets.length);
         const max_length: u64 = @min(s_values.offsets.length, t_values.offsets.length);
         builtin.assertEqual(u64, min_length, max_length);
@@ -466,7 +466,7 @@ pub const RWPPXValues = extern struct {
     const Values = @This();
     const Addresses = RWPPAddresses;
     const Offsets = RWPPOffsets;
-    noinline fn assertEqualMemory(s_values: Values, t_values: Values) void {
+    fn assertEqualMemory(s_values: Values, t_values: Values) void {
         builtin.assertEqual(u64, s_values.capacity, t_values.capacity);
         const s_memory: []u8 = @intToPtr([*]u8, s_values.start)[0..s_values.capacity];
         const t_memory: []u8 = @intToPtr([*]u8, t_values.start)[0..t_values.capacity];
@@ -889,11 +889,11 @@ const specifications: Specifications = blk: {
     var tmp: Specifications = .{};
     for (mem.specifications) |Specification| {
         if (@hasField(Specification, "bytes") or @hasField(Specification, "count")) {
-            tmp.static = tmp.static ++ meta.parcel(Specification);
+            tmp.static = meta.concat(tmp.static, Specification);
         } else if (@hasField(Specification, "Allocator")) {
-            tmp.parametric = tmp.parametric ++ meta.parcel(Specification);
+            tmp.parametric = meta.concat(tmp.parametric, Specification);
         } else {
-            tmp.dynamic = tmp.dynamic ++ meta.parcel(Specification);
+            tmp.dynamic = meta.concat(tmp.dynamic, Specification);
         }
     }
     break :blk tmp;
@@ -972,7 +972,7 @@ fn manifestStatic(comptime types: []const type) []const type {
                 if ((unit_aligned_is and unit_aligned_ought) or
                     (!unit_aligned_is and !unit_aligned_ought))
                 {
-                    impl_types = impl_types ++ meta.parcel(impl_type);
+                    impl_types = meta.concat(impl_types, impl_type);
                 }
             }
         }
@@ -1003,7 +1003,7 @@ fn manifestParametric(comptime types: []const type) []const type {
                 if ((unit_aligned_is and unit_aligned_ought) or
                     (!unit_aligned_is and !unit_aligned_ought))
                 {
-                    impl_types = impl_types ++ meta.parcel(impl_type);
+                    impl_types = meta.concat(impl_types, impl_type);
                 }
             }
         }
@@ -1070,7 +1070,7 @@ fn manifestDynamic(comptime types: []const type) []const type {
                 if ((unit_aligned_is and unit_aligned_ought) or
                     (!unit_aligned_is and !unit_aligned_ought))
                 {
-                    impl_types = impl_types ++ meta.parcel(impl_type);
+                    impl_types = meta.concat(impl_types, impl_type);
                 }
             }
         }
@@ -1154,6 +1154,6 @@ pub fn main() !void {
     while (repeat != 1) : (repeat += 1) {
         try analyseStaticReferences(&allocator, .Both, .Both);
         try analyseParametricReferences(&allocator, .Both);
-        try analyseDynamicReferences(&allocator, .ReadWritePushPop, .Structured);
+        try analyseDynamicReferences(&allocator, .Both, .Both);
     }
 }
