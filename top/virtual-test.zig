@@ -4,6 +4,7 @@ const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 const mach = @import("./mach.zig");
 const file = @import("./file.zig");
+const preset = @import("./preset.zig");
 const virtual = @import("./virtual.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
@@ -158,7 +159,7 @@ pub const complex_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
 });
 
 fn testFormulaicAddressSpace() !void {
-    const AddressSpace = virtual.GenericFormulaicAddressSpace(.{ .formula = .{ .divisions = 8 } });
+    const AddressSpace = virtual.GenericFormulaicAddressSpace(.{ .params = .{ .divisions = 8 } });
     var address_space: AddressSpace = .{};
     const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
     const Array = Allocator.StructuredVector(u8);
@@ -168,14 +169,13 @@ fn testFormulaicAddressSpace() !void {
     defer array.deinit(&allocator);
     var i: u8 = 1;
     try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
-    while (i != AddressSpace.addr_spec.formula.divisions) : (i += 1) {
+    while (i != AddressSpace.addr_spec.params.divisions) : (i += 1) {
         try mem.acquire(.{ .options = .{ .thread_safe = AddressSpace.addr_spec.options.thread_safe } }, &address_space, i);
         try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
         file.noexcept.write(2, array.readAll());
         array.undefineAll();
     }
 }
-
 fn testExactAddressSpace(comptime list: anytype) !void {
     const AddressSpace = virtual.GenericExactAddressSpace(.{ .list = list });
     var address_space: AddressSpace = .{};
@@ -201,30 +201,43 @@ fn testExactAddressSpace(comptime list: anytype) !void {
         array.undefineAll();
     }
 }
-fn testExactSubSpace(comptime list: anytype, comptime sub_list: anytype) !void {
-    const AddressSpace = virtual.GenericExactAddressSpace(.{ .list = list });
-    const sub_init: virtual.SubInitializer = comptime virtual.SubSpaceSpec.userHelperRedefineExact(AddressSpace, .{ .list = sub_list });
-    const SubAddressSpace = virtual.SubInitializer.AddressSpace(sub_init);
+fn testExactSubSpaceFromExact(comptime sup_spec: virtual.ExactAddressSpaceSpec, comptime sub_spec: virtual.ExactAddressSpaceSpec) !void {
+    const AddressSpace = virtual.GenericExactAddressSpace(sup_spec);
+    const SubAddressSpace = virtual.GenericExactSubAddressSpace(sub_spec, AddressSpace);
     comptime var address_space_init: AddressSpace = .{};
-    var sub_space: SubAddressSpace = comptime address_space_init.reserve(sub_init);
-    var address_space: AddressSpace = address_space_init;
-    const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace });
-    const Array = Allocator.StructuredVector(u8);
-    var allocator: Allocator = try Allocator.init(&sub_space);
-    defer allocator.deinit(&sub_space);
-    var array: Array = try Array.init(&allocator, 8192);
-    defer array.deinit(&allocator);
-    try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), fmt.ub(@as(u1, 0)), '\n' });
-    file.noexcept.write(2, array.readAll());
-    array.undefineAll();
-    try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(@bitCast(@Vector(@bitSizeOf(@TypeOf(sub_space)), u1), sub_space)), '\n' });
-    file.noexcept.write(2, array.readAll());
-    array.undefineAll();
+    var sub_space: SubAddressSpace = address_space_init.reserve(SubAddressSpace);
+    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
+    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
+    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
+    const Array0 = Allocator0.StructuredVector(u8);
+    const Array1 = Allocator1.StructuredVector(u8);
+    const Array2 = Allocator2.StructuredVector(u8);
+    var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
+    defer allocator_0.deinit(&sub_space);
+    var array_0: Array0 = try Array0.init(&allocator_0, 16);
+    defer array_0.deinit(&allocator_0);
+    array_0.appendAny(mem.fmt_wr_spec, &allocator_0, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
+    var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
+    defer allocator_1.deinit(&sub_space);
+    var array_1: Array1 = try Array1.init(&allocator_1, 16);
+    defer array_1.deinit(&allocator_1);
+    array_1.appendAny(mem.fmt_wr_spec, &allocator_1, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
+    var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
+    defer allocator_2.deinit(&sub_space);
+    var array_2: Array2 = try Array2.init(&allocator_2, 16);
+    defer array_2.deinit(&allocator_2);
+    array_2.appendAny(mem.fmt_wr_spec, &allocator_2, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
+    file.noexcept.write(2, array_0.readAll());
+    array_0.undefineAll();
+    file.noexcept.write(2, array_1.readAll());
+    array_1.undefineAll();
+    file.noexcept.write(2, array_2.readAll());
+    array_2.undefineAll();
 }
 pub fn main() !void {
     try meta.wrap(testExactAddressSpace(trivial_list));
     try meta.wrap(testExactAddressSpace(complex_list));
     try meta.wrap(testExactAddressSpace(simple_list));
     try meta.wrap(testFormulaicAddressSpace());
-    try meta.wrap(testExactSubSpace(simple_list, rare_sub_list));
+    try meta.wrap(testExactSubSpaceFromExact(.{ .list = simple_list }, .{ .list = rare_sub_list }));
 }
