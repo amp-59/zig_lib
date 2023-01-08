@@ -234,7 +234,21 @@ fn testExactSubSpaceFromExact(comptime sup_spec: virtual.ExactAddressSpaceSpec, 
     file.noexcept.write(2, array_2.readAll());
     array_2.undefineAll();
 }
+fn testArenaIntersection() !void {
+    {
+        const a: virtual.Arena = .{ .lb_addr = 5, .up_addr = 8 };
+        const b: virtual.Arena = .{ .lb_addr = 6, .up_addr = 10 };
+        const c: virtual.Arena = .{
+            .lb_addr = @max(a.lb_addr, b.lb_addr),
+            .up_addr = @min(a.up_addr, b.up_addr),
+        };
+        const d: virtual.Arena = a.intersection(b).?;
+        try builtin.expectEqual(u64, c.lb_addr, d.lb_addr);
+        try builtin.expectEqual(u64, c.up_addr, d.up_addr);
+    }
+}
 pub fn main() !void {
+    try meta.wrap(testArenaIntersection());
     try meta.wrap(testExactAddressSpace(trivial_list));
     try meta.wrap(testExactAddressSpace(complex_list));
     try meta.wrap(testExactAddressSpace(simple_list));
