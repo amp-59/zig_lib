@@ -44,6 +44,7 @@ fn Overflow(comptime T: type) type {
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
     return build_root.? ++ "/" ++ relative;
 }
+// Some compiler_rt
 pub fn memcpy(dest: [*]u8, source: [*]const u8, count: usize) callconv(.C) void {
     @setRuntimeSafety(false);
     var index: usize = 0;
@@ -64,6 +65,7 @@ comptime {
     @export(memset, .{ .name = "memset" });
     if (is_debug or is_safe) @export(__zig_probe_stack, .{ .name = "__zig_probe_stack" });
 }
+
 pub const Exception = error{
     SubCausedOverflow,
     AddCausedOverflow,

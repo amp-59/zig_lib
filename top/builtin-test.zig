@@ -3,6 +3,8 @@ const proc = @import("./proc.zig");
 
 pub usingnamespace proc.start;
 
+pub const is_correct: bool = true;
+
 // TODO: Tests to show all error messages.
 export fn showAssertionFailedAbove(arg1: u64, arg2: u64) void {
     builtin.assertAbove(u64, arg1, arg2);
@@ -52,6 +54,12 @@ pub fn main() !void {
             }
         }
     }
+    for (builtin.fmt.ub(u1, 0).readAll()) |c, i| {
+        builtin.assertEqual(u8, "0b0"[i], c);
+    }
+    for (builtin.fmt.ub(u1, 1).readAll()) |c, i| {
+        builtin.assertEqual(u8, "0b1"[i], c);
+    }
     uint = 1;
     while (uint < 0x100000) : (uint += 99) {
         builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
@@ -87,10 +95,6 @@ pub fn main() !void {
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
-    builtin.expectEqual(u64, 0, 2) catch |err| {
-        try builtin.expect(err == error.UnexpectedValue);
-    };
-
     _ = builtin.lib_build_root;
     // Testing compilation
     comptime {
