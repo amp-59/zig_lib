@@ -208,24 +208,22 @@ pub const TerminalAttributes = extern struct {
     }
 };
 
-// Getting terminal attributes is classed as a resource acquisition
+// Getting terminal attributes is classed as a resource acquisition.
 const TerminalAttributesSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.ioctl_errors,
     return_type: type = void,
     logging: builtin.Logging = .{},
 };
-
-fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
-
-fn getTerminalAttributes() void {}
-fn setTerminalAttributes() void {}
-
-const Perms = struct { read: bool, write: bool, execute: bool };
-
 const IOControlSpec = struct {
     const TC = sys.TC;
     const TIOC = sys.TIOC;
 };
+// Soon.
+fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
+fn getTerminalAttributes() void {}
+fn setTerminalAttributes() void {}
+
+const Perms = struct { read: bool, write: bool, execute: bool };
 
 pub const ModeSpec = struct {
     owner: Perms,
