@@ -54,15 +54,70 @@ const Mode = meta.EnumBitField(enum(u16) {
     symbolic_link = MODE.IFLNK,
     const MODE = sys.S;
 });
-pub const Stat = extern struct {
+const Term = opaque {
+    const Input = meta.EnumBitField(enum(u32) {
+        ignore_break = IN.IGNBRK,
+        break_interrupt = IN.BRKINT,
+        ignore_errors = IN.IGNPAR,
+        mark_errors = IN.PARMRK,
+        check_input_parity = IN.INPCK,
+        strip = IN.STRIP,
+        ignore_carriage_return = IN.IGNCR,
+        translate_carriage_return = IN.CRNL,
+        lower = IN.UCLC,
+        upper = IN.LCUC,
+        const IN = sys.TC.I;
+    });
+    const Output = meta.EnumBitField(enum(u32) {
+        post_processing = OUT.POST,
+        translate_carriage_return = OUT.CRNL,
+        no_carriage_return = OUT.NOCR,
+        newline_return = OUT.NLRET,
+        lower = OUT.UCLC,
+        upper = OUT.LCUC,
+        const OUT = sys.TC.O;
+    });
+    const Control = meta.EnumBitField(enum(u32) {
+        baud_rate = CTL.BAUD,
+        baud_rate_extra = CTL.BAUDEX,
+        baud_rate_input = CTL.IBAUD,
+        char_size = CTL.SIZE,
+        enable_receiver = CTL.READ,
+        parity = CTL.PARENB,
+        parity_odd = CTL.PARODD,
+        ignore_modem = CTL.LOCAL,
+        const CTL = sys.TC.C;
+    });
+    const Local = meta.EnumBitField(enum(u32) {
+        signal = LOC.ISIG,
+        signal_disable_flush = LOC.NOFLSH,
+        canonical_mode = LOC.ICANON,
+        echo = LOC.ECHO,
+        canonical_echo_erase = LOC.ECHOE,
+        canonical_echo_kill = LOC.ECHOK,
+        canonical_echo_newline = LOC.ECHONL,
+        const LOC = sys.TC.L;
+    });
+    const Special = meta.EnumBitField(enum(u8) {
+        end_of_file = SPEC.EOF,
+        end_of_line = SPEC.EOL,
+        erase = SPEC.ERASE,
+        interrupt = SPEC.INTR,
+        const SPEC = sys.TC.V;
+    });
+};
+
+pub const FileStatus = extern struct {
     dev: u64,
     ino: u64,
     nlink: u64,
     mode: Mode,
-    _: [2]u8,
+    @"0": [2]u8,
+
     uid: u32,
     gid: u32,
-    __: [4]u8,
+    @"1": [4]u8,
+
     rdev: u64,
     size: u64,
     blksize: u64,
@@ -70,29 +125,29 @@ pub const Stat = extern struct {
     atime: time.TimeSpec = .{},
     mtime: time.TimeSpec = .{},
     ctime: time.TimeSpec = .{},
-    ___: [20]u8,
-    pub fn isDirectory(st: Stat) bool {
+
+    pub fn isDirectory(st: FileStatus) bool {
         return st.mode.check(.directory);
     }
-    pub fn isCharacterSpecial(st: Stat) bool {
+    pub fn isCharacterSpecial(st: FileStatus) bool {
         return st.mode.check(.character_special);
     }
-    pub fn isBlockSpecial(st: Stat) bool {
+    pub fn isBlockSpecial(st: FileStatus) bool {
         return st.mode.check(.block_special);
     }
-    pub fn isRegular(st: Stat) bool {
+    pub fn isRegular(st: FileStatus) bool {
         return st.mode.check(.regular);
     }
-    pub fn isNamedPipe(st: Stat) bool {
+    pub fn isNamedPipe(st: FileStatus) bool {
         return st.mode.check(.named_pipe);
     }
-    pub fn isSymbolicLink(st: Stat) bool {
+    pub fn isSymbolicLink(st: FileStatus) bool {
         return st.mode.check(.symbolic_link);
     }
-    pub fn isSocket(st: Stat) bool {
+    pub fn isSocket(st: FileStatus) bool {
         return st.mode.check(.socket);
     }
-    pub fn isExecutable(st: Stat, user_id: u16, group_id: u16) bool {
+    pub fn isExecutable(st: FileStatus, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.check(.owner_execute);
         }
@@ -103,7 +158,8 @@ pub const Stat = extern struct {
     }
     const S = sys.S;
 };
-pub const StatX = extern struct {
+pub const Stat = FileStatus;
+pub const FileStatusExtra = extern struct {
     mask: u32,
     blksize: u32,
     attributes: u64,
@@ -111,7 +167,8 @@ pub const StatX = extern struct {
     uid: u32,
     gid: u32,
     mode: u16,
-    __pad0: [2]u8,
+    @"0": [2]u8,
+
     ino: u64,
     size: u64,
     blocks: u64,
@@ -125,7 +182,7 @@ pub const StatX = extern struct {
     dev_major: u32,
     dev_minor: u32,
     mnt_id: u64,
-    __pad3: [104]u8,
+    @"1": [104]u8,
 };
 pub const DirectoryEntry = extern struct {
     inode: u64,
@@ -134,7 +191,41 @@ pub const DirectoryEntry = extern struct {
     kind: u8,
     array: u8,
 };
+pub const TerminalAttributes = extern struct {
+    input: Term.Input,
+    output: Term.Output,
+    control: Term.Control,
+    local: Term.Local,
+
+    line: u8,
+    special: [32]u8,
+
+    in_speed: u32,
+    out_speed: u32,
+
+    pub fn character(termios: *const TerminalAttributes, tag: Term.Special.Tag) u8 {
+        return termios.special[@enumToInt(tag)];
+    }
+};
+
+// Getting terminal attributes is classed as a resource acquisition
+const TerminalAttributesSpec = struct {
+    errors: ?[]const sys.ErrorCode = sys.ioctl_errors,
+    return_type: type = void,
+    logging: builtin.Logging = .{},
+};
+
+fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
+
+fn getTerminalAttributes() void {}
+fn setTerminalAttributes() void {}
+
 const Perms = struct { read: bool, write: bool, execute: bool };
+
+const IOControlSpec = struct {
+    const TC = sys.TC;
+    const TIOC = sys.TIOC;
+};
 
 pub const ModeSpec = struct {
     owner: Perms,
