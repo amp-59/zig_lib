@@ -1,14 +1,8 @@
-//! Experimental
-//!
-//! The address space is currently divided 127 times to allow allocators and
-//! threads to manage mapped segments without possibility of collision.
-//!
 const mem = @import("./mem.zig");
-const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
-pub const ArenaOptions = struct {
+pub const ArenaOptions = extern struct {
     thread_safe: bool = false,
 };
 pub const SuperArena = struct {
@@ -42,35 +36,25 @@ pub const Arena = struct {
     pub fn capacity(arena: Arena) usize {
         return arena.up_addr - arena.lb_addr;
     }
+    fn construct(lb_addr: usize, up_addr: usize) Arena {
+        return .{
+            .lb_addr = lb_addr,
+            .up_addr = up_addr,
+        };
+    }
     pub fn intersection(s_arena: Arena, t_arena: Arena) ?Arena {
-        const s_lb_addr: usize = s_arena.low();
-        const s_up_addr: usize = s_arena.high() - 1;
-        const t_lb_addr: usize = t_arena.low();
-        const t_up_addr: usize = t_arena.high() - 1;
-        if (builtin.int2v(bool, t_up_addr < s_lb_addr, s_up_addr < t_lb_addr)) {
+        const s_lb_addr: usize = s_arena.lb_addr;
+        const s_xb_addr: usize = s_arena.up_addr - 1;
+        const t_lb_addr: usize = t_arena.lb_addr;
+        const t_xb_addr: usize = t_arena.up_addr - 1;
+        if (builtin.int2v(bool, t_xb_addr < s_lb_addr, s_xb_addr < t_lb_addr)) {
             return null;
         }
-        if (s_lb_addr == t_up_addr) {
-            return construct(t_up_addr, s_lb_addr);
-        }
-        if (s_up_addr == t_lb_addr) {
-            return construct(s_up_addr, t_lb_addr);
-        }
-        if (s_up_addr == t_up_addr) {
-            return if (s_lb_addr < t_lb_addr) t_arena else s_arena;
-        }
-        if (s_lb_addr == t_lb_addr) {
-            return if (s_up_addr < t_up_addr) s_arena else t_arena;
-        }
-        if (s_lb_addr < t_lb_addr) {
-            return if (s_up_addr < t_up_addr) construct(t_lb_addr, s_up_addr) else t_arena;
-        } else {
-            return if (s_up_addr < t_up_addr) s_arena else construct(s_lb_addr, t_up_addr);
-        }
-        unreachable;
-    }
-    fn construct(lb_addr: usize, up_addr: usize) Arena {
-        return .{ .lb_addr = lb_addr, .up_addr = up_addr };
+        return .{
+            .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
+            .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
+            .options = s_arena.options,
+        };
     }
 };
 pub const ArenaReference = struct {
@@ -194,9 +178,6 @@ fn GenericMultiSet(
 }
 pub const ExactAddressSpaceSpec = struct {
     list: List,
-    /// Constructing the implementation at compile time can be expensive, so
-    /// in polished programs consider rendering the required values. Try
-    /// file.noexcept.write(2, fmt.any().formatConvert());
     preset: ?Preset = null,
     super: ?SuperSpace = null,
 
@@ -208,7 +189,6 @@ pub const ExactAddressSpaceSpec = struct {
         AddressSpace: type,
         list: []const ArenaReference,
     };
-
     const Specification: type = @This();
     const List = []const Arena;
     fn Index(comptime spec: ExactAddressSpaceSpec) type {
@@ -270,8 +250,10 @@ pub const ExactAddressSpaceSpec = struct {
                 var capacity: usize = 0;
                 var s_index: AddressSpace.Index = 0;
                 while (s_index != AddressSpace.addr_spec.list.len) : (s_index += 1) {
-                    if (spec.list[t_index].intersection(AddressSpace.addr_spec.list[s_index])) |intrs| {
-                        capacity += intrs.capacity();
+                    const s_arena: Arena = AddressSpace.addr_spec.list[s_index];
+                    const t_arena: Arena = spec.list[t_index];
+                    if (s_arena.intersection(t_arena)) |arena| {
+                        capacity += arena.capacity();
                         super_list = meta.concat(super_list, .{
                             .index = s_index,
                             .options = AddressSpace.arena(s_index).options,
@@ -300,14 +282,6 @@ pub const ExactAddressSpaceSpec = struct {
         return super_list;
     }
 };
-pub fn GenericExactSubAddressSpace(comptime spec: ExactAddressSpaceSpec, comptime AddressSpace: type) type {
-    var sub_spec: ExactAddressSpaceSpec = spec;
-    sub_spec.super = .{
-        .AddressSpace = AddressSpace,
-        .list = spec.mapSuperList(AddressSpace),
-    };
-    return GenericExactAddressSpace(sub_spec);
-}
 const FormulaicAddressSpaceSpec = struct {
     params: SuperArena = .{},
     options: ArenaOptions = .{},
@@ -399,6 +373,14 @@ pub fn GenericExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
         pub usingnamespace GenericAddressSpace(AddressSpace);
     };
 }
+pub fn GenericExactSubAddressSpace(comptime spec: ExactAddressSpaceSpec, comptime AddressSpace: type) type {
+    var sub_spec: ExactAddressSpaceSpec = spec;
+    sub_spec.super = .{
+        .AddressSpace = AddressSpace,
+        .list = spec.mapSuperList(AddressSpace),
+    };
+    return GenericExactAddressSpace(sub_spec);
+}
 /// Formulaic:
 /// Good:
 ///     * Good locality associated with computing the begin and end addresses
@@ -463,6 +445,14 @@ pub fn GenericFormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) ty
         }
         pub usingnamespace GenericAddressSpace(AddressSpace);
     };
+}
+pub fn GenericFormulaicSubAddressSpace(comptime spec: FormulaicAddressSpaceSpec, comptime AddressSpace: type) type {
+    var sub_spec: FormulaicAddressSpaceSpec = spec;
+    sub_spec.super = .{
+        .AddressSpace = AddressSpace,
+        .list = spec.mapSuperList(AddressSpace),
+    };
+    return GenericExactAddressSpace(sub_spec);
 }
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
