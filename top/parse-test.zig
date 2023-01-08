@@ -176,7 +176,7 @@ pub fn main(args: [][*:0]u8) !void {
                 try fileBuf(&allocator_n, meta.manyToSlice(arg)),
             );
 
-            const Duplicate = mem.StaticArray(u32, 64);
+            const Duplicate = mem.StaticArray(u32, 32);
             const DuplicateIndices = zig.Allocator.Node.StructuredVector(Duplicate);
             var duplicates: DuplicateIndices = try DuplicateIndices.init(&allocator_n, 128);
             defer duplicates.deinit(&allocator_n);
