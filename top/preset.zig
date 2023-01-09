@@ -4,6 +4,10 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
+pub const address_space = opaque {
+    pub const formulaic_128 = mem.GenericFormulaicAddressSpace(.{ .params = .{ .divisions = 128 } });
+    pub const static_128 = mem.StaticAddressSpace;
+};
 pub const allocator = opaque {
     pub const options = opaque {
         pub const small: mem.AllocatorOptions = .{
