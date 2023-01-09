@@ -14,7 +14,7 @@ const Options = struct {
     trailing_comma: ?bool = null,
     omit_default_fields: bool = true,
     omit_compiler_given_names: bool = true,
-    render_composite_field_type_recursively: bool = true,
+    inline_field_types: bool = false,
     enable_comptime_iterator: bool = false,
 
     const RadixFieldName = struct {
@@ -167,14 +167,13 @@ pub fn TypeFormat(comptime options: Options) type {
                         inline for (struct_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                             const FieldFormat = AnyFormat(field.type, options);
-                            if (options.render_composite_field_type_recursively) {
+                            if (options.inline_field_types) {
                                 const type_format: TypeFormat(options) = .{ .value = field.type };
                                 field_name_format.formatWrite(array);
                                 array.writeMany(": ");
                                 type_format.formatWrite(array);
                             } else {
-                                array.writeMany(field.name);
-                                array.writeMany(": " ++ comptime typeName(field.type));
+                                array.writeMany(field.name ++ ": " ++ comptime typeName(field.type));
                             }
                             if (meta.defaultValue(field)) |default_value| {
                                 const field_format: FieldFormat = .{ .value = default_value };
@@ -196,7 +195,7 @@ pub fn TypeFormat(comptime options: Options) type {
                             if (field.type == void) {
                                 array.writeMany(field.name ++ ", ");
                             } else {
-                                if (options.render_composite_field_type_recursively) {
+                                if (options.inline_field_types) {
                                     field_name_format.formatWrite(array);
                                     array.writeMany(": ");
                                     const type_format: TypeFormat(options) = .{ .value = field.type };
@@ -241,7 +240,7 @@ pub fn TypeFormat(comptime options: Options) type {
                         inline for (struct_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                             const FieldFormat = AnyFormat(field.type, options);
-                            if (options.render_composite_field_type_recursively) {
+                            if (options.inline_field_types) {
                                 const type_format: TypeFormat(options) = .{ .value = field.type };
                                 len += field_name_format.formatLength() + 2;
                                 len += type_format.formatLength();
@@ -268,7 +267,7 @@ pub fn TypeFormat(comptime options: Options) type {
                             if (field.type == void) {
                                 len += field_name_format.formatLength() + 2;
                             } else {
-                                if (options.render_composite_field_type_recursively) {
+                                if (options.inline_field_types) {
                                     len += field_name_format.formatLength() + 2;
                                     const type_format: TypeFormat(options) = .{ .value = field.type };
                                     len += type_format.formatLength();
