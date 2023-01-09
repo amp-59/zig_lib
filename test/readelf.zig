@@ -267,8 +267,8 @@ fn mload(header_array: anytype, fn_name: [:0]const u8, comptime T: type) !T {
 }
 
 fn fload(fd: u64, fn_name: [:0]const u8, comptime T: type) !T {
-    const arena: mem.Arena = mem.Arena{ .index = 1 };
-    const s_lb_addr: u64 = arena.begin();
+    const arena: mem.Arena = builtin.AddressSpace.arena(1);
+    const s_lb_addr: u64 = arena.low();
     const s_ub_addr: u64 = try file.map(so_map_spec, s_lb_addr, fd);
     const s_ab_addr: u64 = mach.alignA64(s_lb_addr, 8);
     const s_up_addr: u64 = mach.alignA64(s_ub_addr, 4096);
@@ -290,7 +290,7 @@ const Options = struct {
     direct_lookup: bool = false,
     env_src: ?[:0]const u8 = null,
 };
-pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
+pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
     var result_array: PrintArray = .{};
     if (args.len == 0) {
@@ -419,6 +419,6 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8, vars: []
     file.noexcept.write(2, result_array.readAll());
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
-    var address_space: mem.AddressSpace = .{};
+    var address_space: builtin.AddressSpace = .{};
     try threadMain(&address_space, args, vars);
 }
