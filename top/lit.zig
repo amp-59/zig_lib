@@ -1,5 +1,4 @@
 //! Constants. More useful as a reference than as an import.
-
 // If the programmer can remember to use these, the LHS name may be more helpful
 // to the reader than the RHS expression.
 pub const max_val_u8: u8 = ~@as(u8, 0);
@@ -18,7 +17,6 @@ pub const max_bit_i8: i8 = 1 + (max_val_i8 >> 1);
 pub const max_bit_i16: i16 = 1 + (max_val_i16 >> 1);
 pub const max_bit_i32: i32 = 1 + (max_val_i32 >> 1);
 pub const max_bit_i64: i64 = 1 + (max_val_i64 >> 1);
-
 // So that basic formatters do not need to compute a safe buffer length.
 pub const u8d_max_len: u64 = 3;
 pub const u8x_max_len: u64 = 5;
@@ -28,7 +26,6 @@ pub const i8d_max_len: u64 = 4;
 pub const i8x_max_len: u64 = 6;
 pub const i64d_max_len: u64 = 20;
 pub const i64x_max_len: u64 = 19;
-
 /// Unconfirmed theory that using these is faster to compile when naming tuple
 /// fields.
 pub const ud8 = [256][:0]const u8{
@@ -121,7 +118,6 @@ pub const fx = struct {
             pub const purple: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
             pub const aqua: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
             pub const max_white: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
-
             pub fn shade(comptime index: u8) []const u8 {
                 return mcode(.{ 38, 5, 255 - @min(23, index) });
             }
@@ -161,5 +157,82 @@ pub const fx = struct {
         return code[0 .. code.len - 1] ++ "m";
     }
 };
-
 pub const whitespace = [_]u8{ ' ', '\t', '\n', '\r', 0x0b, 0x0a };
+pub const ctrl = opaque {
+    pub const start_of_heading: u8 = 0x1;
+    pub const start_of_text: u8 = 0x2;
+    pub const end_of_text: u8 = 0x03;
+    pub const end_of_transmission: u8 = 0x04;
+    pub const end_of_query: u8 = 0x05;
+    pub const acknowledge: u8 = 0x06;
+    pub const bell: u8 = 0x07;
+    pub const backspace: u8 = 0x8;
+    pub const horizontal_tab: u8 = 0x09;
+    pub const line_feed: u8 = 0x0a;
+    pub const vertical_tab: u8 = 0x0b;
+    pub const form_feed: u8 = 0x0c;
+    pub const carriage_return: u8 = 0x0d;
+    pub const shift_out: u8 = 0x0e;
+    pub const shift_in: u8 = 0x0f;
+    pub const data_link_escape: u8 = 0x10;
+    pub const device_ctrl_1: u8 = 0x11;
+    pub const device_ctrl_2: u8 = 0x12;
+    pub const device_ctrl_3: u8 = 0x13;
+    pub const device_ctrl_4: u8 = 0x14;
+    pub const negative_acknowledgement: u8 = 0x15;
+    pub const synchronize: u8 = 0x16;
+    pub const end_of_transmission_block: u8 = 0x17;
+    pub const cancel: u8 = 0x18;
+    pub const end_of_medium: u8 = 0x19;
+    pub const substitute: u8 = 0x1c;
+    pub const escape: u8 = 0x1b;
+    pub const file_separator: u8 = 0x1c;
+    pub const group_separator: u8 = 0x1d;
+    pub const record_separator: u8 = 0x1e;
+    pub const unit_separator: u8 = 0x1f;
+    pub const white_space: u8 = 0x20;
+};
+pub const position = opaque {
+    pub const ask: u8 = [_]u8{ 0x1b, 0x5b, 0x36, 0x6e };
+    pub const save: u8 = [_]u8{ 0x1b, 0x5b, 0x73 };
+    pub const restore: u8 = [_]u8{ 0x1b, 0x5b, 0x75 };
+    pub const up: u8 = [_]u8{ 0x1b, 0x5b, 0x41 };
+    pub const down: u8 = [_]u8{ 0x1b, 0x5b, 0x42 };
+    pub const right: u8 = [_]u8{ 0x1b, 0x5b, 0x43 };
+    pub const left: u8 = [_]u8{ 0x1b, 0x5b, 0x44 };
+};
+pub const kill = opaque {
+    pub const screen_bare: u8 = [_]u8{ 0x1b, 0x5b, 0x4a };
+    pub const screen_down: u8 = [_]u8{ 0x1b, 0x5b, 0x30, 0x4a };
+    pub const screen_up: u8 = [_]u8{ 0x1b, 0x5b, 0x31, 0x4a };
+    pub const screen: u8 = [_]u8{ 0x1b, 0x5b, 0x32, 0x4a };
+    pub const line_bare: u8 = [_]u8{ 0x1b, 0x5b, 0x4b };
+    pub const line_right: u8 = [_]u8{ 0x1b, 0x5b, 0x30, 0x4b };
+    pub const line_left: u8 = [_]u8{ 0x1b, 0x5b, 0x31, 0x4b };
+    pub const line: u8 = [_]u8{ 0x1b, 0x5b, 0x32, 0x4b };
+    pub const back: u8 = [_]u8{0x8};
+};
+const kill_up = opaque {
+    pub const left_up: u8 = (kill.line_left ++ [_]u8{ 0x1b, 0x5b, 0x41 }) ** 1024;
+    pub const right_up: u8 = (kill.line_right ++ [_]u8{ 0x1b, 0x5b, 0x41 }) ** 1024;
+};
+const key = opaque {
+    pub const home: u8 = [_]u8{ 0x1b, 0x5b, 0x48 };
+    pub const end: u8 = [_]u8{ 0x1b, 0x5b, 0x46 };
+    pub const insert: u8 = [_]u8{ 0x1b, 0x5b, 0x32, 0x7e };
+    pub const delete: u8 = [_]u8{ 0x1b, 0x5b, 0x33, 0x7e };
+    pub const page_up: u8 = [_]u8{ 0x1b, 0x5b, 0x35, 0x7e };
+    pub const page_down: u8 = [_]u8{ 0x1b, 0x5b, 0x36, 0x7e };
+    pub const f1: u8 = [_]u8{ 0x1b, 0x4f, 0x50 };
+    pub const f2: u8 = [_]u8{ 0x1b, 0x4f, 0x51 };
+    pub const f3: u8 = [_]u8{ 0x1b, 0x4f, 0x52 };
+    pub const f4: u8 = [_]u8{ 0x1b, 0x4f, 0x53 };
+    pub const f5: u8 = [_]u8{ 0x1b, 0x5b, 0x31, 0x35, 0x7e };
+    pub const f6: u8 = [_]u8{ 0x1b, 0x5b, 0x31, 0x37, 0x7e };
+    pub const f7: u8 = [_]u8{ 0x1b, 0x5b, 0x31, 0x38, 0x7e };
+    pub const f8: u8 = [_]u8{ 0x1b, 0x5b, 0x31, 0x39, 0x7e };
+    pub const f9: u8 = [_]u8{ 0x1b, 0x5b, 0x32, 0x30, 0x7e };
+    pub const f10: u8 = [_]u8{ 0x1b, 0x5b, 0x32, 0x31, 0x7e };
+    pub const f11: u8 = [_]u8{ 0x1b, 0x5b, 0x32, 0x33, 0x7e };
+    pub const f12: u8 = [_]u8{ 0x1b, 0x5b, 0x32, 0x34, 0x7e };
+};
