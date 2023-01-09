@@ -3,6 +3,7 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
+const _virtual = @import("./virtual.zig");
 const _reference = @import("./reference.zig");
 const _container = @import("./container.zig");
 const _allocator = @import("./allocator.zig");
@@ -10,6 +11,7 @@ const _list = @import("./list.zig");
 
 const mem = @This();
 
+pub usingnamespace _virtual;
 pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
@@ -473,210 +475,6 @@ pub const Bytes = struct {
         return amt.count * @enumToInt(amt.unit);
     }
 };
-
-const ThreadAllocatorSpec = struct {
-    arena_index: u8,
-    stack_size: u64,
-};
-pub fn GenericThreadAllocator(comptime spec: ThreadAllocatorSpec) type {
-    return struct {
-        const _ = spec;
-    };
-}
-
-pub const AddressSpace = extern struct {
-    bits: [2]u64 = .{ 0, 0 },
-    const Index: type = u8;
-    const VectorA = @Type(.{ .Vector = .{ .len = 128, .child = u1 } });
-    const VectorB = @Type(.{ .Vector = .{ .len = 128, .child = bool } });
-    const divisions: u8 = 128;
-    const alignment: u64 = 4096;
-    const max_bit: u64 = 1 << 47;
-    const len: u64 = blk: {
-        const mask: u64 = alignment - 1;
-        const value: u64 = max_bit / divisions;
-        break :blk (value + mask) & ~mask;
-    };
-    pub fn bitMask(index: u8) u64 {
-        return mach.shl64(1, mach.cmov8(index > 63, index, index -% 64));
-    }
-    pub fn pointer(address_space: *AddressSpace, index: u8) *u64 {
-        return mach.cmovx(index > 63, &address_space.bits[1], &address_space.bits[0]);
-    }
-    pub fn unset(address_space: *AddressSpace, index: Index) bool {
-        const mask: u64 = bitMask(index);
-        const ptr: *u64 = address_space.pointer(index);
-        const ret: bool = ptr.* & mask != 0;
-        if (ret) ptr.* &= ~mask;
-        return ret;
-    }
-    pub fn set(address_space: *AddressSpace, index: Index) bool {
-        const mask: u64 = bitMask(index);
-        const ptr: *u64 = address_space.pointer(index);
-        const ret: bool = ptr.* & mask == 0;
-        if (ret) ptr.* |= mask;
-        return ret;
-    }
-    pub fn atomicSet(address_space: *AddressSpace, index: Index) bool {
-        return address_space.threads().atomicSet(index >> 3);
-    }
-    pub fn atomicUnset(address_space: *AddressSpace, index: Index) bool {
-        return address_space.threads().atomicUnset(index >> 3);
-    }
-    pub fn acquire(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.set(index)) {
-            return error.UnderSupply;
-        }
-    }
-    pub fn release(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.unset(index)) {
-            return error.OverSupply;
-        }
-    }
-    pub fn atomicAcquire(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.atomicSet(index)) {
-            return error.UnderSupply;
-        }
-    }
-    pub fn atomicRelease(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.atomicUnset(index)) {
-            return error.OverSupply;
-        }
-    }
-    pub fn begin(index: Index) u64 {
-        return len * index;
-    }
-    pub fn end(index: Index) u64 {
-        return len * (index + 1);
-    }
-    pub fn invert(addr: u64) Index {
-        return @intCast(u7, addr / len);
-    }
-    fn count(address_space: *const AddressSpace) u64 {
-        return @popCount(address_space.bits[0]) + @popCount(address_space.bits[1]);
-    }
-    pub fn wait(address_space: *const AddressSpace) void {
-        var r: u64 = 0;
-        while (r != 1) {
-            r = address_space.count();
-        }
-    }
-    pub fn vectorA(address_space: *const AddressSpace) VectorA {
-        return @bitCast(VectorA, address_space.*);
-    }
-    pub fn vectorB(address_space: *const AddressSpace) VectorB {
-        return @bitCast(VectorB, address_space.*);
-    }
-    pub fn threads(address_space: *AddressSpace) *ThreadSpace {
-        return @ptrCast(*ThreadSpace, address_space);
-    }
-    pub const vector = vectorB;
-};
-pub const ThreadSpace = extern struct {
-    t_bits: [divisions]u8 = .{0} ** divisions,
-    const Index: type = u8;
-    const divisions: u8 = 16;
-    const alignment: u64 = 4096;
-    const max_bit: u64 = 1 << 47;
-
-    const len: u64 = blk: {
-        const mask: u64 = alignment - 1;
-        const value: u64 = max_bit / divisions;
-        break :blk (value + mask) & ~mask;
-    };
-    pub fn unset(thread_space: *ThreadSpace, index: Index) bool {
-        const ret: bool = thread_space.t_bits[index] == 1;
-        if (ret) {
-            thread_space.t_bits[index] = 0;
-        }
-        return ret;
-    }
-    pub fn set(thread_space: *ThreadSpace, index: Index) bool {
-        const ret: bool = thread_space.t_bits[index] == 0;
-        if (ret) {
-            thread_space.t_bits[index] = 255;
-        }
-        return ret;
-    }
-    pub fn atomicSet(thread_space: *volatile ThreadSpace, index: Index) bool {
-        return asm volatile (
-            \\mov           $0,     %al
-            \\mov           $255,   %dl
-            \\lock cmpxchg  %dl,    %[ptr]
-            \\sete          %[ret]
-            : [ret] "=r" (-> bool),
-            : [ptr] "p" (&thread_space.t_bits[index]),
-            : "rax", "rdx", "memory"
-        );
-    }
-    pub fn atomicUnset(thread_space: *volatile ThreadSpace, index: Index) bool {
-        return asm volatile (
-            \\mov           $255,   %al
-            \\mov           $0,     %dl
-            \\lock cmpxchg  %dl,    %[ptr]
-            \\sete          %[ret]
-            : [ret] "=r" (-> bool),
-            : [ptr] "p" (&thread_space.t_bits[index]),
-            : "rax", "rdx", "memory"
-        );
-    }
-    pub fn acquire(thread_space: *ThreadSpace, index: Index) !void {
-        if (!thread_space.set(index)) {
-            return error.UnderSupply;
-        }
-    }
-    pub fn release(thread_space: *ThreadSpace, index: Index) !void {
-        if (!thread_space.unset(index)) {
-            return error.OverSupply;
-        }
-    }
-    pub fn atomicAcquire(thread_space: *ThreadSpace, index: Index) !void {
-        if (!thread_space.atomicSet(index)) {
-            return error.UnderSupply;
-        }
-    }
-    pub fn atomicRelease(thread_space: *ThreadSpace, index: Index) !void {
-        if (!thread_space.atomicUnset(index)) {
-            return error.OverSupply;
-        }
-    }
-    pub fn begin(index: Index) u64 {
-        return len * index;
-    }
-    pub fn end(index: Index) u64 {
-        return len * (index + 1);
-    }
-    pub fn invert(addr: u64) Index {
-        return @intCast(u7, addr / len);
-    }
-    fn count(thread_space: *volatile ThreadSpace) u64 {
-        var ret: u64 = 0;
-        inline for (thread_space.t_bits) |b| {
-            if (b != 0) ret += 1;
-        }
-        return ret;
-    }
-    pub fn wait(thread_space: *volatile ThreadSpace) void {
-        var r: u64 = 0;
-        while (r != 1) r = thread_space.countT();
-    }
-};
-pub const Arena = extern struct {
-    index: u8,
-    pub fn bytes(arena: Arena) u64 {
-        return arena.end() - arena.begin();
-    }
-    pub fn begin(arena: Arena) u64 {
-        return mach.cmov64(arena.index == 0, 0x40000000, AddressSpace.begin(arena.index));
-    }
-    pub fn end(arena: Arena) u64 {
-        return AddressSpace.end(arena.index);
-    }
-    pub fn stack() Arena {
-        var x: u64 = undefined;
-        return .{ .index = AddressSpace.invert(@ptrToInt(&x)) };
-    }
-};
 pub noinline fn monitor(comptime T: type, ptr: *volatile T) void {
     const in: T = ptr.*;
     switch (T) {
@@ -1020,53 +818,53 @@ pub const debug = opaque {
         });
     }
     fn arenaAcquireNotice(index: u8) void {
-        const begin: u64 = AddressSpace.begin(index);
-        const end: u64 = AddressSpace.end(index);
+        const lb_addr: u64 = builtin.AddressSpace.low(index);
+        const up_addr: u64 = builtin.AddressSpace.high(index);
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_acq_0_s, builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(begin).readAll(),
-            "..",          builtin.fmt.ux64(end).readAll(),
-            ", ",          builtin.fmt.ud64(end - begin).readAll(),
+            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
+            "..",          builtin.fmt.ux64(up_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
             " bytes\n",
         });
     }
     fn arenaAcquireError(arena_error: anytype, index: u8) void {
         @setCold(true);
-        const begin: u64 = AddressSpace.begin(index);
-        const end: u64 = AddressSpace.end(index);
+        const lb_addr: u64 = builtin.AddressSpace.low(index);
+        const up_addr: u64 = builtin.AddressSpace.high(index);
         var buf: [4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_acq_1_s, builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(begin).readAll(),
-            "..",          builtin.fmt.ux64(end).readAll(),
-            ", ",          builtin.fmt.ud64(end - begin).readAll(),
+            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
+            "..",          builtin.fmt.ux64(up_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
             " bytes (",    @errorName(arena_error),
             ")\n",
         });
     }
     fn arenaReleaseNotice(index: u8) void {
         @setCold(true);
-        const begin: u64 = AddressSpace.begin(index);
-        const end: u64 = AddressSpace.end(index);
+        const lb_addr: u64 = builtin.AddressSpace.low(index);
+        const up_addr: u64 = builtin.AddressSpace.high(index);
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_rel_0_s, builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(begin).readAll(),
-            "..",          builtin.fmt.ux64(end).readAll(),
-            ", ",          builtin.fmt.ud64(end - begin).readAll(),
+            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
+            "..",          builtin.fmt.ux64(up_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
             " bytes\n",
         });
     }
     fn arenaReleaseError(arena_error: anytype, index: u8) void {
-        const begin: u64 = AddressSpace.begin(index);
-        const end: u64 = AddressSpace.end(index);
+        const lb_addr: u64 = builtin.AddressSpace.low(index);
+        const up_addr: u64 = builtin.AddressSpace.high(index);
         var buf: [4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_rel_1_s, builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(begin).readAll(),
-            "..",          builtin.fmt.ux64(end).readAll(),
-            ", ",          builtin.fmt.ud64(end - begin).readAll(),
+            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
+            "..",          builtin.fmt.ux64(up_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
             " bytes (",    @errorName(arena_error),
             ")\n",
         });
