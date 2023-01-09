@@ -42,7 +42,7 @@ fn allocateRunTest(allocator: *Allocator, array: *Array, format: anytype, expect
 const runTest = allocateRunTest;
 
 fn testSpecificCases() !void {
-    var address_space: mem.AddressSpace = .{};
+    var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 

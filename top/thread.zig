@@ -6,8 +6,7 @@ const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
 pub fn map(comptime spec: MapSpec, arena_index: u8) spec.Replaced(.mmap, u64) {
-    const arena: mem.Arena = .{ .index = arena_index };
-    const up_addr: u64 = arena.end();
+    const up_addr = builtin.AddressSpace.high(arena_index);
     const s_bytes: u64 = 8192;
     const st_addr: u64 = up_addr - s_bytes;
     const mmap_prot: mem.Prot = spec.prot();
@@ -25,8 +24,7 @@ pub fn map(comptime spec: MapSpec, arena_index: u8) spec.Replaced(.mmap, u64) {
     return st_addr;
 }
 pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) spec.Unwrapped(.munmap) {
-    const arena: mem.Arena = .{ .index = arena_index };
-    const up_addr = arena.end();
+    const up_addr = builtin.AddressSpace.high(arena_index);
     const st_addr = mach.alignA64(up_addr - 8192, 4096);
     const len: u64 = up_addr - st_addr;
     if (spec.call(.munmap, .{ st_addr, up_addr - st_addr })) {

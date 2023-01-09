@@ -913,7 +913,7 @@ fn manifestStatic(comptime types: []const type) []const type {
                             .low_alignment = low_alignment,
                             .sentinel = &@as(child, 0),
                             .count = count,
-                            .arena_index = Allocator0.arena.index,
+                            .arena_index = Allocator0.arena_index,
                         };
                     } else {
                         break :blk .{
@@ -929,7 +929,7 @@ fn manifestStatic(comptime types: []const type) []const type {
                             .child = child,
                             .low_alignment = low_alignment,
                             .count = count,
-                            .arena_index = Allocator0.arena.index,
+                            .arena_index = Allocator0.arena_index,
                         };
                     } else {
                         break :blk .{
@@ -943,7 +943,7 @@ fn manifestStatic(comptime types: []const type) []const type {
                         break :blk .{
                             .low_alignment = low_alignment,
                             .bytes = @sizeOf(child) * count,
-                            .arena_index = Allocator0.arena.index,
+                            .arena_index = Allocator0.arena_index,
                         };
                     } else {
                         break :blk .{
@@ -1023,7 +1023,7 @@ fn manifestDynamic(comptime types: []const type) []const type {
                             .child = child,
                             .low_alignment = low_alignment,
                             .sentinel = &@as(child, 0),
-                            .arena_index = Allocator0.arena.index,
+                            .arena_index = Allocator0.arena_index,
                         };
                     } else {
                         break :blk .{
@@ -1037,7 +1037,7 @@ fn manifestDynamic(comptime types: []const type) []const type {
                         break :blk .{
                             .child = child,
                             .low_alignment = low_alignment,
-                            .arena_index = Allocator0.arena.index,
+                            .arena_index = Allocator0.arena_index,
                         };
                     } else {
                         break :blk .{
@@ -1050,7 +1050,7 @@ fn manifestDynamic(comptime types: []const type) []const type {
                         break :blk .{
                             .low_alignment = low_alignment,
                             .high_alignment = @sizeOf(child),
-                            .arena_index = Allocator0.arena.index,
+                            .arena_index = Allocator0.arena_index,
                         };
                     } else {
                         break :blk .{
@@ -1145,7 +1145,7 @@ fn analyseParametricReferences(allocator: *Allocator0, structure: StructureSet) 
     }
 }
 pub fn main() !void {
-    var address_space: mem.AddressSpace = .{};
+    var address_space: builtin.AddressSpace = .{};
     var repeat: u64 = 0;
     var allocator: Allocator0 = try Allocator0.init(&address_space);
     try allocator.acquire(allocator.lb_addr + 65536);

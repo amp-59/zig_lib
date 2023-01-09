@@ -563,7 +563,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                 .logging = preset.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.StructuredHolder(u8);
-            pub fn show(list: List, address_space: *mem.AddressSpace) !void {
+            pub fn show(list: List, address_space: *builtin.AddressSpace) !void {
                 var allocator: IOAllocator = try IOAllocator.init(address_space);
                 defer allocator.deinit(address_space);
                 var array: IOPrintArray = IOPrintArray.init(&allocator);
@@ -1037,7 +1037,7 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                 .logging = mem.alloc_silent,
             });
             const IOPrintArray = IOAllocator.Holder(u8);
-            pub fn show(list: List, address_space: *mem.AddressSpace) !void {
+            pub fn show(list: List, address_space: *builtin.AddressSpace) !void {
                 var allocator: IOAllocator = try IOAllocator.init(address_space);
                 defer allocator.deinit(address_space);
                 var array: IOPrintArray = IOPrintArray.init(&allocator);

@@ -82,7 +82,7 @@ fn timeLib(
 }
 fn mainBoth() !void {
     for (targets) |target| {
-        var address_space: mem.AddressSpace = .{};
+        var address_space: builtin.AddressSpace = .{};
         var allocator_n = try zig.Allocator.Node.init(&address_space);
         var allocator_e = try zig.Allocator.Error.init(&address_space);
         var allocator_x = try zig.Allocator.Extra.init(&address_space);
