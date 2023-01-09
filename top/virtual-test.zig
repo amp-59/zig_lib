@@ -10,6 +10,7 @@ const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
+pub const is_correct: bool = false;
 pub const render_type_names: bool = false;
 pub const render_radix: u16 = 2;
 pub const trivial_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
@@ -157,6 +158,22 @@ pub const complex_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
     .{ .lb_addr = 0x7e0000000000, .up_addr = 0x7f0000000000 },
     .{ .lb_addr = 0x7f0000000000, .up_addr = 0x800000000000 },
 });
+
+/// Initial concern by increased binary size switching to new (formulaic)
+/// address space. However code scores much better on MCA.
+const OldAddressSpace = mem.StaticAddressSpace;
+export fn setOld(address_space: *OldAddressSpace, index: OldAddressSpace.Index) bool {
+    return address_space.set(index);
+}
+export fn setNew(address_space: *builtin.AddressSpace, index: builtin.AddressSpace.Index) bool {
+    return address_space.set(index);
+}
+export fn unsetOld(address_space: *OldAddressSpace, index: OldAddressSpace.Index) bool {
+    return address_space.unset(index);
+}
+export fn unsetNew(address_space: *builtin.AddressSpace, index: builtin.AddressSpace.Index) bool {
+    return address_space.unset(index);
+}
 
 fn testFormulaicAddressSpace() !void {
     const AddressSpace = virtual.GenericFormulaicAddressSpace(.{ .params = .{ .divisions = 8 } });
