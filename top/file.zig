@@ -571,7 +571,7 @@ pub const MapSpec = struct {
         read: bool = true,
         write: bool = true,
         exec: bool = false,
-        populate: bool = true,
+        populate: bool = false,
         grows_down: bool = false,
         sync: bool = false,
     };
