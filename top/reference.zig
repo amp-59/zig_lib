@@ -133,8 +133,8 @@ pub fn ReadWriteAutoStructuredAutoAlignment(comptime spec: Specification0) type 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -165,8 +165,8 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0)
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -219,8 +219,8 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specific
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -291,8 +291,8 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -341,8 +341,8 @@ pub fn ReadWriteStaticStructuredUnitAlignment(comptime spec: Specification0) typ
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -387,8 +387,8 @@ pub fn ReadWriteStaticStructuredLazyAlignment(comptime spec: Specification0) typ
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -440,8 +440,8 @@ pub fn ReadWriteStaticStructuredDisjunctAlignment(comptime spec: Specification0)
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -496,8 +496,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignment(comptime spec: Specif
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -592,8 +592,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignment(comptime spec: Specif
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -695,8 +695,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignment(comptime spec: Sp
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -798,8 +798,8 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignment(comptime spec: Specificatio
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -866,8 +866,8 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignment(comptime spec: Specificatio
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -941,8 +941,8 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignment(comptime spec: Specific
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -1114,8 +1114,8 @@ pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1149,8 +1149,8 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1206,8 +1206,8 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1283,8 +1283,8 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1338,8 +1338,8 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specificati
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1387,8 +1387,8 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specificati
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1443,8 +1443,8 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1502,8 +1502,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1603,8 +1603,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1711,8 +1711,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1819,8 +1819,8 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Spec
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1892,8 +1892,8 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Spec
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -1972,8 +1972,8 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -2139,8 +2139,8 @@ pub fn ReadWriteStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2185,8 +2185,8 @@ pub fn ReadWriteStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2238,8 +2238,8 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2294,8 +2294,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex(comptime sp
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2390,8 +2390,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex(comptime sp
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2493,8 +2493,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex(comptim
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2596,8 +2596,8 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex(comptime spec: Sp
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2664,8 +2664,8 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex(comptime spec: Sp
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2739,8 +2739,8 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex(comptime spec
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -2902,8 +2902,8 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -2951,8 +2951,8 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3007,8 +3007,8 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3066,8 +3066,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(com
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3167,8 +3167,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(com
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3275,8 +3275,8 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3383,8 +3383,8 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3456,8 +3456,8 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3536,8 +3536,8 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(compt
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -3700,8 +3700,8 @@ pub fn ReadWriteStaticUnstructuredUnitAlignment(comptime spec: Specification4) t
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3746,8 +3746,8 @@ pub fn ReadWriteStaticUnstructuredLazyAlignment(comptime spec: Specification4) t
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3799,8 +3799,8 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignment(comptime spec: Specification
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3854,8 +3854,8 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignment(comptime spec: Spec
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -3950,8 +3950,8 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignment(comptime spec: Spec
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4053,8 +4053,8 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment(comptime spec: 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4155,8 +4155,8 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignment(comptime spec: Specificat
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4223,8 +4223,8 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignment(comptime spec: Specificat
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4298,8 +4298,8 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignment(comptime spec: Specif
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4458,8 +4458,8 @@ pub fn ReadWriteStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4504,8 +4504,8 @@ pub fn ReadWriteStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4557,8 +4557,8 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4612,8 +4612,8 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4708,8 +4708,8 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4811,8 +4811,8 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex(compt
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4913,8 +4913,8 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -4981,8 +4981,8 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: 
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5056,8 +5056,8 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex(comptime sp
         comptime capacity: *const Static = &writable_byte_count,
         comptime utility: *const Static = &aligned_byte_count,
         const Implementation = @This();
-        const Static: type = fn () callconv(.Inline) u64;
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Static = fn () callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5232,7 +5232,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignment(comptime spec: Specificatio
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5336,7 +5336,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignment(comptime spec: Specificatio
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5445,7 +5445,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignment(comptime spec: Specific
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5553,7 +5553,7 @@ pub fn ReadWriteStreamStructuredUnitAlignment(comptime spec: Specification6) typ
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5635,7 +5635,7 @@ pub fn ReadWriteStreamStructuredLazyAlignment(comptime spec: Specification6) typ
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5722,7 +5722,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignment(comptime spec: Specification6)
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5809,7 +5809,7 @@ pub fn ReadWritePushPopStructuredUnitAlignment(comptime spec: Specification6) ty
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5891,7 +5891,7 @@ pub fn ReadWritePushPopStructuredLazyAlignment(comptime spec: Specification6) ty
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -5978,7 +5978,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignment(comptime spec: Specification6
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6064,7 +6064,7 @@ pub fn ReadWriteStructuredUnitAlignment(comptime spec: Specification6) type {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6118,7 +6118,7 @@ pub fn ReadWriteStructuredLazyAlignment(comptime spec: Specification6) type {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6177,7 +6177,7 @@ pub fn ReadWriteStructuredDisjunctAlignment(comptime spec: Specification6) type 
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -6340,7 +6340,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Spec
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -6447,7 +6447,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Spec
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -6559,7 +6559,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: 
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -6670,7 +6670,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinel(comptime spec: Specificati
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -6753,7 +6753,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinel(comptime spec: Specificati
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -6841,7 +6841,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -6929,7 +6929,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specificat
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -7014,7 +7014,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specificat
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -7104,7 +7104,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specif
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -7193,7 +7193,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinel(comptime spec: Specification7) t
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -7248,7 +7248,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinel(comptime spec: Specification7) t
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -7308,7 +7308,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinel(comptime spec: Specification
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -7472,7 +7472,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex(comptime spec: Sp
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7576,7 +7576,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex(comptime spec: Sp
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7685,7 +7685,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex(comptime spec
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7793,7 +7793,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7875,7 +7875,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -7962,7 +7962,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8049,7 +8049,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentArenaIndex(comptime spec: Specific
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8131,7 +8131,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentArenaIndex(comptime spec: Specific
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8218,7 +8218,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentArenaIndex(comptime spec: Spec
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8304,7 +8304,7 @@ pub fn ReadWriteStructuredUnitAlignmentArenaIndex(comptime spec: Specification8)
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8358,7 +8358,7 @@ pub fn ReadWriteStructuredLazyAlignmentArenaIndex(comptime spec: Specification8)
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8417,7 +8417,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentArenaIndex(comptime spec: Specificati
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -8581,7 +8581,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime 
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -8688,7 +8688,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime 
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -8800,7 +8800,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(compt
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -8911,7 +8911,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -8994,7 +8994,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9082,7 +9082,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9170,7 +9170,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: 
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9255,7 +9255,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: 
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9345,7 +9345,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime sp
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9434,7 +9434,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specifi
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9489,7 +9489,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specifi
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9549,7 +9549,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Spe
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -9712,7 +9712,7 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignment(comptime spec: Specificat
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9816,7 +9816,7 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignment(comptime spec: Specificat
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -9925,7 +9925,7 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignment(comptime spec: Specif
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10033,7 +10033,7 @@ pub fn ReadWriteStreamUnstructuredUnitAlignment(comptime spec: Specification10) 
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10115,7 +10115,7 @@ pub fn ReadWriteStreamUnstructuredLazyAlignment(comptime spec: Specification10) 
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10202,7 +10202,7 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignment(comptime spec: Specification
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10289,7 +10289,7 @@ pub fn ReadWritePushPopUnstructuredUnitAlignment(comptime spec: Specification10)
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10371,7 +10371,7 @@ pub fn ReadWritePushPopUnstructuredLazyAlignment(comptime spec: Specification10)
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10458,7 +10458,7 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignment(comptime spec: Specificatio
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10544,7 +10544,7 @@ pub fn ReadWriteUnstructuredUnitAlignment(comptime spec: Specification10) type {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10598,7 +10598,7 @@ pub fn ReadWriteUnstructuredLazyAlignment(comptime spec: Specification10) type {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10657,7 +10657,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignment(comptime spec: Specification10) ty
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10820,7 +10820,7 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: 
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -10924,7 +10924,7 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: 
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11033,7 +11033,7 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex(comptime sp
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11141,7 +11141,7 @@ pub fn ReadWriteStreamUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11223,7 +11223,7 @@ pub fn ReadWriteStreamUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11310,7 +11310,7 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
         ss_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11397,7 +11397,7 @@ pub fn ReadWritePushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: Specif
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11479,7 +11479,7 @@ pub fn ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: Specif
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11566,7 +11566,7 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Sp
         ub_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11652,7 +11652,7 @@ pub fn ReadWriteUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11706,7 +11706,7 @@ pub fn ReadWriteUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11765,7 +11765,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specifica
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
         inline fn allocated_byte_address(impl: *const Implementation) u64 {
@@ -11895,9 +11895,9 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Sp
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -11987,9 +11987,9 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Sp
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -12083,9 +12083,9 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specific
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -12156,9 +12156,9 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignment(comptime spec: Specific
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
@@ -12294,9 +12294,9 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
@@ -12391,9 +12391,9 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
@@ -12492,9 +12492,9 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
@@ -12570,9 +12570,9 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: 
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
@@ -12712,9 +12712,9 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
@@ -12804,9 +12804,9 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: 
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
@@ -12900,9 +12900,9 @@ pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specif
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
@@ -12973,9 +12973,9 @@ pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specif
         comptime capacity: *const Slave = &writable_byte_count,
         comptime utility: *const Slave = &aligned_byte_count,
         const Implementation = @This();
-        const Value: type = fn (*const Implementation) callconv(.Inline) u64;
-        const Vector: type = fn (*const Implementation, Allocator) callconv(.Inline) u64;
-        const Slave: type = fn (Allocator) callconv(.Inline) u64;
+        const Value = fn (*const Implementation) callconv(.Inline) u64;
+        const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
+        const Slave = fn (Allocator) callconv(.Inline) u64;
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
