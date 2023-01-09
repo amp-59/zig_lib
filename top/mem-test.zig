@@ -76,6 +76,52 @@ fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.advise(advise_spec, addr, len));
     try meta.wrap(mem.unmap(unmap_spec, addr, len));
 }
+fn testRtAllocatedImplementation() !void {
+    const repeats: u64 = 0x100;
+    const Allocator = mem.GenericRtArenaAllocator(.{
+        .options = .{ .trace_state = true },
+        .logging = preset.allocator.logging.verbose,
+    });
+    var address_space: builtin.AddressSpace = .{};
+    var allocator: Allocator = try Allocator.init(&address_space, 0);
+    defer allocator.deinit(&address_space);
+    const ArrayA = Allocator.StructuredStreamHolder(u8);
+    var array_a: ArrayA = ArrayA.init(&allocator);
+    {
+        var i: u64 = 0;
+        while (i != repeats) : (i += 1) {
+            try array_a.appendMany(&allocator, "Hello, world!");
+            try array_a.appendCount(&allocator, 4, "1234".*);
+            try array_a.appendFormat(&allocator, fmt.ux(0x1fee1dead));
+            try testing.expectEqualMany(u8, "world!", &array_a.readCountAt(allocator, "Hello, ".len, "world!".len));
+            try testing.expectEqualMany(u8, "Hello, ", array_a.readManyAhead("Hello, ".len));
+            array_a.stream("Hello, ".len);
+            try testing.expectEqualMany(u8, "world!", array_a.readManyAhead("world!".len));
+            try testing.expectEqualMany(u8, "Hello, ", array_a.readManyBehind("Hello, ".len));
+            array_a.unstream("Hello, ".len);
+        }
+    }
+    const ArrayB = Allocator.StructuredStreamVector(u8);
+    var array_ab: ArrayB = try array_a.dynamic(&allocator, ArrayB);
+    defer array_ab.deinit(&allocator);
+    var array_b: ArrayB = try ArrayB.init(&allocator, 256);
+    defer array_b.deinit(&allocator);
+    {
+        var i: u64 = 0;
+        while (i != repeats) : (i += 1) {
+            try array_b.appendMany(&allocator, "Hello, world!");
+            try array_b.appendCount(&allocator, 4, "1234".*);
+            try array_b.appendFormat(&allocator, fmt.ux(0x1fee1dead));
+            try testing.expectEqualMany(u8, "world!", &array_b.readCountAt("Hello, ".len, "world!".len));
+            try testing.expectEqualMany(u8, "Hello, ", array_b.readManyAhead("Hello, ".len));
+            array_b.stream("Hello, ".len);
+            try testing.expectEqualMany(u8, "world!", array_b.readManyAhead("world!".len));
+            try testing.expectEqualMany(u8, "Hello, ", array_b.readManyBehind("Hello, ".len));
+            array_b.unstream("Hello, ".len);
+        }
+    }
+    try testing.expectEqualMany(u8, array_ab.readAll(), array_b.readAll());
+}
 fn testAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericArenaAllocator(.{
@@ -85,7 +131,7 @@ fn testAllocatedImplementation() !void {
         // address space.
         .arena_index = 0,
         .options = .{ .trace_state = true },
-        .logging = preset.allocator.logging.silent,
+        .logging = preset.allocator.logging.verbose,
     });
     var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
@@ -106,12 +152,9 @@ fn testAllocatedImplementation() !void {
             array_a.unstream("Hello, ".len);
         }
     }
-
     const ArrayB = Allocator.StructuredStreamVector(u8);
-
-    var array_ab: ArrayB = .{ .impl = try allocator.convertHolderMany(ArrayA.Implementation, ArrayB.Implementation, array_a.impl) };
+    var array_ab: ArrayB = try array_a.dynamic(&allocator, ArrayB);
     defer array_ab.deinit(&allocator);
-
     var array_b: ArrayB = try ArrayB.init(&allocator, 256);
     defer array_b.deinit(&allocator);
     {
@@ -235,5 +278,6 @@ pub fn main() !void {
     try meta.wrap(testLowSystemMemoryOperations());
     try meta.wrap(testAutomaticImplementation());
     try meta.wrap(testAllocatedImplementation());
+    try meta.wrap(testRtAllocatedImplementation());
     try meta.wrap(testUtilityTestFunctions());
 }
