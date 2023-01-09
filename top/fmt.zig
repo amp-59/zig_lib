@@ -74,6 +74,71 @@ pub fn ux(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
+pub fn id(value: anytype) PolynomialFormat(.{
+    .bits = blk: {
+        const T: type = @TypeOf(value);
+        if (T == comptime_int) {
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            break :blk meta.alignCX(value);
+        } else {
+            break :blk meta.alignSizeAW(T);
+        }
+    },
+    .radix = 10,
+    .signedness = .signed,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
+pub fn idh(value: anytype) PolynomialFormat(.{
+    .bits = blk: {
+        const T: type = @TypeOf(value);
+        if (T == comptime_int) {
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            break :blk meta.alignCX(value);
+        } else {
+            break :blk meta.alignSizeAW(T);
+        }
+    },
+    .radix = 10,
+    .signedness = .signed,
+    .width = .min,
+    .separator = .{},
+}) {
+    return .{ .value = value };
+}
+pub fn ib(value: anytype) PolynomialFormat(.{
+    .bits = blk: {
+        const T: type = @TypeOf(value);
+        if (T == comptime_int) {
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            break :blk meta.alignCX(value);
+        } else {
+            break :blk meta.alignSizeAW(T);
+        }
+    },
+    .radix = 2,
+    .signedness = .signed,
+    .width = .max,
+}) {
+    return .{ .value = value };
+}
+pub fn ix(value: anytype) PolynomialFormat(.{
+    .bits = blk: {
+        const T: type = @TypeOf(value);
+        if (T == comptime_int) {
+            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            break :blk meta.alignCX(value);
+        } else {
+            break :blk meta.alignSizeAW(T);
+        }
+    },
+    .radix = 16,
+    .signedness = .signed,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
 pub fn ib8(value: i8) PolynomialFormat(.{ .bits = 8, .radix = 2, .signedness = .signed, .width = .max }) {
     return .{ .value = value };
 }
