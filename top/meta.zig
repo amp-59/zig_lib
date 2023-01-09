@@ -11,10 +11,10 @@ pub const enum_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .Compti
 pub const tag_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Type, .ErrorUnion, .Enum, .EnumLiteral };
 pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{.Fn};
 pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union };
-pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union };
+pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union, .Opaque };
 
 fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
-    for (type_types) |type_type| {
+    inline for (type_types) |type_type| {
         if (@typeInfo(T) == type_type) {
             return true;
         }
