@@ -370,7 +370,7 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     if (args_in.len == 1) {
         return printHelpText();
     }
-    var address_space: mem.AddressSpace = .{};
+    var address_space: builtin.AddressSpace = .{};
     var allocator_0: Allocator = try Allocator.init(&address_space);
     defer allocator_0.deinit(&address_space);
     var args: Argv = try Argv.init(&allocator_0, args_in.len);
