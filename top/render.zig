@@ -9,8 +9,8 @@ const abstract = @import("./abstract.zig");
 const Options = struct {
     radix: u16 = render_radix,
     radix_field_name_suffixes: ?[]const RadixFieldName = null,
-    string_literal: bool = true,
-    multi_line_string_literal: bool = false,
+    string_literal: ?bool = true,
+    multi_line_string_literal: ?bool = false,
     trailing_comma: ?bool = null,
     omit_default_fields: bool = true,
     omit_compiler_given_names: bool = true,
@@ -772,14 +772,7 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
             var len: u64 = 0;
             len += 1;
             for (format.value) |c| {
-                len += switch (c) {
-                    '"' => "\\\"".len,
-                    '\'' => "\\\'".len,
-                    '\\' => "\\\\".len,
-                    '\t' => "\\t".len,
-                    '\n' => "\\n".len,
-                    else => 1,
-                };
+                len += lit.lit_hex_sequences[c].len;
             }
             len += 1;
             return len;
@@ -787,14 +780,7 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
         pub fn formatWriteStringLiteral(format: anytype, array: anytype) void {
             array.writeOne('"');
             for (format.value) |c| {
-                switch (c) {
-                    '"' => array.writeMany("\\\""),
-                    '\'' => array.writeMany("\\\'"),
-                    '\\' => array.writeMany("\\\\"),
-                    '\t' => array.writeMany("\\t"),
-                    '\n' => array.writeMany("\\n"),
-                    else => array.writeOne(c),
-                }
+                array.writeMany(lit.lit_hex_sequences[c]);
             }
             array.writeOne('"');
         }
@@ -823,24 +809,25 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (comptime child == u8) {
-                if (options.multi_line_string_literal) {
-                    return formatWriteMultiLineStringLiteral(format, array);
-                } else if (options.string_literal) {
-                    return formatWriteStringLiteral(format, array);
+                if (options.multi_line_string_literal) |render_string_literal| {
+                    if (render_string_literal) return formatWriteMultiLineStringLiteral(format, array);
+                }
+                if (options.string_literal) |render_string_literal| {
+                    if (render_string_literal) return formatWriteStringLiteral(format, array);
                 }
             }
             return formatWriteAny(format, array);
         }
         pub fn formatLength(format: anytype) u64 {
             if (comptime child == u8) {
-                if (options.multi_line_string_literal) {
-                    return formatLengthMultiLineStringLiteral(format);
-                } else if (options.string_literal) {
-                    return formatLengthStringLiteral(format);
+                if (options.multi_line_string_literal) |render_string_literal| {
+                    if (render_string_literal) return formatLengthMultiLineStringLiteral(format);
                 }
-            } else {
-                return formatLengthAny(format);
+                if (options.string_literal) |render_string_literal| {
+                    if (render_string_literal) return formatLengthStringLiteral(format);
+                }
             }
+            return formatLengthAny(format);
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
