@@ -128,7 +128,7 @@ pub const AcquireSpec = struct {
     const Options = struct {
         thread_safe: bool = true,
     };
-    fn Unwrapped(comptime spec: Specification) type {
+    pub fn Unwrapped(comptime spec: Specification) type {
         return if (spec.errors != null) FixedResourceError!void else void;
     }
 };
@@ -141,7 +141,7 @@ pub const ReleaseSpec = struct {
     const Options = struct {
         thread_safe: bool = true,
     };
-    fn Unwrapped(comptime spec: Specification) type {
+    pub fn Unwrapped(comptime spec: Specification) type {
         return if (spec.errors != null) FixedResourceError!void else void;
     }
 };
@@ -540,18 +540,18 @@ pub fn acquire(comptime spec: AcquireSpec, address_space: anytype, index: @TypeO
 }
 pub fn release(comptime spec: ReleaseSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) ReleaseSpec.Unwrapped(spec) {
     if (if (spec.options.thread_safe)
-        address_space.atomicRelease(index)
+        address_space.atomicUnset(index)
     else
-        address_space.release(index))
+        address_space.unset(index))
     {
         if (spec.logging.Release) {
             debug.arenaReleaseNotice(index);
         }
-    } else if (spec.errors != null) {
+    } else if (spec.errors) |arena_error| {
         if (spec.logging.Error) {
-            return debug.arenaReleaseError(error.OverSupply, index);
+            return debug.arenaReleaseError(arena_error, index);
         }
-        return error.OverSupply;
+        return arena_error;
     }
 }
 pub const static = opaque {
@@ -564,11 +564,11 @@ pub const static = opaque {
             if (spec.logging.Acquire) {
                 debug.arenaAcquireNotice(index);
             }
-        } else if (spec.errors != null) {
+        } else if (spec.errors) |arena_error| {
             if (spec.logging.Error) {
-                debug.arenaAcquireError(error.UnderSupply, index);
+                debug.arenaAcquireError(arena_error, index);
             }
-            return error.UnderSupply;
+            return arena_error;
         }
     }
     pub fn release(comptime spec: ReleaseSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) ReleaseSpec.Unwrapped(spec) {
@@ -580,11 +580,11 @@ pub const static = opaque {
             if (spec.logging.Release) {
                 debug.arenaReleaseNotice(index);
             }
-        } else if (spec.errors != null) {
+        } else if (spec.errors) |arena_error| {
             if (spec.logging.Error) {
-                return debug.arenaReleaseError(error.OverSupply, index);
+                return debug.arenaReleaseError(arena_error, index);
             }
-            return error.OverSupply;
+            return arena_error;
         }
     }
 };
