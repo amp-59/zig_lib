@@ -138,11 +138,11 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         const ResizeSpec: type = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
         pub const allocator_spec: ArenaAllocatorSpec = spec;
         pub const arena_index: u8 = allocator_spec.arena_index;
-        pub const arena: mem.Arena = .{ .index = arena_index };
+        pub const arena: mem.Arena = allocator_spec.AddressSpace.arena(arena_index);
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
         const resize_spec: ResizeSpec = if (allocator_spec.options.require_mremap) remap_spec else map_spec;
-        const lb_addr: u64 = arena.begin();
-        const ua_addr: u64 = arena.end();
+        const lb_addr: u64 = arena.low();
+        const ua_addr: u64 = arena.high();
         const acq_part_spec: mem.AcquireSpec = .{
             .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.acquire,
@@ -338,7 +338,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             allocator = Allocator{ .ub_addr = lb_addr, .up_addr = lb_addr };
-            try meta.wrap(mem.static.acquire(acq_part_spec, address_space, arena.index));
+            try meta.wrap(mem.static.acquire(acq_part_spec, address_space, arena_index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -352,7 +352,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) release_allocator {
             defer Graphics.showWithReference(allocator, @src());
             allocator.release(allocator.start());
-            try meta.wrap(mem.static.release(rel_part_spec, address_space, arena.index));
+            try meta.wrap(mem.static.release(rel_part_spec, address_space, arena_index));
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -586,11 +586,10 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         pub fn init(address_space: *spec.AddressSpace, arena_index: u8) !Allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
-            const arena: mem.Arena = mem.Arena{ .index = arena_index };
-            const lb_addr: u64 = arena.begin();
-            const ua_addr: u64 = arena.end();
+            const lb_addr: u64 = allocator_spec.AddressSpace.low(arena_index);
+            const ua_addr: u64 = allocator_spec.AddressSpace.high(arena_index);
             allocator = Allocator{ .lb_addr = lb_addr, .ub_addr = lb_addr, .up_addr = lb_addr, .ua_addr = ua_addr };
-            try meta.wrap(mem.acquire(acq_part_spec, address_space, arena.index));
+            try meta.wrap(mem.acquire(acq_part_spec, address_space, arena_index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -3316,7 +3315,7 @@ const debug = opaque {
         array.writeMany(about_acq_0_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, mem.AddressSpace.begin(index), mem.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
@@ -3325,7 +3324,7 @@ const debug = opaque {
         array.writeMany(about_acq_1_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, mem.AddressSpace.begin(index), mem.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
         array.writeMany(" ");
         errorName(&array, @errorName(arena_error));
         array.writeMany("\n");
@@ -3336,7 +3335,7 @@ const debug = opaque {
         array.writeMany(about_rel_0_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, mem.AddressSpace.begin(index), mem.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
@@ -3345,7 +3344,7 @@ const debug = opaque {
         array.writeMany(about_rel_1_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, mem.AddressSpace.begin(index), mem.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
         array.writeMany(" ");
         errorName(&array, @errorName(arena_error));
         array.writeMany("\n");
