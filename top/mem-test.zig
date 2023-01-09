@@ -10,7 +10,8 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_correct: bool = false;
+pub const is_correct: bool = true;
+pub const is_verbose: bool = false;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 const invalid_holder_state: u64 = (0b110000110000 << 48);
@@ -60,8 +61,8 @@ const wr_spec: mem.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
 };
 
-const logging = .{ .Acquire = true, .Release = true };
-const errors = null;
+const logging = .{ .Acquire = false, .Release = false };
+const errors = &.{};
 
 fn testLowSystemMemoryOperations() !void {
     var addr: u64 = 0x7000000;
