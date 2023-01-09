@@ -125,7 +125,7 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
         }
     }
     {
-        var address_space: mem.AddressSpace = .{};
+        var address_space: builtin.AddressSpace = .{};
         var allocator: Allocator = try Allocator.init(&address_space);
         const arg_set = .{
             .{ vars, &allocator, "treez", "test/treez.zig", builtin.zig.mode, general_macros },
