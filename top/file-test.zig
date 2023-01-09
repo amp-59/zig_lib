@@ -15,13 +15,8 @@ const default_errors: bool = !@hasDecl(@import("root"), "errors");
 const exec_zig: bool = false;
 const errors: ?[]const sys.ErrorCode = &.{};
 
-const make_dir_spec: file.MakeDirSpec = .{
-    .errors = errors,
-};
-const create_spec: file.CreateSpec = .{
-    .options = .{},
-    .errors = errors,
-};
+const make_dir_spec: file.MakeDirSpec = .{ .errors = errors };
+const create_spec: file.CreateSpec = .{ .options = .{}, .errors = errors };
 const open_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = null },
     .errors = errors,
@@ -30,28 +25,13 @@ const open_dir_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = null, .directory = true },
     .errors = errors,
 };
-const exec_spec: proc.ExecuteSpec = .{
-    .options = .{},
-    .errors = errors,
-};
-const remove_dir_spec: file.RemoveDirSpec = .{
-    .errors = errors,
-};
-const unlink_spec: file.UnlinkSpec = .{
-    .errors = errors,
-};
-const close_spec: file.CloseSpec = .{
-    .errors = errors,
-};
-const stat_spec: file.StatSpec = .{
-    .errors = errors,
-};
-const ftruncate_spec: file.TruncateSpec = .{
-    .errors = errors,
-};
-const truncate_spec: file.TruncateSpec = .{
-    .errors = errors,
-};
+const exec_spec: proc.ExecuteSpec = .{ .options = .{}, .errors = errors };
+const remove_dir_spec: file.RemoveDirSpec = .{ .errors = errors };
+const unlink_spec: file.UnlinkSpec = .{ .errors = errors };
+const close_spec: file.CloseSpec = .{ .errors = errors };
+const stat_spec: file.StatSpec = .{ .errors = errors };
+const ftruncate_spec: file.TruncateSpec = .{ .errors = errors };
+const truncate_spec: file.TruncateSpec = .{ .errors = errors };
 
 fn makeArgs(buf: [:0]u8, any: anytype) [@typeInfo(@TypeOf(any)).Struct.fields.len][*:0]u8 {
     var args: [@typeInfo(@TypeOf(any)).Struct.fields.len][*:0]u8 = undefined;
