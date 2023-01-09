@@ -181,6 +181,10 @@ fn countLines(source: []const u8) u64 {
     }
     return count;
 }
+const Test = struct {
+    const sample_size: u64 = 100;
+    var sample: u64 = 0;
+};
 fn parseAndWalk(address_space: *mem.AddressSpace, arg: [:0]const u8) !u64 {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     var allocator_0: Allocator0 = try Allocator0.init(address_space);
@@ -230,12 +234,12 @@ fn parseAndWalk(address_space: *mem.AddressSpace, arg: [:0]const u8) !u64 {
         }
         print_array.undefineAll();
     }
-    if (test_standard) {
-        print_array.writeMany("standard ");
-    } else {
-        print_array.writeMany("library ");
-    }
-    print_array.writeAny(mem.fmt_wr_spec, .{ "nanos: ", fmt.udh(nanos), '\n' });
+    print_array.writeAny(mem.fmt_wr_spec, .{
+        lit.position.save,
+        .{ if (test_standard) "standard " else "library ", "nanos: ", fmt.udh(nanos), ", " },
+        .{ fmt.ud(Test.sample), '/', fmt.ud(Test.sample_size) },
+        lit.position.restore,
+    });
     file.noexcept.write(2, print_array.readAll());
     return nanos;
 }
@@ -253,16 +257,19 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
     if (names.len() == 0) {
         names.writeOne(".");
     }
-    const repeats: u64 = 100;
     var sum: u64 = 0;
-    while (i != repeats) : (i += 1) {
+    while (Test.sample <= Test.sample_size) : (Test.sample += 1) {
         for (names.readAll()) |arg| {
             sum += try parseAndWalk(address_space, arg);
         }
     }
-    file.noexcept.write(2, "average for " ++ @typeName(Ast) ++ ": ");
-    file.noexcept.write(2, fmt.udh(sum / repeats).formatConvert().readAll());
-    file.noexcept.write(2, "\n");
+    var print_array: PrintArray = .{};
+    print_array.writeAny(mem.fmt_wr_spec, .{
+        "\naverage for ", @typeName(Ast),
+        ": ",             fmt.udh(sum / Test.sample_size),
+        '\n',
+    });
+    file.noexcept.write(2, print_array.readAll());
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
     var address_space: mem.AddressSpace = .{};
