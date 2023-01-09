@@ -46,7 +46,7 @@ pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
         const Block = mem.ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(.{
             .low_alignment = 8,
             .high_alignment = 8,
-            .arena_index = Allocator.arena.index,
+            .arena_index = Allocator.arena_index,
         });
         pub const Allocator = dir_spec.Allocator;
         pub const ListView = mem.XorLinkedListViewAdv(.{ .child = Entry, .low_alignment = 8 });
