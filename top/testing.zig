@@ -7,6 +7,7 @@ const fmt = @import("./fmt.zig");
 const lit = @import("./lit.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
 fn arrayOfCharsLength(s: []const u8) u64 {
@@ -229,4 +230,37 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     array.writeOne('\n');
     file.noexcept.write(2, array.readAll());
     return array.readAll().len;
+}
+const Static = struct {
+    const Allocator = mem.GenericArenaAllocator(.{
+        .arena_index = 64,
+        .errors = preset.allocator.errors.noexcept,
+    });
+    const Array = Allocator.StructuredVector(u8);
+    var address_space: Allocator.allocator_spec.AddressSpace = .{};
+    var allocator: ?Allocator = null;
+    var array: ?Array = null;
+};
+pub fn print(any: anytype) void {
+    const allocator: *Static.Allocator = blk: {
+        if (Static.allocator) |*allocator| {
+            break :blk allocator;
+        }
+        Static.allocator = Static.Allocator.init(&Static.address_space) catch {
+            return;
+        };
+        break :blk &Static.allocator.?;
+    };
+    const array: *Static.Array = blk: {
+        if (Static.array) |*array| {
+            break :blk array;
+        }
+        Static.array = Static.Array.init(allocator, 1024 * 4096) catch {
+            return;
+        };
+        break :blk &Static.array.?;
+    };
+    defer array.undefineAll();
+    array.writeAny(mem.fmt_wr_spec, any);
+    file.noexcept.write(2, array.readAll());
 }
