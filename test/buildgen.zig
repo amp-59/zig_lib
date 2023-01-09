@@ -1007,7 +1007,7 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     const members_loc_token: []const u8 = "_: void,";
     const fn_body_loc_token: []const u8 = "_;";
 
-    var address_space: mem.AddressSpace = .{};
+    var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator0 = try Allocator0.init(&address_space);
     defer allocator.deinit(&address_space);
 
