@@ -5,7 +5,7 @@ const file = srg.file;
 const builtin = srg.builtin;
 
 comptime {
-    _ = builtin;
+    //_ = builtin;
 }
 
 const hello_world = "Hello, world!\n";
@@ -15,11 +15,11 @@ pub export fn _start() void {
     if (false) {
         file.noexcept.write(2, hello_world);
     }
-    if (true) {
+    if (false) {
         const x: []const u8 = (comptime mem.view("Hello, world!\n")).readAll();
         file.noexcept.write(2, x);
     }
-    if (false) {
+    if (true) {
         var array: mem.StaticString(4096) = undefined;
         array.impl.ub_word = 0;
         array.writeAny(mem.follow_wr_spec, .{ "Hello", ",", " World", "!", "\n" });
