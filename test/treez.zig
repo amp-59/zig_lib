@@ -359,7 +359,7 @@ inline fn getNames(args: *[][*:0]u8) Names {
     return names;
 }
 
-pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
+pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     var done: bool = undefined;
     if (permit_switch_arrows) {
@@ -419,6 +419,6 @@ pub fn threadMain(address_space: *mem.AddressSpace, args_in: [][*:0]u8) !void {
     }
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
-    var address_space: mem.AddressSpace = .{};
+    var address_space: builtin.AddressSpace = .{};
     try threadMain(&address_space, args);
 }
