@@ -338,7 +338,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             allocator = Allocator{ .ub_addr = lb_addr, .up_addr = lb_addr };
-            try meta.wrap(mem.static.acquire(acq_part_spec, address_space, arena_index));
+            try meta.wrap(special.static.acquire(acq_part_spec, address_space, arena_index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -352,7 +352,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) release_allocator {
             defer Graphics.showWithReference(allocator, @src());
             allocator.release(allocator.start());
-            try meta.wrap(mem.static.release(rel_part_spec, address_space, arena_index));
+            try meta.wrap(special.static.release(rel_part_spec, address_space, arena_index));
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -589,7 +589,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             const lb_addr: u64 = allocator_spec.AddressSpace.low(arena_index);
             const ua_addr: u64 = allocator_spec.AddressSpace.high(arena_index);
             allocator = Allocator{ .lb_addr = lb_addr, .ub_addr = lb_addr, .up_addr = lb_addr, .ua_addr = ua_addr };
-            try meta.wrap(mem.acquire(acq_part_spec, address_space, arena_index));
+            try meta.wrap(special.acquire(acq_part_spec, address_space, arena_index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -604,7 +604,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             defer Graphics.showWithReference(allocator, @src());
             const arena_index: u8 = spec.AddressSpace.invert(allocator.lb_addr);
             allocator.release(allocator.start());
-            try meta.wrap(mem.release(rel_part_spec, address_space, arena_index));
+            try meta.wrap(special.release(rel_part_spec, address_space, arena_index));
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -1921,6 +1921,126 @@ fn GenericInterface(comptime Allocator: type) type {
                 }
             }
         }
+        pub fn convertManyMany(allocator: *Allocator, comptime s_impl_type: type, comptime t_impl_type: type, s_impl: s_impl_type) Allocator.allocate_payload(t_impl_type) {
+            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+                if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
+                    @compileError("mismatched unit alignment");
+                }
+                const Convert: type = meta.FnParam0(t_impl_type.convert);
+                if (@hasField(Convert, "lb_addr")) {
+                    const s_lb_addr: u64 = s_impl.low();
+                    if (@hasField(Convert, "up_addr")) {
+                        const s_up_addr: u64 = s_impl.high();
+                        if (@hasField(Convert, "ss_addr")) {
+                            const s_ss_addr: u64 = s_impl.start();
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const s_ab_addr: u64 = s_impl.start();
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try meta.wrap(Intermediate.convertAnyManyUnitAligned(allocator, s_up_addr, t_up_addr));
+                                return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ss_addr = s_ss_addr, .ub_addr = s_ub_addr });
+                            }
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try meta.wrap(Intermediate.convertAnyManyUnitAligned(allocator, s_up_addr, t_up_addr));
+                            return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ss_addr = s_ss_addr });
+                        }
+                        if (@hasField(Convert, "ub_addr")) {
+                            const s_ub_addr: u64 = s_impl.next();
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try meta.wrap(Intermediate.convertAnyManyUnitAligned(allocator, s_up_addr, t_up_addr));
+                            return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ub_addr = s_ub_addr });
+                        }
+                        const s_ab_addr: u64 = s_impl.start();
+                        const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                        try meta.wrap(Intermediate.convertAnyManyUnitAligned(allocator, s_up_addr, t_up_addr));
+                        return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr });
+                    }
+                }
+            } else { // @1b1
+                const Convert: type = meta.FnParam0(t_impl_type.convert);
+                if (@hasField(Convert, "lb_addr")) {
+                    const s_lb_addr: u64 = s_impl.low();
+                    if (@hasField(Convert, "up_addr")) {
+                        const s_up_addr: u64 = s_impl.high();
+                        if (@hasField(Convert, "ab_addr")) {
+                            const s_ab_addr: u64 = s_impl.start();
+                            if (@hasField(Convert, "ss_addr")) {
+                                const s_ss_addr: u64 = s_impl.start();
+                                if (@hasField(Convert, "ub_addr")) {
+                                    const s_ub_addr: u64 = s_impl.next();
+                                    const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                    const t_aligned_bytes: u64 = s_aligned_bytes;
+                                    const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                    try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                                    return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ab_addr = s_ab_addr, .ss_addr = s_ss_addr, .ub_addr = s_ub_addr });
+                                }
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                                return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ab_addr = s_ab_addr, .ss_addr = s_ss_addr });
+                            }
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                                return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ab_addr = s_ab_addr, .ub_addr = s_ub_addr });
+                            }
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                            return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ab_addr = s_ab_addr });
+                        }
+                        if (@hasField(Convert, "ss_addr")) {
+                            const s_ss_addr: u64 = s_impl.start();
+                            if (@hasField(Convert, "ub_addr")) {
+                                const s_ub_addr: u64 = s_impl.next();
+                                const s_ab_addr: u64 = s_impl.start();
+                                const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                                const t_aligned_bytes: u64 = s_aligned_bytes;
+                                const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                                try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                                return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ss_addr = s_ss_addr, .ub_addr = s_ub_addr });
+                            }
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                            return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ss_addr = s_ss_addr });
+                        }
+                        if (@hasField(Convert, "ub_addr")) {
+                            const s_ub_addr: u64 = s_impl.next();
+                            const s_ab_addr: u64 = s_impl.start();
+                            const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                            const t_aligned_bytes: u64 = s_aligned_bytes;
+                            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                            try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                            return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr, .ub_addr = s_ub_addr });
+                        }
+                        const s_ab_addr: u64 = s_impl.start();
+                        const s_aligned_bytes: u64 = s_up_addr - s_ab_addr;
+                        const t_aligned_bytes: u64 = s_aligned_bytes;
+                        const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+                        try meta.wrap(Intermediate.convertAnyManyAnyAligned(allocator, s_up_addr, t_up_addr));
+                        return t_impl_type.convert(.{ .lb_addr = s_lb_addr, .up_addr = s_up_addr });
+                    }
+                }
+            }
+        }
         pub fn convertStaticMany(allocator: *Allocator, comptime s_impl_type: type, comptime t_impl_type: type, s_impl: s_impl_type) Allocator.allocate_payload(t_impl_type) {
             if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
@@ -3023,38 +3143,72 @@ const special = opaque {
             return madvise_error;
         }
     }
-    fn acquire(comptime part_spec: mem.PartSpec, address_space: anytype, index: u8) !void {
-        if (if (part_spec.options.thread_safe)
-            address_space.atomicAcquire(index)
+    fn acquire(comptime spec: mem.AcquireSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) mem.AcquireSpec.Unwrapped(spec) {
+        if (if (spec.options.thread_safe)
+            address_space.atomicSet(index)
         else
-            address_space.acquire(index))
+            address_space.set(index))
         {
-            if (part_spec.logging.Acquire) {
+            if (spec.logging.Acquire) {
                 debug.arenaAcquireNotice(index);
             }
-        } else |arena_error| {
-            if (part_spec.logging.Error) {
+        } else if (spec.errors) |arena_error| {
+            if (spec.logging.Error) {
                 debug.arenaAcquireError(arena_error, index);
             }
             return arena_error;
         }
     }
-    fn release(comptime part_spec: mem.PartSpec, address_space: anytype, index: u8) !void {
-        if (if (part_spec.options.thread_safe)
-            address_space.atomicRelease(index)
+    fn release(comptime spec: mem.ReleaseSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) mem.ReleaseSpec.Unwrapped(spec) {
+        if (if (spec.options.thread_safe)
+            address_space.atomicUnset(index)
         else
-            address_space.release(index))
+            address_space.unset(index))
         {
-            if (part_spec.logging.Release) {
+            if (spec.logging.Release) {
                 debug.arenaReleaseNotice(index);
             }
-        } else |arena_error| {
-            if (part_spec.logging.Error) {
+        } else if (spec.errors) |arena_error| {
+            if (spec.logging.Error) {
                 return debug.arenaReleaseError(arena_error, index);
             }
             return arena_error;
         }
     }
+    const static = opaque {
+        fn acquire(comptime spec: mem.AcquireSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) mem.AcquireSpec.Unwrapped(spec) {
+            if (if (spec.options.thread_safe)
+                address_space.atomicSet(index)
+            else
+                address_space.set(index))
+            {
+                if (spec.logging.Acquire) {
+                    debug.arenaAcquireNotice(index);
+                }
+            } else if (spec.errors) |arena_error| {
+                if (spec.logging.Error) {
+                    debug.arenaAcquireError(arena_error, index);
+                }
+                return arena_error;
+            }
+        }
+        fn release(comptime spec: mem.ReleaseSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) mem.ReleaseSpec.Unwrapped(spec) {
+            if (if (spec.options.thread_safe)
+                address_space.atomicUnset(index)
+            else
+                address_space.unset(index))
+            {
+                if (spec.logging.Release) {
+                    debug.arenaReleaseNotice(index);
+                }
+            } else if (spec.errors) |arena_error| {
+                if (spec.logging.Error) {
+                    return debug.arenaReleaseError(arena_error, index);
+                }
+                return arena_error;
+            }
+        }
+    };
 };
 const debug = opaque {
     const PrintArray = mem.StaticString(8192);
@@ -3315,7 +3469,7 @@ const debug = opaque {
         array.writeMany(about_acq_0_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
@@ -3324,7 +3478,7 @@ const debug = opaque {
         array.writeMany(about_acq_1_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
         array.writeMany(" ");
         errorName(&array, @errorName(arena_error));
         array.writeMany("\n");
@@ -3335,7 +3489,7 @@ const debug = opaque {
         array.writeMany(about_rel_0_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
@@ -3344,7 +3498,7 @@ const debug = opaque {
         array.writeMany(about_rel_1_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.begin(index), builtin.AddressSpace.end(index));
+        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
         array.writeMany(" ");
         errorName(&array, @errorName(arena_error));
         array.writeMany("\n");
