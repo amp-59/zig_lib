@@ -40,10 +40,6 @@ fn Src() type {
 fn Overflow(comptime T: type) type {
     return struct { T, u1 };
 }
-/// Return an absolute path to a project file.
-pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
-    return build_root.? ++ "/" ++ relative;
-}
 // Some compiler_rt
 pub fn memcpy(dest: [*]u8, source: [*]const u8, count: usize) callconv(.C) void {
     @setRuntimeSafety(false);
@@ -53,10 +49,20 @@ pub fn memcpy(dest: [*]u8, source: [*]const u8, count: usize) callconv(.C) void 
     }
 }
 pub fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void {
-    @setRuntimeSafety(false);
-    var index: usize = 0;
-    while (index != count) : (index += 1) {
-        dest[index] = value;
+    if (is_small) {
+        asm volatile ("rep stosb"
+            :
+            : [_] "{rdi}" (dest),
+              [_] "{al}" (value),
+              [_] "{rcx}" (count),
+            : "rax", "rdi", "rcx", "memory"
+        );
+    } else {
+        @setRuntimeSafety(false);
+        var index: usize = 0;
+        while (index != count) : (index += 1) {
+            dest[index] = value;
+        }
     }
 }
 pub fn __zig_probe_stack() callconv(.C) void {}
@@ -65,7 +71,10 @@ comptime {
     @export(memset, .{ .name = "memset" });
     if (is_debug or is_safe) @export(__zig_probe_stack, .{ .name = "__zig_probe_stack" });
 }
-
+/// Return an absolute path to a project file.
+pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
+    return build_root.? ++ "/" ++ relative;
+}
 pub const Exception = error{
     SubCausedOverflow,
     AddCausedOverflow,
