@@ -8,11 +8,14 @@ const preset = @import("./preset.zig");
 const virtual = @import("./virtual.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
+
 pub usingnamespace proc.start;
+
+const PrintArray = mem.StaticString(4096);
 pub const is_verbose: bool = false;
 pub const is_correct: bool = false;
 pub const render_type_names: bool = false;
-pub const render_radix: u16 = 2;
+pub const render_radix: u16 = 10;
 pub const trivial_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
     .{ .lb_addr = 0x40000000, .up_addr = 0x10000000000 }, .{ .lb_addr = 0x10000000000, .up_addr = 0x110000000000 },
 });
@@ -176,7 +179,7 @@ export fn unsetNew(address_space: *builtin.AddressSpace, index: builtin.AddressS
 }
 
 fn testFormulaicAddressSpace() !void {
-    const AddressSpace = virtual.GenericFormulaicAddressSpace(.{ .params = .{ .divisions = 8 } });
+    const AddressSpace = virtual.GenericFormulaicAddressSpace(.{ .divisions = 8 });
     var address_space: AddressSpace = .{};
     const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
     const Array = Allocator.StructuredVector(u8);
@@ -185,10 +188,10 @@ fn testFormulaicAddressSpace() !void {
     var array: Array = try Array.init(&allocator, 8192);
     defer array.deinit(&allocator);
     var i: u8 = 1;
-    try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
-    while (i != AddressSpace.addr_spec.params.divisions) : (i += 1) {
-        try mem.acquire(.{ .options = .{ .thread_safe = AddressSpace.addr_spec.options.thread_safe } }, &address_space, i);
-        try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
+    try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
+    while (i != AddressSpace.addr_spec.divisions) : (i += 1) {
+        try mem.acquire(.{}, AddressSpace, &address_space, i);
+        try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
         file.noexcept.write(2, array.readAll());
         array.undefineAll();
     }
@@ -203,17 +206,17 @@ fn testExactAddressSpace(comptime list: anytype) !void {
     var array: Array = try Array.init(&allocator, 8192);
     defer array.deinit(&allocator);
     comptime var i: u8 = 1;
-    try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
+    try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
-        try mem.static.acquire(.{ .options = .{ .thread_safe = AddressSpace.addr_spec.list[i].options.thread_safe } }, &address_space, i);
-        try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
+        try mem.static.acquire(.{}, AddressSpace, &address_space, i);
+        try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
         file.noexcept.write(2, array.readAll());
         array.undefineAll();
     }
     i = 1;
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
-        try mem.static.release(.{ .options = .{ .thread_safe = AddressSpace.addr_spec.list[i].options.thread_safe } }, &address_space, i);
-        try array.appendAny(mem.fmt_wr_spec, &allocator, .{ fmt.any(address_space), '\n' });
+        try mem.static.release(.{}, AddressSpace, &address_space, i);
+        try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
         file.noexcept.write(2, array.readAll());
         array.undefineAll();
     }
@@ -233,17 +236,17 @@ fn testExactSubSpaceFromExact(comptime sup_spec: virtual.ExactAddressSpaceSpec, 
     defer allocator_0.deinit(&sub_space);
     var array_0: Array0 = try Array0.init(&allocator_0, 16);
     defer array_0.deinit(&allocator_0);
-    array_0.appendAny(mem.fmt_wr_spec, &allocator_0, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
+    array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
     defer allocator_1.deinit(&sub_space);
     var array_1: Array1 = try Array1.init(&allocator_1, 16);
     defer array_1.deinit(&allocator_1);
-    array_1.appendAny(mem.fmt_wr_spec, &allocator_1, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
+    array_1.appendAny(preset.reinterpret.fmt, &allocator_1, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
     var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
     defer allocator_2.deinit(&sub_space);
     var array_2: Array2 = try Array2.init(&allocator_2, 16);
     defer array_2.deinit(&allocator_2);
-    array_2.appendAny(mem.fmt_wr_spec, &allocator_2, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
+    array_2.appendAny(preset.reinterpret.fmt, &allocator_2, .{ fmt.any(meta.uniformData(sub_space)), '\n' });
     file.noexcept.write(2, array_0.readAll());
     array_0.undefineAll();
     file.noexcept.write(2, array_1.readAll());
@@ -264,6 +267,14 @@ fn testArenaIntersection() !void {
         try builtin.expectEqual(u64, c.up_addr, d.up_addr);
     }
 }
+
+fn arenaFromBits(b: u64) virtual.Arena {
+    return .{ .lb_addr = @ctz(b), .up_addr = @ctz(b) + @popCount(b) };
+}
+fn arenaToBits(arena: virtual.Arena) u64 {
+    return mach.shl64(mach.shl64(1, arena.up_addr - arena.lb_addr) - 1, arena.lb_addr);
+}
+
 pub fn main() !void {
     try meta.wrap(testArenaIntersection());
     try meta.wrap(testExactAddressSpace(trivial_list));
@@ -271,4 +282,18 @@ pub fn main() !void {
     try meta.wrap(testExactAddressSpace(simple_list));
     try meta.wrap(testFormulaicAddressSpace());
     try meta.wrap(testExactSubSpaceFromExact(.{ .list = simple_list }, .{ .list = rare_sub_list }));
+
+    const a: virtual.Arena = arenaFromBits(0b000000000111111111110000000000000);
+    const b: virtual.Arena = arenaFromBits(0b000000000000000111111111110000000);
+    const x: virtual.Arena.Intersection = a.intersection2(b).?;
+
+    var array: PrintArray = .{};
+    array.writeAny(preset.reinterpret.fmt, .{
+        "a:\t",     fmt.any(a),   "\t -> ", fmt.ub64(arenaToBits(a)),
+        "\nb:\t",   fmt.any(b),   "\t -> ", fmt.ub64(arenaToBits(b)),
+        "\nx.l:\t", fmt.any(x.l), "\t -> ", fmt.ub64(arenaToBits(x.l)),
+        "\nx.x:\t", fmt.any(x.x), "\t -> ", fmt.ub64(arenaToBits(x.x)),
+        "\nx.h:\t", fmt.any(x.h), "\t -> ", fmt.ub64(arenaToBits(x.h)),
+    });
+    file.noexcept.write(2, array.readAll());
 }
