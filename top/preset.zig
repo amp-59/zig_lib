@@ -5,8 +5,18 @@ const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
 pub const address_space = opaque {
-    pub const formulaic_128 = mem.GenericFormulaicAddressSpace(.{ .params = .{ .divisions = 128 } });
+    pub const formulaic_128 = mem.GenericFormulaicAddressSpace(.{ .divisions = 128 });
     pub const static_128 = mem.StaticAddressSpace;
+    pub const exact_8 = mem.GenericExactAddressSpace(.{ .list = meta.slice(mem.Arena, .{
+        .{ .lb_addr = 0x40000000, .up_addr = 0x10000000000 },
+        .{ .lb_addr = 0x10000000000, .up_addr = 0x20000000000 },
+        .{ .lb_addr = 0x20000000000, .up_addr = 0x30000000000 },
+        .{ .lb_addr = 0x30000000000, .up_addr = 0x40000000000 },
+        .{ .lb_addr = 0x40000000000, .up_addr = 0x50000000000 },
+        .{ .lb_addr = 0x50000000000, .up_addr = 0x60000000000 },
+        .{ .lb_addr = 0x60000000000, .up_addr = 0x70000000000 },
+        .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
+    }) });
 };
 pub const allocator = opaque {
     pub const options = opaque {
