@@ -7,6 +7,7 @@ const meta = @import("./meta.zig");
 const time = @import("./time.zig");
 const mach = @import("./mach.zig");
 const parse = @import("./parse.zig");
+const preset = @import("./preset.zig");
 const testing = @import("./testing.zig");
 const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
@@ -37,7 +38,7 @@ const targets: [8][:0]const u8 = .{
 };
 fn debug(any: anytype) void {
     var array: mem.StaticString(16384) = .{};
-    array.writeAny(mem.fmt_wr_spec, any);
+    array.writeAny(preset.reinterpret.fmt, any);
     file.noexcept.write(2, array.readAll());
 }
 fn fileBuf(allocator: *zig.Allocator.Node, pathname: [:0]const u8) !zig.SourceArray {
@@ -227,7 +228,7 @@ pub fn main(args: [][*:0]u8) !void {
                     for (indices.readAll()) |index| {
                         const loc: abstract.SyntaxTree.Location = ast.tokenLocation(0, ast.firstToken(index));
                         var array: PrintArray = .{};
-                        array.writeAny(mem.fmt_wr_spec, .{ '\n', arg, ": line: ", fmt.ud(loc.line), ", column: ", fmt.ud(loc.column), '\n' });
+                        array.writeAny(preset.reinterpret.fmt, .{ '\n', arg, ": line: ", fmt.ud(loc.line), ", column: ", fmt.ud(loc.column), '\n' });
                         file.noexcept.write(2, array.readAll());
                         file.noexcept.write(2, ast.getNodeSource(index));
                     }
