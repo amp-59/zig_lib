@@ -18,6 +18,37 @@ pub const address_space = opaque {
         .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
     }) });
 };
+pub const reinterpret = opaque {
+    pub const flat: mem.ReinterpretSpec = .{};
+    pub const ptr: mem.ReinterpretSpec = .{
+        .reference = .{ .dereference = &.{} },
+    };
+    pub const fmt: mem.ReinterpretSpec = reinterpretRecursively(.{
+        .reference = ptr.reference,
+        .aggregate = .{ .iterate = true },
+        .composite = .{ .format = true },
+        .symbol = .{ .tag_name = true },
+    });
+    pub const follow: mem.ReinterpretSpec = blk: {
+        var rs_0: mem.ReinterpretSpec = .{};
+        var rs_1: mem.ReinterpretSpec = .{ .reference = .{
+            .dereference = &rs_0,
+        } };
+        rs_1.reference.dereference = &rs_0;
+        rs_0 = .{ .reference = .{
+            .dereference = &rs_1,
+        } };
+        break :blk rs_1;
+    };
+
+    fn reinterpretRecursively(comptime spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
+        var rs_0: mem.ReinterpretSpec = spec;
+        var rs_1: mem.ReinterpretSpec = spec;
+        rs_0.reference.dereference = &rs_1;
+        rs_1.reference.dereference = &rs_0;
+        return rs_1;
+    }
+};
 pub const allocator = opaque {
     pub const options = opaque {
         pub const small: mem.AllocatorOptions = .{
