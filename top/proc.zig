@@ -281,8 +281,8 @@ pub const ExecuteSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.execve_errors,
     return_type: type = void,
-    args_type: type = [][*:0]u8,
-    vars_type: type = [][*:0]u8,
+    args_type: type = []const [*:0]u8,
+    vars_type: type = []const [*:0]u8,
     logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct { no_follow: bool = false };
@@ -880,7 +880,7 @@ const debug = opaque {
         const max_len: u64 = 4096 + 128;
         var buf: [max_len]u8 = undefined;
         var len: u64 = 0;
-        for ([_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ")", filename }) |s| {
+        for ([_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ") ", filename }) |s| {
             for (s) |c, i| buf[len + i] = c;
             len += s.len;
         }
