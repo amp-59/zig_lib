@@ -64,8 +64,7 @@ fn testSpecificCases() !void {
     try runTest(&allocator, &array, render.EnumLiteralFormat{ .value = .EnumLiteral }, ".EnumLiteral");
     try runTest(&allocator, &array, render.NullFormat{}, "null");
     try runTest(&allocator, &array, render.VoidFormat{}, "{}");
-    try runTest(&allocator, &array, render.any(mem.AbstractSpec), null);
-    if (false) {}
+    try runTest(&allocator, &array, comptime render.render(.{ .inline_field_types = true }, mem.AbstractSpec), null);
 }
 
 pub fn main() !void {
