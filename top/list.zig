@@ -571,7 +571,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                    try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major.start()),
                         "+",        fmt.ud64(tmp.links.major.alignment()),
@@ -583,7 +583,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major.start()),
                             "+",       fmt.ud64(tmp.links.major.alignment()),
@@ -599,7 +599,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                         tmp.index += 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?.start()),
                             "+",       fmt.ud64(tmp.links.prev().?.alignment()),
@@ -616,7 +616,7 @@ pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
                         tmp.links = links;
                         tmp.index += 1;
                     } else {
-                        try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?.start()),
                             "+",         fmt.ud64(tmp.links.prev().?.alignment()),
@@ -1045,7 +1045,7 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                    try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major),
                         ',',        fmt.ux64(tmp.links.minor),
@@ -1055,7 +1055,7 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major),
                             ',',       fmt.ux64(tmp.links.minor),
@@ -1068,7 +1068,7 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                         tmp.index += 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?),
                             " <- (",   fmt.ux64(tmp.links.major),
@@ -1081,7 +1081,7 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                         tmp.links = links;
                         tmp.index += 1;
                     } else {
-                        try array.appendAny(mem.fmt_wr_spec, &allocator, .{
+                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?),
                             " <- (",     fmt.ux64(tmp.links.major),
