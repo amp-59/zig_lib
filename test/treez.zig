@@ -16,6 +16,8 @@ const opts = @import("./opts.zig");
 
 pub usingnamespace proc.start;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
+
 pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
 
@@ -23,19 +25,7 @@ const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec = proc.CloneSpec{
     .errors = null,
     .return_type = u64,
-    .options = .{
-        .set_thread_local_storage = true,
-        .set_parent_thread_id = true,
-        .set_child_thread_id = true,
-        .clear_child_thread_id = true,
-        .address_space = true,
-        .thread = true,
-        .file_system = true,
-        .files = true,
-        .signal_handlers = true,
-        .sysvsem = true,
-        .io = false,
-    },
+    .options = .{},
 };
 const wait_spec: proc.WaitIdSpec = .{
     .id_type = .{ .tag = .all },
@@ -49,7 +39,7 @@ const wait_spec: proc.WaitIdSpec = .{
     },
 };
 const BlockAllocator0 = mem.GenericArenaAllocator(.{
-    .arena_index = 24,
+    .arena_index = 0,
     .options = .{
         .count_allocations = true,
         .require_filo_free = false,
@@ -60,7 +50,7 @@ const BlockAllocator0 = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
 });
 const BlockAllocator1 = mem.GenericArenaAllocator(.{
-    .arena_index = 32,
+    .arena_index = 1,
     .options = .{
         .count_allocations = false,
         .require_filo_free = true,
@@ -359,7 +349,7 @@ inline fn getNames(args: *[][*:0]u8) Names {
     return names;
 }
 
-pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !void {
+pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     var done: bool = undefined;
     if (permit_switch_arrows) {
@@ -419,6 +409,6 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !voi
     }
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     try threadMain(&address_space, args);
 }
