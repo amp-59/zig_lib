@@ -261,6 +261,6 @@ pub fn print(any: anytype) void {
         break :blk &Static.array.?;
     };
     defer array.undefineAll();
-    array.writeAny(mem.fmt_wr_spec, any);
+    array.writeAny(preset.reinterpret.fmt, any);
     file.noexcept.write(2, array.readAll());
 }
