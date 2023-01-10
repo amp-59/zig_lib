@@ -76,6 +76,14 @@ fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.advise(advise_spec, addr, len));
     try meta.wrap(mem.unmap(unmap_spec, addr, len));
 }
+fn testMapGenericOverhead() !void {
+    var addr: u64 = 0x7000000;
+    var len: u64 = 0x3000000;
+    var end: u64 = addr + len;
+    try meta.wrap(mem.map(.{ .options = .{ .populate = true } }, addr, len));
+    addr = end;
+    try meta.wrap(mem.map(.{ .options = .{ .populate = false, .visibility = .shared } }, end, len));
+}
 fn testRtAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericRtArenaAllocator(.{
@@ -276,6 +284,7 @@ pub fn testNoImpact() !void {
     try testing.expectEqualMany(u8, getViewOfRaw(S.src, low, high), getViewOfView(&mem.view(S.src), low, high));
 }
 pub fn main() !void {
+    try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testLowSystemMemoryOperations());
     try meta.wrap(testAutomaticImplementation());
     try meta.wrap(testAllocatedImplementation());
