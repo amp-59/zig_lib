@@ -42,18 +42,47 @@ pub const Arena = struct {
             .up_addr = up_addr,
         };
     }
+    pub const Intersection = struct {
+        l: Arena,
+        x: Arena,
+        h: Arena,
+    };
+    pub fn intersection2(s_arena: Arena, t_arena: Arena) ?Intersection {
+        if (intersection(s_arena, t_arena)) |x_arena| {
+            return .{
+                .l = .{
+                    .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
+                    .up_addr = x_arena.lb_addr,
+                    .options = if (s_arena.lb_addr < t_arena.lb_addr) s_arena.options else t_arena.options,
+                },
+                .x = x_arena,
+                .h = .{
+                    .lb_addr = x_arena.up_addr,
+                    .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
+                    .options = if (t_arena.up_addr > s_arena.up_addr) t_arena.options else s_arena.options,
+                },
+            };
+        }
+        return null;
+    }
     pub fn intersection(s_arena: Arena, t_arena: Arena) ?Arena {
-        const s_lb_addr: usize = s_arena.lb_addr;
-        const s_xb_addr: usize = s_arena.up_addr - 1;
-        const t_lb_addr: usize = t_arena.lb_addr;
-        const t_xb_addr: usize = t_arena.up_addr - 1;
-        if (builtin.int2v(bool, t_xb_addr < s_lb_addr, s_xb_addr < t_lb_addr)) {
+        if (builtin.int2v(
+            bool,
+            (t_arena.up_addr - 1) < s_arena.lb_addr,
+            (s_arena.up_addr - 1) < t_arena.lb_addr,
+        )) {
             return null;
         }
         return .{
             .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
             .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
-            .options = s_arena.options,
+            .options = .{
+                .thread_safe = builtin.int2v(
+                    bool,
+                    s_arena.options.thread_safe,
+                    t_arena.options.thread_safe,
+                ),
+            },
         };
     }
 };
