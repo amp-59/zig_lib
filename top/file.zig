@@ -989,7 +989,7 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
     };
 }
 
-fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 {
+pub fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 {
     const path_spec: PathSpec = .{ .options = .{ .directory = false } };
     const stat_spec: StatSpec = .{ .options = .{ .no_follow = false } };
     const dir_fd: u64 = path(path_spec, dir_pathname) catch return null;
@@ -999,7 +999,7 @@ fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 {
     }
     return null;
 }
-pub fn find(vars: [][*:0]u8, name: [:0]const u8) !u64 {
+pub fn find(vars: []const [*:0]u8, name: [:0]const u8) !u64 {
     const path_key_s: []const u8 = "PATH=";
     for (vars) |entry_ptr| {
         const entry: [:0]u8 = meta.manyToSlice(entry_ptr);
