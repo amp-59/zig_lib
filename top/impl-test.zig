@@ -25,7 +25,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .count_useful_bytes = false,
     },
     .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
+    .logging = preset.allocator.logging.verbose,
 });
 
 const PrintArray = mem.StructuredAutomaticVector(u8, null, 4096, 1, .{});

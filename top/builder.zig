@@ -415,7 +415,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
                 try array.appendAny(fmt_spec, allocator, .{ "-z\x00", how, "\x00" });
             }
 
-            try array.appendAny(mem.ptr_wr_spec, allocator, .{ build.root, "\x00" });
+            try array.appendAny(preset.reinterpret.ptr, allocator, .{ build.root, "\x00" });
             return array;
         }
         fn commandString(build: Builder) anyerror!StaticString {
@@ -756,7 +756,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
                 array.writeAny(fmt_spec, .{ "-z\x00", how, "\x00" });
             }
 
-            array.writeAny(mem.ptr_wr_spec, .{ build.root, "\x00" });
+            array.writeAny(preset.reinterpret.ptr, .{ build.root, "\x00" });
             return array;
         }
 
