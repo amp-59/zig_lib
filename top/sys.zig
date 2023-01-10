@@ -1792,7 +1792,7 @@ pub const mmap_errors: []const ErrorCode = &[_]ErrorCode{
 pub const memfd_create_errors: []const ErrorCode = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
 pub const truncate_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES,  .FAULT, .FBIG, .INTR,   .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
-    .NOTDIR, .PERM,  .ROFS, .TXTBSY, .BADF, .INVAL, .BADF,
+    .NOTDIR, .PERM,  .ROFS, .TXTBSY, .BADF, .INVAL,
 };
 pub const munmap_errors: []const ErrorCode = &[_]ErrorCode{.INVAL};
 pub const mknod_errors: []const ErrorCode = &[_]ErrorCode{
