@@ -84,8 +84,8 @@ pub const AllocatorErrors = struct {
     map: ?[]const sys.ErrorCode = sys.mmap_errors,
     remap: ?[]const sys.ErrorCode = sys.mremap_errors,
     unmap: ?[]const sys.ErrorCode = null,
-    acquire: ?mem.FixedResourceError = error.UnderSupply,
-    release: ?mem.FixedResourceError = null,
+    acquire: ?mem.ResourceError = error.UnderSupply,
+    release: ?mem.ResourceError = null,
 };
 const _1: mem.Amount = .{ .count = 1 };
 fn Metadata(comptime options: AllocatorOptions) type {
@@ -133,9 +133,10 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         comptime ua_addr: u64 = ua_addr,
         metadata: Metadata(spec.options) = .{},
         reference: Reference(spec.options) = .{},
-        const Allocator: type = @This();
-        const Value: type = fn (*const Allocator) callconv(.Inline) u64;
-        const ResizeSpec: type = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
+        const Allocator = @This();
+        const Value = fn (*const Allocator) callconv(.Inline) u64;
+        const ResizeSpec = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
+        pub const AddressSpace = allocator_spec.AddressSpace;
         pub const allocator_spec: ArenaAllocatorSpec = spec;
         pub const arena_index: u8 = allocator_spec.arena_index;
         pub const arena: mem.Arena = allocator_spec.AddressSpace.arena(arena_index);
@@ -144,12 +145,10 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         const lb_addr: u64 = arena.low();
         const ua_addr: u64 = arena.high();
         const acq_part_spec: mem.AcquireSpec = .{
-            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.acquire,
             .logging = allocator_spec.logging.arena,
         };
         const rel_part_spec: mem.ReleaseSpec = .{
-            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.release,
             .logging = allocator_spec.logging.arena,
         };
@@ -220,9 +219,9 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                     spec.options.init_commit != null or
                     spec.options.require_mremap)
                 {
-                    break :blk (MMapError || mem.FixedResourceError)!Allocator;
+                    break :blk (MMapError || mem.ResourceError)!Allocator;
                 }
-                break :blk mem.FixedResourceError!Allocator;
+                break :blk mem.ResourceError!Allocator;
             } else {
                 if (spec.errors.map != null and
                     spec.options.init_commit != null or
@@ -235,9 +234,9 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub const release_allocator: type = blk: {
             if (spec.errors.release != null) {
                 if (spec.errors.unmap != null) {
-                    break :blk (MUnmapError || mem.FixedResourceError)!void;
+                    break :blk (MUnmapError || mem.ResourceError)!void;
                 }
-                break :blk mem.FixedResourceError!void;
+                break :blk mem.ResourceError!void;
             } else {
                 if (spec.errors.unmap != null) {
                     break :blk MUnmapError!void;
@@ -334,11 +333,11 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             }
             allocator.ub_addr = lb_addr;
         }
-        pub fn init(address_space: *spec.AddressSpace) acquire_allocator {
+        pub fn init(address_space: *AddressSpace) acquire_allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             allocator = Allocator{ .ub_addr = lb_addr, .up_addr = lb_addr };
-            try meta.wrap(special.static.acquire(acq_part_spec, address_space, arena_index));
+            try meta.wrap(special.static.acquire(acq_part_spec, AddressSpace, address_space, arena_index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -349,10 +348,10 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             }
             return allocator;
         }
-        pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) release_allocator {
+        pub fn deinit(allocator: *Allocator, address_space: *AddressSpace) release_allocator {
             defer Graphics.showWithReference(allocator, @src());
             allocator.release(allocator.start());
-            try meta.wrap(special.static.release(rel_part_spec, address_space, arena_index));
+            try meta.wrap(special.static.release(rel_part_spec, AddressSpace, address_space, arena_index));
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -386,19 +385,18 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         ua_addr: u64,
         metadata: Metadata(spec.options) = .{},
         reference: Reference(spec.options) = .{},
-        const Allocator: type = @This();
-        const Value: type = fn (*const Allocator) callconv(.Inline) u64;
-        const ResizeSpec: type = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
+        const Allocator = @This();
+        const Value = fn (*const Allocator) callconv(.Inline) u64;
+        const ResizeSpec = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
+        pub const AddressSpace = allocator_spec.AddressSpace;
         pub const allocator_spec: RtArenaAllocatorSpec = spec;
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
         const resize_spec: ResizeSpec = if (allocator_spec.options.require_mremap) remap_spec else map_spec;
         const acq_part_spec: mem.AcquireSpec = .{
-            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.acquire,
             .logging = allocator_spec.logging.arena,
         };
         const rel_part_spec: mem.ReleaseSpec = .{
-            .options = .{ .thread_safe = allocator_spec.options.thread_safe },
             .errors = allocator_spec.errors.release,
             .logging = allocator_spec.logging.arena,
         };
@@ -469,9 +467,9 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
                     spec.options.init_commit != null or
                     spec.options.require_mremap)
                 {
-                    break :blk (MMapError || mem.FixedResourceError)!Allocator;
+                    break :blk (MMapError || mem.ResourceError)!Allocator;
                 }
-                break :blk mem.FixedResourceError!Allocator;
+                break :blk mem.ResourceError!Allocator;
             } else {
                 if (spec.errors.map != null and
                     spec.options.init_commit != null or
@@ -484,9 +482,9 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         pub const release_allocator: type = blk: {
             if (spec.errors.release != null) {
                 if (spec.errors.unmap != null) {
-                    break :blk (MUnmapError || mem.FixedResourceError)!void;
+                    break :blk (MUnmapError || mem.ResourceError)!void;
                 }
-                break :blk mem.FixedResourceError!void;
+                break :blk mem.ResourceError!void;
             } else {
                 if (spec.errors.unmap != null) {
                     break :blk MUnmapError!void;
@@ -583,13 +581,13 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             }
             allocator.ub_addr = allocator.lb_addr;
         }
-        pub fn init(address_space: *spec.AddressSpace, arena_index: u8) !Allocator {
+        pub fn init(address_space: *AddressSpace, arena_index: u8) !Allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             const lb_addr: u64 = allocator_spec.AddressSpace.low(arena_index);
             const ua_addr: u64 = allocator_spec.AddressSpace.high(arena_index);
             allocator = Allocator{ .lb_addr = lb_addr, .ub_addr = lb_addr, .up_addr = lb_addr, .ua_addr = ua_addr };
-            try meta.wrap(special.acquire(acq_part_spec, address_space, arena_index));
+            try meta.wrap(special.acquire(acq_part_spec, AddressSpace, address_space, arena_index));
             if (allocator_spec.options.require_mremap) {
                 const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
@@ -600,11 +598,11 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             }
             return allocator;
         }
-        pub fn deinit(allocator: *Allocator, address_space: *spec.AddressSpace) void {
+        pub fn deinit(allocator: *Allocator, address_space: *AddressSpace) void {
             defer Graphics.showWithReference(allocator, @src());
             const arena_index: u8 = spec.AddressSpace.invert(allocator.lb_addr);
             allocator.release(allocator.start());
-            try meta.wrap(special.release(rel_part_spec, address_space, arena_index));
+            try meta.wrap(special.release(rel_part_spec, AddressSpace, address_space, arena_index));
         }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
@@ -3143,63 +3141,71 @@ const special = opaque {
             return madvise_error;
         }
     }
-    fn acquire(comptime spec: mem.AcquireSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) mem.AcquireSpec.Unwrapped(spec) {
-        if (if (spec.options.thread_safe)
+    pub fn acquire(comptime spec: mem.AcquireSpec, comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) mem.AcquireSpec.Unwrapped(spec) {
+        const lb_addr: u64 = AddressSpace.low(index);
+        const up_addr: u64 = AddressSpace.high(index);
+        if (if (AddressSpace.addr_spec.options.thread_safe)
             address_space.atomicSet(index)
         else
             address_space.set(index))
         {
             if (spec.logging.Acquire) {
-                debug.arenaAcquireNotice(index);
+                debug.arenaAcquireNotice(index, lb_addr, up_addr);
             }
         } else if (spec.errors) |arena_error| {
             if (spec.logging.Error) {
-                debug.arenaAcquireError(arena_error, index);
+                debug.arenaAcquireError(arena_error, index, lb_addr, up_addr);
             }
-            return arena_error;
+            return error.UnderSupply;
         }
     }
-    fn release(comptime spec: mem.ReleaseSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) mem.ReleaseSpec.Unwrapped(spec) {
-        if (if (spec.options.thread_safe)
+    pub fn release(comptime spec: mem.ReleaseSpec, comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) mem.ReleaseSpec.Unwrapped(spec) {
+        const lb_addr: u64 = AddressSpace.low(index);
+        const up_addr: u64 = AddressSpace.high(index);
+        if (if (AddressSpace.addr_spec.options.thread_safe)
             address_space.atomicUnset(index)
         else
             address_space.unset(index))
         {
             if (spec.logging.Release) {
-                debug.arenaReleaseNotice(index);
+                debug.arenaReleaseNotice(index, lb_addr, up_addr);
             }
         } else if (spec.errors) |arena_error| {
             if (spec.logging.Error) {
-                return debug.arenaReleaseError(arena_error, index);
+                return debug.arenaReleaseError(arena_error, index, lb_addr, up_addr);
             }
             return arena_error;
         }
     }
-    const static = opaque {
-        fn acquire(comptime spec: mem.AcquireSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) mem.AcquireSpec.Unwrapped(spec) {
-            if (if (spec.options.thread_safe)
+    pub const static = opaque {
+        pub fn acquire(comptime spec: mem.AcquireSpec, comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) mem.AcquireSpec.Unwrapped(spec) {
+            const lb_addr: u64 = AddressSpace.low(index);
+            const up_addr: u64 = AddressSpace.high(index);
+            if (if (comptime AddressSpace.arena(index).options.thread_safe)
                 address_space.atomicSet(index)
             else
                 address_space.set(index))
             {
                 if (spec.logging.Acquire) {
-                    debug.arenaAcquireNotice(index);
+                    debug.arenaAcquireNotice(index, lb_addr, up_addr);
                 }
             } else if (spec.errors) |arena_error| {
                 if (spec.logging.Error) {
-                    debug.arenaAcquireError(arena_error, index);
+                    debug.arenaAcquireError(arena_error, index, lb_addr, up_addr);
                 }
                 return arena_error;
             }
         }
-        fn release(comptime spec: mem.ReleaseSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) mem.ReleaseSpec.Unwrapped(spec) {
-            if (if (spec.options.thread_safe)
+        pub fn release(comptime spec: mem.ReleaseSpec, comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) mem.ReleaseSpec.Unwrapped(spec) {
+            const lb_addr: u64 = AddressSpace.low(index);
+            const up_addr: u64 = AddressSpace.high(index);
+            if (if (comptime AddressSpace.arena(index).options.thread_safe)
                 address_space.atomicUnset(index)
             else
                 address_space.unset(index))
             {
                 if (spec.logging.Release) {
-                    debug.arenaReleaseNotice(index);
+                    debug.arenaReleaseNotice(index, lb_addr, up_addr);
                 }
             } else if (spec.errors) |arena_error| {
                 if (spec.logging.Error) {
@@ -3464,41 +3470,41 @@ const debug = opaque {
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
-    fn arenaAcquireNotice(index: u8) void {
+    fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64) void {
         var array: PrintArray = .{};
         array.writeMany(about_acq_0_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
+        addressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
-    fn arenaAcquireError(arena_error: anytype, index: u8) void {
+    fn arenaAcquireError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64) void {
         var array: PrintArray = .{};
         array.writeMany(about_acq_1_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
+        addressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany(" ");
         errorName(&array, @errorName(arena_error));
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
-    fn arenaReleaseNotice(index: u8) void {
+    fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64) void {
         var array: PrintArray = .{};
         array.writeMany(about_rel_0_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
+        addressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany("\n");
         file.noexcept.write(2, array.readAll());
     }
-    fn arenaReleaseError(arena_error: anytype, index: u8) void {
+    fn arenaReleaseError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64) void {
         var array: PrintArray = .{};
         array.writeMany(about_rel_1_s);
         array.writeFormat(fmt.ud64(index));
         array.writeMany(", ");
-        addressRangeBytes(&array, builtin.AddressSpace.low(index), builtin.AddressSpace.high(index));
+        addressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany(" ");
         errorName(&array, @errorName(arena_error));
         array.writeMany("\n");
