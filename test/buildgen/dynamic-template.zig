@@ -13,6 +13,6 @@ fn allocateCommandString(build: Builder, allocator: *Allocator) !String {
         },
     }
     _;
-    try array.appendAny(mem.ptr_wr_spec, allocator, .{ build.root, "\x00" });
+    try array.appendAny(preset.reinterpret.ptr, allocator, .{ build.root, "\x00" });
     return array;
 }

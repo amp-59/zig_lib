@@ -13,6 +13,6 @@ fn commandString(build: Builder) anyerror!StaticString {
         },
     }
     _;
-    array.writeAny(mem.ptr_wr_spec, .{ build.root, "\x00" });
+    array.writeAny(preset.reinterpret.ptr, .{ build.root, "\x00" });
     return array;
 }

@@ -223,9 +223,9 @@ noinline fn writeAndWalk(
                 results.dirs += 1;
                 const s_arrow_s: []const u8 = mach.cmovx(is_last, Style.last_dir_arrow_s, Style.dir_arrow_s);
                 if (plain_print) {
-                    try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
+                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                 } else {
-                    try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), s_arrow_s, base_name, endl_s });
+                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), s_arrow_s, base_name, endl_s });
                 }
                 const s_total: u64 = results.total();
                 writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name) catch {};
@@ -233,7 +233,7 @@ noinline fn writeAndWalk(
                 const t_arrow_s: []const u8 = mach.cmovx(is_last, last_empty_dir_arrow_ws, empty_dir_arrow_ws);
                 if (Style.wide and !plain_print) {
                     if (s_total == t_total) {
-                        array.rewriteAny(mem.ptr_wr_spec, .{ alts_buf.readAll(), t_arrow_s, base_name, endl_s });
+                        array.rewriteAny(preset.reinterpret.ptr, .{ alts_buf.readAll(), t_arrow_s, base_name, endl_s });
                     }
                 }
             },
@@ -243,20 +243,20 @@ noinline fn writeAndWalk(
                 const style: []const u8 = lit.fx.color.fg.cyan;
                 if (options.follow) {
                     if (plain_print) {
-                        try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
+                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                     } else {
-                        try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, Style.links_to_s });
+                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, Style.links_to_s });
                     }
                     if (file.readLinkAt(.{}, dir.fd, base_name, link_buf.referCountAt(0, 4096))) |path_name| {
-                        try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ path_name, endl_s });
+                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ path_name, endl_s });
                     } else |_| {
-                        try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ "???", endl_s });
+                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ "???", endl_s });
                     }
                 } else {
                     if (plain_print) {
-                        try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
+                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                     } else {
-                        try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, endl_s });
+                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, endl_s });
                     }
                 }
             },
@@ -264,9 +264,9 @@ noinline fn writeAndWalk(
                 results.files += 1;
                 const arrow: []const u8 = mach.cmovx(is_last, Style.last_file_arrow_s, Style.file_arrow_s);
                 if (plain_print) {
-                    try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
+                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                 } else {
-                    try array.appendAny(mem.ptr_wr_spec, allocator_1, .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind)], base_name, endl_s });
+                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind)], base_name, endl_s });
                 }
             },
         }
@@ -307,7 +307,7 @@ fn setType(arg: []const u8) Filter {
 }
 noinline fn showResults(counts: Results) void {
     var array: PrintArray = .{};
-    array.writeAny(mem.fmt_wr_spec, .{
+    array.writeAny(preset.reinterpret.fmt, .{
         "dirs:       ", fmt.udh(counts.dirs),          '\n',
         "files:      ", fmt.udh(counts.files),         '\n',
         "links:      ", fmt.udh(counts.links),         '\n',

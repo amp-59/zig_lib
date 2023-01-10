@@ -5,6 +5,7 @@ const fmt = srg.fmt;
 const proc = srg.proc;
 const file = srg.file;
 const meta = srg.meta;
+const preset = srg.preset;
 const builtin = srg.builtin;
 const opts = @import("./opts.zig");
 
@@ -449,14 +450,14 @@ pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime 
     switch (type_info) {
         .Enum => |enum_info| {
             inline for (enum_info.fields) |field| {
-                try array.appendAny(mem.fmt_wr_spec, allocator, .{ ' ', field.name, " = ", comptime fmt.any(field.value), ',' });
+                try array.appendAny(preset.reinterpret.fmt, allocator, .{ ' ', field.name, " = ", comptime fmt.any(field.value), ',' });
             }
             array.undefine(1);
             try array.appendMany(allocator, " }");
         },
         .Union => |union_info| {
             inline for (union_info.fields) |field| {
-                try array.appendAny(mem.ptr_wr_spec, allocator, .{ ' ', field.name, ": " });
+                try array.appendAny(preset.reinterpret.ptr, allocator, .{ ' ', field.name, ": " });
                 switch (@typeInfo(field.type)) {
                     .Enum, .Struct, .Union => {
                         try formatCompositeLiteral(allocator, array, field.type);
@@ -472,7 +473,7 @@ pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime 
         },
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
-                try array.appendAny(mem.ptr_wr_spec, allocator, .{ ' ', field.name, ": " });
+                try array.appendAny(preset.reinterpret.ptr, allocator, .{ ' ', field.name, ": " });
                 switch (@typeInfo(field.type)) {
                     .Enum, .Struct, .Union => {
                         try formatCompositeLiteral(allocator, array, field.type);
@@ -871,7 +872,7 @@ pub fn appendImportTypeName(allocator: *Allocator0, array: *String0, comptime im
             break i;
         }
     } else unreachable;
-    try array.appendAny(mem.ptr_wr_spec, allocator, .{ "@import(\"", type_name[0..stop_idx], ".zig\").", type_name[stop_idx + 1 ..] });
+    try array.appendAny(preset.reinterpret.ptr, allocator, .{ "@import(\"", type_name[0..stop_idx], ".zig\").", type_name[stop_idx + 1 ..] });
 }
 pub fn appendStructMembers(allocator: *Allocator0, array: *String0) anyerror!void {
     inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {

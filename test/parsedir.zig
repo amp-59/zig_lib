@@ -214,7 +214,7 @@ fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
     for (ast_array.referAllDefined(allocator_1)) |*root| {
         if (test_standard) {
             const lines: u64 = countLines(root.ast.source);
-            print_array.writeAny(mem.fmt_wr_spec, .{
+            print_array.writeAny(preset.reinterpret.fmt, .{
                 "path: '",   root.name.readAll(),   "', bytes: ", fmt.udh(root.ast.source.len),
                 ", lines: ", fmt.udh(lines),        ", nodes: ",  fmt.udh(root.ast.nodes.len),
                 ", nanos: ", fmt.udh(root.ts.nsec), '\n',
@@ -222,7 +222,7 @@ fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
             root.ast.deinit(allocator_e);
         } else {
             const lines: u64 = countLines(root.ast.source.readAll());
-            print_array.writeAny(mem.fmt_wr_spec, .{
+            print_array.writeAny(preset.reinterpret.fmt, .{
                 "path: '",   root.name.readAll(),   "', bytes: ", fmt.udh(root.ast.source.len()),
                 ", lines: ", fmt.udh(lines),        ", nodes: ",  fmt.udh(root.ast.nodes.len()),
                 ", nanos: ", fmt.udh(root.ts.nsec), '\n',
@@ -235,7 +235,7 @@ fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
         }
         print_array.undefineAll();
     }
-    print_array.writeAny(mem.fmt_wr_spec, .{
+    print_array.writeAny(preset.reinterpret.fmt, .{
         lit.position.save,
         .{ if (test_standard) "standard " else "library ", "nanos: ", fmt.udh(nanos), ", " },
         .{ fmt.ud(Test.sample), '/', fmt.ud(Test.sample_size) },
@@ -265,7 +265,7 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !voi
         }
     }
     var print_array: PrintArray = .{};
-    print_array.writeAny(mem.fmt_wr_spec, .{
+    print_array.writeAny(preset.reinterpret.fmt, .{
         "\naverage for ", @typeName(Ast),
         ": ",             fmt.udh(sum / Test.sample_size),
         '\n',

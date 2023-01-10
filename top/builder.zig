@@ -3,10 +3,11 @@ const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
 const fmt_spec: mem.ReinterpretSpec = blk: {
-    var tmp: mem.ReinterpretSpec = mem.fmt_wr_spec;
+    var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
     tmp.integral = .{ .format = .dec };
     break :blk tmp;
 };
