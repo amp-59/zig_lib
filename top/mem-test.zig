@@ -65,6 +65,7 @@ const logging = .{ .Acquire = false, .Release = false };
 const errors = &.{};
 
 fn testLowSystemMemoryOperations() !void {
+    try meta.wrap(mem.unmap(unmap_spec, 0x7000000, 0x3000000 * 2));
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
     var len: u64 = end - addr;
