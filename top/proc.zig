@@ -3,19 +3,6 @@ const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
-pub const clone_opts: CloneSpec.Options = .{
-    .address_space = true,
-    .thread = true,
-    .file_system = true,
-    .files = true,
-    .signal_handlers = true,
-    .sysvsem = true,
-    .set_thread_local_storage = true,
-    .set_parent_thread_id = true,
-    .set_child_thread_id = true,
-    .clear_child_thread_id = true,
-    .io = false,
-};
 pub const SignalAction = extern struct {
     handler: u64,
     flags: u64,
@@ -314,17 +301,17 @@ pub const CloneSpec = struct {
     return_type: type = isize,
     logging: builtin.Logging = .{},
     const Options = struct {
-        address_space: bool,
-        file_system: bool,
-        files: bool,
-        signal_handlers: bool,
-        thread: bool,
-        sysvsem: bool,
-        set_thread_local_storage: bool,
-        set_parent_thread_id: bool,
-        set_child_thread_id: bool,
-        clear_child_thread_id: bool,
-        io: bool,
+        address_space: bool = true,
+        file_system: bool = true,
+        files: bool = true,
+        signal_handlers: bool = true,
+        thread: bool = true,
+        sysvsem: bool = true,
+        set_thread_local_storage: bool = true,
+        set_parent_thread_id: bool = true,
+        set_child_thread_id: bool = true,
+        clear_child_thread_id: bool = true,
+        io: bool = false,
     };
     const Specification = @This();
     const CLONE = sys.CLONE;
