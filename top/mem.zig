@@ -17,38 +17,8 @@ pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
 
-pub const lib_feature = opaque {};
+pub const ResourceError = error{ UnderSupply, OverSupply };
 
-pub const flat_wr_spec: mem.ReinterpretSpec = .{};
-pub const ptr_wr_spec: mem.ReinterpretSpec = .{
-    .reference = .{ .dereference = &.{} },
-};
-pub const fmt_wr_spec: mem.ReinterpretSpec = reinterpretRecursively(.{
-    .reference = ptr_wr_spec.reference,
-    .aggregate = .{ .iterate = true },
-    .composite = .{ .format = true },
-    .symbol = .{ .tag_name = true },
-});
-fn reinterpretRecursively(comptime spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
-    var rs_0: mem.ReinterpretSpec = spec;
-    var rs_1: mem.ReinterpretSpec = spec;
-    rs_0.reference.dereference = &rs_1;
-    rs_1.reference.dereference = &rs_0;
-    return rs_1;
-}
-pub const follow_wr_spec: mem.ReinterpretSpec = blk: {
-    var rs_0: mem.ReinterpretSpec = .{};
-    var rs_1: mem.ReinterpretSpec = .{ .reference = .{
-        .dereference = &rs_0,
-    } };
-    rs_1.reference.dereference = &rs_0;
-    rs_0 = .{ .reference = .{
-        .dereference = &rs_1,
-    } };
-    break :blk rs_1;
-};
-
-pub const FixedResourceError = error{ UnderSupply, OverSupply };
 pub const Map = meta.EnumBitField(enum(u64) {
     anonymous = MAP.ANONYMOUS,
     file = MAP.FILE,
@@ -120,29 +90,21 @@ pub const Fd = meta.EnumBitField(enum(u64) {
 });
 
 pub const AcquireSpec = struct {
-    options: Options = .{},
-    errors: ?FixedResourceError = error.UnderSupply,
+    errors: ?ResourceError = error.UnderSupply,
     logging: builtin.Logging = .{},
 
     const Specification = @This();
-    const Options = struct {
-        thread_safe: bool = true,
-    };
     pub fn Unwrapped(comptime spec: Specification) type {
-        return if (spec.errors != null) FixedResourceError!void else void;
+        return if (spec.errors != null) ResourceError!void else void;
     }
 };
 pub const ReleaseSpec = struct {
-    options: Options = .{},
-    errors: ?FixedResourceError = error.OverSupply,
+    errors: ?ResourceError = error.OverSupply,
     logging: builtin.Logging = .{},
 
     const Specification = @This();
-    const Options = struct {
-        thread_safe: bool = true,
-    };
     pub fn Unwrapped(comptime spec: Specification) type {
-        return if (spec.errors != null) FixedResourceError!void else void;
+        return if (spec.errors != null) ResourceError!void else void;
     }
 };
 pub const MapSpec = struct {
@@ -521,90 +483,78 @@ pub noinline fn monitor(comptime T: type, ptr: *volatile T) void {
         else => @compileError("???"),
     }
 }
-
-pub fn acquire(comptime spec: AcquireSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) AcquireSpec.Unwrapped(spec) {
-    if (if (spec.options.thread_safe)
+pub fn acquire(comptime spec: AcquireSpec, comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AcquireSpec.Unwrapped(spec) {
+    const lb_addr: u64 = AddressSpace.low(index);
+    const up_addr: u64 = AddressSpace.high(index);
+    if (if (AddressSpace.addr_spec.options.thread_safe)
         address_space.atomicSet(index)
     else
         address_space.set(index))
     {
         if (spec.logging.Acquire) {
-            debug.arenaAcquireNotice(index);
+            debug.arenaAcquireNotice(index, lb_addr, up_addr);
         }
-    } else if (spec.errors != null) {
+    } else if (spec.errors) |arena_error| {
         if (spec.logging.Error) {
-            debug.arenaAcquireError(error.UnderSupply, index);
+            debug.arenaAcquireError(arena_error, index, lb_addr, up_addr);
         }
-        return error.UnderSupply;
+        return arena_error;
     }
 }
-pub fn release(comptime spec: ReleaseSpec, address_space: anytype, index: @TypeOf(address_space.*).Index) ReleaseSpec.Unwrapped(spec) {
+pub fn release(comptime spec: ReleaseSpec, comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) ReleaseSpec.Unwrapped(spec) {
+    const lb_addr: u64 = AddressSpace.low(index);
+    const up_addr: u64 = AddressSpace.high(index);
     if (if (spec.options.thread_safe)
         address_space.atomicUnset(index)
     else
         address_space.unset(index))
     {
         if (spec.logging.Release) {
-            debug.arenaReleaseNotice(index);
+            debug.arenaReleaseNotice(index, lb_addr, up_addr);
         }
     } else if (spec.errors) |arena_error| {
         if (spec.logging.Error) {
-            return debug.arenaReleaseError(arena_error, index);
+            return debug.arenaReleaseError(arena_error, index, lb_addr, up_addr);
         }
         return arena_error;
     }
 }
+
 pub const static = opaque {
-    pub fn acquire(comptime spec: AcquireSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) AcquireSpec.Unwrapped(spec) {
-        if (if (spec.options.thread_safe)
+    pub fn acquire(comptime spec: AcquireSpec, comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AcquireSpec.Unwrapped(spec) {
+        const lb_addr: u64 = AddressSpace.low(index);
+        const up_addr: u64 = AddressSpace.high(index);
+        if (if (comptime AddressSpace.arena(index).options.thread_safe)
             address_space.atomicSet(index)
         else
             address_space.set(index))
         {
             if (spec.logging.Acquire) {
-                debug.arenaAcquireNotice(index);
+                debug.arenaAcquireNotice(index, lb_addr, up_addr);
             }
         } else if (spec.errors) |arena_error| {
             if (spec.logging.Error) {
-                debug.arenaAcquireError(arena_error, index);
+                debug.arenaAcquireError(arena_error, index, lb_addr, up_addr);
             }
             return arena_error;
         }
     }
-    pub fn release(comptime spec: ReleaseSpec, address_space: anytype, comptime index: @TypeOf(address_space.*).Index) ReleaseSpec.Unwrapped(spec) {
-        if (if (spec.options.thread_safe)
+    pub fn release(comptime spec: ReleaseSpec, comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) ReleaseSpec.Unwrapped(spec) {
+        const lb_addr: u64 = AddressSpace.low(index);
+        const up_addr: u64 = AddressSpace.high(index);
+        if (if (comptime AddressSpace.arena(index).options.thread_safe)
             address_space.atomicUnset(index)
         else
             address_space.unset(index))
         {
             if (spec.logging.Release) {
-                debug.arenaReleaseNotice(index);
+                debug.arenaReleaseNotice(index, lb_addr, up_addr);
             }
         } else if (spec.errors) |arena_error| {
             if (spec.logging.Error) {
-                return debug.arenaReleaseError(arena_error, index);
+                return debug.arenaReleaseError(arena_error, index, lb_addr, up_addr);
             }
             return arena_error;
-        }
-    }
-};
-pub const noexcept = opaque {
-    pub fn acquire(comptime spec: AcquireSpec, address_space: anytype, index: u8) void {
-        const ret: bool = if (spec.options.thread_safe)
-            address_space.atomicSet(index)
-        else
-            address_space.set(index);
-        if (spec.logging.Acquire and ret) {
-            debug.arenaAcquireNotice(index);
-        }
-    }
-    pub fn release(comptime spec: ReleaseSpec, address_space: anytype, index: u8) void {
-        const ret: bool = if (spec.options.thread_safe)
-            address_space.atomicUnset(index)
-        else
-            address_space.unset(index);
-        if (spec.logging.Release and ret) {
-            debug.arenaReleaseNotice(index);
         }
     }
 };
@@ -817,9 +767,7 @@ pub const debug = opaque {
             ")\n",
         });
     }
-    fn arenaAcquireNotice(index: u8) void {
-        const lb_addr: u64 = builtin.AddressSpace.low(index);
-        const up_addr: u64 = builtin.AddressSpace.high(index);
+    fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64) void {
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_acq_0_s, builtin.fmt.ud64(index).readAll(),
@@ -829,10 +777,8 @@ pub const debug = opaque {
             " bytes\n",
         });
     }
-    fn arenaAcquireError(arena_error: anytype, index: u8) void {
+    fn arenaAcquireError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64) void {
         @setCold(true);
-        const lb_addr: u64 = builtin.AddressSpace.low(index);
-        const up_addr: u64 = builtin.AddressSpace.high(index);
         var buf: [4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_acq_1_s, builtin.fmt.ud64(index).readAll(),
@@ -843,10 +789,8 @@ pub const debug = opaque {
             ")\n",
         });
     }
-    fn arenaReleaseNotice(index: u8) void {
+    fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64) void {
         @setCold(true);
-        const lb_addr: u64 = builtin.AddressSpace.low(index);
-        const up_addr: u64 = builtin.AddressSpace.high(index);
         var buf: [4096]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_rel_0_s, builtin.fmt.ud64(index).readAll(),
@@ -856,9 +800,7 @@ pub const debug = opaque {
             " bytes\n",
         });
     }
-    fn arenaReleaseError(arena_error: anytype, index: u8) void {
-        const lb_addr: u64 = builtin.AddressSpace.low(index);
-        const up_addr: u64 = builtin.AddressSpace.high(index);
+    fn arenaReleaseError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64) void {
         var buf: [4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{
             about_rel_1_s, builtin.fmt.ud64(index).readAll(),
