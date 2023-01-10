@@ -81,8 +81,9 @@ fn testRtAllocatedImplementation() !void {
     const Allocator = mem.GenericRtArenaAllocator(.{
         .options = .{ .trace_state = true },
         .logging = preset.allocator.logging.verbose,
+        .AddressSpace = preset.address_space.formulaic_128,
     });
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: Allocator.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space, 0);
     defer allocator.deinit(&address_space);
     const ArrayA = Allocator.StructuredStreamHolder(u8);

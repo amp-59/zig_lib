@@ -13,7 +13,7 @@ const Options = struct {
     multi_line_string_literal: ?bool = false,
     trailing_comma: ?bool = null,
     omit_default_fields: bool = true,
-    omit_compiler_given_names: bool = true,
+    inferred_type_name: bool = false,
     inline_field_types: bool = false,
     enable_comptime_iterator: bool = false,
 
@@ -85,12 +85,17 @@ pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
     return struct {
         value: Array,
         const Format: type = @This();
-        const ChildFormat: type = AnyFormat(child, options);
+        const ChildFormat: type = AnyFormat(child, child_options);
         const array_info: builtin.Type = @typeInfo(Array);
         const child: type = array_info.Array.child;
         const type_name: []const u8 = if (render_type_names) typeName(Array) else ".";
         const max_len: u64 = (type_name.len + 2) + array_info.Array.len * (ChildFormat.max_len + 2);
         const trailing_comma: bool = options.trailing_comma orelse false;
+        const child_options: Options = blk: {
+            var tmp: Options = options;
+            tmp.inferred_type_name = @typeInfo(child) == .Struct;
+            break :blk tmp;
+        };
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (format.value.len == 0) {
                 array.writeMany(type_name);
@@ -100,13 +105,13 @@ pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
                 array.writeCount(2, "{ ".*);
                 if (comptime options.enable_comptime_iterator and fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
-                        const sub_format: AnyFormat(child, options) = .{ .value = element };
+                        const sub_format: ChildFormat = .{ .value = element };
                         sub_format.formatWrite(array);
                         array.writeCount(2, ", ".*);
                     }
                 } else {
                     for (format.value) |element| {
-                        const sub_format: AnyFormat(child, options) = .{ .value = element };
+                        const sub_format: ChildFormat = .{ .value = element };
                         sub_format.formatWrite(array);
                         array.writeCount(2, ", ".*);
                     }
@@ -301,6 +306,13 @@ pub fn TypeFormat(comptime options: Options) type {
         }
     };
 }
+fn formatWriteField(array: anytype, field_name_format: anytype, field_format: anytype) void {
+    array.writeOne('.');
+    field_name_format.formatWrite(array);
+    array.writeCount(3, " = ".*);
+    field_format.formatWrite(array);
+    array.writeCount(2, ", ".*);
+}
 fn StructFormat(comptime Struct: type, comptime options: Options) type {
     return struct {
         value: Struct,
@@ -308,10 +320,9 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
         const type_name: []const u8 = if (render_type_names) typeName(Struct) else ".";
         const fields: []const builtin.StructField = @typeInfo(Struct).Struct.fields;
         const trailing_comma: bool = options.trailing_comma orelse true;
-
         const max_len: u64 = blk: {
             var len: u64 = 0;
-            if (options.omit_compiler_given_names and mem.testEqualManyFront(u8, "struct:", type_name)) {
+            if (options.inferred_type_name) {
                 len += 3;
             } else {
                 len += type_name.len + 2;
@@ -328,43 +339,39 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
             }
             break :blk len;
         };
+        const field_options: Options = blk: {
+            var tmp: Options = options;
+            tmp.inferred_type_name = false;
+            break :blk tmp;
+        };
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (fields.len == 0) {
-                if (options.omit_compiler_given_names and mem.testEqualManyFront(u8, "struct:", type_name)) {
+                if (options.inferred_type_name) {
                     array.writeMany(".{}");
                 } else {
                     array.writeMany(type_name ++ "{}");
                 }
             } else {
                 var fields_len: usize = 0;
-                if (options.omit_compiler_given_names and mem.testEqualManyFront(u8, "struct:", type_name)) {
-                    array.writeMany(".{");
+                if (options.inferred_type_name) {
+                    array.writeMany(".{ ");
                 } else {
                     array.writeMany(type_name ++ "{ ");
                 }
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                    const FieldFormat = AnyFormat(field.type, options);
+                    const FieldFormat = AnyFormat(field.type, field_options);
                     const field_value: field.type = @field(format.value, field.name);
+                    const field_format: FieldFormat = .{ .value = field_value };
                     if (options.omit_default_fields and field.default_value != null and
                         comptime meta.isTriviallyComparable(field.type))
                     {
                         if (field_value != mem.pointerOpaque(field.type, field.default_value.?).*) {
-                            const field_format: FieldFormat = .{ .value = field_value };
-                            array.writeMany(".");
-                            field_name_format.formatWrite(array);
-                            array.writeMany(" = ");
-                            field_format.formatWrite(array);
-                            array.writeCount(2, ", ".*);
+                            formatWriteField(array, field_name_format, field_format);
                             fields_len += 1;
                         }
                     } else {
-                        const field_format: FieldFormat = .{ .value = field_value };
-                        array.writeMany(".");
-                        field_name_format.formatWrite(array);
-                        array.writeMany(" = ");
-                        field_format.formatWrite(array);
-                        array.writeCount(2, ", ".*);
+                        formatWriteField(array, field_name_format, field_format);
                         fields_len += 1;
                     }
                 }
@@ -381,15 +388,15 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
         }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = 0;
-            if (options.omit_compiler_given_names and mem.testEqualManyFront(u8, "struct:", type_name)) {
-                len += 2;
+            if (options.inferred_type_name) {
+                len += 3;
             } else {
                 len += type_name.len + 2;
             }
             var fields_len: usize = 0;
             inline for (fields) |field| {
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                const FieldFormat = AnyFormat(field.type, options);
+                const FieldFormat = AnyFormat(field.type, field_options);
                 const field_value: field.type = @field(format.value, field.name);
                 if (options.omit_default_fields and field.default_value != null and
                     comptime meta.isTriviallyComparable(field.type))
@@ -530,11 +537,7 @@ fn UnionFormat(comptime Union: type, comptime options: Options) type {
                         if (format.value == @field(tag_type, field.name)) {
                             const FieldFormat: type = AnyFormat(field.type, options);
                             const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            array.writeMany(".");
-                            field_name_format.formatWrite(array);
-                            array.writeMany(" = ");
-                            field_format.formatWrite(array);
-                            array.writeCount(2, ", ".*);
+                            formatWriteField(field_name_format, field_format);
                         }
                     }
                     array.overwriteManyBack(" }");
@@ -721,9 +724,7 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
         pub fn formatLengthAny(format: anytype) u64 {
             const type_name = comptime if (render_type_names) typeName(Pointer) else "&.";
             var len: u64 = type_name.len + 2;
-            if (options.enable_comptime_iterator and
-                comptime fmt.requireComptime(child))
-            {
+            if (comptime options.enable_comptime_iterator and fmt.requireComptime(child)) {
                 inline for (format.value) |value| {
                     len += AnyFormat(child, options).formatLength(.{ .value = value }) + 2;
                 }
@@ -745,9 +746,7 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
             } else {
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
-                if (options.enable_comptime_iterator and
-                    comptime fmt.requireComptime(child))
-                {
+                if (comptime options.enable_comptime_iterator and fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         sub_format.formatWrite(array);

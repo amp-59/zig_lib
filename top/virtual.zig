@@ -5,23 +5,7 @@ const builtin = @import("./builtin.zig");
 pub const ArenaOptions = extern struct {
     thread_safe: bool = false,
 };
-pub const SuperArena = struct {
-    lb_addr: usize = lb_addr,
-    ab_addr: usize = ab_addr,
-    xb_addr: usize = xb_addr,
-    up_addr: usize = up_addr,
-    divisions: usize = 8,
-    alignment: usize = page_size,
 
-    const lb_addr: usize = 0;
-    const ab_addr: usize = safe_zone;
-    const up_addr: usize = 1 << shift_amt;
-    const xb_addr: usize = up_addr - safe_zone;
-    const divisions: u16 = 8;
-    const page_size: u16 = 4096;
-    const shift_amt: u16 = @min(48, @bitSizeOf(usize)) - 1;
-    const safe_zone: u64 = 0x40000000;
-};
 pub const Arena = struct {
     lb_addr: usize,
     up_addr: usize,
@@ -53,13 +37,19 @@ pub const Arena = struct {
                 .l = .{
                     .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
                     .up_addr = x_arena.lb_addr,
-                    .options = if (s_arena.lb_addr < t_arena.lb_addr) s_arena.options else t_arena.options,
+                    .options = if (s_arena.lb_addr < t_arena.lb_addr)
+                        s_arena.options
+                    else
+                        t_arena.options,
                 },
                 .x = x_arena,
                 .h = .{
                     .lb_addr = x_arena.up_addr,
                     .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
-                    .options = if (t_arena.up_addr > s_arena.up_addr) t_arena.options else s_arena.options,
+                    .options = if (t_arena.up_addr > s_arena.up_addr)
+                        t_arena.options
+                    else
+                        s_arena.options,
                 },
             };
         }
@@ -86,6 +76,7 @@ pub const Arena = struct {
         };
     }
 };
+
 pub const ArenaReference = struct {
     index: comptime_int,
     options: ?ArenaOptions = null,
@@ -280,8 +271,8 @@ pub const ExactAddressSpaceSpec = struct {
                 while (s_index != AddressSpace.addr_spec.list.len) : (s_index += 1) {
                     const s_arena: Arena = AddressSpace.addr_spec.list[s_index];
                     const t_arena: Arena = spec.list[t_index];
-                    if (s_arena.intersection(t_arena)) |arena| {
-                        capacity += arena.capacity();
+                    if (s_arena.intersection(t_arena)) |x_arena| {
+                        capacity += x_arena.capacity();
                         super_list = meta.concat(super_list, .{
                             .index = s_index,
                             .options = AddressSpace.arena(s_index).options,
@@ -310,17 +301,43 @@ pub const ExactAddressSpaceSpec = struct {
         return super_list;
     }
 };
-const FormulaicAddressSpaceSpec = struct {
-    params: SuperArena = .{},
+
+pub const SuperArena = struct {
+    lb_addr: usize = lb_addr,
+    ab_addr: usize = ab_addr,
+    xb_addr: usize = xb_addr,
+    up_addr: usize = up_addr,
+    divisions: usize = 8,
+    alignment: usize = page_size,
     options: ArenaOptions = .{},
-    fn Implementation(comptime spec: FormulaicAddressSpaceSpec) type {
+
+    const Specification = @This();
+    const lb_addr: usize = 0;
+    const ab_addr: usize = safe_zone;
+    const up_addr: usize = 1 << shift_amt;
+    const xb_addr: usize = up_addr - safe_zone;
+    const divisions: u16 = 8;
+    const page_size: u16 = 4096;
+    const shift_amt: u16 = @min(48, @bitSizeOf(usize)) - 1;
+    const safe_zone: u64 = 0x40000000;
+
+    fn arena(comptime spec: Specification) Arena {
+        return .{
+            .lb_addr = spec.lb_addr,
+            .up_addr = spec.up_addr,
+            .options = spec.options,
+        };
+    }
+    fn Implementation(comptime spec: Specification) type {
         if (spec.options.thread_safe) {
-            return ThreadSafeSet(spec.params.divisions);
+            return ThreadSafeSet(spec.divisions);
         } else {
-            return DiscreteBitSet(spec.params.divisions);
+            return DiscreteBitSet(spec.divisions);
         }
     }
 };
+const FormulaicAddressSpaceSpec = SuperArena;
+
 fn isFormulaic(comptime AddressSpace: type, list: []const ArenaReference) bool {
     var safety: ?bool = null;
     var addr: ?usize = null;
@@ -425,8 +442,8 @@ pub fn GenericFormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) ty
         pub const Implementation: type = spec.Implementation();
         pub const addr_spec: FormulaicAddressSpaceSpec = spec;
         const len: usize = blk: {
-            const mask: usize = spec.params.alignment - 1;
-            const value: usize = spec.params.xb_addr / spec.params.divisions;
+            const mask: usize = spec.alignment - 1;
+            const value: usize = spec.xb_addr / spec.divisions;
             break :blk (value + mask) & ~mask;
         };
         pub fn unset(address_space: *AddressSpace, index: Index) bool {
@@ -448,10 +465,10 @@ pub fn GenericFormulaicAddressSpace(comptime spec: FormulaicAddressSpaceSpec) ty
             return address_space.impl.atomicSet(index);
         }
         pub fn low(index: Index) usize {
-            return @max(spec.params.ab_addr, len * index);
+            return @max(spec.ab_addr, len * index);
         }
         pub fn high(index: Index) usize {
-            return @min(spec.params.xb_addr, len * (index + 1));
+            return @min(spec.xb_addr, len * (index + 1));
         }
         pub fn invert(addr: usize) Index {
             return @truncate(Index, addr / len);
