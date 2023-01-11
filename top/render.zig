@@ -6,14 +6,15 @@ const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 
-const Options = struct {
+pub const RenderSpec = struct {
     radix: u16 = render_radix,
     radix_field_name_suffixes: ?[]const RadixFieldName = null,
     string_literal: ?bool = true,
     multi_line_string_literal: ?bool = false,
-    trailing_comma: ?bool = null,
+    omit_trailing_comma: ?bool = null,
     omit_default_fields: bool = true,
-    inferred_type_name: bool = false,
+    infer_type_name: bool = false,
+    infer_type_name_recursively: bool = false,
     inline_field_types: bool = false,
     enable_comptime_iterator: bool = false,
 
@@ -22,23 +23,23 @@ const Options = struct {
         prefix: ?[]const u8 = null,
         suffix: ?[]const u8 = null,
     };
-    const default: Options = .{};
+    const default: RenderSpec = .{};
 };
 
 const render_type_names: bool = builtin.config("render_type_names", bool, true);
 const render_radix: u16 = builtin.config("render_radix", u16, 10);
 
-pub fn any(value: anytype) AnyFormat(@TypeOf(value), Options.default) {
+pub fn any(value: anytype) AnyFormat(@TypeOf(value), RenderSpec.default) {
     return .{ .value = value };
 }
-pub fn render(comptime options: Options, value: anytype) AnyFormat(@TypeOf(value), options) {
+pub fn render(comptime options: RenderSpec, value: anytype) AnyFormat(@TypeOf(value), options) {
     return .{ .value = value };
 }
 fn typeName(comptime T: type) []const u8 {
     return @typeName(T);
 }
 
-fn AnyFormat(comptime Type: type, comptime options: Options) type {
+pub fn AnyFormat(comptime Type: type, comptime options: RenderSpec) type {
     return switch (@typeInfo(Type)) {
         .Array => ArrayFormat(Type, options),
         .Bool => BoolFormat,
@@ -81,7 +82,7 @@ fn GenericRenderFormat(comptime Format: type) type {
         }
     };
 }
-pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
+pub fn ArrayFormat(comptime Array: type, comptime options: RenderSpec) type {
     return struct {
         value: Array,
         const Format: type = @This();
@@ -90,10 +91,10 @@ pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
         const child: type = array_info.Array.child;
         const type_name: []const u8 = if (render_type_names) typeName(Array) else ".";
         const max_len: u64 = (type_name.len + 2) + array_info.Array.len * (ChildFormat.max_len + 2);
-        const trailing_comma: bool = options.trailing_comma orelse false;
-        const child_options: Options = blk: {
-            var tmp: Options = options;
-            tmp.inferred_type_name = @typeInfo(child) == .Struct;
+        const omit_trailing_comma: bool = options.omit_trailing_comma orelse true;
+        const child_options: RenderSpec = blk: {
+            var tmp: RenderSpec = options;
+            tmp.infer_type_name = @typeInfo(child) == .Struct;
             break :blk tmp;
         };
         pub fn formatWrite(format: anytype, array: anytype) void {
@@ -116,10 +117,10 @@ pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
                         array.writeCount(2, ", ".*);
                     }
                 }
-                if (trailing_comma) {
-                    array.writeOne('}');
-                } else {
+                if (omit_trailing_comma) {
                     array.overwriteCountBack(2, " }".*);
+                } else {
+                    array.writeOne('}');
                 }
             }
         }
@@ -134,7 +135,7 @@ pub fn ArrayFormat(comptime Array: type, comptime options: Options) type {
                     len += ChildFormat.formatLength(.{ .value = value }) + 2;
                 }
             }
-            if (trailing_comma and format.value.len != 0) {
+            if (!omit_trailing_comma and format.value.len != 0) {
                 len += 1;
             }
             return len;
@@ -157,7 +158,7 @@ pub const BoolFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-pub fn TypeFormat(comptime options: Options) type {
+pub fn TypeFormat(comptime options: RenderSpec) type {
     return struct {
         const Format: type = @This();
         value: type,
@@ -313,16 +314,16 @@ fn formatWriteField(array: anytype, field_name_format: anytype, field_format: an
     field_format.formatWrite(array);
     array.writeCount(2, ", ".*);
 }
-fn StructFormat(comptime Struct: type, comptime options: Options) type {
+fn StructFormat(comptime Struct: type, comptime options: RenderSpec) type {
     return struct {
         value: Struct,
         const Format: type = @This();
         const type_name: []const u8 = if (render_type_names) typeName(Struct) else ".";
         const fields: []const builtin.StructField = @typeInfo(Struct).Struct.fields;
-        const trailing_comma: bool = options.trailing_comma orelse true;
+        const omit_trailing_comma: bool = options.omit_trailing_comma orelse false;
         const max_len: u64 = blk: {
             var len: u64 = 0;
-            if (options.inferred_type_name) {
+            if (options.infer_type_name) {
                 len += 3;
             } else {
                 len += type_name.len + 2;
@@ -339,21 +340,21 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
             }
             break :blk len;
         };
-        const field_options: Options = blk: {
-            var tmp: Options = options;
-            tmp.inferred_type_name = false;
+        const field_options: RenderSpec = blk: {
+            var tmp: RenderSpec = options;
+            tmp.infer_type_name = options.infer_type_name_recursively;
             break :blk tmp;
         };
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (fields.len == 0) {
-                if (options.inferred_type_name) {
+                if (options.infer_type_name) {
                     array.writeMany(".{}");
                 } else {
                     array.writeMany(type_name ++ "{}");
                 }
             } else {
                 var fields_len: usize = 0;
-                if (options.inferred_type_name) {
+                if (options.infer_type_name) {
                     array.writeMany(".{ ");
                 } else {
                     array.writeMany(type_name ++ "{ ");
@@ -378,17 +379,17 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
                 if (fields_len == 0) {
                     array.overwriteOneBack('}');
                 } else {
-                    if (trailing_comma) {
-                        array.writeOne('}');
-                    } else {
+                    if (omit_trailing_comma) {
                         array.overwriteManyBack(" }");
+                    } else {
+                        array.writeOne('}');
                     }
                 }
             }
         }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = 0;
-            if (options.inferred_type_name) {
+            if (options.infer_type_name) {
                 len += 3;
             } else {
                 len += type_name.len + 2;
@@ -412,7 +413,7 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
                     fields_len += 1;
                 }
             }
-            if (trailing_comma and fields_len != 0) {
+            if (!omit_trailing_comma and fields_len != 0) {
                 len += 1;
             }
             return len;
@@ -420,7 +421,7 @@ fn StructFormat(comptime Struct: type, comptime options: Options) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn UnionFormat(comptime Union: type, comptime options: Options) type {
+fn UnionFormat(comptime Union: type, comptime options: RenderSpec) type {
     return struct {
         value: Union,
         const Format: type = @This();
@@ -594,7 +595,7 @@ pub const EnumLiteralFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-pub fn ComptimeIntFormat(comptime options: Options) type {
+pub fn ComptimeIntFormat(comptime options: RenderSpec) type {
     return struct {
         value: comptime_int,
         const Format: type = @This();
@@ -611,7 +612,7 @@ pub fn ComptimeIntFormat(comptime options: Options) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn IntFormat(comptime Int: type, comptime options: Options) type {
+fn IntFormat(comptime Int: type, comptime options: RenderSpec) type {
     return struct {
         value: Int,
         const Format: type = @This();
@@ -680,7 +681,7 @@ fn IntFormat(comptime Int: type, comptime options: Options) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn PointerOneFormat(comptime Pointer: type, comptime options: Options) type {
+fn PointerOneFormat(comptime Pointer: type, comptime options: RenderSpec) type {
     return struct {
         value: Pointer,
         const Format: type = @This();
@@ -713,14 +714,14 @@ fn PointerOneFormat(comptime Pointer: type, comptime options: Options) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) type {
+pub fn PointerSliceFormat(comptime Pointer: type, comptime options: RenderSpec) type {
     return struct {
         value: Pointer,
         const Format: type = @This();
         const ChildFormat: type = AnyFormat(child, options);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = 65536;
-        const trailing_comma: bool = options.trailing_comma orelse false;
+        const omit_trailing_comma: bool = options.omit_trailing_comma orelse true;
         pub fn formatLengthAny(format: anytype) u64 {
             const type_name = comptime if (render_type_names) typeName(Pointer) else "&.";
             var len: u64 = type_name.len + 2;
@@ -733,7 +734,7 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
                     len += AnyFormat(child, options).formatLength(.{ .value = value }) + 2;
                 }
             }
-            if (trailing_comma and format.value.len != 0) {
+            if (!omit_trailing_comma and format.value.len != 0) {
                 len += 1;
             }
             return len;
@@ -759,10 +760,10 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
                         array.writeCount(2, ", ".*);
                     }
                 }
-                if (trailing_comma) {
-                    array.writeOne('}');
-                } else {
+                if (omit_trailing_comma) {
                     array.overwriteCountBack(2, " }".*);
+                } else {
+                    array.writeOne('}');
                 }
             }
         }
@@ -830,7 +831,7 @@ pub fn PointerSliceFormat(comptime Pointer: type, comptime options: Options) typ
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-pub fn PointerManyFormat(comptime Pointer: type, comptime options: Options) type {
+pub fn PointerManyFormat(comptime Pointer: type, comptime options: RenderSpec) type {
     return struct {
         value: Pointer,
         const Format: type = @This();
@@ -862,7 +863,7 @@ pub fn PointerManyFormat(comptime Pointer: type, comptime options: Options) type
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn OptionalFormat(comptime Optional: type, comptime options: Options) type {
+fn OptionalFormat(comptime Optional: type, comptime options: RenderSpec) type {
     return struct {
         value: Optional,
         const Format: type = @This();
@@ -948,7 +949,7 @@ pub const NoReturnFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-fn VectorFormat(comptime Vector: type, comptime options: Options) type {
+fn VectorFormat(comptime Vector: type, comptime options: RenderSpec) type {
     return struct {
         value: Vector,
         const Format: type = @This();
@@ -986,7 +987,7 @@ fn VectorFormat(comptime Vector: type, comptime options: Options) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn ErrorUnionFormat(comptime ErrorUnion: type, comptime options: Options) type {
+fn ErrorUnionFormat(comptime ErrorUnion: type, comptime options: RenderSpec) type {
     return struct {
         value: ErrorUnion,
         const Format: type = @This();
@@ -1015,7 +1016,7 @@ fn ErrorUnionFormat(comptime ErrorUnion: type, comptime options: Options) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn ErrorSetFormat(comptime ErrorSet: type, comptime _: Options) type {
+fn ErrorSetFormat(comptime ErrorSet: type, comptime _: RenderSpec) type {
     return struct {
         value: ErrorSet,
         const Format: type = @This();
