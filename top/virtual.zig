@@ -76,13 +76,16 @@ pub const Arena = struct {
         };
     }
 };
-
 pub const ArenaReference = struct {
     index: comptime_int,
     options: ?ArenaOptions = null,
     fn arena(comptime arena_ref: ArenaReference, comptime AddressSpace: type) Arena {
         return AddressSpace.arena(arena_ref.index);
     }
+};
+const SuperSpace = struct {
+    AddressSpace: type,
+    list: []const ArenaReference,
 };
 
 // Maybe make generic on Endian.
@@ -206,10 +209,7 @@ pub const ExactAddressSpaceSpec = struct {
         directory: *const anyopaque,
         Fields: type,
     };
-    const SuperSpace = struct {
-        AddressSpace: type,
-        list: []const ArenaReference,
-    };
+
     const Specification: type = @This();
     const List = []const Arena;
     fn Index(comptime spec: ExactAddressSpaceSpec) type {
@@ -312,6 +312,8 @@ pub const SuperArena = struct {
     alignment: usize = page_size,
     options: ArenaOptions = .{},
 
+    super: ?SuperSpace = null,
+
     const Specification = @This();
     const lb_addr: usize = 0;
     const ab_addr: usize = safe_zone;
@@ -361,21 +363,29 @@ pub const SuperArena = struct {
                 });
             }
         }
-        return super_list;
+        if (isFormulaic(AddressSpace, super_list)) {
+            return super_list;
+        } else {
+            @compileError("invalid sub address space spec");
+        }
     }
 };
-const FormulaicAddressSpaceSpec = SuperArena;
+pub const FormulaicAddressSpaceSpec = SuperArena;
 
-pub fn isFormulaic(comptime AddressSpace: type, list: []const ArenaReference) bool {
+pub fn isFormulaic(comptime AddressSpace: type, comptime list: []const ArenaReference) bool {
     var safety: ?bool = null;
     var addr: ?usize = null;
     for (list) |item| {
         if (safety) |prev| {
-            if (item.options.thread_safe != prev) {
-                return false;
+            if (item.options) |options| {
+                if (options.thread_safe != prev) {
+                    return false;
+                }
             }
         } else {
-            safety = item.options.thread_safe;
+            if (item.options) |options| {
+                safety = options.thread_safe;
+            }
         }
         if (addr) |prev| {
             if (AddressSpace.low(item.index) == prev) {
@@ -517,7 +527,7 @@ pub fn GenericFormulaicSubAddressSpace(comptime spec: FormulaicAddressSpaceSpec,
         .AddressSpace = AddressSpace,
         .list = spec.mapSuperList(AddressSpace),
     };
-    return GenericFormulaicSubAddressSpace(sub_spec);
+    return GenericFormulaicAddressSpace(sub_spec);
 }
 pub const StaticAddressSpace = extern struct {
     bits: [2]u64 = .{ 0, 0 },
