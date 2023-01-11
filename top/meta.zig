@@ -113,6 +113,12 @@ pub fn defaultValue(comptime struct_field: builtin.StructField) ?struct_field.ty
     }
     return null;
 }
+pub inline fn Tuple(comptime T: type) type {
+    return @Type(tupleInfo(@typeInfo(T).Struct.fields));
+}
+pub inline fn tuple(any: anytype) Tuple(@TypeOf(any)) {
+    return any;
+}
 
 /// Align `count` below to bitSizeOf smallest real word bit count
 pub fn alignBW(comptime count: comptime_int) u16 {
@@ -410,7 +416,7 @@ pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
             debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
         },
     };
-    return @ptrCast(ManyToSlice(T), any[0..len :comptime sentinel(T).?]);
+    return any[0..len :comptime sentinel(T).?];
 }
 pub fn ManyToSlice(comptime T: type) type {
     var type_info: builtin.Type = @typeInfo(T);

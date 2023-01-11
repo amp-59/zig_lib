@@ -39,12 +39,6 @@ const ThreadSpace = mem.GenericExactSubAddressSpace(.{
 
 const PrintArray = mem.StaticString(4096);
 
-fn Tuple(comptime T: type) type {
-    return @Type(meta.tupleInfo(@typeInfo(T).Struct.fields));
-}
-fn tuple(any: anytype) Tuple(@TypeOf(any)) {
-    return any;
-}
 fn renderExactList(
     comptime SuperAddressSpace: type,
     comptime arena_index: SuperAddressSpace.Index,
@@ -71,7 +65,7 @@ fn renderExactList(
         };
         offset += list[thread_index].capacity();
     }
-    array.writeAny(preset.reinterpret.fmt, tuple(.{fmt.render(render_spec, list)}));
+    array.writeAny(preset.reinterpret.fmt, meta.tuple(.{fmt.render(render_spec, list)}));
     file.noexcept.write(2, array.readAll());
 }
 
