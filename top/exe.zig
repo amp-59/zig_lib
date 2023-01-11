@@ -312,6 +312,7 @@ const PT = meta.EnumBitField(enum(u32) {
     GNU_STACK = GNU_STACK,
     LOPROC = LOPROC,
     HIPROC = HIPROC,
+
     pub const NULL = 0;
     pub const LOAD = 1;
     pub const DYNAMIC = 2;

@@ -973,16 +973,22 @@ const debug = opaque {
     }
     const static = opaque {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            var msg: [size]u8 = undefined;
-            @compileError(msg[0..debug.overflowedSubString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
+            comptime {
+                var msg: [size]u8 = undefined;
+                @compileError(msg[0..debug.overflowedSubString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
+            }
         }
         fn addCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            var msg: [size]u8 = undefined;
-            @compileError(msg[0..debug.overflowedAddString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
+            comptime {
+                var msg: [size]u8 = undefined;
+                @compileError(msg[0..debug.overflowedAddString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
+            }
         }
         fn mulCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            var msg: [size]u8 = undefined;
-            @compileError(msg[0..debug.mulCausedOverflowString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
+            comptime {
+                var msg: [size]u8 = undefined;
+                @compileError(msg[0..debug.mulCausedOverflowString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
+            }
         }
         fn exactDivisionWithRemainder(
             comptime T: type,
@@ -991,19 +997,21 @@ const debug = opaque {
             comptime result: T,
             comptime remainder: T,
         ) noreturn {
-            var msg: [size]u8 = undefined;
-            var len: u64 = 0;
-            for ([_][]const u8{
-                @typeName(T),                ": exact division had a remainder: ",
-                tos(T, arg1).readAll(),      "/",
-                tos(T, arg2).readAll(),      " == ",
-                tos(T, result).readAll(),    "r",
-                tos(T, remainder).readAll(), "\n",
-            }) |s| {
-                for (s) |c, i| msg[len +% i] = c;
-                len +%= s.len;
+            comptime {
+                var msg: [size]u8 = undefined;
+                var len: u64 = 0;
+                for ([_][]const u8{
+                    @typeName(T),                ": exact division had a remainder: ",
+                    tos(T, arg1).readAll(),      "/",
+                    tos(T, arg2).readAll(),      " == ",
+                    tos(T, result).readAll(),    "r",
+                    tos(T, remainder).readAll(), "\n",
+                }) |s| {
+                    for (s) |c, i| msg[len +% i] = c;
+                    len +%= s.len;
+                }
+                @compileError(msg[0..len]);
             }
-            @compileError(msg[0..len]);
         }
         fn incorrectAlignment(
             comptime T: type,
@@ -1013,21 +1021,23 @@ const debug = opaque {
             comptime result: T,
             comptime remainder: T,
         ) noreturn {
-            var msg: [size]u8 = undefined;
-            var len: u64 = 0;
+            comptime {
+                var msg: [size]u8 = undefined;
+                var len: u64 = 0;
 
-            for ([_][]const u8{
-                @typeName(T),                ": incorrect alignment: ",
-                type_name,                   " align(",
-                tos(T, alignment).readAll(), "): ",
-                tos(T, address).readAll(),   " == ",
-                tos(T, result).readAll(),    "+",
-                tos(T, remainder).readAll(), "\n",
-            }) |s| {
-                for (s) |c, i| msg[len +% i] = c;
-                len +%= s.len;
+                for ([_][]const u8{
+                    @typeName(T),                ": incorrect alignment: ",
+                    type_name,                   " align(",
+                    tos(T, alignment).readAll(), "): ",
+                    tos(T, address).readAll(),   " == ",
+                    tos(T, result).readAll(),    "+",
+                    tos(T, remainder).readAll(), "\n",
+                }) |s| {
+                    for (s) |c, i| msg[len +% i] = c;
+                    len +%= s.len;
+                }
+                @compileError(msg[0..len]);
             }
-            @compileError(msg[0..len]);
         }
         fn comparisonFailed(
             comptime T: type,
@@ -1035,20 +1045,22 @@ const debug = opaque {
             comptime arg1: T,
             comptime arg2: T,
         ) void {
-            var buf: [size]u8 = undefined;
-            var len: u64 = write(&buf, &[_][]const u8{
-                @typeName(T),           " assertion failed: ",
-                tos(T, arg1).readAll(), symbol,
-                tos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
-            });
-            if (@min(arg1, arg2) > 10_000) {
-                if (arg1 > arg2) {
-                    len += write(buf[len..], &[_][]const u8{ tos(T, arg1 - arg2).readAll(), symbol, "0\n" });
-                } else {
-                    len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 - arg1).readAll(), "\n" });
+            comptime {
+                var buf: [size]u8 = undefined;
+                var len: u64 = write(&buf, &[_][]const u8{
+                    @typeName(T),           " assertion failed: ",
+                    tos(T, arg1).readAll(), symbol,
+                    tos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
+                });
+                if (@min(arg1, arg2) > 10_000) {
+                    if (arg1 > arg2) {
+                        len += write(buf[len..], &[_][]const u8{ tos(T, arg1 - arg2).readAll(), symbol, "0\n" });
+                    } else {
+                        len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 - arg1).readAll(), "\n" });
+                    }
                 }
+                @compileError(buf[0..len]);
             }
-            @compileError(buf[0..len]);
         }
     };
     fn panic(buf: []const u8) noreturn {
@@ -1281,9 +1293,14 @@ pub const parse = opaque {
 pub const fmt = opaque {
     fn StaticStringMemo(comptime max_len: u64) type {
         return struct {
-            auto: [max_len]u8 align(8) = undefined,
+            auto: [max_len]u8 align(8),
             len: u64 = max_len,
             const Array = @This();
+            fn init() Array {
+                var ret: Array = undefined;
+                ret.len = max_len;
+                return ret;
+            }
             fn writeOneBackwards(array: *Array, v: u8) void {
                 array.len -%= 1;
                 array.auto[array.len] = v;
@@ -1316,7 +1333,7 @@ pub const fmt = opaque {
     fn b(comptime Int: type, value: Int) StaticString(Int, 2) {
         const Array = StaticString(Int, 2);
         const Abs = Absolute(Int);
-        var array: Array = .{};
+        var array: Array = Array.init();
         if (value == 0) {
             while (array.len != 3) {
                 array.writeOneBackwards('0');
@@ -1342,7 +1359,7 @@ pub const fmt = opaque {
     fn o(comptime Int: type, value: Int) StaticString(Int, 8) {
         const Array = StaticString(Int, 8);
         const Abs = Absolute(Int);
-        var array: Array = .{};
+        var array: Array = Array.init();
         if (value == 0) {
             array.writeOneBackwards('0');
             array.writeOneBackwards('o');
@@ -1363,7 +1380,7 @@ pub const fmt = opaque {
     fn d(comptime Int: type, value: Int) StaticString(Int, 10) {
         const Array = StaticString(Int, 10);
         const Abs = Absolute(Int);
-        var array: Array = .{};
+        var array: Array = Array.init();
         if (value == 0) {
             array.writeOneBackwards('0');
             return array;
@@ -1380,7 +1397,7 @@ pub const fmt = opaque {
     fn x(comptime Int: type, value: Int) StaticString(Int, 16) {
         const Array = StaticString(Int, 16);
         const Abs = Absolute(Int);
-        var array: Array = .{};
+        var array: Array = Array.init();
         if (value == 0) {
             array.writeOneBackwards('0');
             array.writeOneBackwards('x');
