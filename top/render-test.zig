@@ -45,9 +45,7 @@ fn testSpecificCases() !void {
     var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-
     var array: Array = Array.init(&allocator);
-
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed struct(u128) { a: u64, b: u64 } }, "packed struct(u128) { a: u64, b: u64, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed union { a: u64, b: u64 } }, "packed union { a: u64, b: u64, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = enum { a, b } }, "enum(u1) { a, b, }");

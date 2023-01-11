@@ -68,7 +68,7 @@ fn memoryTests() !void {
     const m: [:0]Element = meta.manyToSlice(u.ptr);
     builtin.assertEqual(u64, 4, m.len);
 }
-pub fn main() !void {
+pub fn main(_: anytype, _: [][*:0]u8) !void {
     try basicTests();
     try bitCastTests();
     try alignTests();

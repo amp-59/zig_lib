@@ -61,7 +61,7 @@ const wr_spec: mem.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
 };
 
-const logging = .{ .Acquire = false, .Release = false };
+const logging = .{ .Acquire = is_verbose, .Release = is_verbose };
 const errors = &.{};
 
 fn testLowSystemMemoryOperations() !void {
