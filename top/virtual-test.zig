@@ -13,7 +13,7 @@ pub usingnamespace proc.start;
 
 const PrintArray = mem.StaticString(4096);
 pub const is_verbose: bool = false;
-pub const is_correct: bool = false;
+pub const is_correct: bool = true;
 pub const render_type_names: bool = false;
 pub const render_radix: u16 = 10;
 pub const trivial_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
@@ -166,77 +166,92 @@ fn testExactSubSpaceFromExact(comptime sup_spec: virtual.ExactAddressSpaceSpec, 
     const SubAddressSpace = virtual.GenericExactSubAddressSpace(sub_spec, AddressSpace);
     comptime var address_space_init: AddressSpace = .{};
     var sub_space: SubAddressSpace = comptime address_space_init.reserve(SubAddressSpace);
-    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
-    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
-    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
+    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
+    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace });
+    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace });
     const Array0 = Allocator0.StructuredVector(u8);
     const Array1 = Allocator1.StructuredVector(u8);
     const Array2 = Allocator2.StructuredVector(u8);
     var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
     defer allocator_0.deinit(&sub_space);
-    var array_0: Array0 = try Array0.init(&allocator_0, 16);
+    var array_0: Array0 = try Array0.init(&allocator_0, 2048);
     defer array_0.deinit(&allocator_0);
-    array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{ fmt.render(render_spec, address_space_init), '\n' });
-    array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{ fmt.render(render_spec, meta.uniformData(sub_space)), '\n' });
+    try array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{
+        fmt.render(render_spec, address_space_init), '\n',
+        fmt.render(render_spec, sub_space),          '\n',
+    });
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
     defer allocator_1.deinit(&sub_space);
-    var array_1: Array1 = try Array1.init(&allocator_1, 16);
+    var array_1: Array1 = try Array1.init(&allocator_1, 2048);
     defer array_1.deinit(&allocator_1);
-    array_1.appendAny(preset.reinterpret.fmt, &allocator_1, .{ fmt.render(render_spec, meta.uniformData(sub_space)), '\n' });
+    try array_1.appendAny(preset.reinterpret.fmt, &allocator_1, .{ fmt.render(render_spec, sub_space), '\n' });
     var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
     defer allocator_2.deinit(&sub_space);
-    var array_2: Array2 = try Array2.init(&allocator_2, 16);
+    var array_2: Array2 = try Array2.init(&allocator_2, 2048);
     defer array_2.deinit(&allocator_2);
-    array_2.appendAny(preset.reinterpret.fmt, &allocator_2, .{ fmt.render(render_spec, meta.uniformData(sub_space)), '\n' });
+    try array_2.appendAny(preset.reinterpret.fmt, &allocator_2, .{ fmt.render(render_spec, sub_space), '\n' });
     file.noexcept.write(2, array_0.readAll());
     array_0.undefineAll();
     file.noexcept.write(2, array_1.readAll());
     array_1.undefineAll();
     file.noexcept.write(2, array_2.readAll());
     array_2.undefineAll();
+}
+fn verifyNoOverlap(comptime AddressSpace: type) void {
+    var array: PrintArray = .{};
+    var arena_index: AddressSpace.Index = 0;
+    while (arena_index != AddressSpace.addr_spec.count()) : (arena_index += 1) {
+        array.writeAny(preset.reinterpret.fmt, .{ fmt.any(AddressSpace.arena(arena_index)), '\n' });
+    }
+    file.noexcept.write(2, array.readAll());
 }
 fn testFormulaicAddressSubSpaceFromExact(comptime sup_spec: virtual.ExactAddressSpaceSpec, comptime sub_spec: virtual.FormulaicAddressSpaceSpec) !void {
     const render_spec: fmt.RenderSpec = .{ .radix = 2 };
+    _ = render_spec;
     const AddressSpace = virtual.GenericExactAddressSpace(sup_spec);
     const SubAddressSpace = virtual.GenericFormulaicSubAddressSpace(sub_spec, AddressSpace);
+    verifyNoOverlap(SubAddressSpace);
     comptime var address_space_init: AddressSpace = .{};
     var sub_space: SubAddressSpace = comptime address_space_init.reserve(SubAddressSpace);
-    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
-    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
-    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace, .errors = preset.allocator.errors.noexcept });
-    const Array0 = Allocator0.StructuredVector(u8);
-    const Array1 = Allocator1.StructuredVector(u8);
-    const Array2 = Allocator2.StructuredVector(u8);
+    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
+    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace });
+    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace });
+    const Array0 = Allocator0.StructuredHolder(u8);
+    const Array1 = Allocator1.StructuredHolder(u8);
+    const Array2 = Allocator2.StructuredHolder(u8);
     var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
     defer allocator_0.deinit(&sub_space);
-    var array_0: Array0 = try Array0.init(&allocator_0, 16);
+    var array_0: Array0 = Array0.init(&allocator_0);
     defer array_0.deinit(&allocator_0);
-    array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{ fmt.render(render_spec, address_space_init), '\n' });
-    array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{ fmt.render(render_spec, meta.uniformData(sub_space)), '\n' });
+    try array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{ address_space_init, '\n', sub_space, '\n' });
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
     defer allocator_1.deinit(&sub_space);
-    var array_1: Array1 = try Array1.init(&allocator_1, 16);
+    var array_1: Array1 = Array1.init(&allocator_1);
     defer array_1.deinit(&allocator_1);
-    array_1.appendAny(preset.reinterpret.fmt, &allocator_1, .{ fmt.render(render_spec, meta.uniformData(sub_space)), '\n' });
+    try array_1.appendAny(preset.reinterpret.fmt, &allocator_1, .{ sub_space, '\n' });
     var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
     defer allocator_2.deinit(&sub_space);
-    var array_2: Array2 = try Array2.init(&allocator_2, 16);
+    var array_2: Array2 = Array2.init(&allocator_2);
     defer array_2.deinit(&allocator_2);
-    array_2.appendAny(preset.reinterpret.fmt, &allocator_2, .{ fmt.render(render_spec, meta.uniformData(sub_space)), '\n' });
-    file.noexcept.write(2, array_0.readAll());
-    array_0.undefineAll();
-    file.noexcept.write(2, array_1.readAll());
-    array_1.undefineAll();
-    file.noexcept.write(2, array_2.readAll());
-    array_2.undefineAll();
+    try array_2.appendAny(preset.reinterpret.fmt, &allocator_2, .{ sub_space, '\n' });
+    file.noexcept.write(2, array_0.readAll(allocator_0));
+    array_0.undefineAll(allocator_0);
+    file.noexcept.write(2, array_1.readAll(allocator_1));
+    array_1.undefineAll(allocator_1);
+    file.noexcept.write(2, array_2.readAll(allocator_2));
+    array_2.undefineAll(allocator_2);
 }
 pub fn main() !void {
     try meta.wrap(testArenaIntersection());
+    file.noexcept.write(2, "\n");
     try meta.wrap(testExactAddressSpace(trivial_list));
+    file.noexcept.write(2, "\n");
     try meta.wrap(testExactAddressSpace(complex_list));
+    file.noexcept.write(2, "\n");
     try meta.wrap(testExactAddressSpace(simple_list));
+    file.noexcept.write(2, "\n");
     try meta.wrap(testFormulaicAddressSpace());
-    try meta.wrap(testExactSubSpaceFromExact(.{ .list = simple_list }, .{ .list = rare_sub_list }));
+    file.noexcept.write(2, "\n");
     try meta.wrap(testFormulaicAddressSubSpaceFromExact(.{ .list = complex_list }, .{
         .lb_addr = complex_list[34].lb_addr,
         .ab_addr = complex_list[34].lb_addr,
@@ -245,4 +260,5 @@ pub fn main() !void {
         .divisions = 8,
         .options = .{ .thread_safe = true },
     }));
+    try meta.wrap(testExactSubSpaceFromExact(.{ .list = simple_list }, .{ .list = rare_sub_list }));
 }
