@@ -55,7 +55,7 @@ fn testSpecificCases() !void {
     try runTest(&allocator, &array, render.ComptimeIntFormat(.{}){ .value = 111111111 }, "111111111");
     try runTest(&allocator, &array, render.ComptimeIntFormat(.{}){ .value = -111111111 }, "-111111111");
     try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{}){ .value = &.{ 1, 2, 3, 4, 5, 6 } }, "[]const u64{ 1, 2, 3, 4, 5, 6 }");
-    try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{ .trailing_comma = true }){ .value = &.{ 7, 8, 9, 10, 11, 12 } }, "[]const u64{ 7, 8, 9, 10, 11, 12, }");
+    try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{ .omit_trailing_comma = false }){ .value = &.{ 7, 8, 9, 10, 11, 12 } }, "[]const u64{ 7, 8, 9, 10, 11, 12, }");
     try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{}){ .value = &.{} }, "[]const u64{}");
     try runTest(&allocator, &array, render.ArrayFormat([6]u64, .{}){ .value = .{ 1, 2, 3, 4, 5, 6 } }, "[6]u64{ 1, 2, 3, 4, 5, 6 }");
     try runTest(&allocator, &array, render.ArrayFormat([0]u64, .{}){ .value = .{} }, "[0]u64{}");
