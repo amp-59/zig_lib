@@ -621,46 +621,90 @@ pub const StaticAddressSpace = extern struct {
 };
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
-        pub fn reserve(comptime address_space: *AddressSpace, comptime SubAddressSpace: type) SubAddressSpace {
-            comptime {
-                var s_index: AddressSpace.Index = 0;
-                while (s_index != SubAddressSpace.addr_spec.super.?.list.len) : (s_index += 1) {
-                    if (!address_space.set(s_index)) {
-                        break;
-                    }
-                }
-                return .{};
+        const check_true: []const u8 = "[1]: ";
+        const check_false: []const u8 = "[0]: ";
+
+        pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
+            if (@TypeOf(AddressSpace.addr_spec) == ExactAddressSpaceSpec) {
+                return formatWriteExact(address_space, array);
+            } else {
+                return formatWriteFormulaic(address_space, array);
             }
         }
-        pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
-            comptime var arena_index: AddressSpace.Index = 0;
-            array.writeMany("occupied: ");
-            inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+        pub fn formatLength(address_space: AddressSpace) u64 {
+            if (@TypeOf(AddressSpace.addr_spec) == ExactAddressSpaceSpec) {
+                return formatLengthExact(address_space);
+            } else {
+                return formatLengthFormulaic(address_space);
+            }
+        }
+        fn formatWriteFormulaic(address_space: AddressSpace, array: anytype) void {
+            var arena_index: AddressSpace.Index = 0;
+            array.writeMany(check_false);
+            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                if (!address_space.impl.check(arena_index)) {
+                    array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                    array.writeCount(2, ", ".*);
+                }
+            }
+            arena_index = 0;
+            array.writeMany(check_true);
+            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                 if (address_space.impl.check(arena_index)) {
                     array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
                     array.writeCount(2, ", ".*);
                 }
             }
-            array.writeMany("available: ");
+        }
+        fn formatLengthFormulaic(address_space: AddressSpace) u64 {
+            var len: u64 = 0;
+            var arena_index: AddressSpace.Index = 0;
+            len += check_false.len;
+            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                if (!address_space.impl.check(arena_index)) {
+                    len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                    len += 2;
+                }
+            }
             arena_index = 0;
+            len += check_true.len;
+            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                if (address_space.impl.check(arena_index)) {
+                    len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                    len += 2;
+                }
+            }
+            return len;
+        }
+        fn formatWriteExact(address_space: AddressSpace, array: anytype) void {
+            comptime var arena_index: AddressSpace.Index = 0;
+            array.writeMany(check_false);
             inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                 if (!address_space.impl.check(arena_index)) {
                     array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
                     array.writeCount(2, ", ".*);
                 }
             }
+            arena_index = 0;
+            array.writeMany(check_true);
+            inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                if (address_space.impl.check(arena_index)) {
+                    array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                    array.writeCount(2, ", ".*);
+                }
+            }
         }
-        pub fn formatLength(address_space: AddressSpace) u64 {
+        fn formatLengthExact(address_space: AddressSpace) u64 {
             var len: u64 = 0;
             comptime var arena_index: AddressSpace.Index = 0;
-            len += 10;
+            len += check_true.len;
             inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                 if (address_space.impl.check(arena_index)) {
                     len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
                     len += 2;
                 }
             }
-            len += 11;
+            len += check_false.len;
             arena_index = 0;
             inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                 if (!address_space.impl.check(arena_index)) {
@@ -669,6 +713,14 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 }
             }
             return len;
+        }
+        pub fn reserve(comptime address_space: *AddressSpace, comptime SubAddressSpace: type) SubAddressSpace {
+            if (SubAddressSpace.addr_spec.super) |super_space| {
+                comptime {
+                    for (super_space.list) |ref| if (!address_space.set(ref.index)) break;
+                }
+            }
+            return .{};
         }
     };
 }

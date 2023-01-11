@@ -258,15 +258,10 @@ fn testFormulaicAddressSubSpaceFromExact(comptime sup_spec: virtual.ExactAddress
 }
 pub fn main() !void {
     try meta.wrap(testArenaIntersection());
-    file.noexcept.write(2, "\n");
     try meta.wrap(testExactAddressSpace(trivial_list));
-    file.noexcept.write(2, "\n");
     try meta.wrap(testExactAddressSpace(complex_list));
-    file.noexcept.write(2, "\n");
     try meta.wrap(testExactAddressSpace(simple_list));
-    file.noexcept.write(2, "\n");
     try meta.wrap(testFormulaicAddressSpace());
-    file.noexcept.write(2, "\n");
     try meta.wrap(testFormulaicAddressSubSpaceFromExact(.{ .list = complex_list }, .{
         .lb_addr = complex_list[34].lb_addr,
         .ab_addr = complex_list[34].lb_addr,
