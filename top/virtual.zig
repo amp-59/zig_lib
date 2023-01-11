@@ -136,13 +136,14 @@ pub fn ThreadSafeSet(comptime divisions: u16) type {
         bytes: Data = .{0} ** divisions,
         const SafeSet: type = @This();
         const Data: type = [divisions]u8;
-        pub fn set(safe_set: *SafeSet, index: usize) void {
+        const Index: type = meta.LeastRealBitSize(divisions);
+        pub fn set(safe_set: *SafeSet, index: Index) void {
             safe_set.bytes[index] = 255;
         }
-        pub fn unset(safe_set: *SafeSet, index: usize) void {
+        pub fn unset(safe_set: *SafeSet, index: Index) void {
             safe_set.bytes[index] = 0;
         }
-        pub fn atomicSet(safe_set: *SafeSet, index: usize) bool {
+        pub fn atomicSet(safe_set: *SafeSet, index: Index) bool {
             return asm volatile (
                 \\mov           $0,     %al
                 \\mov           $255,   %dl
@@ -153,7 +154,7 @@ pub fn ThreadSafeSet(comptime divisions: u16) type {
                 : "rax", "rdx", "memory"
             );
         }
-        pub fn atomicUnset(safe_set: *SafeSet, index: usize) bool {
+        pub fn atomicUnset(safe_set: *SafeSet, index: Index) bool {
             return asm volatile (
                 \\mov           $255,   %al
                 \\mov           $0,     %dl
@@ -164,8 +165,8 @@ pub fn ThreadSafeSet(comptime divisions: u16) type {
                 : "rax", "rdx", "memory"
             );
         }
-        pub fn check(safe_set: SafeSet, pos: usize) bool {
-            return safe_set.bytes[pos] == 255;
+        pub fn check(safe_set: SafeSet, index: Index) bool {
+            return safe_set.bytes[index] == 255;
         }
     };
 }
@@ -335,10 +336,37 @@ pub const SuperArena = struct {
             return DiscreteBitSet(spec.divisions);
         }
     }
+    fn mapSuperList(comptime spec: FormulaicAddressSpaceSpec, comptime AddressSpace: type) []const ArenaReference {
+        const t_arena: Arena = spec.arena();
+        var super_list: []const ArenaReference = meta.empty;
+        if (@TypeOf(AddressSpace.addr_spec) == ExactAddressSpaceSpec) {
+            var s_index: AddressSpace.Index = 0;
+            while (s_index != AddressSpace.addr_spec.list.len) : (s_index += 1) {
+                const s_arena: Arena = AddressSpace.addr_spec.list[s_index];
+                if (s_arena.intersection(t_arena) != null) {
+                    super_list = meta.concat(super_list, .{
+                        .index = s_index,
+                        .options = AddressSpace.arena(s_index).options,
+                    });
+                }
+            }
+        } else {
+            var max_index: AddressSpace.Index = AddressSpace.invert(t_arena.high());
+            var min_index: AddressSpace.Index = AddressSpace.invert(t_arena.low());
+            var s_index: AddressSpace.Index = min_index;
+            while (s_index <= max_index) : (s_index += 1) {
+                super_list = meta.concat(super_list, .{
+                    .index = s_index,
+                    .options = spec.options,
+                });
+            }
+        }
+        return super_list;
+    }
 };
 const FormulaicAddressSpaceSpec = SuperArena;
 
-fn isFormulaic(comptime AddressSpace: type, list: []const ArenaReference) bool {
+pub fn isFormulaic(comptime AddressSpace: type, list: []const ArenaReference) bool {
     var safety: ?bool = null;
     var addr: ?usize = null;
     for (list) |item| {
@@ -374,7 +402,7 @@ pub fn GenericExactAddressSpace(comptime spec: ExactAddressSpaceSpec) type {
         impl: Implementation align(8) = .{},
         const AddressSpace = @This();
         pub const Implementation: type = spec.Implementation();
-        pub const Index: type = Implementation.Index;
+        pub const Index: type = ExactAddressSpaceSpec.Index(spec);
         pub const addr_spec: ExactAddressSpaceSpec = spec;
         pub fn unset(address_space: *AddressSpace, comptime index: Index) bool {
             const ret: bool = address_space.impl.check(index);
@@ -489,7 +517,7 @@ pub fn GenericFormulaicSubAddressSpace(comptime spec: FormulaicAddressSpaceSpec,
         .AddressSpace = AddressSpace,
         .list = spec.mapSuperList(AddressSpace),
     };
-    return GenericExactAddressSpace(sub_spec);
+    return GenericFormulaicSubAddressSpace(sub_spec);
 }
 pub const StaticAddressSpace = extern struct {
     bits: [2]u64 = .{ 0, 0 },
