@@ -32,6 +32,8 @@ pub fn main() !void {
         Test.assign_strings[0] = "zeroth";
         Test.assign_strings[1] = "first";
     }
-    testing.expectEqualMany(u8, Test.strings, "zeroth");
-    testing.expectEqualMany(u8, Test.strings, "first");
+    testing.expectEqualMany(u8, Test.concat_strings, "zeroth");
+    testing.expectEqualMany(u8, Test.concat_strings, "first");
+    testing.expectEqualMany(u8, Test.assign_strings, "zeroth");
+    testing.expectEqualMany(u8, Test.assign_strings, "first");
 }
