@@ -15,4 +15,5 @@ pub const time = @import("./top/time.zig");
 pub const preset = @import("./top/preset.zig");
 pub const thread = @import("./top/thread.zig");
 pub const builder = @import("./top/builder.zig");
+pub const testing = @import("./top/testing.zig");
 pub const abstract = @import("./top/abstract.zig");
