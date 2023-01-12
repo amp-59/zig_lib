@@ -16,7 +16,7 @@ pub usingnamespace proc.start;
 pub const is_correct: bool = true;
 pub const AddressSpace = preset.address_space.exact_8;
 
-const ThreadSpace = mem.GenericExactSubAddressSpace(.{
+const ThreadSpace = mem.GenericDiscreteSubAddressSpace(.{
     .list = meta.slice(mem.Arena, .{
         .{ .lb_addr = 0x40000000, .up_addr = 0x41000000, .options = .{ .thread_safe = true } },
         .{ .lb_addr = 0x41000000, .up_addr = 0x42000000, .options = .{ .thread_safe = true } },
