@@ -112,6 +112,7 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
         const arg_set = .{
             .{ vars, "readelf", "test/readelf.zig", builtin.zig.mode, general_macros },
             .{ vars, "parsedir", "test/parsedir.zig", .ReleaseFast, parsedir_lib_macros },
+            .{ vars, "parsedir", "test/parsedir.zig", .ReleaseFast, parsedir_std_macros },
         };
         inline for (arg_set) |args, i| {
             if (try_multi_threaded) {
