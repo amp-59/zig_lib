@@ -54,15 +54,21 @@ else
         return any;
     }
 }
-pub fn slice(comptime T: type, any: anytype) []const T {
-    return &@as([any.len]T, any);
+pub fn slice(comptime T: type, values: anytype) []const T {
+    return &@as([values.len]T, values);
 }
 /// A parceled value can be concatenated using `++`
-pub fn parcel(any: anytype) []const @TypeOf(any) {
-    return &[1]@TypeOf(any){any};
+pub fn parcel(comptime T: type, arg: T) []const T {
+    return &[1]T{arg};
 }
-pub fn concat(comptime any: anytype, comptime value: resolve(@typeInfo(@TypeOf(any))).child) @TypeOf(any) {
-    return any ++ parcel(value);
+pub fn concat(comptime T: type, comptime arg1: []const T, comptime arg2: T) []const T {
+    return arg1 ++ parcel(T, arg2);
+}
+pub fn concatEqu(comptime T: type, arg1: *[]const T, arg2: T) void {
+    arg1.* = concat(T, arg1.*, arg2);
+}
+pub fn concatEquPtr(comptime T: type, arg1: *[]const T, arg2: anytype) void {
+    arg1.* = concat(T, arg1.*, @ptrCast(*const T, @alignCast(@alignOf(T), arg2)).*);
 }
 /// A wrapped value can be unwrapped using `try`
 pub fn wrap(any: anytype) blk: {
