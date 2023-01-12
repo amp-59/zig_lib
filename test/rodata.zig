@@ -22,7 +22,6 @@ const Test = struct {
     const concat_strings: *[]const []const u8 = slices([]const u8);
     const assign_strings: *[128][]const u8 = pointers([]const u8);
 };
-
 pub fn main() !void {
     comptime {
         Test.strings.* = Test.strings.* ++ [1][]const u8{"zeroth"};
