@@ -17,7 +17,8 @@ pub const is_correct: bool = true;
 pub const render_type_names: bool = false;
 pub const render_radix: u16 = 10;
 pub const trivial_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
-    .{ .lb_addr = 0x40000000, .up_addr = 0x10000000000 }, .{ .lb_addr = 0x10000000000, .up_addr = 0x110000000000 },
+    .{ .lb_addr = 0x00004000000, .up_addr = 0x010000000000 },
+    .{ .lb_addr = 0x10000000000, .up_addr = 0x110000000000 },
 });
 pub const simple_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
     .{ .lb_addr = 0x000040000000, .up_addr = 0x010000000000 },
@@ -117,8 +118,8 @@ fn testArenaIntersection() !void {
     });
     file.noexcept.write(2, array.readAll());
 }
-fn testFormulaicAddressSpace() !void {
-    const AddressSpace = virtual.GenericFormulaicAddressSpace(.{ .divisions = 8 });
+fn testRegularAddressSpace() !void {
+    const AddressSpace = virtual.GenericRegularAddressSpace(.{ .divisions = 8 });
     var address_space: AddressSpace = .{};
     const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
     const Array = Allocator.StructuredVector(u8);
@@ -135,8 +136,8 @@ fn testFormulaicAddressSpace() !void {
         array.undefineAll();
     }
 }
-fn testExactAddressSpace(comptime list: anytype) !void {
-    const AddressSpace = virtual.GenericExactAddressSpace(.{ .list = list });
+fn testDiscreteAddressSpace(comptime list: anytype) !void {
+    const AddressSpace = virtual.GenericDiscreteAddressSpace(.{ .list = list });
     var address_space: AddressSpace = .{};
     const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
     const Array = Allocator.StructuredVector(u8);
@@ -160,10 +161,10 @@ fn testExactAddressSpace(comptime list: anytype) !void {
         array.undefineAll();
     }
 }
-fn testExactSubSpaceFromExact(comptime sup_spec: virtual.ExactAddressSpaceSpec, comptime sub_spec: virtual.ExactAddressSpaceSpec) !void {
+fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.DiscreteAddressSpaceSpec) !void {
     const render_spec: fmt.RenderSpec = .{ .radix = 2 };
-    const AddressSpace = virtual.GenericExactAddressSpace(sup_spec);
-    const SubAddressSpace = virtual.GenericExactSubAddressSpace(sub_spec, AddressSpace);
+    const AddressSpace = virtual.GenericDiscreteAddressSpace(sup_spec);
+    const SubAddressSpace = virtual.GenericDiscreteSubAddressSpace(sub_spec, AddressSpace);
     comptime var address_space_init: AddressSpace = .{};
     var sub_space: SubAddressSpace = comptime address_space_init.reserve(SubAddressSpace);
     const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
@@ -207,7 +208,7 @@ fn verifyNoOverlap(comptime AddressSpace: type) void {
             '\n',
         });
     }
-    if (AddressSpace.addr_spec.super) |super_space| {
+    if (AddressSpace.addr_spec.super_space) |super_space| {
         inline for (super_space.list) |ref| {
             array.writeAny(preset.reinterpret.fmt, .{
                 "S: ", fmt.ud(ref.index),
@@ -218,10 +219,10 @@ fn verifyNoOverlap(comptime AddressSpace: type) void {
     }
     file.noexcept.write(2, array.readAll());
 }
-fn testFormulaicAddressSubSpaceFromExact(comptime sup_spec: virtual.ExactAddressSpaceSpec, comptime sub_spec: virtual.FormulaicAddressSpaceSpec) !void {
+fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.RegularAddressSpaceSpec) !void {
     const render_spec: fmt.RenderSpec = .{ .radix = 2 };
-    const AddressSpace = virtual.GenericExactAddressSpace(sup_spec);
-    const SubAddressSpace = virtual.GenericFormulaicSubAddressSpace(sub_spec, AddressSpace);
+    const AddressSpace = virtual.GenericDiscreteAddressSpace(sup_spec);
+    const SubAddressSpace = virtual.GenericRegularSubAddressSpace(sub_spec, AddressSpace);
     verifyNoOverlap(SubAddressSpace);
     comptime var address_space_init: AddressSpace = .{};
     var sub_space: SubAddressSpace = comptime address_space_init.reserve(SubAddressSpace);
@@ -258,11 +259,11 @@ fn testFormulaicAddressSubSpaceFromExact(comptime sup_spec: virtual.ExactAddress
 }
 pub fn main() !void {
     try meta.wrap(testArenaIntersection());
-    try meta.wrap(testExactAddressSpace(trivial_list));
-    try meta.wrap(testExactAddressSpace(complex_list));
-    try meta.wrap(testExactAddressSpace(simple_list));
-    try meta.wrap(testFormulaicAddressSpace());
-    try meta.wrap(testFormulaicAddressSubSpaceFromExact(.{ .list = complex_list }, .{
+    try meta.wrap(testDiscreteAddressSpace(trivial_list));
+    try meta.wrap(testDiscreteAddressSpace(complex_list));
+    try meta.wrap(testDiscreteAddressSpace(simple_list));
+    try meta.wrap(testRegularAddressSpace());
+    try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{ .list = complex_list }, .{
         .lb_addr = complex_list[34].lb_addr,
         .ab_addr = complex_list[34].lb_addr,
         .xb_addr = complex_list[42].up_addr,
@@ -270,5 +271,5 @@ pub fn main() !void {
         .divisions = 16,
         .options = .{ .thread_safe = true },
     }));
-    try meta.wrap(testExactSubSpaceFromExact(.{ .list = simple_list }, .{ .list = rare_sub_list }));
+    try meta.wrap(testDiscreteSubSpaceFromDiscrete(.{ .list = simple_list }, .{ .list = rare_sub_list }));
 }
