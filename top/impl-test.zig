@@ -889,11 +889,11 @@ const specifications: Specifications = blk: {
     var tmp: Specifications = .{};
     for (mem.specifications) |Specification| {
         if (@hasField(Specification, "bytes") or @hasField(Specification, "count")) {
-            tmp.static = meta.concat(tmp.static, Specification);
+            tmp.static = meta.concat(type, tmp.static, Specification);
         } else if (@hasField(Specification, "Allocator")) {
-            tmp.parametric = meta.concat(tmp.parametric, Specification);
+            tmp.parametric = meta.concat(type, tmp.parametric, Specification);
         } else {
-            tmp.dynamic = meta.concat(tmp.dynamic, Specification);
+            tmp.dynamic = meta.concat(type, tmp.dynamic, Specification);
         }
     }
     break :blk tmp;
@@ -972,7 +972,7 @@ fn manifestStatic(comptime types: []const type) []const type {
                 if ((unit_aligned_is and unit_aligned_ought) or
                     (!unit_aligned_is and !unit_aligned_ought))
                 {
-                    impl_types = meta.concat(impl_types, impl_type);
+                    impl_types = meta.concat(type, impl_types, impl_type);
                 }
             }
         }
@@ -1003,7 +1003,7 @@ fn manifestParametric(comptime types: []const type) []const type {
                 if ((unit_aligned_is and unit_aligned_ought) or
                     (!unit_aligned_is and !unit_aligned_ought))
                 {
-                    impl_types = meta.concat(impl_types, impl_type);
+                    impl_types = meta.concat(type, impl_types, impl_type);
                 }
             }
         }
@@ -1070,7 +1070,7 @@ fn manifestDynamic(comptime types: []const type) []const type {
                 if ((unit_aligned_is and unit_aligned_ought) or
                     (!unit_aligned_is and !unit_aligned_ought))
                 {
-                    impl_types = meta.concat(impl_types, impl_type);
+                    impl_types = meta.concat(type, impl_types, impl_type);
                 }
             }
         }
