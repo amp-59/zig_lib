@@ -1112,16 +1112,16 @@ pub const AbstractSpec = union(enum) {
                 for (struct_info.fields) |field| {
                     for (getMutuallyExclusivePivot(@field(any, field.name))) |name| {
                         if (struct_info.is_tuple) {
-                            names = meta.parcel(@as([]const u8, name));
+                            names = meta.parcel([]const u8, name);
                         } else {
-                            names = meta.parcel(@as([]const u8, name ++ "_" ++ field.name));
+                            names = meta.parcel([]const u8, name ++ "_" ++ field.name);
                         }
                     }
                 }
                 return names;
             },
             .EnumLiteral => {
-                return meta.parcel(@as([]const u8, @tagName(any)));
+                return meta.parcel([]const u8, @tagName(any));
             },
             else => @compileError(@typeName(@TypeOf(any))),
         }
