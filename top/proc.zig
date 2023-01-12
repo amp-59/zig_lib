@@ -793,7 +793,7 @@ pub noinline fn callClone(
 pub fn Args(comptime Fn: type) type {
     var fields: []const builtin.StructField = meta.empty;
     inline for (@typeInfo(Fn).Fn.params) |arg, i| {
-        fields = fields ++ meta.parcel(meta.structField(arg.type.?, lit.ud8[i], null));
+        fields = meta.concat(builtin.StructField, fields, meta.structField(arg.type.?, lit.ud8[i], null));
     }
     return @Type(meta.tupleInfo(fields));
 }
