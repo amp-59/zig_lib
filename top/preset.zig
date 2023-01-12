@@ -6,8 +6,8 @@ const builtin = @import("./builtin.zig");
 
 pub const address_space = opaque {
     pub const static_128 = mem.StaticAddressSpace;
-    pub const formulaic_128 = mem.GenericFormulaicAddressSpace(.{ .divisions = 128 });
-    pub const exact_8 = mem.GenericExactAddressSpace(.{
+    pub const formulaic_128 = mem.GenericRegularAddressSpace(.{ .divisions = 128 });
+    pub const exact_8 = mem.GenericDiscreteAddressSpace(.{
         .list = meta.slice(mem.Arena, .{
             .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
             .{ .lb_addr = 0x10000000000, .up_addr = 0x20000000000 },
