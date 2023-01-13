@@ -4750,11 +4750,13 @@ const reinterpret = opaque {
         if (child != u8) {
             @compileError("invalid destination type for format write: " ++ @typeName(child));
         }
-        if (@hasDecl(Format, "readAll")) {
+        if (@hasDecl(Format, "readAll") and
+            @hasDecl(Format, "len"))
+        {
             return memory.writeMany(format.readAll());
         }
         if (!@hasDecl(Format, "formatWrite")) {
-            @compileError("invalid interface for formatter type: " ++ @typeName(Format));
+            @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
         if (builtin.is_correct and builtin.is_perf) {
             const s_len: u64 = format.formatLength();
@@ -4942,12 +4944,15 @@ const reinterpret = opaque {
         if (@hasDecl(Format, "max_len")) {
             if (builtin.is_perf) return Format.max_len;
         }
-        if (@hasDecl(Format, "len")) {
+        if (@hasDecl(Format, "readAll") and
+            @hasDecl(Format, "len"))
+        {
             return format.len();
         }
-        if (@hasDecl(Format, "formatLength")) {
-            return format.formatLength();
+        if (!@hasDecl(Format, "formatLength")) {
+            @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatLength'");
         }
+        return format.formatLength();
     }
     pub fn lengthFields(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) u64 {
         var len: u64 = 0;
