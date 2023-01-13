@@ -17,6 +17,8 @@ pub const RenderSpec = struct {
     infer_type_name_recursively: bool = false,
     inline_field_types: bool = false,
     enable_comptime_iterator: bool = false,
+    ignore_formatter_decls: bool = false,
+    ignore_container_decls: bool = false,
 
     const RadixFieldName = struct {
         radix: u16 = render_radix,
@@ -36,7 +38,7 @@ pub fn render(comptime options: RenderSpec, value: anytype) AnyFormat(@TypeOf(va
     return .{ .value = value };
 }
 fn typeName(comptime T: type) []const u8 {
-    return @typeName(T);
+    return fmt.typeName(T);
 }
 
 pub fn AnyFormat(comptime Type: type, comptime options: RenderSpec) type {
@@ -315,6 +317,16 @@ fn formatWriteField(array: anytype, field_name_format: anytype, field_format: an
     array.writeCount(2, ", ".*);
 }
 fn StructFormat(comptime Struct: type, comptime options: RenderSpec) type {
+    if (!options.ignore_formatter_decls) {
+        if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
+            return Struct;
+        }
+    }
+    if (!options.ignore_container_decls) {
+        if (@hasDecl(Struct, "readAll") and @hasDecl(Struct, "len")) {
+            return PointerSliceFormat(meta.Return(Struct.readAll), options);
+        }
+    }
     return struct {
         value: Struct,
         const Format: type = @This();
