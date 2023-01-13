@@ -1208,9 +1208,11 @@ pub const IdentifierFormat = struct {
         return len;
     }
 };
+
 /// This function attempts to shorten type names, to improve readability, and
 /// makes no attempt to accomodate for extreme names, such as enabled by @"".
 pub fn typeName(comptime T: type) []const u8 {
+    const type_info: builtin.Type = @typeInfo(T);
     const type_name: [:0]const u8 = @typeName(T);
     // From last dot:
     // ns.TypeName
@@ -1223,12 +1225,31 @@ pub fn typeName(comptime T: type) []const u8 {
     //
     // Cannot be parsed, because () is essentially a black box:
     // ns.Generic().Within()        => ???
-    comptime {
-        switch (@typeInfo(T)) {
-            .Struct, .Enum, .Union, .Opaque => {
-                if (type_name.len < 16) {
-                    return type_name;
+
+    switch (type_info) {
+        .Pointer => |pointer_info| {
+            return comptime builtin.fmt.typeDeclSpecifier(type_info) ++
+                typeName(pointer_info.child);
+        },
+        .Array => |array_info| {
+            return comptime builtin.fmt.typeDeclSpecifier(type_info) ++
+                typeName(array_info.child);
+        },
+        .Struct, .Enum, .Union, .Opaque => {
+            if (type_name.len > 16) {
+                if (@hasDecl(T, "type_name")) {
+                    return T.type_name;
+                } else {
+                    return ".";
                 }
+            } else {
+                return type_name;
+            }
+            // The expense of this block is concerning, and the results are
+            // useful most of the time, but not all of time. It is kept here
+            // for reference, and may be optional in the future.
+            //
+            comptime {
                 const shortened_type_name: []const u8 = blk: {
                     if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
                         if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
@@ -1250,9 +1271,9 @@ pub fn typeName(comptime T: type) []const u8 {
                     return "@\"" ++ shortened_type_name[last_dot..] ++ "\"";
                 }
                 return "@\"" ++ shortened_type_name ++ "\"";
-            },
-            else => return type_name,
-        }
+            }
+        },
+        else => return type_name,
     }
 }
 fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
