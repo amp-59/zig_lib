@@ -258,19 +258,23 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !voi
     if (names.len() == 0) {
         names.writeOne(".");
     }
-    var sum: u64 = 0;
-    while (Test.sample <= Test.sample_size) : (Test.sample += 1) {
-        for (names.readAll()) |arg| {
-            sum += try parseAndWalk(address_space, arg);
+    for (names.readAll()) |arg| {
+        var sum: ?u64 = null;
+        while (Test.sample <= Test.sample_size) : (Test.sample += 1) {
+            if (sum) |cur| {
+                sum = cur + try parseAndWalk(address_space, arg);
+            } else {
+                sum = 0;
+            }
         }
+        var print_array: PrintArray = .{};
+        print_array.writeAny(preset.reinterpret.fmt, .{
+            "\naverage for ", @typeName(Ast),
+            ": ",             fmt.udh(sum.? / Test.sample_size),
+            '\n',
+        });
+        file.noexcept.write(2, print_array.readAll());
     }
-    var print_array: PrintArray = .{};
-    print_array.writeAny(preset.reinterpret.fmt, .{
-        "\naverage for ", @typeName(Ast),
-        ": ",             fmt.udh(sum / Test.sample_size),
-        '\n',
-    });
-    file.noexcept.write(2, print_array.readAll());
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
     var address_space: builtin.AddressSpace = .{};
