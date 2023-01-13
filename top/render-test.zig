@@ -10,8 +10,6 @@ const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const tokenizer = @import("./tokenizer.zig");
 
-const std = @import("std");
-
 pub usingnamespace proc.start;
 
 const Allocator = mem.GenericArenaAllocator(.{
@@ -77,13 +75,11 @@ const MinimalRenderArray = struct {
         };
     }
 };
-
 fn hasDecls(comptime T: type) bool {
     const type_info: builtin.Type = @typeInfo(T);
     return type_info == .Struct or type_info == .Opaque or
         type_info == .Union or type_info == .Enum;
 }
-
 fn allocateRunTest(allocator: *Allocator, array: *Array, format: anytype, expected: ?[]const u8) !void {
     try array.appendFormat(allocator, format);
     if (expected) |value| {
