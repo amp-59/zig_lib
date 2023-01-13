@@ -316,6 +316,21 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array), value);
         }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
+        }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return reference.pointerOne(child, __at(array, offset)).*;
         }
@@ -535,6 +550,21 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array), value);
+        }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return reference.pointerOne(child, __at(array, offset)).*;
@@ -827,6 +857,21 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array), value);
         }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
+        }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return reference.pointerOne(child, __at(array, offset)).*;
         }
@@ -1055,6 +1100,21 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array), value);
+        }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return reference.pointerOne(child, __at(array, offset)).*;
@@ -1345,6 +1405,21 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, child), value);
         }
+        pub fn referOneUndefined(array: *const Array, comptime child: type) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime child: type, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
+            return reference.pointerMany(child, array.impl.next(), amountToCountOfType(offset, child));
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), amountToCountOfType(offset, child), value);
+        }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
         }
@@ -1572,6 +1647,21 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, child), value);
+        }
+        pub fn referOneUndefined(array: *const Array, comptime child: type) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime child: type, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
+            return reference.pointerMany(child, array.impl.next(), amountToCountOfType(offset, child));
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), amountToCountOfType(offset, child), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -1807,6 +1897,21 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array), value);
+        }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
         }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return reference.pointerOne(child, __at(array, offset)).*;
@@ -2212,6 +2317,21 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array), value);
         }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
+        }
         pub fn readOneAt(array: *const Array, offset: usize) child {
             return reference.pointerOne(child, __at(array, offset)).*;
         }
@@ -2535,6 +2655,21 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, child), value);
+        }
+        pub fn referOneUndefined(array: *const Array, comptime child: type) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime child: type, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
+            return reference.pointerMany(child, array.impl.next(), amountToCountOfType(offset, child));
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), amountToCountOfType(offset, child), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
@@ -2938,6 +3073,21 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, child), value);
         }
+        pub fn referOneUndefined(array: *const Array, comptime child: type) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime child: type, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
+            return reference.pointerMany(child, array.impl.next(), amountToCountOfType(offset, child));
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), amountToCountOfType(offset, child), value);
+        }
         pub fn readOneAt(array: *const Array, comptime child: type, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, offset)).*;
         }
@@ -3264,6 +3414,21 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn referAllUndefinedWithSentinel(array: *const Array, allocator: Allocator, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, allocator), value);
         }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
+        }
         pub fn readOneAt(array: *const Array, allocator: Allocator, offset: usize) child {
             return reference.pointerOne(child, __at(array, allocator, offset)).*;
         }
@@ -3533,6 +3698,21 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn referAllUndefinedWithSentinel(array: *const Array, allocator: Allocator, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, allocator), value);
         }
+        pub fn referOneUndefined(array: *const Array) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, offset: usize) []child {
+            return reference.pointerMany(child, array.impl.next(), offset);
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, offset: usize, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), offset, value);
+        }
         pub fn readOneAt(array: *const Array, allocator: Allocator, offset: usize) child {
             return reference.pointerOne(child, __at(array, allocator, offset)).*;
         }
@@ -3770,6 +3950,21 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, child, allocator), value);
+        }
+        pub fn referOneUndefined(array: *const Array, comptime child: type) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime child: type, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
+            return reference.pointerMany(child, array.impl.next(), amountToCountOfType(offset, child));
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), amountToCountOfType(offset, child), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
@@ -4038,6 +4233,21 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         }
         pub fn referAllUndefinedWithSentinel(array: *const Array, comptime child: type, allocator: Allocator, comptime value: child) [:value]child {
             return reference.pointerManyWithSentinel(child, array.impl.next(), avail(array, child, allocator), value);
+        }
+        pub fn referOneUndefined(array: *const Array, comptime child: type) *child {
+            return reference.pointerOne(child, array.impl.next());
+        }
+        pub fn referCountUndefined(array: *const Array, comptime child: type, comptime read_count: usize) *[read_count]child {
+            return reference.pointerCount(child, array.impl.next(), read_count);
+        }
+        pub fn referCountUndefinedWithSentinel(array: *const Array, comptime child: type, comptime read_count: usize, comptime value: child) *[read_count:value]child {
+            return reference.pointerCountWithSentinel(child, array.impl.next(), read_count, value);
+        }
+        pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
+            return reference.pointerMany(child, array.impl.next(), amountToCountOfType(offset, child));
+        }
+        pub fn referManyUndefinedWithSentinel(array: *const Array, comptime child: type, offset: Amount, comptime value: child) [:value]child {
+            return reference.pointerManyWithSentinel(child, array.impl.next(), amountToCountOfType(offset, child), value);
         }
         pub fn readOneAt(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) child {
             return reference.pointerOne(child, __at(array, child, allocator, offset)).*;
