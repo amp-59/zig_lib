@@ -57,11 +57,6 @@ else
 pub fn slice(comptime T: type, values: anytype) []const T {
     return &@as([values.len]T, values);
 }
-
-const fmt = @import("./fmt.zig");
-const mem = @import("./mem.zig");
-const file = @import("./file.zig");
-
 /// A parceled value can be concatenated using `++`
 pub fn parcel(comptime T: type, arg: T) []const T {
     return &[1]T{arg};
@@ -715,7 +710,9 @@ pub fn UniformData(comptime bits: u16) type {
     }
 }
 pub fn uniformData(any: anytype) UniformData(@bitSizeOf(@TypeOf(any))) {
-    return @ptrCast(*const UniformData(@bitSizeOf(@TypeOf(any))), &any).*;
+    const T: type = @TypeOf(any);
+    const U: type = UniformData(@bitSizeOf(T));
+    return @ptrCast(*const U, &any).*;
 }
 
 const debug = opaque {
