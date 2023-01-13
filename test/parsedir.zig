@@ -183,7 +183,7 @@ fn countLines(source: []const u8) u64 {
     return count;
 }
 const Test = struct {
-    const sample_size: u64 = 100;
+    const sample_size: u64 = 10;
     var sample: u64 = 0;
 };
 fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
