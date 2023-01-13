@@ -59,8 +59,8 @@ pub const Arena = struct {
     pub fn intersection(s_arena: Arena, t_arena: Arena) ?Arena {
         if (builtin.int2v(
             bool,
-            (t_arena.up_addr - 1) < s_arena.lb_addr,
-            (s_arena.up_addr - 1) < t_arena.lb_addr,
+            t_arena.up_addr - 1 < s_arena.lb_addr,
+            s_arena.up_addr - 1 < t_arena.lb_addr,
         )) {
             return null;
         }
@@ -92,6 +92,10 @@ const SuperSpace = struct {
 // Right now it is difficult to get Zig vectors to produce consistent results,
 // so this is not an option.
 pub fn DiscreteBitSet(comptime bits: u16) type {
+    const real_bits: u16 = meta.alignAW(bits);
+    if (bits != real_bits) {
+        return DiscreteBitSet(real_bits);
+    }
     return extern struct {
         bits: Data = if (data_info == .Array) [1]usize{0} ** data_info.Array.len else 0,
         const BitSet: type = @This();
@@ -99,7 +103,6 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
         const Word: type = if (data_info == .Array) data_info.Array.child else Data;
         const Index: type = meta.LeastRealBitSize(bits);
         const word_size: u8 = @bitSizeOf(usize);
-        const real_bit_size: u16 = meta.alignAW(bits);
         const data_info: builtin.Type = @typeInfo(Data);
         pub fn positionToShiftAmount(pos: Index) u8 {
             if (data_info == .Array) {
@@ -209,11 +212,8 @@ pub const DiscreteMultiArena = struct {
     fn Index(comptime spec: Specification) type {
         return meta.LeastRealBitSize(spec.list.len);
     }
-    fn Metadata(comptime spec: Specification) type {
-        return struct { field_index: Index(spec), arena_index: Index(spec) };
-    }
     fn Directory(comptime spec: Specification) type {
-        return [spec.list.len]Metadata(spec);
+        return [spec.list.len]struct { field_index: Index(spec), arena_index: Index(spec) };
     }
     fn Implementation(comptime spec: Specification) type {
         var directory: Directory(spec) = undefined;
