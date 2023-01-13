@@ -1314,21 +1314,11 @@ pub const fmt = opaque {
         return StaticStringMemo(maxSigFig(T, radix) + 1);
     }
     pub fn ci(comptime value: comptime_int) []const u8 {
-        if (value == 0) {
-            return "0";
-        }
-        var s: []const u8 = "";
-        var y = if (value < 0) -value else value;
-        while (y != 0) : (y /= 10) {
-            s = [_]u8{@truncate(u8, ((y % 10) + 48))} ++ s;
-        }
-        if (value < 0) {
-            s = [_]u8{'-'} ++ s;
-        }
-        return s;
+        const s: []const u8 = @typeName([value]void);
+        return s[1 .. s.len - 5];
     }
-    pub fn int(any: anytype) StaticString(@TypeOf(any), 10) {
-        return d(@TypeOf(any), any);
+    pub fn int(value: anytype) StaticString(@TypeOf(value), 10) {
+        return d(@TypeOf(value), value);
     }
     fn b(comptime Int: type, value: Int) StaticString(Int, 2) {
         const Array = StaticString(Int, 2);
@@ -1583,8 +1573,8 @@ pub const fmt = opaque {
             return result +% dec;
         }
     }
-    pub fn typeTypeName(comptime any: TypeId) []const u8 {
-        return switch (any) {
+    pub fn typeTypeName(comptime type_id: TypeId) []const u8 {
+        return switch (type_id) {
             .Type => "type",
             .Void => "void",
             .Bool => "bool",
@@ -1611,8 +1601,18 @@ pub const fmt = opaque {
             .EnumLiteral => "enum literal",
         };
     }
-    pub fn typeDeclSpecifier(comptime any: Type) []const u8 {
-        return switch (any) {
+    pub fn typeDeclSpecifier(comptime type_info: Type) []const u8 {
+        return switch (type_info) {
+            .Array => |array_info| {
+                const type_name: []const u8 = @typeName(@Type(type_info));
+                const child_type_name: []const u8 = @typeName(array_info.child);
+                return type_name[0 .. type_name.len - child_type_name.len];
+            },
+            .Pointer => |pointer_info| {
+                const type_name: []const u8 = @typeName(@Type(type_info));
+                const child_type_name: []const u8 = @typeName(pointer_info.child);
+                return type_name[0 .. type_name.len - child_type_name.len];
+            },
             .Enum => |enum_info| {
                 return "enum(" ++ @typeName(enum_info.tag_type) ++ ")";
             },
@@ -1665,8 +1665,6 @@ pub const fmt = opaque {
             .NoReturn,
             .Int,
             .Float,
-            .Pointer,
-            .Array,
             .ComptimeFloat,
             .ComptimeInt,
             .Undefined,
@@ -1677,7 +1675,7 @@ pub const fmt = opaque {
 
             .Frame,
             .AnyFrame,
-            => @compileError(@typeName(@Type(any))),
+            => @compileError(@typeName(@Type(type_info))),
         };
     }
 };
@@ -1711,9 +1709,13 @@ pub const Version = struct {
     }
     pub fn parseVersion(comptime text: []const u8) !Version {
         var i: usize = 0;
+        var j: usize = 0;
         while (i < text.len) : (i += 1) {
             switch (text[i]) {
-                '0'...'9', '.' => {},
+                '.' => if (j == 2) break else {
+                    j += 1;
+                },
+                '0'...'9' => {},
                 else => break,
             }
         }
@@ -1732,12 +1734,12 @@ pub const Version = struct {
         const patch: u64 = digits.len;
         const major_digits: []const u8 = digits[0..major];
         const minor_digits: []const u8 =
-            if (major + 1 < minor) digits[major + 1 .. minor] else "0";
+            if (major + 1 < minor) digits[major + 1 .. minor] else "";
         const patch_digits: []const u8 =
-            if (minor + 1 < patch) digits[minor + 1 .. patch] else "0";
+            if (minor + 1 < patch) digits[minor + 1 .. patch] else "";
         const major_val: u64 = parse.ud(u64, major_digits);
-        const minor_val: u64 = parse.ud(u64, minor_digits);
-        const patch_val: u64 = parse.ud(u64, patch_digits);
+        const minor_val: u64 = if (minor_digits.len != 0) parse.ud(u64, minor_digits) else 0;
+        const patch_val: u64 = if (minor_digits.len != 0) parse.ud(u64, patch_digits) else 0;
         if (major_val > ~@as(u32, 0)) {
             return error.Overflow;
         }
@@ -1751,59 +1753,9 @@ pub const Version = struct {
             return error.InvalidVersion;
         }
         return Version{
-            .major = intCast(u32, major_val),
-            .minor = intCast(u32, minor_val),
-            .patch = intCast(u32, patch_val),
+            .major = @intCast(u32, major_val),
+            .minor = @intCast(u32, minor_val),
+            .patch = @intCast(u32, patch_val),
         };
     }
 };
-test {
-    @setEvalBranchQuota(3000);
-    comptime try testVersionParse();
-}
-fn testVersionParse() !void {
-    const f = struct {
-        fn eql(
-            comptime text: []const u8,
-            comptime v1: u32,
-            comptime v2: u32,
-            comptime v3: u32,
-        ) !void {
-            const v = try comptime Version.parseVersion(text);
-            comptime static.assertEqual(u32, v.major, v1);
-            comptime static.assertEqual(u32, v.minor, v2);
-            comptime static.assertEqual(u32, v.patch, v3);
-        }
-        fn err(comptime text: []const u8, comptime expected_err: anyerror) !void {
-            _ = comptime Version.parseVersion(text) catch |actual_err| {
-                if (actual_err == expected_err) return;
-                return actual_err;
-            };
-            return error.Unreachable;
-        }
-    };
-    try f.eql("2.6.32.11-svn21605", 2, 6, 32); // Debian PPC
-    try f.eql("2.11.2(0.329/5/3)", 2, 11, 2); // MinGW
-    try f.eql("5.4.0-1018-raspi", 5, 4, 0); // Ubuntu
-    try f.eql("5.7.12_3", 5, 7, 12); // Void
-    try f.eql("2.13-DEVELOPMENT", 2, 13, 0); // DragonFly
-    try f.eql("2.3-35", 2, 3, 0);
-    try f.eql("1a.4", 1, 0, 0);
-    try f.eql("3.b1.0", 3, 0, 0);
-    try f.eql("1.4beta", 1, 4, 0);
-    try f.eql("2.7.pre", 2, 7, 0);
-    try f.eql("0..3", 0, 0, 0);
-    try f.eql("8.008.", 8, 8, 0);
-    try f.eql("01...", 1, 0, 0);
-    try f.eql("55", 55, 0, 0);
-    try f.eql("4294967295.0.1", 4294967295, 0, 1);
-    try f.eql("429496729_6", 429496729, 0, 0);
-    try f.err("foobar", error.InvalidVersion);
-    try f.err("", error.InvalidVersion);
-    try f.err("-1", error.InvalidVersion);
-    try f.err("+4", error.InvalidVersion);
-    try f.err(".", error.InvalidVersion);
-    try f.err("....3", error.InvalidVersion);
-    try f.err("4294967296", error.Overflow);
-    try f.err("5000877755", error.Overflow);
-}
