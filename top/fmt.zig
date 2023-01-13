@@ -506,7 +506,7 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
             }
         }
         pub fn formatWrite(format: Format, array: anytype) void {
-            const start: u64 = array.impl.next();
+            const start: u64 = @ptrToInt(array.referOneUndefined());
             var next: u64 = start;
             if (Abs != Int) {
                 @intToPtr(*u8, next).* = '-';
@@ -547,7 +547,7 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
                         builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
                 }
             }
-            array.impl.define(next -% start);
+            array.define(next -% start);
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = prefix.len;
@@ -1208,6 +1208,21 @@ pub const IdentifierFormat = struct {
         return len;
     }
 };
+
+pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: type) type {
+    return struct {
+        value: ToplevelAddressSpace,
+
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            _ = array;
+            _ = format;
+        }
+        pub fn formatLength(format: Format) void {
+            _ = format;
+        }
+    };
+}
 
 /// This function attempts to shorten type names, to improve readability, and
 /// makes no attempt to accomodate for extreme names, such as enabled by @"".
