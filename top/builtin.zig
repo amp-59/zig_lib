@@ -133,7 +133,7 @@ pub fn BitCount(comptime T: type) type {
     }
     const bits: T = @bitSizeOf(T);
     return @Type(.{ .Int = .{
-        .bits = bits - @clz(bits),
+        .bits = bits -% @clz(bits),
         .signedness = .unsigned,
     } });
 }
@@ -143,7 +143,7 @@ pub fn ShiftAmount(comptime V: type) type {
     }
     const bits: V = @bitSizeOf(V);
     return @Type(.{ .Int = .{
-        .bits = bits - @clz(bits - 1),
+        .bits = bits -% @clz(bits -% 1),
         .signedness = .unsigned,
     } });
 }
@@ -153,7 +153,7 @@ pub fn ShiftValue(comptime A: type) type {
     }
     const bits: A = ~@as(A, 0);
     return @Type(.{ .Int = .{
-        .bits = bits + 1,
+        .bits = bits +% 1,
         .signedness = .unsigned,
     } });
 }
@@ -527,10 +527,20 @@ pub fn shlEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
     return overflowingShlAssign(T, arg1, arg2);
 }
 pub fn min(comptime T: type, arg1: T, arg2: T) T {
-    return @min(arg1, arg2);
+    if (@typeInfo(T) == .Int) {
+        return @min(arg1, arg2);
+    } else {
+        const U: type = @Type(.{ .Int = @bitSizeOf(T), .signedness = .unsigned });
+        return @min(@bitCast(U, arg1), @bitCast(U, arg2));
+    }
 }
 pub fn max(comptime T: type, arg1: T, arg2: T) T {
-    return @max(arg1, arg2);
+    if (@typeInfo(T) == .Int) {
+        return @max(arg1, arg2);
+    } else {
+        const U: type = @Type(.{ .Int = @bitSizeOf(T), .signedness = .unsigned });
+        return @max(@bitCast(U, arg1), @bitCast(U, arg2));
+    }
 }
 pub fn isComptime() bool {
     var b: bool = false;
@@ -816,9 +826,9 @@ const debug = opaque {
         });
         if (help_read) {
             if (arg1 > arg2) {
-                len += write(buf[len..], &[_][]const u8{ tos(T, arg1 - arg2).readAll(), symbol, "0\n" });
+                len += write(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
             } else {
-                len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 - arg1).readAll(), "\n" });
+                len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
             }
         }
         return len;
@@ -840,7 +850,7 @@ const debug = opaque {
             tos(T, arg2).readAll(), endl,
         });
         if (help_read) {
-            len += write(msg[len..], &[_][]const u8{ "0 - ", tos(T, arg2 - arg1).readAll(), "\n" });
+            len += write(msg[len..], &[_][]const u8{ "0 - ", tos(T, arg2 -% arg1).readAll(), "\n" });
         }
         return len;
     }
@@ -877,12 +887,12 @@ const debug = opaque {
     }
     fn incorrectAlignmentString(comptime Pointer: type, about: []const u8, buf: *[size]u8, address: usize, alignment: usize, remainder: u64) u64 {
         return write(buf, &[_][]const u8{
-            about,                                   ": incorrect alignment: ",
-            @typeName(Pointer),                      " align(",
-            tos(u64, alignment).readAll(),           "): ",
-            tos(u64, address).readAll(),             " == ",
-            tos(u64, address - remainder).readAll(), "+",
-            tos(u64, remainder).readAll(),           "\n",
+            about,                                    ": incorrect alignment: ",
+            @typeName(Pointer),                       " align(",
+            tos(u64, alignment).readAll(),            "): ",
+            tos(u64, address).readAll(),              " == ",
+            tos(u64, address -% remainder).readAll(), "+",
+            tos(u64, remainder).readAll(),            "\n",
         });
     }
     fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U) noreturn {
@@ -1054,9 +1064,9 @@ const debug = opaque {
                 });
                 if (@min(arg1, arg2) > 10_000) {
                     if (arg1 > arg2) {
-                        len += write(buf[len..], &[_][]const u8{ tos(T, arg1 - arg2).readAll(), symbol, "0\n" });
+                        len += write(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
                     } else {
-                        len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 - arg1).readAll(), "\n" });
+                        len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
                     }
                 }
                 @compileError(buf[0..len]);
@@ -1184,12 +1194,12 @@ pub const parse = opaque {
     pub fn fromSymbol(c: u8, radix: u16) u8 {
         if (radix > 10) {
             return switch (c) {
-                '0'...'9' => c -% ('9' - 0x9),
-                'a'...'f' => c -% ('f' - 0xf),
+                '0'...'9' => c -% ('9' -% 0x9),
+                'a'...'f' => c -% ('f' -% 0xf),
                 else => 0,
             };
         } else {
-            return c -% ('9' - 9);
+            return c -% ('9' -% 9);
         }
     }
     fn nextSigFig(comptime T: type, prev: T, comptime radix: T) ?T {
@@ -1227,13 +1237,13 @@ pub const parse = opaque {
         }
         switch (str[idx]) {
             'b' => {
-                return parseValidate(T, str[idx + 1 ..], 2);
+                return parseValidate(T, str[idx +% 1 ..], 2);
             },
             'o' => {
-                return parseValidate(T, str[idx + 1 ..], 8);
+                return parseValidate(T, str[idx +% 1 ..], 8);
             },
             'x' => {
-                return parseValidate(T, str[idx + 1 ..], 16);
+                return parseValidate(T, str[idx +% 1 ..], 16);
             },
             else => {
                 return parseValidate(T, str[idx..], 10);
@@ -1311,13 +1321,21 @@ pub const fmt = opaque {
         };
     }
     fn StaticString(comptime T: type, comptime radix: u16) type {
-        return StaticStringMemo(maxSigFig(T, radix) + 1);
+        return StaticStringMemo(maxSigFig(T, radix) +% 1);
     }
     pub fn ci(comptime value: comptime_int) []const u8 {
-        const s: []const u8 = @typeName([value]void);
-        return s[1 .. s.len - 5];
+        if (value < 0) {
+            const s: []const u8 = @typeName([-value]void);
+            return "-" ++ s[1 .. s.len -% 5];
+        } else {
+            const s: []const u8 = @typeName([value]void);
+            return s[1 .. s.len -% 5];
+        }
     }
     pub fn int(value: anytype) StaticString(@TypeOf(value), 10) {
+        if (@sizeOf(@TypeOf(value)) == 0) {
+            return ci(value);
+        }
         return d(@TypeOf(value), value);
     }
     fn b(comptime Int: type, value: Int) StaticString(Int, 2) {
@@ -1606,12 +1624,12 @@ pub const fmt = opaque {
             .Array => |array_info| {
                 const type_name: []const u8 = @typeName(@Type(type_info));
                 const child_type_name: []const u8 = @typeName(array_info.child);
-                return type_name[0 .. type_name.len - child_type_name.len];
+                return type_name[0 .. type_name.len -% child_type_name.len];
             },
             .Pointer => |pointer_info| {
                 const type_name: []const u8 = @typeName(@Type(type_info));
                 const child_type_name: []const u8 = @typeName(pointer_info.child);
-                return type_name[0 .. type_name.len - child_type_name.len];
+                return type_name[0 .. type_name.len -% child_type_name.len];
             },
             .Enum => |enum_info| {
                 return "enum(" ++ @typeName(enum_info.tag_type) ++ ")";
@@ -1734,9 +1752,9 @@ pub const Version = struct {
         const patch: u64 = digits.len;
         const major_digits: []const u8 = digits[0..major];
         const minor_digits: []const u8 =
-            if (major + 1 < minor) digits[major + 1 .. minor] else "";
+            if (major +% 1 < minor) digits[major +% 1 .. minor] else "";
         const patch_digits: []const u8 =
-            if (minor + 1 < patch) digits[minor + 1 .. patch] else "";
+            if (minor +% 1 < patch) digits[minor +% 1 .. patch] else "";
         const major_val: u64 = parse.ud(u64, major_digits);
         const minor_val: u64 = if (minor_digits.len != 0) parse.ud(u64, minor_digits) else 0;
         const patch_val: u64 = if (minor_digits.len != 0) parse.ud(u64, patch_digits) else 0;
