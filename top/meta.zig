@@ -57,6 +57,11 @@ else
 pub fn slice(comptime T: type, values: anytype) []const T {
     return &@as([values.len]T, values);
 }
+
+const fmt = @import("./fmt.zig");
+const mem = @import("./mem.zig");
+const file = @import("./file.zig");
+
 /// A parceled value can be concatenated using `++`
 pub fn parcel(comptime T: type, arg: T) []const T {
     return &[1]T{arg};
@@ -597,10 +602,10 @@ pub fn isTriviallyComparable(comptime T: type) bool {
         .Null => true,
         .ErrorSet => true,
         .Enum => true,
-        .Fn => true,
         .Opaque => true,
         .AnyFrame => true,
         .EnumLiteral => true,
+        .Fn => false,
         .NoReturn => false,
         .Array => false,
         .Struct => false,
@@ -608,7 +613,7 @@ pub fn isTriviallyComparable(comptime T: type) bool {
         .Union => false,
         .Frame => false,
         .Vector => false,
-        .Pointer => |pointer_info| pointer_info.size != .Slice,
+        .Pointer => |pointer_info| @typeInfo(pointer_info.child) != .Fn and pointer_info.size != .Slice,
         .Optional => |optional_info| @typeInfo(optional_info.child) == .Pointer and
             @typeInfo(optional_info.child).Pointer.size != .Slice and
             @typeInfo(optional_info.child).Pointer.size != .C,
