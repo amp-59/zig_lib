@@ -5,27 +5,38 @@ pub usingnamespace proc.start;
 
 pub const is_correct: bool = true;
 
-// TODO: Tests to show all error messages.
-export fn showAssertionFailedAbove(arg1: u64, arg2: u64) void {
-    builtin.assertAbove(u64, arg1, arg2);
+fn proper(comptime value: comptime_int) []const u8 {
+    var s: []const u8 = "";
+    var y = if (value < 0) -value else value;
+    while (y != 0) : (y /= 10) {
+        s = [_]u8{@truncate(u8, ((y % 10) + 48))} ++ s;
+    }
+    if (value < 0) {
+        s = [_]u8{'-'} ++ s;
+    }
+    return s;
 }
-export fn showAssertionFailedAboveOrEqual(arg1: u64, arg2: u64) void {
-    builtin.assertAboveOrEqual(u64, arg1, arg2);
+fn stupid(comptime value: comptime_int) []const u8 {
+    if (value < 0) {
+        const s: []const u8 = @typeName([-value]void);
+        return "-" ++ s[1 .. s.len - 5];
+    } else {
+        const s: []const u8 = @typeName([value]void);
+        return s[1 .. s.len - 5];
+    }
 }
-export fn showAssertionFailedEqual(arg1: u64, arg2: u64) void {
-    builtin.assertEqual(u64, arg1, arg2);
-}
-export fn showAssertionFailedBelow(arg1: u64, arg2: u64) void {
-    builtin.assertBelow(u64, arg1, arg2);
-}
-export fn showAssertionFailedBelowOrEqual(arg1: u64, arg2: u64) void {
-    builtin.assertBelowOrEqual(u64, arg1, arg2);
-}
-export fn showAssertionFailedNotEqual(arg1: u64, arg2: u64) void {
-    builtin.assertNotEqual(u64, arg1, arg2);
+test {
+    @setEvalBranchQuota(~@as(u32, 0));
+    comptime var i: u64 = 0;
+    inline while (i != 100_000) : (i += 1) {
+        _ = comptime stupid(i);
+    }
 }
 
 pub fn main() !void {
+    const k = @as(@Type(.EnumLiteral), undefined);
+    _ = k;
+
     const T: type = u64;
     var arg1: T = 0;
     var arg2: T = 1;
@@ -118,6 +129,50 @@ pub fn main() !void {
         builtin.static.assertAbove(T, static_arg1, static_arg2);
         builtin.static.assert(static_b);
     }
+    const f = struct {
+        fn eql(
+            comptime text: []const u8,
+            comptime v1: u32,
+            comptime v2: u32,
+            comptime v3: u32,
+        ) !void {
+            const v = try comptime builtin.Version.parseVersion(text);
+            comptime builtin.static.assertEqual(u32, v.major, v1);
+            comptime builtin.static.assertEqual(u32, v.minor, v2);
+            comptime builtin.static.assertEqual(u32, v.patch, v3);
+        }
+        fn err(comptime text: []const u8, comptime expected_err: anyerror) !void {
+            _ = comptime builtin.Version.parseVersion(text) catch |actual_err| {
+                if (actual_err == expected_err) return;
+                return actual_err;
+            };
+            return error.Unreachable;
+        }
+    };
+    try f.eql("2.6.32.11-svn21605", 2, 6, 32); // Debian PPC
+    try f.eql("2.11.2(0.329/5/3)", 2, 11, 2); // MinGW
+    try f.eql("5.4.0-1018-raspi", 5, 4, 0); // Ubuntu
+    try f.eql("5.7.12_3", 5, 7, 12); // Void
+    try f.eql("2.13-DEVELOPMENT", 2, 13, 0); // DragonFly
+    try f.eql("2.3-35", 2, 3, 0);
+    try f.eql("1a.4", 1, 0, 0);
+    try f.eql("3.b1.0", 3, 0, 0);
+    try f.eql("1.4beta", 1, 4, 0);
+    try f.eql("2.7.pre", 2, 7, 0);
+    try f.eql("0..3", 0, 0, 0);
+    try f.eql("8.008.", 8, 8, 0);
+    try f.eql("01...", 1, 0, 0);
+    try f.eql("55", 55, 0, 0);
+    try f.eql("4294967295.0.1", 4294967295, 0, 1);
+    try f.eql("429496729_6", 429496729, 0, 0);
+    try f.err("foobar", error.InvalidVersion);
+    try f.err("", error.InvalidVersion);
+    try f.err("-1", error.InvalidVersion);
+    try f.err("+4", error.InvalidVersion);
+    try f.err(".", error.InvalidVersion);
+    try f.err("....3", error.InvalidVersion);
+    try f.err("4294967296", error.Overflow);
+    try f.err("5000877755", error.Overflow);
 
     if (b) return;
     arg2 = builtin.add(T, arg1, arg2);
