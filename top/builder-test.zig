@@ -33,19 +33,7 @@ fn globalCacheDir(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
 const thread_spec = proc.CloneSpec{
     .errors = sys.clone_errors,
     .return_type = void,
-    .options = .{
-        .address_space = true,
-        .thread = true,
-        .file_system = true,
-        .files = true,
-        .signal_handlers = true,
-        .sysvsem = true,
-        .set_thread_local_storage = true,
-        .set_parent_thread_id = true,
-        .set_child_thread_id = true,
-        .clear_child_thread_id = true,
-        .io = false,
-    },
+    .options = .{},
 };
 fn runTest(
     vars: [][*:0]u8,
