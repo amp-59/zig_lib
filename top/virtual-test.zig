@@ -11,7 +11,7 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-const PrintArray = mem.StaticString(4096);
+const PrintArray = mem.StaticString(16384);
 pub const is_verbose: bool = false;
 pub const is_correct: bool = true;
 pub const render_type_names: bool = false;
@@ -188,14 +188,14 @@ fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSp
     defer allocator_1.deinit(&sub_space);
     var array_1: Array1 = try Array1.init(&allocator_1, 2048);
     defer array_1.deinit(&allocator_1);
-    try array_1.writeFormat(preset.reinterpret.fmt, fmt.render(render_spec, sub_space));
-    try array_1.writeMany("\n");
+    try array_1.appendFormat(&allocator_1, fmt.render(render_spec, sub_space));
+    try array_1.appendMany(&allocator_1, "\n");
     var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
     defer allocator_2.deinit(&sub_space);
     var array_2: Array2 = try Array2.init(&allocator_2, 2048);
     defer array_2.deinit(&allocator_2);
-    try array_2.writeFormat(preset.reinterpret.fmt, fmt.render(render_spec, sub_space));
-    try array_2.writeMany("\n");
+    try array_2.appendFormat(&allocator_2, fmt.render(render_spec, sub_space));
+    try array_2.appendMany(&allocator_2, "\n");
     file.noexcept.write(2, array_0.readAll());
     array_0.undefineAll();
     file.noexcept.write(2, array_1.readAll());
@@ -203,32 +203,10 @@ fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSp
     file.noexcept.write(2, array_2.readAll());
     array_2.undefineAll();
 }
-fn verifyNoOverlap(comptime AddressSpace: type) void {
-    var array: PrintArray = .{};
-    var arena_index: AddressSpace.Index = 0;
-    while (arena_index != AddressSpace.addr_spec.count()) : (arena_index += 1) {
-        array.writeAny(preset.reinterpret.fmt, .{
-            "s: ", fmt.ud(arena_index),
-            ":\t", fmt.render(.{ .radix = 16 }, AddressSpace.arena(arena_index)),
-            '\n',
-        });
-    }
-    if (AddressSpace.addr_spec.super_space) |super_space| {
-        inline for (super_space.list) |ref| {
-            array.writeAny(preset.reinterpret.fmt, .{
-                "S: ", fmt.ud(ref.index),
-                ":\t", fmt.render(.{ .radix = 16 }, super_space.AddressSpace.arena(ref.index)),
-                '\n',
-            });
-        }
-    }
-    file.noexcept.write(2, array.readAll());
-}
 fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.RegularAddressSpaceSpec) !void {
     const render_spec: fmt.RenderSpec = .{ .radix = 2 };
     const AddressSpace = virtual.GenericDiscreteAddressSpace(sup_spec);
     const SubAddressSpace = virtual.GenericRegularSubAddressSpace(sub_spec, AddressSpace);
-    verifyNoOverlap(SubAddressSpace);
     comptime var address_space_init: AddressSpace = .{};
     var sub_space: SubAddressSpace = comptime address_space_init.reserve(SubAddressSpace);
     const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
@@ -249,14 +227,14 @@ fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAdd
     defer allocator_1.deinit(&sub_space);
     var array_1: Array1 = Array1.init(&allocator_1);
     defer array_1.deinit(&allocator_1);
-    try array_1.writeFormat(preset.reinterpret.fmt, fmt.render(render_spec, sub_space));
-    try array_1.writeMany("\n");
+    try array_1.appendFormat(&allocator_1, fmt.render(render_spec, sub_space));
+    try array_1.appendMany(&allocator_1, "\n");
     var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
     defer allocator_2.deinit(&sub_space);
     var array_2: Array2 = Array2.init(&allocator_2);
     defer array_2.deinit(&allocator_2);
-    try array_2.writeFormat(preset.reinterpret.fmt, fmt.render(render_spec, sub_space));
-    try array_2.writeMany("\n");
+    try array_2.appendFormat(&allocator_2, fmt.render(render_spec, sub_space));
+    try array_2.appendMany(&allocator_2, "\n");
     file.noexcept.write(2, array_0.readAll(allocator_0));
     array_0.undefineAll(allocator_0);
     file.noexcept.write(2, array_1.readAll(allocator_1));
