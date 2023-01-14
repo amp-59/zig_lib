@@ -1552,30 +1552,14 @@ pub const fmt = opaque {
         }
         return array;
     }
-    pub fn ub(comptime T: type, value: T) StaticString(T, 2) {
-        return b(T, value);
-    }
-    pub fn uo(comptime T: type, value: T) StaticString(T, 8) {
-        return o(T, value);
-    }
-    pub fn ud(comptime T: type, value: T) StaticString(T, 10) {
-        return d(T, value);
-    }
-    pub fn ux(comptime T: type, value: T) StaticString(T, 16) {
-        return x(T, value);
-    }
-    pub fn ib(comptime T: type, value: T) StaticString(T, 2) {
-        return b(T, value);
-    }
-    pub fn io(comptime T: type, value: T) StaticString(T, 8) {
-        return o(T, value);
-    }
-    pub fn id(comptime T: type, value: T) StaticString(T, 10) {
-        return d(T, value);
-    }
-    pub fn ix(comptime T: type, value: T) StaticString(T, 16) {
-        return x(T, value);
-    }
+    pub const ub = b;
+    pub const uo = o;
+    pub const ud = d;
+    pub const ux = x;
+    pub const ib = b;
+    pub const io = o;
+    pub const id = d;
+    pub const ix = x;
     pub fn ub8(value: u8) StaticString(u8, 2) {
         return ub(u8, value);
     }
@@ -1804,25 +1788,7 @@ pub const fmt = opaque {
             .Opaque => "opaque",
             .ErrorSet => "error",
 
-            .Fn,
-            .Vector,
-            .Type,
-            .Void,
-            .Bool,
-            .NoReturn,
-            .Int,
-            .Float,
-            .ComptimeFloat,
-            .ComptimeInt,
-            .Undefined,
-            .Null,
-            .Optional,
-            .ErrorUnion,
-            .EnumLiteral,
-
-            .Frame,
-            .AnyFrame,
-            => @compileError(@typeName(@Type(type_info))),
+            else => @compileError(@typeName(@Type(type_info))),
         };
     }
 };
