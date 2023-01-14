@@ -10,7 +10,11 @@ const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const tokenizer = @import("./tokenizer.zig");
 
+const virtual_test = @import("./virtual-test.zig");
+
 pub usingnamespace proc.start;
+
+pub const is_correct: bool = true;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -25,11 +29,52 @@ const PrintArray = mem.StaticString(1024 * 1024);
 const DynamicArray = mem.StructuredVector(u8, null, 1, FakeAllocator, .{ .unit_alignment = true });
 const StaticArray = mem.StructuredStaticVector(u8, null, 16384, 1, FakeAllocator, .{ .unit_alignment = true });
 
-pub const is_correct: bool = true;
-pub const use_alloc: bool = false;
-pub const use_min: bool = false;
-pub const use_dyn: bool = false;
+const use_alloc: bool = false;
+const use_min: bool = false;
+const use_dyn: bool = false;
+const cmp_test: bool = true;
+const use_std: bool = !builtin.is_debug and true;
+const std = @import("std");
+const err: std.fs.File = std.io.getStdErr();
+const render_spec: fmt.RenderSpec = .{
+    .radix = 10,
+    .omit_default_fields = false,
+    .omit_type_names = false,
+    .zig_type_names = true,
+};
 
+const runTest = if (use_alloc) allocateRunTest else minimalRunTest;
+
+fn testLoopFormatAgainstStandard(comptime AddressSpace: type) anyerror!void {
+    const max_index: AddressSpace.Index = comptime AddressSpace.addr_spec.count();
+    comptime var arena_index: AddressSpace.Index = 0;
+    inline while (arena_index != max_index) : (arena_index += 1) {
+        if (use_std) {
+            std.debug.print("s: {}:\t{}\n", .{
+                arena_index,
+                AddressSpace.arena(arena_index),
+            });
+        } else {
+            testing.printN(4096, .{
+                "s: ", fmt.render(render_spec, arena_index),
+                ":\t", fmt.render(render_spec, AddressSpace.arena(arena_index)),
+                '\n',
+            });
+        }
+    }
+}
+fn testWithComplexList(comptime what: fn (comptime type) anyerror!void) anyerror!void {
+    const AddressSpace: type = mem.GenericDiscreteAddressSpace(.{ .list = virtual_test.complex_list });
+    return what(AddressSpace);
+}
+fn testWithComplexListSubSpace(comptime what: fn (comptime type) anyerror!void) anyerror!void {
+    const AddressSpace = mem.GenericDiscreteAddressSpace(.{ .list = virtual_test.complex_list });
+    const SubAddressSpace = mem.GenericDiscreteSubAddressSpace(.{ .list = virtual_test.rare_sub_list }, AddressSpace);
+    return what(SubAddressSpace);
+}
+fn testAgainstStandard() !void {
+    try meta.wrap(testWithComplexList(testLoopFormatAgainstStandard));
+}
 const MinimalRenderArray = struct {
     start: u64,
     finish: u64,
@@ -98,14 +143,10 @@ fn minimalRunTest(_: *Allocator, array: anytype, format: anytype, expected: ?[]c
     }
     array.undefineAll();
 }
-
-const runTest = if (use_alloc) allocateRunTest else minimalRunTest;
-
 fn testSpecificCases() !void {
     var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator = if (use_alloc) try Allocator.init(&address_space) else undefined;
     defer if (use_alloc) allocator.deinit(&address_space);
-
     var dst: [16384]u8 = undefined;
     var array = blk: {
         if (use_min) {
@@ -146,7 +187,10 @@ fn testSpecificCases() !void {
     try runTest(&allocator, &array, render.VoidFormat{}, "{}");
     try runTest(&allocator, &array, comptime render.render(.{ .inline_field_types = true }, mem.AbstractSpec), null);
 }
-
 pub fn main() !void {
-    try meta.wrap(testSpecificCases());
+    if (cmp_test) {
+        try meta.wrap(testAgainstStandard());
+    } else {
+        try meta.wrap(testSpecificCases());
+    }
 }
