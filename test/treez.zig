@@ -27,21 +27,10 @@ const thread_spec = proc.CloneSpec{
     .return_type = u64,
     .options = .{},
 };
-const wait_spec: proc.WaitIdSpec = .{
-    .id_type = .{ .tag = .all },
-    .options = .{
-        .continued = false,
-        .no_thread = false,
-        .clone = false,
-        .exited = true,
-        .stopped = false,
-        .all = true,
-    },
-};
 const BlockAllocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .options = .{
-        .count_allocations = true,
+        .count_allocations = false,
         .require_filo_free = false,
         .require_geometric_growth = true,
         .trace_state = false,
@@ -53,7 +42,7 @@ const BlockAllocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 1,
     .options = .{
         .count_allocations = false,
-        .require_filo_free = true,
+        .require_filo_free = false,
         .require_geometric_growth = true,
         .trace_state = false,
         .count_branches = false,
@@ -70,14 +59,23 @@ const DirStream = file.DirStreamBlock(.{
 const Names = mem.StructuredAutomaticVector([:0]const u8, null, 128, 8, .{});
 const PrintArray = mem.StaticString(4096);
 const Options = struct {
-    all: bool = always_show_hidden or permit_switch_arrows,
+    all: bool = true,
     follow: bool = false,
     wide: bool = false,
+    max_depth: ?u8 = null,
+    const plain_print: bool = false;
+    const print_in_second_thread: bool = true;
+    const never_print_mid_line: bool = false;
+    const always_show_hidden: bool = true;
+    const permit_switch_arrows: bool = false;
+    const use_wide_arrows: bool = false;
+    const always_try_empty_dir_correction: bool = false;
 };
 const Results = struct {
     files: u64 = 0,
     dirs: u64 = 0,
     links: u64 = 0,
+    depth: u64 = 0,
     fn total(results: Results) u64 {
         return results.dirs + results.files + results.links;
     }
@@ -94,13 +92,6 @@ const any_style: [16][]const u8 = blk: {
     tmp[sys.S.IFSOCK >> 12] = lit.fx.color.fg.hi_magenta;
     break :blk tmp;
 };
-
-const print_in_second_thread: bool = true;
-const always_show_hidden: bool = true;
-const permit_switch_arrows: bool = false;
-const plain_print: bool = false;
-const pretty_print: bool = !plain_print;
-
 const endl_s: []const u8 = "\x1b[0m\n";
 const del_s: []const u8 = "\x08\x08\x08\x08";
 const spc_bs: []const u8 = "    ";
@@ -121,12 +112,11 @@ const dir_arrow_bs: []const u8 = del_s ++ "|---+ ";
 const dir_arrow_ws: []const u8 = del_s ++ "├───┬ ";
 const last_dir_arrow_bs: []const u8 = del_s ++ "`---+ ";
 const last_dir_arrow_ws: []const u8 = del_s ++ "└───┬ ";
-const empty_dir_arrow_bs: []const u8 = del_s ++ "|---- ";
-const empty_dir_arrow_ws: []const u8 = del_s ++ "├──── ";
-const last_empty_dir_arrow_bs: []const u8 = del_s ++ "`---- ";
-const last_empty_dir_arrow_ws: []const u8 = del_s ++ "└──── ";
-const Style = if (permit_switch_arrows) struct {
-    var wide: bool = false;
+const empty_dir_arrow_bs: []const u8 = del_s ++ "|-- ";
+const empty_dir_arrow_ws: []const u8 = del_s ++ "├── ";
+const last_empty_dir_arrow_bs: []const u8 = del_s ++ "`-- ";
+const last_empty_dir_arrow_ws: []const u8 = del_s ++ "└── ";
+const Style = if (Options.permit_switch_arrows) struct {
     var spc_s: []const u8 = undefined;
     var bar_s: []const u8 = undefined;
     var links_to_s: []const u8 = undefined;
@@ -138,32 +128,31 @@ const Style = if (permit_switch_arrows) struct {
     var last_dir_arrow_s: []const u8 = undefined;
     var empty_dir_arrow_s: []const u8 = undefined;
     var last_empty_dir_arrow_s: []const u8 = undefined;
-    fn setArrows() void {
-        spc_s = if (wide) spc_ws else spc_bs;
-        bar_s = if (wide) bar_ws else bar_bs;
-        links_to_s = if (wide) links_to_ws else links_to_bs;
-        file_arrow_s = if (wide) file_arrow_ws else file_arrow_bs;
-        last_file_arrow_s = if (wide) last_file_arrow_ws else last_file_arrow_bs;
-        link_arrow_s = if (wide) file_arrow_ws else file_arrow_bs;
-        last_link_arrow_s = if (wide) last_file_arrow_ws else last_file_arrow_bs;
-        dir_arrow_s = if (wide) dir_arrow_ws else dir_arrow_bs;
-        last_dir_arrow_s = if (wide) last_dir_arrow_ws else last_dir_arrow_bs;
-        empty_dir_arrow_s = if (wide) empty_dir_arrow_ws else empty_dir_arrow_bs;
-        last_empty_dir_arrow_s = if (wide) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
+    fn setArrows(options: Options) void {
+        spc_s = if (options.wide) spc_ws else spc_bs;
+        bar_s = if (options.wide) bar_ws else bar_bs;
+        links_to_s = if (options.wide) links_to_ws else links_to_bs;
+        file_arrow_s = if (options.wide) file_arrow_ws else file_arrow_bs;
+        last_file_arrow_s = if (options.wide) last_file_arrow_ws else last_file_arrow_bs;
+        link_arrow_s = if (options.wide) file_arrow_ws else file_arrow_bs;
+        last_link_arrow_s = if (options.wide) last_file_arrow_ws else last_file_arrow_bs;
+        dir_arrow_s = if (options.wide) dir_arrow_ws else dir_arrow_bs;
+        last_dir_arrow_s = if (options.wide) last_dir_arrow_ws else last_dir_arrow_bs;
+        empty_dir_arrow_s = if (options.wide) empty_dir_arrow_ws else empty_dir_arrow_bs;
+        last_empty_dir_arrow_s = if (options.wide) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
     }
 } else struct {
-    const wide: bool = false;
-    const spc_s: []const u8 = if (wide) spc_ws else spc_bs;
-    const bar_s: []const u8 = if (wide) bar_ws else bar_bs;
-    const links_to_s: []const u8 = if (wide) links_to_ws else links_to_bs;
-    const file_arrow_s: []const u8 = if (wide) file_arrow_ws else file_arrow_bs;
-    const last_file_arrow_s: []const u8 = if (wide) last_file_arrow_ws else last_file_arrow_bs;
-    const link_arrow_s: []const u8 = if (wide) file_arrow_ws else file_arrow_bs;
-    const last_link_arrow_s: []const u8 = if (wide) last_file_arrow_ws else last_file_arrow_bs;
-    const dir_arrow_s: []const u8 = if (wide) dir_arrow_ws else dir_arrow_bs;
-    const last_dir_arrow_s: []const u8 = if (wide) last_dir_arrow_ws else last_dir_arrow_bs;
-    const empty_dir_arrow_s: []const u8 = if (wide) empty_dir_arrow_ws else empty_dir_arrow_bs;
-    const last_empty_dir_arrow_s: []const u8 = if (wide) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
+    const spc_s: []const u8 = if (Options.use_wide_arrows) spc_ws else spc_bs;
+    const bar_s: []const u8 = if (Options.use_wide_arrows) bar_ws else bar_bs;
+    const links_to_s: []const u8 = if (Options.use_wide_arrows) links_to_ws else links_to_bs;
+    const file_arrow_s: []const u8 = if (Options.use_wide_arrows) file_arrow_ws else file_arrow_bs;
+    const last_file_arrow_s: []const u8 = if (Options.use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
+    const link_arrow_s: []const u8 = if (Options.use_wide_arrows) file_arrow_ws else file_arrow_bs;
+    const last_link_arrow_s: []const u8 = if (Options.use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
+    const dir_arrow_s: []const u8 = if (Options.use_wide_arrows) dir_arrow_ws else dir_arrow_bs;
+    const last_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) last_dir_arrow_ws else last_dir_arrow_bs;
+    const empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) empty_dir_arrow_ws else empty_dir_arrow_bs;
+    const last_empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
 };
 noinline fn writeAndWalk(
     options: *const Options,
@@ -175,26 +164,33 @@ noinline fn writeAndWalk(
     results: *Results,
     dirfd: ?u64,
     name: [:0]const u8,
+    depth: u64,
 ) anyerror!void {
+    const need_separator: bool = name[name.len - 1] != '/';
+    if (Options.plain_print) {
+        alts_buf.writeMany(name);
+        if (need_separator) alts_buf.writeOne('/');
+    }
+    defer if (Options.plain_print) {
+        alts_buf.undefine(name.len);
+        alts_buf.undefine(builtin.int(u64, need_separator));
+    };
+    const try_empty_dir_correction: bool =
+        (Options.permit_switch_arrows and options.wide) or
+        (Options.use_wide_arrows) or
+        (Options.always_try_empty_dir_correction);
     var dir: DirStream = try DirStream.initAt(allocator_0, dirfd, name);
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
-    const need_separator: bool = name[name.len - 1] != '/';
-    if (plain_print) {
-        alts_buf.writeMany(name);
-        if (need_separator) alts_buf.writeOne('/');
-    }
-    defer if (plain_print) {
-        alts_buf.undefine(name.len);
-        alts_buf.undefine(builtin.int(u64, need_separator));
-    };
     while (index != list.count) : (index += 1) {
         const entry: *DirStream.Entry = list.at(index) catch break;
         const is_last: bool = index == list.count - 1;
         const indent: []const u8 = if (is_last) Style.spc_s else Style.bar_s;
-        if (pretty_print) alts_buf.writeMany(indent);
-        defer if (pretty_print) alts_buf.undefine(indent.len);
+        if (!Options.plain_print) {
+            alts_buf.writeMany(indent);
+        }
+        defer if (!Options.plain_print) alts_buf.undefine(indent.len);
         const base_name: [:0]const u8 = entry.name();
         if (!options.all) {
             if (base_name[0] == '.') {
@@ -210,20 +206,27 @@ noinline fn writeAndWalk(
         }
         switch (entry.kind) {
             .directory => {
+                if (options.max_depth) |max_depth| {
+                    if (depth == max_depth) continue;
+                } else {
+                    results.depth = @max(results.depth, depth + 1);
+                }
                 results.dirs += 1;
+                const len_0: u64 = array.len(allocator_1.*);
                 const s_arrow_s: []const u8 = mach.cmovx(is_last, Style.last_dir_arrow_s, Style.dir_arrow_s);
-                if (plain_print) {
+                if (Options.plain_print) {
                     try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                 } else {
                     try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), s_arrow_s, base_name, endl_s });
                 }
                 const s_total: u64 = results.total();
-                writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name) catch {};
+                writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth + 1) catch {};
                 const t_total: u64 = results.total();
-                const t_arrow_s: []const u8 = mach.cmovx(is_last, last_empty_dir_arrow_ws, empty_dir_arrow_ws);
-                if (Style.wide and !plain_print) {
+                if (try_empty_dir_correction) {
+                    const t_arrow_s: []const u8 = mach.cmovx(is_last, Style.last_empty_dir_arrow_s, Style.empty_dir_arrow_s);
                     if (s_total == t_total) {
-                        array.rewriteAny(preset.reinterpret.ptr, .{ alts_buf.readAll(), t_arrow_s, base_name, endl_s });
+                        array.undefine(array.len(allocator_1.*) -% len_0);
+                        array.writeAny(preset.reinterpret.ptr, .{ alts_buf.readAll(), t_arrow_s, base_name, endl_s });
                     }
                 }
             },
@@ -232,7 +235,7 @@ noinline fn writeAndWalk(
                 const arrow: []const u8 = mach.cmovx(is_last, Style.last_link_arrow_s, Style.link_arrow_s);
                 const style: []const u8 = lit.fx.color.fg.cyan;
                 if (options.follow) {
-                    if (plain_print) {
+                    if (Options.plain_print) {
                         try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                     } else {
                         try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, Style.links_to_s });
@@ -243,7 +246,7 @@ noinline fn writeAndWalk(
                         try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ "???", endl_s });
                     }
                 } else {
-                    if (plain_print) {
+                    if (Options.plain_print) {
                         try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                     } else {
                         try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, endl_s });
@@ -253,7 +256,7 @@ noinline fn writeAndWalk(
             else => {
                 results.files += 1;
                 const arrow: []const u8 = mach.cmovx(is_last, Style.last_file_arrow_s, Style.file_arrow_s);
-                if (plain_print) {
+                if (Options.plain_print) {
                     try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
                 } else {
                     try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind)], base_name, endl_s });
@@ -301,28 +304,34 @@ noinline fn showResults(counts: Results) void {
         "dirs:       ", fmt.udh(counts.dirs),          '\n',
         "files:      ", fmt.udh(counts.files),         '\n',
         "links:      ", fmt.udh(counts.links),         '\n',
+        "depth:      ", fmt.udh(counts.depth),         '\n',
         "swaps:      ", fmt.udh(DirStream.disordered), '\n',
     });
     file.noexcept.write(2, array.readAll());
 }
-
-inline fn printIfAvail(allocator: BlockAllocator1, array: String1, offset: u64) u64 {
+inline fn printIfNAvail(comptime n: usize, allocator: BlockAllocator1, array: String1, offset: u64) u64 {
     const many: []const u8 = array.readManyAt(allocator, offset);
-    if (many.len != 0) {
-        file.noexcept.write(2, many);
+    if (many.len > (n - 1)) {
+        if (n == 1) {
+            file.noexcept.write(2, many);
+            return many.len;
+        } else if (many[many.len - 1] == '\n') {
+            file.noexcept.write(2, many);
+            return many.len;
+        }
     }
-    return many.len;
+    return 0;
 }
-noinline fn printAlong(results: *volatile Results, done: *volatile bool, allocator: *BlockAllocator1, array: *String1) void {
+noinline fn printAlong(results: *Results, done: *bool, allocator: *BlockAllocator1, array: *String1) void {
     var offset: u64 = 0;
     while (true) {
-        offset += printIfAvail(allocator.*, array.*, offset);
+        offset += printIfNAvail(4096, allocator.*, array.*, offset);
         if (done.*) {
             break;
         }
     }
     while (offset != array.len(allocator.*)) {
-        offset += printIfAvail(allocator.*, array.*, offset);
+        offset += printIfNAvail(1, allocator.*, array.*, offset);
     }
     showResults(results.*);
     done.* = false;
@@ -332,7 +341,7 @@ fn printHelpText(rc: u8) noreturn {
         \\-h, --help        print this text
         \\-a, --all         print hidden entries
         \\-L, --follow      print link destinations
-    ++ if (permit_switch_arrows)
+    ++ if (Options.permit_switch_arrows)
         \\-w, --wide        print fancy arrows
         \\
     else
@@ -348,22 +357,23 @@ inline fn getNames(args: *[][*:0]u8) Names {
     }
     return names;
 }
-
+fn convertToInt(options: *Options, comptime field_name: [:0]const u8, arg: []const u8) void {
+    @field(options, field_name) = builtin.parse.ud(u8, arg);
+}
 pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     var done: bool = undefined;
-    if (permit_switch_arrows) {
-        Style.setArrows();
-    }
-    // zig fmt: off
-    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){
-        .{ .decl = .all,    .short = "-a", .long = "--all",         .assign = .{ .boolean = true } },
-        .{ .decl = .follow, .short = "-L", .long = "--follow",      .assign = .{ .boolean = true } },
-        .{ .decl = .follow, .short = "+L", .long = "--no-follow",   .assign = .{ .boolean = false } },
-        .{ .decl = .wide,   .short = "-w", .long = "--wide",        .assign = .{ .boolean = true } },
-    });
-    // zig fmt: on
+    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){ // zig fmt: off
+        .{ .decl = .all,        .short = "-a", .long = "--all",         .assign = .{ .boolean = true } },
+        .{ .decl = .follow,     .short = "-L", .long = "--follow",      .assign = .{ .boolean = true } },
+        .{ .decl = .follow,     .short = "+L", .long = "--no-follow",   .assign = .{ .boolean = false } },
+        .{ .decl = .wide,       .short = "-w", .long = "--wide",        .assign = .{ .boolean = true } },
+        .{ .decl = .max_depth,  .short = "-d", .long = "--max-depth",   .assign = .{ .generic = convertToInt } },
+    }); // zig fmt: on
 
+    if (Options.permit_switch_arrows) {
+        Style.setArrows(options);
+    }
     var names: Names = getNames(&args);
     if (names.len() == 0) {
         names.writeOne(".");
@@ -373,7 +383,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
     var allocator_1: BlockAllocator1 = try BlockAllocator1.init(address_space);
     defer allocator_0.deinit(address_space);
     defer allocator_1.deinit(address_space);
-    const stack_addr: u64 = mach.cmov64(print_in_second_thread, try thread.map(map_spec, 8), 0);
+    const stack_addr: u64 = mach.cmov64(Options.print_in_second_thread, try thread.map(map_spec, 8), 0);
     defer thread.unmap(.{ .errors = null }, 8);
     try allocator_0.map(4096);
     try allocator_1.map(4096);
@@ -381,7 +391,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
         done = false;
         var results: Results = .{};
         var alts_buf: PrintArray = .{};
-        if (!plain_print) {
+        if (!Options.plain_print) {
             alts_buf.writeCount(4096, (" " ** 4096).*);
             alts_buf.undefine(4096);
         }
@@ -389,7 +399,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
         var array: String1 = String1.init(&allocator_1);
         var tid: u64 = undefined;
         defer array.deinit(&allocator_1);
-        if (print_in_second_thread) {
+        if (Options.print_in_second_thread) {
             tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
         }
         try array.appendMany(&allocator_1, arg);
@@ -398,8 +408,8 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
         } else {
             try array.appendMany(&allocator_1, "\n");
         }
-        try writeAndWalk(&options, &allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &results, null, arg);
-        if (print_in_second_thread) {
+        try writeAndWalk(&options, &allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &results, null, arg, 0);
+        if (Options.print_in_second_thread) {
             done = true;
             mem.monitor(bool, &done);
         } else {
