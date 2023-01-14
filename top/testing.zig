@@ -241,6 +241,14 @@ const Static = struct {
     var allocator: ?Allocator = null;
     var array: ?Array = null;
 };
+
+pub fn printN(comptime n: usize, any: anytype) void {
+    var array: mem.StaticString(n) = undefined;
+    array.undefineAll();
+    array.writeAny(preset.reinterpret.fmt, any);
+    file.noexcept.write(2, array.readAll());
+}
+
 pub fn print(any: anytype) void {
     const allocator: *Static.Allocator = blk: {
         if (Static.allocator) |*allocator| {
