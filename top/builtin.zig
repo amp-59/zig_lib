@@ -1,6 +1,8 @@
 pub const root = @import("root");
 pub const zig = @import("builtin");
 
+pub usingnamespace builtin;
+
 // zig fmt: off
 pub const native_endian                   = zig.cpu.arch.endian();
 pub const is_little: bool                 = native_endian == .Little;
@@ -16,11 +18,14 @@ pub const logging: Logging                = config("logging",       Logging, .{}
 pub const build_root: ?[:0]const u8       = config("build_root",    ?[:0]const u8,  null);
 pub const root_src_file: ?[:0]const u8    = config("root_src_file", ?[:0]const u8,  null);
 pub const AddressSpace: type              = config("AddressSpace",  type, @import("preset.zig").address_space.formulaic_128);
+const builtin = opaque {
 pub const SourceLocation                  = Src();
 pub const Type                            = @TypeOf(@typeInfo(void));
 pub const Struct                          = @TypeOf(@typeInfo(struct {}).Struct);
+pub const Array                           = @TypeOf(@typeInfo([0]void).Array);
 pub const Union                           = @TypeOf(@typeInfo(union {}).Union);
 pub const Enum                            = @TypeOf(@typeInfo(enum {}).Enum);
+pub const Pointer                         = @TypeOf(@typeInfo(*void).Pointer);
 pub const Size                            = @TypeOf(@typeInfo(*void).Pointer.size);
 pub const Signedness                      = @TypeOf(@typeInfo(u0).Int.signedness);
 pub const TypeId                                  = @typeInfo(Type).Union.tag_type.?;
@@ -33,6 +38,7 @@ pub const CallingConvention               = @TypeOf(@typeInfo(fn () noreturn).Fn
 pub const FnParam               = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.params)).Pointer.child;
 pub const DeclLiteral                             = @Type(.EnumLiteral);
 pub const Endian                                  = @TypeOf(zig.cpu.arch.endian());
+};
 // zig fmt: on
 fn Src() type {
     return @TypeOf(@src());
@@ -546,6 +552,129 @@ pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
+
+fn @"test"(b: bool) bool {
+    return b;
+}
+
+// Currently, only the following non-trivial comparisons are supported:
+fn testEqualArray(comptime T: type, comptime array_info: builtin.Array, arg1: T, arg2: T) bool {
+    var i: usize = 0;
+    while (i != array_info.len) : (i += 1) {
+        if (!testEqual(array_info.child, arg1[i], arg2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Pointer, arg1: T, arg2: T) bool {
+    if (arg1.len != arg2.len) {
+        return false;
+    }
+    var i: usize = 0;
+    while (i != arg1.len) : (i += 1) {
+        if (!testEqual(pointer_info.child, arg1[i], arg2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+fn testEqualPointer(comptime T: type, comptime pointer_info: builtin.Pointer, arg1: T, arg2: T) bool {
+    if (@typeInfo(pointer_info.child) != .Fn) {
+        return arg1 == arg2;
+    }
+    return false;
+}
+fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Struct, arg1: T, arg2: T) bool {
+    inline for (struct_info.fields) |field| {
+        if (!testEqual(
+            field.type,
+            @field(arg1, field.name),
+            @field(arg2, field.name),
+        )) {
+            return false;
+        }
+    }
+    return true;
+}
+fn testEqualUnion(comptime T: type, comptime union_info: builtin.Union, arg1: T, arg2: T) bool {
+    if (union_info.tag_type) |tag_type| {
+        inline for (union_info.fields) |field| {
+            const tag: tag_type = @field(tag_type, field.name);
+            if (arg1 == tag) {
+                if (arg2 != tag) {
+                    return false;
+                }
+                if (!testEqual(
+                    field.type,
+                    @field(arg1, field.name),
+                    @field(arg2, field.name),
+                )) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}
+fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Optional, arg1: T, arg2: T) bool {
+    if (@typeInfo(optional_info.child) == .Pointer and
+        @typeInfo(optional_info.child).Pointer.size != .Slice and
+        @typeInfo(optional_info.child).Pointer.size != .C)
+    {
+        return arg1 == arg2;
+    }
+    return false;
+}
+pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
+    const type_info: builtin.Type = @typeInfo(T);
+    switch (type_info) {
+        .Array => |array_info| {
+            return testEqualArray(T, array_info, arg1, arg2);
+        },
+        .Pointer => |pointer_info| if (pointer_info.size == .Slice) {
+            return testEqualSlice(T, pointer_info, arg1, arg2);
+        } else {
+            return testEqualPointer(T, pointer_info, arg1, arg2);
+        },
+        .Optional => |optional_info| {
+            return testEqualOptional(T, optional_info, arg1, arg2);
+        },
+        .Struct => |struct_info| {
+            return testEqualStruct(T, struct_info, arg1, arg2);
+        },
+        .Union => |union_info| {
+            return testEqualUnion(T, union_info, arg1, arg2);
+        },
+        .Type,
+        .Void,
+        .Bool,
+        .Int,
+        .Float,
+        .ComptimeFloat,
+        .ComptimeInt,
+        .Null,
+        .ErrorSet,
+        .Enum,
+        .Opaque,
+        .AnyFrame,
+        .EnumLiteral,
+        => {
+            return arg1 == arg2;
+        },
+        .Fn,
+        .NoReturn,
+        .ErrorUnion,
+        .Frame,
+        .Vector,
+        .Undefined,
+        => {
+            return false;
+        },
+    }
+    return false;
+}
+
 pub fn assert(b: bool) void {
     if (!b) {
         @panic("assertion failed");
@@ -564,13 +693,13 @@ pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
     }
 }
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = arg1 == arg2;
+    const result: bool = testEqual(T, arg1, arg2);
     if (is_correct and !result) {
         debug.comparisonFailedFault(T, " == ", arg1, arg2);
     }
 }
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = arg1 != arg2;
+    const result: bool = !testEqual(T, arg1, arg2);
     if (is_correct and !result) {
         debug.comparisonFailedFault(T, " != ", arg1, arg2);
     }
@@ -1591,7 +1720,7 @@ pub const fmt = opaque {
             return result +% dec;
         }
     }
-    pub fn typeTypeName(comptime type_id: TypeId) []const u8 {
+    pub fn typeTypeName(comptime type_id: builtin.TypeId) []const u8 {
         return switch (type_id) {
             .Type => "type",
             .Void => "void",
@@ -1619,7 +1748,7 @@ pub const fmt = opaque {
             .EnumLiteral => "enum literal",
         };
     }
-    pub fn typeDeclSpecifier(comptime type_info: Type) []const u8 {
+    pub fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
         return switch (type_info) {
             .Array => |array_info| {
                 const type_name: []const u8 = @typeName(@Type(type_info));
