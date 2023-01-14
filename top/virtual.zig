@@ -1,5 +1,4 @@
 const meta = @import("./meta.zig");
-const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
 pub const RegularAddressSpaceSpec = RegularMultiArena;
@@ -8,25 +7,21 @@ pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 pub const ArenaOptions = extern struct {
     thread_safe: bool = false,
 };
+pub const ArenaReference = struct {
+    index: comptime_int,
+    options: ?ArenaOptions = null,
+    fn arena(comptime arena_ref: ArenaReference, comptime AddressSpace: type) Arena {
+        return AddressSpace.arena(arena_ref.index);
+    }
+};
+pub const SuperSpace = struct {
+    AddressSpace: type,
+    list: []const ArenaReference,
+};
 pub const Arena = struct {
     lb_addr: u64,
     up_addr: u64,
     options: ArenaOptions = .{},
-    pub fn low(arena: Arena) u64 {
-        return arena.lb_addr;
-    }
-    pub fn high(arena: Arena) u64 {
-        return arena.up_addr;
-    }
-    pub fn capacity(arena: Arena) u64 {
-        return arena.up_addr - arena.lb_addr;
-    }
-    fn construct(lb_addr: u64, up_addr: u64) Arena {
-        return .{
-            .lb_addr = lb_addr,
-            .up_addr = up_addr,
-        };
-    }
     pub const Intersection = struct {
         l: Arena,
         x: Arena,
@@ -76,17 +71,15 @@ pub const Arena = struct {
             },
         };
     }
-};
-pub const ArenaReference = struct {
-    index: comptime_int,
-    options: ?ArenaOptions = null,
-    fn arena(comptime arena_ref: ArenaReference, comptime AddressSpace: type) Arena {
-        return AddressSpace.arena(arena_ref.index);
+    pub fn low(arena: Arena) u64 {
+        return arena.lb_addr;
     }
-};
-const SuperSpace = struct {
-    AddressSpace: type,
-    list: []const ArenaReference,
+    pub fn high(arena: Arena) u64 {
+        return arena.up_addr;
+    }
+    pub fn capacity(arena: Arena) u64 {
+        return arena.up_addr - arena.lb_addr;
+    }
 };
 // Maybe make generic on Endian.
 // Right now it is difficult to get Zig vectors to produce consistent results,
@@ -535,10 +528,10 @@ pub const StaticAddressSpace = extern struct {
     };
     pub const Index: type = u8;
     pub fn bitMask(index: Index) u64 {
-        return mach.shl64(1, mach.cmov8(index > 63, index, index -% 64));
+        return @as(u64, 1) << if (index > 63) index else index -% 64;
     }
     pub fn pointer(address_space: *AddressSpace, index: Index) *u64 {
-        return mach.cmovx(index > 63, &address_space.bits[1], &address_space.bits[0]);
+        return if (index > 63) &address_space.bits[1] else &address_space.bits[0];
     }
     pub fn unset(address_space: *AddressSpace, index: Index) bool {
         const mask: u64 = bitMask(index);
@@ -605,98 +598,6 @@ pub const StaticAddressSpace = extern struct {
 };
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
-        const check_true: []const u8 = "[1]: ";
-        const check_false: []const u8 = "[0]: ";
-        pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
-            if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
-                return formatWriteDiscrete(address_space, array);
-            } else {
-                return formatWriteRegular(address_space, array);
-            }
-        }
-        pub fn formatLength(address_space: AddressSpace) u64 {
-            if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
-                return formatLengthDiscrete(address_space);
-            } else {
-                return formatLengthRegular(address_space);
-            }
-        }
-        fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
-            var arena_index: AddressSpace.Index = 0;
-            array.writeMany(check_false);
-            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (!address_space.impl.check(arena_index)) {
-                    array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
-                    array.writeCount(2, ", ".*);
-                }
-            }
-            arena_index = 0;
-            array.writeMany(check_true);
-            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (address_space.impl.check(arena_index)) {
-                    array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
-                    array.writeCount(2, ", ".*);
-                }
-            }
-        }
-        fn formatLengthRegular(address_space: AddressSpace) u64 {
-            var len: u64 = 0;
-            var arena_index: AddressSpace.Index = 0;
-            len += check_false.len;
-            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (!address_space.impl.check(arena_index)) {
-                    len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                    len += 2;
-                }
-            }
-            arena_index = 0;
-            len += check_true.len;
-            while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (address_space.impl.check(arena_index)) {
-                    len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                    len += 2;
-                }
-            }
-            return len;
-        }
-        fn formatWriteDiscrete(address_space: AddressSpace, array: anytype) void {
-            comptime var arena_index: AddressSpace.Index = 0;
-            array.writeMany(check_false);
-            inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (!address_space.impl.check(arena_index)) {
-                    array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
-                    array.writeCount(2, ", ".*);
-                }
-            }
-            arena_index = 0;
-            array.writeMany(check_true);
-            inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (address_space.impl.check(arena_index)) {
-                    array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
-                    array.writeCount(2, ", ".*);
-                }
-            }
-        }
-        fn formatLengthDiscrete(address_space: AddressSpace) u64 {
-            var len: u64 = 0;
-            comptime var arena_index: AddressSpace.Index = 0;
-            len += check_true.len;
-            inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (address_space.impl.check(arena_index)) {
-                    len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                    len += 2;
-                }
-            }
-            len += check_false.len;
-            arena_index = 0;
-            inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                if (!address_space.impl.check(arena_index)) {
-                    len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                    len += 2;
-                }
-            }
-            return len;
-        }
         pub fn reserve(comptime address_space: *AddressSpace, comptime SubAddressSpace: type) SubAddressSpace {
             if (SubAddressSpace.addr_spec.super_space) |super_space| {
                 comptime {
@@ -705,5 +606,99 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             }
             return .{};
         }
+        pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
+            if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
+                return debug.formatWriteDiscrete(address_space, array);
+            } else {
+                return debug.formatWriteRegular(address_space, array);
+            }
+        }
+        pub fn formatLength(address_space: AddressSpace) u64 {
+            if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
+                return debug.formatLengthDiscrete(address_space);
+            } else {
+                return debug.formatLengthRegular(address_space);
+            }
+        }
+        const debug = struct {
+            const check_true: []const u8 = "[1]: ";
+            const check_false: []const u8 = "[0]: ";
+            fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
+                var arena_index: AddressSpace.Index = 0;
+                array.writeMany(check_false);
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (!address_space.impl.check(arena_index)) {
+                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+                arena_index = 0;
+                array.writeMany(check_true);
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (address_space.impl.check(arena_index)) {
+                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+            }
+            fn formatLengthRegular(address_space: AddressSpace) u64 {
+                var len: u64 = 0;
+                var arena_index: AddressSpace.Index = 0;
+                len += check_false.len;
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (!address_space.impl.check(arena_index)) {
+                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len += 2;
+                    }
+                }
+                arena_index = 0;
+                len += check_true.len;
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (address_space.impl.check(arena_index)) {
+                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len += 2;
+                    }
+                }
+                return len;
+            }
+            fn formatWriteDiscrete(address_space: AddressSpace, array: anytype) void {
+                comptime var arena_index: AddressSpace.Index = 0;
+                array.writeMany(check_false);
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (!address_space.impl.check(arena_index)) {
+                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+                arena_index = 0;
+                array.writeMany(check_true);
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (address_space.impl.check(arena_index)) {
+                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+            }
+            fn formatLengthDiscrete(address_space: AddressSpace) u64 {
+                var len: u64 = 0;
+                comptime var arena_index: AddressSpace.Index = 0;
+                len += check_true.len;
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (address_space.impl.check(arena_index)) {
+                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len += 2;
+                    }
+                }
+                len += check_false.len;
+                arena_index = 0;
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                    if (!address_space.impl.check(arena_index)) {
+                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len += 2;
+                    }
+                }
+                return len;
+            }
+        };
     };
 }
