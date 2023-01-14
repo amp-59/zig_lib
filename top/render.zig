@@ -197,19 +197,18 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
                         inline for (struct_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                            const FieldFormat = AnyFormat(field.type, spec);
                             if (spec.inline_field_types) {
                                 const type_format: TypeFormat(spec) = .{ .value = field.type };
                                 field_name_format.formatWrite(array);
                                 array.writeMany(": ");
                                 type_format.formatWrite(array);
                             } else {
+                                const field_type_name: []const u8 = typeName(field.type, spec);
                                 field_name_format.formatWrite(array);
-                                array.writeMany(": ");
-                                array.writeMany(typeName(field.type, spec));
+                                array.writeMany(": " ++ field_type_name);
                             }
                             if (meta.defaultValue(field)) |default_value| {
-                                const field_format: FieldFormat = .{ .value = default_value };
+                                const field_format: AnyFormat(field.type, spec) = .{ .value = default_value };
                                 array.writeMany(" = ");
                                 field_format.formatWrite(array);
                             }
@@ -235,9 +234,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                     const type_format: TypeFormat(spec) = .{ .value = field.type };
                                     type_format.formatWrite(array);
                                 } else {
+                                    const field_type_name: []const u8 = typeName(field.type, spec);
                                     field_name_format.formatWrite(array);
-                                    array.writeMany(": ");
-                                    array.writeMany(typeName(field.type, spec));
+                                    array.writeMany(": " ++ field_type_name);
                                 }
                                 array.writeCount(2, ", ".*);
                             }
@@ -275,7 +274,6 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         len += comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
                         inline for (struct_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                            const FieldFormat = AnyFormat(field.type, spec);
                             if (spec.inline_field_types) {
                                 const type_format: TypeFormat(spec) = .{ .value = field.type };
                                 len += field_name_format.formatLength() + 2;
@@ -284,7 +282,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len += field_name_format.formatLength() + 2 + typeName(field.type, spec).len;
                             }
                             if (meta.defaultValue(field)) |default_value| {
-                                const field_format: FieldFormat = .{ .value = default_value };
+                                const field_format: AnyFormat(field.type, spec) = .{ .value = default_value };
                                 len += 3;
                                 len += field_format.formatLength();
                             }
@@ -364,11 +362,7 @@ fn StructFormat(comptime Struct: type, comptime spec: RenderSpec) type {
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const max_len: u64 = blk: {
             var len: u64 = 0;
-            if (spec.infer_type_names) {
-                len += 3;
-            } else {
-                len += type_name.len + 2;
-            }
+            len += type_name.len + 2;
             if (fields.len == 0) {
                 len += 1;
             } else {
@@ -388,23 +382,14 @@ fn StructFormat(comptime Struct: type, comptime spec: RenderSpec) type {
         };
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (fields.len == 0) {
-                if (spec.infer_type_names) {
-                    array.writeMany(".{}");
-                } else {
-                    array.writeMany(type_name ++ "{}");
-                }
+                array.writeMany(type_name ++ "{}");
             } else {
                 var fields_len: usize = 0;
-                if (spec.infer_type_names) {
-                    array.writeMany(".{ ");
-                } else {
-                    array.writeMany(type_name ++ "{ ");
-                }
+                array.writeMany(type_name ++ "{ ");
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                    const FieldFormat = AnyFormat(field.type, field_spec);
                     const field_value: field.type = @field(format.value, field.name);
-                    const field_format: FieldFormat = .{ .value = field_value };
+                    const field_format: AnyFormat(field.type, field_spec) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null and
                         comptime meta.isTriviallyComparable(field.type))
                     {
@@ -430,11 +415,7 @@ fn StructFormat(comptime Struct: type, comptime spec: RenderSpec) type {
         }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = 0;
-            if (spec.infer_type_names) {
-                len += 3;
-            } else {
-                len += type_name.len + 2;
-            }
+            len += type_name.len + 2;
             var fields_len: usize = 0;
             inline for (fields) |field| {
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
@@ -510,7 +491,7 @@ fn UnionFormat(comptime Union: type, comptime spec: RenderSpec) type {
         pub fn formatWriteEnumField(format: Format, array: anytype) void {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            array.writeMany("bit_field(" ++ comptime typeName(enum_info.Enum.tag_type) ++ "){ ");
+            array.writeMany("bit_field(" ++ comptime typeName(enum_info.Enum.tag_type, spec) ++ "){ ");
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
@@ -571,11 +552,9 @@ fn UnionFormat(comptime Union: type, comptime spec: RenderSpec) type {
                 return formatWriteEnumField(format, array);
             }
             if (fields.len == 0) {
-                array.writeMany(type_name);
-                array.writeCount(2, "{}".*);
+                array.writeMany(type_name ++ "{}");
             } else {
-                array.writeMany(type_name);
-                array.writeCount(2, "{ ".*);
+                array.writeMany(type_name ++ "{ ");
                 if (comptime @typeInfo(Union).Union.tag_type) |tag_type| {
                     inline for (fields) |field| {
                         if (format.value == @field(tag_type, field.name)) {
@@ -897,8 +876,8 @@ pub fn PointerManyFormat(comptime Pointer: type, comptime spec: RenderSpec) type
         const Format: type = @This();
         const ChildFormat: type = AnyFormat(child, spec);
         const type_info: builtin.Type = @typeInfo(Pointer);
-        const child: type = type_info.Pointer.child;
         const type_name: []const u8 = typeName(Pointer, spec);
+        const child: type = type_info.Pointer.child;
         pub fn formatWrite(format: Format, array: anytype) void {
             if (type_info.Pointer.sentinel == null) {
                 array.writeMany(type_name ++ "{ ... }");
