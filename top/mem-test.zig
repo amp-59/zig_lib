@@ -13,6 +13,8 @@ pub usingnamespace proc.start;
 pub const is_correct: bool = true;
 pub const is_verbose: bool = false;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
+
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 const invalid_holder_state: u64 = (0b110000110000 << 48);
 const move_spec = if (default_errors) .{
