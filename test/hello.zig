@@ -5,10 +5,14 @@ const file = srg.file;
 const builtin = srg.builtin;
 
 comptime {
-    //_ = builtin;
+    _ = builtin;
 }
 
 const hello_world = "Hello, world!\n";
+
+fn NTuple(comptime n: usize) type {
+    return @TypeOf(@as(struct { u8 }, undefined) ** n);
+}
 
 pub export fn _start() void {
     @setAlignStack(16);
@@ -19,7 +23,7 @@ pub export fn _start() void {
         const x: []const u8 = (comptime mem.view("Hello, world!\n")).readAll();
         file.noexcept.write(2, x);
     }
-    if (true) {
+    if (false) {
         var array: mem.StaticString(4096) = undefined;
         array.impl.ub_word = 0;
         array.writeAny(mem.follow_wr_spec, .{ "Hello", ",", " World", "!", "\n" });
@@ -31,14 +35,15 @@ pub export fn _start() void {
         array.writeMany("Hello, world!\n");
         file.noexcept.write(2, array.readAll());
     }
-    if (false) {
+    if (true) {
         const S = struct {
             len: u64 = 0,
-            auto: [4096]u8 = undefined,
+            auto: [256]u8 align(1) = undefined,
         };
         var s: S = .{};
+        var z: S = .{};
         inline for (hello_world) |c, i| s.auto[i] = c;
-        file.noexcept.write(2, s.auto[0..hello_world.len]);
+        file.noexcept.write(2, z.auto[0..hello_world.len]);
     }
     sys.exit(0);
 }
