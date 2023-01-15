@@ -675,7 +675,9 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
         if (main_return_type == u8) {
             sys.exit(@call(.always_inline, main, params));
         }
-        if (main_return_type_info.ErrorUnion.payload == void) {
+        if (main_return_type_info == .ErrorUnion and
+            main_return_type_info.ErrorUnion.payload == void)
+        {
             if (@call(.always_inline, main, params)) {
                 sys.exit(0);
             } else |err| {
@@ -684,7 +686,9 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
                 sys.exit(@intCast(u8, @errorToInt(err)));
             }
         }
-        if (main_return_type_info.ErrorUnion.payload == u8) {
+        if (main_return_type_info == .ErrorUnion and
+            main_return_type_info.ErrorUnion.payload == u8)
+        {
             if (@call(.always_inline, builtin.root.main, params)) |rc| {
                 sys.exit(rc);
             } else |err| {
@@ -692,6 +696,9 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
                 exitWithError(err);
                 sys.exit(@intCast(u8, @errorToInt(err)));
             }
+        }
+        if (main_return_type_info == .ErrorSet) {
+            @compileError("main return type always an error: " ++ @typeName(main_return_type));
         }
     } else if (builtin.zig.output_mode == .Exe) {
         @compileError("main not defined in source root");
@@ -816,7 +823,108 @@ pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry
     }
     return null;
 }
+pub fn GenericOptions(comptime Options: type) type {
+    return struct {
+        field_name: []const u8,
+        short: ?[]const u8 = null,
+        // short_prefix: []const u8 = "-",
+        // short_anti_prefix: []const u8 = "+",
+        long: ?[]const u8 = null,
+        // long_prefix: []const u8 = "--",
+        // long_anti_prefix: []const u8 = "--no-",
+        assign: union(enum) {
+            boolean: bool,
+            argument,
+            convert: *const fn (*Options, [:0]const u8) void,
+        },
+        descr: ?[]const u8 = null,
+        clobber: bool = true,
+
+        const Option = @This();
+        fn getOptInternal(comptime flag: Option, options: *Options, args: *[][*:0]u8, index: u64, offset: u64) void {
+            switch (flag.assign) {
+                .boolean => |value| {
+                    shift(args, index);
+                    @field(options, flag.field_name) = value;
+                },
+                .argument => {
+                    if (offset == 0) {
+                        shift(args, index);
+                    }
+                    @field(options, flag.field_name) = meta.manyToSlice(args.*[index])[offset..];
+                    shift(args, index);
+                },
+                .convert => |convert| {
+                    if (offset == 0) {
+                        shift(args, index);
+                    }
+                    convert(options, meta.manyToSlice(args.*[index])[offset..]);
+                    shift(args, index);
+                },
+                //.generic => |generic| {
+                //    if (offset == 0) {
+                //        shift(args, index);
+                //    }
+                //    generic(options, @tagName(flag.decl), meta.manyToSlice(args.*[index])[offset..]);
+                //    shift(args, index);
+                //},
+            }
+        }
+    };
+}
+pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: []const GenericOptions(Options)) Options {
+    var options: Options = .{};
+    if (args.len == 0) {
+        return options;
+    }
+    var index: u64 = 1;
+    lo: while (index != args.len) {
+        const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
+        inline for (all_options) |option| {
+            if (index == args.len) {
+                break :lo;
+            }
+            if (option.long) |long_switch| {
+                if (builtin.testEqual([]const u8, long_switch, arg1)) {
+                    option.getOptInternal(&options, args, index, 0);
+                    continue :lo;
+                }
+                const assign_long_switch: []const u8 = long_switch ++ "=";
+                if (builtin.testEqual([]const u8, assign_long_switch, arg1)) {
+                    option.getOptInternal(&options, args, index, assign_long_switch.len);
+                    continue :lo;
+                }
+            }
+            if (option.short) |short_switch| {
+                if (builtin.testEqual([]const u8, short_switch, arg1)) {
+                    option.getOptInternal(&options, args, index, 0);
+                    continue :lo;
+                }
+                if (builtin.testEqual([]const u8, short_switch, arg1)) {
+                    option.getOptInternal(&options, args, index, short_switch.len);
+                    continue :lo;
+                }
+            }
+        }
+        if (builtin.testEqual([]const u8, "--", arg1)) {
+            shift(args, index);
+            break :lo;
+        }
+        if (builtin.testEqual([]const u8, "--help", arg1)) {
+            debug.optionHelp(Options, all_options);
+        }
+        if (arg1[0] == '-') {
+            debug.badOptionHelp(Options, all_options, arg1, .{});
+        }
+        index += 1;
+    }
+    return options;
+}
+
 const debug = opaque {
+    const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
+    const about_opt_0_s: []const u8 = "opt:            '";
+    const about_opt_1_s: []const u8 = "opt-error:      '";
     const about_error_s: []const u8 = "error:          ";
     const about_fork_0_s: []const u8 = "fork:           ";
     const about_fork_1_s: []const u8 = "fork-error:     ";
@@ -826,7 +934,11 @@ const debug = opaque {
     const about_execve_1_s: []const u8 = "execve-error:   ";
     const about_execveat_1_s: []const u8 = "execveat-error: ";
 
-    fn write(buf: []u8, ss: []const []const u8) u64 {
+    inline fn write(buf: []u8, s: []const u8) u64 {
+        for (s) |c, i| buf[i] = c;
+        return s.len;
+    }
+    fn write2(buf: []u8, ss: []const []const u8) u64 {
         var len: u64 = 0;
         for (ss) |s| {
             for (s) |c, i| buf[len + i] = c;
@@ -835,7 +947,7 @@ const debug = opaque {
         return len;
     }
     fn print(buf: []u8, ss: []const []const u8) void {
-        sys.noexcept.write(2, @ptrToInt(buf.ptr), write(buf, ss));
+        sys.noexcept.write(2, @ptrToInt(buf.ptr), write2(buf, ss));
     }
     fn writeExecutablePathname(buf: []u8) u64 {
         const rc: i64 = sys.noexcept.readlink(
@@ -854,7 +966,7 @@ const debug = opaque {
         for (about_error_s) |c, i| buf[len + i] = c;
         len +%= about_error_s.len;
         len +%= writeExecutablePathname(buf[len..]);
-        len +%= write(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
+        len +%= write2(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
         sys.noexcept.write(2, @ptrToInt(buf.ptr), len);
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
@@ -940,5 +1052,113 @@ const debug = opaque {
             len += 1;
         }
         sys.noexcept.write(2, @ptrToInt(&buf), len);
+    }
+    fn matches(l_values: []const u8, r_values: []const u8) u64 {
+        var l_idx: u64 = 0;
+        var mats: u64 = 0;
+        while (l_idx + mats < l_values.len) : (l_idx += 1) {
+            var r_idx: u64 = 0;
+            while (r_idx != r_values.len) : (r_idx += 1) {
+                mats += builtin.int(u64, l_values[l_idx + mats] == r_values[r_idx]);
+            }
+        }
+        return mats;
+    }
+    fn isolateSwitch(arg: [:0]const u8) []const u8 {
+        var idx: u64 = 0;
+        while (idx != arg.len) : (idx += 1) {
+            if (arg[idx] == '=') {
+                return arg[0..idx];
+            }
+        }
+        return arg;
+    }
+    fn optionHelp(comptime Options: type, comptime all_options: []const GenericOptions(Options)) noreturn {
+        const buf: []const u8 = comptime blk: {
+            var buf: []const u8 = "option flags:\n";
+            var max_width: i64 = 0;
+            for (all_options) |option| {
+                var width: u64 = 0;
+                if (option.short) |short_switch| {
+                    width += 1 + short_switch.len;
+                }
+                if (option.long) |long_switch| {
+                    width += 2 + long_switch.len;
+                }
+                max_width = @max(width, max_width);
+            }
+            max_width += 7;
+            max_width &= -8;
+            for (all_options) |option| {
+                buf = buf ++ " " ** 4;
+                if (option.short) |short_switch| {
+                    var tmp: []const u8 = short_switch;
+                    if (option.long) |long_switch| {
+                        tmp = tmp ++ ", " ++ long_switch;
+                    }
+                    if (option.descr) |descr| {
+                        tmp = tmp ++ " " **
+                            (4 + (max_width - tmp.len)) ++ descr;
+                    }
+                    buf = buf ++ tmp ++ "\n";
+                } else {
+                    var tmp: []const u8 = option.long.?;
+                    if (option.descr) |descr| {
+                        tmp = tmp ++ " " **
+                            (4 + (max_width - tmp.len)) ++ descr;
+                    }
+                    buf = buf ++ tmp ++ "\n";
+                }
+            }
+            break :blk buf;
+        };
+        sys.noexcept.write(2, @ptrToInt(buf.ptr), buf.len);
+        sys.exit(2);
+    }
+    fn badOptionHelp(comptime Options: type, all_options: []const GenericOptions(Options), arg: [:0]const u8, params: struct {
+        show_short_switch_threshold: u64 = 1,
+        show_long_switch_threshold: u64 = 3,
+    }) noreturn {
+        var buf: [4096 + 128]u8 = undefined;
+        var len: u64 = 0;
+        const bad_opt: []const u8 = isolateSwitch(arg);
+        len += write2(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
+        for (all_options) |option| {
+            const min: u64 = len;
+            if (option.short) |short_switch| {
+                const mats: u64 = matches(bad_opt, short_switch);
+                if (builtin.diff(u64, mats, bad_opt.len) < params.show_short_switch_threshold) {
+                    len += write(buf[len..], about_opt_0_s);
+                    len += write(buf[len..], short_switch);
+                }
+            }
+            if (option.long) |long_switch| {
+                const mats: u64 = matches(bad_opt, long_switch);
+                if (builtin.diff(u64, mats, long_switch.len) < params.show_long_switch_threshold) {
+                    len += write(buf[len..], if (min != len) "', '" else about_opt_0_s);
+                    len += write(buf[len..], long_switch);
+                }
+            }
+            if (min != len) {
+                len += write(buf[len..], "'");
+                if (option.descr) |descr| {
+                    buf[len] = '\t';
+                    len += 1;
+                    len += write(buf[len..], descr);
+                }
+                buf[len] = '\n';
+                len += 1;
+            }
+        }
+        len += write(buf[len..], about_stop_s);
+        sys.noexcept.write(2, @ptrToInt(&buf), len);
+        sys.exit(2);
+    }
+    pub fn getHelp(comptime Options: type, all_options: []const GenericOptions(Options)) Options {
+        for (all_options) |options| {
+            if (options.descr) |descr| {
+                sys.noexcept.write(2, @ptrToInt(descr.ptr), descr.len);
+            }
+        }
     }
 };
