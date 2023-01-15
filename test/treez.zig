@@ -14,12 +14,16 @@ const builtin = srg.builtin;
 
 const opts = @import("./opts.zig");
 
-pub usingnamespace proc.start;
-
-pub const AddressSpace = preset.address_space.formulaic_128;
-
 pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
+pub const AddressSpace = preset.address_space.formulaic_128;
+
+pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
+    var address_space: builtin.AddressSpace = .{};
+    try threadMain(&address_space, args);
+}
+
+pub usingnamespace proc.start;
 
 const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec = proc.CloneSpec{
@@ -360,7 +364,7 @@ inline fn getNames(args: *[][*:0]u8) Names {
 fn convertToInt(options: *Options, comptime field_name: [:0]const u8, arg: []const u8) void {
     @field(options, field_name) = builtin.parse.ud(u8, arg);
 }
-pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
+pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     var done: bool = undefined;
     const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){ // zig fmt: off
@@ -378,10 +382,9 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
     if (names.len() == 0) {
         names.writeOne(".");
     }
-
     var allocator_0: BlockAllocator0 = try BlockAllocator0.init(address_space);
-    var allocator_1: BlockAllocator1 = try BlockAllocator1.init(address_space);
     defer allocator_0.deinit(address_space);
+    var allocator_1: BlockAllocator1 = try BlockAllocator1.init(address_space);
     defer allocator_1.deinit(address_space);
     const stack_addr: u64 = mach.cmov64(Options.print_in_second_thread, try thread.map(map_spec, 8), 0);
     defer thread.unmap(.{ .errors = null }, 8);
@@ -417,8 +420,4 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
             showResults(results);
         }
     }
-}
-pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
-    var address_space: AddressSpace = .{};
-    try threadMain(&address_space, args);
 }
