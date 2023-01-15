@@ -1,8 +1,7 @@
-pub const root = @import("root");
 pub const zig = @import("builtin");
+pub const root = @import("root");
 
 pub usingnamespace builtin;
-
 // zig fmt: off
 pub const native_endian                   = zig.cpu.arch.endian();
 pub const is_little: bool                 = native_endian == .Little;
@@ -14,10 +13,10 @@ pub const is_debug: bool                  = config("is_debug",      bool,       
 pub const is_correct: bool                = config("is_correct",    bool,           is_debug or is_safe);
 pub const is_perf: bool                   = config("is_perf",       bool,           is_small or is_fast);
 pub const is_verbose: bool                = config("is_verbose",    bool,           is_debug);
+pub const AddressSpace: type              = config("AddressSpace",  type,           info.address_space.generic);
 pub const logging: Logging                = config("logging",       Logging, .{});
 pub const build_root: ?[:0]const u8       = config("build_root",    ?[:0]const u8,  null);
 pub const root_src_file: ?[:0]const u8    = config("root_src_file", ?[:0]const u8,  null);
-pub const AddressSpace: type              = config("AddressSpace",  type, @import("preset.zig").address_space.formulaic_128);
 const builtin = opaque {
 pub const SourceLocation                  = Src();
 pub const Type                            = @TypeOf(@typeInfo(void));
@@ -89,7 +88,7 @@ pub const Exception = error{
     ExactDivisionWithRemainder,
     UnexpectedValue,
 };
-pub const Logging = extern struct {
+pub const Logging = packed struct {
     Success: bool = is_verbose,
     Acquire: bool = is_verbose,
     Release: bool = is_verbose,
@@ -110,26 +109,40 @@ pub const Logging = extern struct {
         .Fault = false,
     };
 };
-pub const lib_build_root: [:0]const u8 = blk: {
-    const symbol: [:0]const u8 = "build_root";
-    if (@hasDecl(root, symbol)) {
-        break :blk @field(root, symbol);
-    }
-    if (@hasDecl(@cImport({}), symbol)) {
-        break :blk @field(@cImport({}), symbol);
-    }
-    @compileError("program requires build direction: build_root");
-};
-pub fn config(comptime symbol: []const u8, comptime T: type, default: anytype) T {
+pub fn config(
+    comptime symbol: []const u8,
+    comptime T: type,
+    comptime default: anytype,
+) T {
     if (@hasDecl(root, symbol)) {
         return @field(root, symbol);
-    }
-    if (@hasDecl(@cImport({}), symbol)) {
+    } else if (@hasDecl(@cImport({}), symbol)) {
         const command = @field(@cImport({}), symbol);
         if (T == bool) {
             return @bitCast(T, @as(u1, command));
         }
         return command;
+    } else if (@typeInfo(@TypeOf(default)) == .Fn) {
+        return @call(.auto, default, .{});
+    }
+    return default;
+}
+pub fn configExtra(
+    comptime symbol: []const u8,
+    comptime T: type,
+    comptime default: anytype,
+    comptime args: anytype,
+) T {
+    if (@hasDecl(root, symbol)) {
+        return @field(root, symbol);
+    } else if (@hasDecl(@cImport({}), symbol)) {
+        const command = @field(@cImport({}), symbol);
+        if (T == bool) {
+            return @bitCast(T, @as(u1, command));
+        }
+        return command;
+    } else if (@typeInfo(@TypeOf(default)) == .Fn) {
+        return @call(.auto, default, args);
     }
     return default;
 }
@@ -1871,4 +1884,38 @@ pub const Version = struct {
             .patch = @intCast(u32, patch_val),
         };
     }
+};
+pub const info = struct {
+    const title_s: []const u8 = "\r\t\x1b[96;1mnote\x1b[0;1m: ";
+    const point_s: []const u8 = "\r\t    : ";
+    const space_s: []const u8 = "\r\t       ";
+    pub const path = opaque {
+        pub inline fn buildRoot() noreturn {
+            @compileError(
+                "program requires build root:\n" ++
+                    title_s ++ "add '-Dbuild_root=<project_build_root>' to compile flags\n",
+            );
+        }
+    };
+    pub const address_space = opaque {
+        pub inline fn generic() noreturn {
+            @compileError(
+                "toplevel address space required:\n" ++
+                    title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.formulaic_128;' in program root\n" ++
+                    title_s ++ "address spaces are required by high level features with managed memory",
+            );
+        }
+        pub inline fn defaultValue(comptime Struct: type) noreturn {
+            @compileError(
+                if (!@hasField(Struct, "AddressSpace"))
+                    "expected field 'AddressSpace' in '" ++ @typeName(Struct) ++ "'"
+                else
+                    "toplevel address space required by default field value:\n" ++
+                        title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.formulaic_128;' in program root\n" ++
+                        point_s ++ "initialize field 'AddressSpace' in '" ++ @typeName(Struct) ++ "' explicitly\n" ++
+                        title_s ++ "address spaces are required by high level features with managed memory",
+            );
+        }
+        pub noinline fn testPrint() noreturn {}
+    };
 };
