@@ -10,6 +10,11 @@ const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
+pub usingnamespace root;
+
+const root = opaque {
+    pub const AddressSpace = preset.address_space.formulaic_128;
+};
 
 const PrintArray = mem.StaticString(16384);
 pub const is_verbose: bool = false;
