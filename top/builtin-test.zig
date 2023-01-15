@@ -106,7 +106,7 @@ pub fn main() !void {
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
-    _ = builtin.lib_build_root;
+    _ = builtin.build_root;
     // Testing compilation
     comptime {
         var static_arg1: T = 0;
