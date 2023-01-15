@@ -1,33 +1,10 @@
 const std = @import("std");
 const build = std.build;
-const srg: std.build.Pkg = .{ .name = "zig_lib", .source = .{ .path = "zig_lib.zig" } };
-const Context = opaque {
-    var build_mode: std.builtin.Mode = .Debug;
-    var build_mode_explicit: bool = undefined;
-    var output_mode: std.builtin.OutputMode = undefined;
-    var builder: *build.Builder = undefined;
-    var test_step: *build.Step = undefined;
-    var test_all_step: *build.Step = undefined;
-    var run_step: *build.Step = undefined;
-    var install_step: *build.Step = undefined;
-    var fmt_step: *build.Step = undefined;
-    const always_strip: bool = true;
-    fn init() void {
-        Context.builder.reference_trace = 100;
-        Context.build_mode = builder.standardReleaseOptions();
-        Context.test_step = builder.step("test", "Run most tests");
-        Context.test_all_step = builder.step("test-all", "Run all tests");
-        Context.test_all_step.dependOn(Context.test_step);
-        Context.run_step = builder.step("run", "Run programs");
-        Context.build_mode_explicit = build_mode != .Debug;
-    }
-};
 
 // PROGRAM FILES ///////////////////////////////////////////////////////////////
 
 pub fn main(builder: *build.Builder) !void {
-    Context.builder = builder;
-    Context.init();
+    Context.init(builder);
 
     // Minor test programs:
     _ = addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .build_root = true, .is_correct = true, .is_verbose = true });
@@ -60,6 +37,30 @@ pub fn main(builder: *build.Builder) !void {
 }
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
+
+const srg: std.build.Pkg = .{ .name = "zig_lib", .source = .{ .path = "zig_lib.zig" } };
+const Context = opaque {
+    var build_mode: std.builtin.Mode = .Debug;
+    var build_mode_explicit: bool = undefined;
+    var output_mode: std.builtin.OutputMode = undefined;
+    var builder: *build.Builder = undefined;
+    var test_step: *build.Step = undefined;
+    var test_all_step: *build.Step = undefined;
+    var run_step: *build.Step = undefined;
+    var install_step: *build.Step = undefined;
+    var fmt_step: *build.Step = undefined;
+    const always_strip: bool = true;
+    fn init(b: *build.Builder) void {
+        builder = b;
+        Context.builder.reference_trace = 100;
+        Context.build_mode = builder.standardReleaseOptions();
+        Context.test_step = builder.step("test", "Run most tests");
+        Context.test_all_step = builder.step("test-all", "Run all tests");
+        Context.test_all_step.dependOn(Context.test_step);
+        Context.run_step = builder.step("run", "Run programs");
+        Context.build_mode_explicit = build_mode != .Debug;
+    }
+};
 
 const Utility = opaque {
     fn endsWith(end: anytype, seq: anytype) bool {
