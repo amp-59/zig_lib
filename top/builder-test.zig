@@ -11,6 +11,7 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_verbose: bool = true;
 
 const Allocator = mem.GenericArenaAllocator(.{
@@ -20,7 +21,7 @@ const Allocator = mem.GenericArenaAllocator(.{
 
 const try_multi_threaded: bool = false;
 
-const cache_dir: [:0]const u8 = builtin.lib_build_root ++ "/zig-cache";
+const cache_dir: [:0]const u8 = builtin.build_root.? ++ "/zig-cache";
 
 fn globalCacheDir(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
     const home_pathname: [:0]const u8 = try file.home(vars);
@@ -51,7 +52,7 @@ fn runTest(
         .strip = true,
         .enable_cache = false,
         .global_cache_dir = try globalCacheDir(vars, &global_cache_dir_buf),
-        .cache_dir = builtin.lib_build_root ++ "/zig-cache",
+        .cache_dir = builtin.build_root.? ++ "/zig-cache",
         .stack = 8388608,
         .macros = macros,
         .packages = &.{
@@ -90,7 +91,7 @@ fn runTestTestUsingAllocator(
 const general_macros: builder.Macros = &.{
     .{ .name = "is_verbose", .value = "0" },
     .{ .name = "is_correct", .value = "0" },
-    .{ .name = "build_root", .value = "\"" ++ builtin.lib_build_root ++ "\"" },
+    .{ .name = "build_root", .value = "\"" ++ builtin.build_root.? ++ "\"" },
 };
 const parsedir_std_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"std\"" }};
 const parsedir_lib_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"lib\"" }};
