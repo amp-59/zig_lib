@@ -20,6 +20,7 @@ const std = @import("std");
 
 pub usingnamespace proc.start;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
 
