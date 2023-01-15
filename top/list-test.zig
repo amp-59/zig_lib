@@ -13,6 +13,7 @@ const Random = file.DeviceRandomBytes(4096);
 const String = Allocator0.StructuredVector(u8);
 
 pub const is_correct: bool = true;
+pub const AddressSpace = preset.address_space.formulaic_128;
 
 const ptr_wr_spec: mem.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
