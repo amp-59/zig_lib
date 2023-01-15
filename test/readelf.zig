@@ -18,6 +18,7 @@ pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
 
 pub const is_verbose: bool = true;
+pub const AddressSpace = preset.address_space.formulaic_128;
 
 const PrimaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 24 });
 const SecondaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 32 });
@@ -354,7 +355,7 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8, vars
         switch (args.len) {
             1 => {
                 var src_path: StaticPath = .{};
-                src_path.writeMany(builtin.lib_build_root ++ "/test/readelf/exe-test.zig");
+                src_path.writeMany(builtin.build_root.? ++ "/test/readelf/exe-test.zig");
                 try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
                 defer {
                     file.unlink(unlink_spec, so_path.readAllWithSentinel(0));
