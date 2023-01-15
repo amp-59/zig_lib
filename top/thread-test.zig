@@ -48,8 +48,8 @@ fn renderExactList(
     const render_spec: fmt.RenderSpec = .{
         .radix = 16,
         .omit_trailing_comma = true,
-        .infer_type_name = true,
-        .infer_type_name_recursively = true,
+        .infer_type_names = true,
+        .infer_type_names_recursively = true,
     };
     const lb_addr: u64 = SuperAddressSpace.low(arena_index);
     var list: [16]mem.Arena = undefined;
