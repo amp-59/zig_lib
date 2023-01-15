@@ -1298,19 +1298,36 @@ pub fn trimRight(comptime T: type, values_to_strip: []const T, values: []const T
     while (end > 0 and mem.indexOfFirstEqualOne(T, values[end - 1], values_to_strip) != null) : (end -= 1) {}
     return values[0..end];
 }
-pub fn propagateSearch(needle: anytype, haystack: anytype, index: u64) ?u64 {
-    var spread: u64 = 0;
-    while (spread != haystack.len) : (spread += 1) {
-        const below_start: u64 = index -% spread;
-        const above_start: u64 = index +% spread;
-        if (below_start < haystack.len) {
-            if (testEqualManyFront(u8, needle, haystack[below_start..])) {
-                return below_start;
+pub fn propagateSearch(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
+    const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
+    const haystack: []const u8 = if (arg1.len < arg2.len) arg2 else arg1;
+    if (haystack.len > 127) {
+        var start: u64 = index;
+        while (start != haystack.len) : (start +%= 1) {
+            if (testEqualManyFront(u8, needle, haystack[start..])) {
+                return start;
             }
         }
-        if (above_start < haystack.len) {
-            if (testEqualManyFront(u8, needle, haystack[above_start..])) {
-                return above_start;
+        start = index -| 1;
+        while (start != 0) : (start -%= 1) {
+            if (testEqualManyFront(u8, needle, haystack[start..])) {
+                return start;
+            }
+        }
+    } else {
+        var spread: u64 = 0;
+        while (spread != haystack.len) : (spread += 1) {
+            const below_start: u64 = index -% spread;
+            const above_start: u64 = index +% spread;
+            if (below_start < haystack.len) {
+                if (testEqualManyFront(u8, needle, haystack[below_start..])) {
+                    return below_start;
+                }
+            }
+            if (above_start < haystack.len) {
+                if (testEqualManyFront(u8, needle, haystack[above_start..])) {
+                    return above_start;
+                }
             }
         }
     }

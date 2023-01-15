@@ -266,6 +266,12 @@ fn testUtilityTestFunctions() !void {
             try testing.expectEqualMany(u8, "", mem.readAfterFirstEqualMany(u8, " = ", ".field = ").?);
             try testing.expectEqualMany(u8, "", mem.readBeforeFirstEqualMany(u8, " = ", " = value,").?);
         }
+        {
+            try builtin.expectEqual(u64, 3, mem.propagateSearch(u8, "345", "0123456789", 3).?);
+            try builtin.expectEqual(u64, 8, mem.propagateSearch(u8, "8", "0123456789", 8).?);
+            try builtin.expectEqual(u64, 4, mem.propagateSearch(u8, "4", "0123456789", 4).?);
+            try builtin.expectEqual(u64, 0, mem.propagateSearch(u8, "0123456789", "0123456789", 0).?);
+        }
     }
 }
 pub fn testNoImpact() !void {
