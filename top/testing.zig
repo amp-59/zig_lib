@@ -231,24 +231,23 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     file.noexcept.write(2, array.readAll());
     return array.readAll().len;
 }
-const Static = struct {
-    const Allocator = mem.GenericArenaAllocator(.{
-        .arena_index = 64,
-        .errors = preset.allocator.errors.noexcept,
-    });
-    const Array = Allocator.StructuredVector(u8);
-    var address_space: Allocator.allocator_spec.AddressSpace = .{};
-    var allocator: ?Allocator = null;
-    var array: ?Array = null;
-};
-
 pub fn printN(comptime n: usize, any: anytype) void {
     var array: mem.StaticString(n) = undefined;
     array.undefineAll();
     array.writeAny(preset.reinterpret.fmt, any);
     file.noexcept.write(2, array.readAll());
 }
-
+const Static = struct {
+    const Allocator = mem.GenericArenaAllocator(.{
+        .arena_index = 64,
+        .errors = preset.allocator.errors.noexcept,
+        .AddressSpace = preset.address_space.formulaic_128,
+    });
+    const Array = Allocator.StructuredVector(u8);
+    var address_space: Allocator.allocator_spec.AddressSpace = .{};
+    var allocator: ?Allocator = null;
+    var array: ?Array = null;
+};
 pub fn print(any: anytype) void {
     const allocator: *Static.Allocator = blk: {
         if (Static.allocator) |*allocator| {
