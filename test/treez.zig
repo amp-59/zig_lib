@@ -12,26 +12,15 @@ const preset = srg.preset;
 const thread = srg.thread;
 const builtin = srg.builtin;
 
-const opts = @import("./opts.zig");
-
-pub const is_correct: bool = false;
-pub const is_verbose: bool = false;
-pub const AddressSpace = preset.address_space.formulaic_128;
-
-pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
-    var address_space: builtin.AddressSpace = .{};
-    try threadMain(&address_space, args);
-}
-
 pub usingnamespace proc.start;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
+pub const is_correct: bool = false;
+pub const is_verbose: bool = false;
+
 const map_spec: thread.MapSpec = .{ .options = .{} };
-const thread_spec = proc.CloneSpec{
-    .errors = null,
-    .return_type = u64,
-    .options = .{},
-};
-const BlockAllocator0 = mem.GenericArenaAllocator(.{
+const thread_spec: proc.CloneSpec = .{ .errors = null, .return_type = u64, .options = .{} };
+const Allocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .options = .{
         .count_allocations = false,
@@ -41,8 +30,9 @@ const BlockAllocator0 = mem.GenericArenaAllocator(.{
         .count_branches = false,
     },
     .logging = preset.allocator.logging.silent,
+    .errors = preset.allocator.errors.noexcept,
 });
-const BlockAllocator1 = mem.GenericArenaAllocator(.{
+const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 1,
     .options = .{
         .count_allocations = false,
@@ -51,22 +41,23 @@ const BlockAllocator1 = mem.GenericArenaAllocator(.{
         .trace_state = false,
         .count_branches = false,
     },
+    .errors = preset.allocator.errors.noexcept,
     .logging = preset.allocator.logging.silent,
 });
-const String1 = BlockAllocator1.StructuredHolder(u8);
-const String0 = BlockAllocator0.StructuredHolder(u8);
-const DirStream = file.DirStreamBlock(.{
-    .Allocator = BlockAllocator0,
-    .options = .{},
-    .logging = .{},
-});
+const String1 = Allocator1.StructuredHolder(u8);
+const String0 = Allocator0.StructuredHolder(u8);
+const DirStream = file.DirStreamBlock(.{ .Allocator = Allocator0, .options = .{}, .logging = .{} });
 const Names = mem.StructuredAutomaticVector([:0]const u8, null, 128, 8, .{});
+
 const PrintArray = mem.StaticString(4096);
 const Options = struct {
     all: bool = true,
     follow: bool = false,
     wide: bool = false,
     max_depth: ?u8 = null,
+
+    pub const Map = proc.GenericOptions(Options);
+
     const plain_print: bool = false;
     const print_in_second_thread: bool = true;
     const never_print_mid_line: bool = false;
@@ -74,7 +65,25 @@ const Options = struct {
     const permit_switch_arrows: bool = false;
     const use_wide_arrows: bool = false;
     const always_try_empty_dir_correction: bool = false;
+
+    const about_all_s: []const u8 = "show hiden file system objects";
+    const about_follow_s: []const u8 = "follow symbolic links";
+    const about_no_follow_s: []const u8 = "do not " ++ about_follow_s;
+    const about_wide_s: []const u8 = "display entries using wide character symbols";
+    const about_max_depth_s: []const u8 = "limit the maximum depth of recursion";
+
+    const yes = .{ .boolean = true };
+    const no = .{ .boolean = false };
+    const int = .{ .convert = convertToInt };
 };
+const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{ // zig fmt: off
+    .{ .field_name = "all",        .short = "-a", .long = "--all",         .assign = Options.yes, .descr = Options.about_all_s },
+    .{ .field_name = "follow",     .short = "-L", .long = "--follow",      .assign = Options.yes, .descr = Options.about_follow_s },
+    .{ .field_name = "follow",     .short = "+L", .long = "--no-follow",   .assign = Options.no,  .descr = Options.about_no_follow_s },
+    .{ .field_name = "wide",       .short = "-w", .long = "--wide",        .assign = Options.yes, .descr = Options.about_wide_s },
+    .{ .field_name = "max_depth",  .short = "-d", .long = "--max-depth",   .assign = Options.int, .descr = Options.about_max_depth_s },
+}); // zig fmt: on
+
 const Results = struct {
     files: u64 = 0,
     dirs: u64 = 0,
@@ -158,10 +167,21 @@ const Style = if (Options.permit_switch_arrows) struct {
     const empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) empty_dir_arrow_ws else empty_dir_arrow_bs;
     const last_empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
 };
+fn conditionalSkip(entry_name: []const u8) bool {
+    if (entry_name[0] == '.') {
+        return true;
+    }
+    if (mem.testEqualMany(u8, "zig-cache", entry_name) or
+        mem.testEqualMany(u8, "zig-out", entry_name))
+    {
+        return true;
+    }
+    return false;
+}
 noinline fn writeAndWalk(
     options: *const Options,
-    allocator_0: *BlockAllocator0,
-    allocator_1: *BlockAllocator1,
+    allocator_0: *Allocator0,
+    allocator_1: *Allocator1,
     array: *String1,
     alts_buf: *PrintArray,
     link_buf: *PrintArray,
@@ -169,7 +189,7 @@ noinline fn writeAndWalk(
     dirfd: ?u64,
     name: [:0]const u8,
     depth: u64,
-) anyerror!void {
+) !void {
     const need_separator: bool = name[name.len - 1] != '/';
     if (Options.plain_print) {
         alts_buf.writeMany(name);
@@ -196,17 +216,8 @@ noinline fn writeAndWalk(
         }
         defer if (!Options.plain_print) alts_buf.undefine(indent.len);
         const base_name: [:0]const u8 = entry.name();
-        if (!options.all) {
-            if (base_name[0] == '.') {
-                continue;
-            }
-            if (builtin.int2v(
-                bool,
-                mem.testEqualMany(u8, "zig-cache", base_name),
-                mem.testEqualMany(u8, "zig-out", base_name),
-            )) {
-                continue;
-            }
+        if (!options.all and conditionalSkip(base_name)) {
+            continue;
         }
         switch (entry.kind) {
             .directory => {
@@ -218,11 +229,13 @@ noinline fn writeAndWalk(
                 results.dirs += 1;
                 const len_0: u64 = array.len(allocator_1.*);
                 const s_arrow_s: []const u8 = mach.cmovx(is_last, Style.last_dir_arrow_s, Style.dir_arrow_s);
-                if (Options.plain_print) {
-                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
-                } else {
-                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), s_arrow_s, base_name, endl_s });
-                }
+                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
+                    if (Options.plain_print) {
+                        break :blk .{ alts_buf.readAll(), base_name, endl_s };
+                    } else {
+                        break :blk .{ alts_buf.readAll(), s_arrow_s, base_name, endl_s };
+                    }
+                }));
                 const s_total: u64 = results.total();
                 writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth + 1) catch {};
                 const t_total: u64 = results.total();
@@ -239,32 +252,38 @@ noinline fn writeAndWalk(
                 const arrow: []const u8 = mach.cmovx(is_last, Style.last_link_arrow_s, Style.link_arrow_s);
                 const style: []const u8 = lit.fx.color.fg.cyan;
                 if (options.follow) {
-                    if (Options.plain_print) {
-                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
-                    } else {
-                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, Style.links_to_s });
-                    }
+                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
+                        if (Options.plain_print) {
+                            break :blk .{ alts_buf.readAll(), base_name, endl_s };
+                        } else {
+                            break :blk .{ alts_buf.readAll(), arrow, style, base_name, Style.links_to_s };
+                        }
+                    }));
                     if (file.readLinkAt(.{}, dir.fd, base_name, link_buf.referCountAt(0, 4096))) |path_name| {
-                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ path_name, endl_s });
+                        try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ path_name, endl_s }));
                     } else |_| {
-                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ "???", endl_s });
+                        try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ "???", endl_s }));
                     }
                 } else {
-                    if (Options.plain_print) {
-                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
-                    } else {
-                        try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, style, base_name, endl_s });
-                    }
+                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
+                        if (Options.plain_print) {
+                            break :blk .{ alts_buf.readAll(), base_name, endl_s };
+                        } else {
+                            break :blk .{ alts_buf.readAll(), arrow, style, base_name, endl_s };
+                        }
+                    }));
                 }
             },
             else => {
                 results.files += 1;
                 const arrow: []const u8 = mach.cmovx(is_last, Style.last_file_arrow_s, Style.file_arrow_s);
-                if (Options.plain_print) {
-                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), base_name, endl_s });
-                } else {
-                    try array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind)], base_name, endl_s });
-                }
+                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
+                    if (Options.plain_print) {
+                        break :blk .{ alts_buf.readAll(), base_name, endl_s };
+                    } else {
+                        break :blk .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind)], base_name, endl_s };
+                    }
+                }));
             },
         }
     }
@@ -313,7 +332,7 @@ noinline fn showResults(counts: Results) void {
     });
     file.noexcept.write(2, array.readAll());
 }
-inline fn printIfNAvail(comptime n: usize, allocator: BlockAllocator1, array: String1, offset: u64) u64 {
+inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1, offset: u64) u64 {
     const many: []const u8 = array.readManyAt(allocator, offset);
     if (many.len > (n - 1)) {
         if (n == 1) {
@@ -326,7 +345,7 @@ inline fn printIfNAvail(comptime n: usize, allocator: BlockAllocator1, array: St
     }
     return 0;
 }
-noinline fn printAlong(results: *Results, done: *bool, allocator: *BlockAllocator1, array: *String1) void {
+noinline fn printAlong(results: *Results, done: *bool, allocator: *Allocator1, array: *String1) void {
     var offset: u64 = 0;
     while (true) {
         offset += printIfNAvail(4096, allocator.*, array.*, offset);
@@ -340,19 +359,6 @@ noinline fn printAlong(results: *Results, done: *bool, allocator: *BlockAllocato
     showResults(results.*);
     done.* = false;
 }
-fn printHelpText(rc: u8) noreturn {
-    file.noexcept.write(2,
-        \\-h, --help        print this text
-        \\-a, --all         print hidden entries
-        \\-L, --follow      print link destinations
-    ++ if (Options.permit_switch_arrows)
-        \\-w, --wide        print fancy arrows
-        \\
-    else
-        \\
-    );
-    sys.exit(rc);
-}
 inline fn getNames(args: *[][*:0]u8) Names {
     var names: Names = .{};
     var i: u64 = 1;
@@ -361,20 +367,15 @@ inline fn getNames(args: *[][*:0]u8) Names {
     }
     return names;
 }
-fn convertToInt(options: *Options, comptime field_name: [:0]const u8, arg: []const u8) void {
-    @field(options, field_name) = builtin.parse.ud(u8, arg);
+fn convertToInt(options: *Options, arg: []const u8) void {
+    options.max_depth = builtin.parse.ud(u8, arg);
 }
-pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !void {
+pub fn main(args_in: [][*:0]u8) !void {
+    var address_space: builtin.AddressSpace = .{};
     var args: [][*:0]u8 = args_in;
-    var done: bool = undefined;
-    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){ // zig fmt: off
-        .{ .decl = .all,        .short = "-a", .long = "--all",         .assign = .{ .boolean = true } },
-        .{ .decl = .follow,     .short = "-L", .long = "--follow",      .assign = .{ .boolean = true } },
-        .{ .decl = .follow,     .short = "+L", .long = "--no-follow",   .assign = .{ .boolean = false } },
-        .{ .decl = .wide,       .short = "-w", .long = "--wide",        .assign = .{ .boolean = true } },
-        .{ .decl = .max_depth,  .short = "-d", .long = "--max-depth",   .assign = .{ .generic = convertToInt } },
-    }); // zig fmt: on
+    const options: Options = proc.getOpts(Options, &args, opts_map);
 
+    var done: bool = undefined;
     if (Options.permit_switch_arrows) {
         Style.setArrows(options);
     }
@@ -382,14 +383,14 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !voi
     if (names.len() == 0) {
         names.writeOne(".");
     }
-    var allocator_0: BlockAllocator0 = try BlockAllocator0.init(address_space);
-    defer allocator_0.deinit(address_space);
-    var allocator_1: BlockAllocator1 = try BlockAllocator1.init(address_space);
-    defer allocator_1.deinit(address_space);
+    var allocator_0: Allocator0 = try Allocator0.init(&address_space);
+    defer allocator_0.deinit(&address_space);
+    var allocator_1: Allocator1 = try Allocator1.init(&address_space);
+    defer allocator_1.deinit(&address_space);
     const stack_addr: u64 = mach.cmov64(Options.print_in_second_thread, try thread.map(map_spec, 8), 0);
     defer thread.unmap(.{ .errors = null }, 8);
-    try allocator_0.map(4096);
-    try allocator_1.map(4096);
+    try meta.wrap(allocator_0.map(4096));
+    try meta.wrap(allocator_1.map(4096));
     for (names.readAll()) |arg| {
         done = false;
         var results: Results = .{};
@@ -405,13 +406,13 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !voi
         if (Options.print_in_second_thread) {
             tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
         }
-        try array.appendMany(&allocator_1, arg);
+        try meta.wrap(array.appendMany(&allocator_1, arg));
         if (arg[arg.len - 1] != '/') {
-            try array.appendMany(&allocator_1, "/\n");
+            try meta.wrap(array.appendMany(&allocator_1, "/\n"));
         } else {
-            try array.appendMany(&allocator_1, "\n");
+            try meta.wrap(array.appendMany(&allocator_1, "\n"));
         }
-        try writeAndWalk(&options, &allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &results, null, arg, 0);
+        writeAndWalk(&options, &allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &results, null, arg, 0) catch {};
         if (Options.print_in_second_thread) {
             done = true;
             mem.monitor(bool, &done);

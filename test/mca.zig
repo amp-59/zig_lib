@@ -8,10 +8,10 @@ const file = srg.file;
 const preset = srg.preset;
 const builtin = srg.builtin;
 const builder = srg.builder;
-const opts = @import("./opts.zig");
 
 pub usingnamespace proc.start;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_verbose: bool = false;
 
 const prune_weak: bool = false;
