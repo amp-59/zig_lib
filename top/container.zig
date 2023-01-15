@@ -3,40 +3,40 @@ const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 const reference = @import("./reference.zig");
 pub const Amount = union(enum) { bytes: u64, count: u64 };
-pub fn amountToCountOfType(amt: Amount, comptime child: type) u64 {
+pub inline fn amountToCountOfType(amt: Amount, comptime child: type) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes / @sizeOf(child),
         .count => |count| count,
     };
 }
-pub fn amountToBytesOfType(amt: Amount, comptime child: type) u64 {
+pub inline fn amountToBytesOfType(amt: Amount, comptime child: type) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes,
         .count => |count| count * @sizeOf(child),
     };
 }
-pub fn amountToCountOfLength(amt: Amount, length: u64) u64 {
+pub inline fn amountToCountOfLength(amt: Amount, length: u64) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes / length,
         .count => |count| count,
     };
 }
-pub fn amountToBytesOfLength(amt: Amount, length: u64) u64 {
+pub inline fn amountToBytesOfLength(amt: Amount, length: u64) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes,
         .count => |count| count * length,
     };
 }
-fn hasSentinel(comptime impl_type: type) bool {
+inline fn hasSentinel(comptime impl_type: type) bool {
     return @hasDecl(impl_type, "sentinel") or
         @hasDecl(impl_type, "Specification") and
         @hasField(impl_type.Specification, "sentinel");
 }
-pub fn amountToCountReserved(amt: Amount, comptime impl_type: type) u64 {
+pub inline fn amountToCountReserved(amt: Amount, comptime impl_type: type) u64 {
     return amountToCountOfLength(amt, impl_type.high_alignment) +
         builtin.int(hasSentinel(impl_type));
 }
-pub fn amountToBytesReserved(amt: Amount, comptime impl_type: type) u64 {
+pub inline fn amountToBytesReserved(amt: Amount, comptime impl_type: type) u64 {
     return amountToBytesOfLength(amt, impl_type.high_alignment) +
         mach.cmov64z(hasSentinel(impl_type), impl_type.high_alignment);
 }
