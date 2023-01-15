@@ -11,11 +11,13 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_correct: bool = true;
 pub const is_verbose: bool = true;
 pub const is_perf: bool = false;
 
 const Allocator0 = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
     .arena_index = 0,
     .options = .{
         .require_filo_free = false,
@@ -24,7 +26,6 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .count_branches = false,
         .count_useful_bytes = false,
     },
-    .errors = preset.allocator.errors.noexcept,
     .logging = preset.allocator.logging.verbose,
 });
 
@@ -1148,7 +1149,7 @@ pub fn main() !void {
     var address_space: builtin.AddressSpace = .{};
     var repeat: u64 = 0;
     var allocator: Allocator0 = try Allocator0.init(&address_space);
-    try allocator.acquire(allocator.lb_addr + 65536);
+    try allocator.map(65536);
 
     defer allocator.deinit(&address_space);
     while (repeat != 1) : (repeat += 1) {
