@@ -7,15 +7,15 @@ const file = srg.file;
 const meta = srg.meta;
 const preset = srg.preset;
 const builtin = srg.builtin;
-const opts = @import("./opts.zig");
-
-pub usingnamespace proc.start;
 
 const types = @import("buildgen/builder-types.zig");
 
 const template_src: [:0]const u8 = @embedFile("buildgen/builder-template.zig");
 const types_src: [:0]const u8 = @embedFile("buildgen/builder-types.zig");
 
+pub usingnamespace proc.start;
+
+pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_verbose: bool = false;
 pub const is_correct: bool = true;
 
@@ -391,7 +391,7 @@ pub fn guessSourceOffset(src: []const u8, comptime string: []const u8, guess: u6
     if (guess > src.len) {
         return guessSourceOffset(src, string, src.len / 2);
     }
-    if (mem.propagateSearch(string, src, guess)) |actual| {
+    if (mem.propagateSearch(u8, string, src, guess)) |actual| {
         const delta = @max(actual, guess) - @min(actual, guess);
         if (delta != 0) {
             try inaccurateGuessWarning(string, guess, actual, delta);
@@ -973,6 +973,10 @@ const Options = struct {
     emit_dynamic: bool = true,
     emit_fixed: bool = true,
     output: ?[:0]const u8 = null,
+
+    const about_output_s: []const u8 = "write to output to pathname";
+    const about_emit_fixed_s: []const u8 = "generate fixed buffer command string";
+    const about_emit_dynamic_s: []const u8 = "generate allocated buffer command string";
 };
 
 fn srcString(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticString(count) {
@@ -987,22 +991,22 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
 
     // zig fmt: off
-    const options: Options = opts.getOpts(Options, &args, &if (never_dynamic and never_fixed)
+    const options: Options = proc.getOpts(Options, &args, &if (never_dynamic and never_fixed)
         @compileError("???")
-    else if (!never_dynamic and !never_fixed) [_]opts.GenericOptions(Options){
-        .{ .decl = .output,         .short = "-o", .long = "--output",  .assign = .argument },
-        .{ .decl = .emit_dynamic,   .long = "--dynamic",                .assign = .{ .boolean = true } },
-        .{ .decl = .emit_dynamic,   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
-        .{ .decl = .emit_fixed,     .long = "--fixed",                  .assign = .{ .boolean = true } },
-        .{ .decl = .emit_fixed,     .long = "--no-fixed",               .assign = .{ .boolean = false } },
-    } else if (never_fixed) [_]opts.GenericOptions(Options){
-        .{ .decl = .output,         .short = "-o", .long = "--output",  .assign = .argument },
-        .{ .decl = .emit_dynamic,   .long = "--dynamic",                .assign = .{ .boolean = true } },
-        .{ .decl = .emit_dynamic,   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
-    } else if (never_dynamic) [_]opts.GenericOptions(Options){
-        .{ .decl = .output,     .short = "-o", .long = "--output",  .assign = .argument },
-        .{ .decl = .emit_fixed, .long = "--fixed",                  .assign = .{ .boolean = true } },
-        .{ .decl = .emit_fixed, .long = "--no-fixed",               .assign = .{ .boolean = false } },
+    else if (!never_dynamic and !never_fixed) [_]proc.GenericOptions(Options){
+        .{ .field_name = "output",         .short = "-o", .long = "--output",  .assign = .{ .argument = "pathname" } },
+        .{ .field_name = "emit_dynamic",   .long = "--dynamic",                .assign = .{ .boolean = true } },
+        .{ .field_name = "emit_dynamic",   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
+        .{ .field_name = "emit_fixed",     .long = "--fixed",                  .assign = .{ .boolean = true } },
+        .{ .field_name = "emit_fixed",     .long = "--no-fixed",               .assign = .{ .boolean = false } },
+    } else if (never_fixed) [_]proc.GenericOptions(Options){
+        .{ .field_name = "output",         .short = "-o", .long = "--output",  .assign = .{ .argument = "pathname" } },
+        .{ .field_name = "emit_dynamic",   .long = "--dynamic",                .assign = .{ .boolean = true } },
+        .{ .field_name = "emit_dynamic",   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
+    } else if (never_dynamic) [_]proc.GenericOptions(Options){
+        .{ .field_name = "output",     .short = "-o", .long = "--output",  .assign = .{ .argument = "pathname" } },
+        .{ .field_name = "emit_fixed", .long = "--fixed",                  .assign = .{ .boolean = true } },
+        .{ .field_name = "emit_fixed", .long = "--no-fixed",               .assign = .{ .boolean = false } },
     });
     // zig fmt: on
     const members_loc_token: []const u8 = "_: void,";
