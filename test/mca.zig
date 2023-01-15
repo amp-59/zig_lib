@@ -89,16 +89,6 @@ const File = struct {
         }
     }
 };
-const Argv = Allocator.StructuredVectorLowAligned([:0]u8, 8);
-const Job = struct {
-    input: Data,
-    output: Data,
-};
-const Jobs = mem.XorLinkedListAdv(.{
-    .child = Job,
-    .low_alignment = 8,
-    .Allocator = Allocator,
-});
 const String = Allocator.StructuredHolder(u8);
 const FixedString = Allocator.StructuredVector(u8);
 const SmallString = Allocator.StructuredHolder(u8);
@@ -191,31 +181,29 @@ fn parseInput(allocator_0: *Allocator, file_buf: FixedString) anyerror!Exports {
                 }
             }
         } else if (found_line_feed) {
-            switch (buf[idx_0]) {
-                '.' => {
-                    if (idx_0 + 9 < buf_len) {
-                        if (mem.testEqualManyFront(u8, lfunc_end_s, buf[idx_0 + 1 .. buf.len])) {
-                            printFound(file_buf.readAll()[begin.name..begin.body]);
-                            try exports.append(allocator_0, .{
-                                .body = .{
-                                    .begin = begin.name,
-                                    .mid = begin.body,
-                                    .end = idx_0,
-                                },
-                                .jumps = if (jumps) |*list| try list.dynamic(allocator_0, FixedJumpList) else null,
-                            });
-                            jumps = null;
-                            idx_0 += 10;
-                        } else if (mem.testEqualManyFront(u8, lbb_section_s, buf[idx_0 + 1 .. buf.len])) {
-                            if (jumps == null) {
-                                jumps = JumpList.init(allocator_0);
-                            }
-                            try jumps.?.appendOne(allocator_0, idx_0);
-                            idx_0 += 4;
-                        }
+            if (builtin.int2a(bool, buf[idx_0] == '.', idx_0 + 9 < buf_len)) {
+                if (mem.testEqualManyFront(u8, lfunc_end_s, buf[idx_0 + 1 .. buf.len])) {
+                    printFound(file_buf.readAll()[begin.name..begin.body]);
+                    try exports.append(allocator_0, .{
+                        .body = .{
+                            .begin = begin.name,
+                            .mid = begin.body,
+                            .end = idx_0,
+                        },
+                        .jumps = if (jumps) |*list|
+                            try list.dynamic(allocator_0, FixedJumpList)
+                        else
+                            null,
+                    });
+                    jumps = null;
+                    idx_0 += 10;
+                } else if (mem.testEqualManyFront(u8, lbb_section_s, buf[idx_0 + 1 .. buf.len])) {
+                    if (jumps == null) {
+                        jumps = JumpList.init(allocator_0);
                     }
-                },
-                else => {},
+                    try jumps.?.appendOne(allocator_0, idx_0);
+                    idx_0 += 4;
+                }
             }
         }
     }
@@ -336,94 +324,50 @@ fn writeOutput(allocator_0: *Allocator, fd: u64, file_buf: FixedString, exports:
         exports.goToHead();
     }
 }
-fn fileBuf(allocator_0: *Allocator, file_arg: *Job) !FixedString {
+fn fileBuf(allocator_0: *Allocator, name: [:0]const u8) !FixedString {
     var file_buf: String = String.init(allocator_0);
-    try file_arg.input.open(input_open_spec);
-    defer file_arg.input.close(input_close_spec);
-    const fd: u64 = file_arg.input.fd();
+    const fd: u64 = try file.open(input_open_spec, name);
+    defer file.close(input_close_spec, fd);
     var st: file.Stat = try file.fstat(.{}, fd);
     try file_buf.increment(allocator_0, st.size + 1);
     file_buf.impl.define(try file.read(fd, file_buf.referAllUndefined(allocator_0.*), st.size));
     file_buf.writeOne('\n');
     return file_buf.dynamic(allocator_0, FixedString);
 }
-fn processRequest(allocator_0: *Allocator, file_arg: *Job) anyerror!void {
-    var file_buf: FixedString = try fileBuf(allocator_0, file_arg);
+fn processRequest(options: *const Options, allocator_0: *Allocator, name: [:0]const u8) anyerror!void {
+    var file_buf: FixedString = try fileBuf(allocator_0, name);
     var exports = try parseInput(allocator_0, file_buf);
-    {
-        try file_arg.output.create(output_file_spec);
-        const fd: u64 = file_arg.output.fd();
-        defer file_arg.output.close(output_close_spec);
-        try writeOutput(allocator_0, fd, file_buf, &exports);
-    }
+
+    const fd: u64 = if (options.output) |output| try file.create(output_file_spec, output) else 1;
+    defer if (options.output != null) file.close(output_close_spec, fd);
+    try writeOutput(allocator_0, fd, file_buf, &exports);
     exports.deinit(allocator_0);
     file_buf.deinit(allocator_0);
 }
-fn printHelpText() void {
-    file.noexcept.write(2, "usage:\tasm_sections [options] <asm_file>\n");
-    file.noexcept.write(2, "\t-o\t\t[=pathname], output sections to file\n");
-    file.noexcept.write(2, "\t--help\t\tprint this text and exit\n");
-}
 const Options = struct {
     output: ?[:0]const u8 = null,
+
+    pub const Map = proc.GenericOptions(Options);
+
+    const about_output_s: []const u8 = "write output to pathname";
 };
+const opt_map: []const Options.Map = meta.slice(Options.Map, .{
+    .{ .field_name = "output", .long = "--output", .short = "-o", .assign = .{ .argument = "pathname" }, .descr = Options.about_output_s },
+});
+
 pub fn main(args_in: [][*:0]u8) anyerror!void {
-    if (args_in.len == 1) {
-        return printHelpText();
-    }
+    var args: [][*:0]u8 = args_in;
+    const options: Options = proc.getOpts(Options, &args, opt_map);
     var address_space: builtin.AddressSpace = .{};
     var allocator_0: Allocator = try Allocator.init(&address_space);
     defer allocator_0.deinit(&address_space);
-    var args: Argv = try Argv.init(&allocator_0, args_in.len);
-    defer args.deinit(&allocator_0);
-    for (args_in[1..]) |arg| {
-        args.writeOne(meta.manyToSlice(arg));
-    }
-    if (args.len() == 0) {
-        return printHelpText();
-    }
-    var output: Data = .{ .stdio = .stdout };
-    var jobs: Jobs = try Jobs.init(&allocator_0);
-    defer jobs.deinit(&allocator_0);
-    var parse_options: bool = true;
-    for (args.readAll()) |arg| {
-        if (parse_options) {
-            if (mem.testEqualMany(u8, "--help", arg)) {
-                return printHelpText();
-            }
-            if (mem.testEqualManyFront(u8, "-o=", arg)) {
-                output = .{ .filesystem = .{ .pathname = arg[3..] } };
-                continue;
-            }
-            if (mem.testEqualMany(u8, "--", arg)) {
-                parse_options = false;
-                continue;
-            }
-            if (mem.testEqualMany(u8, "-", arg)) {
-                try jobs.append(&allocator_0, .{
-                    .input = .{ .stdio = .stdin },
-                    .output = output,
-                });
-                continue;
-            }
-        }
-        if (mem.testEqualManyBack(u8, ".zig", arg)) {
+    for (args) |arg| {
+        const name: [:0]const u8 = meta.manyToSlice(arg);
+        if (mem.testEqualManyBack(u8, ".zig", name)) {
             continue;
         }
-        if (mem.testEqualManyBack(u8, ".s", arg)) {
-            try jobs.append(&allocator_0, .{
-                .input = .{ .filesystem = .{ .pathname = arg } },
-                .output = output,
-            });
+        if (mem.testEqualManyBack(u8, ".s", name)) {
+            try processRequest(&options, &allocator_0, name);
         }
-    }
-    if (jobs.count == 0) {
-        return printHelpText();
-    }
-    var i: u64 = 0;
-    while (i != jobs.count) : (i += 1) {
-        const arg = try jobs.at(i);
-        arg.output = output;
-        try processRequest(&allocator_0, arg);
     }
 }
