@@ -974,10 +974,33 @@ const Options = struct {
     emit_fixed: bool = true,
     output: ?[:0]const u8 = null,
 
+    pub const Map = proc.GenericOptions(Options);
+
     const about_output_s: []const u8 = "write to output to pathname";
     const about_emit_fixed_s: []const u8 = "generate fixed buffer command string";
     const about_emit_dynamic_s: []const u8 = "generate allocated buffer command string";
+    const about_no_emit_fixed_s: []const u8 = "do not generate fixed buffer command string";
+    const about_no_emit_dynamic_s: []const u8 = "do not generate allocated buffer command string";
+
+    const yes = .{ .boolean = true };
+    const no = .{ .boolean = false };
+    const pathname = .{ .argument = "pathname" };
 };
+const opt_map: []const Options.Map = if (!never_dynamic and !never_fixed) meta.slice(Options.Map, .{ // zig fmt: off
+    .{ .field_name = "output",          .short = "-o", .long = "--output",  .assign = Options.pathname, .descr = Options.about_output_s },
+    .{ .field_name = "emit_dynamic",    .long = "--dynamic",                .assign = Options.yes,      .descr = Options.about_emit_dynamic_s },
+    .{ .field_name = "emit_dynamic",    .long = "--no-dynamic",             .assign = Options.no,       .descr = Options.about_no_emit_dynamic_s },
+    .{ .field_name = "emit_fixed",      .long = "--fixed",                  .assign = Options.yes,      .descr = Options.about_emit_fixed_s },
+    .{ .field_name = "emit_fixed",      .long = "--no-fixed",               .assign = Options.no,       .descr = Options.about_no_emit_fixed_s },
+}) else if (never_fixed) meta.slice(Options.Map, .{
+    .{ .field_name = "output",          .short = "-o", .long = "--output",  .assign = Options.pathname, .descr = Options.about_output_s },
+    .{ .field_name = "emit_dynamic",    .long = "--dynamic",                .assign = Options.yes,      .descr = Options.emit_dynamic_s },
+    .{ .field_name = "emit_dynamic",    .long = "--no-dynamic",             .assign = Options.no,       .descr = Options.about_no_emit_dynamic_s },
+}) else if (never_dynamic) meta.slice(Options.Map, .{
+    .{ .field_name = "output",          .short = "-o", .long = "--output",  .assign = Options.pathname, .descr = Options.about_output_s },
+    .{ .field_name = "emit_fixed",      .long = "--fixed",                  .assign = Options.yes,      .descr = Options.about_emit_fixed_s },
+    .{ .field_name = "emit_fixed",      .long = "--no-fixed",               .assign = Options.no,       .descr = Options.about_no_emit_fixed_s },
+}); // zig fmt: on
 
 fn srcString(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticString(count) {
     var ret: mem.StaticString(count) = .{};
@@ -989,26 +1012,10 @@ fn srcString(comptime count: usize, comptime pathname: [:0]const u8) !mem.Static
 
 pub fn main(args_in: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
-
-    // zig fmt: off
-    const options: Options = proc.getOpts(Options, &args, &if (never_dynamic and never_fixed)
-        @compileError("???")
-    else if (!never_dynamic and !never_fixed) [_]proc.GenericOptions(Options){
-        .{ .field_name = "output",         .short = "-o", .long = "--output",  .assign = .{ .argument = "pathname" } },
-        .{ .field_name = "emit_dynamic",   .long = "--dynamic",                .assign = .{ .boolean = true } },
-        .{ .field_name = "emit_dynamic",   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
-        .{ .field_name = "emit_fixed",     .long = "--fixed",                  .assign = .{ .boolean = true } },
-        .{ .field_name = "emit_fixed",     .long = "--no-fixed",               .assign = .{ .boolean = false } },
-    } else if (never_fixed) [_]proc.GenericOptions(Options){
-        .{ .field_name = "output",         .short = "-o", .long = "--output",  .assign = .{ .argument = "pathname" } },
-        .{ .field_name = "emit_dynamic",   .long = "--dynamic",                .assign = .{ .boolean = true } },
-        .{ .field_name = "emit_dynamic",   .long = "--no-dynamic",             .assign = .{ .boolean = false } },
-    } else if (never_dynamic) [_]proc.GenericOptions(Options){
-        .{ .field_name = "output",     .short = "-o", .long = "--output",  .assign = .{ .argument = "pathname" } },
-        .{ .field_name = "emit_fixed", .long = "--fixed",                  .assign = .{ .boolean = true } },
-        .{ .field_name = "emit_fixed", .long = "--no-fixed",               .assign = .{ .boolean = false } },
-    });
-    // zig fmt: on
+    if (never_dynamic and never_fixed) {
+        @compileError("???");
+    }
+    const options: Options = proc.getOpts(Options, &args, opt_map);
     const members_loc_token: []const u8 = "_: void,";
     const fn_body_loc_token: []const u8 = "_;";
 
