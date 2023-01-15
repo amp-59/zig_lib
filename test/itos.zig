@@ -21,12 +21,13 @@ const single_switch: bool = false;
 
 fn noSuchOption(opt_arg: []const u8) void {
     var print_array: mem.StaticString(4096) = undefined;
-    print_array.impl.ub_word = 0;
+    print_array.undefineAll();
     print_array.writeAny(preset.reinterpret.ptr, [3][]const u8{ "unrecognised output mode: '", opt_arg, "'\n-o, --output=     x,d,o,b\n" });
     file.noexcept.write(2, print_array.readAll());
 }
 const Options = struct {
     output: Radix = .hex,
+    pub const Map = proc.GenericOptions(Options);
     fn setOutputHex(options: *Options) void {
         options.output = .hex;
     }
@@ -62,7 +63,7 @@ const Options = struct {
         }
     }
 };
-const flags: []const proc.GenericOptions(Options) = meta.slice(proc.GenericOptions(Options), if (single_switch)
+const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch)
 .{
     .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
 } else .{
@@ -83,7 +84,7 @@ fn loopInner(options: Options, arg: []const u8) !void {
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
 
-    const options: Options = proc.getOpts(Options, &args, flags);
+    const options: Options = proc.getOpts(Options, &args, opt_map);
 
     var i: u64 = 1;
     while (i != args.len) {
