@@ -8,8 +8,6 @@ const file = srg.file;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
-const opts = @import("./opts.zig");
-
 pub usingnamespace proc.start;
 
 const Radix = enum(u5) {
@@ -18,6 +16,9 @@ const Radix = enum(u5) {
     dec = 10,
     hex = 16,
 };
+
+const single_switch: bool = false;
+
 fn noSuchOption(opt_arg: []const u8) void {
     var print_array: mem.StaticString(4096) = undefined;
     print_array.impl.ub_word = 0;
@@ -26,30 +27,50 @@ fn noSuchOption(opt_arg: []const u8) void {
 }
 const Options = struct {
     output: Radix = .hex,
-    input: ?[:0]const u8 = null,
-};
-fn validateOutputMode(options: *Options, opt_arg: [:0]const u8) void {
-    if (mem.testEqualMany(u8, "hex", opt_arg) or
-        mem.testEqualMany(u8, "x", opt_arg))
-    {
+    fn setOutputHex(options: *Options) void {
         options.output = .hex;
-    } else if (mem.testEqualMany(u8, "bin", opt_arg) or
-        mem.testEqualMany(u8, "b", opt_arg))
-    {
-        options.output = .bin;
-    } else if (mem.testEqualMany(u8, "dec", opt_arg) or
-        mem.testEqualMany(u8, "d", opt_arg))
-    {
-        options.output = .dec;
-    } else if (mem.testEqualMany(u8, "oct", opt_arg) or
-        mem.testEqualMany(u8, "o", opt_arg))
-    {
-        options.output = .oct;
-    } else {
-        noSuchOption(opt_arg);
-        sys.exit(2);
     }
-}
+    fn setOutputDec(options: *Options) void {
+        options.output = .dec;
+    }
+    fn setOutputOct(options: *Options) void {
+        options.output = .oct;
+    }
+    fn setOutputBin(options: *Options) void {
+        options.output = .bin;
+    }
+    fn setOutput(options: *Options, opt_arg: [:0]const u8) void {
+        if (mem.testEqualMany(u8, "hex", opt_arg) or
+            mem.testEqualMany(u8, "x", opt_arg))
+        {
+            options.output = .hex;
+        } else if (mem.testEqualMany(u8, "bin", opt_arg) or
+            mem.testEqualMany(u8, "b", opt_arg))
+        {
+            options.output = .bin;
+        } else if (mem.testEqualMany(u8, "dec", opt_arg) or
+            mem.testEqualMany(u8, "d", opt_arg))
+        {
+            options.output = .dec;
+        } else if (mem.testEqualMany(u8, "oct", opt_arg) or
+            mem.testEqualMany(u8, "o", opt_arg))
+        {
+            options.output = .oct;
+        } else {
+            noSuchOption(opt_arg);
+            sys.exit(2);
+        }
+    }
+};
+const flags: []const proc.GenericOptions(Options) = meta.slice(proc.GenericOptions(Options), if (single_switch)
+.{
+    .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
+} else .{
+    .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .action = Options.setOutputHex } },
+    .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .action = Options.setOutputDec } },
+    .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .action = Options.setOutputOct } },
+    .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .action = Options.setOutputBin } },
+});
 fn loopInner(options: Options, arg: []const u8) !void {
     file.noexcept.write(1, switch (options.output) {
         .hex => builtin.fmt.ux64(try builtin.parse.any(u64, arg)).readAll(),
@@ -61,9 +82,9 @@ fn loopInner(options: Options, arg: []const u8) !void {
 }
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
-    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){
-        .{ .decl = .output, .short = "-o", .long = "--output", .assign = .{ .convert = validateOutputMode } },
-    });
+
+    const options: Options = proc.getOpts(Options, &args, flags);
+
     var i: u64 = 1;
     while (i != args.len) {
         try loopInner(options, meta.manyToSlice(args[i]));
