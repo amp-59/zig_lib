@@ -2,11 +2,13 @@ const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0 });
 
 pub usingnamespace proc.start;
+pub const AddressSpace = preset.address_space.formulaic_128;
 
 fn testAutomaticAppend(comptime spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
     const Array = mem.StaticArray(dst_type, 4096);
