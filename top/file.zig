@@ -106,7 +106,6 @@ const Term = opaque {
         const SPEC = sys.TC.V;
     });
 };
-
 pub const FileStatus = extern struct {
     dev: u64,
     ino: u64,
@@ -540,6 +539,13 @@ pub const StatSpec = struct {
     }
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
+pub const GetWorkingDirectorySpec = struct {
+    errors: ?[]const sys.ErrorCode = sys.readlink_errors,
+    return_type: type = u64,
+    logging: builtin.Logging = .{},
+    const Specification = @This();
+    usingnamespace sys.FunctionInterfaceSpec(Specification);
+};
 pub const ReadLinkSpec = struct {
     options: Options = .{},
     errors: ?[]const sys.ErrorCode = sys.readlink_errors,
@@ -784,6 +790,18 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sp
             debug.makeDirAtError(mkdir_error, dir_fd, name, spec.mode.describe());
         }
         return mkdir_error;
+    }
+}
+pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) spec.Replaced(.getcwd, [:0]const u8) {
+    const buf_addr: u64 = @ptrToInt(buf.ptr);
+    if (spec.call(.getcwd, .{ buf_addr, buf.len })) |len| {
+        buf[len] = 0;
+        return buf[0..len :0];
+    } else |getcwd_error| {
+        if (spec.logging.Error) {
+            debug.getCwdError(getcwd_error);
+        }
+        return getcwd_error;
     }
 }
 pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) spec.Replaced(.readlink, [:0]const u8) {
@@ -1050,6 +1068,8 @@ const debug = opaque {
     const about_write_1_s: []const u8 = "write-error:    ";
     const about_create_0_s: []const u8 = "create:         ";
     const about_create_1_s: []const u8 = "create-error:   ";
+    const about_getcwd_0_s: []const u8 = "getcwd:         ";
+    const about_getcwd_1_s: []const u8 = "getcwd-error:   ";
     const about_openat_0_s: []const u8 = "openat:         ";
     const about_openat_1_s: []const u8 = "openat-error:   ";
     const about_unlink_0_s: []const u8 = "unlink:         ";
@@ -1068,6 +1088,53 @@ const debug = opaque {
         }
         noexcept.write(2, buf[0..len]);
     }
+    fn openNotice(pathname: [:0]const u8, fd: u64) void {
+        var buf: [4096 + 32]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
+    }
+    fn createNotice(pathname: [:0]const u8, fd: u64, comptime summary: []const u8) void {
+        var buf: [4096 + 64 + summary.len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", summary, "\n" });
+    }
+    fn openAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_openat_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
+    }
+    fn makeDirNotice(pathname: [:0]const u8, comptime descr: []const u8) void {
+        const max_len: u64 = 16 + 4096 + 2 + descr.len + 1;
+        var buf: [max_len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_mkdir_0_s, pathname, ", ", descr, "\n" });
+    }
+    fn makeDirAtNotice(dir_fd: u64, name: [:0]const u8, comptime descr: []const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096 + descr.len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_mkdir_0_s, "dir_fd=", dir_fd_s, ", ", name, ", ", descr, "\n" });
+    }
+    fn closeNotice(fd: u64) void {
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_close_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), "\n" });
+    }
+    fn unlinkNotice(pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 8]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_unlink_0_s, pathname, "\n" });
+    }
+    fn removeDirNotice(pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 1]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
+    }
+    fn truncateNotice(pathname: [:0]const u8, offset: u64) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", builtin.fmt.ud64(offset).readAll(), "\n" });
+    }
+    fn ftruncateNotice(fd: u64, offset: u64) void {
+        var buf: [16 + 64 + 512]u8 = undefined;
+        print(&buf, &[_][]const u8{
+            about_truncate_0_s,                 "fd=",
+            builtin.fmt.ud64(fd).readAll(),     ", offset=",
+            builtin.fmt.ud64(offset).readAll(), "\n",
+        });
+    }
     fn readError(read_error: anytype, fd: u64) void {
         var buf: [16 + 32 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_read_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), " (", @errorName(read_error), ")\n" });
@@ -1080,70 +1147,39 @@ const debug = opaque {
         var buf: [16 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_open_1_s, pathname, " (", @errorName(open_error), ")\n" });
     }
-    fn openNotice(pathname: [:0]const u8, fd: u64) void {
-        var buf: [4096 + 32]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
-    }
-    fn createError(open_error: anytype, pathname: [:0]const u8, comptime summary: []const u8) void {
-        var buf: [4096 + 512 + summary.len]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_create_1_s, pathname, ", ", summary, " (", @errorName(open_error), ")\n" });
-    }
-    fn createNotice(pathname: [:0]const u8, fd: u64, comptime summary: []const u8) void {
-        var buf: [4096 + 64 + summary.len]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", summary, "\n" });
-    }
     fn openAtError(open_error: anytype, dir_fd: u64, name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_openat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(open_error), ")\n" });
     }
-    fn openAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_openat_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
+    fn createError(open_error: anytype, pathname: [:0]const u8, comptime summary: []const u8) void {
+        var buf: [4096 + 512 + summary.len]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_create_1_s, pathname, ", ", summary, " (", @errorName(open_error), ")\n" });
     }
     fn makeDirError(mkdir_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_mkdir_1_s, pathname, " (", @errorName(mkdir_error), ")\n" });
-    }
-    fn makeDirNotice(pathname: [:0]const u8, comptime descr: []const u8) void {
-        const max_len: u64 = 16 + 4096 + 2 + descr.len + 1;
-        var buf: [max_len]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_mkdir_0_s, pathname, ", ", descr, "\n" });
     }
     fn makeDirAtError(mkdir_error: anytype, dir_fd: u64, name: [:0]const u8, comptime descr: []const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512 + descr.len]u8 = undefined;
         print(&buf, &[_][]const u8{ about_mkdir_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(mkdir_error), ")\n" });
     }
-    fn makeDirAtNotice(dir_fd: u64, name: [:0]const u8, comptime descr: []const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096 + descr.len]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_mkdir_0_s, "dir_fd=", dir_fd_s, ", ", name, ", ", descr, "\n" });
-    }
     fn closeError(close_error: anytype, fd: u64) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_close_1_s, builtin.fmt.ud64(fd).readAll(), " (", @errorName(close_error), ")\n" });
-    }
-    fn closeNotice(fd: u64) void {
-        var buf: [16 + 32 + 4096]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_close_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), "\n" });
     }
     fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
     }
-    fn unlinkNotice(pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 8]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_unlink_0_s, pathname, "\n" });
-    }
     fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
     }
-    fn removeDirNotice(pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 1]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
+    fn getCwdError(getcwd_error: anytype) void {
+        var buf: [16 + 4096 + 8]u8 = undefined;
+        print(&buf, &[_][]const u8{ about_getcwd_1_s, "(", @errorName(getcwd_error), ")\n" });
     }
     fn readLinkError(readlink_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 8]u8 = undefined;
@@ -1166,18 +1202,6 @@ const debug = opaque {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_fstatat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(stat_error), ")\n" });
-    }
-    fn truncateNotice(pathname: [:0]const u8, offset: u64) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", builtin.fmt.ud64(offset).readAll(), "\n" });
-    }
-    fn ftruncateNotice(fd: u64, offset: u64) void {
-        var buf: [16 + 64 + 512]u8 = undefined;
-        print(&buf, &[_][]const u8{
-            about_truncate_0_s,                 "fd=",
-            builtin.fmt.ud64(fd).readAll(),     ", offset=",
-            builtin.fmt.ud64(offset).readAll(), "\n",
-        });
     }
     fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
