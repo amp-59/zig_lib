@@ -16,6 +16,9 @@ const default_errors: bool = !@hasDecl(@import("root"), "errors");
 const exec_zig: bool = false;
 const errors: ?[]const sys.ErrorCode = meta.empty;
 
+const getcwd_spec: file.GetWorkingDirectorySpec = .{
+    .errors = errors,
+};
 const make_dir_spec: file.MakeDirSpec = .{
     .errors = errors,
 };
@@ -75,6 +78,10 @@ fn testFileOperationsRound1() !void {
     try file.unlink(unlink_spec, "/run/user/1000/file_test");
 }
 fn testFileOperationsRound2() !void {
+    var buf: [4096]u8 = undefined;
+    try file.write(2, "working directory: ");
+    try file.write(2, try file.getCwd(getcwd_spec, &buf));
+    try file.write(2, "\n");
     try file.makeDir(make_dir_spec, "/run/user/1000/file_test");
     var st: file.Stat = try file.stat(stat_spec, "/run/user/1000/file_test");
     builtin.assert(st.isDirectory());
