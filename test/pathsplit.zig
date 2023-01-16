@@ -9,6 +9,7 @@ const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
+pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_verbose: bool = true;
 
 pub const PathSplitSpec = struct {
