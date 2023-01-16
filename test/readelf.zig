@@ -12,8 +12,6 @@ const preset = srg.preset;
 const builder = srg.builder;
 const builtin = srg.builtin;
 
-const opts = @import("./opts.zig");
-
 pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
 
@@ -290,21 +288,23 @@ const Options = struct {
     jit_mode: bool = false,
     direct_lookup: bool = false,
     env_src: ?[:0]const u8 = null,
+
+    pub const Map = proc.GenericOptions(Options);
 };
+
+const opt_map: []const Options.Map = meta.slice(Options.Map, .{ // zig fmt: off
+    .{ .field_name = "env_src",        .short = "-f",  .long = "--file",   .assign = .{ .argument = "pathname" } },
+    .{ .field_name = "direct_lookup",  .short = "-l",                      .assign = .{ .boolean = false } },
+    .{ .field_name = "jit_mode",       .long = "--no-fixed",               .assign = .{ .boolean = false } },
+}); // zig fmt: on
+
 pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
+    const options: Options = proc.getOpts(Options, &args, opt_map);
     var result_array: PrintArray = .{};
     if (args.len == 0) {
         return;
     }
-    // zig fmt: off
-    const options: Options = opts.getOpts(Options, &args, &[_]opts.GenericOptions(Options){
-        .{ .decl = .env_src,        .short = "-f",  .long = "--file",   .assign = .argument },
-        .{ .decl = .direct_lookup,  .short = "-l",                      .assign = .{ .boolean = false } },
-        .{ .decl = .jit_mode,       .long = "--no-fixed",               .assign = .{ .boolean = false } },
-    });
-    // zig fmt: on
-
     var allocator: PrimaryAllocator = try PrimaryAllocator.init(address_space);
     defer allocator.deinit(address_space);
     var tmp_dir_path: StaticPath = .{};
