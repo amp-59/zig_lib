@@ -834,13 +834,18 @@ pub fn GenericOptions(comptime Options: type) type {
         // long_anti_prefix: []const u8 = "--no-",
         assign: union(enum) {
             boolean: bool,
-            argument,
+            argument: []const u8,
+            action: *const fn (*Options) void,
             convert: *const fn (*Options, [:0]const u8) void,
         },
         descr: ?[]const u8 = null,
         clobber: bool = true,
 
         const Option = @This();
+        comptime {
+            builtin.static.assert(@hasDecl(Options, "Map"));
+            builtin.static.assert(Options.Map == @This());
+        }
         fn getOptInternal(comptime flag: Option, options: *Options, args: *[][*:0]u8, index: u64, offset: u64) void {
             switch (flag.assign) {
                 .boolean => |value| {
@@ -861,14 +866,52 @@ pub fn GenericOptions(comptime Options: type) type {
                     convert(options, meta.manyToSlice(args.*[index])[offset..]);
                     shift(args, index);
                 },
-                //.generic => |generic| {
-                //    if (offset == 0) {
-                //        shift(args, index);
-                //    }
-                //    generic(options, @tagName(flag.decl), meta.manyToSlice(args.*[index])[offset..]);
-                //    shift(args, index);
-                //},
+                .action => |action| {
+                    action(options);
+                },
             }
+        }
+        fn helpMessage(comptime opt_map: []const Option) []const u8 {
+            var buf: []const u8 = "option flags:\n";
+            var max_width: comptime_int = 0;
+            for (opt_map) |option| {
+                var width: u64 = 0;
+                if (option.short) |short_switch| {
+                    width += 1 + short_switch.len;
+                }
+                if (option.long) |long_switch| {
+                    width += 2 + long_switch.len;
+                }
+                if (option.assign == .argument) {
+                    width += 3 + option.assign.argument.len;
+                }
+                max_width = @max(width, max_width);
+            }
+            max_width += 7;
+            max_width &= -8;
+            for (opt_map) |option| {
+                buf = buf ++ " " ** 4;
+                if (option.short) |short_switch| {
+                    var tmp: []const u8 = short_switch;
+                    if (option.long) |long_switch| {
+                        tmp = tmp ++ ", " ++ long_switch;
+                    }
+                    if (option.descr) |descr| {
+                        tmp = tmp ++ " " ** (4 + (max_width - tmp.len)) ++ descr;
+                    }
+                    if (option.assign == .argument) {
+                        tmp = tmp ++ " <" ++ option.assign.argument ++ ">";
+                    }
+                    buf = buf ++ tmp ++ "\n";
+                } else {
+                    var tmp: []const u8 = option.long.?;
+                    if (option.descr) |descr| {
+                        tmp = tmp ++ " " ** (4 + (max_width - tmp.len)) ++ descr;
+                    }
+                    buf = buf ++ tmp ++ "\n";
+                }
+            }
+            return buf;
         }
     };
 }
@@ -879,18 +922,18 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
     }
     var index: u64 = 1;
     lo: while (index != args.len) {
-        const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
         inline for (all_options) |option| {
             if (index == args.len) {
                 break :lo;
             }
+            const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
             if (option.long) |long_switch| {
                 if (builtin.testEqual([]const u8, long_switch, arg1)) {
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
                 }
                 const assign_long_switch: []const u8 = long_switch ++ "=";
-                if (builtin.testEqual([]const u8, assign_long_switch, arg1)) {
+                if (builtin.testEqual([]const u8, assign_long_switch, arg1[0..assign_long_switch.len])) {
                     option.getOptInternal(&options, args, index, assign_long_switch.len);
                     continue :lo;
                 }
@@ -900,27 +943,29 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
                 }
-                if (builtin.testEqual([]const u8, short_switch, arg1)) {
+                if (builtin.testEqual([]const u8, short_switch, arg1[0..short_switch.len])) {
                     option.getOptInternal(&options, args, index, short_switch.len);
                     continue :lo;
                 }
             }
         }
+        const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
         if (builtin.testEqual([]const u8, "--", arg1)) {
             shift(args, index);
             break :lo;
         }
         if (builtin.testEqual([]const u8, "--help", arg1)) {
-            debug.optionHelp(Options, all_options);
+            debug.optionNotice(Options, all_options);
+            sys.exit(0);
         }
         if (arg1[0] == '-') {
-            debug.badOptionHelp(Options, all_options, arg1, .{});
+            debug.optionError(Options, all_options, arg1);
+            sys.exit(2);
         }
         index += 1;
     }
     return options;
 }
-
 const debug = opaque {
     const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
     const about_opt_0_s: []const u8 = "opt:            '";
@@ -934,33 +979,40 @@ const debug = opaque {
     const about_execve_1_s: []const u8 = "execve-error:   ";
     const about_execveat_1_s: []const u8 = "execveat-error: ";
 
-    inline fn write(buf: []u8, s: []const u8) u64 {
-        for (s) |c, i| buf[i] = c;
-        return s.len;
+    fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
+        const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
+        sys.noexcept.write(2, @ptrToInt(buf.ptr), buf.len);
     }
-    fn write2(buf: []u8, ss: []const []const u8) u64 {
+    pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
+        var buf: [4096 + 128]u8 = undefined;
         var len: u64 = 0;
-        for (ss) |s| {
-            for (s) |c, i| buf[len + i] = c;
-            len += s.len;
+        len += write(buf[len..], about_execve_0_s);
+        len += write(buf[len..], filename);
+        buf[len] = ' ';
+        len += 1;
+        var argc: u16 = @intCast(u16, args.len);
+        var i: u16 = 0;
+        while (i != argc) : (i += 1) {
+            const arg_len: u64 = strlen(args[i]);
+            if (len + arg_len >= buf.len - 37) {
+                break;
+            }
+            for (args[i][0..arg_len]) |c, j| buf[len + j] = c;
+            len += arg_len;
+            buf[len] = ' ';
+            len += 1;
         }
-        return len;
-    }
-    fn print(buf: []u8, ss: []const []const u8) void {
-        sys.noexcept.write(2, @ptrToInt(buf.ptr), write2(buf, ss));
-    }
-    fn writeExecutablePathname(buf: []u8) u64 {
-        const rc: i64 = sys.noexcept.readlink(
-            @ptrToInt("/proc/self/exe"),
-            @ptrToInt(buf.ptr),
-            buf.len,
-        );
-        if (rc < 0) {
-            return ~@as(u64, 0);
+        if (argc != i) {
+            len += write(buf[len..], " ... and ");
+            len += write(buf[len..], builtin.fmt.ud64(argc - i).readAll());
+            len += write(buf[len..], " more args ... \n");
         } else {
-            return @intCast(u64, rc);
+            buf[len] = '\n';
+            len += 1;
         }
+        sys.noexcept.write(2, @ptrToInt(&buf), len);
     }
+
     fn zigErrorReturnedByMain(buf: []u8, symbol: []const u8) void {
         var len: u64 = 0;
         for (about_error_s) |c, i| buf[len + i] = c;
@@ -982,20 +1034,49 @@ const debug = opaque {
         var buf: [16 + 32 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
-    fn strlen(s: [*:0]const u8) u64 {
+    fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
+        var buf: [4096 + 128]u8 = undefined;
         var len: u64 = 0;
-        while (s[len] != 0) len += 1;
-        return len;
+        const bad_opt: []const u8 = isolateSwitch(arg);
+        len += write2(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
+        for (all_options) |option| {
+            const min: u64 = len;
+            if (option.long) |long_switch| {
+                const mats: u64 = matches(bad_opt, long_switch);
+                if (builtin.diff(u64, mats, long_switch.len) < 3) {
+                    len += write(buf[len..], about_opt_0_s);
+                    if (option.short) |short_switch| {
+                        len += write(buf[len..], short_switch);
+                    }
+                    len += write(buf[len..], "', '");
+                    len += write(buf[len..], long_switch);
+                }
+            }
+            if (min != len) {
+                len += write(buf[len..], "'");
+                if (option.descr) |descr| {
+                    buf[len] = '\t';
+                    len += 1;
+                    len += write(buf[len..], descr);
+                }
+                buf[len] = '\n';
+                len += 1;
+            }
+        }
+        len += write(buf[len..], about_stop_s);
+        sys.noexcept.write(2, @ptrToInt(&buf), len);
     }
+
     // Try to make these two less original
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
         const max_len: u64 = 4096 + 128;
         var buf: [max_len]u8 = undefined;
         var len: u64 = 0;
-        for ([_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ") ", filename }) |s| {
-            for (s) |c, i| buf[len + i] = c;
-            len += s.len;
-        }
+        len += write(buf[len..], about_execve_1_s);
+        len += write(buf[len..], "(");
+        len += write(buf[len..], @errorName(exec_error));
+        len += write(buf[len..], ")");
+        len += write(buf[len..], filename);
         buf[len] = ' ';
         len += 1;
         var argc: u16 = @intCast(u16, args.len);
@@ -1011,47 +1092,30 @@ const debug = opaque {
             len += 1;
         }
         if (argc != i) {
-            for ([_][]const u8{ " ... and ", builtin.fmt.ud64(argc - i).readAll(), " more args ... \n" }) |s| {
-                for (s) |c, j| buf[len + j] = c;
-                len += s.len;
-            }
+            len += write(buf[len..], " ... and ");
+            len += write(buf[len..], builtin.fmt.ud64(argc - i).readAll());
+            len += write(buf[len..], " more args ... \n");
         } else {
             buf[len] = '\n';
             len += 1;
         }
         sys.noexcept.write(2, @ptrToInt(&buf), len);
     }
-    pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
-        var buf: [4096 + 128]u8 = undefined;
-        var len: u64 = 0;
-        for ([_][]const u8{ about_execve_0_s, filename }) |s| {
-            for (s) |c, i| buf[len + i] = c;
-            len += s.len;
-        }
-        buf[len] = ' ';
-        len += 1;
-        var argc: u16 = @intCast(u16, args.len);
-        var i: u16 = 0;
-        while (i != argc) : (i += 1) {
-            const arg_len: u64 = strlen(args[i]);
-            if (len + arg_len >= buf.len - 37) {
-                break;
-            }
-            for (args[i][0..arg_len]) |c, j| buf[len + j] = c;
-            len += arg_len;
-            buf[len] = ' ';
-            len += 1;
-        }
-        if (argc != i) {
-            for ([_][]const u8{ " ... and ", builtin.fmt.ud64(argc - i).readAll(), " more args ... \n" }) |s| {
-                for (s) |c, j| buf[len + j] = c;
-                len += s.len;
-            }
+
+    fn print(buf: []u8, ss: []const []const u8) void {
+        sys.noexcept.write(2, @ptrToInt(buf.ptr), write2(buf, ss));
+    }
+    fn writeExecutablePathname(buf: []u8) u64 {
+        const rc: i64 = sys.noexcept.readlink(
+            @ptrToInt("/proc/self/exe"),
+            @ptrToInt(buf.ptr),
+            buf.len,
+        );
+        if (rc < 0) {
+            return ~@as(u64, 0);
         } else {
-            buf[len] = '\n';
-            len += 1;
+            return @intCast(u64, rc);
         }
-        sys.noexcept.write(2, @ptrToInt(&buf), len);
     }
     fn matches(l_values: []const u8, r_values: []const u8) u64 {
         var l_idx: u64 = 0;
@@ -1073,92 +1137,21 @@ const debug = opaque {
         }
         return arg;
     }
-    fn optionHelp(comptime Options: type, comptime all_options: []const GenericOptions(Options)) noreturn {
-        const buf: []const u8 = comptime blk: {
-            var buf: []const u8 = "option flags:\n";
-            var max_width: i64 = 0;
-            for (all_options) |option| {
-                var width: u64 = 0;
-                if (option.short) |short_switch| {
-                    width += 1 + short_switch.len;
-                }
-                if (option.long) |long_switch| {
-                    width += 2 + long_switch.len;
-                }
-                max_width = @max(width, max_width);
-            }
-            max_width += 7;
-            max_width &= -8;
-            for (all_options) |option| {
-                buf = buf ++ " " ** 4;
-                if (option.short) |short_switch| {
-                    var tmp: []const u8 = short_switch;
-                    if (option.long) |long_switch| {
-                        tmp = tmp ++ ", " ++ long_switch;
-                    }
-                    if (option.descr) |descr| {
-                        tmp = tmp ++ " " **
-                            (4 + (max_width - tmp.len)) ++ descr;
-                    }
-                    buf = buf ++ tmp ++ "\n";
-                } else {
-                    var tmp: []const u8 = option.long.?;
-                    if (option.descr) |descr| {
-                        tmp = tmp ++ " " **
-                            (4 + (max_width - tmp.len)) ++ descr;
-                    }
-                    buf = buf ++ tmp ++ "\n";
-                }
-            }
-            break :blk buf;
-        };
-        sys.noexcept.write(2, @ptrToInt(buf.ptr), buf.len);
-        sys.exit(2);
-    }
-    fn badOptionHelp(comptime Options: type, all_options: []const GenericOptions(Options), arg: [:0]const u8, params: struct {
-        show_short_switch_threshold: u64 = 1,
-        show_long_switch_threshold: u64 = 3,
-    }) noreturn {
-        var buf: [4096 + 128]u8 = undefined;
+    fn strlen(s: [*:0]const u8) u64 {
         var len: u64 = 0;
-        const bad_opt: []const u8 = isolateSwitch(arg);
-        len += write2(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
-        for (all_options) |option| {
-            const min: u64 = len;
-            if (option.short) |short_switch| {
-                const mats: u64 = matches(bad_opt, short_switch);
-                if (builtin.diff(u64, mats, bad_opt.len) < params.show_short_switch_threshold) {
-                    len += write(buf[len..], about_opt_0_s);
-                    len += write(buf[len..], short_switch);
-                }
-            }
-            if (option.long) |long_switch| {
-                const mats: u64 = matches(bad_opt, long_switch);
-                if (builtin.diff(u64, mats, long_switch.len) < params.show_long_switch_threshold) {
-                    len += write(buf[len..], if (min != len) "', '" else about_opt_0_s);
-                    len += write(buf[len..], long_switch);
-                }
-            }
-            if (min != len) {
-                len += write(buf[len..], "'");
-                if (option.descr) |descr| {
-                    buf[len] = '\t';
-                    len += 1;
-                    len += write(buf[len..], descr);
-                }
-                buf[len] = '\n';
-                len += 1;
-            }
-        }
-        len += write(buf[len..], about_stop_s);
-        sys.noexcept.write(2, @ptrToInt(&buf), len);
-        sys.exit(2);
+        while (s[len] != 0) len += 1;
+        return len;
     }
-    pub fn getHelp(comptime Options: type, all_options: []const GenericOptions(Options)) Options {
-        for (all_options) |options| {
-            if (options.descr) |descr| {
-                sys.noexcept.write(2, @ptrToInt(descr.ptr), descr.len);
-            }
+    inline fn write(buf: []u8, s: []const u8) u64 {
+        for (s) |c, i| buf[i] = c;
+        return s.len;
+    }
+    fn write2(buf: []u8, ss: []const []const u8) u64 {
+        var len: u64 = 0;
+        for (ss) |s| {
+            for (s) |c, i| buf[len + i] = c;
+            len += s.len;
         }
+        return len;
     }
 };
