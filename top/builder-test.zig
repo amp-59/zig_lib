@@ -86,7 +86,7 @@ const parsedir_std_macros: builder.Macros = general_macros ++ [1]builder.Macro{.
 const parsedir_lib_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"lib\"" }};
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
-    if (true) {
+    if (false) {
         var address_space: builtin.AddressSpace = .{};
         var allocator: Allocator = try Allocator.init(&address_space);
         var args: [][*:0]u8 = args_in;
@@ -104,7 +104,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         }
     }
     const S = [:0]const u8;
-    if (false) {
+    if (true) {
         const Args = struct { @TypeOf(vars), S, S, @TypeOf(builtin.zig.mode), @TypeOf(general_macros) };
         const args_set = [_]Args{
             .{ vars, "parsedir", "test/parsedir.zig", .ReleaseFast, parsedir_lib_macros },
