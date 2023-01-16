@@ -21,43 +21,33 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
         const Builder: type = @This();
         const Allocator: type = spec.Allocator.?;
         const String: type = Allocator.StructuredVectorLowAligned(u8, 8);
-        const StaticString: type = mem.StaticString(spec.max_len);
-        const Pointers: type = mem.StaticArray([*:0]u8, spec.max_args);
+        const Pointers: type = Allocator.StructuredVector([*:0]u8);
+        const StaticString: type = mem.StructuredAutomaticVector(u8, null, spec.max_len, 8, .{});
+        const StaticPointers: type = mem.StructuredAutomaticVector([*:0]u8, null, spec.max_args, 8, .{});
+        const zig: [:0]const u8 = "zig";
         cmd: enum { exe, lib, obj, fmt, ast_check, run },
         root: [:0]const u8,
         _: void,
-        pub fn allocateShow(build: Builder, allocator: *Allocator) !void {
-            var ad: BuildCmd.ArgData = try build.parcelDataV(&allocator);
-            for (ad.ptrs.readAll()) |argp| {
-                try file.write(2, mem.manyToSlice(argp));
-                try file.write(2, "\n");
-            }
-            allocator.discard();
-        }
         pub fn allocateExec(build: Builder, vars: [][*:0]u8, allocator: *Allocator) !u64 {
-            return genericExec(vars, try build.allocateCommandString(allocator));
+            var array: String = try meta.wrap(String.init(allocator, build.buildLength()));
+            defer array.deinit(allocator);
+            var args: Pointers = try meta.wrap(Pointers.init(allocator, build.buildWrite(&array)));
+            builtin.assertAboveOrEqual(u64, spec.max_args, makeArgs(array, &args));
+            builtin.assertAboveOrEqual(u64, spec.max_len, array.len());
+            defer args.deinit(allocator);
+            return genericExec(args.referAllDefined(), vars);
         }
         pub fn exec(build: Builder, vars: [][*:0]u8) !u64 {
-            return genericExec(vars, try build.commandString());
+            var array: StaticString = .{};
+            var args: StaticPointers = .{};
+            builtin.assertAboveOrEqual(u64, spec.max_args, build.buildWrite(&array));
+            builtin.assertAboveOrEqual(u64, spec.max_args, makeArgs(&array, &args));
+            return genericExec(args.referAllDefined(), vars);
         }
-        fn genericExec(vars: [][*:0]u8, array: anytype) !u64 {
-            const dir_fd: u64 = try file.find(vars, "zig");
+        fn genericExec(args: [][*:0]u8, vars: [][*:0]u8) !u64 {
+            const dir_fd: u64 = try file.find(vars, Builder.zig);
             defer file.close(.{ .errors = null }, dir_fd);
-            var args: Pointers = .{};
-            var idx: u64 = 0;
-            for (array.readAll()) |c, i| {
-                if (c == 0) {
-                    args.writeOne(array.referAllDefined()[idx..i :0].ptr);
-                    idx = i + 1;
-                }
-            }
-            if (args.impl.start() != args.impl.next()) {
-                mem.set(args.impl.next(), @as(u64, 0), 1);
-            }
-            if (args.len() != 0) {
-                return proc.commandAt(.{}, dir_fd, "zig", args.referAllDefined(), vars);
-            }
-            return 0;
+            return proc.commandAt(.{}, dir_fd, Builder.zig, args, vars);
         }
     };
 }
@@ -70,4 +60,25 @@ pub fn zigCacheDirGlobal(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
     for ("/.cache/zig") |c, i| buf[len + i] = c;
     return buf[0 .. len + 11 :0];
 }
-pub fn zigCacheDir(_: ?[][*:0]u8, _: [:0]u8) void {}
+fn countArgs(array: anytype) u64 {
+    var count: u64 = 0;
+    for (array.readAll()) |value| {
+        if (value == 0) {
+            count += 1;
+        }
+    }
+    return count + 1;
+}
+fn makeArgs(array: anytype, args: anytype) u64 {
+    var idx: u64 = 0;
+    for (array.readAll()) |c, i| {
+        if (c == 0) {
+            args.writeOne(array.referManyWithSentinelAt(idx, 0).ptr);
+            idx = i + 1;
+        }
+    }
+    if (args.len() != 0) {
+        mem.set(args.impl.next(), @as(u64, 0), 1);
+    }
+    return args.len();
+}
