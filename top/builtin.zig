@@ -561,6 +561,9 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
         return @max(@bitCast(U, arg1), @bitCast(U, arg2));
     }
 }
+pub fn diff(comptime T: type, arg1: T, arg2: T) T {
+    return subWrap(T, max(T, arg1, arg2), min(T, arg1, arg2));
+}
 pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
@@ -729,7 +732,10 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
         debug.comparisonFailedFault(T, " > ", arg1, arg2);
     }
 }
-
+const FaultExtra = struct {
+    src: builtin.SourceLocation,
+    about: ?[]const u8 = null,
+};
 pub fn expect(b: bool) Exception!void {
     if (!b) {
         return error.UnexpectedValue;

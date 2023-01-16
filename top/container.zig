@@ -4461,7 +4461,7 @@ pub const ReinterpretSpec = struct {
         type_name: bool = false,
     };
 };
-const reinterpret = opaque {
+pub const reinterpret = opaque {
     const validate_format_length: bool = false;
     fn isEquivalent(comptime child: type, comptime write_spec: ReinterpretSpec, comptime dst_type: type, comptime src_type: type) bool {
         const dst_type_info: builtin.Type = @typeInfo(dst_type);
