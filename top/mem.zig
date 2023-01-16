@@ -1262,6 +1262,50 @@ pub fn readAfterLastEqualOne(comptime T: type, value: T, values: []const T) ?[]c
     }
     return null;
 }
+pub fn readAfterFirstEqualManyWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    sub_values: []const T,
+    values: [:sentinel]const T,
+) ?[:sentinel]const T {
+    if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
+        return values[index + sub_values.len ..];
+    }
+    return null;
+}
+pub fn readAfterLastEqualManyWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    sub_values: []const T,
+    values: [:sentinel]const T,
+) ?[:sentinel]const T {
+    if (indexOfLastEqualMany(T, sub_values, values)) |index| {
+        return values[sub_values.len + index ..];
+    }
+    return null;
+}
+pub fn readAfterLastEqualOneWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    value: T,
+    values: [:sentinel]const T,
+) ?[:sentinel]const T {
+    if (indexOfLastEqualOne(T, value, values)) |index| {
+        return values[index + 1 ..];
+    }
+    return null;
+}
+pub fn readAfterFirstEqualOneWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    value: T,
+    values: [:sentinel]const T,
+) ?[:sentinel]const T {
+    if (indexOfFirstEqualOne(T, value, values)) |index| {
+        return values[index + 1 ..];
+    }
+    return null;
+}
 pub fn readBeforeFirstEqualManyOrElse(comptime T: type, sub_values: []const T, values: []const T) []const T {
     return readBeforeFirstEqualMany(T, sub_values, values) orelse values;
 }
@@ -1285,6 +1329,38 @@ pub fn readBeforeLastEqualOneOrElse(comptime T: type, value: T, values: []const 
 }
 pub fn readAfterLastEqualOneOrElse(comptime T: type, value: T, values: []const T) []const T {
     return readAfterLastEqualOne(T, value, values) orelse values;
+}
+pub fn readAfterFirstEqualManyOrElseWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    sub_values: []const T,
+    values: [:sentinel]const T,
+) [:sentinel]const T {
+    return readAfterFirstEqualManyWithSentinel(T, sentinel, sub_values, values) orelse values;
+}
+pub fn readAfterLastEqualManyOrElseWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    sub_values: []const T,
+    values: [:sentinel]const T,
+) [:sentinel]const T {
+    return readAfterLastEqualManyWithSentinel(T, sentinel, sub_values, values) orelse values;
+}
+pub fn readAfterFirstEqualOneOrElseWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    value: T,
+    values: [:sentinel]const T,
+) [:sentinel]const T {
+    return readAfterFirstEqualOneWithSentinel(T, sentinel, value, values) orelse values;
+}
+pub fn readAfterLastEqualOneOrElseWithSentinel(
+    comptime T: type,
+    comptime sentinel: T,
+    value: T,
+    values: [:sentinel]const T,
+) [:sentinel]const T {
+    return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
 }
 // XXX: The following two `trim*` functions were taken from the standard to get the
 // XXX: parser running. Revisit later for optimisation and renaming.
