@@ -14,8 +14,6 @@ const thread = srg.thread;
 const builtin = srg.builtin;
 const abstract = srg.abstract;
 
-const opts = @import("./opts.zig");
-
 const std = @import("std");
 
 pub usingnamespace proc.start;
@@ -28,19 +26,7 @@ const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec = proc.CloneSpec{
     .errors = null,
     .return_type = u64,
-    .options = .{
-        .set_thread_local_storage = true,
-        .set_parent_thread_id = true,
-        .set_child_thread_id = true,
-        .clear_child_thread_id = true,
-        .address_space = true,
-        .thread = true,
-        .file_system = true,
-        .files = true,
-        .signal_handlers = true,
-        .sysvsem = true,
-        .io = false,
-    },
+    .options = .{},
 };
 const wait_spec: proc.WaitIdSpec = .{
     .id_type = .{ .tag = .all },
