@@ -1,5 +1,4 @@
-fn commandString(build: Builder) anyerror!StaticString {
-    var array: StaticString = .{};
+fn buildWrite(build: Builder, array: anytype) u64 {
     array.writeMany("zig\x00");
     switch (build.cmd) {
         .lib, .exe, .obj => {
@@ -13,6 +12,7 @@ fn commandString(build: Builder) anyerror!StaticString {
         },
     }
     _;
-    array.writeAny(preset.reinterpret.ptr, .{ build.root, "\x00" });
-    return array;
+    array.writeMany(build.root);
+    array.writeOne('\x00');
+    return countArgs(array);
 }
