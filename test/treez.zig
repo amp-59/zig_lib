@@ -92,6 +92,17 @@ const Results = struct {
     fn total(results: Results) u64 {
         return results.dirs + results.files + results.links;
     }
+    fn show(results: Results) void {
+        var array: PrintArray = .{};
+        array.writeAny(preset.reinterpret.fmt, .{
+            "dirs:       ", fmt.udh(results.dirs),         '\n',
+            "files:      ", fmt.udh(results.files),        '\n',
+            "links:      ", fmt.udh(results.links),        '\n',
+            "depth:      ", fmt.udh(results.depth),        '\n',
+            "swaps:      ", fmt.udh(DirStream.disordered), '\n',
+        });
+        file.noexcept.write(2, array.readAll());
+    }
 };
 const Filter = meta.EnumBitField(file.Kind);
 const any_style: [16][]const u8 = blk: {
@@ -178,7 +189,7 @@ fn conditionalSkip(entry_name: []const u8) bool {
     }
     return false;
 }
-noinline fn writeAndWalk(
+fn writeAndWalk(
     options: *const Options,
     allocator_0: *Allocator0,
     allocator_1: *Allocator1,
@@ -321,17 +332,6 @@ fn setType(arg: []const u8) Filter {
     }
     return mask;
 }
-noinline fn showResults(counts: Results) void {
-    var array: PrintArray = .{};
-    array.writeAny(preset.reinterpret.fmt, .{
-        "dirs:       ", fmt.udh(counts.dirs),          '\n',
-        "files:      ", fmt.udh(counts.files),         '\n',
-        "links:      ", fmt.udh(counts.links),         '\n',
-        "depth:      ", fmt.udh(counts.depth),         '\n',
-        "swaps:      ", fmt.udh(DirStream.disordered), '\n',
-    });
-    file.noexcept.write(2, array.readAll());
-}
 inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1, offset: u64) u64 {
     const many: []const u8 = array.readManyAt(allocator, offset);
     if (many.len > (n - 1)) {
@@ -356,7 +356,7 @@ noinline fn printAlong(results: *Results, done: *bool, allocator: *Allocator1, a
     while (offset != array.len(allocator.*)) {
         offset += printIfNAvail(1, allocator.*, array.*, offset);
     }
-    showResults(results.*);
+    results.show();
     done.* = false;
 }
 inline fn getNames(args: *[][*:0]u8) Names {
@@ -418,7 +418,7 @@ pub fn main(args_in: [][*:0]u8) !void {
             mem.monitor(bool, &done);
         } else {
             file.noexcept.write(2, array.readAll(allocator_1));
-            showResults(results);
+            results.show();
         }
     }
 }
