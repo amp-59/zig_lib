@@ -12,11 +12,13 @@ const builtin = @import("./builtin.zig");
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.formulaic_128;
-pub const is_verbose: bool = true;
+pub const is_verbose: bool = false;
+pub const is_correct: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .logging = preset.allocator.logging.silent,
+    .errors = preset.allocator.errors.noexcept,
 });
 
 const try_multi_threaded: bool = false;
@@ -36,13 +38,7 @@ const thread_spec = proc.CloneSpec{
     .return_type = void,
     .options = .{},
 };
-fn runTest(
-    vars: [][*:0]u8,
-    name: [:0]const u8,
-    pathname: [:0]const u8,
-    mode: anytype,
-    macros: builder.Macros,
-) !void {
+fn runTest(vars: [][*:0]u8, name: []const u8, pathname: [:0]const u8, mode: @TypeOf(builtin.zig.mode), macros: builder.Macros) !void {
     var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
     var cmd: builder.BuildCmd(.{}) = .{
         .root = pathname,
@@ -61,14 +57,7 @@ fn runTest(
     };
     _ = try cmd.exec(vars);
 }
-fn runTestTestUsingAllocator(
-    vars: [][*:0]u8,
-    allocator: *Allocator,
-    name: [:0]const u8,
-    pathname: [:0]const u8,
-    mode: anytype,
-    macros: builder.Macros,
-) !void {
+fn runTestTestUsingAllocator(vars: [][*:0]u8, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8, mode: @TypeOf(builtin.zig.mode), macros: builder.Macros) !void {
     var global_cache_dir_buf: [4096:0]u8 = .{0} ** 4096;
     var cmd: builder.BuildCmd(.{ .Allocator = Allocator }) = .{
         .root = pathname,
@@ -96,33 +85,51 @@ const general_macros: builder.Macros = &.{
 const parsedir_std_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"std\"" }};
 const parsedir_lib_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"lib\"" }};
 
-pub fn main(_: [][*:0]u8, vars: [][*:0]u8) !void {
-    {
-        const arg_set = .{
-            .{ vars, "readelf", "test/readelf.zig", builtin.zig.mode, general_macros },
+pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
+    if (true) {
+        var address_space: builtin.AddressSpace = .{};
+        var allocator: Allocator = try Allocator.init(&address_space);
+        var args: [][*:0]u8 = args_in;
+        if (args.len == 1) return;
+        for (args[1..]) |arg| {
+            const pathname: [:0]const u8 = meta.manyToSlice(arg);
+            const basename: [:0]const u8 = mem.readAfterLastEqualOneOrElseWithSentinel(u8, 0, '/', pathname);
+            if (mem.readBeforeLastEqualMany(u8, ".zig", basename)) |name| {
+                if (false) {
+                    try runTestTestUsingAllocator(vars, &allocator, name[0.. :0], pathname, builtin.zig.mode, general_macros);
+                } else {
+                    try runTest(vars, name, pathname, builtin.zig.mode, general_macros);
+                }
+            }
+        }
+    }
+    const S = [:0]const u8;
+    if (false) {
+        const Args = struct { @TypeOf(vars), S, S, @TypeOf(builtin.zig.mode), @TypeOf(general_macros) };
+        const args_set = [_]Args{
             .{ vars, "parsedir", "test/parsedir.zig", .ReleaseFast, parsedir_lib_macros },
             .{ vars, "parsedir", "test/parsedir.zig", .ReleaseFast, parsedir_std_macros },
         };
-        inline for (arg_set) |args, i| {
+        for (args_set) |args, i| {
             if (try_multi_threaded) {
                 var result: meta.Return(runTest) = undefined;
-
-                try proc.callClone(thread_spec, try thread.map(.{ .options = .{} }, i), &result, runTest, args);
+                try proc.callClone(thread_spec, try thread.map(.{ .options = .{} }, @intCast(u8, i)), &result, runTest, args);
             } else {
                 try @call(.auto, runTest, args);
             }
         }
     }
-    {
+    if (false) {
+        const AllocArgs = struct { @TypeOf(vars), *Allocator, S, S, @TypeOf(builtin.zig.mode), @TypeOf(general_macros) };
         var address_space: builtin.AddressSpace = .{};
         var allocator: Allocator = try Allocator.init(&address_space);
-        const arg_set = .{
+        const arg_sets = [_]AllocArgs{
             .{ vars, &allocator, "treez", "test/treez.zig", builtin.zig.mode, general_macros },
+            .{ vars, &allocator, "readelf", "test/readelf.zig", builtin.zig.mode, general_macros },
         };
-        inline for (arg_set) |args, i| {
+        for (arg_sets) |args, i| {
             if (try_multi_threaded) {
                 var result: meta.Return(runTest) = undefined;
-
                 try proc.callClone(thread_spec, try thread.map(.{ .options = .{} }, i), &result, runTest, args);
             } else {
                 try @call(.auto, runTestTestUsingAllocator, args);
