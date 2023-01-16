@@ -478,7 +478,7 @@ pub fn Return(comptime function: anytype) type {
         return @typeInfo(@TypeOf(function)).Fn.return_type.?;
     }
 }
-/// Return the error part of a function error union return type.
+/// Return the error part of a function error union return type, etc.
 pub fn ReturnErrorSet(comptime any_function: anytype) type {
     const T: type = @TypeOf(any_function);
     switch (@typeInfo(T)) {
@@ -506,7 +506,7 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
             }
         },
         .ErrorSet => {
-            return any_function;
+            return T;
         },
         else => |type_info| {
             debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .Struct });
