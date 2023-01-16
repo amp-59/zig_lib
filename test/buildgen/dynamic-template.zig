@@ -1,18 +1,17 @@
-fn allocateCommandString(build: Builder, allocator: *Allocator) !String {
-    var array: String = try String.init(allocator, 512);
-    try array.appendMany(allocator, "zig\x00");
+fn buildAllocWrite(build: Builder, allocator: anytype, array: anytype) !void {
+    try meta.wrap(array.appendMany(allocator, build.name ++ "\x00"));
     switch (build.cmd) {
         .lib, .exe, .obj => {
-            try array.appendMany(allocator, "build-");
-            try array.appendMany(allocator, @tagName(build.cmd));
-            try array.appendOne(allocator, '\x00');
+            try meta.wrap(array.appendMany(allocator, "build-"));
+            try meta.wrap(array.appendMany(allocator, @tagName(build.cmd)));
+            try meta.wrap(array.appendOne(allocator, '\x00'));
         },
         .fmt, .ast_check, .run => {
-            try array.appendMany(allocator, @tagName(build.cmd));
-            try array.appendOne(allocator, '\x00');
+            try meta.wrap(array.appendMany(allocator, @tagName(build.cmd)));
+            try meta.wrap(array.appendOne(allocator, '\x00'));
         },
     }
     _;
-    try array.appendAny(preset.reinterpret.ptr, allocator, .{ build.root, "\x00" });
-    return array;
+    try meta.wrap(array.appendMany(allocator, build.root));
+    try meta.wrap(array.appendOne(allocator, '\x00'));
 }
