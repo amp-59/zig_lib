@@ -969,7 +969,7 @@ const Options = struct {
 
     const pathname = .{ .argument = "pathname" };
 };
-const opt_map: []const Options.Map = if (!Options.never_dynamic and !Options.never_fixed) meta.slice(Options.Map, .{ // zig fmt: off
+const opt_map: []const Options.Map = meta.slice(Options.Map, .{ // zig fmt: off
     .{ .field_name = "output",          .short = "-o", .long = "--output",  .assign = Options.pathname, .descr = Options.about_output_s },
 }); // zig fmt: on
 
@@ -983,9 +983,6 @@ fn srcString(comptime count: usize, comptime pathname: [:0]const u8) !mem.Static
 
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
-    if (Options.never_dynamic and Options.never_fixed) {
-        @compileError("???");
-    }
     const options: Options = proc.getOpts(Options, &args, opt_map);
     const members_loc_token: []const u8 = "_: void,";
     const fn_body_loc_token: []const u8 = "_;";
