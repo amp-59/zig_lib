@@ -527,7 +527,7 @@ fn UnionFormat(comptime Union: type, comptime spec: RenderSpec) type {
         pub fn formatLengthEnumField(format: Format) u64 {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            var len: u64 = 10 + typeName(enum_info.Enum.tag_type).len + 3;
+            var len: u64 = 10 + typeName(enum_info.Enum.tag_type, spec).len + 3;
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
