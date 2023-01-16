@@ -43,10 +43,9 @@ pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
         blk: Block,
         count: u64,
         const Dir = @This();
-        const Block = mem.ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(.{
+        const Block = mem.ReadWritePushPopUnstructuredLazyAlignment(.{
             .low_alignment = 8,
             .high_alignment = 8,
-            .arena_index = Allocator.arena_index,
         });
         pub const Allocator = dir_spec.Allocator;
         pub const ListView = mem.XorLinkedListViewAdv(.{ .child = Entry, .low_alignment = 8 });
@@ -215,7 +214,11 @@ pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
 
         pub const dir_spec: DirStreamSpec = spec;
         const dir_open_spec: file.OpenSpec = .{
-            .options = .{ .write = null, .directory = true, .read = true },
+            .options = .{
+                .write = null,
+                .directory = true,
+                .read = true,
+            },
             .logging = dir_spec.logging.open,
         };
         const dir_close_spec: file.CloseSpec = .{ .errors = null, .logging = dir_spec.logging.close };
@@ -244,7 +247,7 @@ pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
             const s_bytes: u64 = dir.blk.capacity();
             const t_bytes: u64 = s_bytes * 2;
             const s_impl: Block = dir.blk;
-            try allocator.resizeManyAbove(Block, &dir.blk, .{ .bytes = t_bytes });
+            try meta.wrap(allocator.resizeManyAbove(Block, &dir.blk, .{ .bytes = t_bytes }));
             clear(s_impl.finish(), dir.blk.finish() - s_impl.finish());
         }
         fn shrink(dir: *Dir, allocator: *Allocator) !void {
@@ -263,7 +266,7 @@ pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
         }
         pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !Dir {
             const fd: u64 = try file.openAt(dir_open_spec, dirfd orelse sys.S.AT_FDCWD, name);
-            const blk: Block = try allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size });
+            const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
             clear(blk.start(), dir_spec.initial_size);
             var ret: Dir = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
@@ -276,14 +279,14 @@ pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
         }
         pub fn init(allocator: *Allocator, pathname: [:0]const u8) !Dir {
             const fd: u64 = try file.open(dir_open_spec, pathname);
-            const blk: Block = try allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size });
+            const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
             clear(blk.start(), dir_spec.initial_size);
             var ret: Dir = .{ .path = pathname, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
                 try ret.readAll(allocator);
             }
             if (dir_spec.options.make_list) {
-                ret.count = ret.interleaveXorListNodes();
+                ret.count = List.interleaveXorListNodes(ret);
             }
             return ret;
         }
