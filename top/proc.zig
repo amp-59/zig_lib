@@ -285,7 +285,9 @@ pub const ExecuteSpec = struct {
     vars_type: type = []const [*:0]u8,
     logging: builtin.Logging = .{},
     const Specification = @This();
-    const Options = struct { no_follow: bool = false };
+    const Options = struct {
+        no_follow: bool = false,
+    };
     fn flags(comptime spec: ExecuteSpec) Execute {
         var flags_bitfield: Execute = .{ .val = 0 };
         if (spec.options.no_follow) {
@@ -435,11 +437,11 @@ pub fn fork(comptime spec: ForkSpec) spec.Unwrapped(.fork) {
         return fork_error;
     }
 }
-pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.options.args_type, vars: spec.vars_type) !u64 {
+pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u64 {
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const pid: u64 = try sys.fork();
+    const pid: u64 = try fork(.{});
     if (pid == 0) {
         if (spec.call(.execve, .{ filename_buf_addr, args_addr, vars_addr })) {
             unreachable;
@@ -453,7 +455,7 @@ pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.op
     if (spec.logging.Success) {
         debug.executeNotice(pathname, args);
     }
-    return waitPid(pid);
+    return waitPid(.{}, .{ .pid = pid });
 }
 pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u64 {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
@@ -823,7 +825,7 @@ pub const ArgsIterator = struct {
         if (itr.index <= itr.args.len) {
             const arg: [*:0]const u8 = itr.args[itr.index];
             itr.index +%= 1;
-            return arg[0..debug.strlen(arg) :0];
+            return arg[0..strlen(arg) :0];
         }
         return null;
     }
