@@ -122,6 +122,13 @@ pub fn defaultValue(comptime struct_field: builtin.StructField) ?struct_field.ty
 pub inline fn Tuple(comptime T: type) type {
     return @Type(tupleInfo(@typeInfo(T).Struct.fields));
 }
+pub inline fn Args(comptime Fn: type) type {
+    var fields: []const builtin.StructField = empty;
+    inline for (@typeInfo(Fn).Fn.params) |arg, i| {
+        fields = concat(builtin.StructField, fields, structField(arg.type.?, builtin.fmt.ci(i), null));
+    }
+    return @Type(tupleInfo(fields));
+}
 pub inline fn tuple(any: anytype) Tuple(@TypeOf(any)) {
     return any;
 }
