@@ -478,11 +478,11 @@ pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, ar
 }
 pub const start = opaque {
     pub export fn _start() callconv(.Naked) noreturn {
-        const entry_stack_address = asm volatile (
+        static.stack_addr = asm volatile (
             \\xorq  %%rbp,  %%rbp
             : [argc] "={rsp}" (-> u64),
         );
-        callMain(entry_stack_address);
+        @call(.never_inline, callMain, .{});
     }
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?usize) noreturn {
         @setCold(true);
@@ -616,7 +616,10 @@ fn exitWithError(any_error: anytype) void {
     debug.zigErrorReturnedByMain(&buf, @errorName(any_error));
     sys.exit(2);
 }
-pub noinline fn callMain(stack_addr: u64) noreturn {
+const static = opaque {
+    var stack_addr: u64 = 0;
+};
+pub noinline fn callMain() noreturn {
     @setAlignStack(16);
     if (@hasDecl(builtin.root, "main")) {
         const Main: type = @TypeOf(builtin.root.main);
@@ -630,15 +633,15 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
                 break :blk_0 .{};
             }
             if (main_type_info.Fn.params.len == 1) {
-                const args_len: u64 = @intToPtr(*u64, stack_addr).*;
-                const args_addr: u64 = stack_addr + 8;
+                const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+                const args_addr: u64 = static.stack_addr + 8;
                 const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
                 break :blk_0 .{args[0..args_len]};
             }
             if (main_type_info.Fn.params.len == 2) {
-                const args_len: u64 = @intToPtr(*u64, stack_addr).*;
-                const args_addr: u64 = stack_addr + 8;
-                const vars_addr: u64 = stack_addr + 16 + (args_len * 8);
+                const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+                const args_addr: u64 = static.stack_addr + 8;
+                const vars_addr: u64 = static.stack_addr + 16 + (args_len * 8);
                 const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
                 const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
                 const vars_len: u64 = blk_1: {
@@ -650,8 +653,8 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
             }
             if (main_type_info.Fn.params.len == 3) {
                 const auxv_type: type = main_type_info.Fn.params[2].type.?;
-                const args_len: u64 = @intToPtr(*u64, stack_addr).*;
-                const args_addr: u64 = stack_addr + 8;
+                const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+                const args_addr: u64 = static.stack_addr + 8;
                 const vars_addr: u64 = args_addr + 8 + (args_len * 8);
                 const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
                 const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
