@@ -493,12 +493,12 @@ pub const start = opaque {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
-            debug.print(&buf, &[_][]const u8{
+            print(&buf, &[_][]const u8{
                 debug.about_error_s,             "indexing (",
                 builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
             });
         } else {
-            debug.print(&buf, &[_][]const u8{
+            print(&buf, &[_][]const u8{
                 debug.about_error_s,                      "index ",
                 builtin.fmt.ud64(idx).readAll(),          " above maximum ",
                 builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
@@ -509,7 +509,7 @@ pub const start = opaque {
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        debug.print(&buf, &[_][]const u8{
+        print(&buf, &[_][]const u8{
             debug.about_error_s,                 "sentinel mismatch: expected ",
             builtin.fmt.int(expected).readAll(), ", found ",
             builtin.fmt.int(actual).readAll(),   "\n",
@@ -519,7 +519,7 @@ pub const start = opaque {
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        debug.print(&buf, &[_][]const u8{
+        print(&buf, &[_][]const u8{
             debug.about_error_s,               "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
@@ -529,7 +529,7 @@ pub const start = opaque {
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        debug.print(&buf, &[_][]const u8{
+        print(&buf, &[_][]const u8{
             debug.about_error_s, "access of union field '",
             @tagName(wanted),    "' while field '",
             @tagName(active),    "' is active",
@@ -541,7 +541,7 @@ pub const start = opaque {
     }
     fn unexpectedReturnCodeValueError(rc: u64) void {
         var buf: [512]u8 = undefined;
-        debug.print(&buf, &[_][]const u8{
+        print(&buf, &[_][]const u8{
             "unexpected return value: ", builtin.fmt.ud64(rc).readAll(),
             "\n",
         });
@@ -698,10 +698,10 @@ pub noinline fn callMain(stack_addr: u64) noreturn {
             }
         }
         if (main_return_type_info == .ErrorSet) {
-            @compileError("main return type always an error: " ++ @typeName(main_return_type));
+            @compileError("main always return an error: " ++ @typeName(main_return_type));
         }
     } else if (builtin.zig.output_mode == .Exe) {
-        @compileError("main not defined in source root");
+        @compileError("main not public/defined in source root");
     }
     unreachable;
 }
@@ -712,7 +712,7 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
     @intToPtr(**meta.Return(Fn), result_addr).*.* = @call(
         .never_inline,
         @intToPtr(**Fn, call_addr).*,
-        @intToPtr(*Args(Fn), args_addr).*,
+        @intToPtr(*meta.Args(Fn), args_addr).*,
     );
 }
 
@@ -732,7 +732,7 @@ pub noinline fn callClone(
     const call_off: u64 = 8;
     const args_off: u64 = 16;
     @intToPtr(**const Fn, stack_addr + call_off).* = &function;
-    @intToPtr(*Args(Fn), stack_addr + args_off).* = args;
+    @intToPtr(*meta.Args(Fn), stack_addr + args_off).* = args;
     if (@TypeOf(result_ptr) != void) {
         @intToPtr(*@TypeOf(result_ptr), stack_addr + ret_off).* = result_ptr;
     }
@@ -763,7 +763,7 @@ pub noinline fn callClone(
                 @intToPtr(**meta.Return(Fn), ret_addr).*.* = @call(
                     .never_inline,
                     @intToPtr(**Fn, call_addr).*,
-                    @intToPtr(*Args(Fn), args_addr).*,
+                    @intToPtr(*meta.Args(Fn), args_addr).*,
                 );
             } else {
                 @call(
@@ -776,7 +776,7 @@ pub noinline fn callClone(
             @call(
                 .never_inline,
                 @intToPtr(**Fn, call_addr).*,
-                @intToPtr(*Args(Fn), args_addr).*,
+                @intToPtr(*meta.Args(Fn), args_addr).*,
             );
         }
         asm volatile (
@@ -797,23 +797,33 @@ pub noinline fn callClone(
     }
     unreachable;
 }
-pub fn Args(comptime Fn: type) type {
-    var fields: []const builtin.StructField = meta.empty;
-    inline for (@typeInfo(Fn).Fn.params) |arg, i| {
-        fields = meta.concat(builtin.StructField, fields, meta.structField(arg.type.?, lit.ud8[i], null));
-    }
-    return @Type(meta.tupleInfo(fields));
-}
-pub fn shift(args: *[][*:0]u8, i: u64) void {
-    if (args.len > i + 1) {
-        var this: *[*:0]u8 = &args.*[i];
-        for (args.*[i + 1 ..]) |*next| {
+/// Replaces argument at `index` with argument at `index` + 1
+/// This is useful for extracting information from the program arguments in
+/// rounds.
+pub fn shift(args: *[][*:0]u8, index: u64) void {
+    if (args.len > index + 1) {
+        var this: *[*:0]u8 = &args.*[index];
+        for (args.*[index + 1 ..]) |*next| {
             this.* = next.*;
             this = next;
         }
     }
     args.* = args.*[0 .. args.len - 1];
 }
+pub const ArgsIterator = struct {
+    args: [][*:0]u8,
+    index: u64 = 1,
+    pub fn init(args: [][*:0]u8) ArgsIterator {
+        return .{ .args = args };
+    }
+    pub fn readOne(itr: *ArgsIterator) ?[:0]const u8 {
+        if (itr.index != itr.args.len) {
+            const arg: [*:0]const u8 = itr.args[itr.index];
+            return arg[0..debug.strlen(arg) :0];
+        }
+        itr.index +%= 1;
+    }
+};
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
     var addr: u64 = @ptrToInt(auxv);
     while (@intToPtr(*u64, addr).* != 0) : (addr += 16) {
@@ -868,6 +878,7 @@ pub fn GenericOptions(comptime Options: type) type {
                 },
                 .action => |action| {
                     action(options);
+                    shift(args, index);
                 },
             }
         }
@@ -1012,10 +1023,21 @@ const debug = opaque {
         }
         sys.noexcept.write(2, @ptrToInt(&buf), len);
     }
-
+    fn writeExecutablePathname(buf: []u8) u64 {
+        const rc: i64 = sys.noexcept.readlink(
+            @ptrToInt("/proc/self/exe"),
+            @ptrToInt(buf.ptr),
+            buf.len,
+        );
+        if (rc < 0) {
+            return ~@as(u64, 0);
+        } else {
+            return @intCast(u64, rc);
+        }
+    }
     fn zigErrorReturnedByMain(buf: []u8, symbol: []const u8) void {
         var len: u64 = 0;
-        for (about_error_s) |c, i| buf[len + i] = c;
+        len +%= write(buf[len..], about_error_s);
         len +%= about_error_s.len;
         len +%= writeExecutablePathname(buf[len..]);
         len +%= write2(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
@@ -1029,20 +1051,37 @@ const debug = opaque {
         var buf: [16 + 32 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
     }
-    // TODO: Report more information, such as pid, idtype, conditions
-    fn waitError(wait_error: anytype) void {
+    fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
         var buf: [16 + 32 + 512]u8 = undefined;
         print(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
     fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
         var buf: [4096 + 128]u8 = undefined;
         var len: u64 = 0;
-        const bad_opt: []const u8 = isolateSwitch(arg);
+        const bad_opt: []const u8 = blk: {
+            var idx: u64 = 0;
+            while (idx != arg.len) : (idx += 1) {
+                if (arg[idx] == '=') {
+                    break :blk arg[0..idx];
+                }
+            }
+            break :blk arg;
+        };
         len += write2(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
         for (all_options) |option| {
             const min: u64 = len;
             if (option.long) |long_switch| {
-                const mats: u64 = matches(bad_opt, long_switch);
+                const mats: u64 = blk: {
+                    var l_idx: u64 = 0;
+                    var mats: u64 = 0;
+                    while (l_idx + mats < bad_opt.len) : (l_idx += 1) {
+                        var r_idx: u64 = 0;
+                        while (r_idx != long_switch.len) : (r_idx += 1) {
+                            mats += builtin.int(u64, bad_opt[l_idx + mats] == long_switch[r_idx]);
+                        }
+                    }
+                    break :blk mats;
+                };
                 if (builtin.diff(u64, mats, long_switch.len) < 3) {
                     len += write(buf[len..], about_opt_0_s);
                     if (option.short) |short_switch| {
@@ -1066,7 +1105,6 @@ const debug = opaque {
         len += write(buf[len..], about_stop_s);
         sys.noexcept.write(2, @ptrToInt(&buf), len);
     }
-
     // Try to make these two less original
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
         const max_len: u64 = 4096 + 128;
@@ -1101,57 +1139,27 @@ const debug = opaque {
         }
         sys.noexcept.write(2, @ptrToInt(&buf), len);
     }
-
-    fn print(buf: []u8, ss: []const []const u8) void {
-        sys.noexcept.write(2, @ptrToInt(buf.ptr), write2(buf, ss));
-    }
-    fn writeExecutablePathname(buf: []u8) u64 {
-        const rc: i64 = sys.noexcept.readlink(
-            @ptrToInt("/proc/self/exe"),
-            @ptrToInt(buf.ptr),
-            buf.len,
-        );
-        if (rc < 0) {
-            return ~@as(u64, 0);
-        } else {
-            return @intCast(u64, rc);
-        }
-    }
-    fn matches(l_values: []const u8, r_values: []const u8) u64 {
-        var l_idx: u64 = 0;
-        var mats: u64 = 0;
-        while (l_idx + mats < l_values.len) : (l_idx += 1) {
-            var r_idx: u64 = 0;
-            while (r_idx != r_values.len) : (r_idx += 1) {
-                mats += builtin.int(u64, l_values[l_idx + mats] == r_values[r_idx]);
-            }
-        }
-        return mats;
-    }
-    fn isolateSwitch(arg: [:0]const u8) []const u8 {
-        var idx: u64 = 0;
-        while (idx != arg.len) : (idx += 1) {
-            if (arg[idx] == '=') {
-                return arg[0..idx];
-            }
-        }
-        return arg;
-    }
-    fn strlen(s: [*:0]const u8) u64 {
-        var len: u64 = 0;
-        while (s[len] != 0) len += 1;
-        return len;
-    }
-    inline fn write(buf: []u8, s: []const u8) u64 {
-        for (s) |c, i| buf[i] = c;
-        return s.len;
-    }
-    fn write2(buf: []u8, ss: []const []const u8) u64 {
-        var len: u64 = 0;
-        for (ss) |s| {
-            for (s) |c, i| buf[len + i] = c;
-            len += s.len;
-        }
-        return len;
-    }
 };
+
+// Common utility functions:
+
+fn print(buf: []u8, ss: []const []const u8) void {
+    sys.noexcept.write(2, @ptrToInt(buf.ptr), write2(buf, ss));
+}
+fn strlen(s: [*:0]const u8) u64 {
+    var len: u64 = 0;
+    while (s[len] != 0) len += 1;
+    return len;
+}
+inline fn write(buf: []u8, s: []const u8) u64 {
+    for (s) |c, i| buf[i] = c;
+    return s.len;
+}
+fn write2(buf: []u8, ss: []const []const u8) u64 {
+    var len: u64 = 0;
+    for (ss) |s| {
+        for (s) |c, i| buf[len + i] = c;
+        len += s.len;
+    }
+    return len;
+}
