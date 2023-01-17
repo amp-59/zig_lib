@@ -1231,7 +1231,6 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         }
     };
 }
-
 pub const Parameters2 = struct {
     bytes: u64,
     low_alignment: ?u64 = null,
@@ -1764,7 +1763,6 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         }
     };
 }
-
 pub const Parameters3 = struct {
     child: type,
     sentinel: ?*const anyopaque = null,
@@ -2534,7 +2532,6 @@ pub fn StructuredView(comptime child: type, comptime sentinel: ?*const anyopaque
         }
     };
 }
-
 pub const Parameters4 = struct {
     high_alignment: u64,
     low_alignment: ?u64 = null,
@@ -3275,7 +3272,6 @@ pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u
         }
     };
 }
-
 pub const Parameters5 = struct {
     Allocator: type,
     child: type,
@@ -3812,7 +3808,6 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         }
     };
 }
-
 pub const Parameters6 = struct {
     Allocator: type,
     high_alignment: u64,
@@ -4334,7 +4329,6 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         }
     };
 }
-
 fn GenericParameters(comptime Parameters: type) type {
     return struct {
         pub fn highAlignment(comptime params: Parameters) u64 {
