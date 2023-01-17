@@ -817,11 +817,12 @@ pub const ArgsIterator = struct {
         return .{ .args = args };
     }
     pub fn readOne(itr: *ArgsIterator) ?[:0]const u8 {
-        if (itr.index != itr.args.len) {
+        if (itr.index <= itr.args.len) {
             const arg: [*:0]const u8 = itr.args[itr.index];
+            itr.index +%= 1;
             return arg[0..debug.strlen(arg) :0];
         }
-        itr.index +%= 1;
+        return null;
     }
 };
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
