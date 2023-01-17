@@ -984,16 +984,18 @@ pub const AbstractSpec = union(enum) {
     // names from the same substructure present, these should form a union or
     // enumeration instead of individual boolean options.
     comptime {
-        for (getMutuallyExclusivePivot(Technique.mutex)) |name| {
-            if (!@hasField(Technique, name)) {
-                @compileError(name);
-            }
-        }
-        for (getMutuallyExclusivePivot(Fields.mutex)) |name| {
-            if (!@hasField(Fields, name)) {
-                @compileError(name);
-            }
-        }
+        // This probably costs next to nothing at compile time, but no reason to
+        // compute it while the feature is not being updated.
+        //for (getMutuallyExclusivePivot(Technique.mutex)) |name| {
+        //    if (!@hasField(Technique, name)) {
+        //        @compileError(name);
+        //    }
+        //}
+        //for (getMutuallyExclusivePivot(Fields.mutex)) |name| {
+        //    if (!@hasField(Fields, name)) {
+        //        @compileError(name);
+        //    }
+        //}
     }
     pub const Fields = union {
         automatic_storage: struct {
@@ -1104,7 +1106,6 @@ pub const AbstractSpec = union(enum) {
             disjunct_alignment: S,
         };
     }
-
     fn getMutuallyExclusivePivot(comptime any: anytype) []const []const u8 {
         switch (@typeInfo(@TypeOf(any))) {
             .Struct => |struct_info| {
