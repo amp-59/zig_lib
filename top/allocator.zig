@@ -79,59 +79,7 @@ pub const AllocatorLogging = packed struct {
         }
     }
 };
-fn ReturnTypes(comptime Allocator: type) type {
-    return opaque {
-        const MMapError: type = Allocator.map_spec.Errors(.mmap);
-        const MUnmapError: type = Allocator.map_spec.Errors(.munmap);
-        const MRemapError: type = Allocator.remap_spec.Errors(.mremap);
-        pub const acquire_allocator: type = blk: {
-            if (Allocator.allocator_spec.errors.acquire != null) {
-                if (Allocator.allocator_spec.errors.map != null and
-                    Allocator.allocator_spec.options.init_commit != null or
-                    Allocator.allocator_spec.options.require_mremap)
-                {
-                    break :blk (MMapError || mem.ResourceError)!Allocator;
-                }
-                break :blk mem.ResourceError!Allocator;
-            } else {
-                if (Allocator.allocator_spec.errors.map != null and
-                    Allocator.allocator_spec.options.init_commit != null or
-                    Allocator.allocator_spec.options.require_mremap)
-                {
-                    break :blk MMapError!Allocator;
-                }
-            }
-        };
-        pub const release_allocator: type = blk: {
-            if (Allocator.allocator_spec.errors.release != null) {
-                if (Allocator.allocator_spec.errors.unmap != null) {
-                    break :blk (MUnmapError || mem.ResourceError)!void;
-                }
-                break :blk mem.ResourceError!void;
-            } else {
-                if (Allocator.allocator_spec.errors.unmap != null) {
-                    break :blk MUnmapError!void;
-                }
-                break :blk void;
-            }
-        };
-        pub fn allocate_payload(comptime s_impl_type: type) type {
-            if (Allocator.allocator_spec.options.require_mremap) {
-                return Allocator.resize_spec.Replaced(.mmap, s_impl_type);
-            } else {
-                return Allocator.resize_spec.Replaced(.mremap, s_impl_type);
-            }
-        }
-        pub const allocate_void: type = blk: {
-            if (Allocator.allocator_spec.options.require_mremap) {
-                break :blk Allocator.resize_spec.Unwrapped(.mmap);
-            } else {
-                break :blk Allocator.resize_spec.Unwrapped(.mremap);
-            }
-        };
-        pub const deallocate_void: type = Allocator.unmap_spec.Unwrapped(.munmap);
-    };
-}
+const _1: mem.Amount = .{ .count = 1 };
 const default_address_space_type = builtin.configExtra(
     "AddressSpace",
     type,
@@ -195,7 +143,59 @@ pub const RtArenaAllocatorSpec = struct {
         return ret;
     }
 };
-const _1: mem.Amount = .{ .count = 1 };
+fn ReturnTypes(comptime Allocator: type) type {
+    return opaque {
+        const MMapError: type = Allocator.map_spec.Errors(.mmap);
+        const MUnmapError: type = Allocator.map_spec.Errors(.munmap);
+        const MRemapError: type = Allocator.remap_spec.Errors(.mremap);
+        pub const acquire_allocator: type = blk: {
+            if (Allocator.allocator_spec.errors.acquire != null) {
+                if (Allocator.allocator_spec.errors.map != null and
+                    Allocator.allocator_spec.options.init_commit != null or
+                    Allocator.allocator_spec.options.require_mremap)
+                {
+                    break :blk (MMapError || mem.ResourceError)!Allocator;
+                }
+                break :blk mem.ResourceError!Allocator;
+            } else {
+                if (Allocator.allocator_spec.errors.map != null and
+                    Allocator.allocator_spec.options.init_commit != null or
+                    Allocator.allocator_spec.options.require_mremap)
+                {
+                    break :blk MMapError!Allocator;
+                }
+            }
+        };
+        pub const release_allocator: type = blk: {
+            if (Allocator.allocator_spec.errors.release != null) {
+                if (Allocator.allocator_spec.errors.unmap != null) {
+                    break :blk (MUnmapError || mem.ResourceError)!void;
+                }
+                break :blk mem.ResourceError!void;
+            } else {
+                if (Allocator.allocator_spec.errors.unmap != null) {
+                    break :blk MUnmapError!void;
+                }
+                break :blk void;
+            }
+        };
+        pub fn allocate_payload(comptime s_impl_type: type) type {
+            if (Allocator.allocator_spec.options.require_mremap) {
+                return Allocator.resize_spec.Replaced(.mmap, s_impl_type);
+            } else {
+                return Allocator.resize_spec.Replaced(.mremap, s_impl_type);
+            }
+        }
+        pub const allocate_void: type = blk: {
+            if (Allocator.allocator_spec.options.require_mremap) {
+                break :blk Allocator.resize_spec.Unwrapped(.mmap);
+            } else {
+                break :blk Allocator.resize_spec.Unwrapped(.mremap);
+            }
+        };
+        pub const deallocate_void: type = Allocator.unmap_spec.Unwrapped(.munmap);
+    };
+}
 fn Metadata(comptime options: AllocatorOptions) type {
     return struct {
         branches: meta.maybe(options.count_branches, Branches) = .{},
