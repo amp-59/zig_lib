@@ -86,6 +86,7 @@ const parsedir_std_macros: builder.Macros = general_macros ++ [1]builder.Macro{.
 const parsedir_lib_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = "\"lib\"" }};
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
+    if (return) {}
     if (false) {
         var address_space: builtin.AddressSpace = .{};
         var allocator: Allocator = try Allocator.init(&address_space);
