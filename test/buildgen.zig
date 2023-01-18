@@ -8,16 +8,21 @@ const meta = srg.meta;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
-const types = @import("buildgen/builder-types.zig");
+const types = @import("buildgen/builder-template.zig");
 
-const template_src: [:0]const u8 = @embedFile("buildgen/builder-template.zig");
-const types_src: [:0]const u8 = @embedFile("buildgen/builder-types.zig");
+const template_src: [:0]const u8 = @embedFile("./buildgen/builder-template.zig");
+const imports_template_src: [:0]const u8 = @embedFile("buildgen/imports-template.zig");
+const write_template_src: [:0]const u8 = @embedFile("./buildgen/write-template.zig");
+const length_template_src: [:0]const u8 = @embedFile("./buildgen/length-template.zig");
 
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_verbose: bool = false;
 pub const is_correct: bool = false;
+
+const use_function_type: bool = false;
+const initial_indent: u64 = if (use_function_type) 2 else 1;
 
 const alloc_options = .{
     .count_allocations = false,
@@ -71,6 +76,7 @@ pub const OptionSpec = struct {
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?*const OptionSpec = null,
 };
+
 const SimpleInverse = struct {
     /// Do not output machine code
     pub const no_emit_bin_opt_spec: OptionSpec = .{ .string = "-fno-emit-bin" };
@@ -137,21 +143,61 @@ pub const ExecutableOptions = opaque {
     // Enable or disable colored error messages
     pub const color_opt_spec: OptionSpec = .{ .string = "--color", .arg_type = enum { on, off, auto } };
     // (default) Output machine code
-    pub const emit_bin_opt_spec: OptionSpec = .{ .string = "-femit-bin", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_bin_opt_spec };
+    pub const emit_bin_opt_spec: OptionSpec = .{
+        .string = "-femit-bin",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_bin_opt_spec,
+    };
     // Output .s (assembly code)
-    pub const emit_asm_opt_spec: OptionSpec = .{ .string = "-femit-asm", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_asm_opt_spec };
+    pub const emit_asm_opt_spec: OptionSpec = .{
+        .string = "-femit-asm",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_asm_opt_spec,
+    };
     // Produce a .ll file with LLVM IR (requires LLVM extensions)
-    pub const emit_llvm_ir_opt_spec: OptionSpec = .{ .string = "-femit-llvm-ir", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_ir_opt_spec };
+    pub const emit_llvm_ir_opt_spec: OptionSpec = .{
+        .string = "-femit-llvm-ir",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_llvm_ir_opt_spec,
+    };
     // Produce a LLVM module as a .bc file (requires LLVM extensions)
-    pub const emit_llvm_bc_opt_spec: OptionSpec = .{ .string = "-femit-llvm-bc", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_llvm_bc_opt_spec };
+    pub const emit_llvm_bc_opt_spec: OptionSpec = .{
+        .string = "-femit-llvm-bc",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_llvm_bc_opt_spec,
+    };
     // Generate a C header file (.h)
-    pub const emit_h_opt_spec: OptionSpec = .{ .string = "-femit-h", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_h_opt_spec };
+    pub const emit_h_opt_spec: OptionSpec = .{
+        .string = "-femit-h",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_h_opt_spec,
+    };
     // Create a docs/ dir with html documentation
-    pub const emit_docs_opt_spec: OptionSpec = .{ .string = "-femit-docs", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_docs_opt_spec };
+    pub const emit_docs_opt_spec: OptionSpec = .{
+        .string = "-femit-docs",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_docs_opt_spec,
+    };
     // Write analysis JSON file with type information
-    pub const emit_analysis_opt_spec: OptionSpec = .{ .string = "-femit-analysis", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_analysis_opt_spec };
+    pub const emit_analysis_opt_spec: OptionSpec = .{
+        .string = "-femit-analysis",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_analysis_opt_spec,
+    };
     // (default) Produce an import .lib when building a Windows DLL
-    pub const emit_implib_opt_spec: OptionSpec = .{ .string = "-femit-implib", .arg_type = ?[]const u8, .and_no = &SimpleInverse.no_emit_implib_opt_spec };
+    pub const emit_implib_opt_spec: OptionSpec = .{
+        .string = "-femit-implib",
+        .arg_type = ?types.Path,
+        .arg_type_name = "Path",
+        .and_no = &SimpleInverse.no_emit_implib_opt_spec,
+    };
     // Output the source of @import(pub const builtin_opt_spec: OptionSpec = .{ .string = "builtin" } ) then exit
     pub const show_builtin_opt_spec: OptionSpec = .{ .string = "--show-builtin" };
     // Override the local cache directory
@@ -418,6 +464,22 @@ pub fn guessSourceOffsetStatic(comptime src: []const u8, comptime string: []cons
         @compileError("source does not contain string '" ++ string ++ "'");
     }
 }
+fn subTemplate(src: [:0]const u8, comptime sub_name: [:0]const u8) ?[]const u8 {
+    const start_s: []const u8 = "// start-document " ++ sub_name;
+    const finish_s: []const u8 = "// finish-document " ++ sub_name;
+    if (mem.indexOfFirstEqualMany(u8, start_s, src)) |after| {
+        if (mem.indexOfFirstEqualMany(u8, finish_s, src[after..])) |before| {
+            const ret: []const u8 = src[after + start_s.len .. after + before];
+            return ret;
+        } else {
+            file.noexcept.write(2, "missing: " ++ finish_s ++ "\n");
+            return null;
+        }
+    } else {
+        file.noexcept.write(2, "missing: " ++ start_s ++ "\n");
+        return null;
+    }
+}
 pub fn writeIndent(allocator: *Allocator0, array: *String0, width: u64, values: []const u8) !void {
     try array.increment(allocator, values.len * 6);
     var l_idx: u64 = 0;
@@ -438,32 +500,50 @@ pub fn writeIndent(allocator: *Allocator0, array: *String0, width: u64, values: 
         array.undefine(4);
     }
 }
-fn unhandledSpecification(what_field: []const u8, comptime opt_spec: OptionSpec) noreturn {
+fn unhandledSpecification(comptime what_field: []const u8, comptime opt_spec: OptionSpec) noreturn {
     @compileError("todo: " ++ @tagName(getOptKind(opt_spec)) ++ ": " ++ what_field);
 }
 
-pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime T: type) !void {
+pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime T: type, comptime subst: ?struct { import_type: type, type_name: []const u8 }) !void {
     const type_name: []const u8 = @typeName(T);
     const type_info: builtin.Type = @typeInfo(T);
     try array.appendMany(allocator, comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {");
     switch (type_info) {
         .Enum => |enum_info| {
             inline for (enum_info.fields) |field| {
-                try array.appendAny(preset.reinterpret.fmt, allocator, .{ ' ', field.name, " = ", comptime fmt.any(field.value), ',' });
+                try array.appendMany(allocator, " " ++ field.name ++ " = ");
+                try array.appendFormat(allocator, comptime fmt.any(field.value));
+                try array.appendMany(allocator, ",");
             }
             array.undefine(1);
             try array.appendMany(allocator, " }");
         },
         .Union => |union_info| {
             inline for (union_info.fields) |field| {
-                try array.appendAny(preset.reinterpret.ptr, allocator, .{ ' ', field.name, ": " });
-                switch (@typeInfo(field.type)) {
-                    .Enum, .Struct, .Union => {
-                        try formatCompositeLiteral(allocator, array, field.type);
-                    },
-                    else => {
-                        try array.appendMany(allocator, @typeName(field.type));
-                    },
+                try array.appendMany(allocator, " " ++ field.name ++ ": ");
+
+                if (subst) |s| {
+                    if (field.type == s.import_type) {
+                        try array.appendMany(allocator, s.type_name);
+                    } else {
+                        switch (@typeInfo(field.type)) {
+                            .Enum, .Struct, .Union => {
+                                try formatCompositeLiteral(allocator, array, field.type, subst);
+                            },
+                            else => {
+                                try array.appendMany(allocator, @typeName(field.type));
+                            },
+                        }
+                    }
+                } else {
+                    switch (@typeInfo(field.type)) {
+                        .Enum, .Struct, .Union => {
+                            try formatCompositeLiteral(allocator, array, field.type, subst);
+                        },
+                        else => {
+                            try array.appendMany(allocator, @typeName(field.type));
+                        },
+                    }
                 }
                 try array.appendOne(allocator, ',');
             }
@@ -472,10 +552,10 @@ pub fn formatCompositeLiteral(allocator: *Allocator0, array: *String0, comptime 
         },
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
-                try array.appendAny(preset.reinterpret.ptr, allocator, .{ ' ', field.name, ": " });
+                try array.appendMany(allocator, " " ++ field.name ++ ": ");
                 switch (@typeInfo(field.type)) {
                     .Enum, .Struct, .Union => {
-                        try formatCompositeLiteral(allocator, array, field.type);
+                        try formatCompositeLiteral(allocator, array, field.type, subst);
                     },
                     else => {
                         try array.appendMany(allocator, @typeName(field.type));
@@ -752,7 +832,12 @@ pub fn getOptType(comptime opt_spec: OptionSpec) type {
     if (@as(?type, blk: {
         if (opt_spec.arg_type_name) |type_name| {
             if (@hasDecl(types, type_name)) {
-                break :blk @field(types, type_name);
+                const import_type: type = @field(types, type_name);
+                if (?import_type == opt_spec.arg_type) {
+                    break :blk ?import_type;
+                } else {
+                    break :blk import_type;
+                }
             }
         }
         break :blk opt_spec.arg_type;
@@ -855,21 +940,13 @@ pub fn writeNoArgWhatNot(allocator: *Allocator0, array: *String0, width: *u64, w
     try writeSwitchClose(allocator, array, width);
     try writeIfClose(allocator, array, width);
 }
-pub fn writeImportTypeName(allocator: *Allocator0, array: *String0, comptime imported_type: type) !void {
-    const type_name: []const u8 = @typeName(imported_type);
-    const stop_idx: u64 = for (type_name) |c, i| {
-        if (c == '.') {
-            break i;
-        }
-    } else unreachable;
-    try array.appendAny(preset.reinterpret.ptr, allocator, .{ "@import(\"", type_name[0..stop_idx], ".zig\").", type_name[stop_idx + 1 ..] });
-}
 pub fn writeStructMembers(allocator: *Allocator0, array: *String0) !void {
+    const width: u64 = (initial_indent * 4);
     inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
         const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
         const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
-        try array.appendMany(allocator, "        " ++ what_field ++ ": ");
+        try array.appendMany(allocator, ws[0..width] ++ what_field ++ ": ");
         switch (@typeInfo(field_type)) {
             .Bool => {
                 try array.appendMany(allocator, @typeName(field_type) ++ " = false");
@@ -877,11 +954,27 @@ pub fn writeStructMembers(allocator: *Allocator0, array: *String0) !void {
             .Optional => |optional_info| {
                 try array.appendOne(allocator, '?');
                 if (opt_spec.arg_type_name) |type_name| {
-                    try array.appendMany(allocator, type_name ++ " = null");
+                    if (!@hasDecl(types, type_name)) {
+                        try array.appendMany(allocator, type_name ++ " = null");
+                    } else {
+                        const import_type: type = @field(types, type_name);
+                        switch (@typeInfo(optional_info.child)) {
+                            .Enum, .Struct, .Union => {
+                                try formatCompositeLiteral(allocator, array, optional_info.child, .{
+                                    .import_type = ?import_type,
+                                    .type_name = "?" ++ type_name,
+                                });
+                                try array.appendMany(allocator, " = null");
+                            },
+                            else => {
+                                try array.appendMany(allocator, type_name ++ " = null");
+                            },
+                        }
+                    }
                 } else {
                     switch (@typeInfo(optional_info.child)) {
                         .Enum, .Struct, .Union => {
-                            try formatCompositeLiteral(allocator, array, optional_info.child);
+                            try formatCompositeLiteral(allocator, array, optional_info.child, null);
                             try array.appendMany(allocator, " = null");
                         },
                         else => {
@@ -898,7 +991,7 @@ pub fn writeStructMembers(allocator: *Allocator0, array: *String0) !void {
     }
 }
 pub fn writeFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: bool, is_length: bool) !void {
-    var width: u64 = 12;
+    var width: u64 = (initial_indent * 4) + 4;
     inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
         const decl_type: type = @TypeOf(@field(ExecutableOptions, decl.name));
         if (decl_type != OptionSpec) {
@@ -959,22 +1052,15 @@ pub fn writeFunctionBody(allocator: *Allocator0, array: *String0, is_dynamic: bo
         }
     }
 }
-
 const Options = struct {
-    emit_dynamic: bool = true,
-    emit_fixed: bool = true,
     output: ?[:0]const u8 = null,
-
     pub const Map = proc.GenericOptions(Options);
-
     const about_output_s: []const u8 = "write to output to pathname";
-
     const pathname = .{ .argument = "pathname" };
 };
 const opt_map: []const Options.Map = meta.slice(Options.Map, .{ // zig fmt: off
     .{ .field_name = "output",          .short = "-o", .long = "--output",  .assign = Options.pathname, .descr = Options.about_output_s },
 }); // zig fmt: on
-
 fn srcString(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticString(count) {
     var ret: mem.StaticString(count) = .{};
     const fd: u64 = try file.open(open_spec, builtin.absolutePath(pathname));
@@ -996,29 +1082,30 @@ pub fn main(args_in: [][*:0]u8) !void {
     var array: String0 = String0.init(&allocator);
     defer array.deinit(&allocator);
 
-    const guess_i: u64 = 1018;
+    const guess_i: u64 = 1231;
+    const guess_j: u64 = 305;
+    const guess_k: u64 = 418;
 
-    const guess_j: u64 = 321;
-    const guess_k: u64 = 449;
-
-    const members_offset: u64 = try guessSourceOffset(template_src, members_loc_token, guess_i);
-    try array.appendMany(&allocator, template_src[0 .. members_offset - 8]);
+    const builder_src: []const u8 = subTemplate(template_src, "builder-struct.zig") orelse return error.MissingSubTemplate;
+    const members_offset: u64 = try guessSourceOffset(builder_src, members_loc_token, guess_i);
+    try array.appendMany(&allocator, builder_src[0 .. members_offset - (initial_indent * 4)]);
     try writeStructMembers(&allocator, &array);
+    try array.appendMany(&allocator, imports_template_src);
 
-    const dynamic_len_src: [:0]const u8 = @embedFile("buildgen/dynamic-len-template.zig");
-    const dynamic_len_fn_body_offset: u64 = try guessSourceOffset(dynamic_len_src, fn_body_loc_token, guess_j);
-    try writeIndent(&allocator, &array, 2, dynamic_len_src[0..dynamic_len_fn_body_offset]);
+    const length_fn_body_offset: u64 = try guessSourceOffset(length_template_src, fn_body_loc_token, guess_j);
+    try writeIndent(&allocator, &array, initial_indent, length_template_src[0..length_fn_body_offset]);
     try writeFunctionBody(&allocator, &array, false, true);
-    try writeIndent(&allocator, &array, 2, dynamic_len_src[dynamic_len_fn_body_offset + fn_body_loc_token.len ..]);
+    try writeIndent(&allocator, &array, initial_indent, length_template_src[length_fn_body_offset + fn_body_loc_token.len ..]);
 
-    const fixed_src: [:0]const u8 = @embedFile("buildgen/fixed-template.zig");
-    const fixed_fn_body_offset: u64 = try guessSourceOffset(fixed_src, fn_body_loc_token, guess_k);
-    try writeIndent(&allocator, &array, 2, fixed_src[0..fixed_fn_body_offset]);
+    const write_fn_body_offset: u64 = try guessSourceOffset(write_template_src, fn_body_loc_token, guess_k);
+    try writeIndent(&allocator, &array, initial_indent, write_template_src[0..write_fn_body_offset]);
     try writeFunctionBody(&allocator, &array, false, false);
-    try writeIndent(&allocator, &array, 2, fixed_src[fixed_fn_body_offset + fn_body_loc_token.len ..]);
+    try writeIndent(&allocator, &array, initial_indent, write_template_src[write_fn_body_offset + fn_body_loc_token.len ..]);
     try array.appendMany(&allocator, template_src[members_offset + members_loc_token.len ..]);
 
-    try array.appendMany(&allocator, types_src);
+    if (subTemplate(template_src, "builder-types.zig")) |types_src| {
+        try array.appendMany(&allocator, types_src);
+    }
     if (options.output) |pathname| {
         const builder_fd: u64 = try file.create(create_spec, pathname);
         defer file.close(close_spec, builder_fd);
