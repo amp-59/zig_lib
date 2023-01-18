@@ -9,14 +9,17 @@ const file = srg.file;
 const preset = srg.preset;
 const builder = srg.builder;
 const builtin = srg.builtin;
-const testing = srg.testing;
 
-pub const AddressSpace = preset.address_space.formulaic_128;
-pub const is_verbose: bool = true;
+pub const AddressSpace = builder.AddressSpace;
+pub const is_verbose: bool = false;
 
 pub usingnamespace proc.start;
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
+    var address_space: AddressSpace = .{};
+    var allocator: builder.Allocator = try builder.Allocator.init(&address_space);
+    allocator.deinit(&address_space);
+
     const args: [][*:0]u8 = args_in;
     var args_itr = proc.ArgsIterator.init(args);
 
@@ -36,6 +39,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         file.noexcept.write(2, "Expected global cache root directory path\n");
         sys.exit(2);
     };
+
     var ctx: builder.Context = .{
         .zig_exe = zig_exe,
         .build_root = build_root,
