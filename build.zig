@@ -88,9 +88,9 @@ fn addProjectExecutable(ctx: *builder.Context, comptime name: [:0]const u8, path
     if (args.emit_bin_path) |pathname| {
         ret.emit_bin = .{ .yes = relative(ctx, pathname).readAll() };
     }
-    if (args.emit_asm_path) |pathname| {
-        ret.emit_asm = .{ .yes = relative(ctx, pathname).readAll() };
-    }
+    //if (args.emit_asm_path) |pathname| {
+    //    ret.emit_asm = .{ .yes = relative(ctx, pathname).readAll() };
+    //}
     ret.macros = &.{.{ .name = "build_root", .value = macroString(ctx.build_root).readAll() }};
     ret.packages = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
     _ = try ret.exec(ctx.vars);
