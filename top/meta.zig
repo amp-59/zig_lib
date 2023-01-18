@@ -62,7 +62,7 @@ pub fn parcel(comptime T: type, arg: T) []const T {
     return &[1]T{arg};
 }
 pub fn concat(comptime T: type, comptime arg1: []const T, comptime arg2: T) []const T {
-    return arg1 ++ parcel(T, arg2);
+    return arg1 ++ comptime parcel(T, arg2);
 }
 pub fn concatEqu(comptime T: type, arg1: *[]const T, arg2: T) void {
     arg1.* = concat(T, arg1.*, arg2);
