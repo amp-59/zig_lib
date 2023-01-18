@@ -128,6 +128,8 @@ const SimpleInverse = struct {
     pub const no_strip_opt_spec: OptionSpec = .{ .string = "-fno-strip" };
     ///   -fno-soname                    Disable emitting a SONAME
     pub const no_soname_opt_spec: OptionSpec = .{ .string = "-fno-soname" };
+    ///   -fno-compiler-rt               Prevent including compiler-rt symbols in output
+    pub const no_compiler_rt_opt_spec: OptionSpec = .{ .string = "-fno-compiler-rt" };
 };
 pub const ExecutableOptions = opaque {
     // Enable compiler REPL
@@ -259,7 +261,7 @@ pub const ExecutableOptions = opaque {
     ///   -fLLD                          Force using LLD as the linker
     ///   -fno-LLD                       Prevent using LLD as the linker
     ///   -fcompiler-rt                  Always include compiler-rt symbols in output
-    ///   -fno-compiler-rt               Prevent including compiler-rt symbols in output
+    pub const compiler_rt_opt_spec: OptionSpec = .{ .string = "-fcompiler-rt", .and_no = &SimpleInverse.no_compiler_rt_opt_spec };
     ///   -rdynamic                      Add all symbols to the dynamic symbol table
     ///   -rpath [path]                  Add directory to the runtime library search path
     ///   -feach-lib-rpath               Ensure adding rpath for each used dynamic library
