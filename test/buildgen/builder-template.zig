@@ -25,6 +25,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
         const StaticString: type = mem.StructuredAutomaticVector(u8, null, spec.max_len, 8, .{});
         const StaticPointers: type = mem.StructuredAutomaticVector([*:0]u8, null, spec.max_args, 8, .{});
         const zig: [:0]const u8 = "zig";
+        zig_exe: ?[:0]const u8 = null,
         cmd: enum { exe, lib, obj, fmt, ast_check, run },
         root: [:0]const u8,
         _: void,
@@ -35,19 +36,23 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
             builtin.assertAboveOrEqual(u64, spec.max_args, makeArgs(array, &args));
             builtin.assertAboveOrEqual(u64, spec.max_len, array.len());
             defer args.deinit(allocator);
-            return genericExec(args.referAllDefined(), vars);
+            return build.genericExec(args.referAllDefined(), vars);
         }
         pub fn exec(build: Builder, vars: [][*:0]u8) !u64 {
             var array: StaticString = .{};
             var args: StaticPointers = .{};
-            builtin.assertAboveOrEqual(u64, spec.max_args, build.buildWrite(&array));
-            builtin.assertAboveOrEqual(u64, spec.max_args, makeArgs(&array, &args));
-            return genericExec(args.referAllDefined(), vars);
+            _ = build.buildWrite(&array);
+            _ = makeArgs(&array, &args);
+            return build.genericExec(args.referAllDefined(), vars);
         }
-        fn genericExec(args: [][*:0]u8, vars: [][*:0]u8) !u64 {
-            const dir_fd: u64 = try file.find(vars, Builder.zig);
-            defer file.close(.{ .errors = null }, dir_fd);
-            return proc.commandAt(.{}, dir_fd, Builder.zig, args, vars);
+        fn genericExec(builder: Builder, args: [][*:0]u8, vars: [][*:0]u8) !u64 {
+            if (builder.zig_exe) |zig_exe| {
+                return proc.command(.{}, zig_exe, args, vars);
+            } else {
+                const dir_fd: u64 = try file.find(vars, Builder.zig);
+                defer file.close(.{ .errors = null }, dir_fd);
+                return proc.commandAt(.{}, dir_fd, Builder.zig, args, vars);
+            }
         }
     };
 }
