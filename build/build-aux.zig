@@ -29,6 +29,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
     _ = addProjectExecutable(builder, "parsedir", "test/parsedir.zig", .{ .build_mode = .ReleaseFast, .build_root = true });
     _ = addProjectExecutable(builder, "pathsplit", "test/pathsplit.zig", .{ .build_root = true });
+    _ = addProjectExecutable(builder, "example", "test/example.zig", .{ .build_root = true });
 
     // Other test programs:
     _ = addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{ .is_large_test = true, .build_root = true });
