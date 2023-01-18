@@ -299,6 +299,7 @@ const opt_map: []const Options.Map = meta.slice(Options.Map, .{ // zig fmt: off
 }); // zig fmt: on
 
 pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
+    if (return) {}
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opt_map);
     var result_array: PrintArray = .{};
