@@ -13,7 +13,7 @@ switch_build_runner () {
         local -r build_runner_link_target="$(/usr/bin/realpath "$zig_build_runner")";
         if /usr/bin/test "$build_runner_link_target" -ef "$zl_build_runner"; then
             if /usr/bin/test -f "$zig_build_runner_bkp"; then
-                if ! /usr/bin/rm -i "$zig_build_runner"; then
+                if ! /usr/bin/rm "$zig_build_runner"; then
                     return 2;
                 fi;
                 if ! /usr/bin/mv -i "$zig_build_runner_bkp" "$zig_build_runner"; then
@@ -22,15 +22,13 @@ switch_build_runner () {
                 if /usr/bin/test -f "$zl_zig_build"; then
                     /usr/bin/sed -i 's/pub const build = if (false)/pub const build = if (true)/' "$zl_zig_build";
                 fi;
+                echo "build runner: std"
             else
                 echo error: "would move back original zig build runner, but original file is missing"
                 return 2;
             fi;
         else
-            echo error: "expected link to zig_lib build runner, but found other file: "
-            echo "'$zig_build_runner' -> "
-            echo "'$build_runner_link_target' != "
-            echo "'$zl_build_runner'"
+            echo error: "expected link to zig_lib build runner, but found other file: '$zig_build_runner' -> '$build_runner_link_target' != '$zl_build_runner'";
             return 2;
         fi;
     elif /usr/bin/test -f "$zig_build_runner"; then
@@ -43,6 +41,7 @@ switch_build_runner () {
         if /usr/bin/test -f "$zl_zig_build"; then
             /usr/bin/sed -i 's/pub const build = if (true)/pub const build = if (false)/' "$zl_zig_build";
         fi;
+        echo "build runner: zl"
     else
         echo error: "'$zig_build_runner': no such file or directory; did nothing"
     fi;
