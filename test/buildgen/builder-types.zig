@@ -65,3 +65,11 @@ pub const Macro = struct {
         return len;
     }
 };
+pub const Context = struct {
+    zig_exe: [:0]const u8,
+    build_root: [:0]const u8,
+    cache_dir: [:0]const u8,
+    global_cache_dir: [:0]const u8,
+    args: [][*:0]u8,
+    vars: [][*:0]u8,
+};
