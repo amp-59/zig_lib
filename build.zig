@@ -34,7 +34,7 @@ pub fn main(ctx: *builder.Context) !void {
     try addProjectExecutable(ctx, "hello", "test/hello.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     try addProjectExecutable(ctx, "readelf", "test/readelf.zig", .{ .build_root = true });
     try addProjectExecutable(ctx, "parsedir", "test/parsedir.zig", .{ .build_mode = .ReleaseFast, .build_root = true });
-    try addProjectExecutable(ctx, "pathsplit", "test/pathsplit.zig", .{ .build_root = true });
+    // try addProjectExecutable(ctx, "pathsplit", "test/pathsplit.zig", .{ .build_root = true });
     try addProjectExecutable(ctx, "example", "test/example.zig", .{ .build_root = true });
 
     // Other test programs:
