@@ -25,8 +25,8 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
         const StaticString: type = mem.StructuredAutomaticVector(u8, null, spec.max_len, 8, .{});
         const StaticPointers: type = mem.StructuredAutomaticVector([*:0]u8, null, spec.max_args, 8, .{});
         const zig: [:0]const u8 = "zig";
-        cmd: enum { exe, lib, obj, fmt, ast_check, run },
         zig_exe: ?[:0]const u8 = null,
+        cmd: enum { exe, lib, obj, fmt, ast_check, run },
         root: [:0]const u8,
         watch: bool = false,
         color: ?enum(u2) { on = 0, off = 1, auto = 2 } = null,
@@ -75,6 +75,7 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
         macros: ?Macros = null,
         packages: ?Packages = null,
         soname: ?union(enum) { yes: []const u8, no: void } = null,
+        compiler_rt: ?bool = null,
         dynamic: bool = false,
         static: bool = false,
         gc_sections: ?bool = null,
@@ -440,6 +441,13 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
                     .no => {
                         len +%= 14;
                     },
+                }
+            }
+            if (build.compiler_rt) |compiler_rt| {
+                if (compiler_rt) {
+                    len +%= 16;
+                } else {
+                    len +%= 19;
                 }
             }
             if (build.dynamic) {
@@ -834,6 +842,13 @@ pub fn BuildCmd(comptime spec: BuildCmdSpec) type {
                     },
                 }
             }
+            if (build.compiler_rt) |compiler_rt| {
+                if (compiler_rt) {
+                    array.writeMany("-fcompiler-rt\x00");
+                } else {
+                    array.writeMany("-fno-compiler-rt\x00");
+                }
+            }
             if (build.dynamic) {
                 array.writeMany("-dynamic\x00");
             }
@@ -909,11 +924,11 @@ fn countArgs(array: anytype) u64 {
     return count + 1;
 }
 fn makeArgs(array: anytype, args: anytype) u64 {
-    var index: u64 = 0;
-    for (array.readAll()) |value, i| {
-        if (value == 0) {
-            args.writeOne(array.referManyWithSentinelAt(index, 0).ptr);
-            index = i + 1;
+    var idx: u64 = 0;
+    for (array.readAll()) |c, i| {
+        if (c == 0) {
+            args.writeOne(array.referManyWithSentinelAt(idx, 0).ptr);
+            idx = i + 1;
         }
     }
     if (args.len() != 0) {
