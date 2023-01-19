@@ -267,11 +267,11 @@ pub inline fn alignB(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
     return value & ~mask;
 }
 pub inline fn alignA64(value: u64, alignment: u64) u64 {
-    const mask: u64 = alignment - 1;
+    const mask: u64 = alignment -% 1;
     return (value +% mask) & ~mask;
 }
 pub inline fn alignB64(value: u64, alignment: u64) u64 {
-    const mask: u64 = alignment - 1;
+    const mask: u64 = alignment -% 1;
     return value & ~mask;
 }
 pub inline fn halfMask64(pop_count: u8) u64 {
