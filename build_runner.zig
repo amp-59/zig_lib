@@ -18,7 +18,9 @@ pub usingnamespace proc.start;
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var allocator: builder.Allocator = try builder.Allocator.init(&address_space);
-    allocator.deinit(&address_space);
+    defer allocator.deinit(&address_space);
+    var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator);
+    defer array.deinit(&allocator);
 
     const args: [][*:0]u8 = args_in;
     var args_itr = proc.ArgsIterator.init(args);
@@ -47,6 +49,8 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .global_cache_dir = global_cache_dir,
         .args = args[4..],
         .vars = vars,
+        .allocator = &allocator,
+        .array = &array,
     };
     try root.build(&ctx);
     sys.exit(0);
