@@ -24,12 +24,10 @@ fn macroString(pathname: [:0]const u8) mem.StaticString(4096) {
 }
 pub fn main(ctx: *builder.Context) !void {
     var cmds: mem.StaticArray(BuildCmd, 64) = .{};
-
     const packages = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
     const minor_test_args = .{ .is_correct = true, .is_verbose = true, .packages = packages };
     const algo_test_args = .{ .is_correct = true, .is_verbose = true, .build_mode = .ReleaseSmall, .packages = packages };
     const fmt_test_args = .{ .is_correct = true, .is_verbose = true, .build_mode = .Debug, .packages = packages };
-    const perf_test_args = .{ .is_correct = false, .is_verbose = false, .packages = packages };
     const fast_test_args = .{ .is_correct = false, .is_verbose = false, .build_mode = .ReleaseFast, .packages = packages };
     const small_test_args = .{ .is_correct = false, .is_verbose = false, .build_mode = .ReleaseSmall, .packages = packages };
 
@@ -45,7 +43,7 @@ pub fn main(ctx: *builder.Context) !void {
     cmds.writeOne(addProjectExecutable(ctx, "virtual_test", "top/virtual-test.zig", minor_test_args));
 
     // More complete test programs:
-    cmds.writeOne(addProjectExecutable(ctx, "buildgen", "test/buildgen.zig", perf_test_args));
+    cmds.writeOne(addProjectExecutable(ctx, "buildgen", "test/buildgen.zig", small_test_args));
     cmds.writeOne(addProjectExecutable(ctx, "mca", "test/mca.zig", fast_test_args));
     cmds.writeOne(addProjectExecutable(ctx, "treez", "test/treez.zig", small_test_args));
     cmds.writeOne(addProjectExecutable(ctx, "itos", "test/itos.zig", small_test_args));
@@ -153,8 +151,6 @@ fn addProjectExecutable(ctx: *builder.Context, comptime name: [:0]const u8, comp
     comptime var macros: []const builder.Macro = args.macros orelse meta.empty;
 
     macros = comptime args.setMacro(macros, "is_correct");
-    macros = comptime args.setMacro(macros, "is_perf");
-    macros = comptime args.setMacro(macros, "is_tolerant");
     macros = comptime args.setMacro(macros, "is_verbose");
 
     ret.omit_frame_pointer = false;
