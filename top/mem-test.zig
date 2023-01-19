@@ -105,7 +105,7 @@ fn testRtAllocatedImplementation() !void {
             try array_a.appendMany(&allocator, "Hello, world!");
             try array_a.appendCount(&allocator, 4, "1234".*);
             try array_a.appendFormat(&allocator, fmt.ux(0x1fee1dead));
-            try testing.expectEqualMany(u8, "world!", &array_a.readCountAt(allocator, "Hello, ".len, "world!".len));
+            try testing.expectEqualMany(u8, "world!", &array_a.readCountAt(allocator, "world!".len, "Hello, ".len));
             try testing.expectEqualMany(u8, "Hello, ", array_a.readManyAhead("Hello, ".len));
             array_a.stream("Hello, ".len);
             try testing.expectEqualMany(u8, "world!", array_a.readManyAhead("world!".len));
@@ -124,7 +124,7 @@ fn testRtAllocatedImplementation() !void {
             try array_b.appendMany(&allocator, "Hello, world!");
             try array_b.appendCount(&allocator, 4, "1234".*);
             try array_b.appendFormat(&allocator, fmt.ux(0x1fee1dead));
-            try testing.expectEqualMany(u8, "world!", &array_b.readCountAt("Hello, ".len, "world!".len));
+            try testing.expectEqualMany(u8, "world!", &array_b.readCountAt("world!".len, "Hello, ".len));
             try testing.expectEqualMany(u8, "Hello, ", array_b.readManyAhead("Hello, ".len));
             array_b.stream("Hello, ".len);
             try testing.expectEqualMany(u8, "world!", array_b.readManyAhead("world!".len));
@@ -156,7 +156,7 @@ fn testAllocatedImplementation() !void {
             try array_a.appendMany(&allocator, "Hello, world!");
             try array_a.appendCount(&allocator, 4, "1234".*);
             try array_a.appendFormat(&allocator, fmt.ux(0x1fee1dead));
-            try testing.expectEqualMany(u8, "world!", &array_a.readCountAt(allocator, "Hello, ".len, "world!".len));
+            try testing.expectEqualMany(u8, "world!", &array_a.readCountAt(allocator, "world!".len, "Hello, ".len));
             try testing.expectEqualMany(u8, "Hello, ", array_a.readManyAhead("Hello, ".len));
             array_a.stream("Hello, ".len);
             try testing.expectEqualMany(u8, "world!", array_a.readManyAhead("world!".len));
@@ -175,7 +175,7 @@ fn testAllocatedImplementation() !void {
             try array_b.appendMany(&allocator, "Hello, world!");
             try array_b.appendCount(&allocator, 4, "1234".*);
             try array_b.appendFormat(&allocator, fmt.ux(0x1fee1dead));
-            try testing.expectEqualMany(u8, "world!", &array_b.readCountAt("Hello, ".len, "world!".len));
+            try testing.expectEqualMany(u8, "world!", &array_b.readCountAt("world!".len, "Hello, ".len));
             try testing.expectEqualMany(u8, "Hello, ", array_b.readManyAhead("Hello, ".len));
             array_b.stream("Hello, ".len);
             try testing.expectEqualMany(u8, "world!", array_b.readManyAhead("world!".len));
@@ -189,7 +189,7 @@ fn testAutomaticImplementation() !void {
     {
         const array = mem.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
-        try testing.expectEqualMany(u8, "World!", &array.readCountAt("Hello, ".len, "World!".len));
+        try testing.expectEqualMany(u8, "World!", &array.readCountAt("World!".len, "Hello, ".len));
         try builtin.expectEqual(u64, array.readAll().len + 1, array.impl.bytes());
     }
     {
@@ -198,7 +198,7 @@ fn testAutomaticImplementation() !void {
         array.writeMany("Hello, world!");
         array.writeCount(4, "1234".*);
         array.writeFormat(fmt.ux(0x1fee1dead));
-        try testing.expectEqualMany(u8, "world!", &array.readCountAt("Hello, ".len, "world!".len));
+        try testing.expectEqualMany(u8, "world!", &array.readCountAt("world!".len, "Hello, ".len));
         try testing.expectEqualMany(u8, "Hello, ", array.readManyAhead("Hello, ".len));
         array.stream("Hello, ".len);
         try testing.expectEqualMany(u8, "world!", array.readManyAhead("world!".len));
