@@ -10,11 +10,6 @@ const builtin = srg.builtin;
 
 const types = @import("buildgen/builder-template.zig");
 
-const template_src: [:0]const u8 = @embedFile("./buildgen/builder-template.zig");
-const imports_template_src: [:0]const u8 = @embedFile("buildgen/imports-template.zig");
-const write_template_src: [:0]const u8 = @embedFile("./buildgen/write-template.zig");
-const length_template_src: [:0]const u8 = @embedFile("./buildgen/length-template.zig");
-
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.formulaic_128;
@@ -1075,6 +1070,11 @@ pub fn main(args_in: [][*:0]u8) !void {
     const guess_i: u64 = 1093;
     const guess_j: u64 = 305;
     const guess_k: u64 = 418;
+
+    const template_src: [:0]const u8 = @embedFile("./buildgen/builder-template.zig");
+    const imports_template_src: [:0]const u8 = @embedFile("buildgen/imports-template.zig");
+    const write_template_src: [:0]const u8 = @embedFile("./buildgen/write-template.zig");
+    const length_template_src: [:0]const u8 = @embedFile("./buildgen/length-template.zig");
 
     try array.appendMany(&allocator, imports_template_src);
     const builder_src: []const u8 = subTemplate(template_src, "builder-struct.zig") orelse return error.MissingSubTemplate;

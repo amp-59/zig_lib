@@ -97,33 +97,33 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
         const Index: type = meta.LeastRealBitSize(bits);
         const word_size: u8 = @bitSizeOf(usize);
         const data_info: builtin.Type = @typeInfo(Data);
-        pub fn positionToShiftAmount(pos: Index) u8 {
+        pub fn indexitionToShiftAmount(index: Index) u8 {
             if (data_info == .Array) {
-                return builtin.sub(u8, word_size - 1, builtin.rem(u8, pos, word_size));
+                return builtin.sub(u8, word_size - 1, builtin.rem(u8, index, word_size));
             } else {
-                return builtin.sub(u8, data_info.Int.bits - 1, pos);
+                return builtin.sub(u8, data_info.Int.bits - 1, index);
             }
         }
-        pub fn set(bit_set: *BitSet, pos: Index) void {
-            const bit_mask: Word = builtin.shl(Word, 1, positionToShiftAmount(pos));
+        pub fn set(bit_set: *BitSet, index: Index) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexitionToShiftAmount(index));
             if (data_info == .Array) {
-                bit_set.bits[pos / word_size] |= bit_mask;
+                bit_set.bits[index / word_size] |= bit_mask;
             } else {
                 bit_set.bits |= bit_mask;
             }
         }
-        pub fn unset(bit_set: *BitSet, pos: Index) void {
-            const bit_mask: Word = builtin.shl(Word, 1, positionToShiftAmount(pos));
+        pub fn unset(bit_set: *BitSet, index: Index) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexitionToShiftAmount(index));
             if (data_info == .Array) {
-                bit_set.bits[pos / word_size] &= ~bit_mask;
+                bit_set.bits[index / word_size] &= ~bit_mask;
             } else {
                 bit_set.bits &= ~bit_mask;
             }
         }
-        pub fn check(bit_set: BitSet, pos: Index) bool {
-            const bit_mask: Word = builtin.shl(Word, 1, positionToShiftAmount(pos));
+        pub fn check(bit_set: BitSet, index: Index) bool {
+            const bit_mask: Word = builtin.shl(Word, 1, indexitionToShiftAmount(index));
             if (data_info == .Array) {
-                return bit_set.bits[pos / word_size] & bit_mask != 0;
+                return bit_set.bits[index / word_size] & bit_mask != 0;
             } else {
                 return bit_set.bits & bit_mask != 0;
             }
