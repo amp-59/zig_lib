@@ -6,6 +6,8 @@ const mem = srg.mem;
 const sys = srg.sys;
 const proc = srg.proc;
 const file = srg.file;
+const meta = srg.meta;
+const opts = srg.opts;
 const preset = srg.preset;
 const builder = srg.builder;
 const builtin = srg.builtin;
@@ -14,6 +16,24 @@ pub const AddressSpace = builder.AddressSpace;
 pub const is_verbose: bool = false;
 
 pub usingnamespace proc.start;
+
+// zig fmt: off
+const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
+    .{ .field_name = "build_mode", .long = "-Drelease-fast",    .assign = Options.yes, .descr = "speed++" },
+    .{ .field_name = "build_mode", .long = "-Drelease-small",   .assign = Options.yes, .descr = "size--" },
+    .{ .field_name = "build_mode", .long = "-Dreleae-safe",     .assign = Options.no,  .descr = "safety++" },
+    .{ .field_name = "build_mode", .long = "-Ddebug",           .assign = Options.yes, .descr = "crashing++ " },
+    .{ .field_name = "strip",      .long = "-fstrip",           .assign = Options.yes, .descr = "do not emit debug symbols" },
+    .{ .field_name = "strip",      .long = "-fno-strip",        .assign = Options.no,  .descr = "emit debug symbols" },
+}); // zig fmt: on
+
+const Options = struct {
+    build_mode: ?@TypeOf(builtin.zig.mode) = null,
+    strip: bool = true,
+
+    const yes = .{ .boolean = true };
+    const no = .{ .boolean = false };
+};
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
@@ -52,6 +72,20 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .allocator = &allocator,
         .array = &array,
     };
+
+    for (args[4..]) |arg| {
+        const slice: [:0]const u8 = meta.manyToSlice(arg);
+        if (mem.readAfterFirstEqualMany(u8, "-Dsmall", slice)) |mode| {
+            file.noexcept.write(2, mode);
+        }
+        if (mem.readAfterFirstEqualMany(u8, "-Dfast", slice)) |mode| {
+            file.noexcept.write(2, mode);
+        }
+        if (mem.readAfterFirstEqualMany(u8, "-Dsafe", slice)) |mode| {
+            file.noexcept.write(2, mode);
+        }
+    }
+
     try root.build(&ctx);
     sys.exit(0);
 }
