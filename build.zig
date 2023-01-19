@@ -8,14 +8,6 @@ const builtin = srg.builtin;
 
 const BuildCmd = builder.BuildCmd;
 
-fn get(comptime T: type) *T {
-    var ret: T = 0;
-    return &ret;
-}
-const Static = struct {
-    const count: *u64 = get(u64);
-};
-
 fn relative(ctx: *builder.Context, relative_pathname: [:0]const u8) mem.StaticString(4096) {
     var ret: mem.StaticString(4096) = .{};
     ret.writeMany(ctx.build_root);
