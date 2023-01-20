@@ -66,7 +66,7 @@ const Options = struct {
     const use_wide_arrows: bool = false;
     const always_try_empty_dir_correction: bool = false;
 
-    const about_all_s: []const u8 = "show hiden file system objects";
+    const about_all_s: []const u8 = "show hidden file system objects";
     const about_follow_s: []const u8 = "follow symbolic links";
     const about_no_follow_s: []const u8 = "do not " ++ about_follow_s;
     const about_wide_s: []const u8 = "display entries using wide character symbols";
