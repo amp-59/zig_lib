@@ -1,5 +1,5 @@
 //! Tests applications of global comptime pointers.
-//! Experimental. This is a test file because if at some point it this
+//! Experimental. This is a test file because if at some point this
 //! functionality is removed from the language these tests should fail.
 const srg = @import("zig_lib");
 const meta = srg.meta;
