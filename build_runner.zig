@@ -1,7 +1,5 @@
 const root = @import("@build");
-
 const srg = root.srg;
-
 const mem = srg.mem;
 const sys = srg.sys;
 const proc = srg.proc;
@@ -14,6 +12,7 @@ const builtin = srg.builtin;
 
 pub const AddressSpace = builder.AddressSpace;
 pub const is_verbose: bool = false;
+pub const is_correct: bool = false;
 
 pub usingnamespace proc.start;
 
@@ -27,8 +26,7 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "strip", .long = "-fno-strip", .assign = Options.no, .descr = "emit debug symbols" },
     .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
 });
-
- pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
+pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var allocator: builder.Allocator = try builder.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
@@ -36,19 +34,19 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     array.increment(void, &allocator, .{ .bytes = 16 * 1024 * 1024 });
     defer array.deinit(&allocator);
     var args: [][*:0]u8 = args_in;
-    if (args.len < 4) {
+    const options: Options = proc.getOpts(Options, &args, opts_map);
+    if (args.len < 5) {
         file.noexcept.write(2, "Expected path to zig compiler, " ++
             "build root directory path, " ++
             "cache root directory path, " ++
             "global cache root directory path");
         sys.exit(2);
     }
-    const zig_exe: [:0]const u8 = meta.manyToSlice(args[0]);
-    const build_root: [:0]const u8 = meta.manyToSlice(args[1]);
-    const cache_dir: [:0]const u8 = meta.manyToSlice(args[2]);
-    const global_cache_dir: [:0]const u8 = meta.manyToSlice(args[3]);
-    args = args[4..];
-    const options: Options = proc.getOpts(Options, &args, opts_map);
+    const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
+    const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
+    const cache_dir: [:0]const u8 = meta.manyToSlice(args[3]);
+    const global_cache_dir: [:0]const u8 = meta.manyToSlice(args[4]);
+    args = args[5..];
     var ctx: builder.Context = .{
         .zig_exe = zig_exe,
         .build_root = build_root,
