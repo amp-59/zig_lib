@@ -550,6 +550,14 @@ pub const start = opaque {
     }
 };
 pub const exception = opaque {
+    pub fn updateSignalHandler(signo: u32, handler_function: anytype) void {
+        var act = SignalAction{
+            .handler = @ptrToInt(&handler_function),
+            .flags = (SA.SIGINFO | SA.RESTART | SA.RESETHAND | SA.RESTORER),
+            .restorer = @ptrToInt(&exception.restoreRunTime),
+        };
+        setSignalAction(signo, &act, null);
+    }
     fn updateExceptionHandlers(act: *const SignalAction) void {
         setSignalAction(SIG.SEGV, act, null);
         setSignalAction(SIG.ILL, act, null);
@@ -851,6 +859,7 @@ pub fn GenericOptions(comptime Options: type) type {
         assign: union(enum) {
             boolean: bool,
             argument: []const u8,
+            any: *const anyopaque,
             action: *const fn (*Options) void,
             convert: *const fn (*Options, [:0]const u8) void,
         },
@@ -862,17 +871,35 @@ pub fn GenericOptions(comptime Options: type) type {
             builtin.static.assert(@hasDecl(Options, "Map"));
             builtin.static.assert(Options.Map == @This());
         }
+        fn tagCast(comptime child: type, comptime any: *const anyopaque) builtin.DeclLiteral {
+            return @ptrCast(*const builtin.DeclLiteral, @alignCast(@alignOf(child), any)).*;
+        }
+        fn anyCast(comptime child: type, comptime any: *const anyopaque) child {
+            return @ptrCast(*const child, @alignCast(@alignOf(child), any)).*;
+        }
+        fn setAny(comptime child: type, comptime any: *const anyopaque) child {
+            return switch (@typeInfo(child)) {
+                .Optional => |optional_info| switch (@typeInfo(optional_info.child)) {
+                    .Enum => tagCast(optional_info.child, any),
+                    else => anyCast(optional_info.child, any),
+                },
+                .Enum => tagCast(any),
+                else => anyCast(child, any),
+            };
+        }
         fn getOptInternal(comptime flag: Option, options: *Options, args: *[][*:0]u8, index: u64, offset: u64) void {
+            const field = &@field(options, flag.field_name);
+            const Field = @TypeOf(field.*);
             switch (flag.assign) {
                 .boolean => |value| {
                     shift(args, index);
-                    @field(options, flag.field_name) = value;
+                    field.* = value;
                 },
                 .argument => {
                     if (offset == 0) {
                         shift(args, index);
                     }
-                    @field(options, flag.field_name) = meta.manyToSlice(args.*[index])[offset..];
+                    field.* = meta.manyToSlice(args.*[index])[offset..];
                     shift(args, index);
                 },
                 .convert => |convert| {
@@ -884,6 +911,10 @@ pub fn GenericOptions(comptime Options: type) type {
                 },
                 .action => |action| {
                     action(options);
+                    shift(args, index);
+                },
+                .any => |any| {
+                    field.* = setAny(Field, any);
                     shift(args, index);
                 },
             }
@@ -932,7 +963,7 @@ pub fn GenericOptions(comptime Options: type) type {
         }
     };
 }
-pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: []const GenericOptions(Options)) Options {
+pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: []const GenericOptions(Options)) Options {
     var options: Options = .{};
     if (args.len == 0) {
         return options;
@@ -944,10 +975,13 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
                 break :lo;
             }
             const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
-            if (option.long) |long_switch| {
+            if (option.long) |long_switch| blk: {
                 if (builtin.testEqual([]const u8, long_switch, arg1)) {
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
+                }
+                if (option.assign == .boolean) {
+                    break :blk;
                 }
                 const assign_long_switch: []const u8 = long_switch ++ "=";
                 if (arg1.len >= assign_long_switch.len and
@@ -957,10 +991,13 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
                     continue :lo;
                 }
             }
-            if (option.short) |short_switch| {
+            if (option.short) |short_switch| blk: {
                 if (builtin.testEqual([]const u8, short_switch, arg1)) {
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
+                }
+                if (option.assign == .boolean) {
+                    break :blk;
                 }
                 if (arg1.len >= short_switch.len and
                     builtin.testEqual([]const u8, short_switch, arg1[0..short_switch.len]))
@@ -979,7 +1016,7 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
             debug.optionNotice(Options, all_options);
             sys.exit(0);
         }
-        if (arg1[0] == '-') {
+        if (arg1.len != 0 and arg1[0] == '-') {
             debug.optionError(Options, all_options, arg1);
             sys.exit(2);
         }
