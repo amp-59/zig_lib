@@ -1,4 +1,4 @@
-pub const build = if (false) @import("build/build-aux.zig").main else main;
+pub const build = if (true) @import("build/build-aux.zig").main else main;
 pub const srg = @import("./zig_lib.zig");
 const mem = srg.mem;
 const meta = srg.meta;
@@ -51,9 +51,9 @@ pub fn main(ctx: *builder.Context) !void {
     cmds.writeOne(ctx.addExecutable("page", "test/page.zig", fmt_test_args));
 
     // Other test programs:
-    cmds.writeOne(ctx.addExecutable("impl_test", "top/impl-test.zig", .{ .is_large_test = true }));
-    cmds.writeOne(ctx.addExecutable("container_test", "top/container-test.zig", .{ .is_large_test = true }));
-    cmds.writeOne(ctx.addExecutable("parse_test", "top/parse-test.zig", .{ .is_correct = true, .is_verbose = true, .is_large_test = true }));
+    cmds.writeOne(ctx.addExecutable("impl_test", "top/impl-test.zig", .{}));
+    cmds.writeOne(ctx.addExecutable("container_test", "top/container-test.zig", .{}));
+    cmds.writeOne(ctx.addExecutable("parse_test", "top/parse-test.zig", .{}));
 
     // Examples
     cmds.writeOne(ctx.addExecutable("readdir", "examples/iterate_dir_entries.zig", minor_test_args));
