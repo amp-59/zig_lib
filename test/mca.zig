@@ -227,7 +227,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
                 name_buf.undefineAll();
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-                    name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, sub_region[0..colon], '\n' });
+                    name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], "\n" });
                 }
                 try file.write(fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
@@ -238,7 +238,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 name_buf.undefineAll();
 
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-                    name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, sub_region[0..colon], '\n' });
+                    name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n' });
                 }
                 try file.write(fd, name_buf.readAll());
             }
@@ -247,7 +247,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-            name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, sub_region[0..colon], '\n' });
+            name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], '\n' });
         }
         try file.write(fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[begin..x.body.end];
@@ -257,7 +257,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         try file.write(fd, section_text);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-            name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
+            name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
         }
         try file.write(fd, name_buf.readAll());
     } else {
