@@ -5,7 +5,6 @@ const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
-
 const fmt_spec: mem.ReinterpretSpec = blk: {
     var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
     tmp.integral = .{ .format = .dec };
@@ -16,17 +15,18 @@ pub const BuildCmdSpec = struct {
     max_args: u64 = 1024,
     Allocator: ?type = null,
 };
-
 pub const AddressSpace = preset.address_space.exact_8;
-pub const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0 });
+pub const Allocator = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .logging = preset.allocator.logging.silent,
+    .errors = preset.allocator.errors.noexcept,
+});
 pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
 pub const StaticString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const StaticPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
-
 const max_len: u64 = 65536;
 const max_args: u64 = 512;
-
 pub const BuildCmd = struct {
     const Builder: type = @This();
     const zig: [:0]const u8 = "zig";
@@ -81,6 +81,13 @@ pub const BuildCmd = struct {
     packages: ?Packages = null,
     soname: ?union(enum) { yes: []const u8, no: void } = null,
     compiler_rt: ?bool = null,
+    path: ?[]const u8 = null,
+    each_lib_rpath: ?bool = null,
+    no_each_lib_rpath: bool = false,
+    allow_shlib_undefined: ?bool = null,
+    no_allow_shlib_undefined: bool = false,
+    build_id: ?bool = null,
+    no_build_id: bool = false,
     dynamic: bool = false,
     static: bool = false,
     gc_sections: ?bool = null,
@@ -455,6 +462,41 @@ pub const BuildCmd = struct {
                 len +%= 19;
             }
         }
+        if (build.path) |how| {
+            len +%= 9;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.each_lib_rpath) |each_lib_rpath| {
+            if (each_lib_rpath) {
+                len +%= 19;
+            } else {
+                len +%= 22;
+            }
+        }
+        if (build.no_each_lib_rpath) {
+            len +%= 22;
+        }
+        if (build.allow_shlib_undefined) |allow_shlib_undefined| {
+            if (allow_shlib_undefined) {
+                len +%= 26;
+            } else {
+                len +%= 29;
+            }
+        }
+        if (build.no_allow_shlib_undefined) {
+            len +%= 29;
+        }
+        if (build.build_id) |build_id| {
+            if (build_id) {
+                len +%= 13;
+            } else {
+                len +%= 16;
+            }
+        }
+        if (build.no_build_id) {
+            len +%= 16;
+        }
         if (build.dynamic) {
             len +%= 11;
         }
@@ -478,7 +520,6 @@ pub const BuildCmd = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-
         len +%= build.root.len + 1;
         return len;
     }
@@ -854,6 +895,41 @@ pub const BuildCmd = struct {
                 array.writeMany("-fno-compiler-rt\x00");
             }
         }
+        if (build.path) |how| {
+            array.writeMany("-rpath\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne(0);
+        }
+        if (build.each_lib_rpath) |each_lib_rpath| {
+            if (each_lib_rpath) {
+                array.writeMany("-feach-lib-rpath\x00");
+            } else {
+                array.writeMany("-fno-each-lib-rpath\x00");
+            }
+        }
+        if (build.no_each_lib_rpath) {
+            array.writeMany("-fno-each-lib-rpath\x00");
+        }
+        if (build.allow_shlib_undefined) |allow_shlib_undefined| {
+            if (allow_shlib_undefined) {
+                array.writeMany("-fallow-shlib-undefined\x00");
+            } else {
+                array.writeMany("-fno-allow-shlib-undefined\x00");
+            }
+        }
+        if (build.no_allow_shlib_undefined) {
+            array.writeMany("-fno-allow-shlib-undefined\x00");
+        }
+        if (build.build_id) |build_id| {
+            if (build_id) {
+                array.writeMany("-fbuild-id\x00");
+            } else {
+                array.writeMany("-fno-build-id\x00");
+            }
+        }
+        if (build.no_build_id) {
+            array.writeMany("-fno-build-id\x00");
+        }
         if (build.dynamic) {
             array.writeMany("-dynamic\x00");
         }
@@ -877,12 +953,10 @@ pub const BuildCmd = struct {
             array.writeAny(fmt_spec, how);
             array.writeOne(0);
         }
-
         array.writeMany(build.root);
         array.writeOne('\x00');
         return countArgs(array);
     }
-
     pub fn allocateExec(build: Builder, vars: [][*:0]u8, allocator: *Allocator) !u64 {
         var array: String = try meta.wrap(String.init(allocator, build.buildLength()));
         defer array.deinit(allocator);
@@ -925,7 +999,7 @@ fn makeArgs(array: anytype, args: anytype) u64 {
     var idx: u64 = 0;
     for (array.readAll()) |c, i| {
         if (c == 0) {
-            args.writeOne(array.referManyWithSentinelAt(idx, 0).ptr);
+            args.writeOne(array.referManyWithSentinelAt(0, idx).ptr);
             idx = i + 1;
         }
     }
@@ -934,7 +1008,6 @@ fn makeArgs(array: anytype, args: anytype) u64 {
     }
     return args.len();
 }
-const ns = @This();
 pub const Packages = []const Pkg;
 pub const Macros = []const Macro;
 pub const Pkg = struct {
@@ -982,7 +1055,6 @@ pub const Macro = struct {
     value: ?[]const u8,
     quote: bool = false,
     const Format = @This();
-
     fn looksLikePath(format: Format) bool {
         var no_sep: u64 = 0;
         if (format.value) |value| {
@@ -1032,8 +1104,56 @@ pub const Context = struct {
     global_cache_dir: [:0]const u8,
     args: [][*:0]u8,
     vars: [][*:0]u8,
+    allocator: *Allocator,
+    array: *ArrayU,
+    pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
     pub fn path(ctx: *Context, name: [:0]const u8) Path {
-        return .{ .ctx = ctx, .relative = name };
+        return .{ .ctx = ctx, .relative = ctx.dupeWithSentinel(u8, 0, name) };
+    }
+    pub fn dupe(ctx: *Context, comptime T: type, values: []const T) []const T {
+        ctx.array.writeMany(T, values);
+        return ctx.array.referManyBack(T, .{ .count = values.len });
+    }
+    pub fn dupeWithSentinel(ctx: *Context, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
+        ctx.array.writeMany(T, values);
+        ctx.array.referOneUndefined(T).* = sentinel;
+        defer ctx.array.define(T, .{ .count = 1 });
+        return ctx.array.referManyWithSentinelBack(T, 0, .{ .count = values.len });
+    }
+    pub fn addExecutable(
+        ctx: *Context,
+        comptime name: [:0]const u8,
+        comptime pathname: [:0]const u8,
+        comptime args: Args(name),
+    ) BuildCmd {
+        var ret: BuildCmd = .{
+            .root = pathname,
+            .cmd = .exe,
+            .name = name,
+        };
+        ret.zig_exe = ctx.zig_exe;
+        comptime var macros: []const Macro = args.macros orelse meta.empty;
+        macros = comptime args.setMacro(macros, "is_correct");
+        macros = comptime args.setMacro(macros, "is_verbose");
+        if (args.build_mode) |build_mode| {
+            ret.O = build_mode;
+        }
+        if (args.emit_bin_path) |bin_path| {
+            ret.emit_bin = .{ .yes = ctx.path(bin_path) };
+        }
+        if (args.emit_asm_path) |asm_path| {
+            ret.emit_asm = .{ .yes = ctx.path(asm_path) };
+        }
+        ret.omit_frame_pointer = false;
+        ret.single_threaded = true;
+        ret.static = true;
+        ret.enable_cache = true;
+        ret.compiler_rt = false;
+        ret.strip = true;
+        ret.main_pkg_path = ctx.build_root;
+        ret.macros = macros;
+        ret.packages = args.packages;
+        return ret;
     }
 };
 pub const Path = struct {
@@ -1053,4 +1173,43 @@ pub const Path = struct {
         return len;
     }
 };
-pub const Mode = @TypeOf(@import("builtin").mode);
+fn Args(comptime name: [:0]const u8) type {
+    return struct {
+        make_step_name: [:0]const u8 = name,
+        make_step_desc: [:0]const u8 = "Build " ++ name,
+        run_step_name: [:0]const u8 = "run-" ++ name,
+        run_step_desc: [:0]const u8 = "...",
+        emit_bin_path: ?[:0]const u8 = "zig-out/bin/" ++ name,
+        emit_asm_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".s",
+        emit_analysis_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".analysis",
+        build_mode: ?@TypeOf(builtin.zig.mode) = null,
+        build_working_directory: bool = false,
+        is_test: ?bool = null,
+        is_support: ?bool = null,
+        is_correct: ?bool = null,
+        is_perf: ?bool = null,
+        is_verbose: ?bool = null,
+        is_tolerant: ?bool = null,
+        define_build_root: bool = true,
+        define_build_working_directory: bool = true,
+        is_large_test: bool = false,
+        strip: bool = true,
+        packages: ?Packages = null,
+        macros: ?Macros = null,
+        fn setMacro(
+            comptime args: @This(),
+            comptime macros: []const Macro,
+            comptime field_name: [:0]const u8,
+        ) []const Macro {
+            comptime {
+                if (@field(args, field_name)) |field| {
+                    return meta.concat(Macro, macros, .{
+                        .name = field_name,
+                        .value = if (field) "1" else "0",
+                    });
+                }
+                return macros;
+            }
+        }
+    };
+}
