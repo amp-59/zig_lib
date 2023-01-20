@@ -962,7 +962,9 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
                 }
-                if (builtin.testEqual([]const u8, short_switch, arg1[0..short_switch.len])) {
+                if (arg1.len > short_switch.len and
+                    builtin.testEqual([]const u8, short_switch, arg1[0..short_switch.len]))
+                {
                     option.getOptInternal(&options, args, index, short_switch.len);
                     continue :lo;
                 }
