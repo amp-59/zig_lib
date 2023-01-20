@@ -42,7 +42,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         fd: u64,
         blk: Block,
         count: u64,
-        const Dir = @This();
+        const DirStream = @This();
         const Block = mem.ReadWritePushPopUnstructuredLazyAlignment(.{
             .low_alignment = 8,
             .high_alignment = 8,
@@ -81,7 +81,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             pub fn entries(dirent: *const Entry) One {
                 return @bitCast(One, dirent.entries);
             }
-            pub fn possess(dirent: *const Entry, dir: *Dir) void {
+            pub fn possess(dirent: *const Entry, dir: *DirStream) void {
                 dirent.entries = dir.blk;
                 file.close(dir_close_spec, dir.fd);
             }
@@ -184,7 +184,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             /// Converts linux directory stream to a linked list without moving
             /// or copying. '..' directory sacrificed to make room for the list
             /// sentinel node. Do not touch.
-            pub fn interleaveXorListNodes(dir: Dir) u64 {
+            pub fn interleaveXorListNodes(dir: DirStream) u64 {
                 const s_lb_addr: u64 = rectifyEntryOrder(dir.blk.start());
                 const s_up_addr: u64 = dir.blk.next();
                 const t_node_addr: u64 = nextAddress(s_lb_addr);
@@ -221,12 +221,15 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             },
             .logging = dir_spec.logging.open,
         };
-        const dir_close_spec: file.CloseSpec = .{ .errors = null, .logging = dir_spec.logging.close };
+        const dir_close_spec: file.CloseSpec = .{
+            .errors = null,
+            .logging = dir_spec.logging.close,
+        };
         pub var disordered: u64 = 0;
-        pub fn entry(dir: *Dir) *file.DirectoryEntry {
+        pub fn entry(dir: *DirStream) *file.DirectoryEntry {
             return @intToPtr(*file.DirectoryEntry, dir.blk.start());
         }
-        pub fn list(dir: *Dir) ListView {
+        pub fn list(dir: *DirStream) ListView {
             return .{
                 .links = .{ .major = dir.blk.start(), .minor = dir.blk.start() + 48 },
                 .count = dir.count,
@@ -236,25 +239,25 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         fn clear(s_lb_addr: u64, s_bytes: u64) void {
             mem.set(s_lb_addr, @as(u8, 0), s_bytes);
         }
-        fn read(dir: *const Dir) !u64 {
+        fn read(dir: *const DirStream) !u64 {
             return sys.getdents(
                 dir.fd,
                 dir.blk.next(),
                 dir.blk.available(),
             );
         }
-        fn grow(dir: *Dir, allocator: *Allocator) !void {
+        fn grow(dir: *DirStream, allocator: *Allocator) !void {
             const s_bytes: u64 = dir.blk.capacity();
             const t_bytes: u64 = s_bytes * 2;
             const s_impl: Block = dir.blk;
             try meta.wrap(allocator.resizeManyAbove(Block, &dir.blk, .{ .bytes = t_bytes }));
             clear(s_impl.finish(), dir.blk.finish() - s_impl.finish());
         }
-        fn shrink(dir: *Dir, allocator: *Allocator) !void {
+        fn shrink(dir: *DirStream, allocator: *Allocator) !void {
             const t_bytes: u64 = mach.alignA(dir.blk.length() + 48, 8);
             allocator.resizeManyBelow(Block, &dir.blk, .{ .bytes = t_bytes });
         }
-        fn readAll(dir: *Dir, allocator: *Allocator) !void {
+        fn readAll(dir: *DirStream, allocator: *Allocator) !void {
             dir.blk.define(try dir.read());
             while (dir.blk.available() < 528) {
                 try dir.grow(allocator);
@@ -264,11 +267,11 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
                 try dir.shrink(allocator);
             }
         }
-        pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !Dir {
+        pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !DirStream {
             const fd: u64 = try file.openAt(dir_open_spec, dirfd orelse sys.S.AT_FDCWD, name);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
             clear(blk.start(), dir_spec.initial_size);
-            var ret: Dir = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
+            var ret: DirStream = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
                 try ret.readAll(allocator);
             }
@@ -277,11 +280,11 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             }
             return ret;
         }
-        pub fn init(allocator: *Allocator, pathname: [:0]const u8) !Dir {
+        pub fn init(allocator: *Allocator, pathname: [:0]const u8) !DirStream {
             const fd: u64 = try file.open(dir_open_spec, pathname);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
             clear(blk.start(), dir_spec.initial_size);
-            var ret: Dir = .{ .path = pathname, .fd = fd, .blk = blk, .count = 1 };
+            var ret: DirStream = .{ .path = pathname, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
                 try ret.readAll(allocator);
             }
@@ -291,7 +294,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             return ret;
         }
         /// Close directory file and free all allocated memory.
-        pub fn deinit(dir: *Dir, allocator: *Allocator) void {
+        pub fn deinit(dir: *DirStream, allocator: *Allocator) void {
             allocator.deallocateMany(Block, dir.blk);
             if (dir.fd != 0) {
                 file.close(dir_close_spec, dir.fd);
@@ -299,7 +302,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             }
         }
         /// Close directory file.
-        pub fn close(dir: *Dir) Iterator {
+        pub fn close(dir: *DirStream) Iterator {
             if (dir.fd != 0) {
                 file.close(dir_close_spec, dir.fd);
                 dir.fd = 0;

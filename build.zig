@@ -48,7 +48,6 @@ pub fn main(ctx: *builder.Context) !void {
     cmds.writeOne(ctx.addExecutable("hello", "test/hello.zig", small_test_args));
     cmds.writeOne(ctx.addExecutable("readelf", "test/readelf.zig", minor_test_args));
     cmds.writeOne(ctx.addExecutable("parsedir", "test/parsedir.zig", fast_test_args));
-    cmds.writeOne(ctx.addExecutable("page", "test/page.zig", fmt_test_args));
 
     // Other test programs:
     cmds.writeOne(ctx.addExecutable("impl_test", "top/impl-test.zig", .{}));
