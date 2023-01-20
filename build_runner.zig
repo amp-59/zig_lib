@@ -17,75 +17,65 @@ pub const is_verbose: bool = false;
 
 pub usingnamespace proc.start;
 
-// zig fmt: off
+const Options = builder.GlobalOptions;
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
-    .{ .field_name = "build_mode", .long = "-Drelease-fast",    .assign = Options.yes, .descr = "speed++" },
-    .{ .field_name = "build_mode", .long = "-Drelease-small",   .assign = Options.yes, .descr = "size--" },
-    .{ .field_name = "build_mode", .long = "-Dreleae-safe",     .assign = Options.no,  .descr = "safety++" },
-    .{ .field_name = "build_mode", .long = "-Ddebug",           .assign = Options.yes, .descr = "crashing++ " },
-    .{ .field_name = "strip",      .long = "-fstrip",           .assign = Options.yes, .descr = "do not emit debug symbols" },
-    .{ .field_name = "strip",      .long = "-fno-strip",        .assign = Options.no,  .descr = "emit debug symbols" },
-}); // zig fmt: on
+    .{ .field_name = "build_mode", .long = "-Drelease-fast", .assign = Options.release_fast, .descr = "speed++" },
+    .{ .field_name = "build_mode", .long = "-Drelease-small", .assign = Options.release_small, .descr = "size--" },
+    .{ .field_name = "build_mode", .long = "-Drelease-safe", .assign = Options.release_safe, .descr = "safety++" },
+    .{ .field_name = "build_mode", .long = "-Ddebug", .assign = Options.debug, .descr = "crashing++ " },
+    .{ .field_name = "strip", .long = "-fstrip", .assign = Options.yes, .descr = "do not emit debug symbols" },
+    .{ .field_name = "strip", .long = "-fno-strip", .assign = Options.no, .descr = "emit debug symbols" },
+    .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
+});
 
-const Options = struct {
-    build_mode: ?@TypeOf(builtin.zig.mode) = null,
-    strip: bool = true,
-
-    const yes = .{ .boolean = true };
-    const no = .{ .boolean = false };
-};
-
-pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
+ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var allocator: builder.Allocator = try builder.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator);
+    array.increment(void, &allocator, .{ .bytes = 16 * 1024 * 1024 });
     defer array.deinit(&allocator);
-
-    const args: [][*:0]u8 = args_in;
-    var args_itr = proc.ArgsIterator.init(args);
-
-    const zig_exe: [:0]const u8 = args_itr.readOne() orelse {
-        file.noexcept.write(2, "Expected path to zig compiler\n");
+    var args: [][*:0]u8 = args_in;
+    if (args.len < 4) {
+        file.noexcept.write(2, "Expected path to zig compiler, " ++
+            "build root directory path, " ++
+            "cache root directory path, " ++
+            "global cache root directory path");
         sys.exit(2);
-    };
-    const build_root: [:0]const u8 = args_itr.readOne() orelse {
-        file.noexcept.write(2, "Expected build root directory path\n");
-        sys.exit(2);
-    };
-    const cache_dir: [:0]const u8 = args_itr.readOne() orelse {
-        file.noexcept.write(2, "Expected cache root directory path\n");
-        sys.exit(2);
-    };
-    const global_cache_dir: [:0]const u8 = args_itr.readOne() orelse {
-        file.noexcept.write(2, "Expected global cache root directory path\n");
-        sys.exit(2);
-    };
-
+    }
+    const zig_exe: [:0]const u8 = meta.manyToSlice(args[0]);
+    const build_root: [:0]const u8 = meta.manyToSlice(args[1]);
+    const cache_dir: [:0]const u8 = meta.manyToSlice(args[2]);
+    const global_cache_dir: [:0]const u8 = meta.manyToSlice(args[3]);
+    args = args[4..];
+    const options: Options = proc.getOpts(Options, &args, opts_map);
     var ctx: builder.Context = .{
         .zig_exe = zig_exe,
         .build_root = build_root,
         .cache_dir = cache_dir,
         .global_cache_dir = global_cache_dir,
-        .args = args[4..],
+        .options = options,
+        .args = args,
         .vars = vars,
         .allocator = &allocator,
         .array = &array,
     };
-
-    for (args[4..]) |arg| {
-        const slice: [:0]const u8 = meta.manyToSlice(arg);
-        if (mem.readAfterFirstEqualMany(u8, "-Dsmall", slice)) |mode| {
-            file.noexcept.write(2, mode);
+    try root.build(&ctx);
+    for (args) |arg| {
+        const name: [:0]const u8 = meta.manyToSlice(arg);
+        if (mem.testEqualMany(u8, name, "all")) {
+            for (ctx.cmds.readAll()) |cmd| {
+                builtin.assertNotEqual(u64, 0, try cmd.exec(vars));
+            }
+            return;
         }
-        if (mem.readAfterFirstEqualMany(u8, "-Dfast", slice)) |mode| {
-            file.noexcept.write(2, mode);
-        }
-        if (mem.readAfterFirstEqualMany(u8, "-Dsafe", slice)) |mode| {
-            file.noexcept.write(2, mode);
+        for (ctx.cmds.readAll()) |cmd| {
+            if (cmd.name) |cmd_name| {
+                if (mem.testEqualMany(u8, name, cmd_name)) {
+                    builtin.assertNotEqual(u64, 0, try cmd.exec(vars));
+                }
+            }
         }
     }
-
-    try root.build(&ctx);
     sys.exit(0);
 }

@@ -950,7 +950,7 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
                     continue :lo;
                 }
                 const assign_long_switch: []const u8 = long_switch ++ "=";
-                if (arg1.len > assign_long_switch.len and
+                if (arg1.len >= assign_long_switch.len and
                     builtin.testEqual([]const u8, assign_long_switch, arg1[0..assign_long_switch.len]))
                 {
                     option.getOptInternal(&options, args, index, assign_long_switch.len);
@@ -962,7 +962,7 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
                 }
-                if (arg1.len > short_switch.len and
+                if (arg1.len >= short_switch.len and
                     builtin.testEqual([]const u8, short_switch, arg1[0..short_switch.len]))
                 {
                     option.getOptInternal(&options, args, index, short_switch.len);
@@ -1084,10 +1084,13 @@ const debug = opaque {
                 const mats: u64 = blk: {
                     var l_idx: u64 = 0;
                     var mats: u64 = 0;
-                    while (l_idx + mats < bad_opt.len) : (l_idx += 1) {
+                    lo: while (true) : (l_idx += 1) {
                         var r_idx: u64 = 0;
-                        while (r_idx != long_switch.len) : (r_idx += 1) {
-                            mats += builtin.int(u64, bad_opt[l_idx + mats] == long_switch[r_idx]);
+                        while (r_idx < long_switch.len) : (r_idx += 1) {
+                            if (l_idx + mats >= bad_opt.len) {
+                                break :lo;
+                            }
+                            mats += @boolToInt(bad_opt[l_idx + mats] == long_switch[r_idx]);
                         }
                     }
                     break :blk mats;
@@ -1096,8 +1099,8 @@ const debug = opaque {
                     len += write(buf[len..], about_opt_0_s);
                     if (option.short) |short_switch| {
                         len += write(buf[len..], short_switch);
+                        len += write(buf[len..], "', '");
                     }
-                    len += write(buf[len..], "', '");
                     len += write(buf[len..], long_switch);
                 }
             }
