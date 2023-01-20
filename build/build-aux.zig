@@ -31,10 +31,13 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
     _ = util.addProjectExecutable(builder, "parsedir", "test/parsedir.zig", .{ .build_mode = .ReleaseFast, .build_root = true });
     _ = util.addProjectExecutable(builder, "pathsplit", "test/pathsplit.zig", .{ .build_root = true });
-    _ = util.addProjectExecutable(builder, "example", "test/example.zig", .{ .build_root = true });
 
     // Other test programs:
     _ = util.addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{ .is_large_test = true, .build_root = true });
     _ = util.addProjectExecutable(builder, "container_test", "top/container-test.zig", .{ .is_large_test = true, .build_root = true });
     _ = util.addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .is_large_test = true, .build_root = true });
+
+    // Examples
+    _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = util.addProjectExecutable(builder, "dynamic", "examples/dynamic_alloc.zig", .{ .is_correct = true, .is_verbose = true });
 }
