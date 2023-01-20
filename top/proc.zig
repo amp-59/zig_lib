@@ -169,24 +169,24 @@ pub const CloneArgs = extern struct {
     /// Flags bit mask
     flags: Clone,
     /// Where to store PID file descriptor (int *)
-    pidfd: u64 = 0,
+    pidfd_addr: u64 = 0,
     /// Where to store child TID in child's memory (pid_t *)
-    child_tid: u64,
+    child_tid_addr: u64,
     /// Where to store child TID in parent's memory (pid_t *)
-    parent_tid: u64,
+    parent_tid_addr: u64,
     /// Signal to deliver to parent on
     /// child termination
     exit_signal: u64 = 0,
     /// Pointer to lowest byte of stack
-    stack: u64,
+    stack_addr: u64,
     /// Size of stack
-    stack_size: u64 = 4096,
+    stack_len: u64 = 4096,
     /// Location of new TLS
-    tls: u64,
+    tls_addr: u64,
     /// Pointer to a pid_t array
-    set_tid: u64 = 0,
+    set_tid_addr: u64 = 0,
     /// Number of elements in set_tid
-    set_tid_size: u64 = 0,
+    set_tid_len: u64 = 0,
     /// File descriptor for target cgroup
     cgroup: u64 = 0,
 };
@@ -354,11 +354,11 @@ pub const CloneSpec = struct {
     pub inline fn args(comptime spec: CloneSpec, stack_addr: u64) CloneArgs {
         return .{
             .flags = spec.flags(),
-            .child_tid = stack_addr + 0x1000 - 0x10,
-            .parent_tid = stack_addr + 0x1000 - 0x8,
-            .stack = stack_addr,
-            .stack_size = 4096,
-            .tls = stack_addr + 0x8,
+            .child_tid_addr = stack_addr + 0x1000 - 0x10,
+            .parent_tid_addr = stack_addr + 0x1000 - 0x8,
+            .stack_addr = stack_addr,
+            .stack_len = 4096,
+            .tls_addr = stack_addr + 0x8,
         };
     }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
@@ -725,7 +725,7 @@ pub noinline fn callClone(
     comptime spec: CloneSpec,
     stack_addr: u64,
     result_ptr: anytype,
-    comptime function: anytype,
+    function: anytype,
     args: anytype,
 ) spec.Unwrapped(.clone3) {
     const Fn: type = @TypeOf(function);
@@ -950,7 +950,9 @@ pub fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: [
                     continue :lo;
                 }
                 const assign_long_switch: []const u8 = long_switch ++ "=";
-                if (builtin.testEqual([]const u8, assign_long_switch, arg1[0..assign_long_switch.len])) {
+                if (arg1.len > assign_long_switch.len and
+                    builtin.testEqual([]const u8, assign_long_switch, arg1[0..assign_long_switch.len]))
+                {
                     option.getOptInternal(&options, args, index, assign_long_switch.len);
                     continue :lo;
                 }
