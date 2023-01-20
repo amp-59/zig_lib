@@ -12,7 +12,7 @@ fn buildWrite(build: Builder, array: anytype) u64 {
         },
     }
     _;
-    array.writeMany(build.root);
+    array.writeFormat(build.root);
     array.writeOne('\x00');
     return countArgs(array);
 }
