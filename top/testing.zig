@@ -262,9 +262,7 @@ pub fn print(any: anytype) void {
         if (Static.array) |*array| {
             break :blk array;
         }
-        Static.array = Static.Array.init(allocator, 1024 * 4096) catch {
-            return;
-        };
+        Static.array = Static.Array.init(allocator, 1024 * 4096);
         break :blk &Static.array.?;
     };
     defer array.undefineAll();
