@@ -75,7 +75,7 @@ const Root = struct {
 };
 const SyntaxTreeArray = Allocator1.StructuredHolder(Root);
 
-const DirStream = file.DirStreamBlock(.{
+const DirStream = file.GenericDirStream(.{
     .Allocator = Allocator0,
     .options = .{},
     .logging = .{},

@@ -46,7 +46,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
 });
 const String1 = Allocator1.StructuredHolder(u8);
 const String0 = Allocator0.StructuredHolder(u8);
-const DirStream = file.DirStreamBlock(.{ .Allocator = Allocator0, .options = .{}, .logging = .{} });
+const DirStream = file.GenericDirStream(.{ .Allocator = Allocator0, .options = .{}, .logging = .{} });
 const Names = mem.StructuredAutomaticVector([:0]const u8, null, 128, 8, .{});
 
 const PrintArray = mem.StaticString(4096);
