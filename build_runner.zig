@@ -8,6 +8,7 @@ const meta = srg.meta;
 const opts = srg.opts;
 const preset = srg.preset;
 const builder = srg.builder;
+const testing = srg.testing;
 const builtin = srg.builtin;
 
 pub const AddressSpace = builder.AddressSpace;
@@ -18,13 +19,14 @@ pub usingnamespace proc.start;
 
 const Options = builder.GlobalOptions;
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
-    .{ .field_name = "build_mode", .long = "-Drelease-fast", .assign = Options.release_fast, .descr = "speed++" },
-    .{ .field_name = "build_mode", .long = "-Drelease-small", .assign = Options.release_small, .descr = "size--" },
-    .{ .field_name = "build_mode", .long = "-Drelease-safe", .assign = Options.release_safe, .descr = "safety++" },
+    .{ .field_name = "build_mode", .long = "-Drelease-fast", .assign = .{ .any = &(.ReleaseFast) }, .descr = "speed++" },
+    .{ .field_name = "build_mode", .long = "-Drelease-small", .assign = .{ .any = &(.ReleaseSmall) }, .descr = "size--" },
+    .{ .field_name = "build_mode", .long = "-Drelease-safe", .assign = .{ .any = &(.ReleaseSafe) }, .descr = "safety++" },
     .{ .field_name = "build_mode", .long = "-Ddebug", .assign = Options.debug, .descr = "crashing++ " },
     .{ .field_name = "strip", .long = "-fstrip", .assign = Options.yes, .descr = "do not emit debug symbols" },
     .{ .field_name = "strip", .long = "-fno-strip", .assign = Options.no, .descr = "emit debug symbols" },
     .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
+    .{ .field_name = "verbose", .long = "--silent", .assign = Options.no, .descr = "do not show compile commands when executing" },
 });
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
@@ -67,11 +69,12 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             }
             return;
         }
+    }
+    for (args) |arg| {
+        const name: [:0]const u8 = meta.manyToSlice(arg);
         for (ctx.cmds.readAll()) |cmd| {
-            if (cmd.name) |cmd_name| {
-                if (mem.testEqualMany(u8, name, cmd_name)) {
-                    builtin.assertNotEqual(u64, 0, try cmd.exec(vars));
-                }
+            if (mem.testEqualMany(u8, name, cmd.name.?)) {
+                builtin.assertNotEqual(u64, 0, try cmd.exec(vars));
             }
         }
     }
