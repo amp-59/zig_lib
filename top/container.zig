@@ -800,10 +800,10 @@ pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const any
         pub fn referManyWithSentinelAt(array: *const Array, comptime sentinel_value: child, offset: u64) [:sentinel_value]child {
             return reference.pointerManyWithSentinel(child, __at(array, offset), __len(array, offset), sentinel_value);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateStatic(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -1037,10 +1037,10 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateStatic(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -1220,10 +1220,10 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateStatic(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -1334,10 +1334,10 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
         pub fn referManyWithSentinelAt(array: *const Array, comptime child: type, comptime sentinel_value: child, offset: Amount) [:sentinel_value]child {
             return reference.pointerManyWithSentinel(child, __at(array, child, offset), __len(array, child, offset), sentinel_value);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateStatic(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -1570,10 +1570,10 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateStatic(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -1752,10 +1752,10 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertStaticMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateStatic(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -2048,10 +2048,10 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
+        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -2060,7 +2060,7 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
+        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
         pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
@@ -2220,10 +2220,10 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
         pub fn readManyWithSentinelAhead(array: *const Array, comptime sentinel_value: child, offset: u64) [:sentinel_value]const child {
             return reference.pointerManyWithSentinel(child, array.impl.position(), offset, sentinel_value);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
+        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -2406,10 +2406,10 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
+        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -2418,7 +2418,7 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
+        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
         pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
@@ -2524,7 +2524,7 @@ pub fn StructuredView(comptime child: type, comptime sentinel: ?*const anyopaque
         pub fn referManyWithSentinelAt(array: *const Array, comptime sentinel_value: child, offset: u64) [:sentinel_value]child {
             return reference.pointerManyWithSentinel(child, __at(array, offset), __len(array, offset), sentinel_value);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -2791,10 +2791,10 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
-        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -2803,7 +2803,7 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
         pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
@@ -2962,10 +2962,10 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         pub fn readManyWithSentinelAhead(array: *const Array, comptime child: type, comptime sentinel_value: child, offset: Amount) [:sentinel_value]const child {
             return reference.pointerManyWithSentinel(child, array.impl.position(), amountToCountOfType(offset, child), sentinel_value);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
-        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -3147,10 +3147,10 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
-        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -3159,7 +3159,7 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeManyIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
         pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
@@ -3264,7 +3264,7 @@ pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u
         pub fn referManyWithSentinelAt(array: *const Array, comptime child: type, comptime sentinel_value: child, offset: Amount) [:sentinel_value]child {
             return reference.pointerManyWithSentinel(child, __at(array, child, offset), __len(array, child, offset), sentinel_value);
         }
-        pub fn init(allocator: *Allocator, init_count: u64) !Array {
+        pub fn init(allocator: *Allocator, init_count: u64) Allocator.allocate_payload(Array) {
             return .{ .impl = try meta.wrap(allocator.allocateMany(Implementation, .{ .count = init_count })) };
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -3534,13 +3534,13 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub fn init(allocator: *Allocator) Array {
             return .{ .impl = try meta.wrap(allocator.allocateHolder(Implementation)) };
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
+        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -3549,7 +3549,7 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
+        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
         pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
@@ -3757,13 +3757,13 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub fn init(allocator: *Allocator) Array {
             return .{ .impl = try meta.wrap(allocator.allocateHolder(Implementation)) };
         }
-        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) !void {
+        pub fn grow(array: *Array, allocator: *Allocator, new_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .count = new_count }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -3772,7 +3772,7 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) !void {
+        pub fn increment(array: *Array, allocator: *Allocator, add_count: u64) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .count = add_count }));
         }
         pub fn decrement(array: *Array, allocator: *Allocator, sub_count: u64) void {
@@ -4056,13 +4056,13 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub fn init(allocator: *Allocator) Array {
             return .{ .impl = try meta.wrap(allocator.allocateHolder(Implementation)) };
         }
-        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -4071,7 +4071,7 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
         pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
@@ -4278,13 +4278,13 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub fn writeAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyUnstructured(child, write_spec, array, any);
         }
-        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) !Dynamic {
+        pub fn dynamic(array: *const Array, allocator: *Allocator, comptime Dynamic: type) Allocator.allocate_payload(Dynamic) {
             return .{ .impl = try meta.wrap(allocator.convertHolderMany(Implementation, Dynamic.Implementation, array.impl)) };
         }
         pub fn init(allocator: *Allocator) Array {
             return .{ .impl = try meta.wrap(allocator.allocateHolder(Implementation)) };
         }
-        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) !void {
+        pub fn grow(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderAbove(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
         pub fn deinit(array: *Array, allocator: *Allocator) void {
@@ -4293,7 +4293,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeHolderBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) !void {
+        pub fn increment(array: *Array, comptime child: type, allocator: *Allocator, add_amount: Amount) Allocator.allocate_void {
             try meta.wrap(allocator.resizeHolderIncrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(add_amount, child) }));
         }
         pub fn decrement(array: *Array, comptime child: type, allocator: *Allocator, sub_amount: Amount) void {
