@@ -36,7 +36,7 @@ pub const Kind = enum(u8) {
     socket = sys.S.IFSOCK >> 12,
     symbolic_link = sys.S.IFLNK >> 12,
 };
-pub fn DirStreamBlock(comptime spec: DirStreamSpec) type {
+pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
     return struct {
         path: [:0]const u8,
         fd: u64,
