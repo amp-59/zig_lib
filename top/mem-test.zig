@@ -274,6 +274,20 @@ fn testUtilityTestFunctions() !void {
         }
     }
 }
+
+export fn streql(str1: [*]u8, len1: u64, str2: [*]u8, len2: u64) bool {
+    if (len1 != len2) {
+        return false;
+    }
+    var idx: u64 = 0;
+    while (idx != len1) : (idx +%= 1) {
+        if (str1[idx] != str2[idx]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 pub fn testNoImpact() !void {
     var rng: file.DeviceRandomBytes(16384) = .{};
     const S = struct {
