@@ -180,15 +180,45 @@ pub const Macro = struct {
         return len;
     }
 };
+pub const GlobalOptions = struct {
+    build_mode: ?@TypeOf(builtin.zig.mode) = null,
+    strip: bool = true,
+    verbose: bool = false,
+
+    pub const Map = proc.GenericOptions(GlobalOptions);
+    pub const yes = .{ .boolean = true };
+    pub const no = .{ .boolean = false };
+    pub const debug = .{ .action = setDebug };
+    pub const release_fast = .{ .action = setReleaseFast };
+    pub const release_safe = .{ .action = setReleaseFast };
+    pub const release_small = .{ .action = setReleaseFast };
+
+    pub fn setReleaseFast(options: *GlobalOptions) void {
+        options.build_mode = .ReleaseFast;
+    }
+    pub fn setReleaseSmall(options: *GlobalOptions) void {
+        options.build_mode = .ReleaseSmall;
+    }
+    pub fn setReleaseSafe(options: *GlobalOptions) void {
+        options.build_mode = .ReleaseSafe;
+    }
+    pub fn setDebug(options: *GlobalOptions) void {
+        options.build_mode = .Debug;
+    }
+};
 pub const Context = struct {
     zig_exe: [:0]const u8,
     build_root: [:0]const u8,
     cache_dir: [:0]const u8,
     global_cache_dir: [:0]const u8,
+    options: GlobalOptions,
+    cmds: ArrayC = .{},
     args: [][*:0]u8,
     vars: [][*:0]u8,
     allocator: *Allocator,
     array: *ArrayU,
+
+    const ArrayC = mem.StaticArray(BuildCmd, 64);
     pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
     pub fn path(ctx: *Context, name: [:0]const u8) Path {
         return .{ .ctx = ctx, .relative = ctx.dupeWithSentinel(u8, 0, name) };
@@ -197,7 +227,12 @@ pub const Context = struct {
         ctx.array.writeMany(T, values);
         return ctx.array.referManyBack(T, .{ .count = values.len });
     }
-    pub fn dupeWithSentinel(ctx: *Context, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
+    pub fn dupeWithSentinel(
+        ctx: *Context,
+        comptime T: type,
+        comptime sentinel: T,
+        values: [:sentinel]const T,
+    ) [:sentinel]const T {
         ctx.array.writeMany(T, values);
         ctx.array.referOneUndefined(T).* = sentinel;
         defer ctx.array.define(T, .{ .count = 1 });
@@ -208,8 +243,9 @@ pub const Context = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
         comptime args: Args(name),
-    ) BuildCmd {
-        var ret: BuildCmd = .{
+    ) *BuildCmd {
+        const ret: *BuildCmd = ctx.cmds.referOneUndefined();
+        ret.* = .{
             .root = pathname,
             .cmd = .exe,
             .name = name,
@@ -219,6 +255,9 @@ pub const Context = struct {
         macros = comptime args.setMacro(macros, "is_correct");
         macros = comptime args.setMacro(macros, "is_verbose");
         if (args.build_mode) |build_mode| {
+            ret.O = build_mode;
+        }
+        if (ctx.options.build_mode) |build_mode| {
             ret.O = build_mode;
         }
         if (args.emit_bin_path) |bin_path| {
@@ -236,6 +275,7 @@ pub const Context = struct {
         ret.main_pkg_path = ctx.build_root;
         ret.macros = macros;
         ret.packages = args.packages;
+        ctx.cmds.define(1);
         return ret;
     }
 };
