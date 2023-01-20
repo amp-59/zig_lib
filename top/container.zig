@@ -2067,31 +2067,31 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(allocator, 1);
+            try meta.wrap(array.increment(allocator, 1));
             array.writeOne(value);
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(allocator, write_count);
+            try meta.wrap(array.increment(allocator, write_count));
             array.writeCount(write_count, values);
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(allocator, values.len);
+            try meta.wrap(array.increment(allocator, values.len));
             array.writeMany(values);
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields)));
             array.writeFields(write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args)));
             array.writeArgs(write_spec, args);
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFormat(child, format));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFormat(child, format)));
             array.writeFormat(format);
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthAny(child, write_spec, any));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
     };
@@ -2425,31 +2425,31 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(allocator, 1);
+            try meta.wrap(array.increment(allocator, 1));
             array.writeOne(value);
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(allocator, write_count);
+            try meta.wrap(array.increment(allocator, write_count));
             array.writeCount(write_count, values);
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(allocator, values.len);
+            try meta.wrap(array.increment(allocator, values.len));
             array.writeMany(values);
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields)));
             array.writeFields(write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args)));
             array.writeArgs(write_spec, args);
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFormat(child, format));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFormat(child, format)));
             array.writeFormat(format);
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthAny(child, write_spec, any));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
     };
@@ -2810,31 +2810,31 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = 1 });
+            try meta.wrap(array.increment(child, allocator, .{ .count = 1 }));
             array.writeOne(child, value);
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = write_count });
+            try meta.wrap(array.increment(child, allocator, .{ .count = write_count }));
             array.writeCount(child, write_count, values);
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = values.len });
+            try meta.wrap(array.increment(child, allocator, .{ .count = values.len }));
             array.writeMany(child, values);
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) }));
             array.writeFields(child, write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) }));
             array.writeArgs(child, write_spec, args);
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) }));
             array.writeFormat(child, format);
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
     };
@@ -3166,31 +3166,31 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             try meta.wrap(allocator.resizeManyDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = 1 });
+            try meta.wrap(array.increment(child, allocator, .{ .count = 1 }));
             array.writeOne(child, value);
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = write_count });
+            try meta.wrap(array.increment(child, allocator, .{ .count = write_count }));
             array.writeCount(child, write_count, values);
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = values.len });
+            try meta.wrap(array.increment(child, allocator, .{ .count = values.len }));
             array.writeMany(child, values);
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) }));
             array.writeFields(child, write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) }));
             array.writeArgs(child, write_spec, args);
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) }));
             array.writeFormat(child, format);
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
     };
@@ -3556,31 +3556,31 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(allocator, 1);
+            try meta.wrap(array.increment(allocator, 1));
             array.writeOne(value);
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(allocator, write_count);
+            try meta.wrap(array.increment(allocator, write_count));
             array.writeCount(write_count, values);
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(allocator, values.len);
+            try meta.wrap(array.increment(allocator, values.len));
             array.writeMany(values);
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields)));
             array.writeFields(write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args)));
             array.writeArgs(write_spec, args);
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFormat(child, format));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFormat(child, format)));
             array.writeFormat(format);
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthAny(child, write_spec, any));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
     };
@@ -3779,31 +3779,31 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .count = sub_count }));
         }
         pub fn appendOne(array: *Array, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(allocator, 1);
+            try meta.wrap(array.increment(allocator, 1));
             array.writeOne(value);
         }
         pub fn appendCount(array: *Array, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(allocator, write_count);
+            try meta.wrap(array.increment(allocator, write_count));
             array.writeCount(write_count, values);
         }
         pub fn appendMany(array: *Array, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(allocator, values.len);
+            try meta.wrap(array.increment(allocator, values.len));
             array.writeMany(values);
         }
         pub fn appendFields(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFields(child, write_spec, fields)));
             array.writeFields(write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthArgs(child, write_spec, args)));
             array.writeArgs(write_spec, args);
         }
         pub fn appendFormat(array: *Array, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthFormat(child, format));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthFormat(child, format)));
             array.writeFormat(format);
         }
         pub fn appendAny(array: *Array, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(allocator, reinterpret.lengthAny(child, write_spec, any));
+            try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
     };
@@ -4078,31 +4078,31 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = 1 });
+            try meta.wrap(array.increment(child, allocator, .{ .count = 1 }));
             array.writeOne(child, value);
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = write_count });
+            try meta.wrap(array.increment(child, allocator, .{ .count = write_count }));
             array.writeCount(child, write_count, values);
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = values.len });
+            try meta.wrap(array.increment(child, allocator, .{ .count = values.len }));
             array.writeMany(child, values);
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) }));
             array.writeFields(child, write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) }));
             array.writeArgs(child, write_spec, args);
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) }));
             array.writeFormat(child, format);
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
     };
@@ -4300,31 +4300,31 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             try meta.wrap(allocator.resizeHolderDecrement(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(sub_amount, child) }));
         }
         pub fn appendOne(array: *Array, comptime child: type, allocator: *Allocator, value: child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = 1 });
+            try meta.wrap(array.increment(child, allocator, .{ .count = 1 }));
             array.writeOne(child, value);
         }
         pub fn appendCount(array: *Array, comptime child: type, allocator: *Allocator, comptime write_count: u64, values: [write_count]child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = write_count });
+            try meta.wrap(array.increment(child, allocator, .{ .count = write_count }));
             array.writeCount(child, write_count, values);
         }
         pub fn appendMany(array: *Array, comptime child: type, allocator: *Allocator, values: []const child) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = values.len });
+            try meta.wrap(array.increment(child, allocator, .{ .count = values.len }));
             array.writeMany(child, values);
         }
         pub fn appendFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, fields: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFields(child, write_spec, fields) }));
             array.writeFields(child, write_spec, fields);
         }
         pub fn appendArgs(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, args: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthArgs(child, write_spec, args) }));
             array.writeArgs(child, write_spec, args);
         }
         pub fn appendFormat(array: *Array, comptime child: type, allocator: *Allocator, format: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthFormat(child, format) }));
             array.writeFormat(child, format);
         }
         pub fn appendAny(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, allocator: *Allocator, any: anytype) Allocator.allocate_void {
-            try array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) });
+            try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
     };
