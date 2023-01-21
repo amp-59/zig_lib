@@ -697,38 +697,32 @@ pub fn assert(b: bool) void {
     }
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = arg1 < arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 >= arg2) {
         debug.comparisonFailedFault(T, " < ", arg1, arg2);
     }
 }
 pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = arg1 <= arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 > arg2) {
         debug.comparisonFailedFault(T, " <= ", arg1, arg2);
     }
 }
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = testEqual(T, arg1, arg2);
-    if (is_correct and !result) {
+    if (is_correct and !testEqual(T, arg1, arg2)) {
         debug.comparisonFailedFault(T, " == ", arg1, arg2);
     }
 }
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = !testEqual(T, arg1, arg2);
-    if (is_correct and !result) {
+    if (is_correct and testEqual(T, arg1, arg2)) {
         debug.comparisonFailedFault(T, " != ", arg1, arg2);
     }
 }
 pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = arg1 >= arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 < arg2) {
         debug.comparisonFailedFault(T, " >= ", arg1, arg2);
     }
 }
 pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
-    const result: bool = arg1 > arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 <= arg2) {
         debug.comparisonFailedFault(T, " > ", arg1, arg2);
     }
 }
@@ -742,38 +736,32 @@ pub fn expect(b: bool) Exception!void {
     }
 }
 pub fn expectBelow(comptime T: type, arg1: T, arg2: T) Exception!void {
-    const result: bool = arg1 < arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 >= arg2) {
         return debug.comparisonFailedException(T, " < ", arg1, arg2);
     }
 }
 pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    const result: bool = arg1 <= arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 > arg2) {
         return debug.comparisonFailedException(T, " <= ", arg1, arg2);
     }
 }
 pub fn expectEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    const result: bool = arg1 == arg2;
-    if (is_correct and !result) {
+    if (is_correct and !testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedException(T, " == ", arg1, arg2);
     }
 }
 pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    const result: bool = arg1 != arg2;
-    if (is_correct and !result) {
+    if (is_correct and testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedException(T, " != ", arg1, arg2);
     }
 }
 pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    const result: bool = arg1 >= arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 < arg2) {
         return debug.comparisonFailedException(T, " >= ", arg1, arg2);
     }
 }
 pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Exception!void {
-    const result: bool = arg1 > arg2;
-    if (is_correct and !result) {
+    if (is_correct and arg1 <= arg2) {
         return debug.comparisonFailedException(T, " > ", arg1, arg2);
     }
 }
@@ -943,7 +931,7 @@ const U64 = packed struct { h: u32, l: u32 };
 pub fn pack64(h: u32, l: u32) u64 {
     return @bitCast(u64, U64{ .h = h, .l = l });
 }
-const debug = opaque {
+pub const debug = opaque {
     const tos = fmt.ud;
     const size: usize = 4096;
     const about_fault_p0_s: []const u8 = "fault:          ";
@@ -951,39 +939,67 @@ const debug = opaque {
     const about_fault_p1_s: []const u8 = " assertion failed: ";
     const about_error_p1_s: []const u8 = " unexpected result: ";
 
+    pub fn print(buf: []u8, ss: []const []const u8) void {
+        write(buf[0..writeMulti(buf, ss)]);
+    }
+    pub inline fn writeMany(buf: []u8, s: []const u8) u64 {
+        for (s) |c, i| buf[i] = c;
+        return s.len;
+    }
+    pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
+        var len: u64 = 0;
+        for (ss) |s| {
+            for (s) |c, i| buf[len +% i] = c;
+            len +%= s.len;
+        }
+        return len;
+    }
+    pub fn panic(buf: []const u8) noreturn {
+        write(buf);
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (60), // linux sys_exit
+              [arg1] "{rdi}" (2), // exit code
+        );
+        unreachable;
+    }
+    pub fn write(buf: []const u8) void {
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (1), // linux sys_write
+              [arg1] "{rdi}" (2), // stderr
+              [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
+              [arg3] "{rdx}" (buf.len),
+        );
+    }
+
     fn aboutFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
     }
     fn aboutError(comptime T: type) []const u8 {
         return about_error_p0_s ++ @typeName(T);
     }
-    fn write(msg: []u8, ss: []const []const u8) u64 {
-        var len: u64 = 0;
-        for (ss) |s| {
-            for (s) |c, i| msg[len +% i] = c;
-            len +%= s.len;
-        }
-        return len;
-    }
     fn comparisonFailedString(comptime T: type, about: []const u8, symbol: []const u8, buf: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
-        var len: u64 = write(buf, &[_][]const u8{
+        var len: u64 = writeMulti(buf, &[_][]const u8{
             about,                  " failed test: ",
             tos(T, arg1).readAll(), symbol,
             tos(T, arg2).readAll(), notation,
         });
         if (help_read) {
             if (arg1 > arg2) {
-                len += write(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                len += writeMulti(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
             } else {
-                len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
+                len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
             }
         }
         return len;
     }
     fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: *[size]u8, arg1: U) u64 {
         const minimum: T = 0;
-        return write(buf, &[_][]const u8{
+        return writeMulti(buf, &[_][]const u8{
             about_fault_p0_s,           "integer cast truncated bits: ",
             tos(U, arg1).readAll(),     " greater than " ++ @typeName(T) ++ " maximum (",
             tos(T, ~minimum).readAll(), ")\n",
@@ -992,20 +1008,20 @@ const debug = opaque {
     fn subCausedOverflowString(comptime T: type, about: []const u8, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        len += write(msg, &[_][]const u8{
+        len += writeMulti(msg, &[_][]const u8{
             about,                  " integer overflow: ",
             tos(T, arg1).readAll(), " - ",
             tos(T, arg2).readAll(), endl,
         });
         if (help_read) {
-            len += write(msg[len..], &[_][]const u8{ "0 - ", tos(T, arg2 -% arg1).readAll(), "\n" });
+            len += writeMulti(msg[len..], &[_][]const u8{ "0 - ", tos(T, arg2 -% arg1).readAll(), "\n" });
         }
         return len;
     }
     fn addCausedOverflowString(comptime T: type, about: []const u8, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        len += write(msg, &[_][]const u8{
+        len += writeMulti(msg, &[_][]const u8{
             about,                  " integer overflow: ",
             tos(T, arg1).readAll(), " + ",
             tos(T, arg2).readAll(), endl,
@@ -1013,19 +1029,19 @@ const debug = opaque {
         if (help_read) {
             const argl: T = ~@as(T, 0);
             const argr: T = (arg2 +% arg1) -% argl;
-            len += write(msg[len..], &[_][]const u8{ tos(T, argl).readAll(), " + ", tos(T, argr).readAll(), "\n" });
+            len += writeMulti(msg[len..], &[_][]const u8{ tos(T, argl).readAll(), " + ", tos(T, argr).readAll(), "\n" });
         }
         return len;
     }
     fn mulCausedOverflowString(comptime T: type, about: []const u8, buf: *[size]u8, arg1: T, arg2: T) u64 {
-        return write(buf, &[_][]const u8{
+        return writeMulti(buf, &[_][]const u8{
             about,                  ": integer overflow: ",
             tos(T, arg1).readAll(), " * ",
             tos(T, arg2).readAll(), "\n",
         });
     }
     fn exactDivisionWithRemainderString(comptime T: type, about: []const u8, buf: *[size]u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
-        return write(buf, &[_][]const u8{
+        return writeMulti(buf, &[_][]const u8{
             about,                       ": exact division had a remainder: ",
             tos(T, arg1).readAll(),      "/",
             tos(T, arg2).readAll(),      " == ",
@@ -1034,7 +1050,7 @@ const debug = opaque {
         });
     }
     fn incorrectAlignmentString(comptime Pointer: type, about: []const u8, buf: *[size]u8, address: usize, alignment: usize, remainder: u64) u64 {
-        return write(buf, &[_][]const u8{
+        return writeMulti(buf, &[_][]const u8{
             about,                                    ": incorrect alignment: ",
             @typeName(Pointer),                       " align(",
             tos(u64, alignment).readAll(),            "): ",
@@ -1053,7 +1069,7 @@ const debug = opaque {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        print(buf[0..len]);
+        write(buf[0..len]);
         return error.SubCausedOverflow;
     }
     fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
@@ -1066,7 +1082,7 @@ const debug = opaque {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, aboutError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        print(buf[0..len]);
+        write(buf[0..len]);
         return error.AddCausedOverflow;
     }
     fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
@@ -1079,7 +1095,7 @@ const debug = opaque {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, aboutError(T), &buf, arg1, arg2);
-        print(buf[0..len]);
+        write(buf[0..len]);
         return error.MulCausedOverflow;
     }
     fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
@@ -1092,7 +1108,7 @@ const debug = opaque {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), &buf, arg1, arg2, result, remainder);
-        print(buf[0..len]);
+        write(buf[0..len]);
         return error.DivisionWithRemainder;
     }
     fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
@@ -1106,7 +1122,7 @@ const debug = opaque {
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
         const len: u64 = incorrectAlignmentString(T, aboutError(T), &buf, address, alignment, remainder);
-        print(buf[0..len]);
+        write(buf[0..len]);
         return error.IncorrectAlignment;
     }
     fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize) noreturn {
@@ -1120,7 +1136,7 @@ const debug = opaque {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = comparisonFailedString(T, aboutError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        print(buf[0..len]);
+        write(buf[0..len]);
         return error.UnexpectedValue;
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
@@ -1182,7 +1198,6 @@ const debug = opaque {
             comptime {
                 var msg: [size]u8 = undefined;
                 var len: u64 = 0;
-
                 for ([_][]const u8{
                     @typeName(T),                ": incorrect alignment: ",
                     type_name,                   " align(",
@@ -1205,42 +1220,22 @@ const debug = opaque {
         ) void {
             comptime {
                 var buf: [size]u8 = undefined;
-                var len: u64 = write(&buf, &[_][]const u8{
+                var len: u64 = writeMulti(&buf, &[_][]const u8{
                     @typeName(T),           " assertion failed: ",
                     tos(T, arg1).readAll(), symbol,
                     tos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
                 });
                 if (@min(arg1, arg2) > 10_000) {
                     if (arg1 > arg2) {
-                        len += write(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                        len += writeMulti(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
                     } else {
-                        len += write(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
+                        len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
                     }
                 }
                 @compileError(buf[0..len]);
             }
         }
     };
-    fn panic(buf: []const u8) noreturn {
-        print(buf);
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (60), // linux sys_exit
-              [arg1] "{rdi}" (2), // exit code
-        );
-        unreachable;
-    }
-    fn print(buf: []const u8) void {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (1), // linux sys_write
-              [arg1] "{rdi}" (2), // stderr
-              [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
-              [arg3] "{rdx}" (buf.len),
-        );
-    }
 };
 pub const parse = opaque {
     pub fn ub(comptime T: type, str: []const u8) T {
@@ -1922,6 +1917,5 @@ pub const info = struct {
                         title_s ++ "address spaces are required by high level features with managed memory",
             );
         }
-        pub noinline fn testPrint() noreturn {}
     };
 };
