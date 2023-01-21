@@ -354,11 +354,11 @@ pub const CloneSpec = struct {
     pub inline fn args(comptime spec: CloneSpec, stack_addr: u64) CloneArgs {
         return .{
             .flags = spec.flags(),
-            .child_tid_addr = stack_addr + 0x1000 - 0x10,
-            .parent_tid_addr = stack_addr + 0x1000 - 0x8,
+            .child_tid_addr = stack_addr +% 0x1000 - 0x10,
+            .parent_tid_addr = stack_addr +% 0x1000 - 0x8,
             .stack_addr = stack_addr,
             .stack_len = 4096,
-            .tls_addr = stack_addr + 0x8,
+            .tls_addr = stack_addr +% 0x8,
         };
     }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
@@ -495,12 +495,12 @@ pub const start = opaque {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
-            print(&buf, &[_][]const u8{
+            builtin.debug.print(&buf, &[_][]const u8{
                 debug.about_error_s,             "indexing (",
                 builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
             });
         } else {
-            print(&buf, &[_][]const u8{
+            builtin.debug.print(&buf, &[_][]const u8{
                 debug.about_error_s,                      "index ",
                 builtin.fmt.ud64(idx).readAll(),          " above maximum ",
                 builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
@@ -511,7 +511,7 @@ pub const start = opaque {
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             debug.about_error_s,                 "sentinel mismatch: expected ",
             builtin.fmt.int(expected).readAll(), ", found ",
             builtin.fmt.int(actual).readAll(),   "\n",
@@ -521,7 +521,7 @@ pub const start = opaque {
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             debug.about_error_s,               "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
@@ -531,7 +531,7 @@ pub const start = opaque {
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             debug.about_error_s, "access of union field '",
             @tagName(wanted),    "' while field '",
             @tagName(active),    "' is active",
@@ -543,7 +543,7 @@ pub const start = opaque {
     }
     fn unexpectedReturnCodeValueError(rc: u64) void {
         var buf: [512]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             "unexpected return value: ", builtin.fmt.ud64(rc).readAll(),
             "\n",
         });
@@ -622,7 +622,7 @@ pub const exception = opaque {
 };
 fn exitWithError(any_error: anytype) void {
     @setCold(true);
-    var buf: [16 + 4096 + 512 + 1]u8 = undefined;
+    var buf: [16 +% 4096 +% 512 +% 1]u8 = undefined;
     debug.zigErrorReturnedByMain(&buf, @errorName(any_error));
     sys.exit(2);
 }
@@ -644,14 +644,14 @@ pub noinline fn callMain() noreturn {
             }
             if (main_type_info.Fn.params.len == 1) {
                 const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
-                const args_addr: u64 = static.stack_addr + 8;
+                const args_addr: u64 = static.stack_addr +% 8;
                 const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
                 break :blk_0 .{args[0..args_len]};
             }
             if (main_type_info.Fn.params.len == 2) {
                 const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
-                const args_addr: u64 = static.stack_addr + 8;
-                const vars_addr: u64 = static.stack_addr + 16 + (args_len * 8);
+                const args_addr: u64 = static.stack_addr +% 8;
+                const vars_addr: u64 = static.stack_addr +% 16 +% (args_len * 8);
                 const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
                 const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
                 const vars_len: u64 = blk_1: {
@@ -664,8 +664,8 @@ pub noinline fn callMain() noreturn {
             if (main_type_info.Fn.params.len == 3) {
                 const auxv_type: type = main_type_info.Fn.params[2].type.?;
                 const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
-                const args_addr: u64 = static.stack_addr + 8;
-                const vars_addr: u64 = args_addr + 8 + (args_len * 8);
+                const args_addr: u64 = static.stack_addr +% 8;
+                const vars_addr: u64 = args_addr +% 8 +% (args_len * 8);
                 const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
                 const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
                 const vars_len: u64 = blk_1: {
@@ -673,7 +673,7 @@ pub noinline fn callMain() noreturn {
                     while (@ptrToInt(vars[len]) != 0) len += 1;
                     break :blk_1 len;
                 };
-                const auxv_addr: u64 = vars_addr + 8 + (vars_len * 8);
+                const auxv_addr: u64 = vars_addr +% 8 +% (vars_len * 8);
                 const auxv: auxv_type = @intToPtr(auxv_type, auxv_addr);
                 break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
             }
@@ -682,16 +682,16 @@ pub noinline fn callMain() noreturn {
             builtin.root.enableExceptionHandlers();
         }
         if (main_return_type == void) {
-            @call(.always_inline, main, params);
+            @call(.auto, main, params);
             sys.exit(0);
         }
         if (main_return_type == u8) {
-            sys.exit(@call(.always_inline, main, params));
+            sys.exit(@call(.auto, main, params));
         }
         if (main_return_type_info == .ErrorUnion and
             main_return_type_info.ErrorUnion.payload == void)
         {
-            if (@call(.always_inline, main, params)) {
+            if (@call(.auto, main, params)) {
                 sys.exit(0);
             } else |err| {
                 @setCold(true);
@@ -702,7 +702,7 @@ pub noinline fn callMain() noreturn {
         if (main_return_type_info == .ErrorUnion and
             main_return_type_info.ErrorUnion.payload == u8)
         {
-            if (@call(.always_inline, builtin.root.main, params)) |rc| {
+            if (@call(.auto, builtin.root.main, params)) |rc| {
                 sys.exit(rc);
             } else |err| {
                 @setCold(true);
@@ -744,10 +744,10 @@ pub noinline fn callClone(
     const ret_off: u64 = 0;
     const call_off: u64 = 8;
     const args_off: u64 = 16;
-    @intToPtr(**const Fn, stack_addr + call_off).* = &function;
-    @intToPtr(*meta.Args(Fn), stack_addr + args_off).* = args;
+    @intToPtr(**const Fn, stack_addr +% call_off).* = &function;
+    @intToPtr(*meta.Args(Fn), stack_addr +% args_off).* = args;
     if (@TypeOf(result_ptr) != void) {
-        @intToPtr(*@TypeOf(result_ptr), stack_addr + ret_off).* = result_ptr;
+        @intToPtr(*@TypeOf(result_ptr), stack_addr +% ret_off).* = result_ptr;
     }
     const rc: i64 = asm volatile (
         \\syscall
@@ -766,9 +766,9 @@ pub noinline fn callClone(
             :
             : "rbp", "rsp", "memory"
         );
-        const ret_addr: u64 = tl_stack_addr + ret_off;
-        const call_addr: u64 = tl_stack_addr + call_off;
-        const args_addr: u64 = tl_stack_addr + args_off;
+        const ret_addr: u64 = tl_stack_addr +% ret_off;
+        const call_addr: u64 = tl_stack_addr +% call_off;
+        const args_addr: u64 = tl_stack_addr +% args_off;
         if (@TypeOf(result_ptr) != void) {
             if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
                 @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)
@@ -810,13 +810,13 @@ pub noinline fn callClone(
     }
     unreachable;
 }
-/// Replaces argument at `index` with argument at `index` + 1
+/// Replaces argument at `index` with argument at `index` +% 1
 /// This is useful for extracting information from the program arguments in
 /// rounds.
 pub fn shift(args: *[][*:0]u8, index: u64) void {
-    if (args.len > index + 1) {
+    if (args.len > index +% 1) {
         var this: *[*:0]u8 = &args.*[index];
-        for (args.*[index + 1 ..]) |*next| {
+        for (args.*[index +% 1 ..]) |*next| {
             this.* = next.*;
             this = next;
         }
@@ -840,9 +840,9 @@ pub const ArgsIterator = struct {
 };
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
     var addr: u64 = @ptrToInt(auxv);
-    while (@intToPtr(*u64, addr).* != 0) : (addr += 16) {
+    while (@intToPtr(*u64, addr).* != 0) : (addr +%= 16) {
         if (@enumToInt(tag) == @intToPtr(*u64, addr).*) {
-            return @intToPtr(*u64, addr + 8).*;
+            return @intToPtr(*u64, addr +% 8).*;
         }
     }
     return null;
@@ -925,13 +925,13 @@ pub fn GenericOptions(comptime Options: type) type {
             for (opt_map) |option| {
                 var width: u64 = 0;
                 if (option.short) |short_switch| {
-                    width += 1 + short_switch.len;
+                    width += 1 +% short_switch.len;
                 }
                 if (option.long) |long_switch| {
-                    width += 2 + long_switch.len;
+                    width += 2 +% long_switch.len;
                 }
                 if (option.assign == .argument) {
-                    width += 3 + option.assign.argument.len;
+                    width += 3 +% option.assign.argument.len;
                 }
                 max_width = @max(width, max_width);
             }
@@ -945,7 +945,7 @@ pub fn GenericOptions(comptime Options: type) type {
                         tmp = tmp ++ ", " ++ long_switch;
                     }
                     if (option.descr) |descr| {
-                        tmp = tmp ++ " " ** (4 + (max_width - tmp.len)) ++ descr;
+                        tmp = tmp ++ " " ** (4 +% (max_width - tmp.len)) ++ descr;
                     }
                     if (option.assign == .argument) {
                         tmp = tmp ++ " <" ++ option.assign.argument ++ ">";
@@ -954,7 +954,7 @@ pub fn GenericOptions(comptime Options: type) type {
                 } else {
                     var tmp: []const u8 = option.long.?;
                     if (option.descr) |descr| {
-                        tmp = tmp ++ " " ** (4 + (max_width - tmp.len)) ++ descr;
+                        tmp = tmp ++ " " ** (4 +% (max_width - tmp.len)) ++ descr;
                     }
                     buf = buf ++ tmp ++ "\n";
                 }
@@ -1042,33 +1042,33 @@ const debug = opaque {
         sys.noexcept.write(2, @ptrToInt(buf.ptr), buf.len);
     }
     pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
-        var buf: [4096 + 128]u8 = undefined;
+        var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
-        len += write(buf[len..], about_execve_0_s);
-        len += write(buf[len..], filename);
+        len += builtin.debug.write(buf[len..], about_execve_0_s);
+        len += builtin.debug.write(buf[len..], filename);
         buf[len] = ' ';
         len += 1;
         var argc: u16 = @intCast(u16, args.len);
         var i: u16 = 0;
         while (i != argc) : (i += 1) {
             const arg_len: u64 = strlen(args[i]);
-            if (len + arg_len >= buf.len - 37) {
+            if (len +% arg_len >= buf.len - 37) {
                 break;
             }
-            for (args[i][0..arg_len]) |c, j| buf[len + j] = c;
+            for (args[i][0..arg_len]) |c, j| buf[len +% j] = c;
             len += arg_len;
             buf[len] = ' ';
             len += 1;
         }
         if (argc != i) {
-            len += write(buf[len..], " ... and ");
-            len += write(buf[len..], builtin.fmt.ud64(argc - i).readAll());
-            len += write(buf[len..], " more args ... \n");
+            len += builtin.debug.writeMany(buf[len..], " ... and ");
+            len += builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc - i).readAll());
+            len += builtin.debug.writeMany(buf[len..], " more args ... \n");
         } else {
             buf[len] = '\n';
             len += 1;
         }
-        sys.noexcept.write(2, @ptrToInt(&buf), len);
+        builtin.debug.write(buf[0..len]);
     }
     fn writeExecutablePathname(buf: []u8) u64 {
         const rc: i64 = sys.noexcept.readlink(
@@ -1084,26 +1084,26 @@ const debug = opaque {
     }
     fn zigErrorReturnedByMain(buf: []u8, symbol: []const u8) void {
         var len: u64 = 0;
-        len +%= write(buf[len..], about_error_s);
+        len +%= builtin.debug.writeMany(buf[len..], about_error_s);
         len +%= about_error_s.len;
         len +%= writeExecutablePathname(buf[len..]);
-        len +%= write2(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
+        len +%= builtin.debug.writeMulti(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
         sys.noexcept.write(2, @ptrToInt(buf.ptr), len);
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+        builtin.debug.print(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
     }
     fn forkError(fork_error: anytype) void {
-        var buf: [16 + 32 + 512]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
+        var buf: [16 +% 32 +% 512]u8 = undefined;
+        builtin.debug.print(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
     }
     fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
-        var buf: [16 + 32 + 512]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
+        var buf: [16 +% 32 +% 512]u8 = undefined;
+        builtin.debug.print(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
     fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
-        var buf: [4096 + 128]u8 = undefined;
+        var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
         const bad_opt: []const u8 = blk: {
             var idx: u64 = 0;
@@ -1114,7 +1114,7 @@ const debug = opaque {
             }
             break :blk arg;
         };
-        len += write2(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
+        len += builtin.debug.writeMulti(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
         for (all_options) |option| {
             const min: u64 = len;
             if (option.long) |long_switch| {
@@ -1124,92 +1124,76 @@ const debug = opaque {
                     lo: while (true) : (l_idx += 1) {
                         var r_idx: u64 = 0;
                         while (r_idx < long_switch.len) : (r_idx += 1) {
-                            if (l_idx + mats >= bad_opt.len) {
+                            if (l_idx +% mats >= bad_opt.len) {
                                 break :lo;
                             }
-                            mats += @boolToInt(bad_opt[l_idx + mats] == long_switch[r_idx]);
+                            mats += @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
                         }
                     }
                     break :blk mats;
                 };
                 if (builtin.diff(u64, mats, long_switch.len) < 3) {
-                    len += write(buf[len..], about_opt_0_s);
+                    len += builtin.debug.writeMany(buf[len..], about_opt_0_s);
                     if (option.short) |short_switch| {
-                        len += write(buf[len..], short_switch);
-                        len += write(buf[len..], "', '");
+                        len += builtin.debug.writeMany(buf[len..], short_switch);
+                        len += builtin.debug.writeMany(buf[len..], "', '");
                     }
-                    len += write(buf[len..], long_switch);
+                    len += builtin.debug.writeMany(buf[len..], long_switch);
                 }
             }
             if (min != len) {
-                len += write(buf[len..], "'");
+                len += builtin.debug.writeMany(buf[len..], "'");
                 if (option.descr) |descr| {
                     buf[len] = '\t';
                     len += 1;
-                    len += write(buf[len..], descr);
+                    len += builtin.debug.writeMany(buf[len..], descr);
                 }
                 buf[len] = '\n';
                 len += 1;
             }
         }
-        len += write(buf[len..], about_stop_s);
-        sys.noexcept.write(2, @ptrToInt(&buf), len);
+        len += builtin.debug.writeMany(buf[len..], about_stop_s);
+        builtin.debug.write(buf[0..len]);
     }
     // Try to make these two less original
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
-        const max_len: u64 = 4096 + 128;
+        const max_len: u64 = 4096 +% 128;
         var buf: [max_len]u8 = undefined;
         var len: u64 = 0;
-        len += write(buf[len..], about_execve_1_s);
-        len += write(buf[len..], "(");
-        len += write(buf[len..], @errorName(exec_error));
-        len += write(buf[len..], ")");
-        len += write(buf[len..], filename);
+        len += builtin.debug.writeMany(buf[len..], about_execve_1_s);
+        len += builtin.debug.writeMany(buf[len..], "(");
+        len += builtin.debug.writeMany(buf[len..], @errorName(exec_error));
+        len += builtin.debug.writeMany(buf[len..], ")");
+        len += builtin.debug.writeMany(buf[len..], filename);
         buf[len] = ' ';
         len += 1;
         var argc: u16 = @intCast(u16, args.len);
         var i: u16 = 0;
         while (i != argc) : (i += 1) {
-            const arg_len: u64 = strlen(args[i]);
-            if (len + arg_len >= max_len - 37) {
+            const arg_len: u64 = builtin.debug.strlen(args[i]);
+            if (len +% arg_len >= max_len - 37) {
                 break;
             }
-            for (args[i][0..arg_len]) |c, j| buf[len + j] = c;
+            for (args[i][0..arg_len]) |c, j| buf[len +% j] = c;
             len += arg_len;
             buf[len] = ' ';
             len += 1;
         }
         if (argc != i) {
-            len += write(buf[len..], " ... and ");
-            len += write(buf[len..], builtin.fmt.ud64(argc - i).readAll());
-            len += write(buf[len..], " more args ... \n");
+            len += builtin.debug.writeMany(buf[len..], " ... and ");
+            len += builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc - i).readAll());
+            len += builtin.debug.writeMany(buf[len..], " more args ... \n");
         } else {
             buf[len] = '\n';
             len += 1;
         }
-        sys.noexcept.write(2, @ptrToInt(&buf), len);
+        builtin.debug.write(@ptrToInt(&buf), len);
     }
 };
 
 // Common utility functions:
-
-fn print(buf: []u8, ss: []const []const u8) void {
-    sys.noexcept.write(2, @ptrToInt(buf.ptr), write2(buf, ss));
-}
 fn strlen(s: [*:0]const u8) u64 {
     var len: u64 = 0;
     while (s[len] != 0) len += 1;
-    return len;
-}
-inline fn write(buf: []u8, s: []const u8) u64 {
-    for (s) |c, i| buf[i] = c;
-    return s.len;
-}
-fn write2(buf: []u8, ss: []const []const u8) u64 {
-    var len: u64 = 0;
-    for (ss) |s| {
-        for (s) |c, i| buf[len + i] = c;
-        len += s.len;
-    }
     return len;
 }
