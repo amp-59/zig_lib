@@ -655,17 +655,9 @@ pub const debug = opaque {
     const about_resize_1_s: []const u8 = "resize-error:   ";
     const about_advice_0_s: []const u8 = "advice:         ";
     const about_advice_1_s: []const u8 = "advice-error:   ";
-    fn print(buf: []u8, ss: []const []const u8) void {
-        var len: u64 = 0;
-        for (ss) |s| {
-            for (s) |c, i| buf[len +% i] = c;
-            len +%= s.len;
-        }
-        sys.noexcept.write(2, @ptrToInt(buf.ptr), len);
-    }
     pub fn mapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_map_0_s, builtin.fmt.ux64(addr).readAll(),
             "..",          builtin.fmt.ux64(addr +% len).readAll(),
             ", ",          builtin.fmt.ud64(len).readAll(),
@@ -675,7 +667,7 @@ pub const debug = opaque {
     pub fn mapError(map_error: anytype, addr: u64, len: u64) void {
         @setCold(true);
         var buf: [4096 +% 512]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_map_1_s, builtin.fmt.ux64(addr).readAll(),
             "..",          builtin.fmt.ux64(addr +% len).readAll(),
             ", ",          builtin.fmt.ud64(len).readAll(),
@@ -685,7 +677,7 @@ pub const debug = opaque {
     }
     pub fn unmapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_unmap_0_s, builtin.fmt.ux64(addr).readAll(),
             "..",            builtin.fmt.ux64(addr +% len).readAll(),
             ", ",            builtin.fmt.ud64(len).readAll(),
@@ -695,7 +687,7 @@ pub const debug = opaque {
     pub fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
         @setCold(true);
         var buf: [4096 +% 512]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_unmap_1_s, builtin.fmt.ux64(addr).readAll(),
             "..",            builtin.fmt.ux64(addr +% len).readAll(),
             ", ",            builtin.fmt.ud64(len).readAll(),
@@ -705,7 +697,7 @@ pub const debug = opaque {
     }
     fn adviseNotice(addr: u64, len: u64, description_s: []const u8) void {
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_advice_0_s, builtin.fmt.ux64(addr).readAll(),
             "..",             builtin.fmt.ux64(addr +% len).readAll(),
             ", ",             builtin.fmt.ud64(len).readAll(),
@@ -715,7 +707,7 @@ pub const debug = opaque {
     }
     fn adviseError(madvise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_advice_1_s, builtin.fmt.ux64(addr).readAll(),
             "..",             builtin.fmt.ux64(addr +% len).readAll(),
             ", ",             builtin.fmt.ud64(len).readAll(),
@@ -731,7 +723,7 @@ pub const debug = opaque {
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_0_s, about_resize_0_s);
         var buf: [4096 +% 512]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             operation_s, builtin.fmt.ux64(old_addr).readAll(),
             "..",        builtin.fmt.ux64(old_addr +% old_len).readAll(),
             " -> ",      builtin.fmt.ux64(new_addr).readAll(),
@@ -747,7 +739,7 @@ pub const debug = opaque {
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_1_s, about_resize_1_s);
         var buf: [4096 +% 512]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             operation_s, builtin.fmt.ux64(old_addr).readAll(),
             "..",        builtin.fmt.ux64(old_addr +% old_len).readAll(),
             " -> ",      builtin.fmt.ux64(new_addr).readAll(),
@@ -759,7 +751,7 @@ pub const debug = opaque {
     }
     fn brkError(brk_error: anytype, old_addr: u64, new_addr: u64) void {
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_brk_1_s, builtin.fmt.ux64(old_addr).readAll(),
             "..",          builtin.fmt.ux64(new_addr).readAll(),
             ", ",          builtin.fmt.ud64(new_addr -% old_addr).readAll(),
@@ -769,7 +761,7 @@ pub const debug = opaque {
     }
     fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64) void {
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_acq_0_s, builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
@@ -780,7 +772,7 @@ pub const debug = opaque {
     fn arenaAcquireError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64) void {
         @setCold(true);
         var buf: [4096 + 512]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_acq_1_s, builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
@@ -792,7 +784,7 @@ pub const debug = opaque {
     fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64) void {
         @setCold(true);
         var buf: [4096]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_rel_0_s, builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
@@ -802,7 +794,7 @@ pub const debug = opaque {
     }
     fn arenaReleaseError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64) void {
         var buf: [4096 + 512]u8 = undefined;
-        print(&buf, &[_][]const u8{
+        builtin.debug.print(&buf, &[_][]const u8{
             about_rel_1_s, builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
@@ -813,11 +805,11 @@ pub const debug = opaque {
     }
     fn memFdError(memfd_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_memfd_1_s, pathname, " (", @errorName(memfd_error), ")\n" });
+        builtin.debug.print(&buf, &[_][]const u8{ about_memfd_1_s, pathname, " (", @errorName(memfd_error), ")\n" });
     }
     fn memFdNotice(name: [:0]const u8, mem_fd: u64) void {
         var buf: [4096 + 32]u8 = undefined;
-        print(&buf, &[_][]const u8{ about_memfd_0_s, "fd=", builtin.fmt.ud64(mem_fd).readAll(), ", ", name, "\n" });
+        builtin.debug.print(&buf, &[_][]const u8{ about_memfd_0_s, "fd=", builtin.fmt.ud64(mem_fd).readAll(), ", ", name, "\n" });
     }
 };
 pub fn set(dst_addr: u64, src_value: anytype, count: u64) void {
