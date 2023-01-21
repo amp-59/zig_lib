@@ -1,9 +1,11 @@
+const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
+const word_size: u8 = @bitSizeOf(usize);
+
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
-
 pub const ArenaOptions = extern struct {
     thread_safe: bool = false,
 };
@@ -89,14 +91,13 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
     if (bits != real_bits) {
         return DiscreteBitSet(real_bits);
     }
+    const Data: type = meta.UniformData(bits);
+    const data_info: builtin.Type = @typeInfo(Data);
     return extern struct {
         bits: Data = if (data_info == .Array) [1]usize{0} ** data_info.Array.len else 0,
-        const BitSet: type = @This();
-        const Data: type = meta.UniformData(bits);
+        pub const BitSet: type = @This();
         const Word: type = if (data_info == .Array) data_info.Array.child else Data;
         const Index: type = meta.LeastRealBitSize(bits);
-        const word_size: u8 = @bitSizeOf(usize);
-        const data_info: builtin.Type = @typeInfo(Data);
         pub fn indexitionToShiftAmount(index: Index) u8 {
             if (data_info == .Array) {
                 return builtin.sub(u8, word_size - 1, builtin.rem(u8, index, word_size));
@@ -133,7 +134,7 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
 pub fn ThreadSafeSet(comptime divisions: u16) type {
     return extern struct {
         bytes: Data = .{0} ** divisions,
-        const SafeSet: type = @This();
+        pub const SafeSet: type = @This();
         const Data: type = [divisions]u8;
         const Index: type = meta.LeastRealBitSize(divisions);
         pub fn set(safe_set: *SafeSet, index: Index) void {
@@ -176,50 +177,64 @@ fn GenericMultiSet(
 ) type {
     return extern struct {
         fields: Fields = .{},
-        const MultiSet: type = @This();
+        pub const MultiSet: type = @This();
         const Index: type = DiscreteAddressSpaceSpec.Index(spec);
         pub const params: struct { @TypeOf(directory), type } = .{ directory, Fields };
         pub fn set(multi_set: *MultiSet, comptime index: Index) void {
             return multi_set.fields[directory[index].field_index].set(directory[index].arena_index);
         }
         pub fn unset(multi_set: *MultiSet, comptime index: Index) void {
-            return multi_set.fields[directory[index].field_index].unset(directory[index].arena_index);
+            const arena_index: Index = directory[index].arena_index;
+            const field_index: Index = directory[index].field_index;
+            return multi_set.fields[field_index].unset(arena_index);
         }
         pub fn atomicSet(multi_set: *MultiSet, comptime index: Index) bool {
-            return multi_set.fields[directory[index].field_index].atomicSet(directory[index].arena_index);
+            const arena_index: Index = directory[index].arena_index;
+            const field_index: Index = directory[index].field_index;
+            return multi_set.fields[field_index].atomicSet(arena_index);
         }
         pub fn atomicUnset(multi_set: *MultiSet, comptime index: Index) bool {
-            return multi_set.fields[directory[index].field_index].atomicUnset(directory[index].arena_index);
+            const arena_index: Index = directory[index].arena_index;
+            const field_index: Index = directory[index].field_index;
+            return multi_set.fields[field_index].atomicUnset(arena_index);
         }
         fn check(multi_set: MultiSet, comptime index: Index) bool {
-            return multi_set.fields[directory[index].field_index].check(directory[index].arena_index);
+            const arena_index: Index = directory[index].arena_index;
+            const field_index: Index = directory[index].field_index;
+            return multi_set.fields[field_index].check(arena_index);
         }
     };
 }
 pub const DiscreteMultiArena = struct {
     list: []const Arena,
     super_space: ?SuperSpace = null,
-    sub_space: ?[]type = null,
+    subspace: ?[]const meta.Generic = null,
     label: ?[]const u8 = null,
-    const Specification: type = @This();
-    fn Index(comptime spec: Specification) type {
-        return meta.LeastRealBitSize(spec.list.len);
+
+    pub const MultiArena: type = @This();
+
+    fn Index(comptime multi_arena: MultiArena) type {
+        return meta.LeastRealBitSize(multi_arena.list.len);
     }
-    fn Directory(comptime spec: Specification) type {
-        return [spec.list.len]struct { field_index: Index(spec), arena_index: Index(spec) };
+    fn Directory(comptime multi_arena: MultiArena) type {
+        return [multi_arena.list.len]struct {
+            field_index: Index(multi_arena),
+            arena_index: Index(multi_arena),
+        };
     }
-    fn Implementation(comptime spec: Specification) type {
-        var directory: Directory(spec) = undefined;
+    fn Implementation(comptime multi_arena: MultiArena) type {
+        builtin.static.assertNotEqual(u64, multi_arena.list.len, 0);
+        var directory: Directory(multi_arena) = undefined;
         var fields: []const builtin.StructField = meta.empty;
-        var thread_safe_state: bool = spec.list[0].options.thread_safe;
-        var arena_index: Index(spec) = 0;
-        for (spec.list) |arena, index| {
-            if (thread_safe_state and !arena.options.thread_safe) {
+        var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;
+        var arena_index: Index(multi_arena) = 0;
+        for (multi_arena.list) |super_arena, index| {
+            if (thread_safe_state and !super_arena.options.thread_safe) {
                 const T: type = ThreadSafeSet(arena_index + 1);
                 fields = meta.concat(builtin.StructField, fields, meta.structField(T, builtin.fmt.ci(fields.len), .{}));
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
-            } else if (!thread_safe_state and arena.options.thread_safe) {
+            } else if (!thread_safe_state and super_arena.options.thread_safe) {
                 const T: type = DiscreteBitSet(arena_index + 1);
                 fields = meta.concat(builtin.StructField, fields, meta.structField(T, builtin.fmt.ci(fields.len), .{}));
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
@@ -228,7 +243,7 @@ pub const DiscreteMultiArena = struct {
                 directory[index] = .{ .arena_index = arena_index, .field_index = fields.len };
                 arena_index += 1;
             }
-            thread_safe_state = arena.options.thread_safe;
+            thread_safe_state = super_arena.options.thread_safe;
         }
         if (thread_safe_state) {
             const T: type = ThreadSafeSet(arena_index + 1);
@@ -242,52 +257,97 @@ pub const DiscreteMultiArena = struct {
         }
         var type_info: builtin.Type = meta.tupleInfo(fields);
         type_info.Struct.layout = .Extern;
-        const T: type = @Type(type_info);
-        return GenericMultiSet(spec, directory, T);
+        return GenericMultiSet(multi_arena, directory, @Type(type_info));
     }
-    pub fn count(comptime spec: Specification) Index(spec) {
-        return spec.list.len;
+    fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        const max_index: Index(multi_arena) = multi_arena.invert(sub_arena.high() - 1);
+        const min_index: Index(multi_arena) = multi_arena.invert(sub_arena.low());
+        var s_index: Index(multi_arena) = min_index;
+        while (s_index <= max_index) : (s_index += 1) {
+            map_list = meta.concat(ArenaReference, map_list, .{
+                .index = s_index,
+                .options = multi_arena.list[s_index].options,
+            });
+        }
+        return map_list;
     }
-    fn mapSuperList(comptime spec: Specification, comptime AddressSpace: type) []const ArenaReference {
-        var super_list: []const ArenaReference = meta.empty;
-        var t_index: AddressSpace.Index = 0;
-        if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
-            lo: while (t_index != spec.list.len) : (t_index += 1) {
-                var capacity: usize = 0;
-                var s_index: AddressSpace.Index = 0;
-                while (s_index != AddressSpace.addr_spec.list.len) : (s_index += 1) {
-                    const s_arena: Arena = AddressSpace.addr_spec.list[s_index];
-                    const t_arena: Arena = spec.list[t_index];
-                    if (s_arena.intersection(t_arena)) |x_arena| {
-                        capacity += x_arena.capacity();
-                        super_list = meta.concat(ArenaReference, super_list, .{
-                            .index = s_index,
-                            .options = AddressSpace.arena(s_index).options,
-                        });
-                    }
-                    if (capacity == spec.list[t_index].capacity()) {
-                        continue :lo;
-                    }
+    fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        var t_index: comptime_int = 0;
+        lo: while (t_index != sub_list.len) : (t_index += 1) {
+            var capacity: usize = 0;
+            var s_index: Index(multi_arena) = 0;
+            while (s_index != multi_arena.list.len) : (s_index += 1) {
+                const s_arena: Arena = multi_arena.list[s_index];
+                const t_arena: Arena = sub_list[t_index];
+                if (s_arena.intersection(t_arena)) |x_arena| {
+                    map_list = meta.concat(ArenaReference, map_list, .{
+                        .index = s_index,
+                        .options = multi_arena.list[s_index].options,
+                    });
+                    capacity += x_arena.capacity();
+                }
+                if (capacity == sub_list[t_index].capacity()) {
+                    continue :lo;
                 }
             }
-        } else {
-            var max_index: AddressSpace.Index = 0;
-            var min_index: AddressSpace.Index = ~max_index;
-            while (t_index != spec.list.len) : (t_index += 1) {
-                min_index = builtin.min(AddressSpace.Index, min_index, AddressSpace.invert(spec.list[t_index].low()));
-                max_index = builtin.max(AddressSpace.Index, max_index, AddressSpace.invert(spec.list[t_index].high() - 1));
-            }
-            var s_index: AddressSpace.Index = min_index;
-            while (s_index <= max_index) : (s_index += 1) {
-                super_list = meta.concat(ArenaReference, super_list, .{
-                    .index = s_index,
-                    .options = AddressSpace.arena(s_index).options,
-                });
+        }
+        return map_list;
+    }
+    fn implementation(comptime multi_arena: MultiArena) Implementation(multi_arena) {
+        var tmp: Implementation(multi_arena) = .{};
+        for (multi_arena.subspace orelse
+            return tmp) |subspace|
+        {
+            for (blk: {
+                if (subspace.type == RegularMultiArena) {
+                    break :blk multi_arena.referSubRegular(meta.typeCast(subspace).super());
+                }
+                if (subspace.type == DiscreteMultiArena) {
+                    break :blk multi_arena.referSubDiscrete(meta.typeCast(subspace).list);
+                }
+            }) |ref| {
+                tmp.set(ref.index);
             }
         }
-        return super_list;
+        return tmp;
+    }
+    pub fn capacityAll(comptime multi_arena: MultiArena) usize {
+        return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
+    }
+    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) usize {
+        return multi_arena.list[index].capacity();
+    }
+    pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
+        var index: Index(multi_arena) = 0;
+        while (index != multi_arena.list.len) : (index += 1) {
+            if (addr >= multi_arena.list[index].low() and addr < multi_arena.list[index].high()) {
+                return index;
+            }
+        }
+    }
+    pub fn arena(comptime multi_arena: MultiArena, index: Index(multi_arena)) Arena {
+        return multi_arena.list[index];
+    }
+    pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
+        return multi_arena.list.len;
+    }
+    pub fn low(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) usize {
+        return multi_arena.list[index].low();
+    }
+    pub fn high(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) usize {
+        return multi_arena.list[index].high();
+    }
+    pub fn instantiate(comptime multi_arena: DiscreteAddressSpaceSpec) type {
+        return GenericDiscreteAddressSpace(multi_arena);
     }
 };
+/// |    |--------|-------------|-------------|-------------|---------|    |
+/// ^~~~~         ^
+/// |             |
+///
+///
 pub const RegularMultiArena = struct {
     lb_addr: u64 = 0,
     ab_addr: u64 = safe_zone,
@@ -296,72 +356,116 @@ pub const RegularMultiArena = struct {
     divisions: u64 = 8,
     alignment: u64 = page_size,
     options: ArenaOptions = .{},
-    super_space: ?SuperSpace = null,
-    sub_space: ?[]type = null,
+    subspace: ?[]const meta.Generic = null,
     label: ?[]const u8 = null,
-    const Specification = @This();
+
+    pub const MultiArena = @This();
     const page_size: u16 = 4096;
     const shift_amt: u16 = @min(48, @bitSizeOf(usize)) - 1;
     const safe_zone: u64 = 0x40000000;
-    fn Index(comptime spec: Specification) type {
-        return meta.LeastRealBitSize(spec.divisions);
+
+    fn Index(comptime multi_arena: MultiArena) type {
+        return meta.LeastRealBitSize(multi_arena.divisions);
     }
-    fn Implementation(comptime spec: Specification) type {
-        if (spec.options.thread_safe) {
-            return ThreadSafeSet(spec.divisions);
+    fn Implementation(comptime multi_arena: MultiArena) type {
+        if (multi_arena.options.thread_safe) {
+            return ThreadSafeSet(multi_arena.divisions);
         } else {
-            return DiscreteBitSet(spec.divisions);
+            return DiscreteBitSet(multi_arena.divisions);
         }
     }
-    pub fn count(comptime spec: Specification) Index(spec) {
-        return spec.divisions;
-    }
-    pub fn capacity(comptime spec: Specification) u64 {
-        return builtin.sub(u64, spec.up_addr, spec.lb_addr);
-    }
-    fn arena(comptime spec: Specification) Arena {
-        return .{
-            .lb_addr = spec.lb_addr,
-            .up_addr = spec.up_addr,
-            .options = spec.options,
-        };
-    }
-    fn mapSuperList(comptime spec: RegularAddressSpaceSpec, comptime AddressSpace: type) []const ArenaReference {
-        const t_arena: Arena = spec.arena();
-        var super_list: []const ArenaReference = meta.empty;
-        if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
-            var s_index: AddressSpace.Index = 0;
-            while (s_index != AddressSpace.addr_spec.list.len) : (s_index += 1) {
-                const s_arena: Arena = AddressSpace.addr_spec.list[s_index];
-                if (s_arena.intersection(t_arena) != null) {
-                    super_list = meta.concat(ArenaReference, super_list, .{
-                        .index = s_index,
-                        .options = spec.options,
-                    });
-                }
-            }
-        } else {
-            var max_index: AddressSpace.Index = AddressSpace.invert(t_arena.high());
-            var min_index: AddressSpace.Index = AddressSpace.invert(t_arena.low());
-            var s_index: AddressSpace.Index = min_index;
-            while (s_index <= max_index) : (s_index += 1) {
-                super_list = meta.concat(super_list, .{
-                    .index = s_index,
-                    .options = spec.options,
-                });
-            }
+    fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        var max_index: Index(multi_arena) = multi_arena.invert(sub_arena.high());
+        var min_index: Index(multi_arena) = multi_arena.invert(sub_arena.low());
+        var s_index: Index(multi_arena) = min_index;
+        while (s_index <= max_index) : (s_index += 1) {
+            map_list = meta.concat(ArenaReference, map_list, .{
+                .index = s_index,
+                .options = multi_arena.options,
+            });
         }
-        if (isRegular(AddressSpace, super_list)) {
-            return super_list;
+        if (isRegular(multi_arena, map_list)) {
+            return map_list;
         } else {
             @compileError("invalid sub address space spec");
         }
     }
+    fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len - 1].high());
+        var min_index: Index(multi_arena) = multi_arena.invert(sub_list[0].low());
+        var s_index: Index(multi_arena) = min_index;
+        while (s_index <= max_index) : (s_index += 1) {
+            map_list = meta.concat(ArenaReference, map_list, .{
+                .index = s_index,
+                .options = multi_arena.options,
+            });
+        }
+        if (isRegular(multi_arena, map_list)) {
+            return map_list;
+        } else {
+            @compileError("invalid sub address space spec");
+        }
+    }
+    fn implementation(comptime multi_arena: MultiArena) Implementation(multi_arena) {
+        var tmp: Implementation(multi_arena) = .{};
+        for (multi_arena.subspace orelse
+            return tmp) |subspace|
+        {
+            for (blk: {
+                if (subspace.type == RegularMultiArena) {
+                    break :blk multi_arena.referSubRegular(meta.typeCast(subspace).arena());
+                }
+                if (subspace.type == DiscreteMultiArena) {
+                    break :blk multi_arena.referSubDiscrete(meta.typeCast(subspace).list);
+                }
+            }) |ref| {
+                tmp.set(ref.index);
+            }
+        }
+        return tmp;
+    }
+    pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
+        return multi_arena.divisions;
+    }
+    pub fn capacityAll(comptime multi_arena: MultiArena) usize {
+        return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
+    }
+    pub fn capacityEach(comptime multi_arena: MultiArena) usize {
+        return capacityAll(multi_arena) / multi_arena.divisions;
+    }
+    pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
+        return @intCast(Index(multi_arena), (addr - multi_arena.lb_addr) / capacityEach(multi_arena));
+    }
+    pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) usize {
+        return @max(multi_arena.ab_addr, multi_arena.lb_addr + capacityEach(multi_arena) * index);
+    }
+    pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) usize {
+        return @min(multi_arena.xb_addr, multi_arena.lb_addr + capacityEach(multi_arena) * (index + 1));
+    }
+    pub fn instantiate(comptime multi_arena: MultiArena) type {
+        return GenericRegularAddressSpace(multi_arena);
+    }
+    pub fn super(comptime multi_arena: MultiArena) Arena {
+        return .{
+            .lb_addr = multi_arena.lb_addr,
+            .up_addr = multi_arena.up_addr,
+            .options = multi_arena.options,
+        };
+    }
+    pub fn arena(comptime multi_arena: MultiArena, index: Index(multi_arena)) Arena {
+        return .{
+            .lb_addr = multi_arena.low(index),
+            .up_addr = multi_arena.high(index),
+            .options = multi_arena.options,
+        };
+    }
 };
-pub fn isRegular(comptime AddressSpace: type, comptime list: []const ArenaReference) bool {
+pub fn isRegular(comptime multi_arena: anytype, comptime map_list: []const ArenaReference) bool {
     var safety: ?bool = null;
     var addr: ?usize = null;
-    for (list) |item| {
+    for (map_list) |item| {
         if (safety) |prev| {
             if (item.options) |options| {
                 if (options.thread_safe != prev) {
@@ -374,13 +478,13 @@ pub fn isRegular(comptime AddressSpace: type, comptime list: []const ArenaRefere
             }
         }
         if (addr) |prev| {
-            if (AddressSpace.low(item.index) == prev) {
-                addr = AddressSpace.high(item.index);
+            if (multi_arena.low(item.index) == prev) {
+                addr = multi_arena.high(item.index);
             } else {
                 return false;
             }
         } else {
-            addr = AddressSpace.high(item.index);
+            addr = multi_arena.high(item.index);
         }
     }
     return true;
@@ -395,56 +499,46 @@ pub fn isRegular(comptime AddressSpace: type, comptime list: []const ArenaRefere
 ///     * Constructing the bit set fields can be expensive at compile time.
 pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type {
     return extern struct {
-        impl: Implementation align(8) = .{},
-        const AddressSpace = @This();
+        impl: Implementation align(8) = spec.implementation(),
+        pub const DiscreteAddressSpace = @This();
         pub const Implementation: type = spec.Implementation();
         pub const Index: type = DiscreteAddressSpaceSpec.Index(spec);
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
-        pub fn unset(address_space: *AddressSpace, comptime index: Index) bool {
+        pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             const ret: bool = address_space.impl.check(index);
             if (ret) address_space.impl.unset(index);
             return ret;
         }
-        pub fn set(address_space: *AddressSpace, comptime index: Index) bool {
+        pub fn set(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             const ret: bool = address_space.impl.check(index);
             if (!ret) address_space.impl.set(index);
             return !ret;
         }
-        pub fn atomicUnset(address_space: *AddressSpace, comptime index: Index) bool {
+        pub fn atomicUnset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             builtin.static.assert(spec.list[index].options.thread_safe);
             return address_space.impl.atomicUnset(index);
         }
-        pub fn atomicSet(address_space: *AddressSpace, comptime index: Index) bool {
+        pub fn atomicSet(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             builtin.static.assert(spec.list[index].options.thread_safe);
             return address_space.impl.atomicSet(index);
         }
         pub fn invert(addr: usize) Index {
-            var index: Index = 0;
-            while (index != spec.list.len) : (index += 1) {
-                if (addr >= low(index) and addr < high(index)) {
-                    return index;
-                }
-            }
+            return spec.invert(addr);
         }
         pub fn low(comptime index: Index) usize {
-            return spec.list[index].low();
+            return spec.low(index);
         }
         pub fn high(comptime index: Index) usize {
-            return spec.list[index].high();
+            return spec.high(index);
         }
         pub fn arena(comptime index: Index) Arena {
-            return spec.list[index];
+            return spec.arena(index);
         }
-        pub usingnamespace GenericAddressSpace(AddressSpace);
+        pub fn SubSpace(comptime label_or_index: anytype) type {
+            return GenericSubSpace(spec.subspace.?, label_or_index);
+        }
+        pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
     };
-}
-pub fn GenericDiscreteSubAddressSpace(comptime spec: DiscreteAddressSpaceSpec, comptime AddressSpace: type) type {
-    var sub_spec: DiscreteAddressSpaceSpec = spec;
-    sub_spec.super_space = .{
-        .AddressSpace = AddressSpace,
-        .list = spec.mapSuperList(AddressSpace),
-    };
-    return GenericDiscreteAddressSpace(sub_spec);
 }
 /// Regular:
 /// Good:
@@ -460,64 +554,53 @@ pub fn GenericDiscreteSubAddressSpace(comptime spec: DiscreteAddressSpaceSpec, c
 ///       required by each arena from 1 to 8 bits.
 pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
     return extern struct {
-        impl: Implementation align(8) = .{},
-        const AddressSpace = @This();
+        impl: Implementation align(8) = spec.implementation(),
+        pub const RegularAddressSpace = @This();
         pub const Index: type = meta.AlignSizeAW(builtin.ShiftAmount(u64));
         pub const Implementation: type = spec.Implementation();
         pub const addr_spec: RegularAddressSpaceSpec = spec;
         const capacity: usize = blk: {
             const mask: usize = spec.alignment - 1;
             const value: usize = spec.capacity() / spec.divisions;
+            @compileLog(value);
             break :blk (value + mask) & ~mask;
         };
-        pub fn unset(address_space: *AddressSpace, index: Index) bool {
+        pub fn unset(address_space: *RegularAddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.check(index);
             if (ret) address_space.impl.unset(index);
             return ret;
         }
-        pub fn set(address_space: *AddressSpace, index: Index) bool {
+        pub fn set(address_space: *RegularAddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.check(index);
             if (!ret) address_space.impl.set(index);
             return !ret;
         }
-        pub fn atomicUnset(address_space: *AddressSpace, index: Index) bool {
+        pub fn atomicUnset(address_space: *RegularAddressSpace, index: Index) bool {
             builtin.static.assert(spec.options.thread_safe);
             return address_space.impl.atomicUnset(index);
         }
-        pub fn atomicSet(address_space: *AddressSpace, index: Index) bool {
+        pub fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
             builtin.static.assert(spec.options.thread_safe);
             return address_space.impl.atomicSet(index);
         }
         pub fn low(index: Index) usize {
-            return @max(spec.ab_addr, spec.lb_addr + capacity * index);
+            return spec.low(index);
         }
         pub fn high(index: Index) usize {
-            return @min(spec.xb_addr, spec.lb_addr + capacity * (index + 1));
+            return spec.high(index);
         }
         pub fn invert(addr: usize) Index {
-            return @truncate(Index, addr / capacity);
+            return spec.invert(addr);
         }
         pub fn arena(index: Index) Arena {
-            return .{
-                .lb_addr = low(index),
-                .up_addr = high(index),
-                .options = addr_spec.options,
-            };
+            return spec.arena(index);
         }
-        pub usingnamespace GenericAddressSpace(AddressSpace);
+        pub usingnamespace GenericAddressSpace(RegularAddressSpace);
     };
-}
-pub fn GenericRegularSubAddressSpace(comptime spec: RegularAddressSpaceSpec, comptime AddressSpace: type) type {
-    var sub_spec: RegularAddressSpaceSpec = spec;
-    sub_spec.super_space = .{
-        .AddressSpace = AddressSpace,
-        .list = spec.mapSuperList(AddressSpace),
-    };
-    return GenericRegularAddressSpace(sub_spec);
 }
 pub const StaticAddressSpace = extern struct {
     bits: [2]u64 = .{ 0, 0 },
-    const AddressSpace = @This();
+    pub const AddressSpace = @This();
     const divisions: u8 = 128;
     const alignment: u64 = 4096;
     const max_bit: u64 = 1 << 47;
@@ -598,14 +681,6 @@ pub const StaticAddressSpace = extern struct {
 };
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
-        pub fn reserve(comptime address_space: *AddressSpace, comptime SubAddressSpace: type) SubAddressSpace {
-            if (SubAddressSpace.addr_spec.super_space) |super_space| {
-                comptime {
-                    for (super_space.list) |ref| if (!address_space.set(ref.index)) break;
-                }
-            }
-            return .{};
-        }
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
             if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
                 return debug.formatWriteDiscrete(address_space, array);
@@ -689,8 +764,8 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                         len += 2;
                     }
                 }
-                len += check_false.len;
                 arena_index = 0;
+                len += check_false.len;
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                     if (!address_space.impl.check(arena_index)) {
                         len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
@@ -701,4 +776,29 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             }
         };
     };
+}
+pub fn generic(comptime any: anytype) meta.Generic {
+    const T: type = if (@hasField(@TypeOf(any), "list"))
+        DiscreteMultiArena
+    else
+        RegularMultiArena;
+    return .{ .type = T, .value = &@as(T, any) };
+}
+fn GenericSubSpace(comptime ss: []const meta.Generic, comptime any: anytype) type {
+    switch (@typeInfo(@TypeOf(any))) {
+        .Int, .ComptimeInt => {
+            return meta.typeCast(ss[any]).instantiate();
+        },
+        else => for (ss) |s| {
+            if (meta.typeCast(s).label) |label| {
+                if (label.len != any.len) {
+                    continue;
+                }
+                for (label) |c, i| {
+                    if (c != any[i]) continue;
+                }
+                return meta.typeCast(s).instantiate();
+            }
+        },
+    }
 }
