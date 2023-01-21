@@ -3,6 +3,7 @@ const builtin = @import("./builtin.zig");
 pub const Empty = struct {};
 pub const empty = &.{};
 pub const default = .{};
+pub const Generic = struct { type: type, value: *const anyopaque };
 
 pub const number_types: []const builtin.TypeId = integer_types ++ float_types;
 pub const integer_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .ComptimeInt };
@@ -721,7 +722,15 @@ pub fn uniformData(any: anytype) UniformData(@bitSizeOf(@TypeOf(any))) {
     const U: type = UniformData(@bitSizeOf(T));
     return @ptrCast(*const U, &any).*;
 }
-
+pub fn typeCast(comptime generic: Generic) generic.type {
+    return @ptrCast(*const generic.type, @alignCast(@alignOf(generic.type), generic.value)).*;
+}
+pub fn anyTypeCast(comptime value: anytype) Generic {
+    return .{ .type = @TypeOf(value), .value = &value };
+}
+pub fn genericCast(comptime T: type, comptime value: T) Generic {
+    return .{ .type = T, .value = &value };
+}
 const debug = opaque {
     fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
         return switch (any) {
