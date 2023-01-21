@@ -1252,11 +1252,16 @@ pub fn typeName(comptime T: type) []const u8 {
         },
         .Struct, .Enum, .Union, .Opaque => {
             if (type_name.len > 16) {
-                if (@hasDecl(T, "type_name")) {
-                    return T.type_name;
-                } else {
-                    return ".";
+                inline for (type_info.Struct.decls) |decl| {
+                    if (decl.is_pub) {
+                        if (@typeInfo(@TypeOf(@field(T, decl.name))) == .Type) {
+                            if (@field(T, decl.name) == T) {
+                                return decl.name;
+                            }
+                        }
+                    }
                 }
+                return ".";
             } else {
                 return type_name;
             }
