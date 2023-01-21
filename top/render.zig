@@ -18,7 +18,8 @@ pub const RenderSpec = struct {
     omit_type_names: bool = false,
     infer_type_names: bool = false,
     infer_type_names_recursively: bool = false,
-    zig_type_names: bool = true,
+    zig_type_names: bool = false,
+    type_cast_generic: bool = true,
 
     inline_field_types: bool = false,
     enable_comptime_iterator: bool = false,
@@ -43,10 +44,13 @@ pub fn render(comptime spec: RenderSpec, value: anytype) AnyFormat(@TypeOf(value
     return .{ .value = value };
 }
 inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
+    @setEvalBranchQuota(10_000);
     if (spec.infer_type_names or
         spec.infer_type_names_recursively)
     {
         return ".";
+    } else if (spec.inline_field_types) {
+        return any(T);
     } else if (spec.omit_type_names) {
         return meta.empty;
     } else if (spec.zig_type_names) {
@@ -57,6 +61,9 @@ inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
 }
 
 pub fn AnyFormat(comptime Type: type, comptime spec: RenderSpec) type {
+    if (Type == meta.Generic) {
+        return GenericFormat;
+    }
     return switch (@typeInfo(Type)) {
         .Array => ArrayFormat(Type, spec),
         .Bool => BoolFormat,
@@ -83,6 +90,16 @@ pub fn AnyFormat(comptime Type: type, comptime spec: RenderSpec) type {
         else => @compileError(@typeName(Type)),
     };
 }
+const GenericFormat = struct {
+    value: meta.Generic,
+    const Format = @This();
+    pub fn formatWrite(comptime format: Format, array: anytype) void {
+        AnyFormat(format.value.type).formatWrite(.{ .value = meta.typeCast(format.value) }, array);
+    }
+    pub fn formatLength(comptime format: Format) u64 {
+        return AnyFormat(format.value.type).formatLength(.{ .value = meta.typeCast(format.value) });
+    }
+};
 fn GenericRenderFormat(comptime Format: type) type {
     comptime {
         builtin.static.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
@@ -203,7 +220,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 array.writeMany(": ");
                                 type_format.formatWrite(array);
                             } else {
-                                const field_type_name: []const u8 = typeName(field.type, spec);
+                                const field_type_name: []const u8 = comptime typeName(field.type, spec);
                                 field_name_format.formatWrite(array);
                                 array.writeMany(": " ++ field_type_name);
                             }
@@ -369,7 +386,7 @@ fn StructFormat(comptime Struct: type, comptime spec: RenderSpec) type {
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                     len += 1 + field_name_format.formatLength() + 3;
-                    len += AnyFormat(field.type, spec).max_len;
+                    len += AnyFormat(field.type, field_spec).max_len;
                     len += 2;
                 }
             }
@@ -377,7 +394,7 @@ fn StructFormat(comptime Struct: type, comptime spec: RenderSpec) type {
         };
         const field_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
-            tmp.infer_type_names = spec.infer_type_names_recursively;
+            tmp.infer_type_names = true;
             break :blk tmp;
         };
         pub fn formatWrite(format: anytype, array: anytype) void {
@@ -390,10 +407,8 @@ fn StructFormat(comptime Struct: type, comptime spec: RenderSpec) type {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                     const field_value: field.type = @field(format.value, field.name);
                     const field_format: AnyFormat(field.type, field_spec) = .{ .value = field_value };
-                    if (spec.omit_default_fields and field.default_value != null and
-                        comptime meta.isTriviallyComparable(field.type))
-                    {
-                        if (field_value != mem.pointerOpaque(field.type, field.default_value.?).*) {
+                    if (spec.omit_default_fields and field.default_value != null) {
+                        if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                             formatWriteField(array, field_name_format, field_format);
                             fields_len += 1;
                         }
@@ -421,10 +436,8 @@ fn StructFormat(comptime Struct: type, comptime spec: RenderSpec) type {
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                 const FieldFormat = AnyFormat(field.type, field_spec);
                 const field_value: field.type = @field(format.value, field.name);
-                if (spec.omit_default_fields and field.default_value != null and
-                    comptime meta.isTriviallyComparable(field.type))
-                {
-                    if (field_value != mem.pointerOpaque(field.type, field.default_value.?).*) {
+                if (spec.omit_default_fields and field.default_value != null) {
+                    if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                         const field_format: FieldFormat = .{ .value = field_value };
                         len += 1 + field_name_format.formatLength() + 3 + field_format.formatLength() + 2;
                         fields_len += 1;
@@ -717,7 +730,7 @@ fn PointerOneFormat(comptime Pointer: type, comptime spec: RenderSpec) type {
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = (4 + typeName(Pointer, spec).len + 3) + AnyFormat(child, spec).max_len + 1;
         pub fn formatWrite(format: Format, array: anytype) void {
-            const type_name: []const u8 = typeName(Pointer, spec);
+            const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 array.writeCount(12 + type_name.len, ("@intToPtr(" ++ type_name ++ ", ").*);
                 const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };
@@ -732,7 +745,7 @@ fn PointerOneFormat(comptime Pointer: type, comptime spec: RenderSpec) type {
             array.writeOne(')');
         }
         pub fn formatLength(format: Format) u64 {
-            const type_name: []const u8 = typeName(Pointer, spec);
+            const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };
                 return 10 + type_name.len + 2 + sub_format.formatLength() + 1;
