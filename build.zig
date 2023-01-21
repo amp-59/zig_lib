@@ -6,14 +6,38 @@ const preset = srg.preset;
 const builder = srg.builder;
 const builtin = srg.builtin;
 
-pub fn main(ctx: *builder.Context) !void {
-    const packages = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
-    const minor_test_args = .{ .is_correct = true, .is_verbose = true, .packages = packages };
-    const algo_test_args = .{ .is_correct = true, .is_verbose = true, .build_mode = .ReleaseSmall, .packages = packages };
-    const fmt_test_args = .{ .is_correct = true, .is_verbose = true, .build_mode = .Debug, .packages = packages };
-    const fast_test_args = .{ .is_correct = false, .is_verbose = false, .build_mode = .ReleaseFast, .packages = packages };
-    const small_test_args = .{ .is_correct = false, .is_verbose = false, .build_mode = .ReleaseSmall, .packages = packages };
+const packages = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
 
+const minor_test_args = .{
+    .is_correct = true,
+    .is_verbose = true,
+    .packages = packages,
+};
+const algo_test_args = .{
+    .is_correct = true,
+    .is_verbose = true,
+    .build_mode = .ReleaseSmall,
+    .packages = packages,
+};
+const fmt_test_args = .{
+    .is_correct = true,
+    .is_verbose = true,
+    .packages = packages,
+};
+const fast_test_args = .{
+    .is_correct = false,
+    .is_verbose = false,
+    .build_mode = .ReleaseFast,
+    .packages = packages,
+};
+const small_test_args = .{
+    .is_correct = false,
+    .is_verbose = false,
+    .build_mode = .ReleaseSmall,
+    .packages = packages,
+};
+
+pub fn main(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("builtin_test", "top/builtin-test.zig", minor_test_args);
     _ = ctx.addExecutable("meta_test", "top/meta-test.zig", minor_test_args);
     _ = ctx.addExecutable("mem_test", "top/mem-test.zig", minor_test_args);
