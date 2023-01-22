@@ -1170,7 +1170,7 @@ const debug = opaque {
         var argc: u16 = @intCast(u16, args.len);
         var i: u16 = 0;
         while (i != argc) : (i += 1) {
-            const arg_len: u64 = builtin.debug.strlen(args[i]);
+            const arg_len: u64 = strlen(args[i]);
             if (len +% arg_len >= max_len - 37) {
                 break;
             }
@@ -1187,7 +1187,7 @@ const debug = opaque {
             buf[len] = '\n';
             len += 1;
         }
-        builtin.debug.write(@ptrToInt(&buf), len);
+        builtin.debug.write(buf[0..len]);
     }
 };
 
