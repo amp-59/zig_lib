@@ -6,7 +6,7 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-const show_best_cases: bool = false;
+const show_best_cases: bool = true;
 
 fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     var len: u64 = 0;
@@ -26,7 +26,7 @@ pub fn main() void {
     var total_requested: u64 = 0;
     var total_returned: u64 = 0;
 
-    while (n_aligned_bytes < lit.max_bit_u16) : (n_aligned_bytes += 1) {
+    while (n_aligned_bytes < lit.max_bit_u32) : (n_aligned_bytes += 1) {
         const s_lb_counts: u16 = algo.partialPackSingleApprox(n_aligned_bytes);
         const o_aligned_bytes: u64 = algo.partialUnpackSingleApprox(s_lb_counts);
         const s_ub_counts: u16 = algo.partialPackDoubleApprox(n_aligned_bytes, o_aligned_bytes);
@@ -35,8 +35,8 @@ pub fn main() void {
         total_returned += s_aligned_bytes;
         if (n_aligned_bytes - s_aligned_bytes == 0 and show_best_cases) {
             const ss: []const []const u8 = &[_][]const u8{
-                builtin.fmt.ud32(s_aligned_bytes).readAll(), " ",
-                builtin.fmt.ub32(s_aligned_bytes).readAll(), "\n",
+                builtin.fmt.ud32(@intCast(u32, s_aligned_bytes)).readAll(), " ",
+                builtin.fmt.ub32(@intCast(u32, s_aligned_bytes)).readAll(), "\n",
             };
             if (len + 128 > buf.len) {
                 print(&buf, len, ss);
