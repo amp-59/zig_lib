@@ -731,6 +731,13 @@ pub fn anyTypeCast(comptime value: anytype) Generic {
 pub fn genericCast(comptime T: type, comptime value: T) Generic {
     return .{ .type = T, .value = &value };
 }
+pub fn genericSlice(comptime transform: anytype, comptime values: anytype) []const Generic {
+    var ret: []const Generic = empty;
+    for (values) |value| {
+        ret = concat(Generic, ret, transform(value));
+    }
+    return ret;
+}
 const debug = opaque {
     fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
         return switch (any) {
