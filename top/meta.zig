@@ -723,7 +723,7 @@ pub fn uniformData(any: anytype) UniformData(@bitSizeOf(@TypeOf(any))) {
     return @ptrCast(*const U, &any).*;
 }
 pub fn typeCast(comptime generic: Generic) generic.type {
-    return @ptrCast(*const generic.type, @alignCast(@alignOf(generic.type), generic.value)).*;
+    return @ptrCast(*const generic.type, @alignCast(@max(1, @alignOf(generic.type)), generic.value)).*;
 }
 pub fn anyTypeCast(comptime value: anytype) Generic {
     return .{ .type = @TypeOf(value), .value = &value };
