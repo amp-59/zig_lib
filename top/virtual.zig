@@ -307,6 +307,7 @@ pub const DiscreteMultiArena = struct {
                 return index;
             }
         }
+        unreachable;
     }
     pub fn arena(comptime multi_arena: MultiArena, index: Index(multi_arena)) Arena {
         return multi_arena.list[index];
@@ -535,12 +536,10 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
             return !ret;
         }
         pub fn atomicUnset(address_space: *RegularAddressSpace, index: Index) bool {
-            builtin.static.assert(spec.options.thread_safe);
-            return address_space.impl.atomicUnset(index);
+            return spec.options.thread_safe and address_space.impl.atomicUnset(index);
         }
         pub fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
-            builtin.static.assert(spec.options.thread_safe);
-            return address_space.impl.atomicSet(index);
+            return spec.options.thread_safe and address_space.impl.atomicSet(index);
         }
         pub fn low(index: Index) usize {
             return spec.low(index);
@@ -557,87 +556,6 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub usingnamespace GenericAddressSpace(RegularAddressSpace);
     };
 }
-pub const StaticAddressSpace = extern struct {
-    bits: [2]u64 = .{ 0, 0 },
-    pub const AddressSpace = @This();
-    const divisions: u8 = 128;
-    const alignment: u64 = 4096;
-    const max_bit: u64 = 1 << 47;
-    const len: u64 = blk: {
-        const mask: u64 = alignment -% 1;
-        const value: u64 = max_bit / divisions;
-        break :blk (value +% mask) & ~mask;
-    };
-    pub const Index: type = u8;
-    pub fn bitMask(index: Index) u64 {
-        return @as(u64, 1) << if (index > 63) index else index -% 64;
-    }
-    pub fn pointer(address_space: *AddressSpace, index: Index) *u64 {
-        return if (index > 63) &address_space.bits[1] else &address_space.bits[0];
-    }
-    pub fn unset(address_space: *AddressSpace, index: Index) bool {
-        const mask: u64 = bitMask(index);
-        const ptr: *u64 = address_space.pointer(index);
-        const ret: bool = ptr.* & mask != 0;
-        if (ret) ptr.* &= ~mask;
-        return ret;
-    }
-    pub fn set(address_space: *AddressSpace, index: Index) bool {
-        const mask: u64 = bitMask(index);
-        const ptr: *u64 = address_space.pointer(index);
-        const ret: bool = ptr.* & mask == 0;
-        if (ret) ptr.* |= mask;
-        return ret;
-    }
-    pub fn atomicSet(address_space: *AddressSpace, index: Index) bool {
-        return address_space.threads().atomicSet(index >> 3);
-    }
-    pub fn atomicUnset(address_space: *AddressSpace, index: Index) bool {
-        return address_space.threads().atomicUnset(index >> 3);
-    }
-    pub fn acquire(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.set(index)) {
-            return error.UnderSupply;
-        }
-    }
-    pub fn release(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.unset(index)) {
-            return error.OverSupply;
-        }
-    }
-    pub fn atomicAcquire(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.atomicSet(index)) {
-            return error.UnderSupply;
-        }
-    }
-    pub fn atomicRelease(address_space: *AddressSpace, index: Index) !void {
-        if (!address_space.atomicUnset(index)) {
-            return error.OverSupply;
-        }
-    }
-    pub fn low(index: Index) u64 {
-        return @max(0x40000000, len * index);
-    }
-    pub fn high(index: Index) u64 {
-        return len * (index +% 1);
-    }
-    pub fn arena(comptime index: Index) Arena {
-        return .{
-            .lb_addr = low(index),
-            .up_addr = high(index),
-            .options = .{ .thread_safe = false },
-        };
-    }
-    pub fn invert(addr: u64) Index {
-        return @intCast(Index, addr / len);
-    }
-    pub fn wait(address_space: *const AddressSpace) void {
-        var r: u64 = 0;
-        while (r != 1) {
-            r = address_space.count();
-        }
-    }
-};
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
