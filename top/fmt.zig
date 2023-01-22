@@ -1252,7 +1252,7 @@ pub fn typeName(comptime T: type) []const u8 {
         },
         .Struct, .Enum, .Union, .Opaque => {
             if (type_name.len > 16) {
-                inline for (type_info.Struct.decls) |decl| {
+                inline for (meta.resolve(type_info).decls) |decl| {
                     if (decl.is_pub) {
                         if (@typeInfo(@TypeOf(@field(T, decl.name))) == .Type) {
                             if (@field(T, decl.name) == T) {
