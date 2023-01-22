@@ -17,6 +17,7 @@ const root = opaque {
 };
 
 const PrintArray = mem.StaticString(16384);
+
 pub const is_verbose: bool = false;
 pub const is_correct: bool = true;
 pub const render_type_names: bool = false;
@@ -170,11 +171,16 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
     }
 }
 fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.DiscreteAddressSpaceSpec) !void {
-    const render_spec: fmt.RenderSpec = .{ .radix = 2 };
-    const AddressSpace = virtual.GenericDiscreteAddressSpace(sup_spec);
-    const SubAddressSpace = virtual.GenericDiscreteSubAddressSpace(sub_spec, AddressSpace);
-    comptime var address_space_init: AddressSpace = .{};
-    var sub_space: SubAddressSpace = comptime address_space_init.reserve(SubAddressSpace);
+    const render_spec: fmt.RenderSpec = .{ .radix = 2, .ignore_container_decls = true, .ignore_formatter_decls = true };
+    const AddressSpace = comptime blk: {
+        var tmp = sup_spec;
+        tmp.subspace = meta.slice(meta.Generic, .{virtual.generic(sub_spec)});
+        break :blk virtual.GenericDiscreteAddressSpace(tmp);
+    };
+    const SubAddressSpace = AddressSpace.SubSpace(0);
+    var address_space: AddressSpace = .{};
+    var sub_space: SubAddressSpace = .{};
+
     const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
     const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace });
     const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace });
@@ -186,8 +192,8 @@ fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSp
     var array_0: Array0 = try Array0.init(&allocator_0, 2048);
     defer array_0.deinit(&allocator_0);
     try array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{
-        fmt.render(render_spec, address_space_init), '\n',
-        fmt.render(render_spec, sub_space),          '\n',
+        fmt.render(render_spec, address_space), '\n',
+        fmt.render(render_spec, sub_space),     '\n',
     });
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
     defer allocator_1.deinit(&sub_space);
@@ -208,12 +214,13 @@ fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSp
     file.noexcept.write(2, array_2.readAll());
     array_2.undefineAll();
 }
-fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.RegularAddressSpaceSpec) !void {
-    const render_spec: fmt.RenderSpec = .{ .radix = 2 };
-    const AddressSpace = virtual.GenericDiscreteAddressSpace(sup_spec);
-    const SubAddressSpace = virtual.GenericRegularSubAddressSpace(sub_spec, AddressSpace);
-    comptime var address_space_init: AddressSpace = .{};
-    var sub_space: SubAddressSpace = comptime address_space_init.reserve(SubAddressSpace);
+fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec) !void {
+    const render_spec: fmt.RenderSpec = .{ .radix = 2, .ignore_container_decls = true, .ignore_formatter_decls = true };
+    const AddressSpace = sup_spec.instantiate();
+    const SubAddressSpace = AddressSpace.SubSpace(0);
+
+    var address_space: AddressSpace = .{};
+    var sub_space: SubAddressSpace = .{};
     const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
     const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace });
     const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace });
@@ -225,8 +232,8 @@ fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAdd
     var array_0: Array0 = Array0.init(&allocator_0);
     defer array_0.deinit(&allocator_0);
     try array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{
-        fmt.render(render_spec, address_space_init), '\n',
-        fmt.render(render_spec, sub_space),          '\n',
+        fmt.render(render_spec, address_space), '\n',
+        fmt.render(render_spec, sub_space),     '\n',
     });
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
     defer allocator_1.deinit(&sub_space);
@@ -247,19 +254,41 @@ fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAdd
     file.noexcept.write(2, array_2.readAll(allocator_2));
     array_2.undefineAll(allocator_2);
 }
+
+const r = virtual.RegularAddressSpaceSpec{
+    .lb_addr = 0,
+    .ab_addr = 0,
+    .xb_addr = 20,
+    .up_addr = 20,
+
+    .divisions = 4,
+    .alignment = 1,
+    .label = "regular_4x5",
+    .subspace = meta.slice(meta.Generic, .{
+        virtual.generic(.{
+            .label = "threads_0",
+            .list = meta.slice(mem.Arena, .{.{ .lb_addr = 7, .up_addr = 17 }}),
+        }),
+    }),
+};
+
 pub fn main() !void {
     try meta.wrap(testArenaIntersection());
     try meta.wrap(testDiscreteAddressSpace(trivial_list));
     try meta.wrap(testDiscreteAddressSpace(complex_list));
     try meta.wrap(testDiscreteAddressSpace(simple_list));
     try meta.wrap(testRegularAddressSpace());
-    try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{ .list = complex_list }, .{
-        .lb_addr = complex_list[34].lb_addr,
-        .ab_addr = complex_list[34].lb_addr,
-        .xb_addr = complex_list[42].up_addr,
-        .up_addr = complex_list[42].up_addr,
-        .divisions = 16,
-        .options = .{ .thread_safe = true },
+
+    try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{
+        .list = complex_list,
+        .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
+            .lb_addr = complex_list[34].lb_addr,
+            .ab_addr = complex_list[34].lb_addr,
+            .xb_addr = complex_list[42].up_addr,
+            .up_addr = complex_list[42].up_addr,
+            .divisions = 16,
+            .options = .{ .thread_safe = true },
+        })}),
     }));
     try meta.wrap(testDiscreteSubSpaceFromDiscrete(.{ .list = simple_list }, .{ .list = rare_sub_list }));
 }
