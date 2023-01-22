@@ -21,10 +21,10 @@ pub const RenderSpec = struct {
     zig_type_names: bool = false,
     type_cast_generic: bool = true,
 
-    inline_field_types: bool = false,
+    inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
 
-    ignore_formatter_decls: bool = false,
+    ignore_formatter_decls: bool = true,
     ignore_container_decls: bool = false,
 
     const RadixFieldName = struct {
@@ -37,10 +37,10 @@ pub const RenderSpec = struct {
 
 const render_radix: u16 = builtin.config("render_radix", u16, 10);
 
-pub fn any(value: anytype) AnyFormat(@TypeOf(value), RenderSpec.default) {
+pub inline fn any(value: anytype) AnyFormat(@TypeOf(value), RenderSpec.default) {
     return .{ .value = value };
 }
-pub fn render(comptime spec: RenderSpec, value: anytype) AnyFormat(@TypeOf(value), spec) {
+pub inline fn render(comptime spec: RenderSpec, value: anytype) AnyFormat(@TypeOf(value), spec) {
     return .{ .value = value };
 }
 inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
@@ -49,8 +49,6 @@ inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
         spec.infer_type_names_recursively)
     {
         return ".";
-    } else if (spec.inline_field_types) {
-        return any(T);
     } else if (spec.omit_type_names) {
         return meta.empty;
     } else if (spec.zig_type_names) {
