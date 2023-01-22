@@ -506,7 +506,7 @@ pub fn release(comptime spec: ReleaseSpec, comptime AddressSpace: type, address_
     const label: ?[]const u8 = AddressSpace.label();
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    if (if (spec.options.thread_safe)
+    if (if (AddressSpace.addr_spec.options.thread_safe)
         address_space.atomicUnset(index)
     else
         address_space.unset(index))
