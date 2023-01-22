@@ -12,7 +12,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "builtin_test", "top/builtin-test.zig", .{ .build_root = true, .is_correct = true, .is_verbose = true });
     _ = util.addProjectExecutable(builder, "meta_test", "top/meta-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = util.addProjectExecutable(builder, "mem_test", "top/mem-test.zig", .{ .is_correct = true, .is_verbose = true, .strip = true });
-    _ = util.addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseSmall, .is_correct = true, .is_verbose = true });
+    _ = util.addProjectExecutable(builder, "algo_test", "top/algo-test.zig", .{ .build_mode = .ReleaseFast, .is_correct = true, .is_verbose = true });
     _ = util.addProjectExecutable(builder, "file_test", "top/file-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = util.addProjectExecutable(builder, "list_test", "top/list-test.zig", .{ .is_correct = true, .is_verbose = true });
     _ = util.addProjectExecutable(builder, "fmt_test", "top/fmt-test.zig", .{ .build_mode = .Debug, .is_correct = true, .is_verbose = true });
@@ -38,6 +38,6 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "builder_test", "top/builder-test.zig", .{ .is_large_test = true, .build_root = true });
 
     // Examples
-    _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", .{ .is_correct = true, .is_verbose = true });
+    _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", .{ .build_mode = .ReleaseSmall, .is_correct = true, .is_verbose = true });
     _ = util.addProjectExecutable(builder, "dynamic", "examples/dynamic_alloc.zig", .{ .is_correct = true, .is_verbose = true });
 }
