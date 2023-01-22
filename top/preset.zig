@@ -5,7 +5,6 @@ const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
 pub const address_space = opaque {
-    pub const static_128 = mem.StaticAddressSpace;
     pub const formulaic_128 = mem.GenericRegularAddressSpace(.{ .divisions = 128 });
     pub const exact_8 = mem.GenericDiscreteAddressSpace(.{
         .list = meta.slice(mem.Arena, .{
