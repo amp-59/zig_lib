@@ -11943,7 +11943,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Sp
         pub const finish: Slave = unwritable_byte_address;
         pub const high: Slave = unallocated_byte_address;
         pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
+        pub const behind: Vector = streamed_byte_count;
         pub const utility: Slave = aligned_byte_count;
         pub const capacity: Slave = writable_byte_count;
         pub const length: Vector = defined_byte_count;
@@ -12040,7 +12040,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Sp
         pub const finish: Slave = unwritable_byte_address;
         pub const high: Slave = unallocated_byte_address;
         pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
+        pub const behind: Vector = streamed_byte_count;
         pub const utility: Slave = aligned_byte_count;
         pub const capacity: Slave = writable_byte_count;
         pub const length: Vector = defined_byte_count;
@@ -12345,7 +12345,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
         pub const finish: Slave = unwritable_byte_address;
         pub const high: Slave = unallocated_byte_address;
         pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
+        pub const behind: Vector = streamed_byte_count;
         pub const utility: Slave = aligned_byte_count;
         pub const capacity: Slave = writable_byte_count;
         pub const length: Vector = defined_byte_count;
@@ -12447,7 +12447,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
         pub const finish: Slave = unwritable_byte_address;
         pub const high: Slave = unallocated_byte_address;
         pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
+        pub const behind: Vector = streamed_byte_count;
         pub const utility: Slave = aligned_byte_count;
         pub const capacity: Slave = writable_byte_count;
         pub const length: Vector = defined_byte_count;
@@ -12760,7 +12760,7 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
         pub const finish: Slave = unwritable_byte_address;
         pub const high: Slave = unallocated_byte_address;
         pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
+        pub const behind: Vector = streamed_byte_count;
         pub const utility: Slave = aligned_byte_count;
         pub const capacity: Slave = writable_byte_count;
         pub const length: Vector = defined_byte_count;
@@ -12857,7 +12857,7 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: 
         pub const finish: Slave = unwritable_byte_address;
         pub const high: Slave = unallocated_byte_address;
         pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
+        pub const behind: Vector = streamed_byte_count;
         pub const utility: Slave = aligned_byte_count;
         pub const capacity: Slave = writable_byte_count;
         pub const length: Vector = defined_byte_count;
