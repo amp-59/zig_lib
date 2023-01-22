@@ -578,7 +578,7 @@ fn @"test"(b: bool) bool {
 }
 
 // Currently, only the following non-trivial comparisons are supported:
-fn testEqualArray(comptime T: type, comptime array_info: builtin.Array, arg1: T, arg2: T) bool {
+fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
     var i: usize = 0;
     while (i != array_info.len) : (i += 1) {
         if (!testEqual(array_info.child, arg1[i], arg2[i])) {
@@ -587,7 +587,7 @@ fn testEqualArray(comptime T: type, comptime array_info: builtin.Array, arg1: T,
     }
     return true;
 }
-fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Pointer, arg1: T, arg2: T) bool {
+fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
     if (arg1.len != arg2.len) {
         return false;
     }
@@ -599,13 +599,13 @@ fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Pointer, arg1
     }
     return true;
 }
-fn testEqualPointer(comptime T: type, comptime pointer_info: builtin.Pointer, arg1: T, arg2: T) bool {
+fn testEqualPointer(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
     if (@typeInfo(pointer_info.child) != .Fn) {
         return arg1 == arg2;
     }
     return false;
 }
-fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Struct, arg1: T, arg2: T) bool {
+fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, arg1: T, arg2: T) bool {
     inline for (struct_info.fields) |field| {
         if (!testEqual(
             field.type,
@@ -617,7 +617,7 @@ fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Struct, arg1:
     }
     return true;
 }
-fn testEqualUnion(comptime T: type, comptime union_info: builtin.Union, arg1: T, arg2: T) bool {
+fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
     if (union_info.tag_type) |tag_type| {
         inline for (union_info.fields) |field| {
             const tag: tag_type = @field(tag_type, field.name);
@@ -637,7 +637,7 @@ fn testEqualUnion(comptime T: type, comptime union_info: builtin.Union, arg1: T,
         return true;
     }
 }
-fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Optional, arg1: T, arg2: T) bool {
+fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Optional, arg1: T, arg2: T) bool {
     if (@typeInfo(optional_info.child) == .Pointer and
         @typeInfo(optional_info.child).Pointer.size != .Slice and
         @typeInfo(optional_info.child).Pointer.size != .C)
