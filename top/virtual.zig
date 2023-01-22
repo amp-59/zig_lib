@@ -6,83 +6,7 @@ const word_size: u8 = @bitSizeOf(usize);
 
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
-pub const ArenaOptions = extern struct {
-    thread_safe: bool = false,
-};
-pub const ArenaReference = struct {
-    index: comptime_int,
-    options: ?ArenaOptions = null,
-    fn arena(comptime arena_ref: ArenaReference, comptime AddressSpace: type) Arena {
-        return AddressSpace.arena(arena_ref.index);
-    }
-};
-pub const SuperSpace = struct {
-    AddressSpace: type,
-    list: []const ArenaReference,
-};
-pub const Arena = struct {
-    lb_addr: u64,
-    up_addr: u64,
-    options: ArenaOptions = .{},
-    pub const Intersection = struct {
-        l: Arena,
-        x: Arena,
-        h: Arena,
-    };
-    pub fn intersection2(s_arena: Arena, t_arena: Arena) ?Intersection {
-        if (intersection(s_arena, t_arena)) |x_arena| {
-            return .{
-                .l = .{
-                    .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
-                    .up_addr = x_arena.lb_addr,
-                    .options = if (s_arena.lb_addr < t_arena.lb_addr)
-                        s_arena.options
-                    else
-                        t_arena.options,
-                },
-                .x = x_arena,
-                .h = .{
-                    .lb_addr = x_arena.up_addr,
-                    .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
-                    .options = if (t_arena.up_addr > s_arena.up_addr)
-                        t_arena.options
-                    else
-                        s_arena.options,
-                },
-            };
-        }
-        return null;
-    }
-    pub fn intersection(s_arena: Arena, t_arena: Arena) ?Arena {
-        if (builtin.int2v(
-            bool,
-            t_arena.up_addr -% 1 < s_arena.lb_addr,
-            s_arena.up_addr -% 1 < t_arena.lb_addr,
-        )) {
-            return null;
-        }
-        return .{
-            .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
-            .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
-            .options = .{
-                .thread_safe = builtin.int2v(
-                    bool,
-                    s_arena.options.thread_safe,
-                    t_arena.options.thread_safe,
-                ),
-            },
-        };
-    }
-    pub fn low(arena: Arena) u64 {
-        return arena.lb_addr;
-    }
-    pub fn high(arena: Arena) u64 {
-        return arena.up_addr;
-    }
-    pub fn capacity(arena: Arena) u64 {
-        return arena.up_addr -% arena.lb_addr;
-    }
-};
+
 // Maybe make generic on Endian.
 // Right now it is difficult to get Zig vectors to produce consistent results,
 // so this is not an option.
@@ -172,16 +96,18 @@ pub fn ThreadSafeSet(comptime divisions: u16) type {
 }
 fn GenericMultiSet(
     comptime spec: DiscreteAddressSpaceSpec,
-    comptime directory: DiscreteAddressSpaceSpec.Directory(spec),
+    comptime directory: anytype,
     comptime Fields: type,
 ) type {
     return extern struct {
         fields: Fields = .{},
         pub const MultiSet: type = @This();
-        const Index: type = DiscreteAddressSpaceSpec.Index(spec);
         pub const params: struct { @TypeOf(directory), type } = .{ directory, Fields };
+        const Index: type = DiscreteAddressSpaceSpec.Index(spec);
         pub fn set(multi_set: *MultiSet, comptime index: Index) void {
-            return multi_set.fields[directory[index].field_index].set(directory[index].arena_index);
+            const arena_index: Index = directory[index].arena_index;
+            const field_index: Index = directory[index].field_index;
+            return multi_set.fields[field_index].set(arena_index);
         }
         pub fn unset(multi_set: *MultiSet, comptime index: Index) void {
             const arena_index: Index = directory[index].arena_index;
@@ -205,14 +131,86 @@ fn GenericMultiSet(
         }
     };
 }
+
+pub const ArenaOptions = extern struct {
+    thread_safe: bool = false,
+};
+pub const ArenaReference = struct {
+    index: comptime_int,
+    options: ?ArenaOptions = null,
+    fn arena(comptime arena_ref: ArenaReference, comptime AddressSpace: type) Arena {
+        return AddressSpace.arena(arena_ref.index);
+    }
+};
+pub const Arena = struct {
+    lb_addr: u64,
+    up_addr: u64,
+    options: ArenaOptions = .{},
+    pub const Intersection = struct {
+        l: Arena,
+        x: Arena,
+        h: Arena,
+    };
+    pub fn intersection2(s_arena: Arena, t_arena: Arena) ?Intersection {
+        if (intersection(s_arena, t_arena)) |x_arena| {
+            return .{
+                .l = .{
+                    .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
+                    .up_addr = x_arena.lb_addr,
+                    .options = if (s_arena.lb_addr < t_arena.lb_addr)
+                        s_arena.options
+                    else
+                        t_arena.options,
+                },
+                .x = x_arena,
+                .h = .{
+                    .lb_addr = x_arena.up_addr,
+                    .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
+                    .options = if (t_arena.up_addr > s_arena.up_addr)
+                        t_arena.options
+                    else
+                        s_arena.options,
+                },
+            };
+        }
+        return null;
+    }
+    pub fn intersection(s_arena: Arena, t_arena: Arena) ?Arena {
+        if (builtin.int2v(
+            bool,
+            t_arena.up_addr -% 1 < s_arena.lb_addr,
+            s_arena.up_addr -% 1 < t_arena.lb_addr,
+        )) {
+            return null;
+        }
+        return .{
+            .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
+            .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
+            .options = .{
+                .thread_safe = builtin.int2v(
+                    bool,
+                    s_arena.options.thread_safe,
+                    t_arena.options.thread_safe,
+                ),
+            },
+        };
+    }
+    pub fn low(arena: Arena) u64 {
+        return arena.lb_addr;
+    }
+    pub fn high(arena: Arena) u64 {
+        return arena.up_addr;
+    }
+    pub fn capacity(arena: Arena) u64 {
+        return arena.up_addr -% arena.lb_addr;
+    }
+};
+
 pub const DiscreteMultiArena = struct {
     list: []const Arena,
-    super_space: ?SuperSpace = null,
     subspace: ?[]const meta.Generic = null,
     label: ?[]const u8 = null,
-
     pub const MultiArena: type = @This();
-
     fn Index(comptime multi_arena: MultiArena) type {
         return meta.LeastRealBitSize(multi_arena.list.len);
     }
@@ -222,7 +220,7 @@ pub const DiscreteMultiArena = struct {
             arena_index: Index(multi_arena),
         };
     }
-    fn Implementation(comptime multi_arena: MultiArena) type {
+    pub fn Implementation(comptime multi_arena: MultiArena) type {
         builtin.static.assertNotEqual(u64, multi_arena.list.len, 0);
         var directory: Directory(multi_arena) = undefined;
         var fields: []const builtin.StructField = meta.empty;
@@ -241,7 +239,7 @@ pub const DiscreteMultiArena = struct {
                 arena_index = 1;
             } else {
                 directory[index] = .{ .arena_index = arena_index, .field_index = fields.len };
-                arena_index += 1;
+                arena_index +%= 1;
             }
             thread_safe_state = super_arena.options.thread_safe;
         }
@@ -267,7 +265,6 @@ pub const DiscreteMultiArena = struct {
             if (super_arena.low() > sub_arena.high()) {
                 break;
             }
-            @compileLog(arena);
             if (super_arena.intersection(sub_arena) != null) {
                 map_list = map_list ++ [1]ArenaReference{.{
                     .index = s_index,
@@ -279,7 +276,7 @@ pub const DiscreteMultiArena = struct {
     }
     fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
-        var t_index: comptime_int = 0;
+        var t_index: Index(multi_arena) = 0;
         while (t_index != sub_list.len) : (t_index += 1) {
             var s_index: Index(multi_arena) = 0;
             while (s_index != multi_arena.list.len) : (s_index += 1) {
@@ -295,24 +292,6 @@ pub const DiscreteMultiArena = struct {
         }
         return map_list;
     }
-    fn implementation(comptime multi_arena: MultiArena) Implementation(multi_arena) {
-        var tmp: Implementation(multi_arena) = .{};
-        for (multi_arena.subspace orelse
-            return tmp) |subspace|
-        {
-            for (blk: {
-                if (subspace.type == RegularMultiArena) {
-                    break :blk multi_arena.referSubRegular(meta.typeCast(subspace).super());
-                }
-                if (subspace.type == DiscreteMultiArena) {
-                    break :blk multi_arena.referSubDiscrete(meta.typeCast(subspace).list);
-                }
-            }) |ref| {
-                tmp.set(ref.index);
-            }
-        }
-        return tmp;
-    }
     pub fn capacityAll(comptime multi_arena: MultiArena) usize {
         return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
     }
@@ -322,7 +301,9 @@ pub const DiscreteMultiArena = struct {
     pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
         var index: Index(multi_arena) = 0;
         while (index != multi_arena.list.len) : (index += 1) {
-            if (addr >= multi_arena.list[index].low() and addr < multi_arena.list[index].high()) {
+            if (addr >= multi_arena.list[index].low() and
+                addr < multi_arena.list[index].high())
+            {
                 return index;
             }
         }
@@ -339,15 +320,15 @@ pub const DiscreteMultiArena = struct {
     pub fn high(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) usize {
         return multi_arena.list[index].high();
     }
-    pub fn instantiate(comptime multi_arena: DiscreteAddressSpaceSpec) type {
+    pub fn instantiate(comptime multi_arena: MultiArena) type {
         return GenericDiscreteAddressSpace(multi_arena);
     }
 };
 pub const RegularMultiArena = struct {
     lb_addr: u64 = 0,
     ab_addr: u64 = safe_zone,
-    xb_addr: u64 = (1 << shift_amt),
-    up_addr: u64 = (1 << shift_amt) -% safe_zone,
+    xb_addr: u64 = (1 << shift_amt) -% safe_zone,
+    up_addr: u64 = (1 << shift_amt),
     divisions: u64 = 8,
     alignment: u64 = page_size,
     options: ArenaOptions = .{},
@@ -402,24 +383,6 @@ pub const RegularMultiArena = struct {
         } else {
             @compileError("invalid sub address space spec");
         }
-    }
-    fn implementation(comptime multi_arena: MultiArena) Implementation(multi_arena) {
-        var tmp: Implementation(multi_arena) = .{};
-        for (multi_arena.subspace orelse
-            return tmp) |subspace|
-        {
-            for (blk: {
-                if (subspace.type == RegularMultiArena) {
-                    break :blk multi_arena.referSubRegular(meta.typeCast(subspace).arena());
-                }
-                if (subspace.type == DiscreteMultiArena) {
-                    break :blk multi_arena.referSubDiscrete(meta.typeCast(subspace).list);
-                }
-            }) |ref| {
-                tmp.set(ref.index);
-            }
-        }
-        return tmp;
     }
     pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
         return multi_arena.divisions;
@@ -494,11 +457,12 @@ pub fn isRegular(comptime multi_arena: anytype, comptime map_list: []const Arena
 ///     * Constructing the bit set fields can be expensive at compile time.
 pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type {
     return extern struct {
-        impl: Implementation align(8) = spec.implementation(),
+        impl: Implementation align(8) = defaultValue(spec),
         pub const DiscreteAddressSpace = @This();
         pub const Implementation: type = spec.Implementation();
         pub const Index: type = DiscreteAddressSpaceSpec.Index(spec);
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
+
         pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             const ret: bool = address_space.impl.check(index);
             if (ret) address_space.impl.unset(index);
@@ -549,7 +513,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
 ///       required by each arena from 1 to 8 bits.
 pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
     return extern struct {
-        impl: Implementation align(8) = spec.implementation(),
+        impl: Implementation align(8) = defaultValue(spec),
         pub const RegularAddressSpace = @This();
         pub const Index: type = meta.AlignSizeAW(builtin.ShiftAmount(u64));
         pub const Implementation: type = spec.Implementation();
@@ -690,6 +654,9 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 return debug.formatLengthRegular(address_space);
             }
         }
+        pub fn label() ?[]const u8 {
+            return AddressSpace.addr_spec.label;
+        }
         const debug = struct {
             const check_true: []const u8 = "[1]: ";
             const check_false: []const u8 = "[0]: ";
@@ -770,6 +737,34 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 return len;
             }
         };
+        comptime {
+            if (false and builtin.is_correct) {
+                if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
+                    var prev: usize = 0;
+                    for (AddressSpace.addr_spec.list) |item| {
+                        builtin.static.assertAboveOrEqual(usize, item.high(), item.low());
+                        builtin.static.assertAboveOrEqual(usize, item.high(), prev);
+                        prev = item.high();
+                    }
+                } else {
+                    builtin.static.assertAboveOrEqual(
+                        usize,
+                        AddressSpace.addr_spec.ab_addr,
+                        AddressSpace.addr_spec.lb_addr,
+                    );
+                    builtin.static.assertAboveOrEqual(
+                        usize,
+                        AddressSpace.addr_spec.xb_addr,
+                        AddressSpace.addr_spec.ab_addr,
+                    );
+                    builtin.static.assertAboveOrEqual(
+                        usize,
+                        AddressSpace.addr_spec.up_addr,
+                        AddressSpace.addr_spec.xb_addr,
+                    );
+                }
+            }
+        }
     };
 }
 pub fn generic(comptime any: anytype) meta.Generic {
@@ -796,4 +791,22 @@ fn GenericSubSpace(comptime ss: []const meta.Generic, comptime any: anytype) typ
             }
         },
     }
+}
+fn defaultValue(comptime multi_arena: anytype) multi_arena.Implementation() {
+    var tmp: multi_arena.Implementation() = .{};
+    for (multi_arena.subspace orelse
+        return tmp) |subspace|
+    {
+        for (blk: {
+            if (subspace.type == RegularMultiArena) {
+                break :blk multi_arena.referSubRegular(meta.typeCast(subspace).super());
+            }
+            if (subspace.type == DiscreteMultiArena) {
+                break :blk multi_arena.referSubDiscrete(meta.typeCast(subspace).list);
+            }
+        }) |ref| {
+            tmp.set(ref.index);
+        }
+    }
+    return tmp;
 }
