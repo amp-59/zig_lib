@@ -116,13 +116,17 @@ pub fn config(
 ) T {
     if (@hasDecl(root, symbol)) {
         return @field(root, symbol);
-    } else if (@hasDecl(@cImport({}), symbol)) {
+    }
+    if (@hasDecl(@cImport({}), symbol)) {
         const command = @field(@cImport({}), symbol);
         if (T == bool) {
             return @bitCast(T, @as(u1, command));
         }
         return command;
-    } else if (@typeInfo(@TypeOf(default)) == .Fn) {
+    }
+    if (@typeInfo(@TypeOf(default)) == .Fn and
+        @TypeOf(default) != T)
+    {
         return @call(.auto, default, .{});
     }
     return default;
@@ -932,7 +936,7 @@ pub fn pack64(h: u32, l: u32) u64 {
     return @bitCast(u64, U64{ .h = h, .l = l });
 }
 pub const debug = opaque {
-    const tos = fmt.ud;
+    pub const itos = config("itos", @TypeOf(fmt.ud), fmt.ud);
     const size: usize = 4096;
     const about_fault_p0_s: []const u8 = "fault:          ";
     const about_error_p0_s: []const u8 = "error:          ";
@@ -984,15 +988,15 @@ pub const debug = opaque {
     fn comparisonFailedString(comptime T: type, about: []const u8, symbol: []const u8, buf: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = writeMulti(buf, &[_][]const u8{
-            about,                  " failed test: ",
-            tos(T, arg1).readAll(), symbol,
-            tos(T, arg2).readAll(), notation,
+            about,                   " failed test: ",
+            itos(T, arg1).readAll(), symbol,
+            itos(T, arg2).readAll(), notation,
         });
         if (help_read) {
             if (arg1 > arg2) {
-                len += writeMulti(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                len += writeMulti(buf[len..], &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
             } else {
-                len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
+                len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
             }
         }
         return len;
@@ -1000,21 +1004,21 @@ pub const debug = opaque {
     fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: *[size]u8, arg1: U) u64 {
         const minimum: T = 0;
         return writeMulti(buf, &[_][]const u8{
-            about_fault_p0_s,           "integer cast truncated bits: ",
-            tos(U, arg1).readAll(),     " greater than " ++ @typeName(T) ++ " maximum (",
-            tos(T, ~minimum).readAll(), ")\n",
+            about_fault_p0_s,            "integer cast truncated bits: ",
+            itos(U, arg1).readAll(),     " greater than " ++ @typeName(T) ++ " maximum (",
+            itos(T, ~minimum).readAll(), ")\n",
         });
     }
     fn subCausedOverflowString(comptime T: type, about: []const u8, msg: *[size]u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
         len += writeMulti(msg, &[_][]const u8{
-            about,                  " integer overflow: ",
-            tos(T, arg1).readAll(), " - ",
-            tos(T, arg2).readAll(), endl,
+            about,                   " integer overflow: ",
+            itos(T, arg1).readAll(), " - ",
+            itos(T, arg2).readAll(), endl,
         });
         if (help_read) {
-            len += writeMulti(msg[len..], &[_][]const u8{ "0 - ", tos(T, arg2 -% arg1).readAll(), "\n" });
+            len += writeMulti(msg[len..], &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll(), "\n" });
         }
         return len;
     }
@@ -1022,41 +1026,41 @@ pub const debug = opaque {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
         len += writeMulti(msg, &[_][]const u8{
-            about,                  " integer overflow: ",
-            tos(T, arg1).readAll(), " + ",
-            tos(T, arg2).readAll(), endl,
+            about,                   " integer overflow: ",
+            itos(T, arg1).readAll(), " + ",
+            itos(T, arg2).readAll(), endl,
         });
         if (help_read) {
             const argl: T = ~@as(T, 0);
             const argr: T = (arg2 +% arg1) -% argl;
-            len += writeMulti(msg[len..], &[_][]const u8{ tos(T, argl).readAll(), " + ", tos(T, argr).readAll(), "\n" });
+            len += writeMulti(msg[len..], &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll(), "\n" });
         }
         return len;
     }
     fn mulCausedOverflowString(comptime T: type, about: []const u8, buf: *[size]u8, arg1: T, arg2: T) u64 {
         return writeMulti(buf, &[_][]const u8{
-            about,                  ": integer overflow: ",
-            tos(T, arg1).readAll(), " * ",
-            tos(T, arg2).readAll(), "\n",
+            about,                   ": integer overflow: ",
+            itos(T, arg1).readAll(), " * ",
+            itos(T, arg2).readAll(), "\n",
         });
     }
     fn exactDivisionWithRemainderString(comptime T: type, about: []const u8, buf: *[size]u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
         return writeMulti(buf, &[_][]const u8{
-            about,                       ": exact division had a remainder: ",
-            tos(T, arg1).readAll(),      "/",
-            tos(T, arg2).readAll(),      " == ",
-            tos(T, result).readAll(),    "r",
-            tos(T, remainder).readAll(), "\n",
+            about,                        ": exact division had a remainder: ",
+            itos(T, arg1).readAll(),      "/",
+            itos(T, arg2).readAll(),      " == ",
+            itos(T, result).readAll(),    "r",
+            itos(T, remainder).readAll(), "\n",
         });
     }
     fn incorrectAlignmentString(comptime Pointer: type, about: []const u8, buf: *[size]u8, address: usize, alignment: usize, remainder: u64) u64 {
         return writeMulti(buf, &[_][]const u8{
-            about,                                    ": incorrect alignment: ",
-            @typeName(Pointer),                       " align(",
-            tos(u64, alignment).readAll(),            "): ",
-            tos(u64, address).readAll(),              " == ",
-            tos(u64, address -% remainder).readAll(), "+",
-            tos(u64, remainder).readAll(),            "\n",
+            about,                                     ": incorrect alignment: ",
+            @typeName(Pointer),                        " align(",
+            itos(u64, alignment).readAll(),            "): ",
+            itos(u64, address).readAll(),              " == ",
+            itos(u64, address -% remainder).readAll(), "+",
+            itos(u64, remainder).readAll(),            "\n",
         });
     }
     fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U) noreturn {
@@ -1175,11 +1179,11 @@ pub const debug = opaque {
                 var msg: [size]u8 = undefined;
                 var len: u64 = 0;
                 for ([_][]const u8{
-                    @typeName(T),                ": exact division had a remainder: ",
-                    tos(T, arg1).readAll(),      "/",
-                    tos(T, arg2).readAll(),      " == ",
-                    tos(T, result).readAll(),    "r",
-                    tos(T, remainder).readAll(), "\n",
+                    @typeName(T),                 ": exact division had a remainder: ",
+                    itos(T, arg1).readAll(),      "/",
+                    itos(T, arg2).readAll(),      " == ",
+                    itos(T, result).readAll(),    "r",
+                    itos(T, remainder).readAll(), "\n",
                 }) |s| {
                     for (s) |c, i| msg[len +% i] = c;
                     len +%= s.len;
@@ -1199,12 +1203,12 @@ pub const debug = opaque {
                 var msg: [size]u8 = undefined;
                 var len: u64 = 0;
                 for ([_][]const u8{
-                    @typeName(T),                ": incorrect alignment: ",
-                    type_name,                   " align(",
-                    tos(T, alignment).readAll(), "): ",
-                    tos(T, address).readAll(),   " == ",
-                    tos(T, result).readAll(),    "+",
-                    tos(T, remainder).readAll(), "\n",
+                    @typeName(T),                 ": incorrect alignment: ",
+                    type_name,                    " align(",
+                    itos(T, alignment).readAll(), "): ",
+                    itos(T, address).readAll(),   " == ",
+                    itos(T, result).readAll(),    "+",
+                    itos(T, remainder).readAll(), "\n",
                 }) |s| {
                     for (s) |c, i| msg[len +% i] = c;
                     len +%= s.len;
@@ -1221,15 +1225,15 @@ pub const debug = opaque {
             comptime {
                 var buf: [size]u8 = undefined;
                 var len: u64 = writeMulti(&buf, &[_][]const u8{
-                    @typeName(T),           " assertion failed: ",
-                    tos(T, arg1).readAll(), symbol,
-                    tos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
+                    @typeName(T),            " assertion failed: ",
+                    itos(T, arg1).readAll(), symbol,
+                    itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
                 });
                 if (@min(arg1, arg2) > 10_000) {
                     if (arg1 > arg2) {
-                        len += writeMulti(buf[len..], &[_][]const u8{ tos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                        len += writeMulti(buf[len..], &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
                     } else {
-                        len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, tos(T, arg2 -% arg1).readAll(), "\n" });
+                        len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
                     }
                 }
                 @compileError(buf[0..len]);

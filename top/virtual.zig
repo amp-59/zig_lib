@@ -56,8 +56,8 @@ pub const Arena = struct {
     pub fn intersection(s_arena: Arena, t_arena: Arena) ?Arena {
         if (builtin.int2v(
             bool,
-            t_arena.up_addr - 1 < s_arena.lb_addr,
-            s_arena.up_addr - 1 < t_arena.lb_addr,
+            t_arena.up_addr -% 1 < s_arena.lb_addr,
+            s_arena.up_addr -% 1 < t_arena.lb_addr,
         )) {
             return null;
         }
@@ -80,7 +80,7 @@ pub const Arena = struct {
         return arena.up_addr;
     }
     pub fn capacity(arena: Arena) u64 {
-        return arena.up_addr - arena.lb_addr;
+        return arena.up_addr -% arena.lb_addr;
     }
 };
 // Maybe make generic on Endian.
@@ -100,9 +100,9 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
         const Index: type = meta.LeastRealBitSize(bits);
         pub fn indexitionToShiftAmount(index: Index) u8 {
             if (data_info == .Array) {
-                return builtin.sub(u8, word_size - 1, builtin.rem(u8, index, word_size));
+                return builtin.sub(u8, word_size -% 1, builtin.rem(u8, index, word_size));
             } else {
-                return builtin.sub(u8, data_info.Int.bits - 1, index);
+                return builtin.sub(u8, data_info.Int.bits -% 1, index);
             }
         }
         pub fn set(bit_set: *BitSet, index: Index) void {
@@ -230,13 +230,13 @@ pub const DiscreteMultiArena = struct {
         var arena_index: Index(multi_arena) = 0;
         for (multi_arena.list) |super_arena, index| {
             if (thread_safe_state and !super_arena.options.thread_safe) {
-                const T: type = ThreadSafeSet(arena_index + 1);
-                fields = meta.concat(builtin.StructField, fields, meta.structField(T, builtin.fmt.ci(fields.len), .{}));
+                const T: type = ThreadSafeSet(arena_index +% 1);
+                fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else if (!thread_safe_state and super_arena.options.thread_safe) {
-                const T: type = DiscreteBitSet(arena_index + 1);
-                fields = meta.concat(builtin.StructField, fields, meta.structField(T, builtin.fmt.ci(fields.len), .{}));
+                const T: type = DiscreteBitSet(arena_index +% 1);
+                fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else {
@@ -246,11 +246,11 @@ pub const DiscreteMultiArena = struct {
             thread_safe_state = super_arena.options.thread_safe;
         }
         if (thread_safe_state) {
-            const T: type = ThreadSafeSet(arena_index + 1);
-            fields = meta.concat(builtin.StructField, fields, meta.structField(T, builtin.fmt.ci(fields.len), .{}));
+            const T: type = ThreadSafeSet(arena_index +% 1);
+            fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         } else {
-            const T: type = DiscreteBitSet(arena_index + 1);
-            fields = meta.concat(builtin.StructField, fields, meta.structField(T, builtin.fmt.ci(fields.len), .{}));
+            const T: type = DiscreteBitSet(arena_index +% 1);
+            fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         }
         if (fields.len == 1) {
             return fields[0].type;
@@ -261,35 +261,35 @@ pub const DiscreteMultiArena = struct {
     }
     fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
-        const max_index: Index(multi_arena) = multi_arena.invert(sub_arena.high() - 1);
-        const min_index: Index(multi_arena) = multi_arena.invert(sub_arena.low());
-        var s_index: Index(multi_arena) = min_index;
-        while (s_index <= max_index) : (s_index += 1) {
-            map_list = meta.concat(ArenaReference, map_list, .{
-                .index = s_index,
-                .options = multi_arena.list[s_index].options,
-            });
+        var s_index: Index(multi_arena) = 0;
+        while (s_index <= multi_arena.list.len) : (s_index += 1) {
+            const super_arena: Arena = multi_arena.list[s_index];
+            if (super_arena.low() > sub_arena.high()) {
+                break;
+            }
+            @compileLog(arena);
+            if (super_arena.intersection(sub_arena) != null) {
+                map_list = map_list ++ [1]ArenaReference{.{
+                    .index = s_index,
+                    .options = multi_arena.list[s_index].options,
+                }};
+            }
         }
         return map_list;
     }
     fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
         var t_index: comptime_int = 0;
-        lo: while (t_index != sub_list.len) : (t_index += 1) {
-            var capacity: usize = 0;
+        while (t_index != sub_list.len) : (t_index += 1) {
             var s_index: Index(multi_arena) = 0;
             while (s_index != multi_arena.list.len) : (s_index += 1) {
                 const s_arena: Arena = multi_arena.list[s_index];
                 const t_arena: Arena = sub_list[t_index];
-                if (s_arena.intersection(t_arena)) |x_arena| {
-                    map_list = meta.concat(ArenaReference, map_list, .{
+                if (s_arena.intersection(t_arena) != null) {
+                    map_list = map_list ++ [1]ArenaReference{.{
                         .index = s_index,
                         .options = multi_arena.list[s_index].options,
-                    });
-                    capacity += x_arena.capacity();
-                }
-                if (capacity == sub_list[t_index].capacity()) {
-                    continue :lo;
+                    }};
                 }
             }
         }
@@ -343,16 +343,11 @@ pub const DiscreteMultiArena = struct {
         return GenericDiscreteAddressSpace(multi_arena);
     }
 };
-/// |    |--------|-------------|-------------|-------------|---------|    |
-/// ^~~~~         ^
-/// |             |
-///
-///
 pub const RegularMultiArena = struct {
     lb_addr: u64 = 0,
     ab_addr: u64 = safe_zone,
     xb_addr: u64 = (1 << shift_amt),
-    up_addr: u64 = (1 << shift_amt) - safe_zone,
+    up_addr: u64 = (1 << shift_amt) -% safe_zone,
     divisions: u64 = 8,
     alignment: u64 = page_size,
     options: ArenaOptions = .{},
@@ -361,7 +356,7 @@ pub const RegularMultiArena = struct {
 
     pub const MultiArena = @This();
     const page_size: u16 = 4096;
-    const shift_amt: u16 = @min(48, @bitSizeOf(usize)) - 1;
+    const shift_amt: u16 = @min(48, @bitSizeOf(usize)) -% 1;
     const safe_zone: u64 = 0x40000000;
 
     fn Index(comptime multi_arena: MultiArena) type {
@@ -393,7 +388,7 @@ pub const RegularMultiArena = struct {
     }
     fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
-        var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len - 1].high());
+        var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len -% 1].high());
         var min_index: Index(multi_arena) = multi_arena.invert(sub_list[0].low());
         var s_index: Index(multi_arena) = min_index;
         while (s_index <= max_index) : (s_index += 1) {
@@ -436,13 +431,13 @@ pub const RegularMultiArena = struct {
         return capacityAll(multi_arena) / multi_arena.divisions;
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
-        return @intCast(Index(multi_arena), (addr - multi_arena.lb_addr) / capacityEach(multi_arena));
+        return @intCast(Index(multi_arena), (addr -% multi_arena.lb_addr) / capacityEach(multi_arena));
     }
     pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) usize {
-        return @max(multi_arena.ab_addr, multi_arena.lb_addr + capacityEach(multi_arena) * index);
+        return @max(multi_arena.ab_addr, multi_arena.lb_addr +% capacityEach(multi_arena) * index);
     }
     pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) usize {
-        return @min(multi_arena.xb_addr, multi_arena.lb_addr + capacityEach(multi_arena) * (index + 1));
+        return @min(multi_arena.xb_addr, multi_arena.lb_addr +% capacityEach(multi_arena) * (index +% 1));
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
         return GenericRegularAddressSpace(multi_arena);
@@ -560,10 +555,10 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub const Implementation: type = spec.Implementation();
         pub const addr_spec: RegularAddressSpaceSpec = spec;
         const capacity: usize = blk: {
-            const mask: usize = spec.alignment - 1;
+            const mask: usize = spec.alignment -% 1;
             const value: usize = spec.capacity() / spec.divisions;
             @compileLog(value);
-            break :blk (value + mask) & ~mask;
+            break :blk (value +% mask) & ~mask;
         };
         pub fn unset(address_space: *RegularAddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.check(index);
@@ -605,9 +600,9 @@ pub const StaticAddressSpace = extern struct {
     const alignment: u64 = 4096;
     const max_bit: u64 = 1 << 47;
     const len: u64 = blk: {
-        const mask: u64 = alignment - 1;
+        const mask: u64 = alignment -% 1;
         const value: u64 = max_bit / divisions;
-        break :blk (value + mask) & ~mask;
+        break :blk (value +% mask) & ~mask;
     };
     pub const Index: type = u8;
     pub fn bitMask(index: Index) u64 {
@@ -660,7 +655,7 @@ pub const StaticAddressSpace = extern struct {
         return @max(0x40000000, len * index);
     }
     pub fn high(index: Index) u64 {
-        return len * (index + 1);
+        return len * (index +% 1);
     }
     pub fn arena(comptime index: Index) Arena {
         return .{
