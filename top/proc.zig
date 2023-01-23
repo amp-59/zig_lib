@@ -363,7 +363,7 @@ pub const CloneSpec = struct {
     }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
-pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.options.args_type, vars: spec.vars_type) spec.Unwrapped(.execve) {
+pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) spec.Unwrapped(.execve) {
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
@@ -376,7 +376,7 @@ pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.optio
         return execve_error;
     }
 }
-pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.options.args_type, vars: spec.vars_type) spec.Unwrapped(.execveat) {
+pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) spec.Unwrapped(.execveat) {
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: Execute = spec.flags();
