@@ -10,7 +10,7 @@ pub const ListSpec = struct {
     low_alignment: ?u64,
     Allocator: type,
 };
-pub fn XorLinkedListAdv(comptime spec: ListSpec) type {
+pub fn GenericLinkedList(comptime spec: ListSpec) type {
     return struct {
         links: Links,
         count: u64,
