@@ -129,7 +129,7 @@ const Export = struct {
     body: Span,
     jumps: ?FixedJumpList,
 };
-const Exports = mem.XorLinkedListAdv(.{
+const Exports = mem.GenericLinkedList(.{
     .child = Export,
     .low_alignment = 8,
     .Allocator = Allocator,
