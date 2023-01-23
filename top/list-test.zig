@@ -51,7 +51,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
 });
 const Allocator = Allocator0;
-const LinkedList = mem.XorLinkedListAdv(.{
+const LinkedList = mem.GenericLinkedList(.{
     .child = T,
     .low_alignment = 8,
     .Allocator = Allocator0,
