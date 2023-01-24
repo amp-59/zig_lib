@@ -1044,8 +1044,8 @@ const debug = opaque {
     pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
         var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
-        len += builtin.debug.write(buf[len..], about_execve_0_s);
-        len += builtin.debug.write(buf[len..], filename);
+        len += builtin.debug.writeMany(buf[len..], about_execve_0_s);
+        len += builtin.debug.writeMany(buf[len..], filename);
         buf[len] = ' ';
         len += 1;
         var argc: u16 = @intCast(u16, args.len);
