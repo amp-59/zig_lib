@@ -480,6 +480,15 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
             builtin.static.assert(spec.list[index].options.thread_safe);
             return address_space.impl.atomicSet(index);
         }
+        pub fn low(comptime index: Index) usize {
+            return spec.low(index);
+        }
+        pub fn high(comptime index: Index) usize {
+            return spec.high(index);
+        }
+        pub fn arena(comptime index: Index) Arena {
+            return spec.arena(index);
+        }
         pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
     };
 }
@@ -518,12 +527,20 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
             return spec.options.thread_safe and address_space.impl.atomicSet(index);
         }
+        pub fn low(index: Index) usize {
+            return spec.low(index);
+        }
+        pub fn high(index: Index) usize {
+            return spec.high(index);
+        }
+        pub fn arena(index: Index) Arena {
+            return spec.arena(index);
+        }
         pub usingnamespace GenericAddressSpace(RegularAddressSpace);
     };
 }
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
-        const Index = AddressSpace.Index;
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
             if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
                 return debug.formatWriteDiscrete(address_space, array);
@@ -541,33 +558,12 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
         pub fn label() ?[]const u8 {
             return AddressSpace.addr_spec.label;
         }
+        pub fn invert(addr: u64) AddressSpace.Index {
+            return AddressSpace.addr_spec.invert(addr);
+        }
         pub fn SubSpace(comptime label_or_index: anytype) type {
             return GenericSubSpace(AddressSpace.addr_spec.subspace.?, label_or_index);
         }
-        pub usingnamespace if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec)
-            struct {
-                pub fn low(comptime index: Index) usize {
-                    return AddressSpace.addr_spec.low(index);
-                }
-                pub fn high(comptime index: Index) usize {
-                    return AddressSpace.addr_spec.high(index);
-                }
-                pub fn arena(comptime index: Index) Arena {
-                    return AddressSpace.addr_spec.arena(index);
-                }
-            }
-        else
-            struct {
-                pub fn low(index: Index) usize {
-                    return AddressSpace.addr_spec.low(index);
-                }
-                pub fn high(index: Index) usize {
-                    return AddressSpace.addr_spec.high(index);
-                }
-                pub fn arena(index: Index) Arena {
-                    return AddressSpace.addr_spec.arena(index);
-                }
-            };
         const debug = struct {
             const check_true: []const u8 = "[1]: ";
             const check_false: []const u8 = "[0]: ";
