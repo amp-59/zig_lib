@@ -1,4 +1,4 @@
-pub const build = if (true) @import("build/build-aux.zig").main else main;
+pub const build = if (false) @import("build/build-aux.zig").main else main;
 pub const srg = @import("./zig_lib.zig");
 const mem = srg.mem;
 const meta = srg.meta;
@@ -36,6 +36,24 @@ const small_test_args = .{
     .build_mode = .ReleaseSmall,
     .packages = packages,
 };
+const lib_parser_args = .{
+    .is_correct = false,
+    .is_verbose = false,
+    .is_silent = true,
+    .build_mode = .ReleaseSmall,
+    .macros = parsedir_lib_macros,
+    .packages = packages,
+};
+const std_parser_args = .{
+    .is_correct = false,
+    .is_verbose = false,
+    .is_silent = true,
+    .build_mode = .ReleaseFast,
+    .macros = parsedir_std_macros,
+    .packages = packages,
+};
+const parsedir_std_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = "\"std\"" }});
+const parsedir_lib_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = "\"lib\"" }});
 
 pub fn main(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("builtin_test", "top/builtin-test.zig", minor_test_args);
@@ -50,7 +68,6 @@ pub fn main(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("virtual_test", "top/virtual-test.zig", minor_test_args);
 
     // More complete test programs:
-    _ = ctx.addExecutable("buildgen", "test/buildgen.zig", small_test_args);
     _ = ctx.addExecutable("mca", "test/mca.zig", fast_test_args);
     _ = ctx.addExecutable("treez", "test/treez.zig", small_test_args);
     _ = ctx.addExecutable("itos", "test/itos.zig", small_test_args);
@@ -59,12 +76,19 @@ pub fn main(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("readelf", "test/readelf.zig", minor_test_args);
     _ = ctx.addExecutable("parsedir", "test/parsedir.zig", fast_test_args);
 
+    // Generators:
+    _ = ctx.addExecutable("builder_gen", "top/builder-gen.zig", small_test_args);
+
     // Other test programs:
     _ = ctx.addExecutable("impl_test", "top/impl-test.zig", .{});
     _ = ctx.addExecutable("container_test", "top/container-test.zig", .{});
     _ = ctx.addExecutable("parse_test", "top/parse-test.zig", .{});
 
+    _ = ctx.addExecutable("lib_parser", "./test/parsedir.zig", lib_parser_args);
+    _ = ctx.addExecutable("std_parser", "./test/parsedir.zig", std_parser_args);
+
     // Examples
-    _ = ctx.addExecutable("readdir", "examples/iterate_dir_entries.zig", minor_test_args);
-    _ = ctx.addExecutable("dynamic", "examples/dynamic_alloc.zig", minor_test_args);
+    _ = ctx.addExecutable("readdir", "examples/iterate_dir_entries.zig", small_test_args);
+    _ = ctx.addExecutable("dynamic", "./examples/dynamic_alloc.zig", small_test_args);
+    _ = ctx.addExecutable("address_space", "./examples/custom_address_space.zig", small_test_args);
 }
