@@ -14,19 +14,19 @@ pub const Allocator = struct {
         .errors = preset.allocator.errors.uniform,
     });
     pub const Error = mem.GenericArenaAllocator(.{
-        .arena_index = 8,
+        .arena_index = 1,
         .options = preset.allocator.options.small,
         .logging = preset.allocator.logging.silent,
         .errors = preset.allocator.errors.uniform,
     });
     pub const Extra = mem.GenericArenaAllocator(.{
-        .arena_index = 16,
+        .arena_index = 2,
         .options = preset.allocator.options.small,
         .logging = preset.allocator.logging.silent,
         .errors = preset.allocator.errors.uniform,
     });
     pub const State = mem.GenericArenaAllocator(.{
-        .arena_index = 24,
+        .arena_index = 3,
         .options = preset.allocator.options.small,
         .logging = preset.allocator.logging.silent,
         .errors = preset.allocator.errors.uniform,
