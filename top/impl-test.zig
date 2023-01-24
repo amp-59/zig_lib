@@ -150,10 +150,10 @@ const RWAddresses = extern struct {
     const Offsets = RWOffsets;
     fn init(any_rw_impl: anytype) Addresses {
         return .{
-            .low = any_rw_impl.low(),
-            .start = any_rw_impl.start(),
-            .finish = any_rw_impl.finish(),
-            .high = any_rw_impl.high(),
+            .low = any_rw_impl.allocated_byte_address(),
+            .start = any_rw_impl.aligned_byte_address(),
+            .finish = any_rw_impl.unwritable_byte_address(),
+            .high = any_rw_impl.unallocated_byte_address(),
         };
     }
     fn alignedBytes(addresses: Addresses) u64 {
@@ -318,7 +318,7 @@ const RWDValues = extern struct {
             const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
             array.writeFormat(src_fmt);
             _ = values;
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 file.noexcept.write(2, array.readAll());
             }
         }
@@ -328,7 +328,7 @@ const RWDValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showWithReferenceWrite(t_values.addresses, &array);
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -339,7 +339,7 @@ const RWDValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showTwo(t_values.addresses, &array);
             s_values.offsets.showTwo(t_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -350,7 +350,7 @@ const RWDValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showFour(t_values.addresses, u_values.addresses, v_values.addresses, &array);
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -422,7 +422,7 @@ const RWPPDValues = extern struct {
             var array: PrintArray = .{};
             array.writeFormat(src_fmt);
             _ = values;
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 file.noexcept.write(2, array.readAll());
             }
         }
@@ -432,7 +432,7 @@ const RWPPDValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showWithReferenceWrite(t_values.addresses, &array);
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -443,7 +443,7 @@ const RWPPDValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showTwo(t_values.addresses, &array);
             s_values.offsets.showTwo(t_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -454,7 +454,7 @@ const RWPPDValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showFour(t_values.addresses, u_values.addresses, v_values.addresses, &array);
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -487,7 +487,7 @@ pub const RWPPXValues = extern struct {
             array.writeFormat(src_fmt);
             values.addresses.show();
             values.offsets.show();
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 file.noexcept.write(2, array.readAll());
             }
         }
@@ -497,7 +497,7 @@ pub const RWPPXValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showWithReferenceWrite(t_values.addresses, &array);
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -508,7 +508,7 @@ pub const RWPPXValues = extern struct {
             array.writeFormat(src_fmt);
             s_values.addresses.showFour(t_values.addresses, u_values.addresses, v_values.addresses, &array);
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
-            if (array.impl.length() != src_fmt.formatLength()) {
+            if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
                 file.noexcept.write(2, array.readAll());
             }
@@ -525,14 +525,14 @@ pub fn RWSTestPair(comptime impl_type: type) type {
         fn memoise(impl: impl_type, n_amt: mem.Amount) Values {
             const ret: Values = .{
                 .offsets = .{
-                    .bytes = impl.bytes(),
-                    .capacity = impl.capacity(),
+                    .bytes = impl.allocated_byte_count(),
+                    .capacity = impl.writable_byte_count(),
                 },
                 .addresses = .{
-                    .low = impl.low(),
-                    .start = impl.start(),
-                    .finish = impl.finish(),
-                    .high = impl.high(),
+                    .low = impl.allocated_byte_address(),
+                    .start = impl.aligned_byte_address(),
+                    .finish = impl.unwritable_byte_address(),
+                    .high = impl.unallocated_byte_address(),
                 },
                 .count = mem.amountToCountOfLength(n_amt, impl_type.high_alignment),
             };
@@ -557,7 +557,7 @@ pub fn RWSTestPair(comptime impl_type: type) type {
             defer allocator.deallocateMany(Dummy, dummy);
             if (is_verbose) announceAnalysis(impl_type);
             const impl: impl_type = try meta.wrap(allocator.allocateStatic(impl_type, .{ .count = 1 }));
-            sys.noexcept.getrandom(impl.start(), impl.capacity(), sys.GRND.RANDOM);
+            sys.noexcept.getrandom(impl.aligned_byte_address(), impl.writable_byte_count(), sys.GRND.RANDOM);
             const values: Values = memoise(impl, .{ .count = 1 });
             return construct(impl, values);
         }
@@ -592,17 +592,17 @@ pub fn RWPPSTestPair(comptime impl_type: type) type {
         fn memoise(impl: impl_type, n_amt: mem.Amount) Values {
             const ret: Values = .{
                 .addresses = .{
-                    .low = impl.low(),
-                    .start = impl.start(),
-                    .next = impl.next(),
-                    .finish = impl.finish(),
-                    .high = impl.high(),
+                    .low = impl.allocated_byte_address(),
+                    .start = impl.aligned_byte_address(),
+                    .next = impl.undefined_byte_address(),
+                    .finish = impl.unwritable_byte_address(),
+                    .high = impl.unallocated_byte_address(),
                 },
                 .offsets = .{
-                    .bytes = impl.bytes(),
-                    .capacity = impl.capacity(),
-                    .length = impl.length(),
-                    .available = impl.available(),
+                    .bytes = impl.allocated_byte_count(),
+                    .capacity = impl.writable_byte_count(),
+                    .length = impl.defined_byte_count(),
+                    .available = impl.undefined_byte_count(),
                 },
                 .count = mem.amountToCountOfLength(n_amt, impl_type.high_alignment),
             };
@@ -671,14 +671,14 @@ pub fn RWDTestPair(comptime impl_type: type) type {
         fn memoise(impl: impl_type, n_amt: mem.Amount) Values {
             const ret: Values = .{
                 .offsets = .{
-                    .bytes = impl.bytes(),
-                    .capacity = impl.capacity(),
+                    .bytes = impl.allocated_byte_count(),
+                    .capacity = impl.writable_byte_count(),
                 },
                 .addresses = .{
-                    .low = impl.low(),
-                    .start = impl.start(),
-                    .finish = impl.finish(),
-                    .high = impl.high(),
+                    .low = impl.allocated_byte_address(),
+                    .start = impl.aligned_byte_address(),
+                    .finish = impl.unwritable_byte_address(),
+                    .high = impl.unallocated_byte_address(),
                 },
                 .count = mem.amountToCountOfLength(n_amt, impl_type.high_alignment),
             };
@@ -740,17 +740,17 @@ pub fn RWPPDTestPair(comptime impl_type: type) type {
         fn memoise(impl: impl_type, n_amt: mem.Amount) Values {
             const ret: Values = .{
                 .addresses = .{
-                    .low = impl.low(),
-                    .start = impl.start(),
-                    .next = impl.next(),
-                    .finish = impl.finish(),
-                    .high = impl.high(),
+                    .low = impl.allocated_byte_address(),
+                    .start = impl.aligned_byte_address(),
+                    .next = impl.undefined_byte_address(),
+                    .finish = impl.unwritable_byte_address(),
+                    .high = impl.unallocated_byte_address(),
                 },
                 .offsets = .{
-                    .bytes = impl.bytes(),
-                    .capacity = impl.capacity(),
-                    .length = impl.length(),
-                    .available = impl.available(),
+                    .bytes = impl.allocated_byte_count(),
+                    .capacity = impl.writable_byte_count(),
+                    .length = impl.defined_byte_count(),
+                    .available = impl.undefined_byte_count(),
                 },
                 .count = mem.amountToCountOfLength(n_amt, impl_type.high_alignment),
             };
@@ -820,17 +820,17 @@ pub fn RWPPXTestPair(comptime impl_type: type) type {
         fn memoise(impl: impl_type, allocator: Allocator0) Values {
             return .{
                 .addresses = .{
-                    .low = impl.low(allocator),
-                    .start = impl.start(allocator),
-                    .next = impl.next(),
-                    .finish = impl.finish(allocator),
-                    .high = impl.high(allocator),
+                    .low = impl.allocated_byte_address(allocator),
+                    .start = impl.aligned_byte_address(allocator),
+                    .next = impl.undefined_byte_address(),
+                    .finish = impl.unwritable_byte_address(allocator),
+                    .high = impl.unallocated_byte_address(allocator),
                 },
                 .offsets = .{
-                    .bytes = impl.bytes(allocator),
-                    .capacity = impl.capacity(allocator),
-                    .length = impl.length(allocator),
-                    .available = impl.available(allocator),
+                    .bytes = impl.allocated_byte_count(allocator),
+                    .capacity = impl.writable_byte_count(allocator),
+                    .length = impl.defined_byte_count(allocator),
+                    .available = impl.undefined_byte_count(allocator),
                 },
             };
         }
@@ -848,7 +848,7 @@ pub fn RWPPXTestPair(comptime impl_type: type) type {
         }
         pub fn analyse(pair: *Pair, allocator: *Allocator0) !void {
             defer pair.testDeallocateOperation(allocator);
-            const next_unallocated_byte_address: u64 = allocator.next();
+            const next_unallocated_byte_address: u64 = allocator.unallocated_byte_address();
             defer allocator.ub_addr = next_unallocated_byte_address;
             const values_0: Values = pair.testDefineOperation(allocator.*);
             pair.values.assertConsistent();
@@ -1112,7 +1112,7 @@ fn analyseRWPPDynamicReference(allocator: *Allocator0, comptime impl_type: type)
     try pair.analyse(allocator);
 }
 fn analyseDynamicReferences(allocator: *Allocator0, mode: ModeSet, structure: StructureSet) !void {
-    const next: u64 = allocator.next();
+    const next: u64 = allocator.unallocated_byte_address();
     defer allocator.ub_addr = next;
     @setEvalBranchQuota(5_000);
     inline for (dynamic_impl_types) |impl_type| {
