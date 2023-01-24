@@ -1,14 +1,12 @@
 //! start
-const srg = @import("zig_lib");
-const mem = srg.mem;
-const sys = srg.sys;
-const fmt = srg.fmt;
-const proc = srg.proc;
-const file = srg.file;
-const meta = srg.meta;
-const preset = srg.preset;
-const builtin = srg.builtin;
 // start-document builder-struct.zig
+const sys = @import("./sys.zig");
+const mem = @import("./mem.zig");
+const file = @import("./file.zig");
+const meta = @import("./meta.zig");
+const proc = @import("./proc.zig");
+const preset = @import("./preset.zig");
+const builtin = @import("./builtin.zig");
 const fmt_spec: mem.ReinterpretSpec = blk: {
     var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
     tmp.integral = .{ .format = .dec };
@@ -38,6 +36,38 @@ pub const BuildCmd = struct {
     cmd: enum { exe, lib, obj, fmt, ast_check, run },
     root: Path,
     _: void,
+    fn buildLength(build: Builder) u64 {
+        var len: u64 = "zig\x00".len;
+        switch (build.cmd) {
+            .lib, .exe, .obj => {
+                len += "build-".len + @tagName(build.cmd).len + 1;
+            },
+            .fmt, .ast_check, .run => {
+                len += @tagName(build.cmd).len + 1;
+            },
+        }
+        _ = buildLength;
+        len +%= build.root.len + 1;
+        return len;
+    }
+    fn buildWrite(build: Builder, array: anytype) u64 {
+        array.writeMany("zig\x00");
+        switch (build.cmd) {
+            .lib, .exe, .obj => {
+                array.writeMany("build-");
+                array.writeMany(@tagName(build.cmd));
+                array.writeOne('\x00');
+            },
+            .fmt, .ast_check, .run => {
+                array.writeMany(@tagName(build.cmd));
+                array.writeOne('\x00');
+            },
+        }
+        _ = buildWrite;
+        array.writeFormat(build.root);
+        array.writeOne('\x00');
+        return countArgs(array);
+    }
     pub fn allocateExec(build: Builder, vars: [][*:0]u8, allocator: *Allocator) !u64 {
         var array: String = try meta.wrap(String.init(allocator, build.buildLength()));
         defer array.deinit(allocator);
@@ -310,6 +340,7 @@ fn Args(comptime name: [:0]const u8) type {
         is_correct: ?bool = null,
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
+        is_silent: ?bool = null,
         is_tolerant: ?bool = null,
         define_build_root: bool = true,
         define_build_working_directory: bool = true,
