@@ -54,7 +54,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             blk: Block,
             pub fn list(itr: Iterator) ListView {
                 return .{
-                    .links = .{ .major = itr.blk.start(), .minor = itr.blk.start() + 48 },
+                    .links = .{ .major = itr.blk.aligned_byte_address(), .minor = itr.blk.aligned_byte_address() + 48 },
                     .count = itr.count,
                     .index = 0,
                 };
@@ -185,8 +185,8 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             /// or copying. '..' directory sacrificed to make room for the list
             /// sentinel node. Do not touch.
             pub fn interleaveXorListNodes(dir: DirStream) u64 {
-                const s_lb_addr: u64 = rectifyEntryOrder(dir.blk.start());
-                const s_up_addr: u64 = dir.blk.next();
+                const s_lb_addr: u64 = rectifyEntryOrder(dir.blk.aligned_byte_address());
+                const s_up_addr: u64 = dir.blk.undefined_byte_address();
                 const t_node_addr: u64 = nextAddress(s_lb_addr);
                 var s_node_addr: u64 = s_lb_addr;
                 var p_node_addr: u64 = 0;
@@ -227,11 +227,14 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         };
         pub var disordered: u64 = 0;
         pub fn entry(dir: *DirStream) *file.DirectoryEntry {
-            return @intToPtr(*file.DirectoryEntry, dir.blk.start());
+            return @intToPtr(*file.DirectoryEntry, dir.blk.aligned_byte_address());
         }
         pub fn list(dir: *DirStream) ListView {
             return .{
-                .links = .{ .major = dir.blk.start(), .minor = dir.blk.start() + 48 },
+                .links = .{
+                    .major = dir.blk.aligned_byte_address(),
+                    .minor = dir.blk.aligned_byte_address() + 48,
+                },
                 .count = dir.count,
                 .index = 0,
             };
@@ -242,24 +245,24 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         fn read(dir: *const DirStream) !u64 {
             return sys.getdents(
                 dir.fd,
-                dir.blk.next(),
-                dir.blk.available(),
+                dir.blk.undefined_byte_address(),
+                dir.blk.undefined_byte_count(),
             );
         }
         fn grow(dir: *DirStream, allocator: *Allocator) !void {
-            const s_bytes: u64 = dir.blk.capacity();
+            const s_bytes: u64 = dir.blk.writable_byte_count();
             const t_bytes: u64 = s_bytes * 2;
             const s_impl: Block = dir.blk;
             try meta.wrap(allocator.resizeManyAbove(Block, &dir.blk, .{ .bytes = t_bytes }));
-            clear(s_impl.finish(), dir.blk.finish() - s_impl.finish());
+            clear(s_impl.unwritable_byte_address(), dir.blk.unwritable_byte_address() - s_impl.unwritable_byte_address());
         }
         fn shrink(dir: *DirStream, allocator: *Allocator) !void {
-            const t_bytes: u64 = mach.alignA(dir.blk.length() + 48, 8);
+            const t_bytes: u64 = mach.alignA(dir.blk.defined_byte_count() + 48, 8);
             allocator.resizeManyBelow(Block, &dir.blk, .{ .bytes = t_bytes });
         }
         fn readAll(dir: *DirStream, allocator: *Allocator) !void {
             dir.blk.define(try dir.read());
-            while (dir.blk.available() < 528) {
+            while (dir.blk.undefined_byte_count() < 528) {
                 try dir.grow(allocator);
                 dir.blk.define(try dir.read());
             }
@@ -270,7 +273,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !DirStream {
             const fd: u64 = try file.openAt(dir_open_spec, dirfd orelse sys.S.AT_FDCWD, name);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
-            clear(blk.start(), dir_spec.initial_size);
+            clear(blk.aligned_byte_address(), dir_spec.initial_size);
             var ret: DirStream = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
                 try ret.readAll(allocator);
@@ -283,7 +286,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         pub fn init(allocator: *Allocator, pathname: [:0]const u8) !DirStream {
             const fd: u64 = try file.open(dir_open_spec, pathname);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
-            clear(blk.start(), dir_spec.initial_size);
+            clear(blk.aligned_byte_address(), dir_spec.initial_size);
             var ret: DirStream = .{ .path = pathname, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
                 try ret.readAll(allocator);
