@@ -890,6 +890,14 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) spec.Re
     };
     return st;
 }
+/// Returns a pointer to the end of the file. In terms of library containers:
+/// ```zig
+/// struct {
+///     lb_addr: u64 = addr,
+///     ub_addr: u64 = addr + st.size,
+///     up_addr: u64 = alignAbove(addr + st.size, page_size),
+/// };
+/// ```
 pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Replaced(.mmap, u64) {
     const flags: mem.Map = spec.flags();
     const prot: mem.Prot = spec.prot();
