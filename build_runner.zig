@@ -5,7 +5,6 @@ const sys = srg.sys;
 const proc = srg.proc;
 const file = srg.file;
 const meta = srg.meta;
-const opts = srg.opts;
 const preset = srg.preset;
 const builder = srg.builder;
 const testing = srg.testing;
