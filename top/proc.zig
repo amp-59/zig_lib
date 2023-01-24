@@ -1190,7 +1190,6 @@ const debug = opaque {
         builtin.debug.write(buf[0..len]);
     }
 };
-
 // Common utility functions:
 fn strlen(s: [*:0]const u8) u64 {
     var len: u64 = 0;
