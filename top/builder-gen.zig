@@ -1054,19 +1054,20 @@ fn srcString(comptime count: usize, comptime pathname: [:0]const u8) !mem.Static
     ret.define(try file.read(fd, ret.referAllUndefined(), count));
     return ret;
 }
-
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opt_map);
+
     const members_loc_token: []const u8 = "_: void,";
     const len_fn_body_loc_token: []const u8 = "_ = buildLength;";
     const write_fn_body_loc_token: []const u8 = "_ = buildWrite;";
-
     var address_space: AddressSpace = .{};
+
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
     var array: String = String.init(&allocator);
+
     try array.increment(&allocator, @embedFile("./builder.zig").len);
     defer array.deinit(&allocator);
 
@@ -1075,7 +1076,6 @@ pub fn main(args_in: [][*:0]u8) !void {
     const guess_k: u64 = 2289;
 
     const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/builder-template.zig");
-
     try mem.acquire(.{}, AddressSpace, &address_space, 1);
     const arena_1: mem.Arena = AddressSpace.arena(1);
 
@@ -1084,10 +1084,8 @@ pub fn main(args_in: [][*:0]u8) !void {
     const up_addr: u64 = mach.alignA64(ub_addr, 4096);
 
     const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
-
     const builder_src: []const u8 = subTemplate(template_src, "builder-struct.zig").?;
     const types_src: []const u8 = subTemplate(template_src, "builder-types.zig").?;
-
     const members_offset: u64 = try guessSourceOffset(builder_src, members_loc_token, guess_i);
     const length_fn_body_offset: u64 = try guessSourceOffset(builder_src, len_fn_body_loc_token, guess_j);
     const write_fn_body_offset: u64 = try guessSourceOffset(builder_src, write_fn_body_loc_token, guess_k);
