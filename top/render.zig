@@ -1089,7 +1089,7 @@ pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
 
         const Format = @This();
         const Values = meta.Return(Struct.readAll);
-        const ValuesFormat = PointerSliceFormat(Values, values_spec);
+        const ValuesFormat = PointerSliceFormat(values_spec, Values);
 
         const values_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
