@@ -7,7 +7,6 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
-
 const types = @import("./builder-template.zig");
 
 pub usingnamespace proc.start;
@@ -16,9 +15,13 @@ pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_verbose: bool = false;
 pub const is_correct: bool = false;
 
+const Variant = enum {
+    length,
+    write,
+};
+
 const use_function_type: bool = false;
 const initial_indent: u64 = if (use_function_type) 2 else 1;
-
 const alloc_options = .{
     .count_allocations = false,
     .require_filo_free = false,
@@ -31,7 +34,6 @@ const alloc_logging = .{
     .unmap = builtin.Logging.silent,
     .remap = builtin.Logging.silent,
 };
-
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 24,
     .options = alloc_options,
@@ -44,7 +46,6 @@ const Allocator1 = mem.GenericArenaAllocator(.{
 });
 const String = Allocator.StructuredHolder(u8);
 const String1 = Allocator1.StructuredHolder(u8);
-
 const create_spec: file.CreateSpec = .{
     .options = .{
         .write = .truncate,
@@ -71,7 +72,6 @@ pub const OptionSpec = struct {
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?*const OptionSpec = null,
 };
-
 const SimpleInverse = struct {
     /// Do not output machine code
     pub const no_emit_bin_opt_spec: OptionSpec = .{ .string = "-fno-emit-bin" };
@@ -506,7 +506,6 @@ pub fn writeIndent(allocator: *Allocator, array: *String, width: u64, values: []
 fn unhandledSpecification(comptime what_field: []const u8, comptime opt_spec: OptionSpec) noreturn {
     @compileError("todo: " ++ @tagName(getOptKind(opt_spec)) ++ ": " ++ what_field);
 }
-
 pub fn formatCompositeLiteral(allocator: *Allocator, array: *String, comptime T: type, comptime subst: ?struct { import_type: type, type_name: []const u8 }) !void {
     const type_name: []const u8 = @typeName(T);
     const type_info: builtin.Type = @typeInfo(T);
@@ -524,7 +523,6 @@ pub fn formatCompositeLiteral(allocator: *Allocator, array: *String, comptime T:
         .Union => |union_info| {
             inline for (union_info.fields) |field| {
                 try array.appendMany(allocator, " " ++ field.name ++ ": ");
-
                 if (subst) |s| {
                     if (field.type == s.import_type) {
                         try array.appendMany(allocator, s.type_name);
@@ -572,7 +570,6 @@ pub fn formatCompositeLiteral(allocator: *Allocator, array: *String, comptime T:
         else => @compileError("???" ++ type_name),
     }
 }
-
 fn writeIf(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8) !void {
     try array.appendMany(allocator, ws[0..width.*]);
     try array.appendMany(allocator, "if (build.");
@@ -681,90 +678,97 @@ fn writeProngClose(allocator: *Allocator, array: *String, width: *u64) !void {
     try array.appendMany(allocator, ws[0..width.*]);
     try array.appendMany(allocator, "},\n");
 }
-
-fn writeNull(allocator: *Allocator, array: *String, width: *u64, is_length: bool) !void {
+fn writeNull(allocator: *Allocator, array: *String, width: *u64, variant: Variant) !void {
     try array.appendMany(allocator, ws[0..width.*]);
-    if (is_length) {
-        try array.appendMany(allocator, "len +%= 1;\n");
-    } else {
-        try array.appendMany(allocator, "array.writeOne(0);\n");
+    switch (variant) {
+        .length => try array.appendMany(allocator, "len +%= 1;\n"),
+        .write => try array.appendMany(allocator, "array.writeOne(\'\\x00\');\n"),
     }
 }
-fn writeArg(allocator: *Allocator, array: *String, width: *u64, what_arg: []const u8, is_length: bool) !void {
-    if (is_length) {
-        try array.appendMany(allocator, ws[0..width.*]);
-        try array.appendMany(allocator, "len +%= mem.reinterpret.lengthAny(u8, fmt_spec, ");
-        try array.appendMany(allocator, what_arg);
-        try array.appendMany(allocator, ");\n");
-    } else {
-        try array.appendMany(allocator, ws[0..width.*]);
-        try array.appendMany(allocator, "array.writeAny(fmt_spec, ");
-        try array.appendMany(allocator, what_arg);
-        try array.appendMany(allocator, ");\n");
+fn writeArg(allocator: *Allocator, array: *String, width: *u64, what_arg: []const u8, variant: Variant) !void {
+    switch (variant) {
+        .length => {
+            try array.appendMany(allocator, ws[0..width.*]);
+            try array.appendMany(allocator, "len +%= mem.reinterpret.lengthAny(u8, fmt_spec, ");
+            try array.appendMany(allocator, what_arg);
+            try array.appendMany(allocator, ");\n");
+        },
+        .write => {
+            try array.appendMany(allocator, ws[0..width.*]);
+            try array.appendMany(allocator, "array.writeAny(fmt_spec, ");
+            try array.appendMany(allocator, what_arg);
+            try array.appendMany(allocator, ");\n");
+        },
     }
 }
-fn writeSwitchNoAssign(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, is_length: bool) !void {
-    if (is_length) {
-        try array.appendMany(allocator, ws[0..width.*]);
-        try array.appendMany(allocator, "len +%= ");
-        try array.appendFormat(allocator, fmt.ud64(what_switch.len + 3));
-        try array.appendMany(allocator, ";\n");
-    } else {
-        try array.appendMany(allocator, ws[0..width.*]);
-        try array.appendMany(allocator, "array.writeMany(\"");
-        try array.appendMany(allocator, what_switch);
-        try array.appendMany(allocator, "\\x00\");\n");
+fn writeSwitchNoAssign(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, variant: Variant) !void {
+    switch (variant) {
+        .length => {
+            try array.appendMany(allocator, ws[0..width.*]);
+            try array.appendMany(allocator, "len +%= ");
+            try array.appendFormat(allocator, fmt.ud64(what_switch.len + 3));
+            try array.appendMany(allocator, ";\n");
+        },
+        .write => {
+            try array.appendMany(allocator, ws[0..width.*]);
+            try array.appendMany(allocator, "array.writeMany(\"");
+            try array.appendMany(allocator, what_switch);
+            try array.appendMany(allocator, "\\x00\");\n");
+        },
     }
 }
-fn writeSwitchAssign(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, is_length: bool) !void {
-    if (is_length) {
-        try array.appendMany(allocator, ws[0..width.*]);
-        try array.appendMany(allocator, "len +%= ");
-        try array.appendFormat(allocator, fmt.ud64(what_switch.len + 3));
-        try array.appendMany(allocator, ";\n");
-    } else {
-        try array.appendMany(allocator, ws[0..width.*]);
-        try array.appendMany(allocator, "array.writeMany(\"");
-        try array.appendMany(allocator, what_switch);
-        try array.appendMany(allocator, "=\");\n");
+fn writeSwitchAssign(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, variant: Variant) !void {
+    switch (variant) {
+        .length => {
+            try array.appendMany(allocator, ws[0..width.*]);
+            try array.appendMany(allocator, "len +%= ");
+            try array.appendFormat(allocator, fmt.ud64(what_switch.len + 3));
+            try array.appendMany(allocator, ";\n");
+        },
+        .write => {
+            try array.appendMany(allocator, ws[0..width.*]);
+            try array.appendMany(allocator, "array.writeMany(\"");
+            try array.appendMany(allocator, what_switch);
+            try array.appendMany(allocator, "=\");\n");
+        },
     }
 }
-fn writeSwitchWithMandatoryArg(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, what_arg: []const u8, is_length: bool) !void {
-    try writeSwitchNoAssign(allocator, array, width, what_switch, is_length);
-    try writeArg(allocator, array, width, what_arg, is_length);
-    try writeNull(allocator, array, width, is_length);
+fn writeSwitchWithMandatoryArg(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, what_arg: []const u8, variant: Variant) !void {
+    try writeSwitchNoAssign(allocator, array, width, what_switch, variant);
+    try writeArg(allocator, array, width, what_arg, variant);
+    try writeNull(allocator, array, width, variant);
 }
-fn writeSwitchWithOptionalArg(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, what_arg: []const u8, is_length: bool) !void {
-    try writeSwitchAssign(allocator, array, width, what_switch, is_length);
-    try writeArg(allocator, array, width, what_arg, is_length);
-    try writeNull(allocator, array, width, is_length);
+fn writeSwitchWithOptionalArg(allocator: *Allocator, array: *String, width: *u64, what_switch: []const u8, what_arg: []const u8, variant: Variant) !void {
+    try writeSwitchAssign(allocator, array, width, what_switch, variant);
+    try writeArg(allocator, array, width, what_arg, variant);
+    try writeNull(allocator, array, width, variant);
 }
-fn writeHow(allocator: *Allocator, array: *String, width: *u64, what_switch: ?[]const u8, is_length: bool) !void {
+fn writeHow(allocator: *Allocator, array: *String, width: *u64, what_switch: ?[]const u8, variant: Variant) !void {
     if (what_switch) |string| {
-        try writeSwitchWithMandatoryArg(allocator, array, width, string, "how", is_length);
+        try writeSwitchWithMandatoryArg(allocator, array, width, string, "how", variant);
     } else {
-        try writeArg(allocator, array, width, "how", is_length);
+        try writeArg(allocator, array, width, "how", variant);
     }
 }
-fn writeExplicit(allocator: *Allocator, array: *String, width: *u64, what_switch: ?[]const u8, is_length: bool) !void {
+fn writeExplicit(allocator: *Allocator, array: *String, width: *u64, what_switch: ?[]const u8, variant: Variant) !void {
     if (what_switch) |string| {
-        try writeSwitchWithMandatoryArg(allocator, array, width, string, "how", is_length);
+        try writeSwitchWithMandatoryArg(allocator, array, width, string, "how", variant);
     } else {
-        try writeArg(allocator, array, width, "how", is_length);
+        try writeArg(allocator, array, width, "how", variant);
     }
 }
-fn writeNoRequiredArg(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, is_length: bool) !void {
+fn writeNoRequiredArg(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, variant: Variant) !void {
     if (what_not_switch) |string| {
-        try writeSwitchWithMandatoryArg(allocator, array, width, string, "no_arg", is_length);
+        try writeSwitchWithMandatoryArg(allocator, array, width, string, "no_arg", variant);
     } else {
-        try writeArg(allocator, array, width, "no_arg", is_length);
+        try writeArg(allocator, array, width, "no_arg", variant);
     }
 }
-fn writeYesRequiredArg(allocator: *Allocator, array: *String, width: *u64, what_switch: ?[]const u8, is_length: bool) !void {
+fn writeYesRequiredArg(allocator: *Allocator, array: *String, width: *u64, what_switch: ?[]const u8, variant: Variant) !void {
     if (what_switch) |string| {
-        try writeSwitchWithMandatoryArg(allocator, array, width, string, "yes_arg", is_length);
+        try writeSwitchWithMandatoryArg(allocator, array, width, string, "yes_arg", variant);
     } else {
-        try writeArg(allocator, array, width, "yes_arg", is_length);
+        try writeArg(allocator, array, width, "yes_arg", variant);
     }
 }
 pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
@@ -864,64 +868,64 @@ pub fn getOptType(comptime opt_spec: OptionSpec) type {
         }
     }
 }
-pub fn writeWhat(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeWhat(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, variant: Variant) !void {
     try writeIf(allocator, array, width, what_field);
-    try writeSwitchNoAssign(allocator, array, width, what_switch.?, is_length);
+    try writeSwitchNoAssign(allocator, array, width, what_switch.?, variant);
     try writeIfClose(allocator, array, width);
 }
-pub fn writeWhatHow(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeWhatHow(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, variant: Variant) !void {
     try writeIfHow(allocator, array, width, what_field);
-    try writeHow(allocator, array, width, what_switch, is_length);
+    try writeHow(allocator, array, width, what_switch, variant);
     try writeIfClose(allocator, array, width);
 }
-pub fn writeWhatOrWhatNot(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, what_not_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeWhatOrWhatNot(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, what_not_switch: ?[]const u8, variant: Variant) !void {
     try writeIfWhat(allocator, array, width, what_field);
     try writeIfOr(allocator, array, width, what_field);
-    try writeSwitchNoAssign(allocator, array, width, what_switch.?, is_length);
+    try writeSwitchNoAssign(allocator, array, width, what_switch.?, variant);
     try writeElse(allocator, array, width);
-    try writeSwitchNoAssign(allocator, array, width, what_not_switch.?, is_length);
+    try writeSwitchNoAssign(allocator, array, width, what_not_switch.?, variant);
     try writeIfClose(allocator, array, width);
     try writeIfClose(allocator, array, width);
 }
-pub fn writeOptionalWhat(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeOptionalWhat(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, variant: Variant) !void {
     try writeIfWhat(allocator, array, width, what_field);
     try writeSwitch(allocator, array, width, what_field);
     try writeYesOptionalProng(allocator, array, width);
     try writeYesOptionalIf(allocator, array, width);
-    try writeSwitchWithOptionalArg(allocator, array, width, what_switch.?, "yes_arg", is_length);
+    try writeSwitchWithOptionalArg(allocator, array, width, what_switch.?, "yes_arg", variant);
     try writeElse(allocator, array, width);
-    try writeSwitchNoAssign(allocator, array, width, what_switch.?, is_length);
+    try writeSwitchNoAssign(allocator, array, width, what_switch.?, variant);
     try writeIfClose(allocator, array, width);
     try writeProngClose(allocator, array, width);
 }
-pub fn writeNonOptionalWhat(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeNonOptionalWhat(allocator: *Allocator, array: *String, width: *u64, what_field: []const u8, what_switch: ?[]const u8, variant: Variant) !void {
     try writeIfWhat(allocator, array, width, what_field);
     try writeSwitch(allocator, array, width, what_field);
     try writeYesRequiredProng(allocator, array, width);
-    try writeYesRequiredArg(allocator, array, width, what_switch, is_length);
+    try writeYesRequiredArg(allocator, array, width, what_switch, variant);
     try writeProngClose(allocator, array, width);
 }
-pub fn writeOptionalWhatNot(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeOptionalWhatNot(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, variant: Variant) !void {
     try writeNoOptionalProng(allocator, array, width);
     try writeNoOptionalIf(allocator, array, width);
-    try writeSwitchWithOptionalArg(allocator, array, width, what_not_switch.?, "no_arg", is_length);
+    try writeSwitchWithOptionalArg(allocator, array, width, what_not_switch.?, "no_arg", variant);
     try writeElse(allocator, array, width);
-    try writeSwitchNoAssign(allocator, array, width, what_not_switch.?, is_length);
+    try writeSwitchNoAssign(allocator, array, width, what_not_switch.?, variant);
     try writeIfClose(allocator, array, width);
     try writeProngClose(allocator, array, width);
     try writeSwitchClose(allocator, array, width);
     try writeIfClose(allocator, array, width);
 }
-pub fn writeNonOptionalWhatNot(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeNonOptionalWhatNot(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, variant: Variant) !void {
     try writeNoRequiredProng(allocator, array, width);
-    try writeNoRequiredArg(allocator, array, width, what_not_switch, is_length);
+    try writeNoRequiredArg(allocator, array, width, what_not_switch, variant);
     try writeProngClose(allocator, array, width);
     try writeSwitchClose(allocator, array, width);
     try writeIfClose(allocator, array, width);
 }
-pub fn writeNoArgWhatNot(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, is_length: bool) !void {
+pub fn writeNoArgWhatNot(allocator: *Allocator, array: *String, width: *u64, what_not_switch: ?[]const u8, variant: Variant) !void {
     try writeNoProng(allocator, array, width);
-    try writeSwitchNoAssign(allocator, array, width, what_not_switch.?, is_length);
+    try writeSwitchNoAssign(allocator, array, width, what_not_switch.?, variant);
     try writeProngClose(allocator, array, width);
     try writeSwitchClose(allocator, array, width);
     try writeIfClose(allocator, array, width);
@@ -976,7 +980,7 @@ pub fn writeStructMembers(allocator: *Allocator, array: *String) !void {
         try array.appendMany(allocator, ",\n");
     }
 }
-pub fn writeFunctionBody(allocator: *Allocator, array: *String, is_length: bool) !void {
+pub fn writeFunctionBody(allocator: *Allocator, array: *String, variant: Variant) !void {
     var width: u64 = (initial_indent * 4) + 4;
     inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
         const decl_type: type = @TypeOf(@field(ExecutableOptions, decl.name));
@@ -989,16 +993,16 @@ pub fn writeFunctionBody(allocator: *Allocator, array: *String, is_length: bool)
         if (opt_spec.arg_type) |arg_type| {
             if (@typeInfo(arg_type) == .Optional) {
                 if (opt_spec.and_no) |inverse| {
-                    try writeOptionalWhat(allocator, array, &width, what_field, what_switch, is_length);
+                    try writeOptionalWhat(allocator, array, &width, what_field, what_switch, variant);
                     const what_not_switch: ?[]const u8 = inverse.*.string;
                     if (inverse.*.arg_type) |no_arg_type| {
                         if (@typeInfo(no_arg_type) == .Optional) {
-                            try writeOptionalWhatNot(allocator, array, &width, what_not_switch, is_length);
+                            try writeOptionalWhatNot(allocator, array, &width, what_not_switch, variant);
                         } else {
-                            try writeNonOptionalWhatNot(allocator, array, &width, what_not_switch, is_length);
+                            try writeNonOptionalWhatNot(allocator, array, &width, what_not_switch, variant);
                         }
                     } else {
-                        try writeNoArgWhatNot(allocator, array, &width, what_not_switch, is_length);
+                        try writeNoArgWhatNot(allocator, array, &width, what_not_switch, variant);
                     }
                 } else {
                     unhandledSpecification(what_field, opt_spec);
@@ -1006,18 +1010,18 @@ pub fn writeFunctionBody(allocator: *Allocator, array: *String, is_length: bool)
             } else {
                 if (opt_spec.and_no) |inverse| {
                     const what_not_switch: ?[]const u8 = inverse.*.string;
-                    try writeNonOptionalWhat(allocator, array, &width, what_field, what_switch, is_length);
+                    try writeNonOptionalWhat(allocator, array, &width, what_field, what_switch, variant);
                     if (inverse.*.arg_type) |no_arg_type| {
                         if (@typeInfo(no_arg_type) == .Optional) {
-                            try writeOptionalWhatNot(allocator, array, &width, what_not_switch, is_length);
+                            try writeOptionalWhatNot(allocator, array, &width, what_not_switch, variant);
                         } else {
-                            try writeNonOptionalWhatNot(allocator, array, &width, what_not_switch, is_length);
+                            try writeNonOptionalWhatNot(allocator, array, &width, what_not_switch, variant);
                         }
                     } else {
-                        try writeNoArgWhatNot(allocator, array, &width, what_not_switch, is_length);
+                        try writeNoArgWhatNot(allocator, array, &width, what_not_switch, variant);
                     }
                 } else {
-                    try writeWhatHow(allocator, array, &width, what_field, what_switch, is_length);
+                    try writeWhatHow(allocator, array, &width, what_field, what_switch, variant);
                 }
             }
         } else {
@@ -1030,10 +1034,10 @@ pub fn writeFunctionBody(allocator: *Allocator, array: *String, is_length: bool)
                         unhandledSpecification(what_field, opt_spec);
                     }
                 } else {
-                    try writeWhatOrWhatNot(allocator, array, &width, what_field, what_switch, what_not_switch, is_length);
+                    try writeWhatOrWhatNot(allocator, array, &width, what_field, what_switch, what_not_switch, variant);
                 }
             } else {
-                try writeWhat(allocator, array, &width, what_field, what_switch, is_length);
+                try writeWhat(allocator, array, &width, what_field, what_switch, variant);
             }
         }
     }
@@ -1061,19 +1065,19 @@ pub fn main(args_in: [][*:0]u8) !void {
     const members_loc_token: []const u8 = "_: void,";
     const len_fn_body_loc_token: []const u8 = "_ = buildLength;";
     const write_fn_body_loc_token: []const u8 = "_ = buildWrite;";
+
     var address_space: AddressSpace = .{};
 
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
     var array: String = String.init(&allocator);
-
     try array.increment(&allocator, @embedFile("./builder.zig").len);
     defer array.deinit(&allocator);
 
     const guess_i: u64 = 1332;
-    const guess_j: u64 = 1736;
-    const guess_k: u64 = 2289;
+    const guess_j: u64 = 1690;
+    const guess_k: u64 = 2243;
 
     const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/builder-template.zig");
     try mem.acquire(.{}, AddressSpace, &address_space, 1);
@@ -1086,17 +1090,24 @@ pub fn main(args_in: [][*:0]u8) !void {
     const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
     const builder_src: []const u8 = subTemplate(template_src, "builder-struct.zig").?;
     const types_src: []const u8 = subTemplate(template_src, "builder-types.zig").?;
+
     const members_offset: u64 = try guessSourceOffset(builder_src, members_loc_token, guess_i);
     const length_fn_body_offset: u64 = try guessSourceOffset(builder_src, len_fn_body_loc_token, guess_j);
     const write_fn_body_offset: u64 = try guessSourceOffset(builder_src, write_fn_body_loc_token, guess_k);
+
     try array.appendMany(&allocator, builder_src[0 .. members_offset - (initial_indent * 4)]);
     try writeStructMembers(&allocator, &array);
-    try array.appendMany(&allocator, builder_src[members_offset + members_loc_token.len + 1 .. length_fn_body_offset]);
-    try writeFunctionBody(&allocator, &array, true);
-    try array.appendMany(&allocator, builder_src[length_fn_body_offset + len_fn_body_loc_token.len .. write_fn_body_offset]);
-    try writeFunctionBody(&allocator, &array, false);
-    try array.appendMany(&allocator, builder_src[write_fn_body_offset + write_fn_body_loc_token.len ..]);
+
+    const kill_spaces: u64 = (initial_indent + 1) * 4;
+    try array.appendMany(&allocator, builder_src[members_offset + members_loc_token.len + 1 .. length_fn_body_offset - kill_spaces]);
+    try writeFunctionBody(&allocator, &array, .length);
+
+    try array.appendMany(&allocator, builder_src[length_fn_body_offset + len_fn_body_loc_token.len + 1 .. write_fn_body_offset - kill_spaces]);
+    try writeFunctionBody(&allocator, &array, .write);
+
+    try array.appendMany(&allocator, builder_src[write_fn_body_offset + write_fn_body_loc_token.len + 1 ..]);
     try array.appendMany(&allocator, types_src);
+
     if (options.output) |pathname| {
         const builder_fd: u64 = try file.create(create_spec, pathname);
         defer file.close(close_spec, builder_fd);
@@ -1104,6 +1115,5 @@ pub fn main(args_in: [][*:0]u8) !void {
     } else {
         try file.write(1, array.readAll(allocator));
     }
-
     mem.unmap(.{ .errors = null }, lb_addr, up_addr - lb_addr);
 }

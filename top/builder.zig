@@ -1,3 +1,4 @@
+
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
@@ -520,7 +521,6 @@ pub const BuildCmd = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-
         len +%= build.root.len + 1;
         return len;
     }
@@ -543,7 +543,7 @@ pub const BuildCmd = struct {
         if (build.color) |how| {
             array.writeMany("--color\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.emit_bin) |emit_bin| {
             switch (emit_bin) {
@@ -551,7 +551,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-bin=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-bin\x00");
                     }
@@ -567,7 +567,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-asm=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-asm\x00");
                     }
@@ -583,7 +583,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-llvm-ir=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-llvm-ir\x00");
                     }
@@ -599,7 +599,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-llvm-bc=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-llvm-bc\x00");
                     }
@@ -615,7 +615,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-h=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-h\x00");
                     }
@@ -631,7 +631,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-docs=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-docs\x00");
                     }
@@ -647,7 +647,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-analysis=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-analysis\x00");
                     }
@@ -663,7 +663,7 @@ pub const BuildCmd = struct {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-implib=");
                         array.writeAny(fmt_spec, yes_arg);
-                        array.writeOne(0);
+                        array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-implib\x00");
                     }
@@ -679,17 +679,17 @@ pub const BuildCmd = struct {
         if (build.cache_dir) |how| {
             array.writeMany("--cache-dir\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.global_cache_dir) |how| {
             array.writeMany("--global-cache-dir\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.zig_lib_dir) |how| {
             array.writeMany("--zig-lib-dir\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.enable_cache) {
             array.writeMany("--enable-cache\x00");
@@ -697,17 +697,17 @@ pub const BuildCmd = struct {
         if (build.target) |how| {
             array.writeMany("-target\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.cpu) |how| {
             array.writeMany("-mcpu\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.cmodel) |how| {
             array.writeMany("-mcmodel\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.red_zone) |red_zone| {
             if (red_zone) {
@@ -726,22 +726,22 @@ pub const BuildCmd = struct {
         if (build.exec_model) |how| {
             array.writeMany("-mexec-model\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.name) |how| {
             array.writeMany("--name\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.O) |how| {
             array.writeMany("-O\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.main_pkg_path) |how| {
             array.writeMany("--main-pkg-path\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.pic) |pic| {
             if (pic) {
@@ -854,22 +854,22 @@ pub const BuildCmd = struct {
         if (build.fmt) |how| {
             array.writeMany("-ofmt\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.dirafter) |how| {
             array.writeMany("-dirafter\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.system) |how| {
             array.writeMany("-isystem\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.include) |how| {
             array.writeMany("-I\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.macros) |how| {
             array.writeAny(fmt_spec, how);
@@ -882,7 +882,7 @@ pub const BuildCmd = struct {
                 .yes => |yes_arg| {
                     array.writeMany("-fsoname\x00");
                     array.writeAny(fmt_spec, yes_arg);
-                    array.writeOne(0);
+                    array.writeOne('\x00');
                 },
                 .no => {
                     array.writeMany("-fno-soname\x00");
@@ -899,7 +899,7 @@ pub const BuildCmd = struct {
         if (build.path) |how| {
             array.writeMany("-rpath\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.each_lib_rpath) |each_lib_rpath| {
             if (each_lib_rpath) {
@@ -947,14 +947,13 @@ pub const BuildCmd = struct {
         if (build.stack) |how| {
             array.writeMany("--stack\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
         if (build.z) |how| {
             array.writeMany("-z\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne(0);
+            array.writeOne('\x00');
         }
-
         array.writeFormat(build.root);
         array.writeOne('\x00');
         return countArgs(array);
