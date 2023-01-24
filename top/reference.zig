@@ -129,76 +129,67 @@ pub const Specification0 = struct {
 pub fn ReadWriteAutoStructuredAutoAlignment(comptime spec: Specification0) type {
     return struct {
         auto: [spec.count]spec.child align(low_alignment) = undefined,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const capacity: Static = writable_byte_count;
     };
 }
 pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0) type {
     return struct {
         auto: [spec.count]spec.child align(low_alignment) = undefined,
         ss_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const behind: Value = streamed_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -215,57 +206,47 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specific
         auto: [spec.count]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -287,45 +268,38 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0
     return struct {
         auto: [spec.count]spec.child align(low_alignment) = undefined,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -337,36 +311,29 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0
 pub fn ReadWriteStaticStructuredUnitAlignment(comptime spec: Specification0) type {
     return struct {
         lb_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Static = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -374,7 +341,7 @@ pub fn ReadWriteStaticStructuredUnitAlignment(comptime spec: Specification0) typ
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -384,42 +351,35 @@ pub fn ReadWriteStaticStructuredUnitAlignment(comptime spec: Specification0) typ
 pub fn ReadWriteStaticStructuredLazyAlignment(comptime spec: Specification0) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -427,7 +387,7 @@ pub fn ReadWriteStaticStructuredLazyAlignment(comptime spec: Specification0) typ
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -437,42 +397,35 @@ pub fn ReadWriteStaticStructuredLazyAlignment(comptime spec: Specification0) typ
 pub fn ReadWriteStaticStructuredDisjunctAlignment(comptime spec: Specification0) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
@@ -480,7 +433,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignment(comptime spec: Specification0)
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -492,60 +445,47 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignment(comptime spec: Specif
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -573,7 +513,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignment(comptime spec: Specif
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -589,66 +529,53 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignment(comptime spec: Specif
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -676,7 +603,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignment(comptime spec: Specif
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -692,66 +619,53 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignment(comptime spec: Sp
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -779,7 +693,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignment(comptime spec: Sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -794,48 +708,38 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignment(comptime spec: Specificatio
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -852,7 +756,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignment(comptime spec: Specificatio
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -863,54 +767,44 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignment(comptime spec: Specificatio
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -927,7 +821,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignment(comptime spec: Specificatio
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -938,54 +832,44 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignment(comptime spec: Specific
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -1005,7 +889,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignment(comptime spec: Specific
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -1110,82 +994,73 @@ pub const Specification1 = struct {
 pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const capacity: Static = writable_byte_count;
     };
 }
 pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ss_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const behind: Value = streamed_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -1202,60 +1077,50 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ss_word);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -1279,48 +1144,41 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
     return struct {
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return automatic_storage_address(impl);
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), impl.ub_word);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -1334,39 +1192,32 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
 pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
         lb_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Static = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -1374,7 +1225,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specificati
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -1384,45 +1235,38 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specificati
 pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -1430,7 +1274,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specificati
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -1440,45 +1284,38 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specificati
 pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specification1) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
@@ -1486,7 +1323,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -1498,63 +1335,50 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -1584,7 +1408,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -1600,69 +1424,56 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -1692,7 +1503,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -1708,69 +1519,56 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime 
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -1800,7 +1598,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -1815,51 +1613,41 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Spec
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -1878,7 +1666,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Spec
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -1889,57 +1677,47 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Spec
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -1958,7 +1736,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -1969,57 +1747,47 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: 
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -2041,7 +1809,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -2135,36 +1903,29 @@ pub const Specification2 = struct {
 pub fn ReadWriteStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specification2) type {
     return struct {
         lb_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Static = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -2172,7 +1933,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -2182,42 +1943,35 @@ pub fn ReadWriteStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
 pub fn ReadWriteStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specification2) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -2225,7 +1979,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -2235,42 +1989,35 @@ pub fn ReadWriteStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
 pub fn ReadWriteStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification2) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
@@ -2278,7 +2025,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -2290,60 +2037,47 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex(comptime sp
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -2371,7 +2105,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex(comptime sp
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -2387,66 +2121,53 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex(comptime sp
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -2474,7 +2195,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex(comptime sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -2490,66 +2211,53 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex(comptim
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -2577,7 +2285,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex(comptim
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -2592,48 +2300,38 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex(comptime spec: Sp
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -2650,7 +2348,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex(comptime spec: Sp
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -2661,54 +2359,44 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex(comptime spec: Sp
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -2725,7 +2413,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex(comptime spec: Sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -2736,54 +2424,44 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex(comptime spec
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -2803,7 +2481,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex(comptime spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -2898,39 +2576,32 @@ pub const Specification3 = struct {
 pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
     return struct {
         lb_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Static = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -2938,7 +2609,7 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -2948,45 +2619,38 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
 pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -2994,7 +2658,7 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -3004,45 +2668,38 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
 pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
@@ -3050,7 +2707,7 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -3062,63 +2719,50 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(com
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -3148,7 +2792,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(com
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -3164,69 +2808,56 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(com
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -3256,7 +2887,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(com
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -3272,69 +2903,56 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -3364,7 +2982,7 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -3379,51 +2997,41 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime 
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime bytes: *const Static = &allocated_byte_count,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime allocated_byte_count: *const Static = &allocated_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count());
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        inline fn aligned_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -3442,7 +3050,7 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime 
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -3453,57 +3061,47 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime 
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -3522,7 +3120,7 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -3533,57 +3131,47 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(compt
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        inline fn aligned_byte_count() u64 {
+        pub inline fn aligned_byte_count() u64 {
             return mach.add64(writable_byte_count(), high_alignment);
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -3605,7 +3193,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(compt
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -3697,35 +3285,28 @@ pub const Specification4 = struct {
 pub fn ReadWriteStaticUnstructuredUnitAlignment(comptime spec: Specification4) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Static = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -3733,7 +3314,7 @@ pub fn ReadWriteStaticUnstructuredUnitAlignment(comptime spec: Specification4) t
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -3743,42 +3324,35 @@ pub fn ReadWriteStaticUnstructuredUnitAlignment(comptime spec: Specification4) t
 pub fn ReadWriteStaticUnstructuredLazyAlignment(comptime spec: Specification4) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -3786,7 +3360,7 @@ pub fn ReadWriteStaticUnstructuredLazyAlignment(comptime spec: Specification4) t
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -3796,42 +3370,35 @@ pub fn ReadWriteStaticUnstructuredLazyAlignment(comptime spec: Specification4) t
 pub fn ReadWriteStaticUnstructuredDisjunctAlignment(comptime spec: Specification4) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
@@ -3839,7 +3406,7 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignment(comptime spec: Specification
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -3851,59 +3418,46 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignment(comptime spec: Spec
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -3931,7 +3485,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignment(comptime spec: Spec
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -3947,66 +3501,53 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignment(comptime spec: Spec
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4034,7 +3575,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignment(comptime spec: Spec
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -4050,66 +3591,53 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment(comptime spec: 
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4137,7 +3665,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment(comptime spec: 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -4152,47 +3680,37 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignment(comptime spec: Specificat
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4209,7 +3727,7 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignment(comptime spec: Specificat
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -4220,54 +3738,44 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignment(comptime spec: Specificat
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4284,7 +3792,7 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignment(comptime spec: Specificat
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -4295,54 +3803,44 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignment(comptime spec: Specif
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4362,7 +3860,7 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignment(comptime spec: Specif
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -4455,35 +3953,28 @@ pub const Specification5 = struct {
 pub fn ReadWriteStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification5) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Static = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -4491,7 +3982,7 @@ pub fn ReadWriteStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -4501,42 +3992,35 @@ pub fn ReadWriteStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
 pub fn ReadWriteStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification5) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
@@ -4544,7 +4028,7 @@ pub fn ReadWriteStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
@@ -4554,42 +4038,35 @@ pub fn ReadWriteStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
 pub fn ReadWriteStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification5) type {
     return struct {
         lb_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
         pub inline fn construct(s: Construct3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
@@ -4597,7 +4074,7 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .lb_word = t.ab_addr | mach.sub64(t.ab_addr, t.lb_addr) };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
@@ -4609,59 +4086,46 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime 
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4689,7 +4153,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime 
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -4705,66 +4169,53 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime 
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4792,7 +4243,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert13) Implementation {
             return .{
@@ -4808,66 +4259,53 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex(compt
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count() u64 {
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4895,7 +4333,7 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex(compt
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert15) Implementation {
             return .{
@@ -4910,47 +4348,37 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: 
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        const allocated_byte_count: Static = aligned_byte_count;
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const allocated_byte_count: Static = aligned_byte_count;
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -4967,7 +4395,7 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: 
                 .ub_word = t.lb_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -4978,54 +4406,44 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: 
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -5042,7 +4460,7 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: 
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
@@ -5053,54 +4471,44 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex(comptime sp
     return struct {
         lb_word: u64,
         ub_word: u64,
-        comptime capacity: *const Static = &writable_byte_count,
-        comptime utility: *const Static = &aligned_byte_count,
+        comptime writable_byte_count: *const Static = &writable_byte_count,
+        comptime aligned_byte_count: *const Static = &aligned_byte_count,
         const Implementation = @This();
         const Static = fn () callconv(.Inline) u64;
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.bytes;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.add64(aligned_byte_address(impl), writable_byte_count());
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return mach.add64(allocated_byte_address(impl), allocated_byte_count(impl));
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.add64(alignment(impl), aligned_byte_count());
         }
-        const aligned_byte_count: Static = writable_byte_count;
-        inline fn writable_byte_count() u64 {
+        pub const aligned_byte_count: Static = writable_byte_count;
+        pub inline fn writable_byte_count() u64 {
             return high_alignment;
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Static = aligned_byte_count;
-        pub const capacity: Static = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -5120,7 +4528,7 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex(comptime sp
                 .ub_word = t.ab_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert11) Implementation {
             return .{
@@ -5235,56 +4643,43 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignment(comptime spec: Specificatio
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -5314,7 +4709,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignment(comptime spec: Specificatio
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -5339,61 +4734,48 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignment(comptime spec: Specificatio
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -5423,7 +4805,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignment(comptime spec: Specificatio
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -5448,61 +4830,48 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignment(comptime spec: Specific
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -5532,7 +4901,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignment(comptime spec: Specific
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -5556,44 +4925,34 @@ pub fn ReadWriteStreamStructuredUnitAlignment(comptime spec: Specification6) typ
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -5615,7 +4974,7 @@ pub fn ReadWriteStreamStructuredUnitAlignment(comptime spec: Specification6) typ
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -5638,49 +4997,39 @@ pub fn ReadWriteStreamStructuredLazyAlignment(comptime spec: Specification6) typ
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -5702,7 +5051,7 @@ pub fn ReadWriteStreamStructuredLazyAlignment(comptime spec: Specification6) typ
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -5725,49 +5074,39 @@ pub fn ReadWriteStreamStructuredDisjunctAlignment(comptime spec: Specification6)
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -5789,7 +5128,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignment(comptime spec: Specification6)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -5812,44 +5151,34 @@ pub fn ReadWritePushPopStructuredUnitAlignment(comptime spec: Specification6) ty
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -5871,7 +5200,7 @@ pub fn ReadWritePushPopStructuredUnitAlignment(comptime spec: Specification6) ty
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -5894,49 +5223,39 @@ pub fn ReadWritePushPopStructuredLazyAlignment(comptime spec: Specification6) ty
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -5958,7 +5277,7 @@ pub fn ReadWritePushPopStructuredLazyAlignment(comptime spec: Specification6) ty
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -5981,49 +5300,39 @@ pub fn ReadWritePushPopStructuredDisjunctAlignment(comptime spec: Specification6
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -6045,7 +5354,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignment(comptime spec: Specification6
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -6067,32 +5376,25 @@ pub fn ReadWriteStructuredUnitAlignment(comptime spec: Specification6) type {
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -6103,7 +5405,7 @@ pub fn ReadWriteStructuredUnitAlignment(comptime spec: Specification6) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -6121,37 +5423,30 @@ pub fn ReadWriteStructuredLazyAlignment(comptime spec: Specification6) type {
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -6162,7 +5457,7 @@ pub fn ReadWriteStructuredLazyAlignment(comptime spec: Specification6) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -6180,37 +5475,30 @@ pub fn ReadWriteStructuredDisjunctAlignment(comptime spec: Specification6) type 
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct11) Implementation {
             return .{
                 .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr),
@@ -6224,7 +5512,7 @@ pub fn ReadWriteStructuredDisjunctAlignment(comptime spec: Specification6) type 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -6344,56 +5632,43 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Spec
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -6425,7 +5700,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -6451,61 +5726,48 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Spec
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -6537,7 +5799,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -6563,61 +5825,48 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -6649,7 +5898,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -6674,44 +5923,34 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinel(comptime spec: Specificati
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -6733,7 +5972,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinel(comptime spec: Specificati
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -6757,49 +5996,39 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinel(comptime spec: Specificati
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -6821,7 +6050,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinel(comptime spec: Specificati
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -6845,49 +6074,39 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -6909,7 +6128,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -6933,44 +6152,34 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specificat
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -6994,7 +6203,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -7018,49 +6227,39 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specificat
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -7084,7 +6283,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -7108,49 +6307,39 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specif
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -7174,7 +6363,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -7197,32 +6386,25 @@ pub fn ReadWriteStructuredUnitAlignmentSentinel(comptime spec: Specification7) t
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -7233,7 +6415,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinel(comptime spec: Specification7) t
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -7252,37 +6434,30 @@ pub fn ReadWriteStructuredLazyAlignmentSentinel(comptime spec: Specification7) t
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -7293,7 +6468,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinel(comptime spec: Specification7) t
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -7312,37 +6487,30 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinel(comptime spec: Specification
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct11) Implementation {
             return .{
                 .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr),
@@ -7356,7 +6524,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinel(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -7475,56 +6643,43 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex(comptime spec: Sp
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -7554,7 +6709,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex(comptime spec: Sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -7579,61 +6734,48 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex(comptime spec: Sp
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -7663,7 +6805,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex(comptime spec: Sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -7688,61 +6830,48 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex(comptime spec
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -7772,7 +6901,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex(comptime spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -7796,44 +6925,34 @@ pub fn ReadWriteStreamStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -7855,7 +6974,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -7878,49 +6997,39 @@ pub fn ReadWriteStreamStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -7942,7 +7051,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -7965,49 +7074,39 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -8029,7 +7128,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -8052,44 +7151,34 @@ pub fn ReadWritePushPopStructuredUnitAlignmentArenaIndex(comptime spec: Specific
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -8111,7 +7200,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentArenaIndex(comptime spec: Specific
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -8134,49 +7223,39 @@ pub fn ReadWritePushPopStructuredLazyAlignmentArenaIndex(comptime spec: Specific
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -8198,7 +7277,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentArenaIndex(comptime spec: Specific
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -8221,49 +7300,39 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentArenaIndex(comptime spec: Spec
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -8285,7 +7354,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentArenaIndex(comptime spec: Spec
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -8307,32 +7376,25 @@ pub fn ReadWriteStructuredUnitAlignmentArenaIndex(comptime spec: Specification8)
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -8343,7 +7405,7 @@ pub fn ReadWriteStructuredUnitAlignmentArenaIndex(comptime spec: Specification8)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -8361,37 +7423,30 @@ pub fn ReadWriteStructuredLazyAlignmentArenaIndex(comptime spec: Specification8)
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -8402,7 +7457,7 @@ pub fn ReadWriteStructuredLazyAlignmentArenaIndex(comptime spec: Specification8)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -8420,37 +7475,30 @@ pub fn ReadWriteStructuredDisjunctAlignmentArenaIndex(comptime spec: Specificati
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct11) Implementation {
             return .{
                 .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr),
@@ -8464,7 +7512,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentArenaIndex(comptime spec: Specificati
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -8585,56 +7633,43 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -8666,7 +7701,7 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -8692,61 +7727,48 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -8778,7 +7800,7 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -8804,61 +7826,48 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(compt
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -8890,7 +7899,7 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(compt
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -8915,44 +7924,34 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -8974,7 +7973,7 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -8998,49 +7997,39 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -9062,7 +8051,7 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -9086,49 +8075,39 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -9150,7 +8129,7 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -9174,44 +8153,34 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -9235,7 +8204,7 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -9259,49 +8228,39 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -9325,7 +8284,7 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -9349,49 +8308,39 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime sp
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -9415,7 +8364,7 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -9438,32 +8387,25 @@ pub fn ReadWriteStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specifi
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), high_alignment);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -9474,7 +8416,7 @@ pub fn ReadWriteStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -9493,37 +8435,30 @@ pub fn ReadWriteStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specifi
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -9534,7 +8469,7 @@ pub fn ReadWriteStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -9553,37 +8488,30 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Spe
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(impl.up_word, high_alignment);
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl) + high_alignment);
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct11) Implementation {
             return .{
                 .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr),
@@ -9597,7 +8525,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Spe
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -9715,56 +8643,43 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignment(comptime spec: Specificat
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -9794,7 +8709,7 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignment(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -9819,61 +8734,48 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignment(comptime spec: Specificat
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -9903,7 +8805,7 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignment(comptime spec: Specificat
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -9928,61 +8830,48 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignment(comptime spec: Specif
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -10012,7 +8901,7 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignment(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -10036,44 +8925,34 @@ pub fn ReadWriteStreamUnstructuredUnitAlignment(comptime spec: Specification10) 
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -10095,7 +8974,7 @@ pub fn ReadWriteStreamUnstructuredUnitAlignment(comptime spec: Specification10) 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -10118,49 +8997,39 @@ pub fn ReadWriteStreamUnstructuredLazyAlignment(comptime spec: Specification10) 
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -10182,7 +9051,7 @@ pub fn ReadWriteStreamUnstructuredLazyAlignment(comptime spec: Specification10) 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -10205,49 +9074,39 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignment(comptime spec: Specification
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -10269,7 +9128,7 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignment(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -10292,44 +9151,34 @@ pub fn ReadWritePushPopUnstructuredUnitAlignment(comptime spec: Specification10)
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -10351,7 +9200,7 @@ pub fn ReadWritePushPopUnstructuredUnitAlignment(comptime spec: Specification10)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -10374,49 +9223,39 @@ pub fn ReadWritePushPopUnstructuredLazyAlignment(comptime spec: Specification10)
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -10438,7 +9277,7 @@ pub fn ReadWritePushPopUnstructuredLazyAlignment(comptime spec: Specification10)
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -10461,49 +9300,39 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignment(comptime spec: Specificatio
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -10525,7 +9354,7 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignment(comptime spec: Specificatio
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -10547,32 +9376,25 @@ pub fn ReadWriteUnstructuredUnitAlignment(comptime spec: Specification10) type {
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -10583,7 +9405,7 @@ pub fn ReadWriteUnstructuredUnitAlignment(comptime spec: Specification10) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -10601,37 +9423,30 @@ pub fn ReadWriteUnstructuredLazyAlignment(comptime spec: Specification10) type {
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -10642,7 +9457,7 @@ pub fn ReadWriteUnstructuredLazyAlignment(comptime spec: Specification10) type {
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -10660,37 +9475,30 @@ pub fn ReadWriteUnstructuredDisjunctAlignment(comptime spec: Specification10) ty
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct11) Implementation {
             return .{
                 .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr),
@@ -10704,7 +9512,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignment(comptime spec: Specification10) ty
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -10823,56 +9631,43 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: 
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -10902,7 +9697,7 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -10927,61 +9722,48 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: 
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -11011,7 +9793,7 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: 
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert29) Implementation {
             return .{
@@ -11036,61 +9818,48 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex(comptime sp
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -11120,7 +9889,7 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex(comptime sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert31) Implementation {
             return .{
@@ -11144,44 +9913,34 @@ pub fn ReadWriteStreamUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -11203,7 +9962,7 @@ pub fn ReadWriteStreamUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -11226,49 +9985,39 @@ pub fn ReadWriteStreamUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -11290,7 +10039,7 @@ pub fn ReadWriteStreamUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert21) Implementation {
             return .{
@@ -11313,49 +10062,39 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn streamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const behind: Value = streamed_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
         pub fn seek(impl: *Implementation, x_bytes: u64) void {
             impl.ss_word +%= x_bytes;
         }
@@ -11377,7 +10116,7 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert23) Implementation {
             return .{
@@ -11400,44 +10139,34 @@ pub fn ReadWritePushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: Specif
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -11459,7 +10188,7 @@ pub fn ReadWritePushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -11482,49 +10211,39 @@ pub fn ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: Specif
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -11546,7 +10265,7 @@ pub fn ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: Specif
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert25) Implementation {
             return .{
@@ -11569,49 +10288,39 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Sp
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
-        inline fn undefined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
-        pub const length: Value = defined_byte_count;
-        pub const available: Value = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -11633,7 +10342,7 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Sp
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert27) Implementation {
             return .{
@@ -11655,32 +10364,25 @@ pub fn ReadWriteUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        const aligned_byte_address: Value = allocated_byte_address;
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address: Value = allocated_byte_address;
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return allocated_byte_count(impl);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -11691,7 +10393,7 @@ pub fn ReadWriteUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -11709,37 +10411,30 @@ pub fn ReadWriteUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return impl.lb_word;
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.alignA64(allocated_byte_address(impl), low_alignment);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), allocated_byte_address(impl));
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct9) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
         }
@@ -11750,7 +10445,7 @@ pub fn ReadWriteUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert17) Implementation {
             return .{ .lb_word = s.lb_addr, .up_word = s.up_addr };
@@ -11768,37 +10463,30 @@ pub fn ReadWriteUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specifica
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_address(impl: *const Implementation) u64 {
             return mach.sub64(aligned_byte_address(impl), alignment(impl));
         }
-        inline fn aligned_byte_address(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_address(impl: *const Implementation) u64 {
             return mach.andn64(impl.lb_word, low_alignment - 1);
         }
-        inline fn unwritable_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unwritable_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn unallocated_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unallocated_byte_address(impl: *const Implementation) u64 {
             return impl.up_word;
         }
-        inline fn allocated_byte_count(impl: *const Implementation) u64 {
+        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
         }
-        inline fn aligned_byte_count(impl: *const Implementation) u64 {
+        pub inline fn aligned_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(impl));
         }
-        inline fn writable_byte_count(impl: *const Implementation) u64 {
+        pub inline fn writable_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(allocated_byte_count(impl), alignment(impl));
         }
         pub inline fn alignment(impl: *const Implementation) u64 {
             return mach.and64(impl.lb_word, low_alignment - 1);
         }
-        pub const low: Value = allocated_byte_address;
-        pub const start: Value = aligned_byte_address;
-        pub const finish: Value = unwritable_byte_address;
-        pub const high: Value = unallocated_byte_address;
-        pub const bytes: Value = allocated_byte_count;
-        pub const utility: Value = aligned_byte_count;
-        pub const capacity: Value = writable_byte_count;
         pub inline fn construct(s: Construct11) Implementation {
             return .{
                 .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr),
@@ -11812,7 +10500,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specifica
                 .up_word = t.up_addr,
             };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert19) Implementation {
             return .{
@@ -11885,15 +10573,15 @@ pub const Specification12 = struct {
 };
 pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Specification12) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -11901,54 +10589,41 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Sp
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        const aligned_byte_address = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(allocator));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Vector = streamed_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -11968,7 +10643,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Sp
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -11977,15 +10652,15 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Sp
 }
 pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Specification12) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -11993,59 +10668,46 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Sp
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        inline fn aligned_byte_address(allocator: Allocator) u64 {
-            return mach.alignA64(allocator.next(), low_alignment);
+        pub inline fn aligned_byte_address(allocator: Allocator) u64 {
+            return mach.alignA64(allocator.unallocated_byte_address(), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(allocator));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
         pub inline fn alignment(allocator: Allocator) u64 {
             return mach.sub64(aligned_byte_address(allocator), allocated_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Vector = streamed_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -12065,7 +10727,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Sp
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12074,14 +10736,14 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Sp
 }
 pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specification12) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12089,42 +10751,32 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specific
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        const aligned_byte_address = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -12138,7 +10790,7 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specific
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12147,14 +10799,14 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specific
 }
 pub fn ReadWritePushPopParametricStructuredLazyAlignment(comptime spec: Specification12) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12162,47 +10814,37 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignment(comptime spec: Specific
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        inline fn aligned_byte_address(allocator: Allocator) u64 {
-            return mach.alignA64(allocator.next(), low_alignment);
+        pub inline fn aligned_byte_address(allocator: Allocator) u64 {
+            return mach.alignA64(allocator.unallocated_byte_address(), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
         pub inline fn alignment(allocator: Allocator) u64 {
             return mach.sub64(aligned_byte_address(allocator), allocated_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -12216,7 +10858,7 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignment(comptime spec: Specific
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12284,15 +10926,15 @@ pub const Specification13 = struct {
 };
 pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime spec: Specification13) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12301,56 +10943,43 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        const aligned_byte_address = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(allocator: Allocator) u64 {
-            return mach.sub64(allocator.finish(), high_alignment);
+        pub inline fn unwritable_byte_address(allocator: Allocator) u64 {
+            return mach.sub64(allocator.unmapped_byte_address(), high_alignment);
         }
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(allocator));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Vector = streamed_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -12372,7 +11001,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12381,15 +11010,15 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
 }
 pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime spec: Specification13) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12398,61 +11027,48 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        inline fn aligned_byte_address(allocator: Allocator) u64 {
-            return mach.alignA64(allocator.next(), low_alignment);
+        pub inline fn aligned_byte_address(allocator: Allocator) u64 {
+            return mach.alignA64(allocator.unallocated_byte_address(), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(allocator: Allocator) u64 {
-            return mach.sub64(allocator.finish(), high_alignment);
+        pub inline fn unwritable_byte_address(allocator: Allocator) u64 {
+            return mach.sub64(allocator.unmapped_byte_address(), high_alignment);
         }
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(allocator));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
         pub inline fn alignment(allocator: Allocator) u64 {
             return mach.sub64(aligned_byte_address(allocator), allocated_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Vector = streamed_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -12474,7 +11090,7 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12483,14 +11099,14 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
 }
 pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: Specification13) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12499,44 +11115,34 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        const aligned_byte_address = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(allocator: Allocator) u64 {
-            return mach.sub64(allocator.finish(), high_alignment);
+        pub inline fn unwritable_byte_address(allocator: Allocator) u64 {
+            return mach.sub64(allocator.unmapped_byte_address(), high_alignment);
         }
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -12552,7 +11158,7 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12561,14 +11167,14 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
 }
 pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: Specification13) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12577,49 +11183,39 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: 
         pub const sentinel: *const spec.child = pointerOpaque(spec.child, spec.sentinel);
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = @sizeOf(spec.child);
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        inline fn aligned_byte_address(allocator: Allocator) u64 {
-            return mach.alignA64(allocator.next(), low_alignment);
+        pub inline fn aligned_byte_address(allocator: Allocator) u64 {
+            return mach.alignA64(allocator.unallocated_byte_address(), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        inline fn unwritable_byte_address(allocator: Allocator) u64 {
-            return mach.sub64(allocator.finish(), high_alignment);
+        pub inline fn unwritable_byte_address(allocator: Allocator) u64 {
+            return mach.sub64(allocator.unmapped_byte_address(), high_alignment);
         }
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
         pub inline fn alignment(allocator: Allocator) u64 {
             return mach.sub64(aligned_byte_address(allocator), allocated_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
@@ -12635,7 +11231,7 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12702,15 +11298,15 @@ pub const Specification14 = struct {
 };
 pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: Specification14) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12718,54 +11314,41 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        const aligned_byte_address = allocated_byte_address;
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address = allocated_byte_address;
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(allocator));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Vector = streamed_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -12785,7 +11368,7 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12794,15 +11377,15 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
 }
 pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: Specification14) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12810,59 +11393,46 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: 
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        inline fn aligned_byte_address(allocator: Allocator) u64 {
-            return mach.alignA64(allocator.next(), low_alignment);
+        pub inline fn aligned_byte_address(allocator: Allocator) u64 {
+            return mach.alignA64(allocator.unallocated_byte_address(), low_alignment);
         }
-        inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_address(impl: *const Implementation) u64 {
             return impl.ss_word;
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn streamed_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unstreamed_byte_address(impl), aligned_byte_address(allocator));
         }
-        inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
+        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
             return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
         pub inline fn alignment(allocator: Allocator) u64 {
             return mach.sub64(aligned_byte_address(allocator), allocated_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const position: Value = unstreamed_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const behind: Vector = streamed_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const ahead: Value = unstreamed_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -12882,7 +11452,7 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: 
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12891,14 +11461,14 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: 
 }
 pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specification14) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12906,42 +11476,32 @@ pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specif
         const Allocator = spec.Allocator;
         pub const unit_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        const aligned_byte_address = allocated_byte_address;
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub const aligned_byte_address = allocated_byte_address;
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -12955,7 +11515,7 @@ pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specif
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.lb_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
@@ -12964,14 +11524,14 @@ pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specif
 }
 pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specification14) type {
     return struct {
-        comptime low: *const Slave = &allocated_byte_address,
-        comptime start: *const Slave = &aligned_byte_address,
+        comptime allocated_byte_address: *const Slave = &allocated_byte_address,
+        comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
-        comptime high: *const Slave = &unallocated_byte_address,
-        comptime finish: *const Slave = &unwritable_byte_address,
-        comptime bytes: *const Slave = &allocated_byte_count,
-        comptime capacity: *const Slave = &writable_byte_count,
-        comptime utility: *const Slave = &aligned_byte_count,
+        comptime unallocated_byte_address: *const Slave = &unallocated_byte_address,
+        comptime unwritable_byte_address: *const Slave = &unwritable_byte_address,
+        comptime allocated_byte_count: *const Slave = &allocated_byte_count,
+        comptime writable_byte_count: *const Slave = &writable_byte_count,
+        comptime aligned_byte_count: *const Slave = &aligned_byte_count,
         const Implementation = @This();
         const Value = fn (*const Implementation) callconv(.Inline) u64;
         const Vector = fn (*const Implementation, Allocator) callconv(.Inline) u64;
@@ -12979,47 +11539,37 @@ pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specif
         const Allocator = spec.Allocator;
         pub const low_alignment: u64 = spec.low_alignment;
         pub const high_alignment: u64 = spec.high_alignment;
-        inline fn allocated_byte_address(allocator: Allocator) u64 {
-            return allocator.next();
+        pub inline fn allocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unallocated_byte_address();
         }
-        inline fn aligned_byte_address(allocator: Allocator) u64 {
-            return mach.alignA64(allocator.next(), low_alignment);
+        pub inline fn aligned_byte_address(allocator: Allocator) u64 {
+            return mach.alignA64(allocator.unallocated_byte_address(), low_alignment);
         }
-        inline fn undefined_byte_address(impl: *const Implementation) u64 {
+        pub inline fn undefined_byte_address(impl: *const Implementation) u64 {
             return impl.ub_word;
         }
-        const unwritable_byte_address: Slave = unallocated_byte_address;
-        inline fn unallocated_byte_address(allocator: Allocator) u64 {
-            return allocator.finish();
+        pub const unwritable_byte_address: Slave = unallocated_byte_address;
+        pub inline fn unallocated_byte_address(allocator: Allocator) u64 {
+            return allocator.unmapped_byte_address();
         }
-        inline fn allocated_byte_count(allocator: Allocator) u64 {
+        pub inline fn allocated_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(allocator));
         }
-        inline fn aligned_byte_count(allocator: Allocator) u64 {
+        pub inline fn aligned_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unallocated_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn writable_byte_count(allocator: Allocator) u64 {
+        pub inline fn writable_byte_count(allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), aligned_byte_address(allocator));
         }
-        inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
         }
-        inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
+        pub inline fn defined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
             return mach.sub64(undefined_byte_address(impl), aligned_byte_address(allocator));
         }
         pub inline fn alignment(allocator: Allocator) u64 {
             return mach.sub64(aligned_byte_address(allocator), allocated_byte_address(allocator));
         }
-        pub const low: Slave = allocated_byte_address;
-        pub const start: Slave = aligned_byte_address;
-        pub const next: Value = undefined_byte_address;
-        pub const finish: Slave = unwritable_byte_address;
-        pub const high: Slave = unallocated_byte_address;
-        pub const bytes: Slave = allocated_byte_count;
-        pub const utility: Slave = aligned_byte_count;
-        pub const capacity: Slave = writable_byte_count;
-        pub const length: Vector = defined_byte_count;
-        pub const available: Vector = undefined_byte_count;
         pub fn define(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word +%= x_bytes;
         }
@@ -13033,7 +11583,7 @@ pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specif
             const s_impl: Implementation = impl.*;
             const t_impl: Implementation = .{ .ub_word = t.ab_addr };
             impl.* = t_impl;
-            copy(t_impl.start(), s_impl.start(), s_impl.utility(), spec.low_alignment);
+            copy(t_impl.aligned_byte_address(), s_impl.aligned_byte_address(), s_impl.aligned_byte_count(), spec.low_alignment);
         }
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
