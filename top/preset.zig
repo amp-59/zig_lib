@@ -2,6 +2,7 @@ const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
+const preset = @This();
 const builtin = @import("./builtin.zig");
 
 pub const address_space = opaque {
@@ -131,13 +132,23 @@ pub const mmap = opaque {
         };
     };
     pub const options = opaque {
-        pub const object: file.MapSpec.Options = .{
+        pub const object: preset.file.MapSpec.Options = .{
             .visibility = .private,
             .anonymous = false,
             .read = true,
             .write = false,
             .exec = true,
             .populate = true,
+            .grows_down = false,
+            .sync = false,
+        };
+        pub const file: preset.file.MapSpec.Options = .{
+            .anonymous = false,
+            .visibility = .shared,
+            .read = true,
+            .write = true,
+            .exec = false,
+            .populate = false,
             .grows_down = false,
             .sync = false,
         };
