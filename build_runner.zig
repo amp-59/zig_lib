@@ -13,6 +13,7 @@ const builtin = srg.builtin;
 pub const AddressSpace = builder.AddressSpace;
 pub const is_verbose: bool = false;
 pub const is_correct: bool = false;
+pub const is_silent: bool = true;
 
 pub usingnamespace proc.start;
 
@@ -64,7 +65,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         const name: [:0]const u8 = meta.manyToSlice(arg);
         if (mem.testEqualMany(u8, name, "all")) {
             for (ctx.cmds.readAll()) |cmd| {
-                builtin.assertNotEqual(u64, 0, try cmd.exec(vars));
+                builtin.assertNotEqual(u64, 0, try cmd.exec());
             }
             return;
         }
@@ -73,7 +74,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         const name: [:0]const u8 = meta.manyToSlice(arg);
         for (ctx.cmds.readAll()) |cmd| {
             if (mem.testEqualMany(u8, name, cmd.name.?)) {
-                builtin.assertNotEqual(u64, 0, try cmd.exec(vars));
+                builtin.assertNotEqual(u64, 0, try cmd.exec());
             }
         }
     }

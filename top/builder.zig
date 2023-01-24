@@ -30,10 +30,9 @@ const max_len: u64 = 65536;
 const max_args: u64 = 512;
 pub const BuildCmd = struct {
     const Builder: type = @This();
-    const zig: [:0]const u8 = "zig";
-    zig_exe: [:0]const u8,
+    ctx: *const Context,
     cmd: enum { exe, lib, obj, fmt, ast_check, run },
-    root: Path,
+    root: [:0]const u8,
     watch: bool = false,
     color: ?enum(u2) { on = 0, off = 1, auto = 2 } = null,
     emit_bin: ?union(enum) { yes: ?Path, no: void } = null,
@@ -95,15 +94,19 @@ pub const BuildCmd = struct {
     stack: ?u64 = null,
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null,
     fn buildLength(build: Builder) u64 {
-        var len: u64 = "zig\x00".len;
+        var len: u64 = 4;
         switch (build.cmd) {
             .lib, .exe, .obj => {
-                len += "build-".len + @tagName(build.cmd).len + 1;
+                len += 6 + @tagName(build.cmd).len + 1;
             },
             .fmt, .ast_check, .run => {
                 len += @tagName(build.cmd).len + 1;
             },
         }
+        len +%= Path.formatLength(build.ctx.buildRootPath());
+        len +%= 15;
+        len +%= Path.formatLength(build.ctx.buildRootPath());
+        len +%= 2;
         if (build.watch) {
             len +%= 10;
         }
@@ -521,6 +524,7 @@ pub const BuildCmd = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
+        len +%= Path.formatLength(build.ctx.sourceRootPath(build.root));
         len +%= build.root.len + 1;
         return len;
     }
@@ -537,6 +541,9 @@ pub const BuildCmd = struct {
                 array.writeOne('\x00');
             },
         }
+        array.writeMany("-Dbuild_root=\"");
+        array.writeFormat(build.ctx.buildRootPath());
+        array.writeMany("\"\x00");
         if (build.watch) {
             array.writeMany("--watch\x00");
         }
@@ -954,28 +961,30 @@ pub const BuildCmd = struct {
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        array.writeFormat(build.root);
+        array.writeFormat(build.ctx.sourceRootPath(build.root));
         array.writeOne('\x00');
         return countArgs(array);
     }
-    pub fn allocateExec(build: Builder, vars: [][*:0]u8, allocator: *Allocator) !u64 {
-        var array: String = try meta.wrap(String.init(allocator, build.buildLength()));
+    pub fn allocateExec(builder: Builder, allocator: *Allocator) !u64 {
+        var array: String = try meta.wrap(String.init(allocator, builder.buildLength()));
         defer array.deinit(allocator);
-        var args: Pointers = try meta.wrap(Pointers.init(allocator, build.buildWrite(&array)));
-        builtin.assertAboveOrEqual(u64, max_args, makeArgs(array, &args));
-        builtin.assertAboveOrEqual(u64, max_len, array.len());
+        var args: Pointers = try meta.wrap(Pointers.init(allocator, builder.buildWrite(&array)));
         defer args.deinit(allocator);
-        return build.genericExec(args.referAllDefined(), vars);
+        try builtin.expectBelowOrEqual(u64, array.len(), max_len);
+        try builtin.expectBelowOrEqual(u64, makeArgs(array, &args), max_args);
+        try builtin.expectEqual(u64, array.len(), builder.buildLength());
+        return builder.genericExec(args.referAllDefined());
     }
-    pub fn exec(build: Builder, vars: [][*:0]u8) !u64 {
+    pub fn exec(builder: Builder) !u64 {
         var array: StaticString = .{};
         var args: StaticPointers = .{};
-        _ = build.buildWrite(&array);
-        _ = makeArgs(&array, &args);
-        return build.genericExec(args.referAllDefined(), vars);
+        try builtin.expectBelowOrEqual(u64, builder.buildWrite(&array), max_args);
+        try builtin.expectBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+        try builtin.expectEqual(u64, array.len(), builder.buildLength());
+        return builder.genericExec(args.referAllDefined());
     }
-    fn genericExec(builder: Builder, args: [][*:0]u8, vars: [][*:0]u8) !u64 {
-        return proc.command(.{}, builder.zig_exe, args, vars);
+    fn genericExec(builder: Builder, args: [][*:0]u8) !u64 {
+        return proc.command(.{}, builder.ctx.zig_exe, args, builder.ctx.vars);
     }
 };
 /// Environment variables needed to find user home directory
@@ -1005,7 +1014,7 @@ fn makeArgs(array: anytype, args: anytype) u64 {
         }
     }
     if (args.len() != 0) {
-        mem.set(args.impl.next(), @as(u64, 0), 1);
+        mem.set(args.impl.undefined_byte_address(), @as(u64, 0), 1);
     }
     return args.len();
 }
@@ -1138,18 +1147,40 @@ pub const Context = struct {
     array: *ArrayU,
     const ArrayC = mem.StaticArray(BuildCmd, 64);
     pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
-    pub fn path(ctx: *Context, name: [:0]const u8) Path {
+
+    pub fn zigExePath(ctx: *const Context) Path {
+        return ctx.path(ctx.zig_exe);
+    }
+    pub fn buildRootPath(ctx: *const Context) Path {
+        return ctx.path(ctx.build_root);
+    }
+    pub fn cacheDirPath(ctx: *const Context) Path {
+        return ctx.path(ctx.cache_dir);
+    }
+    pub fn globalCacheDirPath(ctx: *const Context) Path {
+        return ctx.path(ctx.global_cache_dir);
+    }
+    pub fn sourceRootPath(ctx: *const Context, root: [:0]const u8) Path {
+        return ctx.path(root);
+    }
+    pub fn path(ctx: *const Context, name: [:0]const u8) Path {
         return .{ .ctx = ctx, .relative = name };
     }
-    pub fn dupe(ctx: *Context, comptime T: type, value: T) *T {
+    pub fn dupe(ctx: *const Context, comptime T: type, value: T) *T {
         ctx.writeOne(T, value);
         return ctx.array.referOneBack(T);
     }
-    pub fn dupeMany(ctx: *Context, comptime T: type, values: []const T) []T {
+    pub fn dupeMany(ctx: *const Context, comptime T: type, values: []const T) []const T {
+        if (@ptrToInt(values.ptr) < 0x40000000) {
+            return values;
+        }
         ctx.array.writeMany(T, values);
         return ctx.array.referManyBack(T, .{ .count = values.len });
     }
-    pub fn dupeWithSentinel(ctx: *Context, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]T {
+    pub fn dupeWithSentinel(ctx: *const Context, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
+        if (@ptrToInt(values.ptr) < 0x40000000) {
+            return values;
+        }
         defer ctx.array.define(T, .{ .count = 1 });
         ctx.array.writeMany(T, values);
         ctx.array.referOneUndefined(T).* = sentinel;
@@ -1163,8 +1194,8 @@ pub const Context = struct {
     ) *BuildCmd {
         const ret: *BuildCmd = ctx.cmds.referOneUndefined();
         ret.* = .{
-            .zig_exe = ctx.zig_exe,
-            .root = ctx.path(pathname),
+            .ctx = ctx,
+            .root = pathname,
             .cmd = .exe,
             .name = name,
         };
@@ -1197,7 +1228,7 @@ pub const Context = struct {
     }
 };
 pub const Path = struct {
-    ctx: *Context,
+    ctx: *const Context,
     relative: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
