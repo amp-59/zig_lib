@@ -1,14 +1,14 @@
-const srg = @import("zig_lib");
-const mem = srg.mem;
-const sys = srg.sys;
-const fmt = srg.fmt;
-const proc = srg.proc;
-const file = srg.file;
-const meta = srg.meta;
-const preset = srg.preset;
-const builtin = srg.builtin;
+const mem = @import("./mem.zig");
+const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
+const proc = @import("./proc.zig");
+const mach = @import("./mach.zig");
+const file = @import("./file.zig");
+const meta = @import("./meta.zig");
+const preset = @import("./preset.zig");
+const builtin = @import("./builtin.zig");
 
-const types = @import("buildgen/builder-template.zig");
+const types = @import("./builder-template.zig");
 
 pub usingnamespace proc.start;
 
@@ -59,7 +59,7 @@ const close_spec: file.CloseSpec = .{
 };
 const ws: [28]u8 = .{' '} ** 28;
 pub const open_spec: file.OpenSpec = .{
-    .options = .{ .read = true, .write = null },
+    .options = .{ .read = true, .write = .append },
 };
 pub const OptionSpec = struct {
     /// Command line flag/switch
@@ -439,10 +439,11 @@ pub fn guessSourceOffset(src: []const u8, comptime string: []const u8, guess: u6
         return guessSourceOffset(src, string, src.len / 2);
     }
     if (mem.propagateSearch(u8, string, src, guess)) |actual| {
-        const delta = @max(actual, guess) - @min(actual, guess);
-        if (delta != 0) {
-            try inaccurateGuessWarning(string, guess, actual, delta);
+        const diff: u64 = builtin.diff(u64, actual, guess);
+        if (diff != 0) {
+            try inaccurateGuessWarning(string, guess, actual, diff);
         }
+        try builtin.expectEqual([]const u8, string, src[actual .. actual + string.len]);
         return actual;
     }
     try nullGuessWarning(string);
@@ -1058,43 +1059,46 @@ pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opt_map);
     const members_loc_token: []const u8 = "_: void,";
-    const fn_body_loc_token: []const u8 = "_;";
+    const len_fn_body_loc_token: []const u8 = "_ = buildLength;";
+    const write_fn_body_loc_token: []const u8 = "_ = buildWrite;";
 
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
     var array: String = String.init(&allocator);
+    try array.increment(&allocator, @embedFile("./builder.zig").len);
     defer array.deinit(&allocator);
 
-    const guess_i: u64 = 1093;
-    const guess_j: u64 = 305;
-    const guess_k: u64 = 418;
+    const guess_i: u64 = 1332;
+    const guess_j: u64 = 1736;
+    const guess_k: u64 = 2289;
 
-    const template_src: [:0]const u8 = @embedFile("./buildgen/builder-template.zig");
-    const imports_template_src: [:0]const u8 = @embedFile("buildgen/imports-template.zig");
-    const write_template_src: [:0]const u8 = @embedFile("./buildgen/write-template.zig");
-    const length_template_src: [:0]const u8 = @embedFile("./buildgen/length-template.zig");
+    const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/builder-template.zig");
 
-    try array.appendMany(&allocator, imports_template_src);
-    const builder_src: []const u8 = subTemplate(template_src, "builder-struct.zig") orelse return error.MissingSubTemplate;
+    try mem.acquire(.{}, AddressSpace, &address_space, 1);
+    const arena_1: mem.Arena = AddressSpace.arena(1);
+
+    const lb_addr: u64 = arena_1.lb_addr;
+    const ub_addr: u64 = try file.map(.{ .options = .{} }, lb_addr, fd);
+    const up_addr: u64 = mach.alignA64(ub_addr, 4096);
+
+    const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
+
+    const builder_src: []const u8 = subTemplate(template_src, "builder-struct.zig").?;
+    const types_src: []const u8 = subTemplate(template_src, "builder-types.zig").?;
+
     const members_offset: u64 = try guessSourceOffset(builder_src, members_loc_token, guess_i);
+    const length_fn_body_offset: u64 = try guessSourceOffset(builder_src, len_fn_body_loc_token, guess_j);
+    const write_fn_body_offset: u64 = try guessSourceOffset(builder_src, write_fn_body_loc_token, guess_k);
     try array.appendMany(&allocator, builder_src[0 .. members_offset - (initial_indent * 4)]);
     try writeStructMembers(&allocator, &array);
-
-    const length_fn_body_offset: u64 = try guessSourceOffset(length_template_src, fn_body_loc_token, guess_j);
-    try writeIndent(&allocator, &array, initial_indent, length_template_src[0..length_fn_body_offset]);
+    try array.appendMany(&allocator, builder_src[members_offset + members_loc_token.len + 1 .. length_fn_body_offset]);
     try writeFunctionBody(&allocator, &array, true);
-    try writeIndent(&allocator, &array, initial_indent, length_template_src[length_fn_body_offset + fn_body_loc_token.len ..]);
-
-    const write_fn_body_offset: u64 = try guessSourceOffset(write_template_src, fn_body_loc_token, guess_k);
-    try writeIndent(&allocator, &array, initial_indent, write_template_src[0..write_fn_body_offset]);
+    try array.appendMany(&allocator, builder_src[length_fn_body_offset + len_fn_body_loc_token.len .. write_fn_body_offset]);
     try writeFunctionBody(&allocator, &array, false);
-    try writeIndent(&allocator, &array, initial_indent, write_template_src[write_fn_body_offset + fn_body_loc_token.len ..]);
-    try array.appendMany(&allocator, builder_src[members_offset + members_loc_token.len ..]);
-
-    const builder_types_src: []const u8 = subTemplate(template_src, "builder-types.zig") orelse return error.MissingSubTemplate;
-    try array.appendMany(&allocator, builder_types_src);
+    try array.appendMany(&allocator, builder_src[write_fn_body_offset + write_fn_body_loc_token.len ..]);
+    try array.appendMany(&allocator, types_src);
     if (options.output) |pathname| {
         const builder_fd: u64 = try file.create(create_spec, pathname);
         defer file.close(close_spec, builder_fd);
@@ -1102,4 +1106,6 @@ pub fn main(args_in: [][*:0]u8) !void {
     } else {
         try file.write(1, array.readAll(allocator));
     }
+
+    mem.unmap(.{ .errors = null }, lb_addr, up_addr - lb_addr);
 }
