@@ -192,7 +192,7 @@ fn testAutomaticImplementation() !void {
         const array = mem.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, "World!", &array.readCountAt("World!".len, "Hello, ".len));
-        try builtin.expectEqual(u64, array.readAll().len + 1, array.impl.bytes());
+        try builtin.expectEqual(u64, array.readAll().len + 1, array.impl.allocated_byte_count());
     }
     {
         const StaticString = mem.StructuredAutomaticStreamVector(u8, null, 256, 1, .{});
