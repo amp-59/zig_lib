@@ -962,20 +962,20 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             const high_alignment: u64 = @sizeOf(child);
             const low_alignment: u64 = @alignOf(child);
             if (random.data.len() == 0) {
-                sys.noexcept.getrandom(random.data.impl.start(), bytes, dev);
+                sys.noexcept.getrandom(random.data.impl.aligned_byte_address(), bytes, dev);
             }
             if (high_alignment + low_alignment > bytes) {
                 @compileError("requested type " ++ @typeName(T) ++ " is too large");
             }
-            const s_lb_addr: u64 = random.data.impl.next();
+            const s_lb_addr: u64 = random.data.impl.undefined_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
             const s_up_addr: u64 = s_ab_addr + high_alignment;
-            if (s_up_addr >= random.data.impl.finish()) {
+            if (s_up_addr >= random.data.impl.unwritable_byte_address()) {
                 random.data.undefineAll();
-                const t_lb_addr: u64 = random.data.impl.next();
+                const t_lb_addr: u64 = random.data.impl.undefined_byte_address();
                 const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
                 const t_up_addr: u64 = t_ab_addr + high_alignment;
-                sys.noexcept.getrandom(random.data.impl.start(), bytes, dev);
+                sys.noexcept.getrandom(random.data.impl.aligned_byte_address(), bytes, dev);
                 random.data.define(t_up_addr - t_lb_addr);
                 return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
             }
