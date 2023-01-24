@@ -5,7 +5,6 @@ const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
-
 const fmt_spec: mem.ReinterpretSpec = blk: {
     var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
     tmp.integral = .{ .format = .dec };
@@ -960,7 +959,6 @@ pub const BuildCmd = struct {
         array.writeOne('\x00');
         return countArgs(array);
     }
-
     pub fn allocateExec(build: Builder, vars: [][*:0]u8, allocator: *Allocator) !u64 {
         var array: String = try meta.wrap(String.init(allocator, build.buildLength()));
         defer array.deinit(allocator);
@@ -1232,6 +1230,7 @@ fn Args(comptime name: [:0]const u8) type {
         is_correct: ?bool = null,
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
+        is_silent: ?bool = null,
         is_tolerant: ?bool = null,
         define_build_root: bool = true,
         define_build_working_directory: bool = true,
