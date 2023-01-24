@@ -18,9 +18,10 @@ const std = @import("std");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.exact_8;
 pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
 
 const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec = proc.CloneSpec{
@@ -40,7 +41,7 @@ const wait_spec: proc.WaitIdSpec = .{
     },
 };
 const Allocator0 = mem.GenericArenaAllocator(.{
-    .arena_index = 32,
+    .arena_index = 4,
     .options = .{
         .count_allocations = true,
         .require_filo_free = false,
@@ -51,7 +52,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
-    .arena_index = 40,
+    .arena_index = 5,
     .options = .{
         .count_allocations = false,
         .require_filo_free = true,
