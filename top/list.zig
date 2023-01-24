@@ -32,7 +32,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 const len: u64 = mach.alignA64(unit_size, link_alignment);
                 const end: u64 = begin + len;
                 fn addr(t_node_blk: Block) u64 {
-                    return t_node_blk.start() + Node.Data.begin;
+                    return t_node_blk.aligned_byte_address() + Node.Data.begin;
                 }
                 fn read(s_node_blk: Block) child {
                     const s_data_addr: u64 = Node.Data.addr(s_node_blk);
@@ -52,7 +52,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 const len: u64 = link_size;
                 const end: u64 = begin + len;
                 fn addr(t_node_blk: Block) u64 {
-                    return t_node_blk.start() + Node.Link.begin;
+                    return t_node_blk.aligned_byte_address() + Node.Link.begin;
                 }
                 fn read(s_node_blk: Block) u64 {
                     return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk)).*;
@@ -142,19 +142,19 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             }
             pub fn next(links: Links) ?Block {
                 const t_next_blk: Block = Node.Link.next(links.major, links.minor);
-                return mach.cmovxZ(t_next_blk.start() > 0x10000, t_next_blk);
+                return mach.cmovxZ(t_next_blk.aligned_byte_address() > 0x10000, t_next_blk);
             }
             pub fn prev(links: Links) ?Block {
                 const t_prev_blk: Block = Node.Link.prev(links.major, links.minor);
-                return mach.cmovxZ(t_prev_blk.start() > 0x10000, t_prev_blk);
+                return mach.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, t_prev_blk);
             }
             pub fn nextPair(links: Links) ?Links {
                 const t_next_blk: Block = Node.Link.next(links.major, links.minor);
-                return mach.cmovxZ(t_next_blk.start() > 0x10000, Links{ .major = links.minor, .minor = t_next_blk });
+                return mach.cmovxZ(t_next_blk.aligned_byte_address() > 0x10000, Links{ .major = links.minor, .minor = t_next_blk });
             }
             pub fn prevPair(links: Links) ?Links {
                 const t_prev_blk: Block = Node.Link.prev(links.major, links.minor);
-                return mach.cmovxZ(t_prev_blk.start() > 0x10000, Links{ .major = t_prev_blk, .minor = links.major });
+                return mach.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, Links{ .major = t_prev_blk, .minor = links.major });
             }
             pub fn toList(links: *Links) List {
                 const index = links.countToHead();
@@ -502,7 +502,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             }
             switch (list.count) {
                 0, 1 => {
-                    if (list.links.major.start() + Node.size == list.links.minor.start()) {
+                    if (list.links.major.aligned_byte_address() + Node.size == list.links.minor.aligned_byte_address()) {
                         allocator.deallocateStatic(Block, list.links.major, .{ .count = 2 });
                     } else {
                         allocator.deallocateStatic(Block, list.links.major, .{ .count = 1 });
@@ -515,7 +515,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                         var s_lb_blk: Block = list.links.major;
                         var n_count: u64 = 1;
                         while (list.next()) |next_list| {
-                            if (list.links.minor.start() == list.links.major.start() + Node.size) {
+                            if (list.links.minor.aligned_byte_address() == list.links.major.aligned_byte_address() + Node.size) {
                                 n_count += 1;
                             } else {
                                 allocator.deallocateStatic(Block, s_lb_blk, .{ .count = n_count });
@@ -524,7 +524,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                             }
                             list.* = next_list;
                         } else {
-                            if (list.links.minor.start() == list.links.major.start() + Node.size) {
+                            if (list.links.minor.aligned_byte_address() == list.links.major.aligned_byte_address() + Node.size) {
                                 n_count += 1;
                             } else {
                                 allocator.deallocateStatic(Block, list.links.minor, .{ .count = 1 });
@@ -536,7 +536,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                         var s_lb_blk: Block = list.links.minor;
                         var n_count: u64 = 1;
                         while (list.prev()) |prev_list| {
-                            if (list.links.minor.start() == list.links.major.start() + Node.size) {
+                            if (list.links.minor.aligned_byte_address() == list.links.major.aligned_byte_address() + Node.size) {
                                 n_count += 1;
                             } else {
                                 allocator.deallocateStatic(Block, s_lb_blk, .{ .count = n_count });
@@ -545,7 +545,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                             }
                             list.* = prev_list;
                         } else {
-                            if (list.links.minor.start() == list.links.major.start() + Node.size) {
+                            if (list.links.minor.aligned_byte_address() == list.links.major.aligned_byte_address() + Node.size) {
                                 n_count += 1;
                             } else {
                                 allocator.deallocateStatic(Block, list.links.minor, .{ .count = 1 });
@@ -573,9 +573,9 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 if (tmp.count <= 1) {
                     try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
-                        ": \t(",    fmt.ux64(tmp.links.major.start()),
+                        ": \t(",    fmt.ux64(tmp.links.major.aligned_byte_address()),
                         "+",        fmt.ud64(tmp.links.major.alignment()),
-                        ',',        fmt.ux64(tmp.links.minor.start()),
+                        ',',        fmt.ux64(tmp.links.minor.aligned_byte_address()),
                         "+",        fmt.ud64(tmp.links.minor.alignment()),
                         ")\ndata-", fmt.ud64(tmp.index),
                         ": \t",     fmt.any(Node.Data.read(tmp.links.major)),
@@ -585,11 +585,11 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     if (tmp.links.nextPair()) |links| {
                         try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
-                            ": \t(",   fmt.ux64(tmp.links.major.start()),
+                            ": \t(",   fmt.ux64(tmp.links.major.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.major.alignment()),
-                            ',',       fmt.ux64(tmp.links.minor.start()),
+                            ',',       fmt.ux64(tmp.links.minor.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.minor.alignment()),
-                            ") -> ",   fmt.ux64(links.major.start()),
+                            ") -> ",   fmt.ux64(links.major.aligned_byte_address()),
                             "+",       fmt.ud64(links.major.alignment()),
                             "\ndata-", fmt.ud64(tmp.index),
                             ": \t",    fmt.any(Node.Data.read(tmp.links.major)),
@@ -601,13 +601,13 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     while (tmp.links.nextPair()) |links| {
                         try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
-                            ": \t",    fmt.ux64(tmp.links.prev().?.start()),
+                            ": \t",    fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.prev().?.alignment()),
-                            " <- (",   fmt.ux64(tmp.links.major.start()),
+                            " <- (",   fmt.ux64(tmp.links.major.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.major.alignment()),
-                            ',',       fmt.ux64(tmp.links.minor.start()),
+                            ',',       fmt.ux64(tmp.links.minor.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.minor.alignment()),
-                            ") -> ",   fmt.ux64(tmp.links.next().?.start()),
+                            ") -> ",   fmt.ux64(tmp.links.next().?.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.next().?.alignment()),
                             "\ndata-", fmt.ud64(tmp.index),
                             ": \t",    fmt.any(Node.Data.read(tmp.links.major)),
@@ -618,11 +618,11 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     } else {
                         try array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
-                            ":\t",       fmt.ux64(tmp.links.prev().?.start()),
+                            ":\t",       fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",         fmt.ud64(tmp.links.prev().?.alignment()),
-                            " <- (",     fmt.ux64(tmp.links.major.start()),
+                            " <- (",     fmt.ux64(tmp.links.major.aligned_byte_address()),
                             "+",         fmt.ud64(tmp.links.major.alignment()),
-                            ',',         fmt.ux64(tmp.links.minor.start()),
+                            ',',         fmt.ux64(tmp.links.minor.aligned_byte_address()),
                             "+",         fmt.ud64(tmp.links.minor.alignment()),
                             ")\ndata-",  fmt.ud64(tmp.index),
                             ": \t",      fmt.any(Node.Data.read(tmp.links.major)),
