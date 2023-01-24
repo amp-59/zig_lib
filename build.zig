@@ -40,7 +40,7 @@ const lib_parser_args = .{
     .is_correct = false,
     .is_verbose = false,
     .is_silent = true,
-    .build_mode = .ReleaseSmall,
+    .build_mode = .ReleaseFast,
     .macros = parsedir_lib_macros,
     .packages = packages,
 };
@@ -56,6 +56,7 @@ const parsedir_std_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name
 const parsedir_lib_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = "\"lib\"" }});
 
 pub fn main(ctx: *builder.Context) !void {
+    // Top test programs:
     _ = ctx.addExecutable("builtin_test", "top/builtin-test.zig", minor_test_args);
     _ = ctx.addExecutable("meta_test", "top/meta-test.zig", minor_test_args);
     _ = ctx.addExecutable("mem_test", "top/mem-test.zig", minor_test_args);
@@ -76,9 +77,6 @@ pub fn main(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("readelf", "test/readelf.zig", minor_test_args);
     _ = ctx.addExecutable("parsedir", "test/parsedir.zig", fast_test_args);
 
-    // Generators:
-    _ = ctx.addExecutable("builder_gen", "top/builder-gen.zig", small_test_args);
-
     // Other test programs:
     _ = ctx.addExecutable("impl_test", "top/impl-test.zig", .{});
     _ = ctx.addExecutable("container_test", "top/container-test.zig", .{});
@@ -91,4 +89,7 @@ pub fn main(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("readdir", "examples/iterate_dir_entries.zig", small_test_args);
     _ = ctx.addExecutable("dynamic", "./examples/dynamic_alloc.zig", small_test_args);
     _ = ctx.addExecutable("address_space", "./examples/custom_address_space.zig", small_test_args);
+
+    // Generators:
+    // _ = ctx.addExecutable("builder_gen", "top/builder-gen.zig", small_test_args);
 }
