@@ -902,11 +902,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Replaced(.mmap, u64)
     const flags: mem.Map = spec.flags();
     const prot: mem.Prot = spec.prot();
     const st: Stat = try fstat(.{ .errors = &.{} }, fd);
-    const len: u64 = blk: {
-        const alignment: u64 = 4096;
-        const mask: u64 = alignment -% 1;
-        break :blk (st.size + mask) & ~mask;
-    };
+    const len: u64 = mach.alignA64(st.size, 4096);
     if (spec.call(.mmap, .{ addr, len, prot.val, flags.val, fd, 0 })) {
         if (spec.logging.Acquire) {
             mem.debug.mapNotice(addr, len);
