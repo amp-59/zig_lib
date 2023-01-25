@@ -175,7 +175,7 @@ const Test = struct {
     var sample: u64 = 0;
 };
 fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    var gpa = if (test_standard) std.heap.GeneralPurposeAllocator(.{}){};
     var allocator_0: Allocator0 = try Allocator0.init(address_space);
     var allocator_1: Allocator1 = try Allocator1.init(address_space);
     var allocator_n: zig.Allocator.Node = try zig.Allocator.Node.init(address_space);
