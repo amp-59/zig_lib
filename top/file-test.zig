@@ -79,9 +79,7 @@ fn testFileOperationsRound1() !void {
 }
 fn testFileOperationsRound2() !void {
     var buf: [4096]u8 = undefined;
-    try file.write(2, "working directory: ");
-    try file.write(2, try file.getCwd(getcwd_spec, &buf));
-    try file.write(2, "\n");
+    _ = try file.getCwd(getcwd_spec, &buf);
     try file.makeDir(make_dir_spec, "/run/user/1000/file_test");
     var st: file.Stat = try file.stat(stat_spec, "/run/user/1000/file_test");
     builtin.assert(st.isDirectory());
