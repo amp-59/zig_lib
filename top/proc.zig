@@ -354,11 +354,11 @@ pub const CloneSpec = struct {
     pub inline fn args(comptime spec: CloneSpec, stack_addr: u64) CloneArgs {
         return .{
             .flags = spec.flags(),
-            .child_tid_addr = stack_addr +% 0x1000 - 0x10,
-            .parent_tid_addr = stack_addr +% 0x1000 - 0x8,
+            .child_tid_addr = builtin.add(u64, stack_addr, 0x1000 - 0x10),
+            .parent_tid_addr = builtin.add(u64, stack_addr, 0x1000 - 0x8),
             .stack_addr = stack_addr,
-            .stack_len = 4096,
-            .tls_addr = stack_addr +% 0x8,
+            .stack_len = 0x1000,
+            .tls_addr = builtin.add(u64, stack_addr, 0x8),
         };
     }
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
