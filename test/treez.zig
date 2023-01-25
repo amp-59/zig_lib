@@ -17,6 +17,7 @@ pub usingnamespace proc.start;
 pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
 
 const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec: proc.CloneSpec = .{ .errors = null, .return_type = u64, .options = .{} };
@@ -300,7 +301,7 @@ fn writeAndWalk(
     }
 }
 fn setType(arg: []const u8) Filter {
-    var mask: Filter = .{ .val = ~@as(u64, 0) };
+    var mask: Filter = .{ .val = ~@as(@typeInfo(Filter.Tag).Enum.tag_type, 0) };
     if (mem.testEqualMany(u8, "-f", arg)) {
         mask.set(.regular);
     } else if (mem.testEqualMany(u8, "-d", arg)) {
@@ -374,7 +375,6 @@ pub fn main(args_in: [][*:0]u8) !void {
     var address_space: builtin.AddressSpace = .{};
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
-
     var done: bool = undefined;
     if (Options.permit_switch_arrows) {
         Style.setArrows(options);
@@ -389,8 +389,8 @@ pub fn main(args_in: [][*:0]u8) !void {
     defer allocator_1.deinit(&address_space);
     const stack_addr: u64 = mach.cmov64(Options.print_in_second_thread, try thread.map(map_spec, 8), 0);
     defer thread.unmap(.{ .errors = null }, 8);
-    try meta.wrap(allocator_0.map(4096));
-    try meta.wrap(allocator_1.map(4096));
+    try meta.wrap(allocator_0.map(64 * 1024 * 1024));
+    try meta.wrap(allocator_1.map(64 * 1024 * 1024));
     for (names.readAll()) |arg| {
         done = false;
         var results: Results = .{};
