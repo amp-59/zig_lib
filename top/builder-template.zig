@@ -45,7 +45,9 @@ pub const BuildCmd = struct {
                 len += @tagName(build.cmd).len + 1;
             },
         }
-        len +%= Path.formatLength(build.ctx.buildRootPath());
+        len +%= 12;
+        len +%= Path.formatLength(build.ctx.zigExePath());
+        len +%= 2;
         len +%= 15;
         len +%= Path.formatLength(build.ctx.buildRootPath());
         len +%= 2;
@@ -67,6 +69,9 @@ pub const BuildCmd = struct {
                 array.writeOne('\x00');
             },
         }
+        array.writeMany("-Dzig_exe=\"");
+        array.writeFormat(build.ctx.zigExePath());
+        array.writeMany("\"\x00");
         array.writeMany("-Dbuild_root=\"");
         array.writeFormat(build.ctx.buildRootPath());
         array.writeMany("\"\x00");
@@ -80,17 +85,17 @@ pub const BuildCmd = struct {
         defer array.deinit(allocator);
         var args: Pointers = try meta.wrap(Pointers.init(allocator, builder.buildWrite(&array)));
         defer args.deinit(allocator);
-        try builtin.expectBelowOrEqual(u64, array.len(), max_len);
-        try builtin.expectBelowOrEqual(u64, makeArgs(array, &args), max_args);
-        try builtin.expectEqual(u64, array.len(), builder.buildLength());
+        builtin.assertBelowOrEqual(u64, array.len(), max_len);
+        builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
+        builtin.assertEqual(u64, array.len(), builder.buildLength());
         return builder.genericExec(args.referAllDefined());
     }
     pub fn exec(builder: Builder) !u64 {
         var array: StaticString = .{};
         var args: StaticPointers = .{};
-        try builtin.expectBelowOrEqual(u64, builder.buildWrite(&array), max_args);
-        try builtin.expectBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-        try builtin.expectEqual(u64, array.len(), builder.buildLength());
+        builtin.assertBelowOrEqual(u64, builder.buildWrite(&array), max_args);
+        builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+        builtin.assertEqual(u64, array.len(), builder.buildLength());
         return builder.genericExec(args.referAllDefined());
     }
     fn genericExec(builder: Builder, args: [][*:0]u8) !u64 {
@@ -245,6 +250,13 @@ pub const GlobalOptions = struct {
         options.build_mode = .Debug;
     }
 };
+pub fn dupeMany(ctx: *const Context, comptime T: type, values: []const T) []const T {
+    if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
+        return values;
+    }
+    ctx.array.writeMany(T, values);
+    return ctx.array.referManyBack(T, .{ .count = values.len });
+}
 pub const Context = struct {
     zig_exe: [:0]const u8,
     build_root: [:0]const u8,
@@ -260,36 +272,36 @@ pub const Context = struct {
     pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
 
     pub fn zigExePath(ctx: *const Context) Path {
-        return ctx.path(ctx.zig_exe);
+        return Path{ .pathname = ctx.zig_exe };
     }
     pub fn buildRootPath(ctx: *const Context) Path {
-        return ctx.path(ctx.build_root);
+        return Path{ .pathname = ctx.build_root };
     }
     pub fn cacheDirPath(ctx: *const Context) Path {
-        return ctx.path(ctx.cache_dir);
+        return Path{ .pathname = ctx.cache_dir };
     }
     pub fn globalCacheDirPath(ctx: *const Context) Path {
-        return ctx.path(ctx.global_cache_dir);
+        return Path{ .pathname = ctx.global_cache_dir };
     }
     pub fn sourceRootPath(ctx: *const Context, root: [:0]const u8) Path {
         return ctx.path(root);
     }
     pub fn path(ctx: *const Context, name: [:0]const u8) Path {
-        return .{ .ctx = ctx, .relative = name };
+        return .{ .ctx = ctx, .pathname = name };
     }
     pub fn dupe(ctx: *const Context, comptime T: type, value: T) *T {
         ctx.writeOne(T, value);
         return ctx.array.referOneBack(T);
     }
     pub fn dupeMany(ctx: *const Context, comptime T: type, values: []const T) []const T {
-        if (@ptrToInt(values.ptr) < 0x40000000) {
+        if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
         ctx.array.writeMany(T, values);
         return ctx.array.referManyBack(T, .{ .count = values.len });
     }
     pub fn dupeWithSentinel(ctx: *const Context, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
-        if (@ptrToInt(values.ptr) < 0x40000000) {
+        if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
         defer ctx.array.define(T, .{ .count = 1 });
@@ -339,19 +351,23 @@ pub const Context = struct {
     }
 };
 pub const Path = struct {
-    ctx: *const Context,
-    relative: [:0]const u8,
+    ctx: ?*const Context = null,
+    pathname: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany(format.ctx.build_root);
-        array.writeOne('/');
-        array.writeMany(format.relative);
+        if (format.ctx) |ctx| {
+            array.writeMany(ctx.build_root);
+            array.writeOne('/');
+        }
+        array.writeMany(format.pathname);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        len +%= format.ctx.build_root.len;
-        len +%= 1;
-        len +%= format.relative.len;
+        if (format.ctx) |ctx| {
+            len +%= ctx.build_root.len;
+            len +%= 1;
+        }
+        len +%= format.pathname.len;
         return len;
     }
 };
