@@ -63,45 +63,45 @@ pub const Specification0 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStaticStructuredUnitAlignment(spec);
+                    return ReadWriteResizeStaticStructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStaticStructuredLazyAlignment(spec);
+                        return ReadWriteResizeStaticStructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStaticStructuredDisjunctAlignment(spec);
+                        return ReadWriteResizeStaticStructuredDisjunctAlignment(spec);
                     }
                 }
             },
             .read_write_auto => {
                 return ReadWriteAutoStructuredAutoAlignment(spec);
             },
-            .read_write_push_pop_auto => {
-                return ReadWritePushPopAutoStructuredAutoAlignment(spec);
+            .read_write_resize_auto => {
+                return ReadWriteResizeAutoStructuredAutoAlignment(spec);
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStaticStructuredUnitAlignment(spec);
+                    return ReadWriteStreamResizeStaticStructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredLazyAlignment(spec);
+                        return ReadWriteStreamResizeStaticStructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredDisjunctAlignment(spec);
+                        return ReadWriteStreamResizeStaticStructuredDisjunctAlignment(spec);
                     }
                 }
             },
             .read_write_stream_auto => {
                 return ReadWriteStreamAutoStructuredAutoAlignment(spec);
             },
-            .read_write_stream_push_pop_auto => {
-                return ReadWriteStreamPushPopAutoStructuredAutoAlignment(spec);
+            .read_write_stream_resize_auto => {
+                return ReadWriteStreamResizeAutoStructuredAutoAlignment(spec);
             },
             .read_write_stream => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
@@ -113,21 +113,21 @@ pub const Specification0 = struct {
     pub const implementations = .{
         ReadWriteAutoStructuredAutoAlignment,
         ReadWriteStreamAutoStructuredAutoAlignment,
-        ReadWriteStreamPushPopAutoStructuredAutoAlignment,
-        ReadWritePushPopAutoStructuredAutoAlignment,
+        ReadWriteStreamResizeAutoStructuredAutoAlignment,
+        ReadWriteResizeAutoStructuredAutoAlignment,
         ReadWriteStaticStructuredUnitAlignment,
         ReadWriteStaticStructuredLazyAlignment,
         ReadWriteStaticStructuredDisjunctAlignment,
-        ReadWriteStreamPushPopStaticStructuredUnitAlignment,
-        ReadWriteStreamPushPopStaticStructuredLazyAlignment,
-        ReadWriteStreamPushPopStaticStructuredDisjunctAlignment,
-        ReadWritePushPopStaticStructuredUnitAlignment,
-        ReadWritePushPopStaticStructuredLazyAlignment,
-        ReadWritePushPopStaticStructuredDisjunctAlignment,
+        ReadWriteStreamResizeStaticStructuredUnitAlignment,
+        ReadWriteStreamResizeStaticStructuredLazyAlignment,
+        ReadWriteStreamResizeStaticStructuredDisjunctAlignment,
+        ReadWriteResizeStaticStructuredUnitAlignment,
+        ReadWriteResizeStaticStructuredLazyAlignment,
+        ReadWriteResizeStaticStructuredDisjunctAlignment,
     };
 };
 pub fn ReadWriteAutoStructuredAutoAlignment(comptime spec: Specification0) type {
-    return struct {
+    return (struct {
         auto: [spec.count]spec.child align(low_alignment) = undefined,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -152,10 +152,10 @@ pub fn ReadWriteAutoStructuredAutoAlignment(comptime spec: Specification0) type 
         pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-    };
+    });
 }
 pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0) type {
-    return struct {
+    return (struct {
         auto: [spec.count]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -199,10 +199,10 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignment(comptime spec: Specification0)
         pub inline fn convert(s: Convert4) Implementation {
             return .{ .ss_word = s.ss_addr };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteStreamResizeAutoStructuredAutoAlignment(comptime spec: Specification0) type {
+    return (struct {
         auto: [spec.count]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         ub_word: u64,
@@ -262,10 +262,10 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignment(comptime spec: Specific
         pub inline fn convert(s: Convert4) Implementation {
             return .{ .ss_word = s.ss_addr, .ub_word = 0 };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteResizeAutoStructuredAutoAlignment(comptime spec: Specification0) type {
+    return (struct {
         auto: [spec.count]spec.child align(low_alignment) = undefined,
         ub_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -306,10 +306,10 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignment(comptime spec: Specification0
         pub fn undefine(impl: *Implementation, x_bytes: u64) void {
             impl.ub_word -%= x_bytes;
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredUnitAlignment(comptime spec: Specification0) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -346,10 +346,10 @@ pub fn ReadWriteStaticStructuredUnitAlignment(comptime spec: Specification0) typ
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredLazyAlignment(comptime spec: Specification0) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -392,10 +392,10 @@ pub fn ReadWriteStaticStructuredLazyAlignment(comptime spec: Specification0) typ
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredDisjunctAlignment(comptime spec: Specification0) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -438,10 +438,10 @@ pub fn ReadWriteStaticStructuredDisjunctAlignment(comptime spec: Specification0)
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredUnitAlignment(comptime spec: Specification0) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -522,10 +522,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignment(comptime spec: Specif
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredLazyAlignment(comptime spec: Specification0) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -612,10 +612,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignment(comptime spec: Specif
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredDisjunctAlignment(comptime spec: Specification0) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -702,10 +702,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignment(comptime spec: Sp
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredUnitAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredUnitAlignment(comptime spec: Specification0) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -761,10 +761,10 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignment(comptime spec: Specificatio
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredLazyAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredLazyAlignment(comptime spec: Specification0) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -826,10 +826,10 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignment(comptime spec: Specificatio
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredDisjunctAlignment(comptime spec: Specification0) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredDisjunctAlignment(comptime spec: Specification0) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -897,7 +897,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignment(comptime spec: Specific
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
 pub const Specification1 = struct {
     child: type,
@@ -928,45 +928,45 @@ pub const Specification1 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStaticStructuredUnitAlignmentSentinel(spec);
+                    return ReadWriteResizeStaticStructuredUnitAlignmentSentinel(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStaticStructuredLazyAlignmentSentinel(spec);
+                        return ReadWriteResizeStaticStructuredLazyAlignmentSentinel(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(spec);
+                        return ReadWriteResizeStaticStructuredDisjunctAlignmentSentinel(spec);
                     }
                 }
             },
             .read_write_auto => {
                 return ReadWriteAutoStructuredAutoAlignmentSentinel(spec);
             },
-            .read_write_push_pop_auto => {
-                return ReadWritePushPopAutoStructuredAutoAlignmentSentinel(spec);
+            .read_write_resize_auto => {
+                return ReadWriteResizeAutoStructuredAutoAlignmentSentinel(spec);
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(spec);
+                    return ReadWriteStreamResizeStaticStructuredUnitAlignmentSentinel(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(spec);
+                        return ReadWriteStreamResizeStaticStructuredLazyAlignmentSentinel(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(spec);
+                        return ReadWriteStreamResizeStaticStructuredDisjunctAlignmentSentinel(spec);
                     }
                 }
             },
             .read_write_stream_auto => {
                 return ReadWriteStreamAutoStructuredAutoAlignmentSentinel(spec);
             },
-            .read_write_stream_push_pop_auto => {
-                return ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(spec);
+            .read_write_stream_resize_auto => {
+                return ReadWriteStreamResizeAutoStructuredAutoAlignmentSentinel(spec);
             },
             .read_write_stream => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
@@ -978,21 +978,21 @@ pub const Specification1 = struct {
     pub const implementations = .{
         ReadWriteAutoStructuredAutoAlignmentSentinel,
         ReadWriteStreamAutoStructuredAutoAlignmentSentinel,
-        ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel,
-        ReadWritePushPopAutoStructuredAutoAlignmentSentinel,
+        ReadWriteStreamResizeAutoStructuredAutoAlignmentSentinel,
+        ReadWriteResizeAutoStructuredAutoAlignmentSentinel,
         ReadWriteStaticStructuredUnitAlignmentSentinel,
         ReadWriteStaticStructuredLazyAlignmentSentinel,
         ReadWriteStaticStructuredDisjunctAlignmentSentinel,
-        ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel,
-        ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel,
-        ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel,
-        ReadWritePushPopStaticStructuredUnitAlignmentSentinel,
-        ReadWritePushPopStaticStructuredLazyAlignmentSentinel,
-        ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel,
+        ReadWriteStreamResizeStaticStructuredUnitAlignmentSentinel,
+        ReadWriteStreamResizeStaticStructuredLazyAlignmentSentinel,
+        ReadWriteStreamResizeStaticStructuredDisjunctAlignmentSentinel,
+        ReadWriteResizeStaticStructuredUnitAlignmentSentinel,
+        ReadWriteResizeStaticStructuredLazyAlignmentSentinel,
+        ReadWriteResizeStaticStructuredDisjunctAlignmentSentinel,
     };
 };
 pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+    return (struct {
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -1020,10 +1020,10 @@ pub fn ReadWriteAutoStructuredAutoAlignmentSentinel(comptime spec: Specification
         pub inline fn writable_byte_count() u64 {
             return mach.mul64(spec.count, high_alignment);
         }
-    };
+    });
 }
 pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+    return (struct {
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -1070,10 +1070,10 @@ pub fn ReadWriteStreamAutoStructuredAutoAlignmentSentinel(comptime spec: Specifi
         pub inline fn convert(s: Convert4) Implementation {
             return .{ .ss_word = s.ss_addr };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteStreamResizeAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ss_word: u64,
         ub_word: u64,
@@ -1138,10 +1138,10 @@ pub fn ReadWriteStreamPushPopAutoStructuredAutoAlignmentSentinel(comptime spec: 
         pub inline fn convert(s: Convert4) Implementation {
             return .{ .ss_word = s.ss_addr, .ub_word = 0 };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteResizeAutoStructuredAutoAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         auto: [spec.count:sentinel.*]spec.child align(low_alignment) = undefined,
         ub_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -1187,10 +1187,10 @@ pub fn ReadWritePushPopAutoStructuredAutoAlignmentSentinel(comptime spec: Specif
             impl.ub_word -%= x_bytes;
             pointerOne(spec.child, undefined_byte_address(impl)).* = sentinel.*;
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -1230,10 +1230,10 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinel(comptime spec: Specificati
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -1279,10 +1279,10 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinel(comptime spec: Specificati
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -1328,10 +1328,10 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredUnitAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -1417,10 +1417,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinel(comptime spec
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredLazyAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -1512,10 +1512,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinel(comptime spec
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -1607,10 +1607,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinel(comptime 
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredUnitAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -1671,10 +1671,10 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinel(comptime spec: Spec
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredLazyAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -1741,10 +1741,10 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinel(comptime spec: Spec
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specification1) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredDisjunctAlignmentSentinel(comptime spec: Specification1) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -1817,7 +1817,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinel(comptime spec: 
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
 pub const Specification2 = struct {
     child: type,
@@ -1848,39 +1848,39 @@ pub const Specification2 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteResizeStaticStructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteResizeStaticStructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteResizeStaticStructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteStreamResizeStaticStructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeStaticStructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeStaticStructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -1892,16 +1892,16 @@ pub const Specification2 = struct {
         ReadWriteStaticStructuredUnitAlignmentArenaIndex,
         ReadWriteStaticStructuredLazyAlignmentArenaIndex,
         ReadWriteStaticStructuredDisjunctAlignmentArenaIndex,
-        ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex,
-        ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex,
-        ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex,
-        ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex,
-        ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex,
-        ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex,
+        ReadWriteStreamResizeStaticStructuredUnitAlignmentArenaIndex,
+        ReadWriteStreamResizeStaticStructuredLazyAlignmentArenaIndex,
+        ReadWriteStreamResizeStaticStructuredDisjunctAlignmentArenaIndex,
+        ReadWriteResizeStaticStructuredUnitAlignmentArenaIndex,
+        ReadWriteResizeStaticStructuredLazyAlignmentArenaIndex,
+        ReadWriteResizeStaticStructuredDisjunctAlignmentArenaIndex,
     };
 };
 pub fn ReadWriteStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -1938,10 +1938,10 @@ pub fn ReadWriteStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -1984,10 +1984,10 @@ pub fn ReadWriteStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -2030,10 +2030,10 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specification2) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -2114,10 +2114,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentArenaIndex(comptime sp
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specification2) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -2204,10 +2204,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentArenaIndex(comptime sp
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification2) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -2294,10 +2294,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentArenaIndex(comptim
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredUnitAlignmentArenaIndex(comptime spec: Specification2) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -2353,10 +2353,10 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentArenaIndex(comptime spec: Sp
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredLazyAlignmentArenaIndex(comptime spec: Specification2) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -2418,10 +2418,10 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentArenaIndex(comptime spec: Sp
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification2) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification2) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -2489,7 +2489,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentArenaIndex(comptime spec
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
 pub const Specification3 = struct {
     child: type,
@@ -2521,39 +2521,39 @@ pub const Specification3 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(spec);
+                    return ReadWriteResizeStaticStructuredUnitAlignmentSentinelArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteResizeStaticStructuredLazyAlignmentSentinelArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteResizeStaticStructuredDisjunctAlignmentSentinelArenaIndex(spec);
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(spec);
+                    return ReadWriteStreamResizeStaticStructuredUnitAlignmentSentinelArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteStreamResizeStaticStructuredLazyAlignmentSentinelArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteStreamResizeStaticStructuredDisjunctAlignmentSentinelArenaIndex(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -2565,16 +2565,16 @@ pub const Specification3 = struct {
         ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex,
         ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex,
         ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex,
-        ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex,
-        ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex,
-        ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex,
-        ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex,
-        ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex,
-        ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex,
+        ReadWriteStreamResizeStaticStructuredUnitAlignmentSentinelArenaIndex,
+        ReadWriteStreamResizeStaticStructuredLazyAlignmentSentinelArenaIndex,
+        ReadWriteStreamResizeStaticStructuredDisjunctAlignmentSentinelArenaIndex,
+        ReadWriteResizeStaticStructuredUnitAlignmentSentinelArenaIndex,
+        ReadWriteResizeStaticStructuredLazyAlignmentSentinelArenaIndex,
+        ReadWriteResizeStaticStructuredDisjunctAlignmentSentinelArenaIndex,
     };
 };
 pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -2614,10 +2614,10 @@ pub fn ReadWriteStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -2663,10 +2663,10 @@ pub fn ReadWriteStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -2712,10 +2712,10 @@ pub fn ReadWriteStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -2801,10 +2801,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredUnitAlignmentSentinelArenaIndex(com
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -2896,10 +2896,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredLazyAlignmentSentinelArenaIndex(com
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -2991,10 +2991,10 @@ pub fn ReadWriteStreamPushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime allocated_byte_count: *const Static = &allocated_byte_count,
@@ -3055,10 +3055,10 @@ pub fn ReadWritePushPopStaticStructuredUnitAlignmentSentinelArenaIndex(comptime 
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -3125,10 +3125,10 @@ pub fn ReadWritePushPopStaticStructuredLazyAlignmentSentinelArenaIndex(comptime 
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
-    return struct {
+pub fn ReadWriteResizeStaticStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification3) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -3201,7 +3201,7 @@ pub fn ReadWritePushPopStaticStructuredDisjunctAlignmentSentinelArenaIndex(compt
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
 pub const Specification4 = struct {
     bytes: u64,
@@ -3230,39 +3230,39 @@ pub const Specification4 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStaticUnstructuredUnitAlignment(spec);
+                    return ReadWriteResizeStaticUnstructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStaticUnstructuredLazyAlignment(spec);
+                        return ReadWriteResizeStaticUnstructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStaticUnstructuredDisjunctAlignment(spec);
+                        return ReadWriteResizeStaticUnstructuredDisjunctAlignment(spec);
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStaticUnstructuredUnitAlignment(spec);
+                    return ReadWriteStreamResizeStaticUnstructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStaticUnstructuredLazyAlignment(spec);
+                        return ReadWriteStreamResizeStaticUnstructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment(spec);
+                        return ReadWriteStreamResizeStaticUnstructuredDisjunctAlignment(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -3274,16 +3274,16 @@ pub const Specification4 = struct {
         ReadWriteStaticUnstructuredUnitAlignment,
         ReadWriteStaticUnstructuredLazyAlignment,
         ReadWriteStaticUnstructuredDisjunctAlignment,
-        ReadWriteStreamPushPopStaticUnstructuredUnitAlignment,
-        ReadWriteStreamPushPopStaticUnstructuredLazyAlignment,
-        ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment,
-        ReadWritePushPopStaticUnstructuredUnitAlignment,
-        ReadWritePushPopStaticUnstructuredLazyAlignment,
-        ReadWritePushPopStaticUnstructuredDisjunctAlignment,
+        ReadWriteStreamResizeStaticUnstructuredUnitAlignment,
+        ReadWriteStreamResizeStaticUnstructuredLazyAlignment,
+        ReadWriteStreamResizeStaticUnstructuredDisjunctAlignment,
+        ReadWriteResizeStaticUnstructuredUnitAlignment,
+        ReadWriteResizeStaticUnstructuredLazyAlignment,
+        ReadWriteResizeStaticUnstructuredDisjunctAlignment,
     };
 };
 pub fn ReadWriteStaticUnstructuredUnitAlignment(comptime spec: Specification4) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -3319,10 +3319,10 @@ pub fn ReadWriteStaticUnstructuredUnitAlignment(comptime spec: Specification4) t
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticUnstructuredLazyAlignment(comptime spec: Specification4) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -3365,10 +3365,10 @@ pub fn ReadWriteStaticUnstructuredLazyAlignment(comptime spec: Specification4) t
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticUnstructuredDisjunctAlignment(comptime spec: Specification4) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -3411,10 +3411,10 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignment(comptime spec: Specification
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignment(comptime spec: Specification4) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticUnstructuredUnitAlignment(comptime spec: Specification4) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -3494,10 +3494,10 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignment(comptime spec: Spec
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignment(comptime spec: Specification4) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticUnstructuredLazyAlignment(comptime spec: Specification4) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -3584,10 +3584,10 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignment(comptime spec: Spec
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment(comptime spec: Specification4) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticUnstructuredDisjunctAlignment(comptime spec: Specification4) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -3674,10 +3674,10 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignment(comptime spec: 
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticUnstructuredUnitAlignment(comptime spec: Specification4) type {
-    return struct {
+pub fn ReadWriteResizeStaticUnstructuredUnitAlignment(comptime spec: Specification4) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -3732,10 +3732,10 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignment(comptime spec: Specificat
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticUnstructuredLazyAlignment(comptime spec: Specification4) type {
-    return struct {
+pub fn ReadWriteResizeStaticUnstructuredLazyAlignment(comptime spec: Specification4) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -3797,10 +3797,10 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignment(comptime spec: Specificat
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignment(comptime spec: Specification4) type {
-    return struct {
+pub fn ReadWriteResizeStaticUnstructuredDisjunctAlignment(comptime spec: Specification4) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -3868,7 +3868,7 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignment(comptime spec: Specif
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
 pub const Specification5 = struct {
     bytes: u64,
@@ -3898,39 +3898,39 @@ pub const Specification5 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteResizeStaticUnstructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteResizeStaticUnstructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteResizeStaticUnstructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteStreamResizeStaticUnstructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeStaticUnstructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeStaticUnstructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -3942,16 +3942,16 @@ pub const Specification5 = struct {
         ReadWriteStaticUnstructuredUnitAlignmentArenaIndex,
         ReadWriteStaticUnstructuredLazyAlignmentArenaIndex,
         ReadWriteStaticUnstructuredDisjunctAlignmentArenaIndex,
-        ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex,
-        ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex,
-        ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex,
-        ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex,
-        ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex,
-        ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex,
+        ReadWriteStreamResizeStaticUnstructuredUnitAlignmentArenaIndex,
+        ReadWriteStreamResizeStaticUnstructuredLazyAlignmentArenaIndex,
+        ReadWriteStreamResizeStaticUnstructuredDisjunctAlignmentArenaIndex,
+        ReadWriteResizeStaticUnstructuredUnitAlignmentArenaIndex,
+        ReadWriteResizeStaticUnstructuredLazyAlignmentArenaIndex,
+        ReadWriteResizeStaticUnstructuredDisjunctAlignmentArenaIndex,
     };
 };
 pub fn ReadWriteStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -3987,10 +3987,10 @@ pub fn ReadWriteStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -4033,10 +4033,10 @@ pub fn ReadWriteStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
         pub inline fn convert(s: Convert1) Implementation {
             return .{ .lb_word = s.lb_addr };
         }
-    };
+    });
 }
 pub fn ReadWriteStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
         comptime aligned_byte_count: *const Static = &aligned_byte_count,
@@ -4079,10 +4079,10 @@ pub fn ReadWriteStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
         pub inline fn convert(s: Convert3) Implementation {
             return .{ .lb_word = s.ab_addr | mach.sub64(s.ab_addr, s.lb_addr) };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification5) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -4162,10 +4162,10 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime 
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification5) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -4252,10 +4252,10 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime 
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+pub fn ReadWriteStreamResizeStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification5) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -4342,10 +4342,10 @@ pub fn ReadWriteStreamPushPopStaticUnstructuredDisjunctAlignmentArenaIndex(compt
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+pub fn ReadWriteResizeStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification5) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -4400,10 +4400,10 @@ pub fn ReadWritePushPopStaticUnstructuredUnitAlignmentArenaIndex(comptime spec: 
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+pub fn ReadWriteResizeStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification5) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -4465,10 +4465,10 @@ pub fn ReadWritePushPopStaticUnstructuredLazyAlignmentArenaIndex(comptime spec: 
         pub inline fn convert(s: Convert9) Implementation {
             return .{ .lb_word = s.lb_addr, .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification5) type {
-    return struct {
+pub fn ReadWriteResizeStaticUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification5) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         comptime writable_byte_count: *const Static = &writable_byte_count,
@@ -4536,7 +4536,7 @@ pub fn ReadWritePushPopStaticUnstructuredDisjunctAlignmentArenaIndex(comptime sp
                 .ub_word = s.ub_addr,
             };
         }
-    };
+    });
 }
 pub const Specification6 = struct {
     child: type,
@@ -4565,17 +4565,17 @@ pub const Specification6 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStructuredUnitAlignment(spec);
+                    return ReadWriteResizeStructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStructuredLazyAlignment(spec);
+                        return ReadWriteResizeStructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStructuredDisjunctAlignment(spec);
+                        return ReadWriteResizeStructuredDisjunctAlignment(spec);
                     }
                 }
             },
@@ -4593,24 +4593,24 @@ pub const Specification6 = struct {
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStructuredUnitAlignment(spec);
+                    return ReadWriteStreamResizeStructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredLazyAlignment(spec);
+                        return ReadWriteStreamResizeStructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredDisjunctAlignment(spec);
+                        return ReadWriteStreamResizeStructuredDisjunctAlignment(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -4619,22 +4619,22 @@ pub const Specification6 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopStructuredUnitAlignment,
-        ReadWriteStreamPushPopStructuredLazyAlignment,
-        ReadWriteStreamPushPopStructuredDisjunctAlignment,
+        ReadWriteStreamResizeStructuredUnitAlignment,
+        ReadWriteStreamResizeStructuredLazyAlignment,
+        ReadWriteStreamResizeStructuredDisjunctAlignment,
         ReadWriteStreamStructuredUnitAlignment,
         ReadWriteStreamStructuredLazyAlignment,
         ReadWriteStreamStructuredDisjunctAlignment,
-        ReadWritePushPopStructuredUnitAlignment,
-        ReadWritePushPopStructuredLazyAlignment,
-        ReadWritePushPopStructuredDisjunctAlignment,
+        ReadWriteResizeStructuredUnitAlignment,
+        ReadWriteResizeStructuredLazyAlignment,
+        ReadWriteResizeStructuredDisjunctAlignment,
         ReadWriteStructuredUnitAlignment,
         ReadWriteStructuredLazyAlignment,
         ReadWriteStructuredDisjunctAlignment,
     };
 };
-pub fn ReadWriteStreamPushPopStructuredUnitAlignment(comptime spec: Specification6) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredUnitAlignment(comptime spec: Specification6) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -4722,10 +4722,10 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignment(comptime spec: Specificatio
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredLazyAlignment(comptime spec: Specification6) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredLazyAlignment(comptime spec: Specification6) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -4818,10 +4818,10 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignment(comptime spec: Specificatio
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredDisjunctAlignment(comptime spec: Specification6) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredDisjunctAlignment(comptime spec: Specification6) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -4914,10 +4914,10 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignment(comptime spec: Specific
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredUnitAlignment(comptime spec: Specification6) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -4986,10 +4986,10 @@ pub fn ReadWriteStreamStructuredUnitAlignment(comptime spec: Specification6) typ
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredLazyAlignment(comptime spec: Specification6) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -5063,10 +5063,10 @@ pub fn ReadWriteStreamStructuredLazyAlignment(comptime spec: Specification6) typ
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredDisjunctAlignment(comptime spec: Specification6) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -5140,10 +5140,10 @@ pub fn ReadWriteStreamStructuredDisjunctAlignment(comptime spec: Specification6)
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredUnitAlignment(comptime spec: Specification6) type {
-    return struct {
+pub fn ReadWriteResizeStructuredUnitAlignment(comptime spec: Specification6) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -5212,10 +5212,10 @@ pub fn ReadWritePushPopStructuredUnitAlignment(comptime spec: Specification6) ty
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredLazyAlignment(comptime spec: Specification6) type {
-    return struct {
+pub fn ReadWriteResizeStructuredLazyAlignment(comptime spec: Specification6) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -5289,10 +5289,10 @@ pub fn ReadWritePushPopStructuredLazyAlignment(comptime spec: Specification6) ty
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredDisjunctAlignment(comptime spec: Specification6) type {
-    return struct {
+pub fn ReadWriteResizeStructuredDisjunctAlignment(comptime spec: Specification6) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -5366,10 +5366,10 @@ pub fn ReadWritePushPopStructuredDisjunctAlignment(comptime spec: Specification6
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredUnitAlignment(comptime spec: Specification6) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -5413,10 +5413,10 @@ pub fn ReadWriteStructuredUnitAlignment(comptime spec: Specification6) type {
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredLazyAlignment(comptime spec: Specification6) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -5465,10 +5465,10 @@ pub fn ReadWriteStructuredLazyAlignment(comptime spec: Specification6) type {
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredDisjunctAlignment(comptime spec: Specification6) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -5523,7 +5523,7 @@ pub fn ReadWriteStructuredDisjunctAlignment(comptime spec: Specification6) type 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub const Specification7 = struct {
     child: type,
@@ -5553,17 +5553,17 @@ pub const Specification7 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStructuredUnitAlignmentSentinel(spec);
+                    return ReadWriteResizeStructuredUnitAlignmentSentinel(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStructuredLazyAlignmentSentinel(spec);
+                        return ReadWriteResizeStructuredLazyAlignmentSentinel(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStructuredDisjunctAlignmentSentinel(spec);
+                        return ReadWriteResizeStructuredDisjunctAlignmentSentinel(spec);
                     }
                 }
             },
@@ -5581,24 +5581,24 @@ pub const Specification7 = struct {
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(spec);
+                    return ReadWriteStreamResizeStructuredUnitAlignmentSentinel(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(spec);
+                        return ReadWriteStreamResizeStructuredLazyAlignmentSentinel(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(spec);
+                        return ReadWriteStreamResizeStructuredDisjunctAlignmentSentinel(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -5607,22 +5607,22 @@ pub const Specification7 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopStructuredUnitAlignmentSentinel,
-        ReadWriteStreamPushPopStructuredLazyAlignmentSentinel,
-        ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel,
+        ReadWriteStreamResizeStructuredUnitAlignmentSentinel,
+        ReadWriteStreamResizeStructuredLazyAlignmentSentinel,
+        ReadWriteStreamResizeStructuredDisjunctAlignmentSentinel,
         ReadWriteStreamStructuredUnitAlignmentSentinel,
         ReadWriteStreamStructuredLazyAlignmentSentinel,
         ReadWriteStreamStructuredDisjunctAlignmentSentinel,
-        ReadWritePushPopStructuredUnitAlignmentSentinel,
-        ReadWritePushPopStructuredLazyAlignmentSentinel,
-        ReadWritePushPopStructuredDisjunctAlignmentSentinel,
+        ReadWriteResizeStructuredUnitAlignmentSentinel,
+        ReadWriteResizeStructuredLazyAlignmentSentinel,
+        ReadWriteResizeStructuredDisjunctAlignmentSentinel,
         ReadWriteStructuredUnitAlignmentSentinel,
         ReadWriteStructuredLazyAlignmentSentinel,
         ReadWriteStructuredDisjunctAlignmentSentinel,
     };
 };
-pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredUnitAlignmentSentinel(comptime spec: Specification7) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -5713,10 +5713,10 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinel(comptime spec: Spec
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredLazyAlignmentSentinel(comptime spec: Specification7) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -5812,10 +5812,10 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinel(comptime spec: Spec
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredDisjunctAlignmentSentinel(comptime spec: Specification7) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -5911,10 +5911,10 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinel(comptime spec: 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredUnitAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -5984,10 +5984,10 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinel(comptime spec: Specificati
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredLazyAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -6062,10 +6062,10 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinel(comptime spec: Specificati
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -6140,10 +6140,10 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinel(comptime spec: Specifi
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+pub fn ReadWriteResizeStructuredUnitAlignmentSentinel(comptime spec: Specification7) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -6215,10 +6215,10 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinel(comptime spec: Specificat
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+pub fn ReadWriteResizeStructuredLazyAlignmentSentinel(comptime spec: Specification7) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -6295,10 +6295,10 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinel(comptime spec: Specificat
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+pub fn ReadWriteResizeStructuredDisjunctAlignmentSentinel(comptime spec: Specification7) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -6375,10 +6375,10 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinel(comptime spec: Specif
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredUnitAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -6423,10 +6423,10 @@ pub fn ReadWriteStructuredUnitAlignmentSentinel(comptime spec: Specification7) t
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredLazyAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -6476,10 +6476,10 @@ pub fn ReadWriteStructuredLazyAlignmentSentinel(comptime spec: Specification7) t
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredDisjunctAlignmentSentinel(comptime spec: Specification7) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -6535,7 +6535,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinel(comptime spec: Specification
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub const Specification8 = struct {
     child: type,
@@ -6565,17 +6565,17 @@ pub const Specification8 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteResizeStructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteResizeStructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteResizeStructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
@@ -6593,24 +6593,24 @@ pub const Specification8 = struct {
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteStreamResizeStructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeStructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeStructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -6619,22 +6619,22 @@ pub const Specification8 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex,
-        ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex,
-        ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex,
+        ReadWriteStreamResizeStructuredUnitAlignmentArenaIndex,
+        ReadWriteStreamResizeStructuredLazyAlignmentArenaIndex,
+        ReadWriteStreamResizeStructuredDisjunctAlignmentArenaIndex,
         ReadWriteStreamStructuredUnitAlignmentArenaIndex,
         ReadWriteStreamStructuredLazyAlignmentArenaIndex,
         ReadWriteStreamStructuredDisjunctAlignmentArenaIndex,
-        ReadWritePushPopStructuredUnitAlignmentArenaIndex,
-        ReadWritePushPopStructuredLazyAlignmentArenaIndex,
-        ReadWritePushPopStructuredDisjunctAlignmentArenaIndex,
+        ReadWriteResizeStructuredUnitAlignmentArenaIndex,
+        ReadWriteResizeStructuredLazyAlignmentArenaIndex,
+        ReadWriteResizeStructuredDisjunctAlignmentArenaIndex,
         ReadWriteStructuredUnitAlignmentArenaIndex,
         ReadWriteStructuredLazyAlignmentArenaIndex,
         ReadWriteStructuredDisjunctAlignmentArenaIndex,
     };
 };
-pub fn ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredUnitAlignmentArenaIndex(comptime spec: Specification8) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -6722,10 +6722,10 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentArenaIndex(comptime spec: Sp
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredLazyAlignmentArenaIndex(comptime spec: Specification8) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -6818,10 +6818,10 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentArenaIndex(comptime spec: Sp
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification8) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -6914,10 +6914,10 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentArenaIndex(comptime spec
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredUnitAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -6986,10 +6986,10 @@ pub fn ReadWriteStreamStructuredUnitAlignmentArenaIndex(comptime spec: Specifica
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredLazyAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -7063,10 +7063,10 @@ pub fn ReadWriteStreamStructuredLazyAlignmentArenaIndex(comptime spec: Specifica
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -7140,10 +7140,10 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentArenaIndex(comptime spec: Speci
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredUnitAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+pub fn ReadWriteResizeStructuredUnitAlignmentArenaIndex(comptime spec: Specification8) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -7212,10 +7212,10 @@ pub fn ReadWritePushPopStructuredUnitAlignmentArenaIndex(comptime spec: Specific
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredLazyAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+pub fn ReadWriteResizeStructuredLazyAlignmentArenaIndex(comptime spec: Specification8) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -7289,10 +7289,10 @@ pub fn ReadWritePushPopStructuredLazyAlignmentArenaIndex(comptime spec: Specific
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+pub fn ReadWriteResizeStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification8) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -7366,10 +7366,10 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentArenaIndex(comptime spec: Spec
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredUnitAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -7413,10 +7413,10 @@ pub fn ReadWriteStructuredUnitAlignmentArenaIndex(comptime spec: Specification8)
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredLazyAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -7465,10 +7465,10 @@ pub fn ReadWriteStructuredLazyAlignmentArenaIndex(comptime spec: Specification8)
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredDisjunctAlignmentArenaIndex(comptime spec: Specification8) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -7523,7 +7523,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentArenaIndex(comptime spec: Specificati
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub const Specification9 = struct {
     child: type,
@@ -7554,17 +7554,17 @@ pub const Specification9 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(spec);
+                    return ReadWriteResizeStructuredUnitAlignmentSentinelArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteResizeStructuredLazyAlignmentSentinelArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteResizeStructuredDisjunctAlignmentSentinelArenaIndex(spec);
                     }
                 }
             },
@@ -7582,24 +7582,24 @@ pub const Specification9 = struct {
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(spec);
+                    return ReadWriteStreamResizeStructuredUnitAlignmentSentinelArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteStreamResizeStructuredLazyAlignmentSentinelArenaIndex(spec);
                     } else if (comptime spec.low_alignment > @sizeOf(spec.child)) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(spec);
+                        return ReadWriteStreamResizeStructuredDisjunctAlignmentSentinelArenaIndex(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -7608,22 +7608,22 @@ pub const Specification9 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex,
-        ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex,
-        ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex,
+        ReadWriteStreamResizeStructuredUnitAlignmentSentinelArenaIndex,
+        ReadWriteStreamResizeStructuredLazyAlignmentSentinelArenaIndex,
+        ReadWriteStreamResizeStructuredDisjunctAlignmentSentinelArenaIndex,
         ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex,
         ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex,
         ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex,
-        ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex,
-        ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex,
-        ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex,
+        ReadWriteResizeStructuredUnitAlignmentSentinelArenaIndex,
+        ReadWriteResizeStructuredLazyAlignmentSentinelArenaIndex,
+        ReadWriteResizeStructuredDisjunctAlignmentSentinelArenaIndex,
         ReadWriteStructuredUnitAlignmentSentinelArenaIndex,
         ReadWriteStructuredLazyAlignmentSentinelArenaIndex,
         ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex,
     };
 };
-pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -7714,10 +7714,10 @@ pub fn ReadWriteStreamPushPopStructuredUnitAlignmentSentinelArenaIndex(comptime 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -7813,10 +7813,10 @@ pub fn ReadWriteStreamPushPopStructuredLazyAlignmentSentinelArenaIndex(comptime 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+pub fn ReadWriteStreamResizeStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -7912,10 +7912,10 @@ pub fn ReadWriteStreamPushPopStructuredDisjunctAlignmentSentinelArenaIndex(compt
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -7985,10 +7985,10 @@ pub fn ReadWriteStreamStructuredUnitAlignmentSentinelArenaIndex(comptime spec: S
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -8063,10 +8063,10 @@ pub fn ReadWriteStreamStructuredLazyAlignmentSentinelArenaIndex(comptime spec: S
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -8141,10 +8141,10 @@ pub fn ReadWriteStreamStructuredDisjunctAlignmentSentinelArenaIndex(comptime spe
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+pub fn ReadWriteResizeStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -8216,10 +8216,10 @@ pub fn ReadWritePushPopStructuredUnitAlignmentSentinelArenaIndex(comptime spec: 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+pub fn ReadWriteResizeStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -8296,10 +8296,10 @@ pub fn ReadWritePushPopStructuredLazyAlignmentSentinelArenaIndex(comptime spec: 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+pub fn ReadWriteResizeStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -8376,10 +8376,10 @@ pub fn ReadWritePushPopStructuredDisjunctAlignmentSentinelArenaIndex(comptime sp
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -8424,10 +8424,10 @@ pub fn ReadWriteStructuredUnitAlignmentSentinelArenaIndex(comptime spec: Specifi
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -8477,10 +8477,10 @@ pub fn ReadWriteStructuredLazyAlignmentSentinelArenaIndex(comptime spec: Specifi
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Specification9) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -8536,7 +8536,7 @@ pub fn ReadWriteStructuredDisjunctAlignmentSentinelArenaIndex(comptime spec: Spe
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub const Specification10 = struct {
     high_alignment: u64,
@@ -8565,17 +8565,17 @@ pub const Specification10 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopUnstructuredUnitAlignment(spec);
+                    return ReadWriteResizeUnstructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopUnstructuredLazyAlignment(spec);
+                        return ReadWriteResizeUnstructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopUnstructuredDisjunctAlignment(spec);
+                        return ReadWriteResizeUnstructuredDisjunctAlignment(spec);
                     }
                 }
             },
@@ -8593,24 +8593,24 @@ pub const Specification10 = struct {
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopUnstructuredUnitAlignment(spec);
+                    return ReadWriteStreamResizeUnstructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopUnstructuredLazyAlignment(spec);
+                        return ReadWriteStreamResizeUnstructuredLazyAlignment(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopUnstructuredDisjunctAlignment(spec);
+                        return ReadWriteStreamResizeUnstructuredDisjunctAlignment(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -8619,22 +8619,22 @@ pub const Specification10 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopUnstructuredUnitAlignment,
-        ReadWriteStreamPushPopUnstructuredLazyAlignment,
-        ReadWriteStreamPushPopUnstructuredDisjunctAlignment,
+        ReadWriteStreamResizeUnstructuredUnitAlignment,
+        ReadWriteStreamResizeUnstructuredLazyAlignment,
+        ReadWriteStreamResizeUnstructuredDisjunctAlignment,
         ReadWriteStreamUnstructuredUnitAlignment,
         ReadWriteStreamUnstructuredLazyAlignment,
         ReadWriteStreamUnstructuredDisjunctAlignment,
-        ReadWritePushPopUnstructuredUnitAlignment,
-        ReadWritePushPopUnstructuredLazyAlignment,
-        ReadWritePushPopUnstructuredDisjunctAlignment,
+        ReadWriteResizeUnstructuredUnitAlignment,
+        ReadWriteResizeUnstructuredLazyAlignment,
+        ReadWriteResizeUnstructuredDisjunctAlignment,
         ReadWriteUnstructuredUnitAlignment,
         ReadWriteUnstructuredLazyAlignment,
         ReadWriteUnstructuredDisjunctAlignment,
     };
 };
-pub fn ReadWriteStreamPushPopUnstructuredUnitAlignment(comptime spec: Specification10) type {
-    return struct {
+pub fn ReadWriteStreamResizeUnstructuredUnitAlignment(comptime spec: Specification10) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -8722,10 +8722,10 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignment(comptime spec: Specificat
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopUnstructuredLazyAlignment(comptime spec: Specification10) type {
-    return struct {
+pub fn ReadWriteStreamResizeUnstructuredLazyAlignment(comptime spec: Specification10) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -8818,10 +8818,10 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignment(comptime spec: Specificat
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignment(comptime spec: Specification10) type {
-    return struct {
+pub fn ReadWriteStreamResizeUnstructuredDisjunctAlignment(comptime spec: Specification10) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -8914,10 +8914,10 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignment(comptime spec: Specif
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamUnstructuredUnitAlignment(comptime spec: Specification10) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -8986,10 +8986,10 @@ pub fn ReadWriteStreamUnstructuredUnitAlignment(comptime spec: Specification10) 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamUnstructuredLazyAlignment(comptime spec: Specification10) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -9063,10 +9063,10 @@ pub fn ReadWriteStreamUnstructuredLazyAlignment(comptime spec: Specification10) 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamUnstructuredDisjunctAlignment(comptime spec: Specification10) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -9140,10 +9140,10 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignment(comptime spec: Specification
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopUnstructuredUnitAlignment(comptime spec: Specification10) type {
-    return struct {
+pub fn ReadWriteResizeUnstructuredUnitAlignment(comptime spec: Specification10) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -9212,10 +9212,10 @@ pub fn ReadWritePushPopUnstructuredUnitAlignment(comptime spec: Specification10)
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopUnstructuredLazyAlignment(comptime spec: Specification10) type {
-    return struct {
+pub fn ReadWriteResizeUnstructuredLazyAlignment(comptime spec: Specification10) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -9289,10 +9289,10 @@ pub fn ReadWritePushPopUnstructuredLazyAlignment(comptime spec: Specification10)
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopUnstructuredDisjunctAlignment(comptime spec: Specification10) type {
-    return struct {
+pub fn ReadWriteResizeUnstructuredDisjunctAlignment(comptime spec: Specification10) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -9366,10 +9366,10 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignment(comptime spec: Specificatio
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteUnstructuredUnitAlignment(comptime spec: Specification10) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -9413,10 +9413,10 @@ pub fn ReadWriteUnstructuredUnitAlignment(comptime spec: Specification10) type {
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteUnstructuredLazyAlignment(comptime spec: Specification10) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -9465,10 +9465,10 @@ pub fn ReadWriteUnstructuredLazyAlignment(comptime spec: Specification10) type {
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteUnstructuredDisjunctAlignment(comptime spec: Specification10) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -9523,7 +9523,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignment(comptime spec: Specification10) ty
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub const Specification11 = struct {
     high_alignment: u64,
@@ -9553,17 +9553,17 @@ pub const Specification11 = struct {
                     }
                 }
             },
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopUnstructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteResizeUnstructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteResizeUnstructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     } else { // @2b5-out
-                        return ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteResizeUnstructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
@@ -9581,24 +9581,24 @@ pub const Specification11 = struct {
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex(spec);
+                    return ReadWriteStreamResizeUnstructuredUnitAlignmentArenaIndex(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b5-out
-                        return ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeUnstructuredLazyAlignmentArenaIndex(spec);
                     } else if (comptime spec.low_alignment > spec.high_alignment) { // @2b5-out
                         @compileError("no specification matching technique 'super_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     } else { // @2b5-out
-                        return ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex(spec);
+                        return ReadWriteStreamResizeUnstructuredDisjunctAlignmentArenaIndex(spec);
                     }
                 }
             },
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -9607,22 +9607,22 @@ pub const Specification11 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex,
-        ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex,
-        ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex,
+        ReadWriteStreamResizeUnstructuredUnitAlignmentArenaIndex,
+        ReadWriteStreamResizeUnstructuredLazyAlignmentArenaIndex,
+        ReadWriteStreamResizeUnstructuredDisjunctAlignmentArenaIndex,
         ReadWriteStreamUnstructuredUnitAlignmentArenaIndex,
         ReadWriteStreamUnstructuredLazyAlignmentArenaIndex,
         ReadWriteStreamUnstructuredDisjunctAlignmentArenaIndex,
-        ReadWritePushPopUnstructuredUnitAlignmentArenaIndex,
-        ReadWritePushPopUnstructuredLazyAlignmentArenaIndex,
-        ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex,
+        ReadWriteResizeUnstructuredUnitAlignmentArenaIndex,
+        ReadWriteResizeUnstructuredLazyAlignmentArenaIndex,
+        ReadWriteResizeUnstructuredDisjunctAlignmentArenaIndex,
         ReadWriteUnstructuredUnitAlignmentArenaIndex,
         ReadWriteUnstructuredLazyAlignmentArenaIndex,
         ReadWriteUnstructuredDisjunctAlignmentArenaIndex,
     };
 };
-pub fn ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+pub fn ReadWriteStreamResizeUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification11) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -9710,10 +9710,10 @@ pub fn ReadWriteStreamPushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+pub fn ReadWriteStreamResizeUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification11) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -9806,10 +9806,10 @@ pub fn ReadWriteStreamPushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: 
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+pub fn ReadWriteStreamResizeUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification11) type {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         ub_word: u64,
@@ -9902,10 +9902,10 @@ pub fn ReadWriteStreamPushPopUnstructuredDisjunctAlignmentArenaIndex(comptime sp
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -9974,10 +9974,10 @@ pub fn ReadWriteStreamUnstructuredUnitAlignmentArenaIndex(comptime spec: Specifi
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -10051,10 +10051,10 @@ pub fn ReadWriteStreamUnstructuredLazyAlignmentArenaIndex(comptime spec: Specifi
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteStreamUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         ss_word: u64,
         up_word: u64,
@@ -10128,10 +10128,10 @@ pub fn ReadWriteStreamUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Spe
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+pub fn ReadWriteResizeUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification11) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -10200,10 +10200,10 @@ pub fn ReadWritePushPopUnstructuredUnitAlignmentArenaIndex(comptime spec: Specif
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+pub fn ReadWriteResizeUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification11) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -10277,10 +10277,10 @@ pub fn ReadWritePushPopUnstructuredLazyAlignmentArenaIndex(comptime spec: Specif
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
-pub fn ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+pub fn ReadWriteResizeUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification11) type {
+    return (struct {
         lb_word: u64,
         ub_word: u64,
         up_word: u64,
@@ -10354,10 +10354,10 @@ pub fn ReadWritePushPopUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Sp
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -10401,10 +10401,10 @@ pub fn ReadWriteUnstructuredUnitAlignmentArenaIndex(comptime spec: Specification
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -10453,10 +10453,10 @@ pub fn ReadWriteUnstructuredLazyAlignmentArenaIndex(comptime spec: Specification
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub fn ReadWriteUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specification11) type {
-    return struct {
+    return (struct {
         lb_word: u64,
         up_word: u64,
         const Implementation = @This();
@@ -10511,7 +10511,7 @@ pub fn ReadWriteUnstructuredDisjunctAlignmentArenaIndex(comptime spec: Specifica
         pub inline fn resize(impl: *Implementation, t: Resize1) void {
             impl.up_word = t.up_addr;
         }
-    };
+    });
 }
 pub const Specification12 = struct {
     Allocator: type,
@@ -10527,36 +10527,36 @@ pub const Specification12 = struct {
     }
     pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopParametricStructuredUnitAlignment(spec);
+                    return ReadWriteResizeParametricStructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b2-out
-                        return ReadWritePushPopParametricStructuredLazyAlignment(spec);
+                        return ReadWriteResizeParametricStructuredLazyAlignment(spec);
                     } else { // @2b2-out
                         @compileError("no specification without technique 'lazy_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopParametricStructuredUnitAlignment(spec);
+                    return ReadWriteStreamResizeParametricStructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b2-out
-                        return ReadWriteStreamPushPopParametricStructuredLazyAlignment(spec);
+                        return ReadWriteStreamResizeParametricStructuredLazyAlignment(spec);
                     } else { // @2b2-out
                         @compileError("no specification without technique 'lazy_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     }
                 }
             },
             .read_write,
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -10565,14 +10565,14 @@ pub const Specification12 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopParametricStructuredUnitAlignment,
-        ReadWriteStreamPushPopParametricStructuredLazyAlignment,
-        ReadWritePushPopParametricStructuredUnitAlignment,
-        ReadWritePushPopParametricStructuredLazyAlignment,
+        ReadWriteStreamResizeParametricStructuredUnitAlignment,
+        ReadWriteStreamResizeParametricStructuredLazyAlignment,
+        ReadWriteResizeParametricStructuredUnitAlignment,
+        ReadWriteResizeParametricStructuredLazyAlignment,
     };
 };
-pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Specification12) type {
-    return struct {
+pub fn ReadWriteStreamResizeParametricStructuredUnitAlignment(comptime spec: Specification12) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
@@ -10648,10 +10648,10 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignment(comptime spec: Sp
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Specification12) type {
-    return struct {
+pub fn ReadWriteStreamResizeParametricStructuredLazyAlignment(comptime spec: Specification12) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
@@ -10732,10 +10732,10 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignment(comptime spec: Sp
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specification12) type {
-    return struct {
+pub fn ReadWriteResizeParametricStructuredUnitAlignment(comptime spec: Specification12) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
@@ -10795,10 +10795,10 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignment(comptime spec: Specific
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopParametricStructuredLazyAlignment(comptime spec: Specification12) type {
-    return struct {
+pub fn ReadWriteResizeParametricStructuredLazyAlignment(comptime spec: Specification12) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
@@ -10863,7 +10863,7 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignment(comptime spec: Specific
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
 pub const Specification13 = struct {
     Allocator: type,
@@ -10880,36 +10880,36 @@ pub const Specification13 = struct {
     }
     pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopParametricStructuredUnitAlignmentSentinel(spec);
+                    return ReadWriteResizeParametricStructuredUnitAlignmentSentinel(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b2-out
-                        return ReadWritePushPopParametricStructuredLazyAlignmentSentinel(spec);
+                        return ReadWriteResizeParametricStructuredLazyAlignmentSentinel(spec);
                     } else { // @2b2-out
                         @compileError("no specification without technique 'lazy_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(spec);
+                    return ReadWriteStreamResizeParametricStructuredUnitAlignmentSentinel(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b2-out
-                        return ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(spec);
+                        return ReadWriteStreamResizeParametricStructuredLazyAlignmentSentinel(spec);
                     } else { // @2b2-out
                         @compileError("no specification without technique 'lazy_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     }
                 }
             },
             .read_write,
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -10918,14 +10918,14 @@ pub const Specification13 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel,
-        ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel,
-        ReadWritePushPopParametricStructuredUnitAlignmentSentinel,
-        ReadWritePushPopParametricStructuredLazyAlignmentSentinel,
+        ReadWriteStreamResizeParametricStructuredUnitAlignmentSentinel,
+        ReadWriteStreamResizeParametricStructuredLazyAlignmentSentinel,
+        ReadWriteResizeParametricStructuredUnitAlignmentSentinel,
+        ReadWriteResizeParametricStructuredLazyAlignmentSentinel,
     };
 };
-pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime spec: Specification13) type {
-    return struct {
+pub fn ReadWriteStreamResizeParametricStructuredUnitAlignmentSentinel(comptime spec: Specification13) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
@@ -11006,10 +11006,10 @@ pub fn ReadWriteStreamPushPopParametricStructuredUnitAlignmentSentinel(comptime 
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime spec: Specification13) type {
-    return struct {
+pub fn ReadWriteStreamResizeParametricStructuredLazyAlignmentSentinel(comptime spec: Specification13) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
@@ -11095,10 +11095,10 @@ pub fn ReadWriteStreamPushPopParametricStructuredLazyAlignmentSentinel(comptime 
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: Specification13) type {
-    return struct {
+pub fn ReadWriteResizeParametricStructuredUnitAlignmentSentinel(comptime spec: Specification13) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
@@ -11163,10 +11163,10 @@ pub fn ReadWritePushPopParametricStructuredUnitAlignmentSentinel(comptime spec: 
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: Specification13) type {
-    return struct {
+pub fn ReadWriteResizeParametricStructuredLazyAlignmentSentinel(comptime spec: Specification13) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
@@ -11236,7 +11236,7 @@ pub fn ReadWritePushPopParametricStructuredLazyAlignmentSentinel(comptime spec: 
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
 pub const Specification14 = struct {
     Allocator: type,
@@ -11252,36 +11252,36 @@ pub const Specification14 = struct {
     }
     pub fn matchImplementation(comptime spec: Specification, comptime mode: Mode, comptime techs: anytype) ?type {
         switch (mode) {
-            .read_write_push_pop => {
+            .read_write_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWritePushPopParametricUnstructuredUnitAlignment(spec);
+                    return ReadWriteResizeParametricUnstructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b2-out
-                        return ReadWritePushPopParametricUnstructuredLazyAlignment(spec);
+                        return ReadWriteResizeParametricUnstructuredLazyAlignment(spec);
                     } else { // @2b2-out
                         @compileError("no specification without technique 'lazy_alignment'" ++
-                            " and mode == read_write_push_pop");
+                            " and mode == read_write_resize");
                     }
                 }
             },
-            .read_write_stream_push_pop => {
+            .read_write_stream_resize => {
                 if (comptime techs.unit_alignment) { // @1b1
-                    return ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(spec);
+                    return ReadWriteStreamResizeParametricUnstructuredUnitAlignment(spec);
                 } else { // @1b1
                     if (comptime techs.lazy_alignment) { // @2b2-out
-                        return ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(spec);
+                        return ReadWriteStreamResizeParametricUnstructuredLazyAlignment(spec);
                     } else { // @2b2-out
                         @compileError("no specification without technique 'lazy_alignment'" ++
-                            " and mode == read_write_stream_push_pop");
+                            " and mode == read_write_stream_resize");
                     }
                 }
             },
             .read_write,
             .read_write_auto,
-            .read_write_push_pop_auto,
+            .read_write_resize_auto,
             .read_write_stream,
             .read_write_stream_auto,
-            .read_write_stream_push_pop_auto,
+            .read_write_stream_resize_auto,
             => |invalid| {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
@@ -11290,14 +11290,14 @@ pub const Specification14 = struct {
         return null;
     }
     pub const implementations = .{
-        ReadWriteStreamPushPopParametricUnstructuredUnitAlignment,
-        ReadWriteStreamPushPopParametricUnstructuredLazyAlignment,
-        ReadWritePushPopParametricUnstructuredUnitAlignment,
-        ReadWritePushPopParametricUnstructuredLazyAlignment,
+        ReadWriteStreamResizeParametricUnstructuredUnitAlignment,
+        ReadWriteStreamResizeParametricUnstructuredLazyAlignment,
+        ReadWriteResizeParametricUnstructuredUnitAlignment,
+        ReadWriteResizeParametricUnstructuredLazyAlignment,
     };
 };
-pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: Specification14) type {
-    return struct {
+pub fn ReadWriteStreamResizeParametricUnstructuredUnitAlignment(comptime spec: Specification14) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
@@ -11373,10 +11373,10 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredUnitAlignment(comptime spec: 
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: Specification14) type {
-    return struct {
+pub fn ReadWriteStreamResizeParametricUnstructuredLazyAlignment(comptime spec: Specification14) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ss_word: u64,
@@ -11457,10 +11457,10 @@ pub fn ReadWriteStreamPushPopParametricUnstructuredLazyAlignment(comptime spec: 
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specification14) type {
-    return struct {
+pub fn ReadWriteResizeParametricUnstructuredUnitAlignment(comptime spec: Specification14) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
@@ -11520,10 +11520,10 @@ pub fn ReadWritePushPopParametricUnstructuredUnitAlignment(comptime spec: Specif
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
-pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specification14) type {
-    return struct {
+pub fn ReadWriteResizeParametricUnstructuredLazyAlignment(comptime spec: Specification14) type {
+    return (struct {
         comptime allocated_byte_address: *const Slave = &allocated_byte_address,
         comptime aligned_byte_address: *const Slave = &aligned_byte_address,
         ub_word: u64,
@@ -11588,7 +11588,7 @@ pub fn ReadWritePushPopParametricUnstructuredLazyAlignment(comptime spec: Specif
         pub inline fn convert(s: Convert8) Implementation {
             return .{ .ub_word = s.ub_addr };
         }
-    };
+    });
 }
 pub const specifications: [15]type = .{
     Specification0,
@@ -11609,13 +11609,13 @@ pub const specifications: [15]type = .{
 };
 const Mode = enum(u3) {
     read_write,
-    read_write_push_pop,
+    read_write_resize,
     read_write_auto,
-    read_write_push_pop_auto,
+    read_write_resize_auto,
     read_write_stream,
-    read_write_stream_push_pop,
+    read_write_stream_resize,
     read_write_stream_auto,
-    read_write_stream_push_pop_auto,
+    read_write_stream_resize_auto,
 };
 const Construct1 = struct { lb_addr: u64 };
 const Construct2 = struct { ab_addr: u64 };
