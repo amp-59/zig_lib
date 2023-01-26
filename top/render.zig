@@ -44,15 +44,12 @@ pub inline fn render(comptime spec: RenderSpec, value: anytype) AnyFormat(spec, 
     return .{ .value = value };
 }
 inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
-    @setEvalBranchQuota(10_000);
     if (spec.infer_type_names or
         spec.infer_type_names_recursively)
     {
         return ".";
     } else if (spec.omit_type_names) {
-        return meta.empty;
-    } else if (spec.zig_type_names) {
-        return @typeName(T);
+        return "";
     } else {
         return fmt.typeName(T);
     }
