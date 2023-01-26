@@ -219,8 +219,11 @@ fn writeAndWalk(
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
-    while (index != list.count) : (index += 1) {
-        const entry: *DirStream.Entry = list.at(index) catch break;
+
+    while (list.at(index)) |_| : (index += 1) {
+        //while (index != list.count) : (index += 1) {
+        const entry: *DirStream.Entry = list.at(index) orelse break;
+
         const is_last: bool = index == list.count - 1;
         const indent: []const u8 = if (is_last) Style.spc_s else Style.bar_s;
         if (!Options.plain_print) {
@@ -231,7 +234,7 @@ fn writeAndWalk(
         if (!options.all and conditionalSkip(base_name)) {
             continue;
         }
-        switch (entry.kind) {
+        switch (entry.kind()) {
             .directory => {
                 if (options.max_depth) |max_depth| {
                     if (depth == max_depth) continue;
@@ -293,7 +296,7 @@ fn writeAndWalk(
                     if (Options.plain_print) {
                         break :blk .{ alts_buf.readAll(), base_name, endl_s };
                     } else {
-                        break :blk .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind)], base_name, endl_s };
+                        break :blk .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind())], base_name, endl_s };
                     }
                 }));
             },
