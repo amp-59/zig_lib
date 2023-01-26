@@ -662,7 +662,7 @@ pub noinline fn callMain() noreturn {
                 break :blk_0 .{ args[0..args_len], vars[0..vars_len] };
             }
             if (main_type_info.Fn.params.len == 3) {
-                const auxv_type: type = main_type_info.Fn.params[2].type.?;
+                const auxv_type: type = main_type_info.Fn.params[2].type orelse *const anyopaque;
                 const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
                 const args_addr: u64 = static.stack_addr +% 8;
                 const vars_addr: u64 = args_addr +% 8 +% (args_len * 8);
