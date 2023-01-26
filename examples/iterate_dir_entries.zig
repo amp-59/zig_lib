@@ -34,14 +34,10 @@ pub fn main(args: [][*:0]u8) !void {
         var list: DirStream.ListView = dir.list();
 
         var index: u64 = 1;
-        while (index != list.count) : (index += 1) {
-            if (list.at(index)) |entry| {
-                // Write directory entry name to stderr
-                file.noexcept.write(2, entry.name());
-                file.noexcept.write(2, "\n");
-            } else |_| {
-                break;
-            }
+        while (list.at(index)) |entry| : (index +%= 1) {
+            // Write directory entry name to stderr
+            file.noexcept.write(2, entry.name());
+            file.noexcept.write(2, "\n");
         }
     }
 }
