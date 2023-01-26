@@ -1208,7 +1208,6 @@ pub const IdentifierFormat = struct {
         return len;
     }
 };
-
 pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: type) type {
     return struct {
         value: ToplevelAddressSpace,
@@ -1223,78 +1222,61 @@ pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: t
         }
     };
 }
-
+fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const u8) []const u8 {
+    var ret: []const u8 = type_name;
+    var index: u64 = type_name.len;
+    while (index != 0) {
+        index -%= 1;
+        if (type_name[index] == '_') {
+            break;
+        }
+        if (type_name[index] < '0' or
+            type_name[index] > '9')
+        {
+            return type_name;
+        }
+    }
+    const serial = index;
+    ret = type_name[0..index];
+    if (ret.len < decl_name.len) {
+        return type_name;
+    }
+    for (ret[ret.len - decl_name.len ..]) |c, i| {
+        if (c != decl_name[i]) {
+            return type_name;
+        }
+    }
+    index -%= decl_name.len;
+    return ret[0..index] ++ type_name[serial..];
+}
 /// This function attempts to shorten type names, to improve readability, and
 /// makes no attempt to accomodate for extreme names, such as enabled by @"".
 pub fn typeName(comptime T: type) []const u8 {
     const type_info: builtin.Type = @typeInfo(T);
     const type_name: [:0]const u8 = @typeName(T);
-    // From last dot:
-    // ns.TypeName
-    //
-    // From last dot before first open parens:
-    // ns.Generic()                 => Generic()
-    //
-    // From last dot after last close parens:
-    // ns.Generic().Within          => Within
-    //
-    // Cannot be parsed, because () is essentially a black box:
-    // ns.Generic().Within()        => ???
-
-    switch (type_info) {
+    comptime switch (type_info) {
         .Pointer => |pointer_info| {
-            return comptime builtin.fmt.typeDeclSpecifier(type_info) ++
+            return builtin.fmt.typeDeclSpecifier(type_info) ++
                 typeName(pointer_info.child);
         },
         .Array => |array_info| {
-            return comptime builtin.fmt.typeDeclSpecifier(type_info) ++
+            return builtin.fmt.typeDeclSpecifier(type_info) ++
                 typeName(array_info.child);
         },
-        .Struct, .Enum, .Union, .Opaque => {
-            if (type_name.len > 16) {
-                inline for (meta.resolve(type_info).decls) |decl| {
-                    if (decl.is_pub) {
-                        if (@typeInfo(@TypeOf(@field(T, decl.name))) == .Type) {
-                            if (@field(T, decl.name) == T) {
-                                return decl.name;
-                            }
-                        }
-                    }
-                }
-                return ".";
-            } else {
-                return type_name;
-            }
-            // The expense of this block is concerning, and the results are
-            // useful most of the time, but not all of time. It is kept here
-            // for reference, and may be optional in the future.
-            //
-            comptime {
-                const shortened_type_name: []const u8 = blk: {
-                    if (mem.indexOfLastEqualOne(u8, ')', type_name)) |last_cp| {
-                        if (mem.indexOfLastEqualOne(u8, '.', type_name[last_cp..])) |last_dot| {
-                            break :blk type_name[last_dot..];
-                        }
-                        if (mem.indexOfFirstEqualOne(u8, '(', type_name[0..last_cp])) |first_op| {
-                            if (mem.indexOfLastEqualOne(u8, '.', type_name[0..first_op])) |last_dot| {
-                                break :blk type_name[last_dot + 1 .. first_op];
-                            }
-                        }
-                    } else {
-                        if (mem.indexOfLastEqualOne(u8, '.', type_name)) |last_dot| {
-                            break :blk type_name[last_dot..];
-                        }
-                        break :blk type_name;
-                    }
-                };
-                if (mem.indexOfLastEqualOne(u8, '.', shortened_type_name)) |last_dot| {
-                    return "@\"" ++ shortened_type_name[last_dot..] ++ "\"";
-                }
-                return "@\"" ++ shortened_type_name ++ "\"";
-            }
+        .Struct => {
+            return typeNameDemangle(type_name, "__struct");
+        },
+        .Enum => {
+            return typeNameDemangle(type_name, "__enum");
+        },
+        .Union => {
+            return typeNameDemangle(type_name, "__union");
+        },
+        .Opaque => {
+            return typeNameDemangle(type_name, "__opaque");
         },
         else => return type_name,
-    }
+    };
 }
 fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
     return switch (c) {
