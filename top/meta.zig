@@ -440,7 +440,7 @@ pub fn ManyToSlice(comptime T: type) type {
 /// A useful meta type for representing bit fields with uncertain values.
 /// Properly rendered by `fmt.any`.
 pub fn EnumBitField(comptime E: type) type {
-    return packed union {
+    return (packed union {
         tag: Tag,
         val: Int,
         const BitField = @This();
@@ -458,7 +458,7 @@ pub fn EnumBitField(comptime E: type) type {
         pub fn unset(bit_field: *BitField, tag: Tag) void {
             bit_field.val &= ~@enumToInt(tag);
         }
-    };
+    });
 }
 
 pub fn fnParams(comptime function: anytype) []const builtin.FnParam {
