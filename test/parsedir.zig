@@ -124,9 +124,9 @@ noinline fn parseAndWalkInternal(
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
     while (index != list.count) : (index += 1) {
-        const entry: *DirStream.Entry = list.at(index) catch break;
+        const entry: *DirStream.Entry = list.at(index) orelse break;
         const base_name: [:0]const u8 = entry.name();
-        switch (entry.kind) {
+        switch (entry.kind()) {
             .directory => {
                 @call(.auto, parseAndWalkInternal, .{
                     allocator_0, allocator_1, allocator_n, allocator_e, allocator_x, allocator_s,
