@@ -30,7 +30,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
 });
 
 const PrintArray = mem.StructuredAutomaticVector(u8, null, 4096, 1, .{});
-const ModeSet = enum { ReadWritePushPop, ReadWrite, Both };
+const ModeSet = enum { ReadWriteResize, ReadWrite, Both };
 const StructureSet = enum { Structured, Unstructured, Both };
 const Dummy = mem.ReadWriteStructuredUnitAlignment(.{ .child = u8, .low_alignment = 1 });
 const Random = file.DeviceRandomBytes(4096);
@@ -1094,7 +1094,7 @@ fn analyseStaticReferences(allocator: *Allocator0, mode: ModeSet, structure: Str
         const b0: bool = @hasDecl(impl_type, "next");
         const b1: bool = @hasDecl(impl_type, "child");
         const function = if (b0) analyseRWPPStaticReference else analyseRWStaticReference;
-        if ((if (b0) (mode == .ReadWritePushPop or mode == .Both) else (mode == .ReadWrite or mode == .Both)) and
+        if ((if (b0) (mode == .ReadWriteResize or mode == .Both) else (mode == .ReadWrite or mode == .Both)) and
             (if (b1) (structure == .Structured or structure == .Both) else (structure == .Unstructured or structure == .Both)))
         {
             try @call(.auto, function, .{ allocator, impl_type });
@@ -1119,7 +1119,7 @@ fn analyseDynamicReferences(allocator: *Allocator0, mode: ModeSet, structure: St
         const b0: bool = @hasDecl(impl_type, "next");
         const b1: bool = @hasDecl(impl_type, "child");
         const function = if (b0) analyseRWPPDynamicReference else analyseRWDynamicReference;
-        if ((if (b0) (mode == .ReadWritePushPop or mode == .Both) else (mode == .ReadWrite or mode == .Both)) and
+        if ((if (b0) (mode == .ReadWriteResize or mode == .Both) else (mode == .ReadWrite or mode == .Both)) and
             (if (b1) (structure == .Structured or structure == .Both) else (structure == .Unstructured or structure == .Both)))
         {
             try @call(.auto, function, .{ allocator, impl_type });
