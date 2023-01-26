@@ -859,11 +859,11 @@ pub const AbstractSpec = union(enum) {
         offset_byte_address: union(enum) {
             read_write_stream_auto: Automatic,
             undefined_byte_address: union(enum) {
-                read_write_stream_push_pop_auto: Automatic,
+                read_write_stream_resize_auto: Automatic,
             },
         },
         undefined_byte_address: union(enum) {
-            read_write_push_pop_auto: Automatic,
+            read_write_resize_auto: Automatic,
         },
     },
     /// Managed memory below
@@ -874,13 +874,13 @@ pub const AbstractSpec = union(enum) {
         },
         offset_byte_address: union(enum) {
             undefined_byte_address: union(enum) {
-                read_write_stream_push_pop: union(enum) {
+                read_write_stream_resize: union(enum) {
                     // single_packed_approximate_capacity: Dynamic,
                     // double_packed_approximate_capacity: Dynamic,
                     static: Static,
                 },
                 unallocated_byte_address: union(enum) {
-                    read_write_stream_push_pop: Dynamic,
+                    read_write_stream_resize: Dynamic,
                 },
             },
             unallocated_byte_address: union(enum) {
@@ -888,14 +888,14 @@ pub const AbstractSpec = union(enum) {
             },
         },
         undefined_byte_address: union(enum) {
-            read_write_push_pop: union(enum) {
+            read_write_resize: union(enum) {
                 // single_packed_approximate_capacity: Dynamic,
                 // double_packed_approximate_capacity: Dynamic,
                 static: Static,
             },
 
             unallocated_byte_address: union(enum) {
-                read_write_push_pop: Dynamic,
+                read_write_resize: Dynamic,
             },
         },
         unallocated_byte_address: union(enum) {
@@ -904,11 +904,11 @@ pub const AbstractSpec = union(enum) {
     },
     offset_byte_address: union(enum) {
         undefined_byte_address: union(enum) {
-            read_write_stream_push_pop: union(enum) { parametric: Parametric },
+            read_write_stream_resize: union(enum) { parametric: Parametric },
         },
     },
     undefined_byte_address: union(enum) {
-        read_write_push_pop: union(enum) { parametric: Parametric },
+        read_write_resize: union(enum) { parametric: Parametric },
     },
 
     const Automatic = union(enum) {
@@ -970,13 +970,13 @@ pub const AbstractSpec = union(enum) {
 
     pub const Mode = enum {
         read_write,
-        read_write_push_pop,
+        read_write_resize,
         read_write_auto,
-        read_write_push_pop_auto,
+        read_write_resize_auto,
         read_write_stream,
-        read_write_stream_push_pop,
+        read_write_stream_resize,
         read_write_stream_auto,
-        read_write_stream_push_pop_auto,
+        read_write_stream_resize_auto,
     };
     // For structures below named 'mutex', iterate through the structure until
     // finding an enum literal, then concatenate direct parent field names to
