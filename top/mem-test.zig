@@ -89,6 +89,19 @@ fn testMapGenericOverhead() !void {
     addr = end;
     try meta.wrap(mem.map(.{ .options = .{ .populate = false, .visibility = .shared } }, end, len));
 }
+fn testPageAllocatedImplementation() !void {
+    const repeats: u64 = 0x100;
+    _ = repeats;
+    const Allocator = mem.GenericPageAllocator(.{
+        .arena_index = 0,
+        .options = .{},
+        .logging = preset.allocator.logging.verbose,
+        .AddressSpace = preset.address_space.formulaic_128,
+    });
+    var address_space: Allocator.AddressSpace = .{};
+    var allocator: Allocator = try Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+}
 fn testRtAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericRtArenaAllocator(.{
@@ -300,5 +313,6 @@ pub fn main() !void {
     try meta.wrap(testAutomaticImplementation());
     try meta.wrap(testAllocatedImplementation());
     try meta.wrap(testRtAllocatedImplementation());
+    // try meta.wrap(testPageAllocatedImplementation());
     try meta.wrap(testUtilityTestFunctions());
 }
