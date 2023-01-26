@@ -8,12 +8,12 @@ const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
+pub const AddressSpace = preset.address_space.exact_8;
+pub const is_correct: bool = true;
+pub const is_verbose: bool = false;
 
 const Random = file.DeviceRandomBytes(4096);
 const String = Allocator0.StructuredVector(u8);
-
-pub const is_correct: bool = true;
-pub const AddressSpace = preset.address_space.formulaic_128;
 
 const ptr_wr_spec: mem.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
@@ -37,7 +37,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
-    .arena_index = 2,
+    .arena_index = 4,
     .options = .{
         .check_parametric = false,
         .unit_alignment = 1,
@@ -147,13 +147,13 @@ pub fn main() !void {
         operation_count = 0;
         while (operation_count != big_num / 4) : (operation_count += 1) {
             const count = list.count;
-            const s_begin = try list.at(0);
-            const t_begin = try list.extract(0);
-            const s_end = try list.at(list.count - 1);
-            const t_end = try list.extract(list.count - 1);
+            const s_begin: *T = list.at(0).?;
+            const t_begin: LinkedList.Node = list.extract(0).?;
+            const s_end: *T = list.at(list.count - 1).?;
+            const t_end: LinkedList.Node = list.extract(list.count - 1).?;
             const mid: u64 = builtin.min(u64, list.count - 1, random.readOne(Count));
-            const s_mid = try list.at(mid);
-            const t_mid = try list.extract(mid);
+            const s_mid: *T = list.at(mid).?;
+            const t_mid: LinkedList.Node = list.extract(mid).?;
             try builtin.expectEqual(u64, s_end.i, t_end.read().i);
             try builtin.expectEqual(u64, s_mid.i, t_mid.read().i);
             try builtin.expectEqual(u64, s_begin.*.i, t_begin.read().i);
