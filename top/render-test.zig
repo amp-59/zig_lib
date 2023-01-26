@@ -13,7 +13,7 @@ const tokenizer = @import("./tokenizer.zig");
 const virtual_test = @import("./virtual-test.zig");
 
 pub usingnamespace proc.start;
-
+pub const AddressSpace = preset.address_space.formulaic_128;
 pub const is_correct: bool = true;
 
 const Allocator = mem.GenericArenaAllocator(.{
@@ -45,8 +45,8 @@ const render_spec: fmt.RenderSpec = .{
 
 const runTest = if (use_alloc) allocateRunTest else minimalRunTest;
 
-fn testLoopFormatAgainstStandard(comptime AddressSpace: type) anyerror!void {
-    const max_index: AddressSpace.Index = comptime AddressSpace.addr_spec.count();
+fn testLoopFormatAgainstStandard(comptime ThisAddressSpace: type) anyerror!void {
+    const max_index: ThisAddressSpace.Index = comptime AddressSpace.addr_spec.count();
     comptime var arena_index: AddressSpace.Index = 0;
     inline while (arena_index != max_index) : (arena_index += 1) {
         if (use_std) {
@@ -63,13 +63,14 @@ fn testLoopFormatAgainstStandard(comptime AddressSpace: type) anyerror!void {
         }
     }
 }
+
 fn testWithComplexList(comptime what: fn (comptime type) anyerror!void) anyerror!void {
-    const AddressSpace: type = mem.GenericDiscreteAddressSpace(.{ .list = virtual_test.complex_list });
-    return what(AddressSpace);
+    const ThisAddressSpace: type = mem.GenericDiscreteAddressSpace(.{ .list = virtual_test.complex_list });
+    return what(ThisAddressSpace);
 }
 fn testWithComplexListSubSpace(comptime what: fn (comptime type) anyerror!void) anyerror!void {
-    const AddressSpace = mem.GenericDiscreteAddressSpace(.{ .list = virtual_test.complex_list });
-    const SubAddressSpace = mem.GenericDiscreteSubAddressSpace(.{ .list = virtual_test.rare_sub_list }, AddressSpace);
+    const ThisAddressSpace = mem.GenericDiscreteAddressSpace(.{ .list = virtual_test.complex_list });
+    const SubAddressSpace = mem.GenericDiscreteSubAddressSpace(.{ .list = virtual_test.rare_sub_list }, ThisAddressSpace);
     return what(SubAddressSpace);
 }
 fn testAgainstStandard() !void {
@@ -175,17 +176,17 @@ fn testSpecificCases() !void {
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = u64 }, "u64");
     try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = 111111111 }, "111111111");
     try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = -111111111 }, "-111111111");
-    try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{}){ .value = &.{ 1, 2, 3, 4, 5, 6 } }, "[]const u64{ 1, 2, 3, 4, 5, 6 }");
-    try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{ .omit_trailing_comma = false }){ .value = &.{ 7, 8, 9, 10, 11, 12 } }, "[]const u64{ 7, 8, 9, 10, 11, 12, }");
-    try runTest(&allocator, &array, render.PointerSliceFormat([]const u64, .{}){ .value = &.{} }, "[]const u64{}");
-    try runTest(&allocator, &array, render.ArrayFormat([6]u64, .{}){ .value = .{ 1, 2, 3, 4, 5, 6 } }, "[6]u64{ 1, 2, 3, 4, 5, 6 }");
-    try runTest(&allocator, &array, render.ArrayFormat([0]u64, .{}){ .value = .{} }, "[0]u64{}");
-    try runTest(&allocator, &array, render.PointerManyFormat([*:0]const u64, .{}){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr }, "[:0]const u64{ 1, 2, 3, 4, 5, 6 }");
-    try runTest(&allocator, &array, render.PointerManyFormat([*]const u64, .{}){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr }, "[*]const u64{ ... }");
+    try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } }, "[]const u64{ 1, 2, 3, 4, 5, 6 }");
+    try runTest(&allocator, &array, render.PointerSliceFormat(.{ .omit_trailing_comma = false }, []const u64){ .value = &.{ 7, 8, 9, 10, 11, 12 } }, "[]const u64{ 7, 8, 9, 10, 11, 12, }");
+    try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u64){ .value = &.{} }, "[]const u64{}");
+    try runTest(&allocator, &array, render.ArrayFormat(.{}, [6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } }, "[6]u64{ 1, 2, 3, 4, 5, 6 }");
+    try runTest(&allocator, &array, render.ArrayFormat(.{}, [0]u64){ .value = .{} }, "[0]u64{}");
+    try runTest(&allocator, &array, render.PointerManyFormat(.{}, [*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr }, "[:0]const u64{ 1, 2, 3, 4, 5, 6 }");
+    try runTest(&allocator, &array, render.PointerManyFormat(.{}, [*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr }, "[*]const u64{ ... }");
+    try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u8){ .value = array.readAll() }, "\"\"");
     try runTest(&allocator, &array, render.EnumLiteralFormat{ .value = .EnumLiteral }, ".EnumLiteral");
     try runTest(&allocator, &array, render.NullFormat{}, "null");
     try runTest(&allocator, &array, render.VoidFormat{}, "{}");
-    try runTest(&allocator, &array, comptime render.render(.{ .inline_field_types = true }, mem.AbstractSpec), null);
 }
 pub fn main() !void {
     if (cmp_test) {
