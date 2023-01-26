@@ -11,7 +11,7 @@ pub const ListSpec = struct {
     Allocator: type,
 };
 pub fn GenericLinkedList(comptime spec: ListSpec) type {
-    return struct {
+    return (struct {
         links: Links,
         count: u64,
         index: u64,
@@ -57,9 +57,6 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 fn read(s_node_blk: Block) u64 {
                     return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk)).*;
                 }
-                fn write(t_node_blk: Block, b_node_blk: Block, a_node_blk: Block) void {
-                    builtin.intToPtr(*u64, Node.Link.addr(t_node_blk)).* = (b_node_blk.lb_word ^ a_node_blk.lb_word);
-                }
                 fn refer(s_node_blk: Block) *u64 {
                     return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk));
                 }
@@ -75,14 +72,14 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     return Block{ .lb_word = s_node_blk.lb_word ^ x_addr };
                 }
                 fn integrateAfter(s_node_blk: Block, t_node_blk: Block, a_node_blk: Block, s_data: child) Links {
-                    Node.Link.write(a_node_blk, t_node_blk, zero_block);
-                    Node.Link.write(t_node_blk, s_node_blk, a_node_blk);
+                    Node.Link.mutate(a_node_blk, t_node_blk, zero_block);
+                    Node.Link.mutate(t_node_blk, s_node_blk, a_node_blk);
                     Node.Data.write(t_node_blk, s_data);
                     return .{ .major = t_node_blk, .minor = a_node_blk };
                 }
                 fn integrateBefore(b_node_blk: Block, s_node_blk: Block, t_node_blk: Block, s_data: child) Links {
-                    Node.Link.write(b_node_blk, zero_block, s_node_blk);
-                    Node.Link.write(s_node_blk, b_node_blk, t_node_blk);
+                    Node.Link.mutate(b_node_blk, zero_block, s_node_blk);
+                    Node.Link.mutate(s_node_blk, b_node_blk, t_node_blk);
                     Node.Data.write(b_node_blk, s_data);
                     return .{ .major = b_node_blk, .minor = s_node_blk };
                 }
@@ -98,13 +95,13 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     const p_node_blk: Block = Node.Link.prev(s_node_blk, t_node_blk);
                     const o_node_blk: Block = Node.Link.prev(p_node_blk, s_node_blk);
                     Node.Link.mutate(p_node_blk, o_node_blk, t_node_blk);
-                    Node.Link.write(t_node_blk, p_node_blk, zero_block);
+                    Node.Link.mutate(t_node_blk, p_node_blk, zero_block);
                     Node.Link.refer(s_node_blk).* = 0;
                     return .{ .major = p_node_blk, .minor = t_node_blk };
                 }
                 fn disintegrateBefore(s_node_blk: Block, t_node_blk: Block) Links {
                     const n_node_blk: Block = Node.Link.next(s_node_blk, t_node_blk);
-                    Node.Link.write(t_node_blk, zero_block, n_node_blk);
+                    Node.Link.mutate(t_node_blk, zero_block, n_node_blk);
                     Node.Link.refer(s_node_blk).* = 0;
                     return .{ .major = t_node_blk, .minor = n_node_blk };
                 }
@@ -136,8 +133,8 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             pub fn basicInit(s: anytype, t: anytype) Links {
                 const s_node_blk: Block = if (@TypeOf(s) == Block) s else .{ .lb_word = s };
                 const t_node_blk: Block = if (@TypeOf(t) == Block) t else .{ .lb_word = t };
-                Node.Link.write(s_node_blk, zero_block, t_node_blk);
-                Node.Link.write(t_node_blk, s_node_blk, zero_block);
+                Node.Link.mutate(s_node_blk, zero_block, t_node_blk);
+                Node.Link.mutate(t_node_blk, s_node_blk, zero_block);
                 return .{ .major = s_node_blk, .minor = t_node_blk };
             }
             pub fn next(links: Links) ?Block {
@@ -189,8 +186,10 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
         pub fn this(list: *List) *child {
             return Node.Data.refer(list.links.major);
         }
-        pub fn at(list: *List, i: u64) !*child {
-            try list.goTo(i);
+        pub fn at(list: *List, index: u64) ?*child {
+            if (!list.goTo(index)) {
+                return null;
+            }
             return list.this();
         }
         pub fn next(list: List) ?List {
@@ -217,30 +216,50 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 list.index += 1;
             }
         }
-        pub fn goToNext(list: *List) error{NoItems}!void {
+        pub fn goToNext(list: *List) bool {
             if (list.links.nextPair()) |next_pair| {
                 list.links = next_pair;
                 list.index += 1;
             } else {
-                return error.NoItems;
+                return false;
             }
+            return true;
         }
-        pub fn goToPrev(list: *List) error{NoItems}!void {
+        pub fn goToPrev(list: *List) bool {
             if (list.links.prevPair()) |prev_pair| {
                 list.links = prev_pair;
                 list.index -= 1;
             } else {
-                return error.NoItems;
+                return false;
             }
+            return true;
         }
-        pub fn goTo(list: *List, to: u64) !void {
-            if (to != list.index) {
-                while (to < list.index) {
-                    try list.goToPrev();
-                } else while (to > list.index) {
-                    try list.goToNext();
+        pub fn goTo(list: *List, index: u64) bool {
+            if (index >= list.count) {
+                return false;
+            }
+            var pair: Links = list.links;
+            var new_index: u64 = list.index;
+            while (new_index < index) : (new_index +%= 1) {
+                if (pair.nextPair()) |next_pair| {
+                    pair = next_pair;
+                } else {
+                    break;
                 }
             }
+            while (new_index > index) : (new_index -%= 1) {
+                if (pair.prevPair()) |prev_pair| {
+                    pair = prev_pair;
+                } else {
+                    break;
+                }
+            }
+            const ret: bool = new_index == index;
+            if (ret) {
+                list.links = pair;
+                list.index = new_index;
+            }
+            return ret;
         }
         fn unlinkA(list: *List, allocator: *Allocator) void {
             list.goToTail();
@@ -300,8 +319,10 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             list.count -= 1;
             return .{ .blk = s_node_blk };
         }
-        fn extractC(list: *List, index: u64) !Node {
-            try list.goTo(index - 1);
+        fn extractC(list: *List, index: u64) ?Node {
+            if (!list.goTo(index - 1)) {
+                return null;
+            }
             const m_node_blk: Block = list.links.major;
             const t_node_blk: Block = list.links.minor;
             list.links = Node.Link.disintegrateBetween(m_node_blk, t_node_blk);
@@ -309,10 +330,8 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             list.count -= 1;
             return .{ .blk = t_node_blk };
         }
-        pub fn extract(list: *List, index: u64) !Node {
-            if (list.count == 0) {
-                return error.NoItems;
-            }
+        pub fn extract(list: *List, index: u64) ?Node {
+            if (list.count == 0) return null;
             if (list.count == 1) {
                 return list.extract0();
             }
@@ -338,8 +357,9 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     list.count -= 1;
                 },
                 else => {
-                    const data: Node = try list.extract(index orelse list.index);
-                    list.retire(data);
+                    if (list.extract(index orelse list.index)) |data| {
+                        list.retire(data);
+                    }
                 },
             }
         }
@@ -367,7 +387,9 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             list.count += 1;
         }
         fn insertBetween(list: *List, index: u64, data: child, i_node_blk: Block) !void {
-            try list.goTo(index - 1);
+            if (!list.goTo(index - 1)) {
+                return error.NoItems;
+            }
             const p_node_blk: Block = list.links.major;
             const s_node_blk: Block = list.links.minor;
             Node.Link.integrateBetween(p_node_blk, i_node_blk, s_node_blk, data);
@@ -490,8 +512,8 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
         pub fn init(allocator: *Allocator) !List {
             const s_node_blk: Block = try allocator.allocateStatic(Block, .{ .count = 1 });
             const t_node_blk: Block = try allocator.allocateStatic(Block, .{ .count = 1 });
-            Node.Link.write(s_node_blk, zero_block, t_node_blk);
-            Node.Link.write(t_node_blk, s_node_blk, zero_block);
+            Node.Link.mutate(s_node_blk, zero_block, t_node_blk);
+            Node.Link.mutate(t_node_blk, s_node_blk, zero_block);
             return List{ .links = .{ .major = s_node_blk, .minor = t_node_blk }, .index = 0, .count = 0 };
         }
         pub fn deinit(list: *List, allocator: *Allocator) void {
@@ -633,14 +655,14 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 file.noexcept.write(2, array.readAll(allocator));
             }
         };
-    };
+    });
 }
 pub const ListViewSpec = struct {
     child: type,
     low_alignment: u64,
 };
-pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
-    return struct {
+pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
+    return (struct {
         links: Links,
         count: u64,
         index: u64,
@@ -675,10 +697,6 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                     const s_link_addr: u64 = s_node_addr + Node.Link.begin;
                     return builtin.intToPtr(*u64, s_link_addr).*;
                 }
-                pub fn write(t_node_addr: u64, b_node_addr: u64, a_node_addr: u64) void {
-                    const t_link_addr: u64 = t_node_addr + Node.Link.begin;
-                    builtin.intToPtr(*u64, t_link_addr).* = (b_node_addr ^ a_node_addr);
-                }
                 pub fn mutate(t_node_addr: u64, b_node_addr: u64, a_node_addr: u64) void {
                     const t_link_addr: u64 = t_node_addr + Node.Link.begin;
                     builtin.intToPtr(*u64, t_link_addr).* = (b_node_addr ^ a_node_addr);
@@ -694,14 +712,14 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                     return x_addr ^ s_node_addr;
                 }
                 fn integrateAfter(s_node_addr: u64, t_node_addr: u64, a_node_addr: u64, data: child) Links {
-                    Node.Link.write(a_node_addr, t_node_addr, 0);
-                    Node.Link.write(t_node_addr, s_node_addr, a_node_addr);
+                    Node.Link.mutate(a_node_addr, t_node_addr, 0);
+                    Node.Link.mutate(t_node_addr, s_node_addr, a_node_addr);
                     Node.Data.write(t_node_addr, data);
                     return .{ .major = t_node_addr, .minor = a_node_addr };
                 }
                 fn integrateBefore(b_node_addr: u64, s_node_addr: u64, t_node_addr: u64, data: child) Links {
-                    Node.Link.write(b_node_addr, 0, s_node_addr);
-                    Node.Link.write(s_node_addr, b_node_addr, t_node_addr);
+                    Node.Link.mutate(b_node_addr, 0, s_node_addr);
+                    Node.Link.mutate(s_node_addr, b_node_addr, t_node_addr);
                     Node.Data.write(b_node_addr, data);
                     return .{ .major = b_node_addr, .minor = s_node_addr };
                 }
@@ -717,13 +735,13 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                     const p_node_addr: u64 = Node.Link.prev(s_node_addr, t_node_addr);
                     const o_node_addr: u64 = Node.Link.prev(p_node_addr, s_node_addr);
                     Node.Link.mutate(p_node_addr, o_node_addr, t_node_addr);
-                    Node.Link.write(t_node_addr, p_node_addr, 0);
+                    Node.Link.mutate(t_node_addr, p_node_addr, 0);
                     Node.Link.refer(s_node_addr).* = 0;
                     return .{ .major = p_node_addr, .minor = t_node_addr };
                 }
                 fn disintegrateBefore(s_node_addr: u64, t_node_addr: u64) Links {
                     const n_node_addr: u64 = Node.Link.next(s_node_addr, t_node_addr);
-                    Node.Link.write(t_node_addr, Node.Link.head_mask, 0, n_node_addr);
+                    Node.Link.mutate(t_node_addr, Node.Link.head_mask, 0, n_node_addr);
                     Node.Link.refer(s_node_addr).* = 0;
                     return .{ .major = t_node_addr, .minor = n_node_addr };
                 }
@@ -753,8 +771,8 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
             major: u64,
             minor: u64,
             pub fn basicInit(s_node_addr: u64, t_node_addr: u64) Links {
-                Node.Link.write(s_node_addr, Node.Link.head_mask, 0, t_node_addr);
-                Node.Link.write(t_node_addr, Node.Link.tail_mask, s_node_addr, 0);
+                Node.Link.mutate(s_node_addr, Node.Link.head_mask, 0, t_node_addr);
+                Node.Link.mutate(t_node_addr, Node.Link.tail_mask, s_node_addr, 0);
                 return .{ .major = s_node_addr, .minor = t_node_addr };
             }
             fn next(links: Links) ?u64 {
@@ -765,13 +783,21 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                 const t_prev_addr: u64 = Node.Link.prev(links.major, links.minor);
                 return mach.cmovxZ(t_prev_addr > 0x10000, t_prev_addr);
             }
-            fn nextPair(links: Links) ?Links {
+            fn nextPair(links: *Links) bool {
                 const t_next_addr: u64 = Node.Link.next(links.major, links.minor);
-                return mach.cmovxZ(t_next_addr > 0x10000, Links{ .major = links.minor, .minor = t_next_addr });
+                const ret: bool = t_next_addr != 0;
+                if (ret) {
+                    links.* = Links{ .major = links.minor, .minor = t_next_addr };
+                }
+                return ret;
             }
-            fn prevPair(links: Links) ?Links {
+            fn prevPair(links: *Links) bool {
                 const t_prev_addr: u64 = Node.Link.prev(links.major, links.minor);
-                return mach.cmovxZ(t_prev_addr > 0x10000, Links{ .major = t_prev_addr, .minor = links.major });
+                const ret: bool = t_prev_addr != 0;
+                if (ret) {
+                    links.* = Links{ .major = t_prev_addr, .minor = links.major };
+                }
+                return ret;
             }
             fn toList(links: *Links) List {
                 const index = links.countToHead();
@@ -802,11 +828,13 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
         };
         const child: type = list_spec.child;
         pub const list_spec: ListViewSpec = spec;
-        pub fn this(list: List) *child {
+        pub fn this(list: *List) *child {
             return Node.Data.refer(list.links.major);
         }
-        pub fn at(list: *List, i: u64) !*child {
-            try list.goTo(i);
+        pub fn at(list: *List, index: u64) ?*child {
+            if (!list.goTo(index)) {
+                return null;
+            }
             return list.this();
         }
         pub fn next(list: List) ?List {
@@ -833,30 +861,42 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                 list.index += 1;
             }
         }
-        pub fn goToNext(list: *List) error{NoItems}!void {
+        pub fn goToNext(list: *List) bool {
             if (list.links.nextPair()) |next_pair| {
                 list.links = next_pair;
                 list.index += 1;
             } else {
-                return error.NoItems;
+                return false;
             }
+            return true;
         }
-        pub fn goToPrev(list: *List) error{NoItems}!void {
+        pub fn goToPrev(list: *List) bool {
             if (list.links.prevPair()) |prev_pair| {
                 list.links = prev_pair;
                 list.index -= 1;
             } else {
-                return error.NoItems;
+                return false;
             }
+            return true;
         }
-        pub fn goTo(list: *List, to: u64) !void {
-            if (to != list.index) {
-                while (to < list.index) {
-                    try list.goToPrev();
-                } else while (to > list.index) {
-                    try list.goToNext();
-                }
+        pub fn goTo(list: *List, index: u64) bool {
+            if (index >= list.count) {
+                return false;
             }
+            var pair: Links = list.links;
+            var new_index: u64 = list.index;
+            while (new_index < index) : (new_index +%= 1) {
+                if (!pair.nextPair()) break;
+            } else //
+            while (new_index > index) : (new_index -%= 1) {
+                if (!pair.prevPair()) break;
+            }
+            const ret: bool = new_index == index;
+            if (ret) {
+                list.links = pair;
+                list.index = new_index;
+            }
+            return ret;
         }
         fn extract0(list: *List) *child {
             const s_node_addr: u64 = list.links.major;
@@ -1095,5 +1135,5 @@ pub fn XorLinkedListViewAdv(comptime spec: ListViewSpec) type {
                 builtin.require(file.write(2, array.readAll()));
             }
         };
-    };
+    });
 }
