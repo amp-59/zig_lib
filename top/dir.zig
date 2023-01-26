@@ -37,18 +37,18 @@ pub const Kind = enum(u8) {
     symbolic_link = sys.S.IFLNK >> 12,
 };
 pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
-    return struct {
+    return (struct {
         path: [:0]const u8,
         fd: u64,
         blk: Block,
         count: u64,
         const DirStream = @This();
-        const Block = mem.ReadWritePushPopUnstructuredLazyAlignment(.{
+        const Block = mem.ReadWriteResizeUnstructuredDisjunctAlignment(.{
             .low_alignment = 8,
             .high_alignment = 8,
         });
         pub const Allocator = dir_spec.Allocator;
-        pub const ListView = mem.XorLinkedListViewAdv(.{ .child = Entry, .low_alignment = 8 });
+        pub const ListView = mem.GenericLinkedListView(.{ .child = Entry, .low_alignment = 8 });
         pub const Iterator = struct {
             count: u64 = 0,
             blk: Block,
@@ -60,31 +60,24 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
                 };
             }
         };
-        pub const Entry = packed struct {
-            /// Was `ino`, now empty, used to store a bidirectional link
-            link_node: u0,
-            /// Was `offset`, useful for mapping directory structures recursively.
-            entries: u64,
-            /// Was the `reclen`, now gives the exact length of the entry name.
-            len: u16,
-            /// As before, the file mode type >> 12.
-            kind: Kind,
-            /// Placeholder for the variable length byte array containing the
-            /// entry name at this offset.
-            array: u8,
-            const S = sys.S;
-            const One = mem.ReadWriteStaticStructuredPackedNaturalAlignment(.{
-                .child = Iterator,
-                .low_alignment = 8,
-                .count = 1,
-            });
-            pub fn entries(dirent: *const Entry) One {
-                return @bitCast(One, dirent.entries);
-            }
+        pub const Entry = opaque {
             pub fn possess(dirent: *const Entry, dir: *DirStream) void {
-                dirent.entries = dir.blk;
+                @intToPtr(*const Block, @ptrToInt(dirent) + 0).* = dir.blk;
                 file.close(dir_close_spec, dir.fd);
             }
+            pub fn entries(dirent: *const Entry) Block {
+                return @intToPtr(*const Block, @ptrToInt(dirent) + 0).*;
+            }
+            pub fn len(dirent: *const Entry) u16 {
+                return @intToPtr(*const u16, @ptrToInt(dirent) + 8).*;
+            }
+            pub fn kind(dirent: *const Entry) Kind {
+                return @intToPtr(*const Kind, @ptrToInt(dirent) + 10).*;
+            }
+            pub fn name(dirent: *const Entry) [:0]const u8 {
+                return @intToPtr([*:0]u8, @ptrToInt(dirent) + 11)[0..dirent.len() :0];
+            }
+
             pub fn isDirectory(dirent: *const Entry) bool {
                 return dirent.kind == .directory;
             }
@@ -105,10 +98,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             }
             pub fn isSocket(dirent: *const Entry) bool {
                 return dirent.kind == .socket;
-            }
-            pub fn name(dirent: *const Entry) [:0]const u8 {
-                return @intToPtr([*:0]u8, @ptrToInt(dirent) +
-                    @offsetOf(Entry, "array"))[0..dirent.len :0];
             }
         };
         const List = opaque {
@@ -192,8 +181,8 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
                 var p_node_addr: u64 = 0;
                 var i_node_addr: u64 = nextAddress(t_node_addr);
                 mangle(s_node_addr);
-                ListView.Node.Link.write(s_node_addr, 0, t_node_addr);
-                ListView.Node.Link.write(t_node_addr, s_node_addr, 0);
+                ListView.Node.Link.mutate(s_node_addr, 0, t_node_addr);
+                ListView.Node.Link.mutate(t_node_addr, s_node_addr, 0);
                 mangle(t_node_addr);
                 var count: u64 = 1;
                 while (i_node_addr < s_up_addr) : (count += 1) {
@@ -312,5 +301,5 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             }
             return .{ .count = dir.count, .blk = dir.blk };
         }
-    };
+    });
 }
