@@ -22,7 +22,11 @@ const single_switch: bool = false;
 fn noSuchOption(opt_arg: []const u8) void {
     var print_array: mem.StaticString(4096) = undefined;
     print_array.undefineAll();
-    print_array.writeAny(preset.reinterpret.ptr, [3][]const u8{ "unrecognised output mode: '", opt_arg, "'\n-o, --output=     x,d,o,b\n" });
+    print_array.writeAny(preset.reinterpret.ptr, [3][]const u8{
+        "unrecognised output mode: '",
+        opt_arg,
+        "'\n-o, --output=     x,d,o,b\n",
+    });
     file.noexcept.write(2, print_array.readAll());
 }
 const Options = struct {
