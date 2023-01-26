@@ -17,7 +17,7 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
     }
     const Data: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(Data);
-    return extern struct {
+    return (extern struct {
         bits: Data = if (data_info == .Array) [1]usize{0} ** data_info.Array.len else 0,
         pub const BitSet: type = @This();
         const Word: type = if (data_info == .Array) data_info.Array.child else Data;
@@ -53,10 +53,10 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
                 bit_set.bits &= ~bit_mask;
             }
         }
-    };
+    });
 }
 pub fn ThreadSafeSet(comptime divisions: u16) type {
-    return extern struct {
+    return (extern struct {
         bytes: Data = .{0} ** divisions,
         pub const SafeSet: type = @This();
         const Data: type = [divisions]u8;
@@ -92,14 +92,14 @@ pub fn ThreadSafeSet(comptime divisions: u16) type {
                 : "rax", "rdx", "memory"
             );
         }
-    };
+    });
 }
 fn GenericMultiSet(
     comptime spec: DiscreteAddressSpaceSpec,
     comptime directory: anytype,
     comptime Fields: type,
 ) type {
-    return extern struct {
+    return (extern struct {
         fields: Fields = .{},
         pub const MultiSet: type = @This();
         const Index: type = DiscreteAddressSpaceSpec.Index(spec);
@@ -128,7 +128,7 @@ fn GenericMultiSet(
             const field_index: Index = directory[index].field_index;
             return multi_set.fields[field_index].atomicUnset(arena_index);
         }
-    };
+    });
 }
 pub const ArenaOptions = extern struct {
     thread_safe: bool = false,
@@ -455,7 +455,7 @@ pub fn isRegular(comptime multi_arena: anytype, comptime map_list: []const Arena
 ///     * Inversion is expensive.
 ///     * Constructing the bit set fields can be expensive at compile time.
 pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type {
-    return extern struct {
+    return (extern struct {
         impl: Implementation align(8) = defaultValue(spec),
         pub const DiscreteAddressSpace = @This();
         pub const Implementation: type = spec.Implementation();
@@ -490,7 +490,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
             return spec.arena(index);
         }
         pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
-    };
+    });
 }
 /// Regular:
 /// Good:
@@ -505,7 +505,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
 ///     * Thread safety is all-or-nothing, which increases the metadata size
 ///       required by each arena from 1 to 8 bits.
 pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
-    return extern struct {
+    return (extern struct {
         impl: Implementation align(8) = defaultValue(spec),
         pub const RegularAddressSpace = @This();
         pub const Index: type = meta.AlignSizeAW(builtin.ShiftAmount(u64));
@@ -537,7 +537,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
             return spec.arena(index);
         }
         pub usingnamespace GenericAddressSpace(RegularAddressSpace);
-    };
+    });
 }
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
