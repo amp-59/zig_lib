@@ -53,7 +53,7 @@ pub const reinterpret = opaque {
 };
 pub const allocator = opaque {
     pub const options = opaque {
-        pub const small: mem.AllocatorOptions = .{
+        pub const small: mem.ArenaAllocatorOptions = .{
             .count_branches = false,
             .count_allocations = false,
             .count_useful_bytes = false,
