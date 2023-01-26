@@ -88,7 +88,7 @@ pub const Parameters0 = struct {
 };
 pub fn StructuredAutomaticView(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime options: Parameters0.Options) type {
     const params: Parameters0 = params0(child, sentinel, count, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation = .{},
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_auto, params.options);
@@ -156,11 +156,11 @@ pub fn StructuredAutomaticView(comptime child: type, comptime sentinel: ?*const 
         pub fn referManyWithSentinelAt(array: *const Array, comptime sentinel_value: child, offset: u64) [:sentinel_value]child {
             return reference.pointerManyWithSentinel(child, __at(array, offset), __len(array, offset), sentinel_value);
         }
-    };
+    });
 }
 pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime options: Parameters0.Options) type {
     const params: Parameters0 = params0(child, sentinel, count, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation = .{ .ss_word = 0 },
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream_auto, params.options);
@@ -282,14 +282,14 @@ pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*
         pub fn readManyWithSentinelAhead(array: *const Array, comptime sentinel_value: child, offset: u64) [:sentinel_value]const child {
             return reference.pointerManyWithSentinel(child, array.impl.unstreamed_byte_address(), offset, sentinel_value);
         }
-    };
+    });
 }
 pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime options: Parameters0.Options) type {
     const params: Parameters0 = params0(child, sentinel, count, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation = .{ .ub_word = 0, .ss_word = 0 },
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_stream_push_pop_auto, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_stream_resize_auto, params.options);
         pub const Parameters: type = Parameters0;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -510,14 +510,14 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-    };
+    });
 }
 pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime options: Parameters0.Options) type {
     const params: Parameters0 = params0(child, sentinel, count, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation = .{ .ub_word = 0 },
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_push_pop_auto, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_resize_auto, params.options);
         pub const Parameters: type = Parameters0;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -684,7 +684,7 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
         pub fn writeAny(array: *Array, comptime write_spec: ReinterpretSpec, any: anytype) void {
             reinterpret.writeAnyStructured(child, write_spec, array, any);
         }
-    };
+    });
 }
 pub const Parameters1 = struct {
     child: type,
@@ -732,7 +732,7 @@ pub const Parameters1 = struct {
 };
 pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters1.Options) type {
     const params: Parameters1 = params1(child, sentinel, count, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
@@ -809,14 +809,14 @@ pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const any
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
-    };
+    });
 }
 pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters1.Options) type {
     const params: Parameters1 = params1(child, sentinel, count, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_stream_resize, params.options);
         pub const Parameters: type = Parameters1;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1046,14 +1046,14 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
-    };
+    });
 }
 pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters1.Options) type {
     const params: Parameters1 = params1(child, sentinel, count, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_resize, params.options);
         pub const Parameters: type = Parameters1;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1229,7 +1229,7 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
-    };
+    });
 }
 pub const Parameters2 = struct {
     bytes: u64,
@@ -1267,7 +1267,7 @@ pub const Parameters2 = struct {
 };
 pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters2.Options) type {
     const params: Parameters2 = params2(bytes, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
@@ -1343,14 +1343,14 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
-    };
+    });
 }
 pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters2.Options) type {
     const params: Parameters2 = params2(bytes, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_stream_resize, params.options);
         pub const Parameters: type = Parameters2;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1579,14 +1579,14 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
-    };
+    });
 }
 pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters2.Options) type {
     const params: Parameters2 = params2(bytes, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_resize, params.options);
         pub const Parameters: type = Parameters2;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -1761,7 +1761,7 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateStatic(Implementation, array.impl));
         }
-    };
+    });
 }
 pub const Parameters3 = struct {
     child: type,
@@ -1824,10 +1824,10 @@ pub const Parameters3 = struct {
 };
 pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const anyopaque, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters3.Options) type {
     const params: Parameters3 = params3(child, sentinel, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_stream_resize, params.options);
         pub const Parameters: type = Parameters3;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2094,11 +2094,11 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
-    };
+    });
 }
 pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const anyopaque, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters3.Options) type {
     const params: Parameters3 = params3(child, sentinel, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream, params.options);
@@ -2232,14 +2232,14 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
         pub fn shrink(array: *Array, allocator: *Allocator, new_count: u64) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .count = new_count }));
         }
-    };
+    });
 }
 pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaque, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters3.Options) type {
     const params: Parameters3 = params3(child, sentinel, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_resize, params.options);
         pub const Parameters: type = Parameters3;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2452,11 +2452,11 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
             try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
-    };
+    });
 }
 pub fn StructuredView(comptime child: type, comptime sentinel: ?*const anyopaque, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters3.Options) type {
     const params: Parameters3 = params3(child, sentinel, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
@@ -2530,7 +2530,7 @@ pub fn StructuredView(comptime child: type, comptime sentinel: ?*const anyopaque
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateMany(Implementation, array.impl));
         }
-    };
+    });
 }
 pub const Parameters4 = struct {
     high_alignment: u64,
@@ -2568,10 +2568,10 @@ pub const Parameters4 = struct {
 };
 pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters4.Options) type {
     const params: Parameters4 = params4(high_alignment, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_stream_resize, params.options);
         pub const Parameters: type = Parameters4;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -2837,11 +2837,11 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
-    };
+    });
 }
 pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters4.Options) type {
     const params: Parameters4 = params4(high_alignment, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_stream, params.options);
@@ -2974,14 +2974,14 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         pub fn shrink(array: *Array, comptime child: type, allocator: *Allocator, new_amount: Amount) void {
             try meta.wrap(allocator.resizeManyBelow(Implementation, &array.impl, .{ .bytes = amountToBytesOfType(new_amount, child) }));
         }
-    };
+    });
 }
 pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters4.Options) type {
     const params: Parameters4 = params4(high_alignment, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_resize, params.options);
         pub const Parameters: type = Parameters4;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3193,11 +3193,11 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
-    };
+    });
 }
 pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u64, comptime Allocator: type, comptime options: Parameters4.Options) type {
     const params: Parameters4 = params4(high_alignment, low_alignment, Allocator, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write, params.options);
@@ -3270,7 +3270,7 @@ pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u
         pub fn deinit(array: *Array, allocator: *Allocator) void {
             try meta.wrap(allocator.deallocateMany(Implementation, array.impl));
         }
-    };
+    });
 }
 pub const Parameters5 = struct {
     Allocator: type,
@@ -3310,10 +3310,10 @@ pub const Parameters5 = struct {
 };
 pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, comptime sentinel: ?*const anyopaque, comptime low_alignment: ?u64, comptime options: Parameters5.Options) type {
     const params: Parameters5 = params5(Allocator, child, sentinel, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_stream_resize, params.options);
         pub const Parameters: type = Parameters5;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3583,14 +3583,14 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
-    };
+    });
 }
 pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime sentinel: ?*const anyopaque, comptime low_alignment: ?u64, comptime options: Parameters5.Options) type {
     const params: Parameters5 = params5(Allocator, child, sentinel, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_resize, params.options);
         pub const Parameters: type = Parameters5;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -3806,7 +3806,7 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             try meta.wrap(array.increment(allocator, reinterpret.lengthAny(child, write_spec, any)));
             array.writeAny(write_spec, any);
         }
-    };
+    });
 }
 pub const Parameters6 = struct {
     Allocator: type,
@@ -3833,10 +3833,10 @@ pub const Parameters6 = struct {
 };
 pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignment: u64, comptime low_alignment: ?u64, comptime options: Parameters6.Options) type {
     const params: Parameters6 = params6(Allocator, high_alignment, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_stream_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_stream_resize, params.options);
         pub const Parameters: type = Parameters6;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -4105,14 +4105,14 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
-    };
+    });
 }
 pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64, comptime low_alignment: ?u64, comptime options: Parameters6.Options) type {
     const params: Parameters6 = params6(Allocator, high_alignment, low_alignment, options);
-    return struct {
+    return (struct {
         impl: Implementation,
         const Array = @This();
-        pub const Implementation: type = spec.deduce(.read_write_push_pop, params.options);
+        pub const Implementation: type = spec.deduce(.read_write_resize, params.options);
         pub const Parameters: type = Parameters6;
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
@@ -4327,7 +4327,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
-    };
+    });
 }
 fn GenericParameters(comptime Parameters: type) type {
     return struct {
