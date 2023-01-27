@@ -203,6 +203,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
     return struct {
         const Format: type = @This();
         value: type,
+
+        const default_value_spec: RenderSpec = blk: {
+            var tmp: RenderSpec = spec;
+            tmp.infer_type_names = true;
+            break :blk tmp;
+        };
         pub fn formatWrite(comptime format: Format, array: anytype) void {
             const type_info: builtin.Type = @typeInfo(format.value);
             switch (type_info) {
@@ -224,7 +230,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 array.writeMany(": " ++ field_type_name);
                             }
                             if (meta.defaultValue(field)) |default_value| {
-                                const field_format: AnyFormat(spec, field.type) = .{ .value = default_value };
+                                const field_format: AnyFormat(default_value_spec, field.type) = .{ .value = default_value };
                                 array.writeMany(" = ");
                                 field_format.formatWrite(array);
                             }
@@ -298,7 +304,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len += field_name_format.formatLength() + 2 + typeName(field.type, spec).len;
                             }
                             if (meta.defaultValue(field)) |default_value| {
-                                const field_format: AnyFormat(spec, field.type) = .{ .value = default_value };
+                                const field_format: AnyFormat(default_value_spec, field.type) = .{ .value = default_value };
                                 len += 3;
                                 len += field_format.formatLength();
                             }
