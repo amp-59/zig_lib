@@ -11627,6 +11627,18 @@ const Construct9 = struct { lb_addr: u64, up_addr: u64 };
 const Construct11 = struct { lb_addr: u64, up_addr: u64, ab_addr: u64 };
 const Construct13 = struct { lb_addr: u64, up_addr: u64, ss_addr: u64 };
 const Construct15 = struct { lb_addr: u64, up_addr: u64, ab_addr: u64, ss_addr: u64 };
+pub const Construct: [10]type = .{
+    Construct1,
+    Construct2,
+    Construct3,
+    Construct5,
+    Construct6,
+    Construct7,
+    Construct9,
+    Construct11,
+    Construct13,
+    Construct15,
+};
 const Translate1 = Construct1;
 const Translate2 = Construct2;
 const Translate3 = Construct3;
@@ -11636,12 +11648,33 @@ const Translate9 = Construct9;
 const Translate11 = Construct11;
 const Translate13 = Construct13;
 const Translate15 = Construct15;
+pub const Translate: [9]type = .{
+    Translate1,
+    Translate2,
+    Translate3,
+    Translate5,
+    Translate7,
+    Translate9,
+    Translate11,
+    Translate13,
+    Translate15,
+};
 const Resize1 = struct { up_addr: u64 };
+pub const Resize: [1]type = .{
+    Resize1,
+};
 const Reconstruct1 = struct { lb_addr: u64 };
 const Reconstruct2 = struct { ab_addr: u64 };
 const Reconstruct3 = struct { lb_addr: u64, ab_addr: u64 };
 const Reconstruct9 = struct { up_addr: u64, lb_addr: u64 };
 const Reconstruct11 = struct { up_addr: u64, lb_addr: u64, ab_addr: u64 };
+pub const Reconstruct: [5]type = .{
+    Reconstruct1,
+    Reconstruct2,
+    Reconstruct3,
+    Reconstruct9,
+    Reconstruct11,
+};
 const Convert1 = struct { lb_addr: u64 };
 const Convert3 = struct { lb_addr: u64, ab_addr: u64 };
 const Convert4 = struct { ss_addr: u64 };
@@ -11658,3 +11691,21 @@ const Convert25 = struct { lb_addr: u64, up_addr: u64, ub_addr: u64 };
 const Convert27 = struct { lb_addr: u64, up_addr: u64, ab_addr: u64, ub_addr: u64 };
 const Convert29 = struct { lb_addr: u64, up_addr: u64, ss_addr: u64, ub_addr: u64 };
 const Convert31 = struct { lb_addr: u64, up_addr: u64, ab_addr: u64, ss_addr: u64, ub_addr: u64 };
+pub const Convert: [16]type = .{
+    Convert1,
+    Convert3,
+    Convert4,
+    Convert8,
+    Convert9,
+    Convert11,
+    Convert13,
+    Convert15,
+    Convert17,
+    Convert19,
+    Convert21,
+    Convert23,
+    Convert25,
+    Convert27,
+    Convert29,
+    Convert31,
+};
