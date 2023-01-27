@@ -24,7 +24,8 @@ pub fn main(builder: *build.Builder) !void {
 
     // More complete test programs:
     _ = util.addProjectExecutable(builder, "builder_gen", "top/builder-gen.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
-    _ = util.addProjectExecutable(builder, "mem_gen", "top/mem-gen.zig", .{});
+    _ = util.addProjectExecutable(builder, "mem_gen_0", "top/mem/gen-0.zig", .{});
+    _ = util.addProjectExecutable(builder, "mem_gen_1", "top/mem/gen-1.zig", .{});
     _ = util.addProjectExecutable(builder, "mca", "test/mca.zig", .{ .build_mode = .ReleaseFast, .is_correct = false, .is_verbose = false });
     _ = util.addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = util.addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
@@ -34,6 +35,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "parsedir", "test/parsedir.zig", .{ .build_mode = .ReleaseFast, .build_root = true });
     _ = util.addProjectExecutable(builder, "pathsplit", "test/pathsplit.zig", .{ .build_root = true });
 
+    _ = util.addProjectExecutable(builder, "print_all", "test/print_all_decls.zig", .{ .is_large_test = true, .build_root = true });
     // Other test programs:
     _ = util.addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{ .is_large_test = true, .build_root = true });
     _ = util.addProjectExecutable(builder, "container_test", "top/container-test.zig", .{ .is_large_test = true, .build_root = true });
