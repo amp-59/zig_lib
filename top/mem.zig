@@ -1106,27 +1106,6 @@ pub const AbstractSpec = union(enum) {
             disjunct_alignment: S,
         };
     }
-    fn getMutuallyExclusivePivot(comptime any: anytype) []const []const u8 {
-        switch (@typeInfo(@TypeOf(any))) {
-            .Struct => |struct_info| {
-                var names: []const []const u8 = meta.empty;
-                for (struct_info.fields) |field| {
-                    for (getMutuallyExclusivePivot(@field(any, field.name))) |name| {
-                        if (struct_info.is_tuple) {
-                            names = meta.parcel([]const u8, name);
-                        } else {
-                            names = meta.parcel([]const u8, name ++ "_" ++ field.name);
-                        }
-                    }
-                }
-                return names;
-            },
-            .EnumLiteral => {
-                return meta.parcel([]const u8, @tagName(any));
-            },
-            else => @compileError(@typeName(@TypeOf(any))),
-        }
-    }
 };
 
 // These should be in builtin.zig, but cannot adhere to the test-error-fault
@@ -1141,7 +1120,7 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     }
     var idx: usize = 0;
     while (idx != l_values.len) {
-        if (l_values[idx] != r_values[idx]) return false;
+        if (!builtin.testEqual(T, l_values[idx], r_values[idx])) return false;
         idx += 1;
     }
     return true;
