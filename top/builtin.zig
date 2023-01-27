@@ -977,6 +977,7 @@ pub const debug = opaque {
               [arg1] "{rdi}" (2), // stderr
               [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
               [arg3] "{rdx}" (buf.len),
+            : "rcx", "r11", "memory", "rax"
         );
     }
 
