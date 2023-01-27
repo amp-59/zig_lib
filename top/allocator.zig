@@ -674,12 +674,10 @@ pub fn GenericPageAllocator(comptime spec: PageAllocatorSpec) type {
         reference: PageAllocatorReference(spec) = .{},
         const Allocator = @This();
         const Value = fn (*const Allocator) callconv(.Inline) u64;
-        const ResizeSpec = if (allocator_spec.options.require_mremap) mem.RemapSpec else mem.MapSpec;
         pub const AddressSpace = allocator_spec.AddressSpace;
         pub const allocator_spec: PageAllocatorSpec = spec;
         pub const arena_index: AddressSpace.Index = allocator_spec.arena_index;
         pub const arena: mem.Arena = allocator_spec.AddressSpace.arena(arena_index);
-        const resize_spec: ResizeSpec = if (allocator_spec.options.require_mremap) remap_spec else map_spec;
         const lb_addr: u64 = arena.low();
         const ua_addr: u64 = arena.high();
         const acq_part_spec: mem.AcquireSpec = .{
@@ -744,26 +742,7 @@ pub fn GenericPageAllocator(comptime spec: PageAllocatorSpec) type {
         }
         pub fn map(allocator: *Allocator, s_bytes: u64) Allocator.allocate_void {
             builtin.assertEqual(u64, s_bytes & 4095, 0);
-            if (allocator_spec.options.require_mremap) {
-                if (Allocator.allocator_spec.options.require_geometric_growth) {
-                    const t_bytes: u64 = builtin.max(u64, mapped_byte_count(allocator), s_bytes);
-                    try meta.wrap(special.resize(
-                        remap_spec,
-                        mapped_byte_address(allocator),
-                        mapped_byte_count(allocator),
-                        mapped_byte_count(allocator) + t_bytes,
-                    ));
-                    allocator.up_addr +%= t_bytes;
-                } else {
-                    try meta.wrap(special.resize(
-                        remap_spec,
-                        mapped_byte_address(allocator),
-                        mapped_byte_count(allocator),
-                        mapped_byte_count(allocator) + s_bytes,
-                    ));
-                    allocator.up_addr +%= s_bytes;
-                }
-            } else if (s_bytes >= 4096) {
+            if (s_bytes >= 4096) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, mapped_byte_count(allocator), s_bytes);
                     try meta.wrap(special.map(map_spec, unmapped_byte_address(allocator), t_bytes));
@@ -785,10 +764,7 @@ pub fn GenericPageAllocator(comptime spec: PageAllocatorSpec) type {
             const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
             const t_bytes: u64 = mach.sub64(t_ua_addr, mapped_byte_address(allocator));
             const x_bytes: u64 = mach.sub64(mapped_byte_count(allocator), t_bytes);
-            if (Allocator.allocator_spec.options.count_useful_bytes) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
-            }
-            if (Allocator.allocator_spec.options.count_allocations) {
+            if (Allocator.allocator_spec.options.count_segments) {
                 builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
             }
             return allocator.unmap(x_bytes);
@@ -806,24 +782,15 @@ pub fn GenericPageAllocator(comptime spec: PageAllocatorSpec) type {
             return allocator.map(x_bytes);
         }
         inline fn reusable(allocator: *const Allocator) bool {
-            if (Allocator.allocator_spec.options.count_useful_bytes) {
-                return allocator.metadata.utility == 0;
-            }
-            if (Allocator.allocator_spec.options.count_allocations) {
+            if (Allocator.allocator_spec.options.count_segments) {
                 return allocator.metadata.count == 0;
             }
             return false;
         }
         pub fn discard(allocator: *Allocator) void {
             defer Graphics.showWithReference(allocator, @src());
-            if (Allocator.allocator_spec.options.check_parametric) {
-                allocator.metadata.holder = 0;
-            }
-            if (Allocator.allocator_spec.options.count_allocations) {
+            if (Allocator.allocator_spec.options.count_segments) {
                 allocator.metadata.count = 0;
-            }
-            if (Allocator.allocator_spec.options.count_useful_bytes) {
-                allocator.metadata.utility = 0;
             }
             allocator.ub_addr = lb_addr;
         }
@@ -831,14 +798,6 @@ pub fn GenericPageAllocator(comptime spec: PageAllocatorSpec) type {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             try meta.wrap(special.static.acquire(acq_part_spec, AddressSpace, address_space, arena_index));
-            if (allocator_spec.options.require_mremap) {
-                const s_bytes: u64 = allocator_spec.options.init_commit orelse 4096;
-                try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
-                allocator.up_addr +%= s_bytes;
-            } else if (allocator_spec.options.init_commit) |s_bytes| {
-                try meta.wrap(special.map(map_spec, unmapped_byte_address(&allocator), s_bytes));
-                allocator.up_addr +%= s_bytes;
-            }
             return allocator;
         }
         pub fn deinit(allocator: *Allocator, address_space: *AddressSpace) Allocator.release_allocator {
@@ -3402,11 +3361,7 @@ const special = opaque {
         const label: ?[]const u8 = AddressSpace.label();
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        if (if (AddressSpace.addr_spec.options.thread_safe)
-            address_space.atomicSet(index)
-        else
-            address_space.set(index))
-        {
+        if (if (AddressSpace.addr_spec.options.thread_safe) address_space.atomicSet(index) else address_space.set(index)) {
             if (spec.logging.Acquire) {
                 debug.arenaAcquireNotice(index, lb_addr, up_addr, label);
             }
@@ -3421,11 +3376,7 @@ const special = opaque {
         const label: ?[]const u8 = AddressSpace.label();
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        if (if (AddressSpace.addr_spec.options.thread_safe)
-            address_space.atomicUnset(index)
-        else
-            address_space.unset(index))
-        {
+        if (if (AddressSpace.addr_spec.options.thread_safe) address_space.atomicUnset(index) else address_space.unset(index)) {
             if (spec.logging.Release) {
                 debug.arenaReleaseNotice(index, lb_addr, up_addr, label);
             }
@@ -3441,11 +3392,7 @@ const special = opaque {
             const label: ?[]const u8 = AddressSpace.label();
             const lb_addr: u64 = AddressSpace.low(index);
             const up_addr: u64 = AddressSpace.high(index);
-            if (if (comptime AddressSpace.arena(index).options.thread_safe)
-                address_space.atomicSet(index)
-            else
-                address_space.set(index))
-            {
+            if (if (comptime AddressSpace.arena(index).options.thread_safe) address_space.atomicSet(index) else address_space.set(index)) {
                 if (spec.logging.Acquire) {
                     debug.arenaAcquireNotice(index, lb_addr, up_addr, label);
                 }
@@ -3460,11 +3407,7 @@ const special = opaque {
             const label: ?[]const u8 = AddressSpace.label();
             const lb_addr: u64 = AddressSpace.low(index);
             const up_addr: u64 = AddressSpace.high(index);
-            if (if (comptime AddressSpace.arena(index).options.thread_safe)
-                address_space.atomicUnset(index)
-            else
-                address_space.unset(index))
-            {
+            if (if (comptime AddressSpace.arena(index).options.thread_safe) address_space.atomicUnset(index) else address_space.unset(index)) {
                 if (spec.logging.Release) {
                     debug.arenaReleaseNotice(index, lb_addr, up_addr, label);
                 }
@@ -4274,21 +4217,9 @@ fn GenericPageAllocatorGraphics(comptime Allocator: type) type {
                 array.writeOne('\n');
             }
             if (Allocator.allocator_spec.logging.metadata) {
-                if (Allocator.allocator_spec.options.count_allocations) {
+                if (Allocator.allocator_spec.options.count_segments) {
                     array.writeMany(debug.about_count_s);
                     array.writeFormat(fmt.ud64(allocator.metadata.count));
-                    array.writeOne('\n');
-                }
-                if (Allocator.allocator_spec.options.count_useful_bytes) {
-                    array.writeMany(debug.about_utility_s);
-                    array.writeFormat(fmt.ud64(allocator.metadata.utility));
-                    array.writeOne('/');
-                    array.writeFormat(fmt.ud64(allocator.allocated_byte_count()));
-                    array.writeOne('\n');
-                }
-                if (Allocator.allocator_spec.options.check_parametric) {
-                    array.writeMany(debug.about_holder_s);
-                    array.writeFormat(fmt.ux64(allocator.metadata.holder));
                     array.writeOne('\n');
                 }
             }
@@ -4325,23 +4256,13 @@ fn GenericPageAllocatorGraphics(comptime Allocator: type) type {
                     allocator.reference.up_addr = allocator.up_addr;
                 }
                 if (Allocator.allocator_spec.logging.metadata) {
-                    if (Allocator.allocator_spec.options.count_allocations and
+                    if (Allocator.allocator_spec.options.count_segments and
                         allocator.reference.count != allocator.metadata.count)
                     {
                         array.writeMany(debug.about_count_s);
                         array.writeFormat(fmt.udd(allocator.reference.count, allocator.metadata.count));
                         array.writeOne('\n');
                         allocator.reference.count = allocator.metadata.count;
-                    }
-                    if (Allocator.allocator_spec.options.count_useful_bytes and
-                        allocator.reference.utility != allocator.metadata.utility)
-                    {
-                        array.writeMany(debug.about_utility_s);
-                        array.writeFormat(fmt.udd(allocator.reference.utility, allocator.metadata.utility));
-                        array.writeOne('/');
-                        array.writeFormat(fmt.ud(allocator.allocated_byte_count()));
-                        array.writeOne('\n');
-                        allocator.reference.utility = allocator.metadata.utility;
                     }
                     if (Allocator.allocator_spec.options.check_parametric and
                         allocator.reference.holder != allocator.metadata.holder)
