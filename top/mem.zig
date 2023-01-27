@@ -856,7 +856,7 @@ pub const AbstractSpec = union(enum) {
     /// Automatic memory below
     automatic_storage: union(enum) {
         read_write_auto: Automatic,
-        offset_byte_address: union(enum) {
+        unstreamed_byte_address: union(enum) {
             read_write_stream_auto: Automatic,
             undefined_byte_address: union(enum) {
                 read_write_stream_resize_auto: Automatic,
@@ -872,7 +872,7 @@ pub const AbstractSpec = union(enum) {
             static: Static,
             // single_packed_approximate_capacity: Dynamic,
         },
-        offset_byte_address: union(enum) {
+        unstreamed_byte_address: union(enum) {
             undefined_byte_address: union(enum) {
                 read_write_stream_resize: union(enum) {
                     // single_packed_approximate_capacity: Dynamic,
@@ -902,7 +902,7 @@ pub const AbstractSpec = union(enum) {
             read_write: Dynamic,
         },
     },
-    offset_byte_address: union(enum) {
+    unstreamed_byte_address: union(enum) {
         undefined_byte_address: union(enum) {
             read_write_stream_resize: union(enum) { parametric: Parametric },
         },
@@ -997,6 +997,13 @@ pub const AbstractSpec = union(enum) {
         //    }
         //}
     }
+    pub const Field = struct {
+        automatic_storage: bool = false,
+        allocated_byte_address: bool = false,
+        undefined_byte_address: bool = false,
+        unallocated_byte_address: bool = false,
+        unstreamed_byte_address: bool = false,
+    };
     pub const Fields = union {
         automatic_storage: struct {
             ss_word: bool,
@@ -1075,36 +1082,36 @@ pub const AbstractSpec = union(enum) {
     /// Super alignment is a valid technique while allocated_byte_address is
     /// available. However it is likely sub-optimal for all variations.
     fn NoSuperAlignment(comptime S: type) type {
-        return union(enum) {
+        return (union(enum) {
             unit_alignment: S,
             lazy_alignment: S,
             disjunct_alignment: S,
-        };
+        });
     }
     fn AutoAlignment(comptime S: type) type {
-        return union(enum) {
+        return (union(enum) {
             auto_alignment: S,
-        };
+        });
     }
     fn NoPackedAlignment(comptime S: type) type {
-        return union(enum) {
+        return (union(enum) {
             unit_alignment: S,
             lazy_alignment: S,
-        };
+        });
     }
     fn StrictAlignment(comptime S: type) type {
-        return union(enum) {
+        return (union(enum) {
             unit_alignment: S,
             disjunct_alignment: S,
-        };
+        });
     }
     fn AnyAlignment(comptime S: type) type {
-        return union(enum) {
+        return (union(enum) {
             unit_alignment: S,
             lazy_alignment: S,
             super_alignment: S,
             disjunct_alignment: S,
-        };
+        });
     }
 };
 
