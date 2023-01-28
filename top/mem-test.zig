@@ -15,7 +15,7 @@ pub const is_verbose: bool = false;
 
 pub const itos = builtin.fmt.ux;
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.regular_128;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 const invalid_holder_state: u64 = (0b110000110000 << 48);
@@ -96,7 +96,7 @@ fn testPageAllocatedImplementation() !void {
         .arena_index = 0,
         .options = .{},
         .logging = preset.allocator.logging.verbose,
-        .AddressSpace = preset.address_space.formulaic_128,
+        .AddressSpace = preset.address_space.regular_128,
     });
     var address_space: Allocator.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
@@ -107,7 +107,7 @@ fn testRtAllocatedImplementation() !void {
     const Allocator = mem.GenericRtArenaAllocator(.{
         .options = .{ .trace_state = true },
         .logging = preset.allocator.logging.verbose,
-        .AddressSpace = preset.address_space.formulaic_128,
+        .AddressSpace = preset.address_space.regular_128,
     });
     var address_space: Allocator.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space, 0);

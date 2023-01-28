@@ -6,7 +6,7 @@ const proc = zig_lib.proc;
 const file = zig_lib.file;
 const preset = zig_lib.preset;
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.regular_128;
 pub usingnamespace proc.start;
 
 const Allocator = mem.GenericArenaAllocator(.{

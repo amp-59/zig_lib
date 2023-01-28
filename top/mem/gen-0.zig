@@ -11,13 +11,12 @@ pub const is_silent: bool = true;
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.regular_128;
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .errors = preset.allocator.errors.noexcept,
 });
-pub const Array = Allocator.StructuredHolder(u8);
-// pub const Array = mem.StaticString(65536);
+pub const Array = mem.StaticString(65536);
 
 fn slices(comptime T: type) *[]const T {
     var ptrs: []const T = meta.empty;
@@ -212,7 +211,6 @@ pub const AbstractSpec = union(enum) {
         high_alignment: u64,
         low_alignment: in(u64) = null,
     };
-
     /// Require the field be optional in the input parameters
     fn in(comptime T: type) type {
         return ?T;
@@ -270,7 +268,7 @@ fn summaryItem(array: *Array, ctx: Context, type_index: u64) void {
     array.writeFormat(fmt.render(fmt_spec, ctx.fields));
     array.writeMany(", .techs = ");
     array.writeFormat(fmt.render(fmt_spec, ctx.techs));
-    array.writeMany(" }, AbstractParams[");
+    array.writeMany(", }, AbstractParams[");
     array.writeFormat(fmt.ud64(type_index));
     array.writeMany("], },\n");
 }
@@ -308,15 +306,10 @@ inline fn summariseAbstractSpecInternal(array: *Array, comptime types: *[]const 
     }
 }
 pub fn main() !void {
-    @setEvalBranchQuota(~@as(u32, 0));
-    var address_space: AddressSpace = .{};
-    var allocator: Allocator = try Allocator.init(&address_space);
-    var array: Array = Array.init(&allocator);
-    array.increment(&allocator, 1024 * 1024 * 4);
-    // var array: Array = undefined;
-    // array.undefineAll();
+    var array: Array = undefined;
+    array.undefineAll();
     summariseAbstractSpec(&array, AbstractSpec, .{});
     const fd: u64 = try file.create(create_spec, builtin.build_root.? ++ "/top/mem/mem-template.zig");
     defer file.close(close_spec, fd);
-    try file.write(fd, array.readAll(allocator));
+    try file.write(fd, array.readAll());
 }

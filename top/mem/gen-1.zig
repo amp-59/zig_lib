@@ -17,7 +17,7 @@ const gen = @import("./gen-0.zig");
 
 const sum = @import("./mem-template.zig");
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.regular_128;
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .errors = preset.allocator.errors.noexcept,

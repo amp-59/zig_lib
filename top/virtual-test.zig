@@ -13,7 +13,7 @@ pub usingnamespace proc.start;
 pub usingnamespace root;
 
 const root = opaque {
-    pub const AddressSpace = preset.address_space.formulaic_128;
+    pub const AddressSpace = preset.address_space.regular_128;
 };
 
 const PrintArray = mem.StaticString(16384);

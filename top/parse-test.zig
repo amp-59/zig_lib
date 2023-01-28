@@ -18,7 +18,7 @@ pub usingnamespace proc.start;
 // Just this once.
 const std = @import("std");
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.regular_128;
 pub const is_correct: bool = false;
 pub const is_verbose: bool = false;
 

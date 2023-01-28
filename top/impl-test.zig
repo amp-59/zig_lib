@@ -11,9 +11,10 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.exact_8;
 pub const is_correct: bool = true;
 pub const is_verbose: bool = true;
+pub const is_silent: bool = true;
 pub const is_perf: bool = false;
 
 const Allocator0 = mem.GenericArenaAllocator(.{
@@ -45,7 +46,6 @@ var random: Random = .{};
 fn about(comptime name: []const u8) []const u8 {
     return (name ++ ":") ++ (" " ** (16 - (name.len + 1)));
 }
-
 fn writeAddresses2Always(comptime S: type, comptime field_name: []const u8, s: S, t: S, array: *PrintArray) void {
     array.writeMany(about(field_name));
     array.writeFormat(fmt.uxd(@field(s, field_name), @field(t, field_name)));

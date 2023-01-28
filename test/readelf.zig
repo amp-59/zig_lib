@@ -16,7 +16,7 @@ pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
 
 pub const is_verbose: bool = true;
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.regular_128;
 
 const PrimaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 24 });
 const SecondaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 32 });

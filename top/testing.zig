@@ -241,7 +241,7 @@ const Static = struct {
     const Allocator = mem.GenericArenaAllocator(.{
         .arena_index = 64,
         .errors = preset.allocator.errors.noexcept,
-        .AddressSpace = preset.address_space.formulaic_128,
+        .AddressSpace = preset.address_space.regular_128,
     });
     const Array = Allocator.StructuredVector(u8);
     var address_space: Allocator.allocator_spec.AddressSpace = .{};

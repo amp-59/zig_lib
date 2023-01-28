@@ -11,7 +11,7 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.formulaic_128;
+pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
 pub const is_correct: bool = false;
 
