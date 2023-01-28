@@ -4676,22 +4676,10 @@ pub const reinterpret = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return memory.writeMany(switch (kind) {
-                    .bin => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.ix
-                    else
-                        builtin.fmt.ub,
-                    .oct => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.io
-                    else
-                        builtin.fmt.uo,
-                    .dec => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.id
-                    else
-                        builtin.fmt.ud,
-                    .hex => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.ix
-                    else
-                        builtin.fmt.ux,
+                    .bin => builtin.fmt.bin,
+                    .oct => builtin.fmt.oct,
+                    .dec => builtin.fmt.dec,
+                    .hex => builtin.fmt.hex,
                 }(src_type, any).readAll());
             }
         }
@@ -4825,23 +4813,11 @@ pub const reinterpret = opaque {
         }
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
-                return memory.writeMany(child, switch (kind) {
-                    .bin => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.ix
-                    else
-                        builtin.fmt.ub,
-                    .oct => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.io
-                    else
-                        builtin.fmt.uo,
-                    .dec => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.id
-                    else
-                        builtin.fmt.ud,
-                    .hex => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.ix
-                    else
-                        builtin.fmt.ux,
+                return memory.writeMany(switch (kind) {
+                    .bin => builtin.fmt.bin,
+                    .oct => builtin.fmt.oct,
+                    .dec => builtin.fmt.dec,
+                    .hex => builtin.fmt.hex,
                 }(src_type, any).readAll());
             }
         }
@@ -5037,23 +5013,11 @@ pub const reinterpret = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return switch (kind) {
-                    .bin => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.ix
-                    else
-                        builtin.fmt.ub,
-                    .oct => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.io
-                    else
-                        builtin.fmt.uo,
-                    .dec => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.id
-                    else
-                        builtin.fmt.ud,
-                    .hex => if (src_type_info.Int.signedness == .signed)
-                        builtin.fmt.ix
-                    else
-                        builtin.fmt.ux,
-                }(src_type, any).len;
+                    .bin => builtin.fmt.bin,
+                    .oct => builtin.fmt.oct,
+                    .dec => builtin.fmt.dec,
+                    .hex => builtin.fmt.hex,
+                }(src_type, any).readAll().len;
             }
         }
         return lengthAny(child, write_spec, @as(dst_type, any));
