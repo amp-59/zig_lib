@@ -15,7 +15,7 @@ pub const is_perf: bool                   = config("is_perf",       bool,       
 pub const is_verbose: bool                = config("is_verbose",    bool,           is_debug);
 pub const is_silent: bool                 = config("is_silent",     bool,           false);
 pub const AddressSpace                    = config("AddressSpace",  type,           info.address_space.generic);
-pub const logging: Logging                = config("logging",       Logging, .{});
+pub const logging: Logging                = config("logging",       Logging,        if (is_silent) Logging.silent else Logging.verbose);
 pub const build_root: ?[:0]const u8       = config("build_root",    ?[:0]const u8,  null);
 pub const root_src_file: ?[:0]const u8    = config("root_src_file", ?[:0]const u8,  null);
 const builtin = opaque {
@@ -95,6 +95,7 @@ pub const Logging = packed struct {
     Release: bool = is_verbose,
     Error: bool = !is_silent,
     Fault: bool = !is_silent,
+
     pub const verbose: Logging = .{
         .Success = true,
         .Acquire = true,
@@ -696,7 +697,7 @@ pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
 
 pub fn assert(b: bool) void {
     if (!b) {
-        @panic("assertion failed");
+        debug.logFault("assertion failed");
     }
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
@@ -935,7 +936,7 @@ pub fn pack64(h: u32, l: u32) u64 {
     return @bitCast(u64, U64{ .h = h, .l = l });
 }
 pub const debug = opaque {
-    pub const itos = fmt.d;
+    pub const itos = fmt.dec;
     const size: usize = 4096;
     const about_fault_p0_s: []const u8 = "fault:          ";
     const about_error_p0_s: []const u8 = "error:          ";
@@ -1030,66 +1031,66 @@ pub const debug = opaque {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.intCastTruncatedBitsString(T, U, &buf, arg);
-        panic(buf[0..len]);
+        logFault(buf[0..len]);
     }
     fn subCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        write(buf[0..len]);
+        logError(buf[0..len]);
         return error.SubCausedOverflow;
     }
     fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        panic(buf[0..len]);
+        logFault(buf[0..len]);
     }
     fn addCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, aboutError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        write(buf[0..len]);
+        logError(buf[0..len]);
         return error.AddCausedOverflow;
     }
     fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        panic(buf[0..len]);
+        logFault(buf[0..len]);
     }
     fn mulCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, aboutError(T), &buf, arg1, arg2);
-        write(buf[0..len]);
+        logError(buf[0..len]);
         return error.MulCausedOverflow;
     }
     fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2);
-        panic(buf[0..len]);
+        logFault(buf[0..len]);
     }
     fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), &buf, arg1, arg2, result, remainder);
-        write(buf[0..len]);
+        logError(buf[0..len]);
         return error.DivisionWithRemainder;
     }
     fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), &buf, arg1, arg2, result, remainder);
-        panic(buf[0..len]);
+        logFault(buf[0..len]);
     }
     fn incorrectAlignmentException(comptime T: type, address: usize, alignment: usize) Exception {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
         const len: u64 = incorrectAlignmentString(T, aboutError(T), &buf, address, alignment, remainder);
-        write(buf[0..len]);
+        logError(buf[0..len]);
         return error.IncorrectAlignment;
     }
     fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize) noreturn {
@@ -1097,23 +1098,31 @@ pub const debug = opaque {
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
         const len: u64 = incorrectAlignmentString(T, aboutFault(T), &buf, address, alignment, remainder);
-        panic(buf[0..len]);
+        logFault(buf[0..len]);
     }
     fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = comparisonFailedString(T, aboutError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        write(buf[0..len]);
+        logError(buf[0..len]);
         return error.UnexpectedValue;
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        panic(buf[0..len]);
+        logFault(buf[0..len]);
     }
-    pub fn print(buf: []u8, ss: []const []const u8) void {
-        write(buf[0..writeMulti(buf, ss)]);
+    pub fn write(buf: []const u8) void {
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (1), // linux sys_write
+              [arg1] "{rdi}" (2), // stderr
+              [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
+              [arg3] "{rdx}" (buf.len),
+            : "rcx", "r11", "memory", "rax"
+        );
     }
     // At the time of writing, this function benefits from inlining but the
     // others do not.
@@ -1129,8 +1138,39 @@ pub const debug = opaque {
         }
         return len;
     }
-    pub fn panic(buf: []const u8) noreturn {
-        write(buf);
+    pub inline fn logSuccess(buf: []const u8) void {
+        if (logging.Success) write(buf);
+    }
+    pub inline fn logAcquire(buf: []const u8) void {
+        if (logging.Acquire) write(buf);
+    }
+    pub inline fn logRelease(buf: []const u8) void {
+        if (logging.Release) write(buf);
+    }
+    pub inline fn logError(buf: []const u8) void {
+        if (logging.Error) write(buf);
+    }
+    pub inline fn logFault(buf: []const u8) noreturn {
+        if (logging.Fault) write(buf);
+        abort();
+    }
+    pub inline fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
+        if (logging.Success) write(buf[0..writeMulti(buf, slices)]);
+    }
+    pub inline fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
+        if (logging.Acquire) write(buf[0..writeMulti(buf, slices)]);
+    }
+    pub inline fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
+        if (logging.Release) write(buf[0..writeMulti(buf, slices)]);
+    }
+    pub inline fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
+        if (logging.Error) write(buf[0..writeMulti(buf, slices)]);
+    }
+    pub inline fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
+        if (logging.Fault) write(buf[0..writeMulti(buf, slices)]);
+        abort();
+    }
+    fn abort() noreturn {
         asm volatile (
             \\syscall
             :
@@ -1138,17 +1178,6 @@ pub const debug = opaque {
               [arg1] "{rdi}" (2), // exit code
         );
         unreachable;
-    }
-    pub fn write(buf: []const u8) void {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (1), // linux sys_write
-              [arg1] "{rdi}" (2), // stderr
-              [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
-              [arg3] "{rdx}" (buf.len),
-            : "rcx", "r11", "memory", "rax"
-        );
     }
     const static = opaque {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
@@ -1484,9 +1513,9 @@ pub const fmt = opaque {
         if (@sizeOf(@TypeOf(value)) == 0) {
             return ci(value);
         }
-        return d(@TypeOf(value), value);
+        return dec(@TypeOf(value), value);
     }
-    fn b(comptime Int: type, value: Int) StaticString(Int, 2) {
+    pub fn bin(comptime Int: type, value: Int) StaticString(Int, 2) {
         const Array = StaticString(Int, 2);
         const Abs = Absolute(Int);
         var array: Array = Array.init();
@@ -1512,7 +1541,7 @@ pub const fmt = opaque {
         }
         return array;
     }
-    fn o(comptime Int: type, value: Int) StaticString(Int, 8) {
+    pub fn oct(comptime Int: type, value: Int) StaticString(Int, 8) {
         const Array = StaticString(Int, 8);
         const Abs = Absolute(Int);
         var array: Array = Array.init();
@@ -1533,7 +1562,7 @@ pub const fmt = opaque {
         }
         return array;
     }
-    fn d(comptime Int: type, value: Int) StaticString(Int, 10) {
+    pub fn dec(comptime Int: type, value: Int) StaticString(Int, 10) {
         const Array = StaticString(Int, 10);
         const Abs = Absolute(Int);
         var array: Array = Array.init();
@@ -1550,7 +1579,7 @@ pub const fmt = opaque {
         }
         return array;
     }
-    fn x(comptime Int: type, value: Int) StaticString(Int, 16) {
+    pub fn hex(comptime Int: type, value: Int) StaticString(Int, 16) {
         const Array = StaticString(Int, 16);
         const Abs = Absolute(Int);
         var array: Array = Array.init();
@@ -1572,124 +1601,124 @@ pub const fmt = opaque {
         return array;
     }
     pub fn ub8(value: u8) StaticString(u8, 2) {
-        return b(u8, value);
+        return bin(u8, value);
     }
     pub fn ub16(value: u16) StaticString(u16, 2) {
-        return b(u16, value);
+        return bin(u16, value);
     }
     pub fn ub32(value: u32) StaticString(u32, 2) {
-        return b(u32, value);
+        return bin(u32, value);
     }
     pub fn ub64(value: u64) StaticString(u64, 2) {
-        return b(u64, value);
+        return bin(u64, value);
     }
     pub fn ubsize(value: usize) StaticString(usize, 2) {
-        return b(usize, value);
+        return bin(usize, value);
     }
     pub fn uo8(value: u8) StaticString(u8, 8) {
-        return o(u8, value);
+        return oct(u8, value);
     }
     pub fn uo16(value: u16) StaticString(u16, 8) {
-        return o(u16, value);
+        return oct(u16, value);
     }
     pub fn uo32(value: u32) StaticString(u32, 8) {
-        return o(u32, value);
+        return oct(u32, value);
     }
     pub fn uo64(value: u64) StaticString(u64, 8) {
-        return o(u64, value);
+        return oct(u64, value);
     }
     pub fn uosize(value: usize) StaticString(usize, 8) {
-        return o(usize, value);
+        return oct(usize, value);
     }
     pub fn ud8(value: u8) StaticString(u8, 10) {
-        return d(u8, value);
+        return dec(u8, value);
     }
     pub fn ud16(value: u16) StaticString(u16, 10) {
-        return d(u16, value);
+        return dec(u16, value);
     }
     pub fn ud32(value: u32) StaticString(u32, 10) {
-        return d(u32, value);
+        return dec(u32, value);
     }
     pub fn ud64(value: u64) StaticString(u64, 10) {
-        return d(u64, value);
+        return dec(u64, value);
     }
     pub fn udsize(value: usize) StaticString(usize, 10) {
-        return d(usize, value);
+        return dec(usize, value);
     }
     pub fn ux8(value: u8) StaticString(u8, 16) {
-        return x(u8, value);
+        return hex(u8, value);
     }
     pub fn ux16(value: u16) StaticString(u16, 16) {
-        return x(u16, value);
+        return hex(u16, value);
     }
     pub fn ux32(value: u32) StaticString(u32, 16) {
-        return x(u32, value);
+        return hex(u32, value);
     }
     pub fn ux64(value: u64) StaticString(u64, 16) {
-        return x(u64, value);
+        return hex(u64, value);
     }
     pub fn uxsize(value: usize) StaticString(usize, 16) {
-        return x(usize, value);
+        return hex(usize, value);
     }
     pub fn ib8(value: i8) StaticString(i8, 2) {
-        return b(i8, value);
+        return bin(i8, value);
     }
     pub fn ib16(value: i16) StaticString(i16, 2) {
-        return b(i16, value);
+        return bin(i16, value);
     }
     pub fn ib32(value: i32) StaticString(i32, 2) {
-        return b(i32, value);
+        return bin(i32, value);
     }
     pub fn ib64(value: i64) StaticString(i64, 2) {
-        return b(i64, value);
+        return bin(i64, value);
     }
     pub fn ibsize(value: isize) StaticString(isize, 2) {
-        return b(isize, value);
+        return bin(isize, value);
     }
     pub fn io8(value: i8) StaticString(i8, 8) {
-        return o(i8, value);
+        return oct(i8, value);
     }
     pub fn io16(value: i16) StaticString(i16, 8) {
-        return o(i16, value);
+        return oct(i16, value);
     }
     pub fn io32(value: i32) StaticString(i32, 8) {
-        return o(i32, value);
+        return oct(i32, value);
     }
     pub fn io64(value: i64) StaticString(i64, 8) {
-        return o(i64, value);
+        return oct(i64, value);
     }
     pub fn iosize(value: isize) StaticString(isize, 8) {
-        return o(isize, value);
+        return oct(isize, value);
     }
     pub fn id8(value: i8) StaticString(i8, 10) {
-        return d(i8, value);
+        return dec(i8, value);
     }
     pub fn id16(value: i16) StaticString(i16, 10) {
-        return d(i16, value);
+        return dec(i16, value);
     }
     pub fn id32(value: i32) StaticString(i32, 10) {
-        return d(i32, value);
+        return dec(i32, value);
     }
     pub fn id64(value: i64) StaticString(i64, 10) {
-        return d(i64, value);
+        return dec(i64, value);
     }
     pub fn idsize(value: isize) StaticString(isize, 10) {
-        return d(isize, value);
+        return dec(isize, value);
     }
     pub fn ix8(value: i8) StaticString(i8, 16) {
-        return x(i8, value);
+        return hex(i8, value);
     }
     pub fn ix16(value: i16) StaticString(i16, 16) {
-        return x(i16, value);
+        return hex(i16, value);
     }
     pub fn ix32(value: i32) StaticString(i32, 16) {
-        return x(i32, value);
+        return hex(i32, value);
     }
     pub fn ix64(value: i64) StaticString(i64, 16) {
-        return x(i64, value);
+        return hex(i64, value);
     }
     pub fn ixsize(value: isize) StaticString(isize, 16) {
-        return x(isize, value);
+        return hex(isize, value);
     }
     fn Absolute(comptime Int: type) type {
         return @Type(.{ .Int = .{
@@ -1730,12 +1759,12 @@ pub const fmt = opaque {
     }
     pub fn toSymbol(comptime T: type, value: T, radix: u16) u8 {
         const result: u8 = @intCast(u8, @rem(value, @intCast(T, radix)));
-        const dec: u8 = '9' -% 9;
-        const hex: u8 = 'f' -% 15;
+        const d: u8 = '9' -% 9;
+        const x: u8 = 'f' -% 15;
         if (radix > 10) {
-            return result +% if (result < 10) dec else hex;
+            return result +% if (result < 10) d else x;
         } else {
-            return result +% dec;
+            return result +% d;
         }
     }
     pub fn typeTypeName(comptime type_id: builtin.TypeId) []const u8 {
