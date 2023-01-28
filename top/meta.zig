@@ -98,9 +98,30 @@ pub fn maybe(comptime cond: bool, comptime T: type) type {
 }
 
 /// Return a simple struct field
-pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value: ?T) builtin.StructField {
-    const default_value_ptr: ?*const anyopaque = if (default_value) |value| &value else null;
-    return .{ .name = field_name, .type = T, .default_value = default_value_ptr, .is_comptime = false, .alignment = 0 };
+pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value_opt: ?T) builtin.StructField {
+    if (default_value_opt) |default_value| {
+        return .{
+            .name = field_name,
+            .type = T,
+            .default_value = blk: {
+                if (@TypeOf(default_value) == ?*const anyopaque) {
+                    break :blk @ptrCast(*const anyopaque, &default_value);
+                } else {
+                    break :blk &default_value;
+                }
+            },
+            .is_comptime = false,
+            .alignment = 0,
+        };
+    } else {
+        return .{
+            .name = field_name,
+            .type = T,
+            .default_value = null,
+            .is_comptime = false,
+            .alignment = 0,
+        };
+    }
 }
 /// Assist creation of struct types
 pub fn structInfo(comptime fields: []const builtin.StructField) builtin.Type {
@@ -343,6 +364,49 @@ pub fn arrayPointerToSlice(any: anytype) ArrayPointerToSlice(@TypeOf(any)) {
 pub fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@TypeOf(any), any.len) {
     return @ptrCast(SliceToArrayPointer(@TypeOf(any), any.len), any.ptr);
 }
+pub fn Child(comptime T: type) type {
+    switch (@typeInfo(T)) {
+        .Optional => |optional_info| {
+            return optional_info.child;
+        },
+        .Array => |array_info| {
+            return array_info.child;
+        },
+        .Pointer => |pointer_info| {
+            if (pointer_info.size == .Slice or pointer_info.size == .Many) {
+                return pointer_info.child;
+            }
+            switch (@typeInfo(pointer_info.child)) {
+                .Array => |array_info| {
+                    return array_info.child;
+                },
+                else => |child_type_info| {
+                    debug.unexpectedTypeTypeError(T, child_type_info, .Array);
+                },
+            }
+        },
+        .Enum => |enum_info| {
+            return enum_info.tag_type;
+        },
+        .Struct => |struct_info| {
+            if (struct_info.backing_integer) |backing_integer| {
+                return backing_integer;
+            } else {
+                @compileError("expected packed struct");
+            }
+        },
+        .Union => |union_info| {
+            if (union_info.tag_type) |tag_type| {
+                return Child(tag_type);
+            } else {
+                @compileError("expected tagged union");
+            }
+        },
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Struct, .Union });
+        },
+    }
+}
 pub fn Element(comptime T: type) type {
     switch (@typeInfo(T)) {
         .Array => |array_info| {
@@ -470,12 +534,12 @@ pub fn Field(comptime T: type, comptime field_name: []const u8) type {
     return @TypeOf(@field(@as(T, undefined), field_name));
 }
 pub fn FieldN(comptime T: type, comptime field_index: usize) type {
-    switch (@typeInfo(T)) {
-        .Struct => |struct_info| struct_info.fields[field_index].type.?,
-        .Union => |union_info| union_info.fields[field_index].type.?,
-        .Enum => |enum_info| enum_info.fields[field_index].type.?,
+    return switch (@typeInfo(T)) {
+        .Struct => |struct_info| struct_info.fields[field_index].type,
+        .Union => |union_info| union_info.fields[field_index].type,
+        .Enum => |enum_info| enum_info.fields[field_index].type,
         else => |type_info| debug.unexpectedTypeTypesError(T, type_info, decl_types),
-    }
+    };
 }
 pub fn fnParams(comptime function: anytype) []const builtin.FnParam {
     return @typeInfo(@TypeOf(function)).Fn.params;
