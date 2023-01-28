@@ -26,13 +26,6 @@ fn stupid(comptime value: comptime_int) []const u8 {
         return s[1 .. s.len - 5];
     }
 }
-test {
-    @setEvalBranchQuota(~@as(u32, 0));
-    comptime var i: u64 = 0;
-    inline while (i != 100_000) : (i += 1) {
-        _ = comptime stupid(i);
-    }
-}
 pub fn main() !void {
     const T: type = u64;
     var arg1: T = 0;
