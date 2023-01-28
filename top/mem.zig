@@ -2,23 +2,18 @@ const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
-
 const _virtual = @import("./virtual.zig");
 const _reference = @import("./reference.zig");
 const _container = @import("./container.zig");
 const _allocator = @import("./allocator.zig");
 const _list = @import("./list.zig");
-
 const mem = @This();
-
 pub usingnamespace _virtual;
 pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
-
 pub const ResourceError = error{ UnderSupply, OverSupply };
-
 pub const Map = meta.EnumBitField(enum(u64) {
     anonymous = MAP.ANONYMOUS,
     file = MAP.FILE,
@@ -88,11 +83,9 @@ pub const Fd = meta.EnumBitField(enum(u64) {
     close_on_exec = MFD.CLOEXEC,
     const MFD = sys.MFD;
 });
-
 pub const AcquireSpec = struct {
     errors: ?ResourceError = error.UnderSupply,
     logging: builtin.Logging = .{},
-
     const Specification = @This();
     pub fn Unwrapped(comptime spec: Specification) type {
         return if (spec.errors != null) ResourceError!void else void;
@@ -101,7 +94,6 @@ pub const AcquireSpec = struct {
 pub const ReleaseSpec = struct {
     errors: ?ResourceError = error.OverSupply,
     logging: builtin.Logging = .{},
-
     const Specification = @This();
     pub fn Unwrapped(comptime spec: Specification) type {
         return if (spec.errors != null) ResourceError!void else void;
@@ -379,7 +371,6 @@ pub const FdSpec = struct {
     errors: ?[]const sys.ErrorCode = sys.memfd_create_errors,
     return_type: type = u64,
     logging: builtin.Logging = .{},
-
     const Specification = @This();
     const Options = struct {
         allow_sealing: bool = false,
@@ -521,7 +512,6 @@ pub fn release(comptime spec: ReleaseSpec, comptime AddressSpace: type, address_
         return arena_error;
     }
 }
-
 pub const static = opaque {
     pub fn acquire(comptime spec: AcquireSpec, comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AcquireSpec.Unwrapped(spec) {
         const label: ?[]const u8 = AddressSpace.label();
@@ -661,63 +651,30 @@ pub const debug = opaque {
     const about_advice_1_s: []const u8 = "advice-error:   ";
     pub fn mapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logAcquireAIO(&buf, &[_][]const u8{
             about_map_0_s, builtin.fmt.ux64(addr).readAll(),
             "..",          builtin.fmt.ux64(addr +% len).readAll(),
             ", ",          builtin.fmt.ud64(len).readAll(),
             " bytes\n",
         });
     }
-    pub fn mapError(map_error: anytype, addr: u64, len: u64) void {
-        @setCold(true);
-        var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
-            about_map_1_s, builtin.fmt.ux64(addr).readAll(),
-            "..",          builtin.fmt.ux64(addr +% len).readAll(),
-            ", ",          builtin.fmt.ud64(len).readAll(),
-            " bytes (",    @errorName(map_error),
-            ")\n",
-        });
-    }
     pub fn unmapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logReleaseAIO(&buf, &[_][]const u8{
             about_unmap_0_s, builtin.fmt.ux64(addr).readAll(),
             "..",            builtin.fmt.ux64(addr +% len).readAll(),
             ", ",            builtin.fmt.ud64(len).readAll(),
             " bytes\n",
         });
     }
-    pub fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
-        @setCold(true);
-        var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
-            about_unmap_1_s, builtin.fmt.ux64(addr).readAll(),
-            "..",            builtin.fmt.ux64(addr +% len).readAll(),
-            ", ",            builtin.fmt.ud64(len).readAll(),
-            " bytes (",      @errorName(unmap_error),
-            ")\n",
-        });
-    }
     fn adviseNotice(addr: u64, len: u64, description_s: []const u8) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
             about_advice_0_s, builtin.fmt.ux64(addr).readAll(),
             "..",             builtin.fmt.ux64(addr +% len).readAll(),
             ", ",             builtin.fmt.ud64(len).readAll(),
             " bytes, ",       description_s,
             "\n",
-        });
-    }
-    fn adviseError(madvise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
-        var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
-            about_advice_1_s, builtin.fmt.ux64(addr).readAll(),
-            "..",             builtin.fmt.ux64(addr +% len).readAll(),
-            ", ",             builtin.fmt.ud64(len).readAll(),
-            " bytes, ",       description_s,
-            ", (",            @errorName(madvise_error),
-            ")\n",
         });
     }
     pub fn remapNotice(old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
@@ -727,13 +684,73 @@ pub const debug = opaque {
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_0_s, about_resize_0_s);
         var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logAcquireAIO(&buf, &[_][]const u8{
             operation_s, builtin.fmt.ux64(old_addr).readAll(),
             "..",        builtin.fmt.ux64(old_addr +% old_len).readAll(),
             " -> ",      builtin.fmt.ux64(new_addr).readAll(),
             "..",        builtin.fmt.ux64(new_addr +% new_len).readAll(),
             notation_s,  builtin.fmt.ud64(abs_diff).readAll(),
             " bytes\n",
+        });
+    }
+    fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logAcquireAIO(&buf, &[_][]const u8{
+            about_acq_0_s, label orelse "arena",
+            "-",           builtin.fmt.ud64(index).readAll(),
+            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
+            "..",          builtin.fmt.ux64(up_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
+            " bytes\n",
+        });
+    }
+    fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        @setCold(true);
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logReleaseAIO(&buf, &[_][]const u8{
+            about_rel_0_s, label orelse "arena",
+            "-",           builtin.fmt.ud64(index).readAll(),
+            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
+            "..",          builtin.fmt.ux64(up_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
+            " bytes\n",
+        });
+    }
+    fn memFdNotice(name: [:0]const u8, mem_fd: u64) void {
+        var buf: [4096 + 32]u8 = undefined;
+        builtin.debug.logAcquireAIO(&buf, &[_][]const u8{ about_memfd_0_s, "fd=", builtin.fmt.ud64(mem_fd).readAll(), ", ", name, "\n" });
+    }
+    pub fn mapError(map_error: anytype, addr: u64, len: u64) void {
+        @setCold(true);
+        var buf: [4096 +% 512]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
+            about_map_1_s, builtin.fmt.ux64(addr).readAll(),
+            "..",          builtin.fmt.ux64(addr +% len).readAll(),
+            ", ",          builtin.fmt.ud64(len).readAll(),
+            " bytes (",    @errorName(map_error),
+            ")\n",
+        });
+    }
+    pub fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
+        @setCold(true);
+        var buf: [4096 +% 512]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
+            about_unmap_1_s, builtin.fmt.ux64(addr).readAll(),
+            "..",            builtin.fmt.ux64(addr +% len).readAll(),
+            ", ",            builtin.fmt.ud64(len).readAll(),
+            " bytes (",      @errorName(unmap_error),
+            ")\n",
+        });
+    }
+    fn adviseError(madvise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
+            about_advice_1_s, builtin.fmt.ux64(addr).readAll(),
+            "..",             builtin.fmt.ux64(addr +% len).readAll(),
+            ", ",             builtin.fmt.ud64(len).readAll(),
+            " bytes, ",       description_s,
+            ", (",            @errorName(madvise_error),
+            ")\n",
         });
     }
     fn remapError(mremap_err: anytype, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
@@ -743,7 +760,7 @@ pub const debug = opaque {
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_1_s, about_resize_1_s);
         var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
             operation_s, builtin.fmt.ux64(old_addr).readAll(),
             "..",        builtin.fmt.ux64(old_addr +% old_len).readAll(),
             " -> ",      builtin.fmt.ux64(new_addr).readAll(),
@@ -755,7 +772,7 @@ pub const debug = opaque {
     }
     fn brkError(brk_error: anytype, old_addr: u64, new_addr: u64) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
             about_brk_1_s, builtin.fmt.ux64(old_addr).readAll(),
             "..",          builtin.fmt.ux64(new_addr).readAll(),
             ", ",          builtin.fmt.ud64(new_addr -% old_addr).readAll(),
@@ -763,21 +780,10 @@ pub const debug = opaque {
             ")\n",
         });
     }
-    fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
-            about_acq_0_s, label orelse "arena",
-            "-",           builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
-            "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
-            " bytes\n",
-        });
-    }
     fn arenaAcquireError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         @setCold(true);
         var buf: [4096 + 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
             about_acq_1_s, label orelse "arena",
             "-",           builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
@@ -787,21 +793,9 @@ pub const debug = opaque {
             ")\n",
         });
     }
-    fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        @setCold(true);
-        var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
-            about_rel_0_s, label orelse "arena",
-            "-",           builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
-            "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
-            " bytes\n",
-        });
-    }
     fn arenaReleaseError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var buf: [4096 + 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
             about_rel_1_s, label orelse "arena",
             "-",           builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
@@ -813,11 +807,7 @@ pub const debug = opaque {
     }
     fn memFdError(memfd_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{ about_memfd_1_s, pathname, " (", @errorName(memfd_error), ")\n" });
-    }
-    fn memFdNotice(name: [:0]const u8, mem_fd: u64) void {
-        var buf: [4096 + 32]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{ about_memfd_0_s, "fd=", builtin.fmt.ud64(mem_fd).readAll(), ", ", name, "\n" });
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_memfd_1_s, pathname, " (", @errorName(memfd_error), ")\n" });
     }
 };
 pub fn set(dst_addr: u64, src_value: anytype, count: u64) void {
@@ -832,7 +822,6 @@ pub fn StaticArray(comptime child: type, comptime count: u64) type {
 pub fn StaticString(comptime count: u64) type {
     return StaticArray(u8, count);
 }
-
 /// Potential features of a referenced value in memory:
 /// |->_~~~~~~_~~~~_------------------------------_--|
 /// |  |      |    |                              |  |
@@ -893,7 +882,6 @@ pub const AbstractSpec = union(enum) {
                 // double_packed_approximate_capacity: Dynamic,
                 static: Static,
             },
-
             unallocated_byte_address: union(enum) {
                 read_write_resize: Dynamic,
             },
@@ -910,7 +898,6 @@ pub const AbstractSpec = union(enum) {
     undefined_byte_address: union(enum) {
         read_write_resize: union(enum) { parametric: Parametric },
     },
-
     const Automatic = union(enum) {
         structured: AutoAlignment(AutomaticStuctured),
     };
@@ -926,7 +913,6 @@ pub const AbstractSpec = union(enum) {
         structured: NoPackedAlignment(StructuredParametric),
         unstructured: NoPackedAlignment(UnstructuredParametric),
     };
-
     const AutomaticStuctured = struct {
         child: type,
         sentinel: in_out(*const anyopaque) = null,
@@ -967,7 +953,6 @@ pub const AbstractSpec = union(enum) {
         high_alignment: u64,
         low_alignment: in(u64) = null,
     };
-
     pub const Mode = enum {
         read_write,
         read_write_resize,
@@ -1043,7 +1028,6 @@ pub const AbstractSpec = union(enum) {
             },
         };
     };
-
     /// Require the field be optional in the input parameters
     fn in(comptime T: type) type {
         return ?T;
@@ -1114,7 +1098,6 @@ pub const AbstractSpec = union(enum) {
         });
     }
 };
-
 // These should be in builtin.zig, but cannot adhere to the test-error-fault
 // standard yet--that is, their assert* and expect* counterparts cannot be added
 // to builtin--so they are here temporarily as utility functions.
@@ -1132,7 +1115,6 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     }
     return true;
 }
-
 pub fn testEqualOneFront(comptime T: type, value: T, values: []const T) bool {
     if (values.len != 0) {
         return values[0] == value;
