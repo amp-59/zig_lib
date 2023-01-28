@@ -495,12 +495,12 @@ pub const start = opaque {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
-            builtin.debug.print(&buf, &[_][]const u8{
+            builtin.debug.logFaultAIO(&buf, &[_][]const u8{
                 debug.about_error_s,             "indexing (",
                 builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
             });
         } else {
-            builtin.debug.print(&buf, &[_][]const u8{
+            builtin.debug.logFaultAIO(&buf, &[_][]const u8{
                 debug.about_error_s,                      "index ",
                 builtin.fmt.ud64(idx).readAll(),          " above maximum ",
                 builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
@@ -511,27 +511,25 @@ pub const start = opaque {
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             debug.about_error_s,                 "sentinel mismatch: expected ",
             builtin.fmt.int(expected).readAll(), ", found ",
             builtin.fmt.int(actual).readAll(),   "\n",
         });
-        sys.exit(2);
     }
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             debug.about_error_s,               "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
         });
-        sys.exit(2);
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             debug.about_error_s, "access of union field '",
             @tagName(wanted),    "' while field '",
             @tagName(active),    "' is active",
@@ -543,7 +541,7 @@ pub const start = opaque {
     }
     fn unexpectedReturnCodeValueError(rc: u64) void {
         var buf: [512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             "unexpected return value: ", builtin.fmt.ud64(rc).readAll(),
             "\n",
         });
@@ -1092,15 +1090,15 @@ const debug = opaque {
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
     }
     fn forkError(fork_error: anytype) void {
         var buf: [16 +% 32 +% 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
     }
     fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
         var buf: [16 +% 32 +% 512]u8 = undefined;
-        builtin.debug.print(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
     fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
         var buf: [4096 +% 128]u8 = undefined;
