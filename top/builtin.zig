@@ -14,7 +14,7 @@ pub const is_correct: bool                = config("is_correct",    bool,       
 pub const is_perf: bool                   = config("is_perf",       bool,           is_small or is_fast);
 pub const is_verbose: bool                = config("is_verbose",    bool,           is_debug);
 pub const is_silent: bool                 = config("is_silent",     bool,           false);
-pub const AddressSpace: type              = config("AddressSpace",  type,           info.address_space.generic);
+pub const AddressSpace                    = config("AddressSpace",  type,           info.address_space.generic);
 pub const logging: Logging                = config("logging",       Logging, .{});
 pub const build_root: ?[:0]const u8       = config("build_root",    ?[:0]const u8,  null);
 pub const root_src_file: ?[:0]const u8    = config("root_src_file", ?[:0]const u8,  null);
@@ -47,7 +47,7 @@ fn Overflow(comptime T: type) type {
     return struct { T, u1 };
 }
 // Some compiler_rt
-pub fn memcpy(dest: [*]u8, source: [*]const u8, count: usize) callconv(.C) void {
+pub fn memcpy(noalias dest: [*]u8, noalias source: [*]const u8, count: usize) callconv(.C) void {
     @setRuntimeSafety(false);
     var index: usize = 0;
     while (index != count) : (index += 1) {
@@ -573,11 +573,9 @@ pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
-
 fn @"test"(b: bool) bool {
     return b;
 }
-
 // Currently, only the following non-trivial comparisons are supported:
 fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
     var i: usize = 0;
@@ -937,49 +935,12 @@ pub fn pack64(h: u32, l: u32) u64 {
     return @bitCast(u64, U64{ .h = h, .l = l });
 }
 pub const debug = opaque {
-    pub const itos = config("itos", @TypeOf(fmt.ud), fmt.ud);
+    pub const itos = fmt.d;
     const size: usize = 4096;
     const about_fault_p0_s: []const u8 = "fault:          ";
     const about_error_p0_s: []const u8 = "error:          ";
     const about_fault_p1_s: []const u8 = " assertion failed: ";
     const about_error_p1_s: []const u8 = " unexpected result: ";
-
-    pub fn print(buf: []u8, ss: []const []const u8) void {
-        write(buf[0..writeMulti(buf, ss)]);
-    }
-    pub inline fn writeMany(buf: []u8, s: []const u8) u64 {
-        for (s) |c, i| buf[i] = c;
-        return s.len;
-    }
-    pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
-        var len: u64 = 0;
-        for (ss) |s| {
-            for (s) |c, i| buf[len +% i] = c;
-            len +%= s.len;
-        }
-        return len;
-    }
-    pub fn panic(buf: []const u8) noreturn {
-        write(buf);
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (60), // linux sys_exit
-              [arg1] "{rdi}" (2), // exit code
-        );
-        unreachable;
-    }
-    pub fn write(buf: []const u8) void {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (1), // linux sys_write
-              [arg1] "{rdi}" (2), // stderr
-              [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
-              [arg3] "{rdx}" (buf.len),
-            : "rcx", "r11", "memory", "rax"
-        );
-    }
 
     fn aboutFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
@@ -1151,6 +1112,44 @@ pub const debug = opaque {
         var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         panic(buf[0..len]);
     }
+    pub fn print(buf: []u8, ss: []const []const u8) void {
+        write(buf[0..writeMulti(buf, ss)]);
+    }
+    // At the time of writing, this function benefits from inlining but the
+    // others do not.
+    pub inline fn writeMany(buf: []u8, s: []const u8) u64 {
+        for (s) |c, i| buf[i] = c;
+        return s.len;
+    }
+    pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
+        var len: u64 = 0;
+        for (ss) |s| {
+            for (s) |c, i| buf[len +% i] = c;
+            len +%= s.len;
+        }
+        return len;
+    }
+    pub fn panic(buf: []const u8) noreturn {
+        write(buf);
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (60), // linux sys_exit
+              [arg1] "{rdi}" (2), // exit code
+        );
+        unreachable;
+    }
+    pub fn write(buf: []const u8) void {
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (1), // linux sys_write
+              [arg1] "{rdi}" (2), // stderr
+              [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
+              [arg3] "{rdx}" (buf.len),
+            : "rcx", "r11", "memory", "rax"
+        );
+    }
     const static = opaque {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             comptime {
@@ -1299,7 +1298,7 @@ pub const parse = opaque {
         idx +%= @boolToInt(str[idx] == '0');
         idx +%= @boolToInt(str[idx] == 'b');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= fromSymbol(str[idx], 2) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @intCast(i8, fromSymbol(str[idx], 2)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -1312,7 +1311,7 @@ pub const parse = opaque {
         idx +%= @boolToInt(str[idx] == '0');
         idx +%= @boolToInt(str[idx] == 'o');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= fromSymbol(str[idx], 8) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @intCast(i8, fromSymbol(str[idx], 8)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -1323,7 +1322,7 @@ pub const parse = opaque {
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '-');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= fromSymbol(str[idx], 10) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @intCast(i8, fromSymbol(str[idx], 10)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -1336,7 +1335,7 @@ pub const parse = opaque {
         idx +%= @boolToInt(str[idx] == '0');
         idx +%= @boolToInt(str[idx] == 'x');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= fromSymbol(str[idx], 16) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @intCast(i8, fromSymbol(str[idx], 16)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -1572,111 +1571,126 @@ pub const fmt = opaque {
         }
         return array;
     }
-    pub const ub = b;
-    pub const uo = o;
-    pub const ud = d;
-    pub const ux = x;
-    pub const ib = b;
-    pub const io = o;
-    pub const id = d;
-    pub const ix = x;
     pub fn ub8(value: u8) StaticString(u8, 2) {
-        return ub(u8, value);
+        return b(u8, value);
     }
     pub fn ub16(value: u16) StaticString(u16, 2) {
-        return ub(u16, value);
+        return b(u16, value);
     }
     pub fn ub32(value: u32) StaticString(u32, 2) {
-        return ub(u32, value);
+        return b(u32, value);
     }
     pub fn ub64(value: u64) StaticString(u64, 2) {
-        return ub(u64, value);
+        return b(u64, value);
+    }
+    pub fn ubsize(value: usize) StaticString(usize, 2) {
+        return b(usize, value);
     }
     pub fn uo8(value: u8) StaticString(u8, 8) {
-        return uo(u8, value);
+        return o(u8, value);
     }
     pub fn uo16(value: u16) StaticString(u16, 8) {
-        return uo(u16, value);
+        return o(u16, value);
     }
     pub fn uo32(value: u32) StaticString(u32, 8) {
-        return uo(u32, value);
+        return o(u32, value);
     }
     pub fn uo64(value: u64) StaticString(u64, 8) {
-        return uo(u64, value);
+        return o(u64, value);
+    }
+    pub fn uosize(value: usize) StaticString(usize, 8) {
+        return o(usize, value);
     }
     pub fn ud8(value: u8) StaticString(u8, 10) {
-        return ud(u8, value);
+        return d(u8, value);
     }
     pub fn ud16(value: u16) StaticString(u16, 10) {
-        return ud(u16, value);
+        return d(u16, value);
     }
     pub fn ud32(value: u32) StaticString(u32, 10) {
-        return ud(u32, value);
+        return d(u32, value);
     }
     pub fn ud64(value: u64) StaticString(u64, 10) {
-        return ud(u64, value);
+        return d(u64, value);
+    }
+    pub fn udsize(value: usize) StaticString(usize, 10) {
+        return d(usize, value);
     }
     pub fn ux8(value: u8) StaticString(u8, 16) {
-        return ux(u8, value);
+        return x(u8, value);
     }
     pub fn ux16(value: u16) StaticString(u16, 16) {
-        return ux(u16, value);
+        return x(u16, value);
     }
     pub fn ux32(value: u32) StaticString(u32, 16) {
-        return ux(u32, value);
+        return x(u32, value);
     }
     pub fn ux64(value: u64) StaticString(u64, 16) {
-        return ux(u64, value);
+        return x(u64, value);
+    }
+    pub fn uxsize(value: usize) StaticString(usize, 16) {
+        return x(usize, value);
     }
     pub fn ib8(value: i8) StaticString(i8, 2) {
-        return ib(i8, value);
+        return b(i8, value);
     }
     pub fn ib16(value: i16) StaticString(i16, 2) {
-        return ib(i16, value);
+        return b(i16, value);
     }
     pub fn ib32(value: i32) StaticString(i32, 2) {
-        return ib(i32, value);
+        return b(i32, value);
     }
     pub fn ib64(value: i64) StaticString(i64, 2) {
-        return ib(i64, value);
+        return b(i64, value);
+    }
+    pub fn ibsize(value: isize) StaticString(isize, 2) {
+        return b(isize, value);
     }
     pub fn io8(value: i8) StaticString(i8, 8) {
-        return io(i8, value);
+        return o(i8, value);
     }
     pub fn io16(value: i16) StaticString(i16, 8) {
-        return io(i16, value);
+        return o(i16, value);
     }
     pub fn io32(value: i32) StaticString(i32, 8) {
-        return io(i32, value);
+        return o(i32, value);
     }
     pub fn io64(value: i64) StaticString(i64, 8) {
-        return io(i64, value);
+        return o(i64, value);
+    }
+    pub fn iosize(value: isize) StaticString(isize, 8) {
+        return o(isize, value);
     }
     pub fn id8(value: i8) StaticString(i8, 10) {
-        return id(i8, value);
+        return d(i8, value);
     }
     pub fn id16(value: i16) StaticString(i16, 10) {
-        return id(i16, value);
+        return d(i16, value);
     }
     pub fn id32(value: i32) StaticString(i32, 10) {
-        return id(i32, value);
+        return d(i32, value);
     }
     pub fn id64(value: i64) StaticString(i64, 10) {
-        return id(i64, value);
+        return d(i64, value);
+    }
+    pub fn idsize(value: isize) StaticString(isize, 10) {
+        return d(isize, value);
     }
     pub fn ix8(value: i8) StaticString(i8, 16) {
-        return ix(i8, value);
+        return x(i8, value);
     }
     pub fn ix16(value: i16) StaticString(i16, 16) {
-        return ix(i16, value);
+        return x(i16, value);
     }
     pub fn ix32(value: i32) StaticString(i32, 16) {
-        return ix(i32, value);
+        return x(i32, value);
     }
     pub fn ix64(value: i64) StaticString(i64, 16) {
-        return ix(i64, value);
+        return x(i64, value);
     }
-
+    pub fn ixsize(value: isize) StaticString(isize, 16) {
+        return x(isize, value);
+    }
     fn Absolute(comptime Int: type) type {
         return @Type(.{ .Int = .{
             .bits = @max(@bitSizeOf(Int), 8),
