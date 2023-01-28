@@ -4377,7 +4377,6 @@ fn GenericPageAllocatorGraphics(comptime Allocator: type) type {
                 }
             }
         }
-        const showDeallocateStatic = showDeallocateMany;
         fn showDeallocateHolder(allocator: *const Allocator, comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
             if (Allocator.allocator_spec.logging.deallocate) {
                 if (@hasDecl(impl_type, "child")) {
