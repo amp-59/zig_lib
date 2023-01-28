@@ -12,6 +12,7 @@ pub const enum_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .Compti
 pub const tag_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Type, .ErrorUnion, .Enum, .EnumLiteral };
 pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{.Fn};
 pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union };
+pub const decl_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union, .Enum };
 pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union, .Opaque };
 
 fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
@@ -96,11 +97,6 @@ pub fn maybe(comptime cond: bool, comptime T: type) type {
     }
 }
 
-/// Attempts to return the type of a field without matching strings to field
-/// names.
-pub fn Field(comptime T: type, comptime field_name: []const u8) type {
-    return @TypeOf(@field(@as(T, undefined), field_name));
-}
 /// Return a simple struct field
 pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value: ?T) builtin.StructField {
     const default_value_ptr: ?*const anyopaque = if (default_value) |value| &value else null;
@@ -461,6 +457,26 @@ pub fn EnumBitField(comptime E: type) type {
     });
 }
 
+pub fn unionFields(comptime Union: type) []const builtin.UnionField {
+    return @typeInfo(Union).Union.fields;
+}
+pub fn enumFields(comptime Enum: type) []const builtin.EnumField {
+    return @typeInfo(Enum).Enum.fields;
+}
+pub fn structFields(comptime Struct: type) []const builtin.StructField {
+    return @typeInfo(Struct).Struct.fields;
+}
+pub fn Field(comptime T: type, comptime field_name: []const u8) type {
+    return @TypeOf(@field(@as(T, undefined), field_name));
+}
+pub fn FieldN(comptime T: type, comptime field_index: usize) type {
+    switch (@typeInfo(T)) {
+        .Struct => |struct_info| struct_info.fields[field_index].type.?,
+        .Union => |union_info| union_info.fields[field_index].type.?,
+        .Enum => |enum_info| enum_info.fields[field_index].type.?,
+        else => |type_info| debug.unexpectedTypeTypesError(T, type_info, decl_types),
+    }
+}
 pub fn fnParams(comptime function: anytype) []const builtin.FnParam {
     return @typeInfo(@TypeOf(function)).Fn.params;
 }
