@@ -1,5 +1,6 @@
-const builtin = @import("./builtin.zig");
 const proc = @import("./proc.zig");
+const builtin = @import("./builtin.zig");
+const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
@@ -32,27 +33,17 @@ test {
         _ = comptime stupid(i);
     }
 }
-
 pub fn main() !void {
-    const k = @as(@Type(.EnumLiteral), undefined);
-    _ = k;
-
     const T: type = u64;
     var arg1: T = 0;
     var arg2: T = 1;
     var b: bool = true;
-    var iint: i64 = -0x1fee1dead;
-    for (builtin.fmt.ux(i64, iint).readAll()) |c, i| {
-        builtin.assertEqual(u8, "-0x1fee1dead"[i], c);
-    }
+    var iint: i64 = -0xfee1dead;
+    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "-0xfee1dead");
     iint = -0x0;
-    for (builtin.fmt.ux(i64, iint).readAll()) |c, i| {
-        builtin.assertEqual(u8, "0x0"[i], c);
-    }
+    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "0x0");
     var uint: u64 = 0xdeadbeef;
-    for (builtin.fmt.ux64(uint).readAll()) |c, i| {
-        builtin.assertEqual(u8, "0xdeadbeef"[i], c);
-    }
+    try testing.expectEqualMany(u8, builtin.fmt.ux64(uint).readAll(), "0xdeadbeef");
     const bs: [2]bool = .{ true, false };
     for (bs) |b_0| {
         builtin.assertEqual(u64, @boolToInt(b_0), builtin.int(u64, b_0));
@@ -65,13 +56,9 @@ pub fn main() !void {
             }
         }
     }
-    for (builtin.fmt.ub(u1, 0).readAll()) |c, i| {
-        builtin.assertEqual(u8, "0b0"[i], c);
-    }
-    for (builtin.fmt.ub(u1, 1).readAll()) |c, i| {
-        builtin.assertEqual(u8, "0b1"[i], c);
-    }
-    uint = 1;
+    try testing.expectEqualMany(u8, builtin.fmt.ub8(0).readAll(), "0b00000000");
+    try testing.expectEqualMany(u8, builtin.fmt.ub8(1).readAll(), "0b00000001");
+    uint = @ptrToInt(&arg1);
     while (uint < 0x100000) : (uint += 99) {
         builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
@@ -106,6 +93,42 @@ pub fn main() !void {
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
+    iint = @bitCast(isize, @ptrToInt(&arg1));
+    while (iint < 0x100000) : (iint += 99) {
+        builtin.assertEqual(i64, iint, builtin.parse.ib(i64, builtin.fmt.ib64(iint).readAll()));
+        builtin.assertEqual(i64, iint, builtin.parse.io(i64, builtin.fmt.io64(iint).readAll()));
+        builtin.assertEqual(i64, iint, builtin.parse.id(i64, builtin.fmt.id64(iint).readAll()));
+        builtin.assertEqual(i64, iint, builtin.parse.ix(i64, builtin.fmt.ix64(iint).readAll()));
+        builtin.assertEqual(i32, @truncate(i32, iint), builtin.parse.ib(i32, builtin.fmt.ib32(@truncate(i32, iint)).readAll()));
+        builtin.assertEqual(i32, @truncate(i32, iint), builtin.parse.io(i32, builtin.fmt.io32(@truncate(i32, iint)).readAll()));
+        builtin.assertEqual(i32, @truncate(i32, iint), builtin.parse.id(i32, builtin.fmt.id32(@truncate(i32, iint)).readAll()));
+        builtin.assertEqual(i32, @truncate(i32, iint), builtin.parse.ix(i32, builtin.fmt.ix32(@truncate(i32, iint)).readAll()));
+        builtin.assertEqual(i16, @truncate(i16, iint), builtin.parse.ib(i16, builtin.fmt.ib16(@truncate(i16, iint)).readAll()));
+        builtin.assertEqual(i16, @truncate(i16, iint), builtin.parse.io(i16, builtin.fmt.io16(@truncate(i16, iint)).readAll()));
+        builtin.assertEqual(i16, @truncate(i16, iint), builtin.parse.id(i16, builtin.fmt.id16(@truncate(i16, iint)).readAll()));
+        builtin.assertEqual(i16, @truncate(i16, iint), builtin.parse.ix(i16, builtin.fmt.ix16(@truncate(i16, iint)).readAll()));
+        builtin.assertEqual(i8, @truncate(i8, iint), builtin.parse.ib(i8, builtin.fmt.ib8(@truncate(i8, iint)).readAll()));
+        builtin.assertEqual(i8, @truncate(i8, iint), builtin.parse.io(i8, builtin.fmt.io8(@truncate(i8, iint)).readAll()));
+        builtin.assertEqual(i8, @truncate(i8, iint), builtin.parse.id(i8, builtin.fmt.id8(@truncate(i8, iint)).readAll()));
+        builtin.assertEqual(i8, @truncate(i8, iint), builtin.parse.ix(i8, builtin.fmt.ix8(@truncate(i8, iint)).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.ib(i64, builtin.fmt.ib64(iint).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.io(i64, builtin.fmt.io64(iint).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.id(i64, builtin.fmt.id64(iint).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.ix(i64, builtin.fmt.ix64(iint).readAll()));
+        try builtin.expectEqual(i32, @truncate(i32, iint), builtin.parse.ib(i32, builtin.fmt.ib32(@truncate(i32, iint)).readAll()));
+        try builtin.expectEqual(i32, @truncate(i32, iint), builtin.parse.io(i32, builtin.fmt.io32(@truncate(i32, iint)).readAll()));
+        try builtin.expectEqual(i32, @truncate(i32, iint), builtin.parse.id(i32, builtin.fmt.id32(@truncate(i32, iint)).readAll()));
+        try builtin.expectEqual(i32, @truncate(i32, iint), builtin.parse.ix(i32, builtin.fmt.ix32(@truncate(i32, iint)).readAll()));
+        try builtin.expectEqual(i16, @truncate(i16, iint), builtin.parse.ib(i16, builtin.fmt.ib16(@truncate(i16, iint)).readAll()));
+        try builtin.expectEqual(i16, @truncate(i16, iint), builtin.parse.io(i16, builtin.fmt.io16(@truncate(i16, iint)).readAll()));
+        try builtin.expectEqual(i16, @truncate(i16, iint), builtin.parse.id(i16, builtin.fmt.id16(@truncate(i16, iint)).readAll()));
+        try builtin.expectEqual(i16, @truncate(i16, iint), builtin.parse.ix(i16, builtin.fmt.ix16(@truncate(i16, iint)).readAll()));
+        try builtin.expectEqual(i8, @truncate(i8, iint), builtin.parse.ib(i8, builtin.fmt.ib8(@truncate(i8, iint)).readAll()));
+        try builtin.expectEqual(i8, @truncate(i8, iint), builtin.parse.io(i8, builtin.fmt.io8(@truncate(i8, iint)).readAll()));
+        try builtin.expectEqual(i8, @truncate(i8, iint), builtin.parse.id(i8, builtin.fmt.id8(@truncate(i8, iint)).readAll()));
+        try builtin.expectEqual(i8, @truncate(i8, iint), builtin.parse.ix(i8, builtin.fmt.ix8(@truncate(i8, iint)).readAll()));
+    }
+
     _ = builtin.build_root;
     // Testing compilation
     comptime {
