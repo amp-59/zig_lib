@@ -23,9 +23,6 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "virtual_test", "top/virtual-test.zig", .{ .is_correct = true, .is_verbose = true });
 
     // More complete test programs:
-    _ = util.addProjectExecutable(builder, "builder_gen", "top/builder-gen.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
-    _ = util.addProjectExecutable(builder, "mem_gen_0", "top/mem/gen-0.zig", .{});
-    _ = util.addProjectExecutable(builder, "mem_gen_1", "top/mem/gen-1.zig", .{});
     _ = util.addProjectExecutable(builder, "mca", "test/mca.zig", .{ .build_mode = .ReleaseFast, .is_correct = false, .is_verbose = false });
     _ = util.addProjectExecutable(builder, "treez", "test/treez.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
     _ = util.addProjectExecutable(builder, "itos", "test/itos.zig", .{ .build_mode = .ReleaseSmall, .is_correct = false, .is_verbose = false });
@@ -45,4 +42,21 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", .{ .build_mode = .ReleaseSmall, .is_correct = true, .is_verbose = true });
     _ = util.addProjectExecutable(builder, "restack", "examples/remap_stack.zig", .{});
     _ = util.addProjectExecutable(builder, "dynamic", "examples/dynamic_alloc.zig", .{});
+
+    // Generators:
+    _ = util.addProjectExecutable(builder, "builder_gen", "top/builder-gen.zig", .{
+        .build_mode = .ReleaseSmall,
+    });
+    const mem_gen = builder.step("mem_gen", "generate containers according to specification");
+    const mem_gen_0 = util.addProjectExecutable(builder, "mem_gen_0", "top/mem/gen-0.zig", .{
+        .build_mode = .ReleaseSmall,
+    });
+    const mem_gen_1 = util.addProjectExecutable(builder, "mem_gen_1", "top/mem/gen-1.zig", .{});
+    mem_gen.dependOn(&mem_gen_0.run().step);
+    mem_gen_1.step.dependOn(&builder.addFmt(&[2][]const u8{
+        "top/mem/abstract_params.zig",
+        "top/mem/impl_details.zig",
+    }).step);
+    mem_gen.dependOn(&mem_gen_1.run().step);
+    mem_gen.dependOn(&builder.addFmt(&[1][]const u8{"top/mem/type_spec.zig"}).step);
 }
