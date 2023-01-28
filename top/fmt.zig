@@ -1211,7 +1211,6 @@ pub const IdentifierFormat = struct {
 pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: type) type {
     return struct {
         value: ToplevelAddressSpace,
-
         const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
             _ = array;
