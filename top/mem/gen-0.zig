@@ -1,3 +1,4 @@
+//! This stage summarises the abstract specification.
 const mem = @import("./../mem.zig");
 const fmt = @import("./../fmt.zig");
 const meta = @import("./../meta.zig");
@@ -11,29 +12,39 @@ pub const is_silent: bool = true;
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.regular_128;
-pub const Allocator = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-});
 pub const Array = mem.StaticString(65536);
 
 fn slices(comptime T: type) *[]const T {
     var ptrs: []const T = meta.empty;
     return &ptrs;
 }
-const create_spec: file.CreateSpec = .{ .options = .{ .exclusive = false } };
 const close_spec: file.CloseSpec = .{ .errors = null };
+const create_spec: file.CreateSpec = .{
+    .errors = null,
+    .options = .{ .exclusive = false },
+};
 const fmt_spec = .{
     .omit_default_fields = true,
     .infer_type_names = true,
     .omit_trailing_comma = true,
 };
-
-pub const Context = struct {
+pub const Detail = struct {
+    index: u8 = undefined,
+    kind: Kind = .{},
+    layout: Layout = .{},
     modes: Modes = .{},
     fields: Fields = .{},
     techs: Techniques = .{},
+};
+pub const Kind = struct {
+    automatic: bool = false,
+    dynamic: bool = false,
+    static: bool = false,
+    parametric: bool = false,
+};
+pub const Layout = struct {
+    structured: bool = false,
+    unstructured: bool = false,
 };
 pub const Modes = struct {
     read_write: bool = false,
@@ -48,28 +59,12 @@ pub const Fields = struct {
     unstreamed_byte_address: bool = false,
 };
 pub const Techniques = struct {
-    automatic: bool = false,
-    dynamic: bool = false,
-    static: bool = false,
-    parametric: bool = false,
-
-    structured_layout: bool = false,
-    unstructured_layout: bool = false,
-
     lazy_alignment: bool = false,
     unit_alignment: bool = false,
     disjunct_alignment: bool = false,
-
     single_packed_approximate_capacity: bool = false,
     double_packed_approximate_capacity: bool = false,
-
     pub const mutex = .{
-        .kind = .{
-            .automatic,
-            .dynamic,
-            .static,
-            .parametric,
-        },
         .capacity = .{
             .single_packed_approximate,
             .double_packed_approximate,
@@ -79,13 +74,56 @@ pub const Techniques = struct {
             .lazy,
             .disjunct,
         },
-        .layout = .{
-            .structured,
-            .unstructured,
-        },
     };
 };
-
+pub const Variant = enum {
+    __stripped,
+    __derived,
+    __optional_derived,
+    __optional_variant,
+    __decl_optional_derived,
+    __decl_optional_variant,
+};
+pub fn Stripped(comptime T: type) type {
+    return union(enum) {
+        /// Input is mandatory in interface, removed from specification.
+        __stripped: T,
+    };
+}
+pub fn Derived(comptime T: type) type {
+    return union(enum) {
+        /// Input is undefined in interface, invariant in specification
+        __derived: T,
+    };
+}
+pub fn OptDrv(comptime T: type) type {
+    return union(enum) {
+        /// Input is optional in interface, invariant in specification:
+        /// alignment values.
+        __optional_derived: ?T,
+    };
+}
+pub fn OptVar(comptime T: type) type {
+    return union(enum) {
+        /// Input is optional in interface, variant in specification:
+        /// sentinel and guard page values.
+        __optional_variant: ?T,
+    };
+}
+pub fn DeclOptDrv(comptime T: type) type {
+    return union(enum) {
+        /// Input is mandatory container in interface, with optional
+        /// declarations, invariant in specification.
+        __decl_optional_derived: T,
+    };
+}
+pub fn DeclOptVar(comptime T: type) type {
+    return union(enum) {
+        /// Input is mandatory container in interface, with optional
+        /// declarations, variant in specification: arena offsets.
+        __decl_optional_variant: T,
+    };
+}
 pub const AbstractSpec = union(enum) {
     automatic_storage: ReadWrite(union {
         _: Automatic,
@@ -130,19 +168,19 @@ pub const AbstractSpec = union(enum) {
         return (union(enum) { resize: T });
     }
     const Automatic = union { automatic: union {
-        structured_layout: AutomaticStuctured,
+        structured: AutomaticStuctured,
     } };
     const Static = union { static: union {
-        structured_layout: NoSuperAlignment(StructuredStatic),
-        unstructured_layout: NoSuperAlignment(UnstructuredStatic),
+        structured: NoSuperAlignment(StructuredStatic),
+        unstructured: NoSuperAlignment(UnstructuredStatic),
     } };
     const Dynamic = union { dynamic: union {
-        structured_layout: NoSuperAlignment(Structured),
-        unstructured_layout: NoSuperAlignment(Unstructured),
+        structured: NoSuperAlignment(Structured),
+        unstructured: NoSuperAlignment(Unstructured),
     } };
     const Parametric = union { parametric: union {
-        structured_layout: NoPackedAlignment(StructuredParametric),
-        unstructured_layout: NoPackedAlignment(UnstructuredParametric),
+        structured: NoPackedAlignment(StructuredParametric),
+        unstructured: NoPackedAlignment(UnstructuredParametric),
     } };
     fn NoSuperAlignment(comptime S: type) type {
         return (union(enum) {
@@ -171,74 +209,62 @@ pub const AbstractSpec = union(enum) {
             disjunct_alignment: S,
         });
     }
+    const Sentinel = OptVar(*const anyopaque);
+    const default_sentinel: Sentinel = .{ .__optional_variant = null };
+
+    const Alignment = OptDrv(usize);
+    const default_alignment: Alignment = .{ .__optional_derived = null };
+
+    const BoundAllocator = DeclOptVar(struct {
+        Allocator: type,
+        arena: struct { lb_addr: usize, up_addr: usize },
+    });
     const AutomaticStuctured = struct {
         child: type,
-        sentinel: in_out(*const anyopaque) = null,
+        sentinel: Sentinel = default_sentinel,
         count: u64,
-        low_alignment: in(u64) = null,
+        low_alignment: Alignment = default_alignment,
     };
     const Structured = struct {
         child: type,
-        sentinel: in_out(*const anyopaque) = null,
-        low_alignment: in(u64) = null,
-        Allocator: _Allocator,
+        sentinel: Sentinel = default_sentinel,
+        low_alignment: Alignment = default_alignment,
+        Allocator: BoundAllocator,
     };
     const Unstructured = struct {
         high_alignment: u64,
-        low_alignment: in(u64) = null,
-        Allocator: _Allocator,
+        low_alignment: Alignment = default_alignment,
+        Allocator: BoundAllocator,
     };
     const StructuredStatic = struct {
         child: type,
-        sentinel: in_out(*const anyopaque) = null,
+        sentinel: Sentinel = default_sentinel,
         count: u64,
-        low_alignment: in(u64) = null,
-        Allocator: _Allocator,
+        low_alignment: Alignment = default_alignment,
+        Allocator: BoundAllocator,
     };
     const UnstructuredStatic = struct {
         bytes: u64,
-        low_alignment: in(u64) = null,
-        Allocator: _Allocator,
+        low_alignment: Alignment = default_alignment,
+        Allocator: BoundAllocator,
     };
     const StructuredParametric = struct {
         Allocator: type,
         child: type,
-        sentinel: in_out(*const anyopaque) = null,
-        low_alignment: in(u64) = null,
+        sentinel: Sentinel = default_sentinel,
+        low_alignment: Alignment = default_alignment,
     };
     const UnstructuredParametric = struct {
         Allocator: type,
         high_alignment: u64,
-        low_alignment: in(u64) = null,
+        low_alignment: Alignment = default_alignment,
     };
-    /// Require the field be optional in the input parameters
-    fn in(comptime T: type) type {
-        return ?T;
-    }
-    /// Require the field be a variance point in the output specification
-    fn out(comptime T: type) type {
-        return ??T;
-    }
-    /// Require the field be static in the output specification
-    fn in_out(comptime T: type) type {
-        return ???T;
-    }
-    /// Remove the field from the output specification--only used by the input.
-    fn strip(comptime T: type) type {
-        return ????T;
-    }
-    /// Having this type in one of the specification structs below means that
-    /// the container configurator struct will have a field 'Allocator: type',
-    /// and by a function named 'arenaIndex'--a member function--may obtain the
-    /// optional parameter 'arena_index'.
-    const AllocatorStripped = strip(type);
-    const AllocatorWithArenaIndex = union {
-        Allocator: type,
-        arena_index: in_out(u64),
-    };
-    const _Allocator = AllocatorWithArenaIndex;
-};
 
+    const UnstructuredStaticSegment = struct {
+        bytes: u64,
+        Allocator: BoundAllocator,
+    };
+};
 pub fn BinaryFilter(comptime T: type) type {
     return (struct { []const T, []const T });
 }
@@ -248,53 +274,36 @@ pub fn typeIndex(comptime types: []const type, comptime T: type) ?comptime_int {
     }
     return null;
 }
-noinline fn summariseAbstractSpec(array: *Array, comptime T: type, ctx: Context) void {
-    const types: *[]const type = comptime slices(type);
-    array.writeMany("const gen = @import(\"./gen-0.zig\");\n");
-    array.writeMany("pub const summary = [_]struct { gen.Context, type }{\n");
-    summariseAbstractSpecInternal(array, types, T, ctx);
-    array.writeMany("};\n");
-    array.writeMany("pub const AbstractParams: [" ++ comptime builtin.fmt.ci(types.len) ++ "]type = .{\n");
-    inline for (types.*) |U| {
-        array.writeFormat(comptime fmt.any(U));
-        array.writeMany(",\n");
-    }
-    array.writeMany("};\n");
+fn writeBoilerplate(array: *Array) void {
+    array.writeMany(
+        \\//! This file is generated by `memgen` stage 0
+        \\const gen = @import("./gen-0.zig");
+        \\pub const summary = [_]gen.Detail{
+    );
 }
-fn summaryItem(array: *Array, ctx: Context, type_index: u64) void {
-    array.writeMany(".{ .{ .modes = ");
-    array.writeFormat(fmt.render(fmt_spec, ctx.modes));
-    array.writeMany(", .fields = ");
-    array.writeFormat(fmt.render(fmt_spec, ctx.fields));
-    array.writeMany(", .techs = ");
-    array.writeFormat(fmt.render(fmt_spec, ctx.techs));
-    array.writeMany(", }, AbstractParams[");
-    array.writeFormat(fmt.ud64(type_index));
-    array.writeMany("], },\n");
-}
-inline fn summariseAbstractSpecInternal(array: *Array, comptime types: *[]const type, comptime T: type, ctx: Context) void {
+inline fn writeDetailStructs(array: *Array, comptime types: *[]const type, comptime T: type, detail: *Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
-            var next: Context = ctx;
-            if (@hasField(Modes, field.name)) {
-                @field(next.modes, field.name) = true;
+            const tmp = detail.*;
+            defer detail.* = tmp;
+            if (@hasField(Kind, field.name)) {
+                @field(detail.kind, field.name) = true;
+            } else if (@hasField(Layout, field.name)) {
+                @field(detail.layout, field.name) = true;
+            } else if (@hasField(Modes, field.name)) {
+                @field(detail.modes, field.name) = true;
+            } else if (@hasField(Fields, field.name)) {
+                @field(detail.fields, field.name) = true;
+            } else if (@hasField(Techniques, field.name)) {
+                @field(detail.techs, field.name) = true;
+            } else if (field.name.len != 1 or field.name[0] != '_') {
+                @compileError(field.name);
             }
-            if (@hasField(Fields, field.name)) {
-                @field(next.fields, field.name) = true;
-            }
-            if (@hasField(Techniques, field.name)) {
-                @field(next.techs, field.name) = true;
-            }
-            if (builtin.testEqual(Context, next, ctx) and
-                !(field.name.len == 1 and field.name[0] == '_'))
-            {
-                unreachable;
-            }
-            summariseAbstractSpecInternal(array, types, field.type, next);
+            writeDetailStructs(array, types, field.type, detail);
         }
     } else if (type_info == .Struct) {
-        const type_index: u64 = comptime blk: {
+        detail.index = comptime blk: {
             if (typeIndex(types.*, T)) |index| {
                 break :blk index;
             } else {
@@ -302,14 +311,44 @@ inline fn summariseAbstractSpecInternal(array: *Array, comptime types: *[]const 
                 break :blk types.len - 1;
             }
         };
-        summaryItem(array, ctx, type_index);
+        writeDetailStruct(array, detail.*);
     }
 }
-pub fn main() !void {
-    var array: Array = undefined;
-    array.undefineAll();
-    summariseAbstractSpec(&array, AbstractSpec, .{});
-    const fd: u64 = try file.create(create_spec, builtin.build_root.? ++ "/top/mem/mem-template.zig");
+fn writeDetailStruct(array: *Array, detail: Detail) void {
+    array.writeMany(".{ .kind = ");
+    array.writeFormat(fmt.render(fmt_spec, detail.kind));
+    array.writeMany(", .layout = ");
+    array.writeFormat(fmt.render(fmt_spec, detail.layout));
+    array.writeMany(", .modes = ");
+    array.writeFormat(fmt.render(fmt_spec, detail.modes));
+    array.writeMany(", .fields = ");
+    array.writeFormat(fmt.render(fmt_spec, detail.fields));
+    array.writeMany(", .techs = ");
+    array.writeFormat(fmt.render(fmt_spec, detail.techs));
+    array.writeMany(", .index = ");
+    array.writeFormat(fmt.ud64(detail.index));
+    array.writeMany(", },\n");
+}
+fn writeAbstractParams(array: *Array, comptime types: *[]const type) void {
+    array.writeMany("};\n");
+    array.writeMany("pub const abstract_params = [_]type{\n");
+    inline for (types.*) |U| {
+        array.writeFormat(comptime fmt.any(U));
+        array.writeMany(",\n");
+    }
+    array.writeMany("};\n");
+}
+fn writeFile(array: *Array) void {
+    const fd: u64 = file.create(create_spec, builtin.build_root.? ++ "/top/mem/summary.zig");
     defer file.close(close_spec, fd);
-    try file.write(fd, array.readAll());
+    file.noexcept.write(fd, array.readAll());
+}
+pub fn main() !void {
+    var detail: Detail = .{};
+    var array: Array = .{};
+    const types: *[]const type = comptime slices(type);
+    writeBoilerplate(&array);
+    writeDetailStructs(&array, types, AbstractSpec, &detail);
+    writeAbstractParams(&array, types);
+    writeFile(&array);
 }
