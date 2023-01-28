@@ -1509,7 +1509,7 @@ fn GenericInterface(comptime Allocator: type) type {
                         const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
                         try meta.wrap(Intermediate.allocateStaticUnitAligned(allocator, n_count, s_aligned_bytes, s_up_addr));
                         const s_impl: s_impl_type = s_impl_type.construct(.{ .lb_addr = s_lb_addr, .ss_addr = s_ss_addr });
-                        Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                        Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                         return s_impl;
                     }
                     const n_count: u64 = mem.amountToCountOfLength(o_amt orelse _1, s_impl_type.high_alignment);
@@ -1518,7 +1518,7 @@ fn GenericInterface(comptime Allocator: type) type {
                     const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
                     try meta.wrap(Intermediate.allocateStaticUnitAligned(allocator, n_count, s_aligned_bytes, s_up_addr));
                     const s_impl: s_impl_type = s_impl_type.construct(.{ .lb_addr = s_lb_addr });
-                    Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                    Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                     return s_impl;
                 }
             } else { // @1b1
@@ -1534,7 +1534,7 @@ fn GenericInterface(comptime Allocator: type) type {
                             const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
                             try meta.wrap(Intermediate.allocateStaticAnyAligned(allocator, n_count, s_aligned_bytes, s_up_addr));
                             const s_impl: s_impl_type = s_impl_type.construct(.{ .lb_addr = s_lb_addr, .ab_addr = s_ab_addr, .ss_addr = s_ss_addr });
-                            Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                            Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                             return s_impl;
                         }
                         const n_count: u64 = mem.amountToCountOfLength(o_amt orelse _1, s_impl_type.high_alignment);
@@ -1542,7 +1542,7 @@ fn GenericInterface(comptime Allocator: type) type {
                         const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
                         try meta.wrap(Intermediate.allocateStaticAnyAligned(allocator, n_count, s_aligned_bytes, s_up_addr));
                         const s_impl: s_impl_type = s_impl_type.construct(.{ .lb_addr = s_lb_addr, .ab_addr = s_ab_addr });
-                        Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                        Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                         return s_impl;
                     }
                     const n_count: u64 = mem.amountToCountOfLength(o_amt orelse _1, s_impl_type.high_alignment);
@@ -1551,7 +1551,7 @@ fn GenericInterface(comptime Allocator: type) type {
                     const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
                     try meta.wrap(Intermediate.allocateStaticAnyAligned(allocator, n_count, s_aligned_bytes, s_up_addr));
                     const s_impl: s_impl_type = s_impl_type.construct(.{ .lb_addr = s_lb_addr });
-                    Graphics.showAllocateStatic(s_impl_type, s_impl, @src());
+                    Graphics.showAllocateMany(s_impl_type, s_impl, @src());
                     return s_impl;
                 }
             }
