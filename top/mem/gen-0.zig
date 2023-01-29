@@ -27,7 +27,7 @@ const fmt_spec = .{
     .infer_type_names = true,
     .omit_trailing_comma = true,
 };
-pub const Detail = struct {
+pub const Detail = packed struct {
     index: u8 = undefined,
     kind: Kind = .{},
     layout: Layout = .{},
@@ -35,29 +35,29 @@ pub const Detail = struct {
     fields: Fields = .{},
     techs: Techniques = .{},
 };
-pub const Kind = struct {
+pub const Kind = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
     static: bool = false,
     parametric: bool = false,
 };
-pub const Layout = struct {
+pub const Layout = packed struct {
     structured: bool = false,
     unstructured: bool = false,
 };
-pub const Modes = struct {
+pub const Modes = packed struct {
     read_write: bool = false,
     resize: bool = false,
     stream: bool = false,
 };
-pub const Fields = struct {
+pub const Fields = packed struct {
     automatic_storage: bool = false,
     allocated_byte_address: bool = false,
     undefined_byte_address: bool = false,
     unallocated_byte_address: bool = false,
     unstreamed_byte_address: bool = false,
 };
-pub const Techniques = struct {
+pub const Techniques = packed struct {
     lazy_alignment: bool = false,
     unit_alignment: bool = false,
     disjunct_alignment: bool = false,
