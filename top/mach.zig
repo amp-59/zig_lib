@@ -217,6 +217,66 @@ pub inline fn mulAdd16(arg1: u16, arg2: u16, arg3: u16) u16 {
 pub inline fn mulAdd8(arg1: u8, arg2: u8, arg3: u8) u8 {
     return add8(mul8(arg1, arg2), arg3);
 }
+pub inline fn subEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = sub(u64, arg1.*, arg2);
+}
+pub inline fn mulEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = mul(u64, arg1.*, arg2);
+}
+pub inline fn addEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = add(u64, arg1.*, arg2);
+}
+pub inline fn divEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = div(u64, arg1.*, arg2);
+}
+pub inline fn subEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = sub(u32, arg1.*, arg2);
+}
+pub inline fn mulEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = mul(u32, arg1.*, arg2);
+}
+pub inline fn addEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = add(u32, arg1.*, arg2);
+}
+pub inline fn divEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = div(u32, arg1.*, arg2);
+}
+pub inline fn subEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = sub(u16, arg1.*, arg2);
+}
+pub inline fn mulEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = mul(u16, arg1.*, arg2);
+}
+pub inline fn addEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = add(u16, arg1.*, arg2);
+}
+pub inline fn divEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = div(u16, arg1.*, arg2);
+}
+pub inline fn subEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = sub(u8, arg1.*, arg2);
+}
+pub inline fn mulEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = mul(u8, arg1.*, arg2);
+}
+pub inline fn addEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = add(u8, arg1.*, arg2);
+}
+pub inline fn divEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = div(u8, arg1.*, arg2);
+}
+pub inline fn mulAddEqu64(arg1: *u64, arg2: u64, arg3: u64) void {
+    arg1.* = add64(mul64(arg1.*, arg2), arg3);
+}
+pub inline fn mulAddEqu32(arg1: *u32, arg2: u32, arg3: u32) void {
+    arg1.* = add32(mul32(arg1.*, arg2), arg3);
+}
+pub inline fn mulAddEqu16(arg1: *u16, arg2: u16, arg3: u16) void {
+    arg1.* = add16(mul16(arg1.*, arg2), arg3);
+}
+pub inline fn mulAddEqu8(arg1: *u8, arg2: u8, arg3: u8) void {
+    arg1.* = add8(mul8(arg1.*, arg2), arg3);
+}
 // Basic bit-wise operations--same behaviour as builtin.
 inline fn @"and"(comptime T: type, arg1: T, arg2: T) T {
     return arg1 & arg2;
