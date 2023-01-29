@@ -7,11 +7,6 @@ const proc = @import("./../proc.zig");
 const preset = @import("./../preset.zig");
 const builtin = @import("./../builtin.zig");
 
-pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
-
-pub usingnamespace proc.start;
-
 pub const Array = mem.StaticString(65536);
 
 fn slices(comptime T: type) *[]const T {
@@ -354,7 +349,7 @@ fn writeImplementationDetailsFile(array: *Array) void {
     file.noexcept.write(fd, array.readAll());
     array.undefineAll();
 }
-pub fn main() !void {
+pub fn generateImplementationSummary() void {
     var array: Array = .{};
     const types: *[]const type = comptime slices(type);
     writeDetailStructs(&array, types);
