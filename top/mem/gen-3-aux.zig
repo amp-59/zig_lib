@@ -3,10 +3,8 @@ pub const is_silent: bool = true;
 
 const proc = @import("./../proc.zig");
 
-const gen = @import("./gen-2.zig");
+const gen = @import("./gen-3.zig");
 
 pub usingnamespace proc.start;
 
-pub fn main() void {
-    gen.generateFnDefinitions();
-}
+pub const main = gen.generateFnDefinitions;
