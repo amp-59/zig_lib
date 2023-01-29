@@ -7,6 +7,4 @@ const gen = @import("./gen-1.zig");
 
 pub usingnamespace proc.start;
 
-pub fn main() void {
-    gen.generateSpecificationTypes();
-}
+pub const main = gen.generateSpecificationTypes;
