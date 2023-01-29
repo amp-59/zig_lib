@@ -3,7 +3,6 @@ const mem = @import("./../mem.zig");
 const fmt = @import("./../fmt.zig");
 const meta = @import("./../meta.zig");
 const file = @import("./../file.zig");
-const proc = @import("./../proc.zig");
 const preset = @import("./../preset.zig");
 const testing = @import("./../testing.zig");
 const builtin = @import("./../builtin.zig");
@@ -11,10 +10,6 @@ const builtin = @import("./../builtin.zig");
 const gen = @import("./gen-0.zig");
 
 const abstract_params = @import("./abstract_params.zig").abstract_params;
-
-pub usingnamespace proc.start;
-
-pub const is_silent: bool = true;
 
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -161,7 +156,7 @@ fn writeFile(array: *Array) void {
     file.noexcept.write(fd, boilerplate);
     file.noexcept.write(fd, array.readAll());
 }
-pub fn main() void {
+pub fn generateSpecificationTypes() void {
     var array: Array = .{};
     inline for (abstract_params) |param|
         writeSpecifications(&array, param)
