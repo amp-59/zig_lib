@@ -98,7 +98,7 @@ pub fn maybe(comptime cond: bool, comptime T: type) type {
 }
 
 /// Return a simple struct field
-pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value_opt: ?T) builtin.StructField {
+pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value_opt: ?T) builtin.Type.StructField {
     if (default_value_opt) |default_value| {
         return .{
             .name = field_name,
@@ -124,14 +124,14 @@ pub fn structField(comptime T: type, comptime field_name: []const u8, comptime d
     }
 }
 /// Assist creation of struct types
-pub fn structInfo(comptime fields: []const builtin.StructField) builtin.Type {
+pub fn structInfo(comptime fields: []const builtin.Type.StructField) builtin.Type {
     return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = false } };
 }
 /// Assist creation of tuple types
-pub fn tupleInfo(comptime fields: []const builtin.StructField) builtin.Type {
+pub fn tupleInfo(comptime fields: []const builtin.Type.StructField) builtin.Type {
     return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = true } };
 }
-pub fn defaultValue(comptime struct_field: builtin.StructField) ?struct_field.type {
+pub fn defaultValue(comptime struct_field: builtin.Type.StructField) ?struct_field.type {
     if (struct_field.default_value) |default_value_ptr| {
         return @ptrCast(*const struct_field.type, @alignCast(@alignOf(struct_field.type), default_value_ptr)).*;
     }
@@ -141,9 +141,9 @@ pub inline fn Tuple(comptime T: type) type {
     return @Type(tupleInfo(@typeInfo(T).Struct.fields));
 }
 pub inline fn Args(comptime Fn: type) type {
-    var fields: []const builtin.StructField = empty;
+    var fields: []const builtin.Type.StructField = empty;
     inline for (@typeInfo(Fn).Fn.params) |arg, i| {
-        fields = concat(builtin.StructField, fields, structField(arg.type.?, builtin.fmt.ci(i), null));
+        fields = concat(builtin.Type.StructField, fields, structField(arg.type.?, builtin.fmt.ci(i), null));
     }
     return @Type(tupleInfo(fields));
 }
@@ -527,7 +527,7 @@ pub fn unionFields(comptime Union: type) []const builtin.UnionField {
 pub fn enumFields(comptime Enum: type) []const builtin.EnumField {
     return @typeInfo(Enum).Enum.fields;
 }
-pub fn structFields(comptime Struct: type) []const builtin.StructField {
+pub fn structFields(comptime Struct: type) []const builtin.Type.StructField {
     return @typeInfo(Struct).Struct.fields;
 }
 pub fn Field(comptime T: type, comptime field_name: []const u8) type {
@@ -973,7 +973,7 @@ const debug = opaque {
     fn initializeNothingError(comptime T: type, comptime U: type) noreturn {
         @compileError("cannot initialize " ++ @typeName(T) ++ " with value of type " ++ @typeName(U));
     }
-    fn initializeComptimeFieldError(comptime T: type, comptime field: builtin.StructField) noreturn {
+    fn initializeComptimeFieldError(comptime T: type, comptime field: builtin.Type.StructField) noreturn {
         @compileError("cannot initialize comptime field '" ++ field.name ++ "' in " ++ @typeName(T));
     }
     fn unexpectedVariantError(comptime T: type, value: anytype, yes: anytype, no: anytype) noreturn {
