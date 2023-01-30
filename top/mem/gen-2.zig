@@ -39,7 +39,12 @@ pub const DetailExtra = packed struct {
     pub fn isStatic(impl_variant: *const DetailExtra) bool {
         return impl_variant.kind.static;
     }
-
+    pub fn hasUnitAlignment(impl_variant: *const DetailExtra) bool {
+        return impl_variant.techs.unit_alignment;
+    }
+    pub fn hasLazyAlignment(impl_variant: *const DetailExtra) bool {
+        return impl_variant.techs.lazy_alignment;
+    }
     pub fn hasDisjunctAlignment(impl_variant: *const DetailExtra) bool {
         return impl_variant.techs.disjunct_alignment;
     }
