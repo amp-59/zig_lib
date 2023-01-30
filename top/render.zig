@@ -449,7 +449,7 @@ inline fn formatWriteOmitTrailingComma(array: anytype, comptime omit_trailing_co
     }
 }
 inline fn formatLengthOmitTrailingComma(comptime omit_trailing_comma: bool, fields_len: u64) u64 {
-    return builtin.int2a(bool, !omit_trailing_comma, fields_len != 0);
+    return builtin.int2a(u64, !omit_trailing_comma, fields_len != 0);
 }
 
 fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
