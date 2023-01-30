@@ -42,7 +42,11 @@ pub const DetailExtra = packed struct {
         return impl_variant.kind.static;
     }
     pub fn hasUnitAlignment(impl_variant: *const DetailExtra) bool {
-        return impl_variant.techs.unit_alignment;
+        return builtin.int2v(
+            bool,
+            impl_variant.techs.unit_alignment,
+            impl_variant.kind.automatic,
+        );
     }
     pub fn hasLazyAlignment(impl_variant: *const DetailExtra) bool {
         return impl_variant.techs.lazy_alignment;

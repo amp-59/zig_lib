@@ -1307,7 +1307,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
         },
         .defined_byte_count => {
             array.writeMany(return_keyword);
-            if (impl_variant.isAutomatic()) {
+            if (impl_variant.hasUnitAlignment()) {
                 array.writeFormat(SubtractOp{
                     .op1 = .{ .call = &undefined_byte_address },
                     .op2 = .{ .call = &allocated_byte_address },
@@ -1318,45 +1318,15 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                     .op2 = .{ .call = &aligned_byte_address },
                 });
             }
-            array.writeMany(end_expression);
+            return array.writeMany(end_expression);
         },
         .undefined_byte_count => {
-            // unwritable_byte_address() - undefined_byte_address()
-            const _undefined_byte_count = .{
-                .{
-                    .fields = .{ .lb_word = .Ignore, .ub_word = .Require },
-                    .techs = .{ .parametric_read = "permit_parametric", .parametric = "permit_parametric" },
-                    .blk = 
-                    \\        pub inline fn undefined_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(unwritable_byte_address(allocator), undefined_byte_address(impl));
-                    else
-                        \\            return unwritable_byte_address(allocator) -% undefined_byte_address(impl);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-                .{
-                    .fields = .{ .auto = .Ignore, .lb_word = .Ignore, .ub_word = .Require, .up_word = .Ignore },
-                    .techs = .{
-                        .parametric_write = .Ignore,
-                        .single_packed_approximate_capacity = .Ignore,
-                        .double_packed_approximate_capacity = .Ignore,
-                    },
-                    .blk = 
-                    \\        pub inline fn undefined_byte_count(impl: *const Implementation) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(unwritable_byte_address(impl), undefined_byte_address(impl));
-                    else
-                        \\            return unwritable_byte_address(impl) -% undefined_byte_address(impl);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-            };
-            _ = _undefined_byte_count;
+            array.writeMany(return_keyword);
+            array.writeFormat(SubtractOp{
+                .op1 = .{ .call = &unwritable_byte_address },
+                .op2 = .{ .call = &undefined_byte_address },
+            });
+            return array.writeMany(end_expression);
         },
         .streamed_byte_count => {
             array.writeMany(return_keyword);
