@@ -3,7 +3,6 @@ const mem = @import("./../mem.zig");
 const fmt = @import("./../fmt.zig");
 const meta = @import("./../meta.zig");
 const mach = @import("./../mach.zig");
-const file = @import("./../file.zig");
 const proc = @import("./../proc.zig");
 const preset = @import("./../preset.zig");
 const testing = @import("./../testing.zig");
@@ -11,21 +10,17 @@ const builtin = @import("./../builtin.zig");
 
 const config = @import("./config.zig");
 const gen = struct {
+    usingnamespace @import("./gen.zig");
+
     usingnamespace @import("./gen-0.zig");
     usingnamespace @import("./gen-1.zig");
     usingnamespace @import("./gen-2.zig");
+
     usingnamespace @import("./abstract_params.zig");
     usingnamespace @import("./type_specs.zig");
     usingnamespace @import("./impl_variants.zig");
 };
 const Array = mem.StaticString(1024 * 1024);
-const close_spec: file.CloseSpec = .{
-    .errors = null,
-};
-const create_spec: file.CreateSpec = .{
-    .errors = null,
-    .options = .{ .exclusive = false },
-};
 const fmt_spec = .{
     .omit_default_fields = true,
     .infer_type_names = true,
@@ -396,6 +391,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
         .impl_variant = impl_variant,
         .impl_fn_info = get(.unwritable_byte_address),
     };
+    _ = unwritable_byte_address;
     const unallocated_byte_address: FnCall = .{
         .impl_variant = impl_variant,
         .impl_fn_info = get(.unallocated_byte_address),
@@ -420,6 +416,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
         .impl_variant = impl_variant,
         .impl_fn_info = get(.unstreamed_byte_count),
     };
+    _ = unstreamed_byte_count;
     const writable_byte_count: FnCall = .{
         .impl_variant = impl_variant,
         .impl_fn_info = get(.writable_byte_count),
@@ -779,11 +776,24 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 },
             };
             _ = _unwritable_byte_address;
-            _ = unwritable_byte_address;
         },
         .allocated_byte_count => {
             // unallocated_byte_address() - allocated_byte_address()
+            if (impl_variant.isAutomatic()) {
+                //
+            } else if (impl_variant.isStatic()) {
+                if (impl_variant.hasUnitAlignment()) {
+                    //
+                } else {
+                    //
+                }
+            } else if (impl_variant.isParametric()) {
+                //
+            } else {
+                //
+            }
             const _allocated_byte_count = .{
+                // aligned_byte_count()
                 .{
                     .fields = .{ .auto = "permit_allocated", .lb_word = "permit_allocated", .ub_word = .Ignore },
                     .techs = .{
@@ -818,6 +828,8 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                         ,
                     .specs = .{ .count = .Require, .child = .Require, .sentinel = .Require },
                 },
+
+                // alignment(impl) + aligned_byte_count()
                 .{
                     .fields = .{ .lb_word = .Require, .ub_word = .Ignore },
                     .techs = .{
@@ -856,7 +868,10 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 },
                 .{
                     .fields = .{ .lb_word = .Require, .ub_word = .Ignore },
-                    .techs = .{ .lazy_alignment = "permit_alignment", .disjunct_alignment = "permit_alignment" },
+                    .techs = .{
+                        .lazy_alignment = "permit_alignment",
+                        .disjunct_alignment = "permit_alignment",
+                    },
                     .blk = 
                     \\        pub inline fn allocated_byte_count(impl: *const Implementation) u64 {
                     ++ (if (config.prefer_operator_wrapper)
@@ -939,34 +954,6 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                         \\            return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(impl));
                     else
                         \\            return unallocated_byte_address(impl) -% allocated_byte_address(impl);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-                .{
-                    .fields = .{ .lb_word = .Require, .ub_word = .Require },
-                    .techs = .{ .parametric_read = .Require },
-                    .blk = 
-                    \\        pub inline fn allocated_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(unallocated_byte_address(allocator), allocated_byte_address(impl));
-                    else
-                        \\            return unallocated_byte_address(allocator) -% allocated_byte_address(impl);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-                .{
-                    .fields = .{ .ub_word = .Require, .up_word = .Require },
-                    .techs = .{ .parametric_write = .Require },
-                    .blk = 
-                    \\        pub inline fn allocated_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(unallocated_byte_address(impl), allocated_byte_address(allocator));
-                    else
-                        \\            return unallocated_byte_address(impl) -% allocated_byte_address(allocator);
                     ) ++
                         \\        }
                         \\
@@ -1077,20 +1064,6 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                     ,
                 },
                 .{
-                    .fields = .{ .ub_word = .Require, .up_word = .Require },
-                    .techs = .{ .parametric_write = .Require },
-                    .blk = 
-                    \\        pub inline fn aligned_byte_count(impl: *const Implementation, allocator: Allocator) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(unallocated_byte_address(impl), aligned_byte_address(allocator));
-                    else
-                        \\            return unallocated_byte_address(impl) -% aligned_byte_address(allocator);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-                .{
                     .fields = .{ .ub_word = .Require },
                     .techs = .{ .parametric = .Require },
                     .blk = 
@@ -1108,6 +1081,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
             _ = _aligned_byte_count;
         },
         .writable_byte_count => {
+            // unwritable_byte_address() - aligned_byte_address()
             const _writable_byte_count = .{
                 .{
                     .fields = .{ .lb_word = .Require, .ub_word = .Require },
@@ -1324,7 +1298,6 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 },
             };
             _ = _writable_byte_count;
-            // unwritable_byte_address() - aligned_byte_address()
         },
         .defined_byte_count => {
             array.writeMany(return_keyword);
@@ -1452,7 +1425,6 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 },
             };
             _ = _unstreamed_byte_count;
-            _ = unstreamed_byte_count;
         },
         .alignment => {
             array.writeMany(return_keyword);
@@ -1520,12 +1492,11 @@ fn writeFields(array: *Array, impl_variant: *const gen.DetailExtra) void {
         array.writeMany(", ");
     }
 }
-
 fn writeFile(array: *Array) void {
-    const fd: u64 = file.create(create_spec, builtin.build_root.? ++ "/top/mem/reference.zig");
-    defer file.close(close_spec, fd);
-    file.noexcept.write(fd, boilerplate);
-    file.noexcept.write(fd, array.readAll());
+    const fd: u64 = gen.create(builtin.build_root.? ++ "/top/mem/reference.zig");
+    defer gen.close(fd);
+    gen.write(fd, boilerplate);
+    gen.write(fd, array.readAll());
 }
 fn hasCapability(impl_variant: *const gen.DetailExtra, fn_info: *const Fn) bool {
     return switch (fn_info.tag) {
@@ -1553,16 +1524,14 @@ pub fn generateFnDefinitions() void {
         array.writeMany("pub const Specification");
         array.writeFormat(fmt.ud64(spec_index));
         array.writeMany(" = struct {};\n");
-
+        const spec_index_fmt: fmt.Type.Ud64 = fmt.ud64(spec_index);
         for (gen.impl_variants) |impl_variant, impl_index| {
+            const impl_index_fmt: fmt.Type.Ud64 = fmt.ud64(impl_index);
             if (impl_variant.index == spec_index) {
-                // array.writeMany("//");
-                // array.writeFormat(fmt.render(fmt_spec, impl_variant));
-                // array.writeMany("\n");
                 array.writeMany("fn " ++ impl_type_name);
-                array.writeFormat(fmt.ud64(impl_index));
+                array.writeFormat(spec_index_fmt);
                 array.writeMany("(comptime spec: Specification");
-                array.writeFormat(fmt.ud64(spec_index));
+                array.writeFormat(impl_index_fmt);
                 array.writeMany(") type {\n");
                 array.writeMany("return (struct {\n");
                 writeFields(&array, &impl_variant);
