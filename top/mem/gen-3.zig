@@ -12,9 +12,10 @@ const config = @import("./config.zig");
 const gen = struct {
     usingnamespace @import("./gen-0.zig");
     usingnamespace @import("./gen-1.zig");
-    const abstract_params = @import("./abstract_params.zig").abstract_params;
-    const type_spec = @import("./type_spec.zig").type_spec;
-    const impl_details = @import("./impl_details.zig").impl_details;
+    usingnamespace @import("./gen-2.zig");
+    usingnamespace @import("./abstract_params.zig");
+    usingnamespace @import("./type_specs.zig");
+    usingnamespace @import("./impl_variants.zig");
 };
 const Array = mem.StaticString(1024 * 1024);
 const close_spec: file.CloseSpec = .{
@@ -29,6 +30,7 @@ const boilerplate: []const u8 =
     \\const mach = @import("./../mach.zig");
     \\
 ;
+
 // zig fmt: off
 const key: [18]Fn = .{
     .{ .tag = .define,                      .val = .Offset,     .loc = .Relative, .mut = .Mutable },
@@ -301,11 +303,11 @@ const SubtractOp = struct {
     }
 };
 const FnCall = struct {
-    impl_detail: *const gen.Detail,
+    impl_variant: *const gen.DetailExtra,
     impl_fn_info: *const Fn,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        writeFnSignatureOrCall(array, format.impl_detail, format.impl_fn_info, false);
+        writeFnSignatureOrCall(array, format.impl_variant, format.impl_fn_info, false);
     }
 };
 fn writeComma(array: *Array) void {
@@ -319,29 +321,29 @@ fn writeArgument(array: *Array, argument_name: [:0]const u8) void {
     writeComma(array);
     array.writeMany(argument_name);
 }
-fn hasCapability(impl_detail: *const gen.Detail, fn_info: *const Fn) bool {
+fn hasCapability(impl_variant: *const gen.DetailExtra, fn_info: *const Fn) bool {
     return switch (fn_info.tag) {
         .define,
         .undefine,
         .undefined_byte_address,
         .defined_byte_count,
-        => impl_detail.modes.resize,
+        => impl_variant.modes.resize,
         .seek,
         .tell,
         .unstreamed_byte_address,
         .streamed_byte_count,
-        => impl_detail.modes.stream,
-        .alignment => !impl_detail.kind.automatic,
+        => impl_variant.modes.stream,
+        .alignment => !impl_variant.kind.automatic,
         else => true,
     };
 }
-fn writeFnSignatureOrCall(array: *Array, impl_detail: *const gen.Detail, impl_fn_info: *const Fn, comptime sign: bool) void {
+fn writeFnSignatureOrCall(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn, comptime sign: bool) void {
     if (sign) array.writeMany("pub inline fn ");
     array.writeMany(impl_fn_info.fnName());
     array.writeMany("(");
     if (impl_fn_info.mut == .Mutable) {
         writeArgument(array, if (sign) impl_param else impl_name);
-    } else if (impl_detail.kind.parametric) {
+    } else if (impl_variant.kind.parametric) {
         if (impl_fn_info.loc == .Absolute) {
             if (impl_fn_info.val == .Address) {
                 writeArgument(array, if (sign) slave_param else slave_name);
@@ -366,49 +368,120 @@ fn writeFnSignatureOrCall(array: *Array, impl_detail: *const gen.Detail, impl_fn
         if (sign) array.writeMany(" u64 ");
     }
 }
-inline fn writeFnCallGeneric(array: *Array, impl_detail: *const gen.Detail, impl_fn_info: *const Fn) void {
-    writeFnSignatureOrCall(array, impl_detail, impl_fn_info, false);
+inline fn writeFnCallGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
+    writeFnSignatureOrCall(array, impl_variant, impl_fn_info, false);
 }
-inline fn writeFnSignatureGeneric(array: *Array, impl_detail: *const gen.Detail, impl_fn_info: *const Fn) void {
-    writeFnSignatureOrCall(array, impl_detail, impl_fn_info, true);
+inline fn writeFnSignatureGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
+    writeFnSignatureOrCall(array, impl_variant, impl_fn_info, true);
 }
-fn writeFnBodyGeneric(array: *Array, impl_detail: *const gen.Detail, impl_fn_info: *const Fn) void {
+fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
     switch (impl_fn_info.tag) {
         .define => {
             array.writeFormat(AddEquOp{
                 .op1 = .{ .symbol = undefined_byte_address_word_ptr },
                 .op2 = .{ .symbol = offset_bytes_name },
             });
-            array.writeMany(";\n");
+            return array.writeMany(";\n");
         },
         .undefine => {
             array.writeFormat(SubEquOp{
                 .op1 = .{ .symbol = undefined_byte_address_word_ptr },
                 .op2 = .{ .symbol = offset_bytes_name },
             });
-            array.writeMany(";\n");
+            return array.writeMany(";\n");
         },
         .seek => {
             array.writeFormat(AddEquOp{
                 .op1 = .{ .symbol = unstreamed_byte_address_word_ptr },
                 .op2 = .{ .symbol = offset_bytes_name },
             });
-            array.writeMany(";\n");
+            return array.writeMany(";\n");
         },
         .tell => {
             array.writeFormat(SubEquOp{
                 .op1 = .{ .symbol = unstreamed_byte_address_word_ptr },
                 .op2 = .{ .symbol = offset_bytes_name },
             });
-            array.writeMany(";\n");
+            return array.writeMany(";\n");
+        },
+        .allocated_byte_address => {
+            if (impl_variant.isAutomatic()) {
+                return array.writeMany("return automatic_storage_address(" ++ impl_name ++ ");\n");
+            }
+            if (impl_variant.isParametric()) {
+                return array.writeMany("return allocator.unallocated_byte_address();\n");
+            }
+            if (impl_variant.hasPackedApproximateCapacity()) {
+                if (config.packed_capacity_low) {
+                    array.writeMany("return ");
+                    array.writeFormat(ShiftRightOp{
+                        .op1 = .{ .symbol = allocated_byte_address_word_access },
+                        .op2 = .{ .symbol = "16" },
+                    });
+                    return array.writeMany(";\n");
+                } else {
+                    array.writeMany("return ");
+                    const shift_left_op: ShiftLeftOp = .{
+                        .op1 = .{ .symbol = "65535" },
+                        .op2 = .{ .symbol = "48" },
+                    };
+                    array.writeFormat(AndNotOp{
+                        .op1 = .{ .symbol = allocated_byte_address_word_access },
+                        .op2 = .{ .shift_left_op = &shift_left_op },
+                    });
+                    return array.writeMany(";\n");
+                }
+            }
+            if (impl_variant.hasDisjunctAlignment()) {
+                array.writeMany("return ");
+                const aligned_byte_address: FnCall = .{
+                    .impl_variant = impl_variant,
+                    .impl_fn_info = get(.aligned_byte_address),
+                };
+                const alignment: FnCall = .{
+                    .impl_variant = impl_variant,
+                    .impl_fn_info = get(.alignment),
+                };
+                array.writeFormat(SubtractOp{
+                    .op1 = .{ .call = &aligned_byte_address },
+                    .op2 = .{ .call = &alignment },
+                });
+                return array.writeMany(";\n");
+            }
+            array.writeMany(allocated_byte_address_word_field_name);
+            return array.writeMany(";\n");
+        },
+        .aligned_byte_address => {
+            // allocated_byte_address() + alignment()
+        },
+        .unstreamed_byte_address => {
+            // ss_word
+        },
+        .undefined_byte_address => {
+            // ub_word,
+        },
+        .unallocated_byte_address => {
+            // up_word
+        },
+        .unwritable_byte_address => {
+            // unallocated_byte_address() - high_alignment
+        },
+        .allocated_byte_count => {
+            // unallocated_byte_address() - allocated_byte_address()
+        },
+        .aligned_byte_count => {
+            // unallocated_byte_address() - aligned_byte_address()
+        },
+        .writable_byte_count => {
+            // unwritable_byte_address() - aligned_byte_address()
         },
         .defined_byte_count => {
             const undefined_byte_address: FnCall = .{
-                .impl_detail = impl_detail,
+                .impl_variant = impl_variant,
                 .impl_fn_info = get(.undefined_byte_address),
             };
             const aligned_byte_address: FnCall = .{
-                .impl_detail = impl_detail,
+                .impl_variant = impl_variant,
                 .impl_fn_info = get(.aligned_byte_address),
             };
             array.writeMany("return ");
@@ -418,13 +491,16 @@ fn writeFnBodyGeneric(array: *Array, impl_detail: *const gen.Detail, impl_fn_inf
             });
             array.writeMany(";\n");
         },
+        .undefined_byte_count => {
+            // unwritable_byte_address() - undefined_byte_address()
+        },
         .streamed_byte_count => {
             const unstreamed_byte_address: FnCall = .{
-                .impl_detail = impl_detail,
+                .impl_variant = impl_variant,
                 .impl_fn_info = get(.unstreamed_byte_address),
             };
             const aligned_byte_address: FnCall = .{
-                .impl_detail = impl_detail,
+                .impl_variant = impl_variant,
                 .impl_fn_info = get(.aligned_byte_address),
             };
             array.writeMany("return ");
@@ -434,16 +510,21 @@ fn writeFnBodyGeneric(array: *Array, impl_detail: *const gen.Detail, impl_fn_inf
             });
             array.writeMany(";\n");
         },
-        else => {},
+        .unstreamed_byte_count => {
+            // undefined_byte_address() - unstreamed_byte_address()
+        },
+        .alignment => {
+            //
+        },
     }
 }
-fn writeFn(array: *Array, impl_detail: *const gen.Detail, impl_fn_info: *const Fn) void {
-    if (!hasCapability(impl_detail, impl_fn_info)) {
+fn writeFn(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
+    if (!hasCapability(impl_variant, impl_fn_info)) {
         return;
     }
-    writeFnSignatureGeneric(array, impl_detail, impl_fn_info);
+    writeFnSignatureGeneric(array, impl_variant, impl_fn_info);
     array.writeMany("{\n");
-    writeFnBodyGeneric(array, impl_detail, impl_fn_info);
+    writeFnBodyGeneric(array, impl_variant, impl_fn_info);
     array.writeMany("}\n");
 }
 fn writeFile(array: *Array) void {
@@ -454,16 +535,15 @@ fn writeFile(array: *Array) void {
 }
 pub fn generateFnDefinitions() void {
     var array: Array = .{};
-
     for (gen.abstract_params) |_, spec_index| {
-        for (gen.impl_details) |impl_detail, index| {
-            if (impl_detail.index == spec_index) {
+        for (gen.impl_variants) |impl_variant, index| {
+            if (impl_variant.index == spec_index) {
                 array.writeMany("const " ++ impl_type_name);
                 array.writeFormat(fmt.ud64(index));
                 array.writeMany(" = struct {\n");
                 array.writeMany("const Implementation = @This();\n");
                 for (key) |impl_fn_info| {
-                    writeFn(&array, &impl_detail, &impl_fn_info);
+                    writeFn(&array, &impl_variant, &impl_fn_info);
                 }
                 array.writeMany("};\n");
             }
