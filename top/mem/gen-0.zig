@@ -307,7 +307,9 @@ inline fn writeDetailStructsInternal(array: *Array, comptime types: *[]const typ
     }
 }
 fn writeDetailStruct(array: *Array, detail: Detail) void {
-    array.writeMany(".{ .kind = ");
+    array.writeMany(".{ .index = ");
+    array.writeFormat(fmt.ud64(detail.index));
+    array.writeMany(", .kind = ");
     array.writeFormat(fmt.render(fmt_spec, detail.kind));
     array.writeMany(", .layout = ");
     array.writeFormat(fmt.render(fmt_spec, detail.layout));
@@ -317,8 +319,6 @@ fn writeDetailStruct(array: *Array, detail: Detail) void {
     array.writeFormat(fmt.render(fmt_spec, detail.fields));
     array.writeMany(", .techs = ");
     array.writeFormat(fmt.render(fmt_spec, detail.techs));
-    array.writeMany(", .index = ");
-    array.writeFormat(fmt.ud64(detail.index));
     array.writeMany(", },\n");
 }
 fn writeDetailStructs(array: *Array, comptime types: *[]const type) void {
