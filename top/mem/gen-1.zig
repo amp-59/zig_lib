@@ -2,28 +2,26 @@
 const mem = @import("./../mem.zig");
 const fmt = @import("./../fmt.zig");
 const meta = @import("./../meta.zig");
-const file = @import("./../file.zig");
 const preset = @import("./../preset.zig");
 const builtin = @import("./../builtin.zig");
 
-const gen = @import("./gen-0.zig");
+const gen = struct {
+    usingnamespace @import("./gen.zig");
+    usingnamespace @import("./gen-0.zig");
+};
 
 const abstract_params = @import("./abstract_params.zig").abstract_params;
 
 pub const Array = mem.StaticString(65536);
 
+const fmt_spec: fmt.RenderSpec = .{
+    .omit_trailing_comma = true,
+};
+
 fn slices(comptime T: type) *[]const T {
     var ptrs: []const T = meta.empty;
     return &ptrs;
 }
-const close_spec: file.CloseSpec = .{
-    .errors = null,
-};
-const create_spec: file.CreateSpec = .{
-    .errors = null,
-    .options = .{ .exclusive = false },
-};
-
 pub const TypeSpecMap = struct {
     params: type,
     specs: []const type,
@@ -53,7 +51,7 @@ fn writeStructFromFields(
     array: *Array,
     comptime struct_fields: []const builtin.Type.StructField,
 ) void {
-    array.writeFormat(comptime fmt.any(@Type(meta.structInfo(struct_fields))));
+    array.writeFormat(comptime fmt.render(fmt_spec, @Type(meta.structInfo(struct_fields))));
     array.writeMany(", ");
 }
 fn getFieldDefault(
@@ -70,8 +68,7 @@ inline fn writePackedStructFromFields(
     comptime var type_info: builtin.Type = meta.structInfo(struct_fields);
     type_info.Struct.layout = .Packed;
     meta.concatEqu(type, types, @Type(type_info));
-    array.writeFormat(comptime fmt.any(types.*[types.len - 1]));
-    array.writeMany(", ");
+    array.writeFormat(comptime fmt.render(fmt_spec, types.*[types.len - 1]));
 }
 fn addVariant(
     comptime struct_field_slices: []const []const builtin.Type.StructField,
@@ -185,28 +182,30 @@ fn writeSpecifications(array: *Array, comptime types: *[]const type, comptime T:
             }
         }
     }
-    array.writeMany(".{ .params = ");
+    array.writeMany("    .{ .params = ");
     writeStructFromFields(array, p_struct_fields);
-    array.writeMany(".specs = &[_]type{");
+    array.writeMany(".specs = &[_]type{\n");
     inline for (s_struct_field_slices) |s_struct_fields| {
+        array.writeMany("        ");
         writeStructFromFields(array, s_struct_fields);
+        array.overwriteOneBack('\n');
     }
-    array.writeMany("}, .vars = ");
+    array.writeMany("    }, .vars = ");
     writePackedStructFromFields(array, types, v_struct_fields);
-    array.writeMany("},\n");
+    array.writeMany(" },\n");
 }
 fn writeSpecifiersStruct(array: *Array, comptime types: *[]const type) void {
     comptime var type_info: builtin.Type = meta.structInfo(fieldsSuperSet(types));
     type_info.Struct.layout = .Packed;
     const Specifiers = @Type(type_info);
     array.writeMany("pub const Specifiers = ");
-    array.writeFormat(comptime fmt.any(Specifiers));
+    array.writeFormat(comptime fmt.render(fmt_spec, Specifiers));
     array.writeMany(";\n");
 }
 fn writeFile(array: *Array) void {
-    const fd: u64 = file.create(create_spec, builtin.build_root.? ++ "/top/mem/type_specs.zig");
-    defer file.close(close_spec, fd);
-    file.noexcept.write(fd, array.readAll());
+    const fd: u64 = gen.create(builtin.build_root.? ++ "/top/mem/type_specs.zig");
+    defer gen.close(fd);
+    gen.write(fd, array.readAll());
 }
 pub fn generateSpecificationTypes() void {
     var array: Array = .{};
