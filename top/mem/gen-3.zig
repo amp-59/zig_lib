@@ -331,7 +331,7 @@ fn writeCallAutomaticStorageAddress(array: *Array) void {
     array.writeMany("automatic_storage_address(" ++ impl_name ++ ")" ++ end_expression);
 }
 fn writeCallAllocatorUnallocatedByteAddress(array: *Array) void {
-    array.writeMany(slave_name ++ ".unallocated_byte_address()" ++ end_expression);
+    array.writeMany();
 }
 
 fn writeFnSignatureOrCall(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn, sign: bool) void {
@@ -371,6 +371,11 @@ inline fn writeFnSignatureGeneric(array: *Array, impl_variant: *const gen.Detail
     writeFnSignatureOrCall(array, impl_variant, impl_fn_info, true);
 }
 fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
+    // Should the reader find inconsistencies in the following logical
+    // structures (such as duplicating write operating in an inner scope, when
+    // that write would have identical semantics and result in fewer lines of
+    // code if moved to an outer scope), the reason is simple: at the time of
+    // writing, the chosen method resulted in a smaller binary.
     const allocated_byte_address: FnCall = .{
         .impl_variant = impl_variant,
         .impl_fn_info = get(.allocated_byte_address),
@@ -391,7 +396,6 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
         .impl_variant = impl_variant,
         .impl_fn_info = get(.unwritable_byte_address),
     };
-    _ = unwritable_byte_address;
     const unallocated_byte_address: FnCall = .{
         .impl_variant = impl_variant,
         .impl_fn_info = get(.unallocated_byte_address),
@@ -491,7 +495,8 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 return array.writeMany(end_expression);
             }
             if (impl_variant.isParametric()) {
-                return writeCallAllocatorUnallocatedByteAddress(array);
+                array.writeMany(slave_name ++ ".unallocated_byte_address()");
+                return array.writeMany(end_expression);
             }
             if (impl_variant.hasPackedApproximateCapacity()) {
                 if (config.packed_capacity_low) {
@@ -512,7 +517,8 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 });
                 return array.writeMany(end_expression);
             }
-            return array.writeMany(allocated_byte_address_word_field_name ++ end_expression);
+            array.writeMany(allocated_byte_address_word_access);
+            return array.writeMany(end_expression);
         },
         .aligned_byte_address => {
             array.writeMany(return_keyword);
@@ -1365,66 +1371,23 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                     .op2 = .{ .call = &aligned_byte_address },
                 });
             }
-            array.writeMany(end_expression);
+            return array.writeMany(end_expression);
         },
         .unstreamed_byte_count => {
-            // undefined_byte_address() - unstreamed_byte_address()
-            const _unstreamed_byte_count = .{
-                .{
-                    .fields = .{ .ss_word = .Require, .ub_word = .Require },
-                    .techs = .{
-                        .parametric = "permit_parametric",
-                        .parametric_write = "permit_parametric",
-                    },
-                    .blk = 
-                    \\        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
-                    else
-                        \\            return undefined_byte_address(impl) -% unstreamed_byte_address(impl);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-                .{
-                    .fields = .{ .auto = .Ignore, .lb_word = .Ignore, .ss_word = .Require, .ub_word = .Forbid, .up_word = .Ignore },
-                    .techs = .{
-                        .parametric_read = .Ignore,
-                        .single_packed_approximate_capacity = .Ignore,
-                        .double_packed_approximate_capacity = .Ignore,
-                    },
-                    .blk = 
-                    \\        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(unwritable_byte_address(impl), unstreamed_byte_address(impl));
-                    else
-                        \\            return unwritable_byte_address(impl) -% unstreamed_byte_address(impl);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-                .{
-                    .fields = .{ .auto = .Ignore, .lb_word = .Ignore, .ss_word = .Require, .ub_word = .Require, .up_word = .Ignore },
-                    .techs = .{
-                        .parametric_read = .Ignore,
-                        .single_packed_approximate_capacity = .Ignore,
-                        .double_packed_approximate_capacity = .Ignore,
-                    },
-                    .blk = 
-                    \\        pub inline fn unstreamed_byte_count(impl: *const Implementation) u64 {
-                    ++ (if (config.prefer_operator_wrapper)
-                        \\            return mach.sub64(undefined_byte_address(impl), unstreamed_byte_address(impl));
-                    else
-                        \\            return unwritable_byte_address(impl) -% unstreamed_byte_address(impl);
-                    ) ++
-                        \\        }
-                        \\
-                    ,
-                },
-            };
-            _ = _unstreamed_byte_count;
+            array.writeMany(return_keyword);
+            if (impl_variant.modes.resize) {
+                array.writeFormat(SubtractOp{
+                    .op1 = .{ .call = &undefined_byte_address },
+                    .op2 = .{ .call = &unstreamed_byte_address },
+                });
+                return array.writeMany(end_expression);
+            } else {
+                array.writeFormat(SubtractOp{
+                    .op1 = .{ .call = &unwritable_byte_address },
+                    .op2 = .{ .call = &unstreamed_byte_address },
+                });
+                return array.writeMany(end_expression);
+            }
         },
         .alignment => {
             array.writeMany(return_keyword);
@@ -1529,9 +1492,9 @@ pub fn generateFnDefinitions() void {
             const impl_index_fmt: fmt.Type.Ud64 = fmt.ud64(impl_index);
             if (impl_variant.index == spec_index) {
                 array.writeMany("fn " ++ impl_type_name);
-                array.writeFormat(spec_index_fmt);
-                array.writeMany("(comptime spec: Specification");
                 array.writeFormat(impl_index_fmt);
+                array.writeMany("(comptime spec: Specification");
+                array.writeFormat(spec_index_fmt);
                 array.writeMany(") type {\n");
                 array.writeMany("return (struct {\n");
                 writeFields(&array, &impl_variant);
