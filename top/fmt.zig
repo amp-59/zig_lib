@@ -413,7 +413,7 @@ pub fn uxd(old: anytype, new: anytype) blk: {
 }
 
 fn GenericFormat(comptime Format: type) type {
-    return struct {
+    return (struct {
         const StaticString = mem.StaticString(Format.max_len);
         pub fn formatConvert(format: Format) StaticString {
             var array: StaticString = .{};
@@ -426,7 +426,7 @@ fn GenericFormat(comptime Format: type) type {
             }
             return len;
         }
-    };
+    });
 }
 const Separator = struct {
     character: u8 = ',',
@@ -455,7 +455,7 @@ pub const PolynomialFormatSpec = struct {
     separator: ?Separator = null,
 };
 pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
-    return struct {
+    return (struct {
         value: Int,
         const Format: type = @This();
         const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
@@ -557,7 +557,7 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
             return len + format.digits();
         }
         pub usingnamespace GenericFormat(Format);
-    };
+    });
 }
 pub fn uo(value: anytype) PolynomialFormat(.{
     .bits = blk: {
@@ -737,7 +737,7 @@ pub const ChangedIntFormatSpec = struct {
     arrow_style: []const u8 = " => ",
 };
 pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
-    return struct {
+    return (struct {
         old_value: Old,
         new_value: New,
         const Format: type = @This();
@@ -808,7 +808,7 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
             return len;
         }
         pub usingnamespace GenericFormat(Format);
-    };
+    });
 }
 pub const ChangedBytesFormatSpec = struct {
     dec_style: []const u8 = lit.fx.color.fg.red ++ "-",
@@ -816,7 +816,7 @@ pub const ChangedBytesFormatSpec = struct {
     no_style: []const u8 = lit.fx.none,
 };
 pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
-    return struct {
+    return (struct {
         old_value: u64,
         new_value: u64,
         const Format: type = @This();
@@ -873,10 +873,10 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
         pub fn init(old_value: u64, new_value: u64) Format {
             return .{ .old_value = old_value, .new_value = new_value };
         }
-    };
+    });
 }
 pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
-    return struct {
+    return (struct {
         lower: SubFormat.Int,
         upper: SubFormat.Int,
         const Format: type = @This();
@@ -927,7 +927,7 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             return .{ .lower = lower, .upper = upper };
         }
         pub usingnamespace GenericFormat(Format);
-    };
+    });
 }
 pub const AddressRangeFormat = RangeFormat(.{
     .bits = 64,
@@ -990,7 +990,7 @@ pub const ChangedRangeFormatSpec = struct {
     arrow_style: []const u8 = " => ",
 };
 pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
-    return struct {
+    return (struct {
         old_lower: OldPolynomialFormat.Int,
         old_upper: OldPolynomialFormat.Int,
         new_lower: NewPolynomialFormat.Int,
@@ -1124,10 +1124,10 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
                 .new_upper = new_upper,
             };
         }
-    };
+    });
 }
 pub fn DateTimeFormat(comptime DateTime: type) type {
-    return struct {
+    return (struct {
         value: DateTime,
         const Format: type = @This();
         pub const max_len: u64 = 19;
@@ -1182,7 +1182,7 @@ pub fn DateTimeFormat(comptime DateTime: type) type {
                 @compileError("TODO: sig.fig. Formatter");
             }
         }
-    };
+    });
 }
 pub const IdentifierFormat = struct {
     value: []const u8,
@@ -1209,7 +1209,7 @@ pub const IdentifierFormat = struct {
     }
 };
 pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: type) type {
-    return struct {
+    return (struct {
         value: ToplevelAddressSpace,
         const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
@@ -1219,7 +1219,7 @@ pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: t
         pub fn formatLength(format: Format) void {
             _ = format;
         }
-    };
+    });
 }
 fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const u8) []const u8 {
     var ret: []const u8 = type_name;
