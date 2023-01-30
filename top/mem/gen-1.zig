@@ -4,7 +4,6 @@ const fmt = @import("./../fmt.zig");
 const meta = @import("./../meta.zig");
 const file = @import("./../file.zig");
 const preset = @import("./../preset.zig");
-const testing = @import("./../testing.zig");
 const builtin = @import("./../builtin.zig");
 
 const gen = @import("./gen-0.zig");
@@ -83,13 +82,13 @@ fn addVariant(
 fn addField(
     comptime struct_field_slices: []const []const builtin.Type.StructField,
     comptime struct_field: builtin.Type.StructField,
-) []const []const builtin.StructField {
+) []const []const builtin.Type.StructField {
     if (struct_field_slices.len == 0) {
-        return &[1][]const builtin.StructField{&[1]builtin.StructField{struct_field}};
+        return &[1][]const builtin.Type.StructField{&[1]builtin.Type.StructField{struct_field}};
     } else {
-        var ret: []const []const builtin.StructField = meta.empty;
+        var ret: []const []const builtin.Type.StructField = meta.empty;
         for (struct_field_slices) |struct_fields| {
-            ret = meta.concat([]const builtin.StructField, ret, struct_fields ++ [1]builtin.StructField{struct_field});
+            ret = meta.concat([]const builtin.Type.StructField, ret, struct_fields ++ [1]builtin.Type.StructField{struct_field});
         }
         return ret;
     }
@@ -101,7 +100,7 @@ fn writeSpecifications(array: *Array, comptime types: *[]const type, comptime T:
     inline for (@typeInfo(T).Struct.fields) |field| {
         const field_type_info: builtin.Type = @typeInfo(field.type);
         if (field_type_info != .Union) {
-            p_struct_fields = meta.concat(builtin.StructField, p_struct_fields, field);
+            p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, field);
             s_struct_field_slices = addField(
                 s_struct_field_slices,
                 meta.structField(field.type, field.name, null),
@@ -111,7 +110,7 @@ fn writeSpecifications(array: *Array, comptime types: *[]const type, comptime T:
             if (@hasField(gen.Variant, field_union_field_name)) {
                 switch (@field(gen.Variant, field_union_field_name)) {
                     .__stripped => {
-                        p_struct_fields = meta.concat(builtin.StructField, p_struct_fields, field);
+                        p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, field);
                     },
                     .__derived => {
                         s_struct_field_slices = addField(
@@ -122,7 +121,7 @@ fn writeSpecifications(array: *Array, comptime types: *[]const type, comptime T:
                     .__optional_derived => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
                         const s_field_type: type = meta.Child(p_field_type);
-                        p_struct_fields = meta.concat(builtin.StructField, p_struct_fields, meta.structField(
+                        p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, meta.structField(
                             p_field_type,
                             field.name,
                             getFieldDefault(field, field_union_field_name),
@@ -135,7 +134,7 @@ fn writeSpecifications(array: *Array, comptime types: *[]const type, comptime T:
                     .__optional_variant => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
                         const s_field_type: type = meta.Child(p_field_type);
-                        p_struct_fields = meta.concat(builtin.StructField, p_struct_fields, meta.structField(
+                        p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, meta.structField(
                             p_field_type,
                             field.name,
                             getFieldDefault(field, field_union_field_name),
@@ -152,7 +151,7 @@ fn writeSpecifications(array: *Array, comptime types: *[]const type, comptime T:
                     },
                     .__decl_optional_derived => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
-                        const fields: []const builtin.StructField = meta.structFields(p_field_type);
+                        const fields: []const builtin.Type.StructField = meta.structFields(p_field_type);
                         p_struct_fields = meta.concat(
                             builtin.Type.StructField,
                             p_struct_fields,
@@ -165,7 +164,7 @@ fn writeSpecifications(array: *Array, comptime types: *[]const type, comptime T:
                     },
                     .__decl_optional_variant => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
-                        const fields: []const builtin.StructField = meta.structFields(p_field_type);
+                        const fields: []const builtin.Type.StructField = meta.structFields(p_field_type);
                         p_struct_fields = meta.concat(
                             builtin.Type.StructField,
                             p_struct_fields,
