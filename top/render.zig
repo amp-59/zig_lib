@@ -1,7 +1,6 @@
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
 const lit = @import("./lit.zig");
-const zig = @import("./zig.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
@@ -123,7 +122,6 @@ fn GenericFormat(comptime spec: RenderSpec) type {
         }
     };
 }
-
 pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
     return struct {
         value: Array,
@@ -205,6 +203,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
         const Format: type = @This();
         value: type,
 
+        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const default_value_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
             tmp.infer_type_names = true;
@@ -216,39 +215,35 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             break :blk tmp;
         };
         fn formatWriteDecls(comptime format: Format, array: anytype, comptime decls: []const builtin.Declaration) void {
+            // var decls_len: u64 = 0;
             inline for (decls) |decl| {
-                if (!decl.is_pub) {
-                    continue;
-                }
+                if (!decl.is_pub) continue;
+                // decls_len +%= 1;
                 const decl_name_format: fmt.IdentifierFormat = .{ .value = decl.name };
                 const decl_type: type = @TypeOf(@field(format.value, decl.name));
                 const decl_value: decl_type = @field(format.value, decl.name);
-                const decl_type_name: []const u8 = comptime typeName(decl_type, field_type_spec);
                 const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
                 array.writeMany("pub const ");
                 decl_name_format.formatWrite(array);
-                array.writeMany(": " ++ decl_type_name);
+                array.writeMany(": " ++ comptime typeName(decl_type, field_type_spec));
                 array.writeMany(" = ");
                 decl_format.formatWrite(array);
                 array.writeCount(2, "; ".*);
             }
+            // return decls_len;
         }
         fn formatLengthDecls(comptime format: Format, comptime decls: []const builtin.Declaration) u64 {
             var len: u64 = 0;
             inline for (decls) |decl| {
-                if (!decl.is_pub) {
-                    continue;
-                }
-                const decl_name_format: fmt.IdentifierFormat = .{ .value = decl.name };
+                if (!decl.is_pub) continue;
                 const decl_type: type = @TypeOf(@field(format.value, decl.name));
                 const decl_value: decl_type = @field(format.value, decl.name);
-                const decl_type_name: []const u8 = comptime typeName(decl_type, field_type_spec);
-                const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
+                const DeclFormat = AnyFormat(default_value_spec, decl_type);
                 len +%= 10;
-                len +%= decl_name_format.formatLength();
-                len +%= 2 + decl_type_name.len;
+                len +%= fmt.IdentifierFormat.formatLength(.{ .value = decl.name });
+                len +%= 2 +% typeName(decl_type, field_type_spec).len;
                 len +%= 3;
-                len +%= decl_format.formatLength();
+                len +%= DeclFormat.formatLength(.{ .value = decl_value });
                 len +%= 2;
             }
             return len;
@@ -282,8 +277,10 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             formatWriteDecls(format, array, struct_info.decls);
+                            formatWriteOmitTrailingComma(array, omit_trailing_comma, struct_info.fields.len + struct_info.decls.len);
+                        } else {
+                            formatWriteOmitTrailingComma(array, omit_trailing_comma, struct_info.fields.len);
                         }
-                        array.writeOne('}');
                     }
                 },
                 .Union => |union_info| {
@@ -312,8 +309,10 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             formatWriteDecls(format, array, union_info.decls);
+                            formatWriteOmitTrailingComma(array, omit_trailing_comma, union_info.fields.len + union_info.decls.len);
+                        } else {
+                            formatWriteOmitTrailingComma(array, omit_trailing_comma, union_info.fields.len);
                         }
-                        array.writeOne('}');
                     }
                 },
                 .Enum => |enum_info| {
@@ -328,8 +327,10 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             formatWriteDecls(format, array, enum_info.decls);
+                            formatWriteOmitTrailingComma(array, omit_trailing_comma, enum_info.fields.len + enum_info.decls.len);
+                        } else {
+                            formatWriteOmitTrailingComma(array, omit_trailing_comma, enum_info.fields.len);
                         }
-                        array.writeOne('}');
                     }
                 },
                 .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer, .Array, .NoReturn, .Void => {
@@ -365,6 +366,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             len +%= formatLengthDecls(format, struct_info.decls);
+                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, struct_info.fields.len + struct_info.decls.len);
+                        } else {
+                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, struct_info.fields.len);
                         }
                         len +%= 1;
                     }
@@ -391,6 +395,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             len +%= formatLengthDecls(format, union_info.decls);
+                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, union_info.fields.len + union_info.decls.len);
+                        } else {
+                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, union_info.fields.len);
                         }
                         len +%= 1;
                     }
@@ -406,6 +413,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             len +%= formatLengthDecls(format, enum_info.decls);
+                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, enum_info.fields.len + enum_info.decls.len);
+                        } else {
+                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, enum_info.fields.len);
                         }
                         len +%= 1;
                     }
@@ -427,6 +437,21 @@ fn formatWriteField(array: anytype, field_name_format: anytype, field_format: an
     field_format.formatWrite(array);
     array.writeCount(2, ", ".*);
 }
+inline fn formatWriteOmitTrailingComma(array: anytype, comptime omit_trailing_comma: bool, fields_len: u64) void {
+    if (fields_len == 0) {
+        array.overwriteOneBack('}');
+    } else {
+        if (omit_trailing_comma) {
+            array.overwriteManyBack(" }");
+        } else {
+            array.writeOne('}');
+        }
+    }
+}
+inline fn formatLengthOmitTrailingComma(comptime omit_trailing_comma: bool, fields_len: u64) u64 {
+    return builtin.int2a(bool, !omit_trailing_comma, fields_len != 0);
+}
+
 fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     if (!spec.ignore_formatter_decls) {
         if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
@@ -442,7 +467,7 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         value: Struct,
         const Format: type = @This();
         const type_name: []const u8 = typeName(Struct, spec);
-        const fields: []const builtin.StructField = @typeInfo(Struct).Struct.fields;
+        const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const max_len: u64 = blk: {
             var len: u64 = 0;
@@ -484,15 +509,7 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         fields_len +%= 1;
                     }
                 }
-                if (fields_len == 0) {
-                    array.overwriteOneBack('}');
-                } else {
-                    if (omit_trailing_comma) {
-                        array.overwriteManyBack(" }");
-                    } else {
-                        array.writeOne('}');
-                    }
-                }
+                formatWriteOmitTrailingComma(array, omit_trailing_comma, fields_len);
             }
         }
         pub fn formatLength(format: anytype) u64 {
@@ -515,9 +532,7 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     fields_len +%= 1;
                 }
             }
-            if (!omit_trailing_comma and fields_len != 0) {
-                len +%= 1;
-            }
+            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, fields_len);
             return len;
         }
         pub usingnamespace GenericRenderFormat(Format);
@@ -1151,11 +1166,9 @@ fn ErrorSetFormat(comptime ErrorSet: type, comptime _: RenderSpec) type {
 pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     return struct {
         value: Struct,
-
         const Format = @This();
         const Values = meta.Return(Struct.readAll);
         const ValuesFormat = PointerSliceFormat(values_spec, Values);
-
         const values_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
             tmp.omit_type_names = true;
