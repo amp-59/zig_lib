@@ -1,10 +1,11 @@
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
-
-const proc = @import("./../proc.zig");
-
-const gen = @import("./gen-4.zig");
-
-pub usingnamespace proc.start;
-
-pub const main = gen.generateContainerFunctions;
+const gen = struct {
+    usingnamespace @import("./gen.zig");
+    usingnamespace @import("./gen-4.zig");
+};
+pub export fn _start() noreturn {
+    @setAlignStack(16);
+    gen.generateContainerFunctions();
+    gen.exit(0);
+}
