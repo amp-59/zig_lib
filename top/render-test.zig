@@ -32,7 +32,7 @@ const StaticArray = mem.StructuredStaticVector(u8, null, 16384, 1, FakeAllocator
 const use_alloc: bool = false;
 const use_min: bool = false;
 const use_dyn: bool = false;
-const cmp_test: bool = true;
+const cmp_test: bool = false;
 const use_std: bool = !builtin.is_debug and false;
 const std = @import("std");
 const err: std.fs.File = std.io.getStdErr();
@@ -176,17 +176,46 @@ fn testSpecificCases() !void {
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = u64 }, "u64");
     try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = 111111111 }, "111111111");
     try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = -111111111 }, "-111111111");
-    try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } }, "[]const u64{ 1, 2, 3, 4, 5, 6 }");
-    try runTest(&allocator, &array, render.PointerSliceFormat(.{ .omit_trailing_comma = false }, []const u64){ .value = &.{ 7, 8, 9, 10, 11, 12 } }, "[]const u64{ 7, 8, 9, 10, 11, 12, }");
+    try runTest(
+        &allocator,
+        &array,
+        render.PointerSliceFormat(.{}, []const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } },
+        "[]const u64{ 1, 2, 3, 4, 5, 6 }",
+    );
+    try runTest(
+        &allocator,
+        &array,
+        render.PointerSliceFormat(.{ .omit_trailing_comma = false }, []const u64){ .value = &.{ 7, 8, 9, 10, 11, 12 } },
+        "[]const u64{ 7, 8, 9, 10, 11, 12, }",
+    );
     try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u64){ .value = &.{} }, "[]const u64{}");
-    try runTest(&allocator, &array, render.ArrayFormat(.{}, [6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } }, "[6]u64{ 1, 2, 3, 4, 5, 6 }");
+    try runTest(
+        &allocator,
+        &array,
+        render.ArrayFormat(.{}, [6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } },
+        "[6]u64{ 1, 2, 3, 4, 5, 6 }",
+    );
     try runTest(&allocator, &array, render.ArrayFormat(.{}, [0]u64){ .value = .{} }, "[0]u64{}");
-    try runTest(&allocator, &array, render.PointerManyFormat(.{}, [*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr }, "[:0]const u64{ 1, 2, 3, 4, 5, 6 }");
-    try runTest(&allocator, &array, render.PointerManyFormat(.{}, [*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr }, "[*]const u64{ ... }");
+    try runTest(
+        &allocator,
+        &array,
+        render.PointerManyFormat(.{}, [*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
+        "[:0]const u64{ 1, 2, 3, 4, 5, 6 }",
+    );
+    try runTest(
+        &allocator,
+        &array,
+        render.PointerManyFormat(.{}, [*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
+        "[*]const u64{ ... }",
+    );
     try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u8){ .value = array.readAll() }, "\"\"");
     try runTest(&allocator, &array, render.EnumLiteralFormat{ .value = .EnumLiteral }, ".EnumLiteral");
     try runTest(&allocator, &array, render.NullFormat{}, "null");
     try runTest(&allocator, &array, render.VoidFormat{}, "{}");
+    try runTest(&allocator, &array, render.TypeFormat(.{ .omit_container_decls = false }){ .value = struct {
+        pub const x: u64 = 25;
+        pub const y: u64 = 50;
+    } }, "struct { pub const x: u64 = 25; pub const y: u64 = 50; }");
 }
 pub fn main() !void {
     if (cmp_test) {
