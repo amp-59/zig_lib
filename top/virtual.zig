@@ -221,18 +221,18 @@ pub const DiscreteMultiArena = struct {
     pub fn Implementation(comptime multi_arena: MultiArena) type {
         builtin.static.assertNotEqual(u64, multi_arena.list.len, 0);
         var directory: Directory(multi_arena) = undefined;
-        var fields: []const builtin.StructField = meta.empty;
+        var fields: []const builtin.Type.StructField = meta.empty;
         var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;
         var arena_index: Index(multi_arena) = 0;
         for (multi_arena.list) |super_arena, index| {
             if (thread_safe_state and !super_arena.options.thread_safe) {
                 const T: type = ThreadSafeSet(arena_index +% 1);
-                fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else if (!thread_safe_state and super_arena.options.thread_safe) {
                 const T: type = DiscreteBitSet(arena_index +% 1);
-                fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else {
@@ -243,10 +243,10 @@ pub const DiscreteMultiArena = struct {
         }
         if (thread_safe_state) {
             const T: type = ThreadSafeSet(arena_index +% 1);
-            fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
+            fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         } else {
             const T: type = DiscreteBitSet(arena_index +% 1);
-            fields = fields ++ [1]builtin.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
+            fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         }
         if (fields.len == 1) {
             return fields[0].type;
