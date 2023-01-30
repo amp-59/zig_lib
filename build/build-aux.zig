@@ -6,13 +6,6 @@ const util = @import("./util.zig");
 // PROGRAM FILES ///////////////////////////////////////////////////////////////
 
 fn memoryImplementation(builder: *build.Builder) void {
-    const stage_0_products: [2][]const u8 = .{
-        "top/mem/abstract_params.zig",
-        "top/mem/impl_details.zig",
-    };
-    const stage_1_products: [1][]const u8 = .{
-        "top/mem/type_specs.zig",
-    };
     const stage_3_products: [1][]const u8 = .{
         "top/mem/reference.zig",
     };
@@ -25,9 +18,7 @@ fn memoryImplementation(builder: *build.Builder) void {
     const mem_gen_4 = util.addProjectExecutable(builder, "mem_gen_4", "top/mem/gen-4-aux.zig", .{ .build_mode = .ReleaseSmall });
 
     mem_gen_1.step.dependOn(&mem_gen_0.run().step);
-    mem_gen_1.step.dependOn(&builder.addFmt(&stage_0_products).step);
     mem_gen_2.step.dependOn(&mem_gen_1.run().step);
-    mem_gen_2.step.dependOn(&builder.addFmt(&stage_1_products).step);
     mem_gen_3.step.dependOn(&mem_gen_2.run().step);
     mem_gen_4.step.dependOn(&mem_gen_3.run().step);
     mem_gen_4.step.dependOn(&builder.addFmt(&stage_3_products).step);
