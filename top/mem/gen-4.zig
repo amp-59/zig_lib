@@ -281,5 +281,84 @@ fn writeHasDeclDeduction(array: *Array, comptime types: []const type) void {
 fn writeDeclaration(array: *Array, comptime decl_name: []const u8, comptime decl_type: type) void {
     array.writeMany("const " ++ decl_name ++ ": " ++ comptime fmt.typeName(decl_type) ++ " = undefined;\n");
 }
-
+/// All fields the same, all field types the same.
+fn equivalentType(comptime dst_type: type, comptime src_type: type) bool {
+    @setEvalBranchQuota(~@as(u32, 0));
+    const src_type_info: builtin.Type = @typeInfo(src_type);
+    const dst_type_info: builtin.Type = @typeInfo(dst_type);
+    if (@as(builtin.TypeId, src_type_info) !=
+        @as(builtin.TypeId, dst_type_info))
+    {
+        return false;
+    }
+    switch (src_type_info) {
+        .Struct => |src_struct_info| {
+            const dst_struct_info: builtin.Struct = dst_type_info.Struct;
+            const src_fields: []const builtin.Type.StructField = src_struct_info.fields;
+            const dst_fields: []const builtin.Type.StructField = dst_struct_info.fields;
+            if (src_fields.len != dst_fields.len) {
+                return false;
+            }
+            inline for (src_fields) |src_field, i| {
+                const dst_field: builtin.Type.StructField = dst_fields[i];
+                if (!mem.testEqualMany(u8, src_field.name, dst_field.name)) {
+                    return false;
+                }
+                if (!equivalentType(dst_field.type, src_field.type)) {
+                    return false;
+                }
+                if (src_field.default_value != null and dst_field.default_value != null) {
+                    if (mem.pointerOpaque(src_field.type, src_field.default_value.?).* !=
+                        mem.pointerOpaque(dst_field.type, dst_field.default_value.?).*)
+                    {
+                        return false;
+                    }
+                }
+                if ((src_field.default_value == null) !=
+                    (dst_field.default_value == null))
+                {
+                    return false;
+                }
+            }
+        },
+        .Enum => |src_enum_info| {
+            const dst_enum_info: builtin.Enum = dst_type_info.Enum;
+            const src_fields: []const builtin.EnumField = src_enum_info.fields;
+            const dst_fields: []const builtin.EnumField = dst_enum_info.fields;
+            if (src_fields.len != dst_fields.len) {
+                return false;
+            }
+            inline for (src_fields) |src_field, i| {
+                const dst_field: builtin.EnumField = dst_fields[i];
+                if (src_field.value != dst_field.value) {
+                    return false;
+                }
+                if (!mem.testEqualMany(u8, src_field.name, dst_field.name)) {
+                    return false;
+                }
+            }
+        },
+        .Union => |src_union_info| {
+            const dst_union_info: builtin.Union = dst_type_info.Union;
+            const src_fields: []const builtin.UnionField = src_union_info.fields;
+            const dst_fields: []const builtin.UnionField = dst_union_info.fields;
+            if (src_fields.len != dst_fields.len) {
+                return false;
+            }
+            inline for (src_fields) |src_field, i| {
+                const dst_field: builtin.UnionField = dst_fields[i];
+                if (!mem.testEqualMany(u8, src_field.name, dst_field.name)) {
+                    return false;
+                }
+                if (!equivalentType(dst_field.type, src_field.type)) {
+                    return false;
+                }
+            }
+        },
+        else => {
+            return dst_type == src_type;
+        },
+    }
+    return true;
+}
 pub fn generateContainerFunctions() void {}
