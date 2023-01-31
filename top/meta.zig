@@ -124,8 +124,11 @@ pub fn structField(comptime T: type, comptime field_name: []const u8, comptime d
     }
 }
 /// Assist creation of struct types
-pub fn structInfo(comptime fields: []const builtin.Type.StructField) builtin.Type {
-    return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = false } };
+pub fn structInfo(
+    comptime layout: builtin.Type.ContainerLayout,
+    comptime fields: []const builtin.Type.StructField,
+) builtin.Type {
+    return .{ .Struct = .{ .layout = layout, .fields = fields, .decls = empty, .is_tuple = false } };
 }
 /// Assist creation of tuple types
 pub fn tupleInfo(comptime fields: []const builtin.Type.StructField) builtin.Type {
