@@ -9,20 +9,20 @@ pub const AbstractSpec = union(enum) {
     }),
     allocated_byte_address: ReadWrite(union {
         _: Static,
-        single_packed_approximate_capacity: Dynamic,
+        // single_packed_approximate_capacity: Dynamic,
         unstreamed_byte_address: Stream(union {
             undefined_byte_address: Resize(union {
                 _: Static,
-                single_packed_approximate_capacity: Dynamic,
-                double_packed_approximate_capacity: Dynamic,
+                // single_packed_approximate_capacity: Dynamic,
+                // double_packed_approximate_capacity: Dynamic,
                 unallocated_byte_address: Dynamic,
             }),
             unallocated_byte_address: Dynamic,
         }),
         undefined_byte_address: Resize(union {
             _: Static,
-            single_packed_approximate_capacity: Dynamic,
-            double_packed_approximate_capacity: Dynamic,
+            // single_packed_approximate_capacity: Dynamic,
+            // double_packed_approximate_capacity: Dynamic,
             unallocated_byte_address: Dynamic,
         }),
         unallocated_byte_address: Dynamic,
