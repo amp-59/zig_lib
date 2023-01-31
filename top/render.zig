@@ -221,6 +221,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 // decls_len +%= 1;
                 const decl_name_format: fmt.IdentifierFormat = .{ .value = decl.name };
                 const decl_type: type = @TypeOf(@field(format.value, decl.name));
+                if (@typeInfo(decl_type) == .Fn) continue;
                 const decl_value: decl_type = @field(format.value, decl.name);
                 const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
                 array.writeMany("pub const ");
@@ -237,6 +238,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             inline for (decls) |decl| {
                 if (!decl.is_pub) continue;
                 const decl_type: type = @TypeOf(@field(format.value, decl.name));
+                if (@typeInfo(decl_type) == .Fn) continue;
                 const decl_value: decl_type = @field(format.value, decl.name);
                 const DeclFormat = AnyFormat(default_value_spec, decl_type);
                 len +%= 10;
@@ -277,7 +279,11 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             formatWriteDecls(format, array, struct_info.decls);
-                            formatWriteOmitTrailingComma(array, omit_trailing_comma, struct_info.fields.len + struct_info.decls.len);
+                            formatWriteOmitTrailingComma(
+                                array,
+                                omit_trailing_comma,
+                                struct_info.fields.len + struct_info.decls.len,
+                            );
                         } else {
                             formatWriteOmitTrailingComma(array, omit_trailing_comma, struct_info.fields.len);
                         }
@@ -309,7 +315,11 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             formatWriteDecls(format, array, union_info.decls);
-                            formatWriteOmitTrailingComma(array, omit_trailing_comma, union_info.fields.len + union_info.decls.len);
+                            formatWriteOmitTrailingComma(
+                                array,
+                                omit_trailing_comma,
+                                union_info.fields.len + union_info.decls.len,
+                            );
                         } else {
                             formatWriteOmitTrailingComma(array, omit_trailing_comma, union_info.fields.len);
                         }
@@ -327,7 +337,11 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             formatWriteDecls(format, array, enum_info.decls);
-                            formatWriteOmitTrailingComma(array, omit_trailing_comma, enum_info.fields.len + enum_info.decls.len);
+                            formatWriteOmitTrailingComma(
+                                array,
+                                omit_trailing_comma,
+                                enum_info.fields.len + enum_info.decls.len,
+                            );
                         } else {
                             formatWriteOmitTrailingComma(array, omit_trailing_comma, enum_info.fields.len);
                         }
@@ -366,7 +380,10 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             len +%= formatLengthDecls(format, struct_info.decls);
-                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, struct_info.fields.len + struct_info.decls.len);
+                            len +%= formatLengthOmitTrailingComma(
+                                omit_trailing_comma,
+                                struct_info.fields.len + struct_info.decls.len,
+                            );
                         } else {
                             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, struct_info.fields.len);
                         }
@@ -395,7 +412,10 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             len +%= formatLengthDecls(format, union_info.decls);
-                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, union_info.fields.len + union_info.decls.len);
+                            len +%= formatLengthOmitTrailingComma(
+                                omit_trailing_comma,
+                                union_info.fields.len + union_info.decls.len,
+                            );
                         } else {
                             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, union_info.fields.len);
                         }
@@ -413,7 +433,10 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                         if (!spec.omit_container_decls) {
                             len +%= formatLengthDecls(format, enum_info.decls);
-                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, enum_info.fields.len + enum_info.decls.len);
+                            len +%= formatLengthOmitTrailingComma(
+                                omit_trailing_comma,
+                                enum_info.fields.len + enum_info.decls.len,
+                            );
                         } else {
                             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, enum_info.fields.len);
                         }
