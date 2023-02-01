@@ -10,17 +10,28 @@ pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
 pub fn pointerMany(comptime child: type, s_lb_addr: u64, count: u64) []child {
     return @intToPtr([*]child, s_lb_addr)[0..count];
 }
-pub fn pointerManyWithSentinel(comptime child: type, s_lb_addr: u64, count: u64, comptime sentinel: child) [:sentinel]child {
+pub fn pointerManyWithSentinel(
+    comptime child: type,
+    s_lb_addr: u64,
+    count: u64,
+    comptime sentinel: child,
+) [:sentinel]child {
     return @intToPtr([*]child, s_lb_addr)[0..count :sentinel];
 }
-pub fn pointerCount(comptime child: type, s_lb_addr: u64, comptime count: u64) *[count]child {
+pub fn pointerCount(
+    comptime child: type,
+    s_lb_addr: u64,
+    comptime count: u64,
+) *[count]child {
     return @intToPtr(*[count]child, s_lb_addr)[0..count];
 }
-pub fn pointerCountWithSentinel(comptime child: type, s_lb_addr: u64, comptime count: u64, comptime sentinel: child) *[count:sentinel]child {
+pub fn pointerCountWithSentinel(
+    comptime child: type,
+    s_lb_addr: u64,
+    comptime count: u64,
+    comptime sentinel: child,
+) *[count:sentinel]child {
     return @intToPtr(*[count]child, s_lb_addr)[0..count :sentinel];
-}
-pub fn pointerOneWithSentinel(comptime child: type, s_lb_addr: u64, comptime sentinel: child) [*:sentinel]child {
-    return @intToPtr([*:sentinel]child, s_lb_addr);
 }
 pub fn pointerOpaque(comptime child: type, any: *const anyopaque) *const child {
     return @ptrCast(*const child, @alignCast(@max(1, @alignOf(child)), any));
