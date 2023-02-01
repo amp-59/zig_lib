@@ -1124,8 +1124,8 @@ pub const debug = opaque {
             : "rcx", "r11", "memory", "rax"
         );
     }
-    // At the time of writing, this function benefits from inlining but the
-    // others do not.
+    // At the time of writing, this function benefits from inlining but
+    // writeMulti does not.
     pub inline fn writeMany(buf: []u8, s: []const u8) u64 {
         for (s) |c, i| buf[i] = c;
         return s.len;
@@ -1137,6 +1137,9 @@ pub const debug = opaque {
             len +%= s.len;
         }
         return len;
+    }
+    pub inline fn logAlways(buf: []const u8) void {
+        write(buf);
     }
     pub inline fn logSuccess(buf: []const u8) void {
         if (logging.Success) write(buf);
@@ -1154,6 +1157,9 @@ pub const debug = opaque {
         if (logging.Fault) write(buf);
         abort();
     }
+    pub inline fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
+        write(buf[0..writeMulti(buf, slices)]);
+    }
     pub inline fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
         if (logging.Success) write(buf[0..writeMulti(buf, slices)]);
     }
@@ -1166,7 +1172,7 @@ pub const debug = opaque {
     pub inline fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
         if (logging.Error) write(buf[0..writeMulti(buf, slices)]);
     }
-    pub inline fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
+    pub inline fn logFaultAIO(buf: []u8, slices: []const []const u8) noreturn {
         if (logging.Fault) write(buf[0..writeMulti(buf, slices)]);
         abort();
     }
@@ -1758,6 +1764,9 @@ pub const fmt = opaque {
         return @max(1, count);
     }
     pub fn toSymbol(comptime T: type, value: T, radix: u16) u8 {
+        if (@bitSizeOf(T) < 8) {
+            return toSymbol(u8, value, radix);
+        }
         const result: u8 = @intCast(u8, @rem(value, @intCast(T, radix)));
         const d: u8 = '9' -% 9;
         const x: u8 = 'f' -% 15;
