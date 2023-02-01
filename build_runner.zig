@@ -11,7 +11,7 @@ const testing = srg.testing;
 const builtin = srg.builtin;
 
 pub const AddressSpace = builder.AddressSpace;
-pub const is_verbose: bool = false;
+pub const is_verbose: bool = true;
 pub const is_correct: bool = false;
 pub const is_silent: bool = true;
 
@@ -28,12 +28,23 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
     .{ .field_name = "verbose", .long = "--silent", .assign = Options.no, .descr = "do not show compile commands when executing" },
 });
+fn showAllCommands(ctx: builder.Context) void {
+    builtin.debug.write("commands:\n");
+    for (ctx.cmds.readAll()) |cmd| {
+        var buf: [128 + 4096 + 512]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ @tagName(cmd.cmd), "\t", cmd.name.?, "\t", cmd.root, "\n" });
+    }
+}
+fn execAllCommands(ctx: builder.Context) !void {
+    for (ctx.cmds.readAll()) |cmd| {
+        builtin.assertNotEqual(u64, 0, try cmd.exec());
+    }
+}
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var allocator: builder.Allocator = try builder.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator);
-    array.increment(void, &allocator, .{ .bytes = 16 * 1024 * 1024 });
+    var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator, 1024 * 1024 * 16);
     defer array.deinit(&allocator);
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
@@ -61,13 +72,19 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .array = &array,
     };
     try root.build(&ctx);
+    const Cmd = @TypeOf(ctx.cmds.readOneAt(0).cmd);
     for (args) |arg| {
         const name: [:0]const u8 = meta.manyToSlice(arg);
         if (mem.testEqualMany(u8, name, "all")) {
-            for (ctx.cmds.readAll()) |cmd| {
-                builtin.assertNotEqual(u64, 0, try cmd.exec());
+            return execAllCommands(ctx);
+        }
+        if (mem.testEqualMany(u8, name, "show")) {
+            showAllCommands(ctx);
+        }
+        inline for (@typeInfo(Cmd).Enum.fields) |field| {
+            if (mem.testEqualMany(u8, name, field.name)) {
+                for (ctx.cmds.referAllDefined()) |*cmd| cmd.cmd = @field(Cmd, field.name);
             }
-            return;
         }
     }
     for (args) |arg| {
