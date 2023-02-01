@@ -216,17 +216,17 @@ const Operand = union(enum) {
 };
 pub fn formatWriteCall1(op1: Operand, array: anytype, fn_token: [:0]const u8) void {
     array.writeMany(fn_token);
-    array.writeMany("(");
+    array.writeOne('(');
     array.writeFormat(op1);
-    array.writeMany(")");
+    array.writeOne(')');
 }
 pub fn formatWriteCall2(op1: Operand, op2: Operand, array: anytype, fn_token: [:0]const u8) void {
     array.writeMany(fn_token);
-    array.writeMany("(");
+    array.writeOne('(');
     array.writeFormat(op1);
-    array.writeMany(", ");
+    array.writeCount(2, ", ".*);
     array.writeFormat(op2);
-    array.writeMany(")");
+    array.writeOne(')');
 }
 pub inline fn GenericUnaryOpFormat(comptime Format: type) type {
     return (struct {
@@ -1142,12 +1142,14 @@ fn hasCapability(impl_variant: *const gen.DetailExtra, fn_info: *const Fn) bool 
         .streamed_byte_count,
         .unstreamed_byte_count,
         => impl_variant.modes.stream,
-        .alignment => !impl_variant.kind.automatic and !impl_variant.techs.unit_alignment,
+        .alignment => !impl_variant.kind.automatic and
+            !impl_variant.techs.unit_alignment,
         else => true,
     };
 }
 pub fn generateFnDefinitions() void {
-    var array: Array = .{};
+    var array: Array = undefined;
+    array.undefineAll();
     var impl_index: u64 = 0;
     for (gen.impl_variants) |impl_group, spec_index| {
         for (impl_group) |impl_variant| {
