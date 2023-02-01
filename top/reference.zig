@@ -23,7 +23,7 @@ pub fn pointerOneWithSentinel(comptime child: type, s_lb_addr: u64, comptime sen
     return @intToPtr([*:sentinel]child, s_lb_addr);
 }
 pub fn pointerOpaque(comptime child: type, any: *const anyopaque) *const child {
-    return @ptrCast(*const child, @alignCast(@alignOf(child), any));
+    return @ptrCast(*const child, @alignCast(@max(1, @alignOf(child)), any));
 }
 pub fn copy(dst: u64, src: u64, bytes: u64, comptime high_alignment: u64) void {
     const unit_type: type = @Type(.{ .Int = .{
