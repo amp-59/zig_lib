@@ -15,10 +15,7 @@ pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
 pub const is_correct: bool = false;
 
-const Variant = enum {
-    length,
-    write,
-};
+const Variant = enum(u1) { length, write };
 
 const use_function_type: bool = false;
 const initial_indent: u64 = if (use_function_type) 2 else 1;

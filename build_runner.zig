@@ -44,7 +44,8 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var allocator: builder.Allocator = try builder.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator, 1024 * 1024 * 16);
+    var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator);
+    array.increment(void, &allocator, .{ .bytes = 1024 * 1024 * 16 });
     defer array.deinit(&allocator);
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);

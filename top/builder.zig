@@ -1,3 +1,4 @@
+
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
@@ -1138,6 +1139,13 @@ pub const GlobalOptions = struct {
         options.build_mode = .Debug;
     }
 };
+pub fn dupeMany(ctx: *const Context, comptime T: type, values: []const T) []const T {
+    if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
+        return values;
+    }
+    ctx.array.writeMany(T, values);
+    return ctx.array.referManyBack(T, .{ .count = values.len });
+}
 pub const Context = struct {
     zig_exe: [:0]const u8,
     build_root: [:0]const u8,
