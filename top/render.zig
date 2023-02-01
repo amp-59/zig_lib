@@ -221,7 +221,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             tmp.infer_type_names = false;
             break :blk tmp;
         };
-        inline fn writeDecl(comptime format: Format, array: anytype, comptime decl: builtin.Declaration) void {
+        fn writeDecl(comptime format: Format, array: anytype, comptime decl: builtin.Declaration) void {
             if (!decl.is_pub) {
                 return;
             }
@@ -238,7 +238,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             decl_format.formatWrite(array);
             array.writeCount(2, "; ".*);
         }
-        inline fn lengthDecl(comptime format: Format, comptime decl: builtin.Declaration) u64 {
+        fn lengthDecl(comptime format: Format, comptime decl: builtin.Declaration) u64 {
             if (!decl.is_pub) {
                 return 0;
             }
@@ -256,7 +256,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             len +%= 2;
             return len;
         }
-        inline fn writeStructField(array: anytype, field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) void {
+        fn writeStructField(array: anytype, field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) void {
             const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
             if (spec.inline_field_types) {
                 const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
@@ -275,7 +275,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             }
             array.writeCount(2, ", ".*);
         }
-        inline fn writeUnionField(array: anytype, field_name: []const u8, comptime field_type: type) void {
+        fn writeUnionField(array: anytype, field_name: []const u8, comptime field_type: type) void {
             const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
             if (field_type == void) {
                 array.appendFormat(field_name_format);
@@ -294,7 +294,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 array.writeCount(2, ", ".*);
             }
         }
-        inline fn writeEnumField(array: anytype, field_name: []const u8) void {
+        fn writeEnumField(array: anytype, field_name: []const u8) void {
             const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
             field_name_format.formatWrite(array);
             array.writeCount(2, ", ".*);
@@ -368,10 +368,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         }
                     }
                 },
-                .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer, .Array, .NoReturn, .Void => {
+                else => {
                     array.writeMany(typeName(format.value, spec));
                 },
-                else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
             }
         }
         pub fn formatLength(comptime format: Format) u64 {
@@ -470,10 +469,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         len +%= 1;
                     }
                 },
-                .Int, .Type, .Optional, .ComptimeInt, .Bool, .Pointer, .Array, .NoReturn, .Void => {
+                else => {
                     len +%= typeName(format.value, spec).len;
                 },
-                else => @compileError("???: " ++ @tagName(@typeInfo(format.value))),
             }
             return len;
         }
