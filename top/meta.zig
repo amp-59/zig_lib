@@ -569,6 +569,13 @@ pub fn Return(comptime function: anytype) type {
         return @typeInfo(@TypeOf(function)).Fn.return_type.?;
     }
 }
+pub fn GenericReturn(comptime function: anytype) ?type {
+    if (@TypeOf(function) == type) {
+        return @typeInfo(function).Fn.return_type;
+    } else {
+        return @typeInfo(@TypeOf(function)).Fn.return_type;
+    }
+}
 /// Return the error part of a function error union return type, etc.
 pub fn ReturnErrorSet(comptime any_function: anytype) type {
     const T: type = @TypeOf(any_function);
