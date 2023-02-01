@@ -1190,21 +1190,33 @@ pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     return struct {
         value: Struct,
         const Format = @This();
-        const Values = meta.Return(Struct.readAll);
-        const ValuesFormat = PointerSliceFormat(values_spec, Values);
         const values_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
             tmp.omit_type_names = true;
             break :blk spec;
         };
         pub fn formatWrite(format: Format, array: anytype) void {
-            const values_format: ValuesFormat = .{ .value = format.value.readAll() };
-            values_format.formatWrite(array);
+            if (meta.GenericReturn(Struct.readAll)) |Values| {
+                const ValuesFormat = PointerSliceFormat(values_spec, Values);
+                const values_format: ValuesFormat = .{ .value = format.value.readAll() };
+                values_format.formatWrite(array);
+            } else {
+                const ValuesFormat = PointerSliceFormat(values_spec, []const u8);
+                const values_format: ValuesFormat = .{ .value = format.value.readAll(u8) };
+                values_format.formatWrite(array);
+            }
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = 0;
-            const values_format: ValuesFormat = .{ .value = format.value.readAll() };
-            len +%= values_format.formatLength();
+            if (meta.GenericReturn(Struct.readAll)) |Values| {
+                const ValuesFormat = PointerSliceFormat(values_spec, Values);
+                const values_format: ValuesFormat = .{ .value = format.value.readAll() };
+                len +%= values_format.formatLength();
+            } else {
+                const ValuesFormat = PointerSliceFormat(values_spec, []const u8);
+                const values_format: ValuesFormat = .{ .value = format.value.readAll(u8) };
+                len +%= values_format.formatLength();
+            }
             return len;
         }
     };
