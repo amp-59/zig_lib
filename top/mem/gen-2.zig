@@ -76,8 +76,8 @@ const fmt_spec = .{
     .omit_trailing_comma = true,
 };
 fn writeVariantStructsInternal(array: *Array, impl_detail: *const gen.Detail, specs: gen.Specifiers) void {
-    array.writeMany("    .{ .index = ");
-    array.writeFormat(fmt.ud64(impl_detail.index));
+    array.writeMany("        .{ .index = ");
+    array.writeFormat(fmt.render(fmt_spec, impl_detail.index));
     array.writeMany(", .kind = ");
     array.writeFormat(fmt.render(fmt_spec, impl_detail.kind));
     array.writeMany(", .layout = ");
@@ -92,25 +92,49 @@ fn writeVariantStructsInternal(array: *Array, impl_detail: *const gen.Detail, sp
     array.writeFormat(fmt.render(fmt_spec, specs));
     array.writeMany(" },\n");
 }
-fn writeVariantStructs(array: *Array) void {
-    array.writeMany("pub const impl_variants = [_]gen.DetailExtra{\n");
+fn writeMatrix(array: *Array, matrix: [8][8]u8) void {
+    array.writeMany("pub const matrix = ");
+    array.writeFormat(fmt.render(.{ .radix = 16 }, matrix));
+    array.writeMany(";\n");
+}
+fn getMatrix() [8][8]u8 {
+    var matrix: [8][8]u8 = [1][8]u8{[1]u8{0} ** 8} ** 8;
+    var accm_index: u8 = 0;
     inline for (gen.type_specs) |type_spec, param_index| {
-        const I = meta.Child(type_spec.vars);
-        for (gen.impl_details) |impl_detail| {
-            if (impl_detail.index == param_index) {
-                var spec_index: u8 = 0;
-                while (spec_index <= ~@as(I, 0)) : (spec_index += 1) {
-                    const u: type_spec.vars = @bitCast(type_spec.vars, @intCast(I, spec_index));
-                    var t: gen.Specifiers = undefined;
-                    inline for (@typeInfo(type_spec.vars).Struct.fields) |field| {
-                        if (@hasField(gen.Specifiers, field.name)) {
-                            @field(t, field.name) = @field(u, field.name);
+        for (type_spec.specs) |_, spec_index| {
+            matrix[param_index][spec_index] = accm_index;
+            accm_index +%= 1;
+        }
+    }
+    return matrix;
+}
+fn writeVariantStructs(array: *Array) void {
+    array.writeMany("pub const impl_variants = [_][]const gen.DetailExtra{\n");
+    const matrix = comptime getMatrix();
+    var accm_spec_index: u8 = 0;
+    while (accm_spec_index != 17) : (accm_spec_index +%= 1) {
+        array.writeMany("    &.{\n");
+        inline for (gen.type_specs) |type_spec, param_index| {
+            const I = meta.Child(type_spec.vars);
+            for (gen.impl_details) |impl_detail| {
+                if (impl_detail.index == param_index) {
+                    var spec_index: u8 = 0;
+                    while (spec_index <= ~@as(I, 0)) : (spec_index += 1) {
+                        if (matrix[param_index][spec_index] == accm_spec_index) {
+                            const vars: type_spec.vars = @bitCast(type_spec.vars, @intCast(I, spec_index));
+                            var specs: gen.Specifiers = undefined;
+                            inline for (@typeInfo(type_spec.vars).Struct.fields) |field| {
+                                if (@hasField(gen.Specifiers, field.name)) {
+                                    @field(specs, field.name) = @field(vars, field.name);
+                                }
+                            }
+                            writeVariantStructsInternal(array, &impl_detail, specs);
                         }
                     }
-                    writeVariantStructsInternal(array, &impl_detail, t);
                 }
             }
         }
+        array.writeMany("    },\n");
     }
     array.writeMany("};\n");
 }
