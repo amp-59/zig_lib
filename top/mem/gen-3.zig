@@ -1059,46 +1059,6 @@ fn writeFnSignatureOrCall(array: *Array, impl_variant: *const gen.DetailExtra, i
         array.writeMany(if (sign) ") u64 " else ")");
     }
 }
-inline fn fieldNames(comptime T: type) []const []const u8 {
-    var field_names: []const []const u8 = &.{};
-    for (@typeInfo(T).Struct.fields) |field| {
-        field_names = field_names ++ [1][]const u8{field.name};
-    }
-    return field_names;
-}
-inline fn fieldTypeNames(comptime T: type) []const []const u8 {
-    var field_type_names: []const []const u8 = &.{};
-    for (@typeInfo(T).Struct.fields) |field| {
-        if (@typeInfo(field.type) == .Struct) {
-            var type_name: []const u8 = "struct {";
-            for (@typeInfo(field.type).Struct.fields) |field_field| {
-                type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
-            }
-            type_name = type_name[0 .. type_name.len - 2] ++ " }";
-            field_type_names = field_type_names ++ [1][]const u8{type_name};
-        } else {
-            field_type_names = field_type_names ++ [1][]const u8{@typeName(field.type)};
-        }
-    }
-    return field_type_names;
-}
-inline fn subSpecLengths(comptime type_specs: []const gen.TypeSpecMap) []const usize {
-    var sub_spec_lens: []const usize = &.{};
-    for (type_specs) |type_spec| {
-        sub_spec_lens = sub_spec_lens ++ [1]usize{type_spec.specs.len};
-    }
-    return sub_spec_lens;
-}
-inline fn writeSpecificationStruct(array: *Array, comptime T: type) void {
-    const field_names: []const []const u8 = comptime fieldNames(T);
-    const field_type_names: []const []const u8 = comptime fieldTypeNames(T);
-    for (field_names) |field_name, field_index| {
-        array.writeMany(field_name);
-        array.writeMany(": ");
-        array.writeMany(field_type_names[field_index]);
-        array.writeMany(",\n");
-    }
-}
 fn writeHelpInformation(array: *Array, impl_variant: gen.DetailExtra) void {
     if (return) {}
     array.writeMany("// ");
