@@ -1,5 +1,6 @@
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
+const meta = @import("./../meta.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 
@@ -25,19 +26,22 @@ fn fieldNames(comptime T: type) []const []const u8 {
     }
     return field_names;
 }
+fn simpleTypeName(comptime T: type) []const u8 {
+    if (@typeInfo(T) == .Struct) {
+        var type_name: []const u8 = "struct { ";
+        for (@typeInfo(T).Struct.fields) |field_field| {
+            type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
+        }
+        type_name = type_name[0 .. type_name.len - 2] ++ " }";
+        return type_name;
+    } else {
+        return @typeName(T);
+    }
+}
 fn fieldTypeNames(comptime T: type) []const []const u8 {
     var field_type_names: []const []const u8 = &.{};
     for (@typeInfo(T).Struct.fields) |field| {
-        if (@typeInfo(field.type) == .Struct) {
-            var type_name: []const u8 = "struct { ";
-            for (@typeInfo(field.type).Struct.fields) |field_field| {
-                type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
-            }
-            type_name = type_name[0 .. type_name.len - 2] ++ " }";
-            field_type_names = field_type_names ++ [1][]const u8{type_name};
-        } else {
-            field_type_names = field_type_names ++ [1][]const u8{@typeName(field.type)};
-        }
+        field_type_names = field_type_names ++ [1][]const u8{simpleTypeName(field.type)};
     }
     return field_type_names;
 }
@@ -66,6 +70,47 @@ fn writeSpec(array: *Array, spec: anytype) void {
     });
 }
 
+fn fieldIs(any: anytype, field_name: []const u8) bool {
+    inline for (@typeInfo(@TypeOf(any)).Struct) |field| {
+        if (builtin.testEqual([]const u8, field.name, field_name)) {
+            return @field(any, field.name);
+        }
+    }
+    unreachable;
+}
+
+fn haveField(comptime types: []const type, comptime field_name: []const u8) gen.BinaryFilter(type) {
+    comptime var t: []const type = meta.empty;
+    comptime var f: []const type = meta.empty;
+    inline for (types) |T| {
+        if (@hasField(T, field_name)) {
+            t = meta.concat(type, t, T);
+        } else {
+            f = meta.concat(type, f, T);
+        }
+    }
+    return .{ f, t };
+}
+fn haveDecl(comptime types: []const type, comptime field_name: []const u8) gen.BinaryFilter(type) {
+    comptime var t: []const type = meta.empty;
+    comptime var f: []const type = meta.empty;
+    inline for (types) |T| {
+        if (@hasDecl(T, field_name)) {
+            t = meta.concat(type, t, T);
+        } else {
+            f = meta.concat(type, f, T);
+        }
+    }
+    return .{ f, t };
+}
+
+fn typeNames(comptime types: []const type) []const u8 {
+    var ret: []const u8 = ".{ ";
+    for (types) |T| {
+        ret = ret ++ fmt.typeName(T) ++ ", ";
+    }
+    return ret ++ "}";
+}
 const specs_len: usize = blk: {
     var len: usize = 0;
     inline for (gen.type_specs) |type_spec| {
@@ -115,33 +160,24 @@ const spec_tokens: [specs_len][]const FieldTokens = blk: {
     }
     break :blk set;
 };
-
-const work_upfront: bool = false;
+fn printX(array: *Array, field_name: []const u8, field_type_name: []const u8) void {
+    array.writeMany(field_name);
+    array.writeMany(": ");
+    array.writeMany(field_type_name);
+    array.writeMany("\n");
+}
 
 pub fn generateSpecificationStructs() void {
     var array: Array = undefined;
     array.undefineAll();
 
-    if (work_upfront) {
-        for (gen.impl_variants) |_, spec_index| {
-            const tokens: []const FieldTokens = spec_tokens[spec_index];
-            for (tokens) |field| {
-                builtin.debug.logAlways(field.name);
-                builtin.debug.logAlways(": ");
-                builtin.debug.logAlways(field.type_name);
-                builtin.debug.logAlways("\n");
-            }
-        }
-    } else {
-        inline for (gen.type_specs) |type_spec| {
-            inline for (type_spec.specs) |spec| {
-                inline for (@typeInfo(spec).Struct.fields) |field| {
-                    builtin.debug.logAlways(field.name);
-                    builtin.debug.logAlways(": ");
-                    builtin.debug.logAlways(@typeName(field.type));
-                    builtin.debug.logAlways("\n");
-                }
-            }
+    for (gen.impl_variants) |impl_group, spec_index| {
+        for (impl_group) |impl_variant| {}
+
+        const tokens: []const FieldTokens = spec_tokens[spec_index];
+        for (tokens) |field| {
+            printX(&array, field.name, field.type_name);
         }
     }
+    builtin.debug.write(array.readAll());
 }
