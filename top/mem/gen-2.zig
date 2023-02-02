@@ -97,39 +97,56 @@ fn writeMatrix(array: *Array, matrix: [8][8]u8) void {
     array.writeFormat(fmt.render(.{ .radix = 16 }, matrix));
     array.writeMany(";\n");
 }
-fn getMatrix() [8][8]u8 {
+
+pub const param_impl_groups: [gen.type_specs.len][]const gen.Detail = blk: {
+    var ret: [gen.type_specs.len][]const gen.Detail = [1][]const gen.Detail{&.{}} ** gen.type_specs.len;
+    var param_index: u8 = 0;
+    while (param_index != gen.type_specs.len) : (param_index +%= 1) {
+        var impl_group: []const gen.Detail = &.{};
+        var impl_index: u16 = 0;
+        while (impl_index != gen.impl_details.len and
+            gen.impl_details[impl_index].index <= param_index) : (impl_index +%= 1)
+        {
+            if (gen.impl_details[impl_index].index == param_index) {
+                impl_group = impl_group ++ [1]gen.Detail{gen.impl_details[impl_index]};
+            }
+        }
+        ret[param_index] = impl_group;
+    }
+    break :blk ret;
+};
+
+fn writeVariantStructs(array: *Array) void {
+    var accm_spec_index: u8 = 0;
     var matrix: [8][8]u8 = [1][8]u8{[1]u8{0} ** 8} ** 8;
-    var accm_index: u8 = 0;
     inline for (gen.type_specs) |type_spec, param_index| {
-        for (type_spec.specs) |_, spec_index| {
-            matrix[param_index][spec_index] = accm_index;
-            accm_index +%= 1;
+        inline for (type_spec.specs) |_, spec_index| {
+            matrix[param_index][spec_index] = accm_spec_index;
+            accm_spec_index +%= 1;
         }
     }
-    return matrix;
-}
-fn writeVariantStructs(array: *Array) void {
+    const accm_spec_len: u8 = accm_spec_index + 1;
+    accm_spec_index = 0;
     array.writeMany("pub const impl_variant_groups = [_][]const gen.DetailExtra{\n");
-    const matrix = comptime getMatrix();
-    var accm_spec_index: u8 = 0;
-    while (accm_spec_index != 17) : (accm_spec_index +%= 1) {
+    while (accm_spec_index != accm_spec_len) : (accm_spec_index +%= 1) {
         array.writeMany("    &.{\n");
         inline for (gen.type_specs) |type_spec, param_index| {
             const I = meta.Child(type_spec.vars);
             for (gen.impl_details) |impl_detail| {
-                if (impl_detail.index == param_index) {
-                    var spec_index: u8 = 0;
-                    while (spec_index <= ~@as(I, 0)) : (spec_index += 1) {
-                        if (matrix[param_index][spec_index] == accm_spec_index) {
-                            const vars: type_spec.vars = @bitCast(type_spec.vars, @intCast(I, spec_index));
-                            var specs: gen.Specifiers = undefined;
-                            inline for (@typeInfo(type_spec.vars).Struct.fields) |field| {
-                                if (@hasField(gen.Specifiers, field.name)) {
-                                    @field(specs, field.name) = @field(vars, field.name);
-                                }
+                if (impl_detail.index != param_index) {
+                    continue;
+                }
+                var spec_index: u8 = 0;
+                while (spec_index <= ~@as(I, 0)) : (spec_index += 1) {
+                    if (matrix[param_index][spec_index] == accm_spec_index) {
+                        const vars: type_spec.vars = @bitCast(type_spec.vars, @intCast(I, spec_index));
+                        var specs: gen.Specifiers = undefined;
+                        inline for (@typeInfo(type_spec.vars).Struct.fields) |field| {
+                            if (@hasField(gen.Specifiers, field.name)) {
+                                @field(specs, field.name) = @field(vars, field.name);
                             }
-                            writeVariantStructsInternal(array, &impl_detail, specs);
                         }
+                        writeVariantStructsInternal(array, &impl_detail, specs);
                     }
                 }
             }
