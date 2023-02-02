@@ -13,17 +13,20 @@ fn memoryImplementation(builder: *build.Builder) void {
     const mem_gen = builder.step("mem_gen", "generate containers according to specification");
     const mem_gen_0 = util.addProjectExecutable(builder, "mem_gen_0", "top/mem/gen-0-aux.zig", .{ .build_mode = .ReleaseSmall });
     const mem_gen_1 = util.addProjectExecutable(builder, "mem_gen_1", "top/mem/gen-1-aux.zig", .{ .build_mode = .ReleaseSmall });
+    const mem_gen_a = util.addProjectExecutable(builder, "mem_gen_a", "top/mem/gen-a-aux.zig", .{ .build_mode = .ReleaseSmall });
     const mem_gen_2 = util.addProjectExecutable(builder, "mem_gen_2", "top/mem/gen-2-aux.zig", .{ .build_mode = .ReleaseSmall });
     const mem_gen_3 = util.addProjectExecutable(builder, "mem_gen_3", "top/mem/gen-3-aux.zig", .{ .build_mode = .ReleaseSmall });
     const mem_gen_4 = util.addProjectExecutable(builder, "mem_gen_4", "top/mem/gen-4-aux.zig", .{ .build_mode = .ReleaseSmall });
     const mem_gen_5 = util.addProjectExecutable(builder, "mem_gen_5", "top/mem/gen-5-aux.zig", .{ .build_mode = .ReleaseSmall });
 
     mem_gen_1.step.dependOn(&mem_gen_0.run().step);
+    mem_gen_a.step.dependOn(&mem_gen_1.run().step);
     mem_gen_2.step.dependOn(&mem_gen_1.run().step);
     mem_gen_3.step.dependOn(&mem_gen_2.run().step);
     mem_gen_4.step.dependOn(&mem_gen_3.run().step);
     mem_gen_4.step.dependOn(&builder.addFmt(&stage_3_products).step);
     mem_gen_5.step.dependOn(&mem_gen_2.run().step);
+    mem_gen.dependOn(&mem_gen_a.run().step);
     mem_gen.dependOn(&mem_gen_4.run().step);
 }
 
