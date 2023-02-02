@@ -19,32 +19,6 @@ const gen = struct {
 
 const Array = mem.StaticString(1024 * 1024);
 
-fn fieldNames(comptime T: type) []const []const u8 {
-    var field_names: []const []const u8 = &.{};
-    for (@typeInfo(T).Struct.fields) |field| {
-        field_names = field_names ++ [1][]const u8{field.name};
-    }
-    return field_names;
-}
-fn simpleTypeName(comptime T: type) []const u8 {
-    if (@typeInfo(T) == .Struct) {
-        var type_name: []const u8 = "struct { ";
-        for (@typeInfo(T).Struct.fields) |field_field| {
-            type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
-        }
-        type_name = type_name[0 .. type_name.len - 2] ++ " }";
-        return type_name;
-    } else {
-        return @typeName(T);
-    }
-}
-fn fieldTypeNames(comptime T: type) []const []const u8 {
-    var field_type_names: []const []const u8 = &.{};
-    for (@typeInfo(T).Struct.fields) |field| {
-        field_type_names = field_type_names ++ [1][]const u8{simpleTypeName(field.type)};
-    }
-    return field_type_names;
-}
 inline fn subSpecLengths(comptime type_specs: []const gen.TypeSpecMap) []const usize {
     var sub_spec_lens: []const usize = &.{};
     for (type_specs) |type_spec| {
@@ -53,8 +27,8 @@ inline fn subSpecLengths(comptime type_specs: []const gen.TypeSpecMap) []const u
     return sub_spec_lens;
 }
 inline fn writeSpecificationStruct(array: *Array, comptime T: type) void {
-    const field_names: []const []const u8 = comptime fieldNames(T);
-    const field_type_names: []const []const u8 = comptime fieldTypeNames(T);
+    const field_names: []const []const u8 = comptime gen.fieldNames(T);
+    const field_type_names: []const []const u8 = comptime gen.fieldTypeNames(T);
     for (field_names) |field_name, field_index| {
         array.writeMany(field_name);
         array.writeMany(": ");
@@ -62,14 +36,12 @@ inline fn writeSpecificationStruct(array: *Array, comptime T: type) void {
         array.writeMany(",\n");
     }
 }
-
 fn writeSpec(array: *Array, spec: anytype) void {
     array.writeAny(preset.reinterpret.fmt, .{
         fmt.render(.{ .enable_comptime_iterator = true }, spec),
         '\n',
     });
 }
-
 fn fieldIs(any: anytype, field_name: []const u8) bool {
     inline for (@typeInfo(@TypeOf(any)).Struct) |field| {
         if (builtin.testEqual([]const u8, field.name, field_name)) {
@@ -78,7 +50,6 @@ fn fieldIs(any: anytype, field_name: []const u8) bool {
     }
     unreachable;
 }
-
 fn haveField(comptime types: []const type, comptime field_name: []const u8) gen.BinaryFilter(type) {
     comptime var t: []const type = meta.empty;
     comptime var f: []const type = meta.empty;
@@ -123,7 +94,7 @@ const field_names_sets: [specs_len][]const []const u8 = blk: {
     var index: usize = 0;
     for (gen.type_specs) |type_spec| {
         for (type_spec.specs) |spec| {
-            tmp[index] = fieldNames(spec);
+            tmp[index] = gen.fieldNames(spec);
             index +%= 1;
         }
     }
@@ -134,7 +105,7 @@ const field_type_names_sets: [specs_len][]const []const u8 = blk: {
     var index: usize = 0;
     for (gen.type_specs) |type_spec| {
         for (type_spec.specs) |spec| {
-            tmp[index] = fieldTypeNames(spec);
+            tmp[index] = gen.fieldTypeNames(spec);
             index +%= 1;
         }
     }
