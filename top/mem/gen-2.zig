@@ -97,25 +97,6 @@ fn writeMatrix(array: *Array, matrix: [8][8]u8) void {
     array.writeFormat(fmt.render(.{ .radix = 16 }, matrix));
     array.writeMany(";\n");
 }
-
-pub const param_impl_groups: [gen.type_specs.len][]const gen.Detail = blk: {
-    var ret: [gen.type_specs.len][]const gen.Detail = [1][]const gen.Detail{&.{}} ** gen.type_specs.len;
-    var param_index: u8 = 0;
-    while (param_index != gen.type_specs.len) : (param_index +%= 1) {
-        var impl_group: []const gen.Detail = &.{};
-        var impl_index: u16 = 0;
-        while (impl_index != gen.impl_details.len and
-            gen.impl_details[impl_index].index <= param_index) : (impl_index +%= 1)
-        {
-            if (gen.impl_details[impl_index].index == param_index) {
-                impl_group = impl_group ++ [1]gen.Detail{gen.impl_details[impl_index]};
-            }
-        }
-        ret[param_index] = impl_group;
-    }
-    break :blk ret;
-};
-
 fn writeVariantStructs(array: *Array) void {
     var accm_spec_index: u8 = 0;
     var matrix: [8][8]u8 = [1][8]u8{[1]u8{0} ** 8} ** 8;
