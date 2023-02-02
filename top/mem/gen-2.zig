@@ -109,7 +109,7 @@ fn getMatrix() [8][8]u8 {
     return matrix;
 }
 fn writeVariantStructs(array: *Array) void {
-    array.writeMany("pub const impl_variants = [_][]const gen.DetailExtra{\n");
+    array.writeMany("pub const impl_variant_groups = [_][]const gen.DetailExtra{\n");
     const matrix = comptime getMatrix();
     var accm_spec_index: u8 = 0;
     while (accm_spec_index != 17) : (accm_spec_index +%= 1) {
@@ -139,7 +139,7 @@ fn writeVariantStructs(array: *Array) void {
     array.writeMany("};\n");
 }
 fn writeImplementationVariantsFile(array: *Array) void {
-    const fd: u64 = gen.create(builtin.build_root.? ++ "/top/mem/impl_variants.zig");
+    const fd: u64 = gen.create(builtin.build_root.? ++ "/top/mem/impl_variant_groups.zig");
     defer gen.close(fd);
     gen.write(fd, boilerplate);
     gen.write(fd, array.readAll());
