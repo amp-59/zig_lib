@@ -228,7 +228,7 @@ fn writeStructFromFields(array: *Array, comptime struct_fields: []const builtin.
                 if (field.type == bool) {
                     array.writeMany(if (default_value) " = true, " else " = false, ");
                 } else {
-                    array.writeMany(" = null,");
+                    array.writeMany(" = null, ");
                 }
             } else {
                 array.writeMany(", ");
