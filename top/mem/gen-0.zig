@@ -31,6 +31,35 @@ pub fn typeIndex(comptime types: []const type, comptime T: type) ?comptime_int {
     }
     return null;
 }
+fn fieldOption(comptime field: builtin.Type.StructField) gen.Option {
+    comptime var field_names: []const []const u8 = &.{};
+    const field_type_info: builtin.Type = @typeInfo(field.type);
+    if (field_type_info == .Optional) {
+        const field_type_child_info: builtin.Type = @typeInfo(field_type_info.Optional.child);
+        if (field_type_child_info == .Enum) {
+            inline for (field_type_child_info.Enum.fields) |field_field| {
+                const field_name: []const u8 = field_field.name ++ "_" ++ field.name;
+                builtin.static.assert(@hasField(gen.Techniques, field_name));
+                field_names = field_names ++ [1][]const u8{field_name};
+            }
+            return .{
+                .kind = .mutually_exclusive_optional,
+                .info = .{ .field_name = field.name, .field_field_names = field_names },
+            };
+        }
+    } else if (field_type_info == .Enum) {
+        inline for (field_type_info.Enum.fields) |field_field| {
+            const field_name: []const u8 = field_field.name ++ "_" ++ field.name;
+            builtin.static.assert(@hasField(gen.Techniques, field_name));
+            field_names = field_names ++ [1][]const u8{field_name};
+        }
+        return .{
+            .kind = .mutually_exclusive_mandatory,
+            .info = .{ .field_name = field.name, .field_field_names = field_names },
+        };
+    }
+}
+
 inline fn writeDetailStructsInternal(array: *Array, comptime types: *[]const type, comptime T: type, detail: *gen.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
@@ -94,6 +123,25 @@ fn writeAbstractParams(array: *Array, comptime types: *[]const type) void {
     }
     array.writeMany("};\n");
 }
+fn writeOptions(array: *Array) void {
+    array.writeMany("pub const options = [_]gen.Option{\n");
+    inline for (@typeInfo(gen.Techniques.Options).Struct.fields) |field| {
+        const option: gen.Option = comptime fieldOption(field);
+        array.writeMany("    .{ .kind = .");
+        array.writeMany(@tagName(option.kind));
+        array.writeMany(", .info = .{ .field_name = \"");
+        array.writeMany(option.info.field_name);
+        array.writeMany("\", .field_field_names = &[_][]const u8{");
+        for (option.info.field_field_names) |field_field_name| {
+            array.writeMany("\"");
+            array.writeMany(field_field_name);
+            array.writeMany("\", ");
+        }
+        array.overwriteManyBack(" }");
+        array.writeMany(" } },\n");
+    }
+    array.writeMany("};\n");
+}
 fn writeAbstractParametersFile(array: *Array) void {
     const fd: u64 = gen.create(builtin.build_root.? ++ "/top/mem/abstract_params.zig");
     defer gen.close(fd);
@@ -114,5 +162,6 @@ pub fn generateImplementationSummary() void {
     writeDetailStructs(&array, types);
     writeImplementationDetailsFile(&array);
     writeAbstractParams(&array, types);
+    writeOptions(&array);
     writeAbstractParametersFile(&array);
 }
