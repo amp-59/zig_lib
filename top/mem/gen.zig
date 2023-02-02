@@ -9,20 +9,20 @@ pub const AbstractSpec = union(enum) {
     }),
     allocated_byte_address: ReadWrite(union {
         _: Static,
-        // single_packed_approximate_capacity: Dynamic,
+        single_packed_approximate_capacity: Dynamic,
         unstreamed_byte_address: Stream(union {
             undefined_byte_address: Resize(union {
                 _: Static,
-                // single_packed_approximate_capacity: Dynamic,
-                // double_packed_approximate_capacity: Dynamic,
+                single_packed_approximate_capacity: Dynamic,
+                double_packed_approximate_capacity: Dynamic,
                 unallocated_byte_address: Dynamic,
             }),
             unallocated_byte_address: Dynamic,
         }),
         undefined_byte_address: Resize(union {
             _: Static,
-            // single_packed_approximate_capacity: Dynamic,
-            // double_packed_approximate_capacity: Dynamic,
+            single_packed_approximate_capacity: Dynamic,
+            double_packed_approximate_capacity: Dynamic,
             unallocated_byte_address: Dynamic,
         }),
         unallocated_byte_address: Dynamic,
@@ -141,7 +141,7 @@ fn Resize(comptime T: type) type {
     return (union(enum) { resize: T });
 }
 const Automatic = union { automatic: union {
-    structured: AutomaticStuctured,
+    structured: AutoAlignment(AutomaticStuctured),
 } };
 const Static = union { static: union {
     structured: NoSuperAlignment(StructuredStatic),
@@ -155,6 +155,11 @@ const Parametric = union { parametric: union {
     structured: NoPackedAlignment(StructuredParametric),
     unstructured: NoPackedAlignment(UnstructuredParametric),
 } };
+fn AutoAlignment(comptime S: type) type {
+    return (union(enum) {
+        auto_alignment: S,
+    });
+}
 fn NoSuperAlignment(comptime S: type) type {
     return (union(enum) {
         unit_alignment: S,
@@ -346,15 +351,24 @@ pub const Allocator = struct {
         for (ret) |*ptr, i| ptr.* = buf[i];
         return ret;
     }
+    pub fn create(allocator: *Allocator, comptime T: type) *T {
+        const alignment: u64 = @alignOf(T);
+        const bytes: u64 = @sizeOf(T);
+        const start: u64 = alignAbove(allocator.next, alignment);
+        const finish: u64 = start + bytes;
+        if (finish > allocator.finish) allocator.grow(finish);
+        allocator.next = finish;
+        return @intToPtr(*T, start);
+    }
     pub fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
         const alignment: u64 = @alignOf(T);
         const size: u64 = @sizeOf(T);
-        const bytes: u64 = alignAbove(size * count, len_alignment);
+        const bytes: u64 = size * count;
         const start: u64 = alignAbove(allocator.next, alignment);
-        const finish: u64 = alignAbove(start + bytes, unit_alignment);
+        const finish: u64 = start + bytes;
         if (finish > allocator.finish) allocator.grow(finish);
         allocator.next = finish;
-        return @intToPtr([*]T, start)[0..alignBelow(finish - start, @sizeOf(T))];
+        return @intToPtr([*]T, start)[0..count];
     }
     pub fn reinit(allocator: *Allocator) void {
         allocator.next = start_addr;
