@@ -196,27 +196,4 @@ fn filterOnBasis(
     return ret;
 }
 
-pub fn generateSpecificationStructs() void {
-    var array: Array = undefined;
-    array.undefineAll();
-
-    var allocator: gen.Allocator = gen.Allocator.init();
-    defer allocator.deinit();
-
-    for (gen.impl_variant_groups) |impl_group, spec_index| {
-        const save: gen.Allocator.Save = allocator.save();
-        defer allocator.restore(save);
-        const tokens: []const FieldTokens = spec_tokens[spec_index];
-
-        const filter: Filter = filterOnBasis(&allocator, impl_group, gen.DetailExtra.hasUnitAlignment);
-        if (filter.f.len != 0) {
-            builtin.debug.write("if (techs.unit_alignment)");
-        }
-
-        for (tokens) |field| {
-            printX(&array, field.name, field.type_name);
-            builtin.debug.write(array.readAll());
-            array.undefineAll();
-        }
-    }
-}
+pub fn generateSpecificationStructs() void {}
