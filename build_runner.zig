@@ -29,9 +29,9 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "verbose", .long = "--silent", .assign = Options.no, .descr = "do not show compile commands when executing" },
 });
 fn showAllCommands(ctx: builder.Context) void {
-    builtin.debug.write("commands:\n");
+    var buf: [128 + 4096 + 512]u8 = undefined;
+    builtin.debug.logAlways("commands:\n");
     for (ctx.cmds.readAll()) |cmd| {
-        var buf: [128 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &.{ @tagName(cmd.cmd), "\t", cmd.name.?, "\t", cmd.root, "\n" });
     }
 }
@@ -77,14 +77,17 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     for (args) |arg| {
         const name: [:0]const u8 = meta.manyToSlice(arg);
         if (mem.testEqualMany(u8, name, "all")) {
-            return execAllCommands(ctx);
+            try execAllCommands(ctx);
+            continue;
         }
         if (mem.testEqualMany(u8, name, "show")) {
             showAllCommands(ctx);
+            continue;
         }
         inline for (@typeInfo(Cmd).Enum.fields) |field| {
             if (mem.testEqualMany(u8, name, field.name)) {
                 for (ctx.cmds.referAllDefined()) |*cmd| cmd.cmd = @field(Cmd, field.name);
+                break;
             }
         }
     }
