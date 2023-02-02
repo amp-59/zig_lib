@@ -18,7 +18,7 @@ const gen = struct {
 
     usingnamespace @import("./abstract_params.zig");
     usingnamespace @import("./type_specs.zig");
-    usingnamespace @import("./impl_variants.zig");
+    usingnamespace @import("./impl_variant_groups.zig");
 };
 const Array = mem.StaticString(1024 * 1024);
 const fmt_spec = .{
@@ -1111,7 +1111,7 @@ pub fn generateFnDefinitions() void {
     var array: Array = undefined;
     array.undefineAll();
     var impl_index: u64 = 0;
-    for (gen.impl_variants) |impl_group, spec_index| {
+    for (gen.impl_variant_groups) |impl_group, spec_index| {
         for (impl_group) |impl_variant| {
             array.writeMany("inline fn " ++ impl_type_name);
             array.writeFormat(fmt.ud64(impl_index));
