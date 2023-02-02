@@ -59,7 +59,6 @@ const parsedir_lib_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name
 
 fn memgen(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("mem_gen_0",      "top/mem/gen-0-aux.zig", .{ .build_mode = .ReleaseSmall });
-    _ = ctx.addExecutable("mem_gen_a",      "top/mem/gen-a-aux.zig", .{ .build_mode = .ReleaseSmall });
     _ = ctx.addExecutable("mem_gen_1",      "top/mem/gen-1-aux.zig", .{ .build_mode = .ReleaseSmall });
     _ = ctx.addExecutable("mem_gen_2",      "top/mem/gen-2-aux.zig", .{ .build_mode = .ReleaseSmall });
     _ = ctx.addExecutable("mem_gen_3",      "top/mem/gen-3-aux.zig", .{ .build_mode = .ReleaseSmall });
