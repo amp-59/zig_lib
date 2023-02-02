@@ -14,7 +14,7 @@ const gen = struct {
 
     usingnamespace @import("./abstract_params.zig");
     usingnamespace @import("./type_specs.zig");
-    usingnamespace @import("./impl_variants.zig");
+    usingnamespace @import("./impl_variant_groups.zig");
 };
 
 const Array = mem.StaticString(1024 * 1024);
@@ -114,7 +114,7 @@ fn typeNames(comptime types: []const type) []const u8 {
 const specs_len: usize = blk: {
     var len: usize = 0;
     inline for (gen.type_specs) |type_spec| {
-        len += type_spec.specs.len;
+        len +%= type_spec.specs.len;
     }
     break :blk len;
 };
@@ -124,7 +124,7 @@ const field_names_sets: [specs_len][]const []const u8 = blk: {
     for (gen.type_specs) |type_spec| {
         for (type_spec.specs) |spec| {
             tmp[index] = fieldNames(spec);
-            index += 1;
+            index +%= 1;
         }
     }
     break :blk tmp;
@@ -135,7 +135,7 @@ const field_type_names_sets: [specs_len][]const []const u8 = blk: {
     for (gen.type_specs) |type_spec| {
         for (type_spec.specs) |spec| {
             tmp[index] = fieldTypeNames(spec);
-            index += 1;
+            index +%= 1;
         }
     }
     break :blk tmp;
@@ -167,17 +167,56 @@ fn printX(array: *Array, field_name: []const u8, field_type_name: []const u8) vo
     array.writeMany("\n");
 }
 
+const Filter = struct {
+    t: []gen.DetailExtra,
+    f: []gen.DetailExtra,
+};
+fn filterOnBasis(
+    allocator: *gen.Allocator,
+    impl_variant_groups: []const gen.DetailExtra,
+    test_function: *const fn (*const gen.DetailExtra) bool,
+) Filter {
+    var ret: Filter = .{
+        .t = allocator.allocate(gen.DetailExtra, impl_variant_groups.len),
+        .f = allocator.allocate(gen.DetailExtra, impl_variant_groups.len),
+    };
+    var t: u64 = 0;
+    var f: u64 = 0;
+    for (impl_variant_groups) |impl_variant| {
+        if (test_function(&impl_variant)) {
+            ret.t[t] = impl_variant;
+            t += 1;
+        } else {
+            ret.f[f] = impl_variant;
+            f += 1;
+        }
+    }
+    ret.t = ret.t[0..t];
+    ret.f = ret.f[0..f];
+    return ret;
+}
+
 pub fn generateSpecificationStructs() void {
     var array: Array = undefined;
     array.undefineAll();
 
-    for (gen.impl_variants) |impl_group, spec_index| {
-        for (impl_group) |impl_variant| {}
+    var allocator: gen.Allocator = gen.Allocator.init();
+    defer allocator.deinit();
 
+    for (gen.impl_variant_groups) |impl_group, spec_index| {
+        const save: gen.Allocator.Save = allocator.save();
+        defer allocator.restore(save);
         const tokens: []const FieldTokens = spec_tokens[spec_index];
+
+        const filter: Filter = filterOnBasis(&allocator, impl_group, gen.DetailExtra.hasUnitAlignment);
+        if (filter.f.len != 0) {
+            builtin.debug.write("if (techs.unit_alignment)");
+        }
+
         for (tokens) |field| {
             printX(&array, field.name, field.type_name);
+            builtin.debug.write(array.readAll());
+            array.undefineAll();
         }
     }
-    builtin.debug.write(array.readAll());
 }
