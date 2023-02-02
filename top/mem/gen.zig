@@ -1,3 +1,6 @@
+pub usingnamespace sys;
+pub usingnamespace common;
+
 pub const AbstractSpec = union(enum) {
     automatic_storage: ReadWrite(union {
         _: Automatic,
@@ -83,6 +86,22 @@ pub const Techniques = packed struct {
         },
     };
 };
+pub const Option = struct {
+    kind: Option.Kind,
+    info: Info,
+
+    pub const Kind = enum {
+        standalone_mandatory,
+        standalone_optional,
+        mutually_exclusive_optional,
+        mutually_exclusive_mandatory,
+    };
+    pub const Info = struct {
+        field_name: []const u8,
+        field_field_names: []const []const u8,
+    };
+};
+
 pub const Variant = enum {
     __stripped,
     __derived,
@@ -242,7 +261,7 @@ const UnstructuredStaticSegment = struct {
     bytes: u64,
     Allocator: BoundAllocator,
 };
-const common = struct {
+const sys = struct {
     fn syscall1(sysno: u64, arg1: u64) u64 {
         return asm volatile ("syscall"
             : [_] "={rax}" (-> u64),
@@ -304,7 +323,6 @@ const common = struct {
         unreachable;
     }
 };
-pub usingnamespace common;
 
 fn alignAbove(value: u64, comptime alignment: u64) u64 {
     return (value + (alignment - 1)) & ~(alignment - 1);
@@ -312,6 +330,36 @@ fn alignAbove(value: u64, comptime alignment: u64) u64 {
 fn alignBelow(value: u64, comptime alignment: u64) u64 {
     return value & ~(alignment - 1);
 }
+
+const common = struct {
+    pub fn fieldNames(comptime T: type) []const []const u8 {
+        var field_names: []const []const u8 = &.{};
+        for (@typeInfo(T).Struct.fields) |field| {
+            field_names = field_names ++ [1][]const u8{field.name};
+        }
+        return field_names;
+    }
+    pub fn simpleTypeName(comptime T: type) []const u8 {
+        if (@typeInfo(T) == .Struct) {
+            var type_name: []const u8 = "struct { ";
+            for (@typeInfo(T).Struct.fields) |field_field| {
+                type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
+            }
+            type_name = type_name[0 .. type_name.len - 2] ++ " }";
+            return type_name;
+        } else {
+            return @typeName(T);
+        }
+    }
+    pub fn fieldTypeNames(comptime T: type) []const []const u8 {
+        var field_type_names: []const []const u8 = &.{};
+        for (@typeInfo(T).Struct.fields) |field| {
+            field_type_names = field_type_names ++ [1][]const u8{simpleTypeName(field.type)};
+        }
+        return field_type_names;
+    }
+};
+
 pub const Allocator = struct {
     start: u64,
     next: u64,
@@ -338,7 +386,7 @@ pub const Allocator = struct {
     pub fn grow(allocator: *Allocator, finish: u64) void {
         const least: u64 = alignAbove(finish - allocator.finish, page_size);
         const len: u64 = @max(least, allocator.capacity() * 2);
-        common.map(allocator.finish, len);
+        sys.map(allocator.finish, len);
         allocator.finish += len;
     }
     pub fn reallocate(allocator: *Allocator, comptime T: type, count: u64, buf: []T) []T {
@@ -374,7 +422,7 @@ pub const Allocator = struct {
         allocator.next = start_addr;
     }
     pub fn init() Allocator {
-        common.map(start_addr, page_size);
+        sys.map(start_addr, page_size);
         return .{
             .start = start_addr,
             .next = start_addr,
@@ -382,7 +430,7 @@ pub const Allocator = struct {
         };
     }
     pub fn deinit(allocator: *Allocator) void {
-        common.unmap(allocator.start, allocator.capacity());
+        sys.unmap(allocator.start, allocator.capacity());
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
