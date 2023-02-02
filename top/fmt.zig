@@ -1126,6 +1126,59 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
         }
     });
 }
+
+const ListFormatSpec = struct {
+    separator: []const u8 = ", ",
+    omit_trailing_separator: bool = true,
+};
+pub fn ListFormat(comptime spec: ListFormatSpec) type {
+    return (struct {
+        values: []const []const u8,
+
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            if (spec.omit_trailing_separator) {
+                if (format.values.len != 0) {
+                    array.writeMany(format.values[0]);
+                }
+                if (format.values.len != 1) {
+                    for (format.values[1..]) |value| {
+                        array.writeMany(spec.separator);
+                        array.writeMany(value);
+                    }
+                }
+            } else {
+                for (format.values) |value| {
+                    array.writeMany(value);
+                    array.writeMany(spec.separator);
+                }
+            }
+        }
+        pub fn formatLength(format: Format) u64 {
+            var len: u64 = 0;
+            if (spec.omit_trailing_separator) {
+                if (format.values.len != 0) {
+                    len +%= format.values[0].len;
+                }
+                if (format.values.len != 1) {
+                    for (format.values[1..]) |value| {
+                        len +%= spec.separator.len;
+                        len +%= value.len;
+                    }
+                }
+            } else {
+                for (format.values) |value| {
+                    len +%= value.len;
+                    len +%= spec.separator.len;
+                }
+            }
+            return len;
+        }
+    });
+}
+pub fn list(values: []const []const u8) ListFormat(.{}) {
+    return .{ .values = values };
+}
 pub fn DateTimeFormat(comptime DateTime: type) type {
     return (struct {
         value: DateTime,
@@ -1145,20 +1198,20 @@ pub fn DateTimeFormat(comptime DateTime: type) type {
                 }
             } else {
                 var len: u64 = 0;
-                len += yr(format.value.getYear()).formatLength();
-                len += 1;
-                len += mon(format.value.getMonth()).formatLength();
-                len += 1;
-                len += mday(format.value.getMonthDay()).formatLength();
-                len += 1;
-                len += hr(format.value.getHour()).formatLength();
-                len += 1;
-                len += min(format.value.getMinute()).formatLength();
-                len += 1;
-                len += sec(format.value.getSecond()).formatLength();
+                len +%= yr(format.value.getYear()).formatLength();
+                len +%= 1;
+                len +%= mon(format.value.getMonth()).formatLength();
+                len +%= 1;
+                len +%= mday(format.value.getMonthDay()).formatLength();
+                len +%= 1;
+                len +%= hr(format.value.getHour()).formatLength();
+                len +%= 1;
+                len +%= min(format.value.getMinute()).formatLength();
+                len +%= 1;
+                len +%= sec(format.value.getSecond()).formatLength();
                 if (@hasDecl(DateTime, "getNanoseconds")) {
-                    len += 1;
-                    len += sec(format.value.getNanoseconds()).formatLength();
+                    len +%= 1;
+                    len +%= sec(format.value.getNanoseconds()).formatLength();
                     @compileError("TODO: sig.fig. Formatter");
                 }
                 return len;
