@@ -63,20 +63,23 @@ pub const Fields = packed struct {
     unstreamed_byte_address: bool = false,
 };
 pub const Techniques = packed struct {
+    auto_alignment: bool = false,
     lazy_alignment: bool = false,
     unit_alignment: bool = false,
     disjunct_alignment: bool = false,
     single_packed_approximate_capacity: bool = false,
     double_packed_approximate_capacity: bool = false,
-    pub const mutex = .{
-        .capacity = .{
-            .single_packed_approximate,
-            .double_packed_approximate,
+
+    pub const Options = struct {
+        capacity: ?enum {
+            single_packed_approximate,
+            double_packed_approximate,
         },
-        .alignment = .{
-            .unit,
-            .lazy,
-            .disjunct,
+        alignment: enum {
+            auto,
+            unit,
+            lazy,
+            disjunct,
         },
     };
 };
@@ -235,6 +238,23 @@ const UnstructuredStaticSegment = struct {
     Allocator: BoundAllocator,
 };
 const common = struct {
+    fn syscall1(sysno: u64, arg1: u64) u64 {
+        return asm volatile ("syscall"
+            : [_] "={rax}" (-> u64),
+            : [_] "{rax}" (sysno),
+              [_] "{rdi}" (arg1),
+            : "rcx", "r11", "memory"
+        );
+    }
+    fn syscall2(sysno: u64, arg1: u64, arg2: u64) u64 {
+        return asm volatile ("syscall"
+            : [_] "={rax}" (-> u64),
+            : [_] "{rax}" (sysno),
+              [_] "{rdi}" (arg1),
+              [_] "{rsi}" (arg2),
+            : "rcx", "r11", "memory", "rax"
+        );
+    }
     fn syscall3(sysno: u64, arg1: u64, arg2: u64, arg3: u64) u64 {
         return asm volatile ("syscall"
             : [_] "={rax}" (-> u64),
@@ -245,30 +265,111 @@ const common = struct {
             : "rcx", "r11", "memory"
         );
     }
-    fn syscall1(sysno: u64, arg1: u64) u64 {
+    fn syscall6(sysno: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) u64 {
         return asm volatile ("syscall"
             : [_] "={rax}" (-> u64),
             : [_] "{rax}" (sysno),
               [_] "{rdi}" (arg1),
+              [_] "{rsi}" (arg2),
+              [_] "{rdx}" (arg3),
+              [_] "{r10}" (arg4),
+              [_] "{r8}" (arg5),
+              [_] "{r9}" (arg6),
             : "rcx", "r11", "memory"
         );
     }
-
-    // O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC
-    const create_opts: u64 = 0x80241;
 
     pub fn write(fd: u64, buf: []const u8) void {
         _ = syscall3(1, fd, @ptrToInt(buf.ptr), buf.len);
     }
     pub fn create(pathname: [:0]const u8) u64 {
-        return syscall3(2, @ptrToInt(pathname.ptr), create_opts, 0o640);
+        return syscall3(2, @ptrToInt(pathname.ptr), 0x80241, 0o640);
     }
     pub fn close(fd: u64) void {
         _ = syscall1(3, fd);
     }
-    pub fn exit(rc: u64) noreturn {
+    fn map(addr: u64, len: u64) void {
+        _ = syscall6(9, addr, len, 0x1 | 0x2, 0x20 | 0x02 | 0x100000, ~@as(u64, 0), 0);
+    }
+    fn unmap(addr: u64, len: u64) void {
+        _ = syscall2(11, addr, len);
+    }
+    pub noinline fn exit(rc: u64) noreturn {
         _ = syscall1(60, rc);
         unreachable;
     }
 };
 pub usingnamespace common;
+
+fn alignAbove(value: u64, comptime alignment: u64) u64 {
+    return (value + (alignment - 1)) & ~(alignment - 1);
+}
+fn alignBelow(value: u64, comptime alignment: u64) u64 {
+    return value & ~(alignment - 1);
+}
+pub const Allocator = struct {
+    start: u64,
+    next: u64,
+    finish: u64,
+    const start_addr: u64 = 0x40000000;
+    const page_size: u64 = 0x1000;
+
+    const unit_alignment: u64 = 1;
+    const len_alignment: u64 = 1;
+    pub const Save = struct { next: u64 };
+
+    pub fn capacity(allocator: *const Allocator) u64 {
+        return allocator.finish - allocator.start;
+    }
+    pub fn length(allocator: *const Allocator) u64 {
+        return allocator.next - allocator.start;
+    }
+    pub fn save(allocator: *const Allocator) Save {
+        return .{ .next = allocator.next };
+    }
+    pub fn restore(allocator: *Allocator, state: Save) void {
+        allocator.next = state.next;
+    }
+    pub fn grow(allocator: *Allocator, finish: u64) void {
+        const least: u64 = alignAbove(finish - allocator.finish, page_size);
+        const len: u64 = @max(least, allocator.capacity() * 2);
+        common.map(allocator.finish, len);
+        allocator.finish += len;
+    }
+    pub fn reallocate(allocator: *Allocator, comptime T: type, count: u64, buf: []T) []T {
+        const bytes: u64 = @sizeOf(T) * buf.len;
+        if (allocator.next == @ptrToInt(buf.ptr) + bytes) {
+            allocator.next += @sizeOf(T) * count - bytes;
+            return buf.ptr[0..count];
+        }
+        const ret: []T = allocate(T, count);
+        for (ret) |*ptr, i| ptr.* = buf[i];
+        return ret;
+    }
+    pub fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
+        const alignment: u64 = @alignOf(T);
+        const size: u64 = @sizeOf(T);
+        const bytes: u64 = alignAbove(size * count, len_alignment);
+        const start: u64 = alignAbove(allocator.next, alignment);
+        const finish: u64 = alignAbove(start + bytes, unit_alignment);
+        if (finish > allocator.finish) allocator.grow(finish);
+        allocator.next = finish;
+        return @intToPtr([*]T, start)[0..alignBelow(finish - start, @sizeOf(T))];
+    }
+    pub fn reinit(allocator: *Allocator) void {
+        allocator.next = start_addr;
+    }
+    pub fn init() Allocator {
+        common.map(start_addr, page_size);
+        return .{
+            .start = start_addr,
+            .next = start_addr,
+            .finish = start_addr + page_size,
+        };
+    }
+    pub fn deinit(allocator: *Allocator) void {
+        common.unmap(allocator.start, allocator.capacity());
+        allocator.next = allocator.start;
+        allocator.finish = allocator.start;
+    }
+};
