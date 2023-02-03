@@ -469,17 +469,17 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
         const max_len: u64 = blk: {
             var len: u64 = prefix.len;
             if (fmt_spec.radix > max_abs_value) {
-                break :blk len + 1;
+                break :blk len +% 1;
             }
-            len += max_digits_count;
+            len +%= max_digits_count;
             if (fmt_spec.radix != 10) {
-                len += prefix.len;
+                len +%= prefix.len;
             }
             if (fmt_spec.signedness == .signed) {
-                len += 1;
+                len +%= 1;
             }
             if (fmt_spec.separator) |s| {
-                len += (len - 1) / s.digits;
+                len +%= (len -% 1) / s.digits;
             }
             break :blk len;
         };
@@ -500,7 +500,7 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
                 .fixed => |fixed| fixed,
             };
             if (fmt_spec.separator) |s| {
-                return digits_len + (digits_len - 1) / s.digits;
+                return digits_len +% (digits_len -% 1) / s.digits;
             } else {
                 return digits_len;
             }
@@ -518,9 +518,9 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
                 next +%= prefix.len;
             }
             if (fmt_spec.radix > max_abs_value) {
-                @intToPtr(*u8, next).* = @as(u8, '0') +
+                @intToPtr(*u8, next).* = @as(u8, '0') +%
                     @boolToInt(format.value != 0);
-                next += 1;
+                next +%= 1;
             } else if (fmt_spec.separator) |separator| {
                 const count: u64 = format.digits();
                 var value: Abs = format.absolute();
@@ -554,7 +554,7 @@ pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
             if (format.value < 0) {
                 len +%= 1;
             }
-            return len + format.digits();
+            return len +% format.digits();
         }
         pub usingnamespace GenericFormat(Format);
     });
@@ -603,22 +603,20 @@ pub const SourceLocationFormat = struct {
         array.writeFormat(line_fmt);
         array.writeOne(':');
         array.writeFormat(column_fmt);
-        array.writeMany(": ");
-        array.writeMany(lit.fx.none ++ lit.fx.style.faint);
+        array.writeMany(": " ++ lit.fx.none ++ lit.fx.style.faint);
         array.writeFormat(ret_addr_fmt);
         array.writeMany(" in ");
         array.writeMany(fn_name);
-        array.writeMany(lit.fx.none);
-        array.writeOne('\n');
+        array.writeMany(lit.fx.none ++ "\n");
     }
     fn functionName(format: SourceLocationFormat) []const u8 {
         const begin: u64 = blk: {
             var i: u64 = 0;
             var j: u64 = 0;
-            while (i != format.value.fn_name.len) : (i += 1) {
+            while (i != format.value.fn_name.len) : (i +%= 1) {
                 if (format.value.fn_name[i] == '.') j = i;
             }
-            break :blk if (j != 0) j + 1 else 0;
+            break :blk if (j != 0) j +% 1 else 0;
         };
         return format.value.fn_name[begin.. :0];
     }
@@ -629,19 +627,19 @@ pub const SourceLocationFormat = struct {
         const column_fmt: LineColFormat = .{ .value = format.value.column };
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
         var len: u64 = 0;
-        len += lit.fx.style.bold.len;
-        len += file_name.len;
-        len += 1;
-        len += line_fmt.formatLength();
-        len += 1;
-        len += column_fmt.formatLength();
-        len += 2;
-        len += lit.fx.none.len + lit.fx.style.faint.len;
-        len += ret_addr_fmt.formatLength();
-        len += 4;
-        len += fn_name.len;
-        len += lit.fx.none.len;
-        len += 1;
+        len +%= lit.fx.style.bold.len;
+        len +%= file_name.len;
+        len +%= 1;
+        len +%= line_fmt.formatLength();
+        len +%= 1;
+        len +%= column_fmt.formatLength();
+        len +%= 2;
+        len +%= lit.fx.none.len +% lit.fx.style.faint.len;
+        len +%= ret_addr_fmt.formatLength();
+        len +%= 4;
+        len +%= fn_name.len;
+        len +%= lit.fx.none.len;
+        len +%= 1;
         return len;
     }
     pub fn init(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
@@ -670,8 +668,8 @@ pub const Bytes = struct {
     });
     const fields: []const builtin.EnumField = @typeInfo(Unit).Enum.fields;
     pub const max_len: u64 =
-        MajorIntFormat.max_len +
-        MinorIntFormat.max_len + 3; // Unit
+        MajorIntFormat.max_len +%
+        MinorIntFormat.max_len +% 3; // Unit
     const default: mem.Bytes = .{
         .count = 0,
         .unit = .B,
@@ -696,13 +694,13 @@ pub const Bytes = struct {
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
         if (format.value.remainder.count != 0) {
-            len += format.formatInteger().formatLength();
-            len += 1;
-            len += format.formatRemainder().formatLength();
-            len += @tagName(format.value.integer.unit).len;
+            len +%= format.formatInteger().formatLength();
+            len +%= 1;
+            len +%= format.formatRemainder().formatLength();
+            len +%= @tagName(format.value.integer.unit).len;
         } else {
-            len += format.formatInteger().formatLength();
-            len += @tagName(format.value.integer.unit).len;
+            len +%= format.formatInteger().formatLength();
+            len +%= @tagName(format.value.integer.unit).len;
         }
         return len;
     }
@@ -711,7 +709,7 @@ pub const Bytes = struct {
             const integer: mem.Bytes = mem.Bytes.Unit.to(value, @field(mem.Bytes.Unit, field.name));
             if (integer.count != 0) {
                 const remainder: mem.Bytes = blk: {
-                    const j: u64 = if (i != fields.len - 1) i + 1 else i;
+                    const j: u64 = if (i != fields.len -% 1) i +% 1 else i;
                     break :blk Unit.to(value -| mem.Bytes.bytes(integer), @field(Unit, fields[j].name));
                 };
                 return .{ .value = .{
@@ -747,20 +745,20 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
         const NewIntFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
         const DeltaIntFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
         pub const fmt_spec: ChangedIntFormatSpec = spec;
-        pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +
-            OldIntFormat.max_len + 1 + DeltaIntFormat.max_len + 5 + fmt_spec.no_style.len + NewIntFormat.max_len;
+        pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +%
+            OldIntFormat.max_len +% 1 +% DeltaIntFormat.max_len +% 5 +% fmt_spec.no_style.len +% NewIntFormat.max_len;
         fn formatWriteDelta(format: Format, array: anytype) void {
             if (format.old_value == format.new_value) {
                 array.writeMany("(+0)");
             } else if (format.new_value > format.old_value) {
-                const del_fmt: DeltaIntFormat = .{ .value = format.new_value - format.old_value };
+                const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
                 array.writeOne('(');
                 array.writeMany(fmt_spec.inc_style);
                 array.writeFormat(del_fmt);
                 array.writeMany(fmt_spec.no_style);
                 array.writeOne(')');
             } else {
-                const del_fmt: DeltaIntFormat = .{ .value = format.old_value - format.new_value };
+                const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
                 array.writeOne('(');
                 array.writeMany(fmt_spec.dec_style);
                 array.writeFormat(del_fmt);
@@ -771,21 +769,21 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
         fn formatLengthDelta(format: Format) u64 {
             var len: u64 = 0;
             if (format.old_value == format.new_value) {
-                len += 4;
+                len +%= 4;
             } else if (format.new_value > format.old_value) {
-                const del_fmt: DeltaIntFormat = .{ .value = format.new_value - format.old_value };
-                len += 1;
-                len += fmt_spec.inc_style.len;
-                len += del_fmt.formatLength();
-                len += fmt_spec.no_style.len;
-                len += 1;
+                const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
+                len +%= 1;
+                len +%= fmt_spec.inc_style.len;
+                len +%= del_fmt.formatLength();
+                len +%= fmt_spec.no_style.len;
+                len +%= 1;
             } else {
-                const del_fmt: DeltaIntFormat = .{ .value = format.old_value - format.new_value };
-                len += 1;
-                len += fmt_spec.dec_style.len;
-                len += del_fmt.formatLength();
-                len += fmt_spec.no_style.len;
-                len += 1;
+                const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
+                len +%= 1;
+                len +%= fmt_spec.dec_style.len;
+                len +%= del_fmt.formatLength();
+                len +%= fmt_spec.no_style.len;
+                len +%= 1;
             }
             return len;
         }
@@ -801,10 +799,10 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
             const old_fmt: OldIntFormat = .{ .value = format.old_value };
             const new_fmt: NewIntFormat = .{ .value = format.new_value };
             var len: u64 = 0;
-            len += old_fmt.formatLength();
-            len += formatLengthDelta(format);
-            len += 4;
-            len += new_fmt.formatLength();
+            len +%= old_fmt.formatLength();
+            len +%= formatLengthDelta(format);
+            len +%= 4;
+            len +%= new_fmt.formatLength();
             return len;
         }
         pub usingnamespace GenericFormat(Format);
@@ -826,14 +824,14 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
             old_fmt.formatWrite(array);
             if (format.old_value != format.new_value) {
                 if (format.old_value > format.new_value) {
-                    const del_fmt: Bytes = bytes(format.old_value - format.new_value);
+                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
                     array.writeOne('(');
                     array.writeMany(fmt_spec.dec_style);
                     array.writeFormat(del_fmt);
                     array.writeMany(fmt_spec.no_style);
                     array.writeOne(')');
                 } else {
-                    const del_fmt: Bytes = bytes(format.new_value - format.old_value);
+                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
                     array.writeOne('(');
                     array.writeMany(fmt_spec.inc_style);
                     array.writeFormat(del_fmt);
@@ -848,25 +846,25 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
             var len: u64 = 0;
-            len += old_fmt.formatLength();
+            len +%= old_fmt.formatLength();
             if (format.old_value != format.new_value) {
                 if (format.old_value > format.new_value) {
-                    const del_fmt: Bytes = bytes(format.old_value - format.new_value);
-                    len += 1;
-                    len += fmt_spec.dec_style.len;
-                    len += del_fmt.formatLength();
-                    len += fmt_spec.no_style.len;
-                    len += 1;
+                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
+                    len +%= 1;
+                    len +%= fmt_spec.dec_style.len;
+                    len +%= del_fmt.formatLength();
+                    len +%= fmt_spec.no_style.len;
+                    len +%= 1;
                 } else {
-                    const del_fmt: Bytes = bytes(format.new_value - format.old_value);
-                    len += 1;
-                    len += fmt_spec.inc_style.len;
-                    len += del_fmt.formatLength();
-                    len += fmt_spec.no_style.len;
-                    len += 1;
+                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
+                    len +%= 1;
+                    len +%= fmt_spec.inc_style.len;
+                    len +%= del_fmt.formatLength();
+                    len +%= fmt_spec.no_style.len;
+                    len +%= 1;
                 }
-                len += 4;
-                len += new_fmt.formatLength();
+                len +%= 4;
+                len +%= new_fmt.formatLength();
             }
             return len;
         }
@@ -886,7 +884,7 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             break :blk tmp;
         });
         pub const fmt_spec: PolynomialFormatSpec = spec;
-        pub const max_len: u64 = (SubFormat.max_len) * 2 + 4;
+        pub const max_len: u64 = (SubFormat.max_len) * 2 +% 4;
         pub fn formatLength(format: Format) u64 {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
             const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
@@ -896,10 +894,10 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             const upper_s_count: u64 = upper_s.len();
             for (lower_s.readAll()) |v, i| {
                 if (v != upper_s.readOneAt(i)) {
-                    return (upper_s_count - lower_s_count) + i + 1 + (lower_s_count - i) + 2 + (upper_s_count - i) + 1;
+                    return (upper_s_count -% lower_s_count) +% i +% 1 +% (lower_s_count -% i) +% 2 +% (upper_s_count -% i) +% 1;
                 }
             }
-            return (upper_s_count - lower_s_count) + lower_s.len() + 4;
+            return (upper_s_count -% lower_s_count) +% lower_s.len() +% 4;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
@@ -909,15 +907,15 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             var i: u64 = 0;
             const lower_s_count: u64 = lower_s.len();
             const upper_s_count: u64 = upper_s.len();
-            while (i != lower_s_count) : (i += 1) {
+            while (i != lower_s_count) : (i +%= 1) {
                 if (upper_s.readOneAt(i) != lower_s.readOneAt(i)) {
                     break;
                 }
             }
             array.writeMany(upper_s.readAll()[0..i]);
             array.writeOne('{');
-            var z: u64 = upper_s_count - lower_s_count;
-            while (z != 0) : (z -= 1) array.writeOne('0');
+            var z: u64 = upper_s_count -% lower_s_count;
+            while (z != 0) : (z -%= 1) array.writeOne('0');
             array.writeMany(lower_s.readAll()[i..lower_s_count]);
             array.writeMany("..");
             array.writeMany(upper_s.readAll()[i..upper_s_count]);
@@ -1030,15 +1028,15 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             var i: u64 = 0;
             const old_lower_s_count: u64 = old_lower_s.len();
             const old_upper_s_count: u64 = old_upper_s.len();
-            while (i != old_lower_s_count) : (i += 1) {
+            while (i != old_lower_s_count) : (i +%= 1) {
                 if (old_upper_s.readOneAt(i) != old_lower_s.readOneAt(i)) {
                     break;
                 }
             }
             array.writeMany(old_upper_s.readAll()[0..i]);
             array.writeOne('{');
-            var x: u64 = old_upper_s_count - old_lower_s_count;
-            while (x != 0) : (x -= 1) array.writeOne('0');
+            var x: u64 = old_upper_s_count -% old_lower_s_count;
+            while (x != 0) : (x -%= 1) array.writeOne('0');
             array.writeMany(old_lower_s.readAll()[i..old_lower_s_count]);
             if (format.old_lower != format.new_lower) {
                 lower_del_fmt.formatWriteDelta(array);
@@ -1053,15 +1051,15 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             i = 0;
             const new_lower_s_count: u64 = new_lower_s.len();
             const new_upper_s_count: u64 = new_upper_s.len();
-            while (i != new_lower_s_count) : (i += 1) {
+            while (i != new_lower_s_count) : (i +%= 1) {
                 if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
                     break;
                 }
             }
             array.writeMany(new_upper_s.readAll()[0..i]);
             array.writeOne('{');
-            var y: u64 = new_upper_s_count - new_lower_s_count;
-            while (y != 0) : (y -= 1) array.writeOne('0');
+            var y: u64 = new_upper_s_count -% new_lower_s_count;
+            while (y != 0) : (y -%= 1) array.writeOne('0');
             array.writeMany(new_lower_s.readAll()[i..new_lower_s_count]);
             array.writeMany("..");
             array.writeMany(new_upper_s.readAll()[i..new_upper_s_count]);
@@ -1082,30 +1080,30 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             var i: u64 = 0;
             const old_lower_s_count: u64 = old_lower_s.len();
             const old_upper_s_count: u64 = old_upper_s.len();
-            len += old_upper_s_count - old_lower_s_count;
+            len +%= old_upper_s_count -% old_lower_s_count;
             if (format.old_lower != format.new_lower) {
-                len += lower_del_fmt.formatLengthDelta();
+                len +%= lower_del_fmt.formatLengthDelta();
             }
             if (format.old_upper != format.new_upper) {
-                len += upper_del_fmt.formatLengthDelta();
+                len +%= upper_del_fmt.formatLengthDelta();
             }
-            while (i != old_lower_s_count) : (i += 1) {
+            while (i != old_lower_s_count) : (i +%= 1) {
                 if (old_upper_s.readOneAt(i) != old_lower_s.readOneAt(i)) {
-                    len += i + 1 +
-                        (old_lower_s_count - i) + 2 +
-                        (old_upper_s_count - i) + 1 + 4;
+                    len +%= i +% 1 +%
+                        (old_lower_s_count -% i) +% 2 +%
+                        (old_upper_s_count -% i) +% 1 +% 4;
                     break;
                 }
             }
             i = 0;
             const new_lower_s_count: u64 = new_lower_s.len();
             const new_upper_s_count: u64 = new_upper_s.len();
-            len += new_upper_s_count - new_lower_s_count;
-            while (i != new_lower_s_count) : (i += 1) {
+            len +%= new_upper_s_count -% new_lower_s_count;
+            while (i != new_lower_s_count) : (i +%= 1) {
                 if (new_upper_s.readOneAt(i) != new_lower_s.readOneAt(i)) {
-                    len += i + 1 +
-                        (new_lower_s_count - i) + 2 +
-                        (new_upper_s_count - i) + 1;
+                    len +%= i +% 1 +%
+                        (new_lower_s_count -% i) +% 2 +%
+                        (new_upper_s_count -% i) +% 1;
                     break;
                 }
             }
@@ -1252,11 +1250,11 @@ pub const IdentifierFormat = struct {
     pub fn formatLength(format: Format) usize {
         var len: usize = 0;
         if (parse.isValidId(format.value)) {
-            len += format.value.len;
+            len +%= format.value.len;
         } else {
-            len += 2;
-            len += format.value.len;
-            len += 1;
+            len +%= 2;
+            len +%= format.value.len;
+            len +%= 1;
         }
         return len;
     }
@@ -1293,7 +1291,7 @@ fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const 
     if (ret.len < decl_name.len) {
         return type_name;
     }
-    for (ret[ret.len - decl_name.len ..]) |c, i| {
+    for (ret[ret.len -% decl_name.len ..]) |c, i| {
         if (c != decl_name[i]) {
             return type_name;
         }
@@ -1332,7 +1330,7 @@ pub fn typeName(comptime T: type) []const u8 {
 }
 fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
     return switch (c) {
-        'a'...'z' => s ++ [1]u8{c - ('a' - 'A')},
+        'a'...'z' => s ++ [1]u8{c -% ('a' -% 'A')},
         else => s ++ [1]u8{c},
     };
 }
@@ -1388,7 +1386,7 @@ pub fn toCamelCase(comptime name: []const u8) []const u8 {
 pub fn toTitlecases(comptime names: []const []const u8) []const u8 {
     const rename: []const u8 = toCamelCases(names);
     if (rename[0] >= 'a') {
-        return [1]u8{rename[0] - ('a' - 'A')} ++ rename[1..rename.len];
+        return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
     } else {
         return rename;
     }
@@ -1396,7 +1394,7 @@ pub fn toTitlecases(comptime names: []const []const u8) []const u8 {
 pub fn toTitlecase(comptime name: []const u8) []const u8 {
     const rename: []const u8 = toCamelCase(name);
     if (rename[0] >= 'a') {
-        return [1]u8{rename[0] - ('a' - 'A')} ++ rename[1..rename.len];
+        return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
     } else {
         return rename;
     }
@@ -1404,7 +1402,7 @@ pub fn toTitlecase(comptime name: []const u8) []const u8 {
 pub fn untitle(comptime name: []const u8) []const u8 {
     switch (name[0]) {
         'A'...'Z' => |c| {
-            return [1]u8{c + ('a' - 'A')} ++ name[1..];
+            return [1]u8{c +% ('a' -% 'A')} ++ name[1..];
         },
         else => {
             return name;
