@@ -11,14 +11,9 @@ const builtin = @import("./../builtin.zig");
 const config = @import("./config.zig");
 const gen = struct {
     usingnamespace @import("./gen.zig");
-
     usingnamespace @import("./gen-0.zig");
     usingnamespace @import("./gen-1.zig");
     usingnamespace @import("./gen-2.zig");
-
-    usingnamespace @import("./abstract_params.zig");
-    usingnamespace @import("./type_specs.zig");
-    usingnamespace @import("./impl_variant_groups.zig");
 };
 const Array = mem.StaticString(1024 * 1024);
 const fmt_spec = .{
@@ -281,105 +276,105 @@ const BinaryOp = struct {
     pub fn formatWrite(format: Format, array: anytype) void {
         formatWriteCall2(format.op1, format.op2, array, format.symbol);
     }
-    inline fn addEqualOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = add_equ_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn subtractEqualOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = subtract_equ_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn addOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = add_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn alignAboveOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = subtract_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn alignBelowOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = align_below_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn andOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = and_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn andNotOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = and_not_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn conditionalMoveOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = conditional_move_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn multiplyOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = multiply_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn orOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = or_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn shiftLeftOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = shift_left_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn shiftRightOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = shift_right_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn subtractOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = subtract_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
-    inline fn unpackDoubleApproxOp(op1: anytype, op2: anytype) BinaryOp {
-        return .{
-            .symbol = unpack_double_fn_name,
-            .op1 = Operand.init(op1),
-            .op2 = Operand.init(op2),
-        };
-    }
 };
+inline fn addEqualOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.add_equ_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn subtractEqualOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.subtract_equ_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn addOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.add_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn alignAboveOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.subtract_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn alignBelowOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.align_below_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn andOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.and_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn andNotOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.and_not_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn conditionalMoveOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.conditional_move_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn multiplyOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.multiply_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn orOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.or_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn shiftLeftOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.shift_left_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn shiftRightOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.shift_right_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn subtractOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.subtract_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn unpackDoubleApproxOp(op1: anytype, op2: anytype) BinaryOp {
+    return .{
+        .symbol = BinaryOp.unpack_double_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
 const UnaryOp = struct {
     symbol: [:0]const u8,
     op1: Operand,
@@ -400,128 +395,8 @@ const UnaryOp = struct {
         };
     }
 };
-const AddEqualOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.addEqualOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const SubtractEqualOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.subtractEqualOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const AddOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.addOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const AlignAboveOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.alignAboveOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const AlignBelowOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.alignBelowOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const AndOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.andOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const AndNotOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.andNotOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const ConditionalMoveOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.conditionalMoveOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const MultiplyOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.multiplyOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const OrOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.orOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const ShiftLeftOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.shiftLeftOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const ShiftRightOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.shiftRightOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const SubtractOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.subtractOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
-const UnpackSingleApproxOp = struct {
-    inline fn make(op1: anytype) UnaryOp {
-        return UnaryOp.unpackSingleApproxOp(op1);
-    }
-    inline fn exec(array: anytype, op1: anytype) void {
-        return array.writeFormat(make(op1));
-    }
-};
-const UnpackDoubleApproxOp = struct {
-    inline fn make(op1: anytype, op2: anytype) BinaryOp {
-        return BinaryOp.unpackDoubleApproxOp(op1, op2);
-    }
-    inline fn exec(array: anytype, op1: anytype, op2: anytype) void {
-        return array.writeFormat(make(op1, op2));
-    }
-};
 const FnCall = struct {
-    impl_variant: *const gen.DetailExtra,
+    impl_variant: *const gen.DetailMore,
     impl_fn_info: *const Fn,
     const Format = @This();
     pub inline fn formatWrite(format: Format, array: anytype) void {
@@ -539,10 +414,10 @@ fn writeArgument(array: *Array, argument_name: [:0]const u8) void {
     writeComma(array);
     array.writeMany(argument_name);
 }
-fn writeFnCallGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
+fn writeFnCallGeneric(array: *Array, impl_variant: *const gen.DetailMore, impl_fn_info: *const Fn) void {
     writeFnSignatureOrCall(array, impl_variant, impl_fn_info, false);
 }
-fn writeFnSignatureGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
+fn writeFnSignatureGeneric(array: *Array, impl_variant: *const gen.DetailMore, impl_fn_info: *const Fn) void {
     writeFnSignatureOrCall(array, impl_variant, impl_fn_info, true);
 }
 const Info = struct {
@@ -553,7 +428,7 @@ const Info = struct {
         info.alias = impl_fn_info;
     }
 };
-fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn, info: *Info) void {
+fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailMore, impl_fn_info: *const Fn, info: *Info) void {
     // Should the reader find inconsistencies in the following logical
     // structures (such as duplicating write operating in an inner scope, when
     // that write would have identical semantics and result in fewer lines of
@@ -658,29 +533,29 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
         callOffsetOf(impl_type_name, automatic_storage_field_name);
     switch (impl_fn_info.tag) {
         .define => {
-            AddEqualOp.exec(array, undefined_byte_address_word_ptr, offset_bytes_name);
+            array.writeFormat(addEqualOp(undefined_byte_address_word_ptr, offset_bytes_name));
             if (impl_variant.specs.sentinel) {}
             return array.writeMany(end_expression);
         },
         .undefine => {
-            SubtractEqualOp.exec(array, undefined_byte_address_word_ptr, offset_bytes_name);
+            array.writeFormat(subtractEqualOp(undefined_byte_address_word_ptr, offset_bytes_name));
             if (impl_variant.specs.sentinel) {}
             return array.writeMany(end_expression);
         },
         .seek => {
-            AddEqualOp.exec(array, unstreamed_byte_address_word_ptr, offset_bytes_name);
+            array.writeFormat(addEqualOp(unstreamed_byte_address_word_ptr, offset_bytes_name));
             if (impl_variant.specs.sentinel) {}
             return array.writeMany(end_expression);
         },
         .tell => {
-            SubtractEqualOp.exec(array, unstreamed_byte_address_word_ptr, offset_bytes_name);
+            array.writeFormat(subtractEqualOp(unstreamed_byte_address_word_ptr, offset_bytes_name));
             if (impl_variant.specs.sentinel) {}
             return array.writeMany(end_expression);
         },
         .allocated_byte_address => {
             array.writeMany(return_keyword);
             if (impl_variant.isAutomatic()) {
-                AddOp.exec(array, address_of_impl, offset_of_automatic_storage);
+                array.writeFormat(addOp(address_of_impl, offset_of_automatic_storage));
                 return array.writeMany(end_expression);
             }
             if (impl_variant.isParametric()) {
@@ -692,11 +567,11 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                     array.writeFormat(shift_right_op_lb_16);
                     return array.writeMany(end_expression);
                 }
-                AndNotOp.exec(array, allocated_byte_address_word_access, &shift_left_op_65535_48);
+                array.writeFormat(andNotOp(allocated_byte_address_word_access, &shift_left_op_65535_48));
                 return array.writeMany(end_expression);
             }
             if (impl_variant.hasDisjunctAlignment()) {
-                SubtractOp.exec(array, &aligned_byte_address, &alignment);
+                array.writeFormat(subtractOp(&aligned_byte_address, &alignment));
                 return array.writeMany(end_expression);
             }
             array.writeMany(allocated_byte_address_word_access);
@@ -710,24 +585,24 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
             if (impl_variant.hasDisjunctAlignment()) {
                 if (impl_variant.hasPackedApproximateCapacity()) {
                     if (config.packed_capacity_low) {
-                        AndNotOp.exec(array, &shift_right_op_lb_16, &subtract_op_1);
+                        array.writeFormat(andNotOp(&shift_right_op_lb_16, &subtract_op_1));
                         return array.writeMany(end_expression);
                     }
-                    AndNotOp.exec(array, allocated_byte_address_word_access, &or_op_1_65535_48);
+                    array.writeFormat(andNotOp(allocated_byte_address_word_access, &or_op_1_65535_48));
                     return array.writeMany(end_expression);
                 }
-                AndNotOp.exec(array, allocated_byte_address_word_access, &subtract_op_1);
+                array.writeFormat(andNotOp(allocated_byte_address_word_access, &subtract_op_1));
                 return array.writeMany(end_expression);
             }
             if (impl_variant.isParametric()) {
                 if (impl_variant.hasLazyAlignment()) {
-                    AlignAboveOp.exec(array, slave_specifier_call_unallocated_byte_address, low_alignment_specifier_name);
+                    array.writeFormat(alignAboveOp(slave_specifier_call_unallocated_byte_address, low_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 }
                 return info.setAlias(allocated_byte_address.impl_fn_info);
             }
             if (impl_variant.hasLazyAlignment()) {
-                AlignAboveOp.exec(array, &allocated_byte_address, low_alignment_specifier_name);
+                array.writeFormat(alignAboveOp(&allocated_byte_address, low_alignment_specifier_name));
                 return array.writeMany(end_expression);
             }
         },
@@ -743,11 +618,11 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                     array.writeFormat(shift_right_op_ub_16);
                     return array.writeMany(end_expression);
                 }
-                AndNotOp.exec(array, undefined_byte_address_word_access, &shift_left_op_65535_48);
+                array.writeFormat(andNotOp(undefined_byte_address_word_access, &shift_left_op_65535_48));
                 return array.writeMany(end_expression);
             }
             if (impl_variant.isAutomatic()) {
-                AddOp.exec(array, &allocated_byte_address, undefined_byte_address_word_access);
+                array.writeFormat(addOp(&allocated_byte_address, undefined_byte_address_word_access));
                 return array.writeMany(end_expression);
             }
             array.writeMany(undefined_byte_address_word_access);
@@ -762,7 +637,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
             if (impl_variant.hasPackedApproximateCapacity() or
                 impl_variant.hasStaticMaximumLength())
             {
-                AddOp.exec(array, &allocated_byte_address, &allocated_byte_count);
+                array.writeFormat(addOp(&allocated_byte_address, &allocated_byte_count));
                 return array.writeMany(end_expression);
             }
             array.writeMany(slave_specifier_call_unmapped_byte_address);
@@ -772,20 +647,20 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
             array.writeMany(return_keyword);
             if (impl_variant.isParametric()) {
                 if (impl_variant.specs.sentinel) {
-                    SubtractOp.exec(array, &unallocated_byte_address, high_alignment_specifier_name);
+                    array.writeFormat(subtractOp(&unallocated_byte_address, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 }
                 return info.setAlias(unallocated_byte_address.impl_fn_info);
             }
             if (impl_variant.fields.unallocated_byte_address) {
                 if (impl_variant.specs.sentinel) {
-                    SubtractOp.exec(array, unallocated_byte_address_word_access, high_alignment_specifier_name);
+                    array.writeFormat(subtractOp(unallocated_byte_address_word_access, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 }
                 array.writeMany(unallocated_byte_address_word_access);
                 return array.writeMany(end_expression);
             }
-            AddOp.exec(array, &aligned_byte_address, &writable_byte_count);
+            array.writeFormat(addOp(&aligned_byte_address, &writable_byte_count));
             return array.writeMany(end_expression);
         },
         .allocated_byte_count => {
@@ -794,7 +669,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 if (impl_variant.hasUnitAlignment()) {
                     return info.setAlias(aligned_byte_count.impl_fn_info);
                 } else {
-                    AddOp.exec(array, &alignment, &aligned_byte_count);
+                    array.writeFormat(addOp(&alignment, &aligned_byte_count));
                     return array.writeMany(end_expression);
                 }
             }
@@ -802,14 +677,14 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 if (impl_variant.hasUnitAlignment()) {
                     return info.setAlias(aligned_byte_count.impl_fn_info);
                 } else {
-                    AddOp.exec(array, &alignment, &aligned_byte_count);
+                    array.writeFormat(addOp(&alignment, &aligned_byte_count));
                     return array.writeMany(end_expression);
                 }
             }
             if (impl_variant.hasStaticMaximumLength()) {
                 return info.setAlias(writable_byte_count.impl_fn_info);
             }
-            SubtractOp.exec(array, &unallocated_byte_address, &allocated_byte_address);
+            array.writeFormat(subtractOp(&unallocated_byte_address, &allocated_byte_address));
             return array.writeMany(end_expression);
         },
         .aligned_byte_count => {
@@ -823,7 +698,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 return array.writeMany(end_expression);
             }
             if (impl_variant.specs.sentinel) {
-                AddOp.exec(array, &writable_byte_count, high_alignment_specifier_name);
+                array.writeFormat(addOp(&writable_byte_count, high_alignment_specifier_name));
                 return array.writeMany(end_expression);
             }
             return info.setAlias(writable_byte_count.impl_fn_info);
@@ -831,75 +706,75 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
         .writable_byte_count => {
             array.writeMany(return_keyword);
             if (impl_variant.isParametric()) {
-                SubtractOp.exec(array, &unwritable_byte_address, &aligned_byte_address);
+                array.writeFormat(subtractOp(&unwritable_byte_address, &aligned_byte_address));
                 return array.writeMany(end_expression);
             }
             if (impl_variant.hasStaticMaximumLength()) {
-                MultiplyOp.exec(array, count_specifier_name, callSizeOf(child_specifier_name));
+                array.writeFormat(multiplyOp(count_specifier_name, callSizeOf(child_specifier_name)));
                 return array.writeMany(end_expression);
             }
             if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (impl_variant.specs.sentinel) {
-                    const align_below_op: BinaryOp = AlignBelowOp.make(&unpck2x_op, high_alignment_specifier_name);
-                    SubtractOp.exec(array, &align_below_op, high_alignment_specifier_name);
+                    const align_below_op: BinaryOp = alignBelowOp(&unpck2x_op, high_alignment_specifier_name);
+                    array.writeFormat(subtractOp(&align_below_op, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 } else {
-                    AlignBelowOp.exec(array, &unpck2x_op, high_alignment_specifier_name);
+                    array.writeFormat(alignBelowOp(&unpck2x_op, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 }
             } else if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (impl_variant.specs.sentinel) {
-                    const align_below_op: BinaryOp = AlignBelowOp.make(&unpck1x_op, high_alignment_specifier_name);
-                    SubtractOp.exec(array, &align_below_op, high_alignment_specifier_name);
+                    const align_below_op: BinaryOp = alignBelowOp(&unpck1x_op, high_alignment_specifier_name);
+                    array.writeFormat(subtractOp(&align_below_op, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 } else {
-                    AlignBelowOp.exec(array, &unpck1x_op, high_alignment_specifier_name);
+                    array.writeFormat(alignBelowOp(&unpck1x_op, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 }
             } else if (impl_variant.specs.sentinel) {
-                const subtract_op: BinaryOp = SubtractOp.make(&allocated_byte_count, high_alignment_specifier_name);
+                const subtract_op: BinaryOp = subtractOp(&allocated_byte_count, high_alignment_specifier_name);
                 if (impl_variant.hasUnitAlignment()) {
                     array.writeFormat(subtract_op);
                     return array.writeMany(end_expression);
                 } else {
-                    SubtractOp.exec(array, &subtract_op, &alignment);
+                    array.writeFormat(subtractOp(&subtract_op, &alignment));
                     return array.writeMany(end_expression);
                 }
             }
             if (impl_variant.hasUnitAlignment()) {
                 return info.setAlias(allocated_byte_count.impl_fn_info);
             } else {
-                SubtractOp.exec(array, &allocated_byte_count, &alignment);
+                array.writeFormat(subtractOp(&allocated_byte_count, &alignment));
                 return array.writeMany(end_expression);
             }
         },
         .defined_byte_count => {
             array.writeMany(return_keyword);
             if (impl_variant.hasUnitAlignment()) {
-                SubtractOp.exec(array, &undefined_byte_address, &allocated_byte_address);
+                array.writeFormat(subtractOp(&undefined_byte_address, &allocated_byte_address));
                 return array.writeMany(end_expression);
             } else {
-                SubtractOp.exec(array, &undefined_byte_address, &aligned_byte_address);
+                array.writeFormat(subtractOp(&undefined_byte_address, &aligned_byte_address));
                 return array.writeMany(end_expression);
             }
         },
         .undefined_byte_count => {
             array.writeMany(return_keyword);
-            SubtractOp.exec(array, &unwritable_byte_address, &undefined_byte_address);
+            array.writeFormat(subtractOp(&unwritable_byte_address, &undefined_byte_address));
             return array.writeMany(end_expression);
         },
         .streamed_byte_count => {
             array.writeMany(return_keyword);
-            SubtractOp.exec(array, &unstreamed_byte_address, &aligned_byte_address);
+            array.writeFormat(subtractOp(&unstreamed_byte_address, &aligned_byte_address));
             return array.writeMany(end_expression);
         },
         .unstreamed_byte_count => {
             array.writeMany(return_keyword);
             if (impl_variant.modes.resize) {
-                SubtractOp.exec(array, &undefined_byte_address, &unstreamed_byte_address);
+                array.writeFormat(subtractOp(&undefined_byte_address, &unstreamed_byte_address));
                 return array.writeMany(end_expression);
             } else {
-                SubtractOp.exec(array, &unwritable_byte_address, &unstreamed_byte_address);
+                array.writeFormat(subtractOp(&unwritable_byte_address, &unstreamed_byte_address));
                 return array.writeMany(end_expression);
             }
         },
@@ -909,20 +784,20 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailExtra, impl_
                 impl_variant.hasPackedApproximateCapacity())
             {
                 if (config.packed_capacity_low) {
-                    AndOp.exec(array, &shift_right_op_lb_16, &subtract_op_1);
+                    array.writeFormat(andOp(&shift_right_op_lb_16, &subtract_op_1));
                     return array.writeMany(end_expression);
                 } else {
-                    AndOp.exec(array, allocated_byte_address_word_access, &subtract_op_1);
+                    array.writeFormat(andOp(allocated_byte_address_word_access, &subtract_op_1));
                     return array.writeMany(end_expression);
                 }
             } else {
-                SubtractOp.exec(array, &aligned_byte_address, &allocated_byte_address);
+                array.writeFormat(subtractOp(&aligned_byte_address, &allocated_byte_address));
                 return array.writeMany(end_expression);
             }
         },
     }
 }
-fn writeFn(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn) void {
+fn writeFn(array: *Array, impl_variant: *const gen.DetailMore, impl_fn_info: *const Fn) void {
     if (hasCapability(impl_variant, impl_fn_info)) {
         var info: Info = .{ .start = array.len() };
         writeFnSignatureGeneric(array, impl_variant, impl_fn_info);
@@ -932,7 +807,7 @@ fn writeFn(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *c
         writeSimpleRedecl(array, impl_fn_info, &info);
     }
 }
-fn writeDecls(array: *Array, impl_variant: *const gen.DetailExtra) void {
+fn writeDecls(array: *Array, impl_variant: *const gen.DetailMore) void {
     if (impl_variant.hasStaticMaximumLength()) {
         array.writeMany("const Static = fn () callconv(.Inline) u64;\n");
     }
@@ -969,11 +844,11 @@ fn writeComptimeFieldInternal(array: *Array, fn_tag: Fn.Tag, args: *const Args) 
         return array.writeMany(",\n");
     }
 }
-inline fn writeComptimeField(array: *Array, impl_variant: *const gen.DetailExtra, comptime fn_tag: Fn.Tag) void {
+inline fn writeComptimeField(array: *Array, impl_variant: *const gen.DetailMore, comptime fn_tag: Fn.Tag) void {
     const args: Args = getArgList(impl_variant, get(fn_tag), false);
     writeComptimeFieldInternal(array, fn_tag, &args);
 }
-inline fn writeFields(array: *Array, impl_variant: *const gen.DetailExtra) void {
+inline fn writeFields(array: *Array, impl_variant: *const gen.DetailMore) void {
     writeComptimeField(array, impl_variant, .allocated_byte_address);
     writeComptimeField(array, impl_variant, .aligned_byte_address);
     writeComptimeField(array, impl_variant, .unallocated_byte_address);
@@ -1008,7 +883,7 @@ inline fn writeFields(array: *Array, impl_variant: *const gen.DetailExtra) void 
 }
 const Args = mem.StaticArray([:0]const u8, 8);
 
-fn getArgList(impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn, sign: bool) Args {
+fn getArgList(impl_variant: *const gen.DetailMore, impl_fn_info: *const Fn, sign: bool) Args {
     var array: Args = undefined;
     array.undefineAll();
     if (impl_fn_info.mut == .Mutable) {
@@ -1045,7 +920,7 @@ fn getArgList(impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn, sig
     }
     return array;
 }
-fn writeFnSignatureOrCall(array: *Array, impl_variant: *const gen.DetailExtra, impl_fn_info: *const Fn, sign: bool) void {
+fn writeFnSignatureOrCall(array: *Array, impl_variant: *const gen.DetailMore, impl_fn_info: *const Fn, sign: bool) void {
     const list: Args = getArgList(impl_variant, impl_fn_info, sign);
     if (sign) array.writeMany("pub inline fn ");
     array.writeMany(impl_fn_info.fnName());
@@ -1059,11 +934,10 @@ fn writeFnSignatureOrCall(array: *Array, impl_variant: *const gen.DetailExtra, i
         array.writeMany(if (sign) ") u64 " else ")");
     }
 }
-fn writeHelpInformation(array: *Array, impl_variant: gen.DetailExtra) void {
-    if (return) {}
+fn writeHelpInformation(array: *Array, impl_variant: gen.DetailMore) void {
     array.writeMany("// ");
-    inline for (@typeInfo(gen.DetailExtra).Struct.fields[1..]) |field| {
-        inline for (@typeInfo(meta.Field(gen.DetailExtra, field.name)).Struct.fields) |field_field| {
+    inline for (@typeInfo(gen.DetailMore).Struct.fields[1..]) |field| {
+        inline for (@typeInfo(meta.Field(gen.DetailMore, field.name)).Struct.fields) |field_field| {
             if (@field(@field(impl_variant, field.name), field_field.name)) {
                 array.writeMany(field_field.name ++ ", ");
             }
@@ -1088,7 +962,7 @@ fn writeFile(array: *Array) void {
     gen.write(fd, boilerplate);
     gen.write(fd, array.readAll());
 }
-fn hasCapability(impl_variant: *const gen.DetailExtra, fn_info: *const Fn) bool {
+fn hasCapability(impl_variant: *const gen.DetailMore, fn_info: *const Fn) bool {
     return switch (fn_info.tag) {
         .define,
         .undefine,
