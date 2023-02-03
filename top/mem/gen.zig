@@ -1,3 +1,6 @@
+const fmt = @import("./../fmt.zig");
+const builtin = @import("./../builtin.zig");
+
 pub usingnamespace sys;
 pub usingnamespace gen;
 pub usingnamespace common;
@@ -49,27 +52,39 @@ pub const TypeSpecMap = struct {
     specs: []const type,
     vars: type,
 };
+
 pub const DetailLess = packed struct {
     index: u8 = undefined,
-    kind: Kind = .{},
-    layout: Layout = .{},
+    kinds: Kinds = .{},
+    layouts: Layouts = .{},
     modes: Modes = .{},
 
     fn more(detail: DetailLess, fields: Fields, techs: Techniques) Detail {
         return .{
             .index = detail.index,
-            .kind = detail.kind,
-            .layout = detail.layout,
+            .kinds = detail.kind,
+            .layouts = detail.layouts,
             .modes = detail.modes,
             .techs = techs,
             .fields = fields,
         };
     }
+    pub fn formatWrite(detail: DetailLess, array: anytype) void {
+        array.writeMany(".{ .index = ");
+        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.index));
+        array.writeMany(", .kinds = ");
+        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.kinds));
+        array.writeMany(", .layouts = ");
+        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.layouts));
+        array.writeMany(", .modes = ");
+        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.modes));
+        array.writeMany(" }");
+    }
 };
 pub const Detail = packed struct {
     index: u8 = undefined,
-    kind: Kind = .{},
-    layout: Layout = .{},
+    kinds: Kinds = .{},
+    layouts: Layouts = .{},
     modes: Modes = .{},
     fields: Fields = .{},
     techs: Techniques = .{},
@@ -77,47 +92,62 @@ pub const Detail = packed struct {
     pub fn less(detail: Detail) DetailLess {
         return .{
             .index = detail.index,
-            .kind = detail.kind,
-            .layout = detail.layout,
+            .kinds = detail.kinds,
+            .layouts = detail.layouts,
             .modes = detail.modes,
         };
     }
     pub fn more(detail: Detail, specs: gen.Specifiers) DetailMore {
         return .{
             .index = detail.index,
-            .kind = detail.kind,
-            .layout = detail.layout,
+            .kinds = detail.kinds,
+            .layouts = detail.layouts,
             .modes = detail.modes,
             .techs = detail.techs,
             .fields = detail.fields,
-            .specifiers = specs,
+            .specs = specs,
         };
+    }
+    pub fn formatWrite(detail: Detail, array: anytype) void {
+        array.writeMany(".{ .index = ");
+        array.writeFormat(fmt.ud8(detail.index));
+        array.writeMany(", .kinds = ");
+        array.writeFormat(detail.kinds);
+        array.writeMany(", .layouts = ");
+        array.writeFormat(detail.layouts);
+        array.writeMany(", .modes = ");
+        array.writeFormat(detail.modes);
+        array.writeMany(", .fields = ");
+        array.writeFormat(detail.fields);
+        array.writeMany(", .techs = ");
+        array.writeFormat(detail.techs);
+        array.writeMany(" }");
     }
 };
 pub const DetailMore = packed struct {
     index: u8 = undefined,
-    kind: Kind = .{},
-    layout: Layout = .{},
+    kinds: Kinds = .{},
+    layouts: Layouts = .{},
     modes: Modes = .{},
     fields: Fields = .{},
     techs: Techniques = .{},
     specs: gen.Specifiers = .{},
 
     pub fn isAutomatic(impl_variant: *const DetailMore) bool {
-        return impl_variant.kind.automatic;
+        return impl_variant.kinds.automatic;
     }
     pub fn isParametric(impl_variant: *const DetailMore) bool {
-        return impl_variant.kind.parametric;
+        return impl_variant.kinds.parametric;
     }
     pub fn isDynamic(impl_variant: *const DetailMore) bool {
-        return impl_variant.kind.dynamic;
+        return impl_variant.kinds.dynamic;
     }
     pub fn isStatic(impl_variant: *const DetailMore) bool {
-        return impl_variant.kind.static;
+        return impl_variant.kinds.static;
     }
     pub fn hasUnitAlignment(impl_variant: *const DetailMore) bool {
         return impl_variant.techs.unit_alignment or
-            impl_variant.kind.automatic;
+            impl_variant.kinds.automatic;
     }
     pub fn hasLazyAlignment(impl_variant: *const DetailMore) bool {
         return impl_variant.techs.lazy_alignment;
@@ -126,7 +156,7 @@ pub const DetailMore = packed struct {
         return impl_variant.techs.disjunct_alignment;
     }
     pub fn hasStaticMaximumLength(impl_variant: *const DetailMore) bool {
-        return impl_variant.kind.automatic or impl_variant.kind.static;
+        return impl_variant.kinds.automatic or impl_variant.kinds.static;
     }
     pub fn hasPackedApproximateCapacity(impl_variant: *const DetailMore) bool {
         return impl_variant.techs.single_packed_approximate_capacity or
@@ -135,29 +165,52 @@ pub const DetailMore = packed struct {
     pub fn less(detail: DetailMore) Detail {
         return .{
             .index = detail.index,
-            .kind = detail.kind,
-            .layout = detail.layout,
+            .kinds = detail.kinds,
+            .layouts = detail.layouts,
             .modes = detail.modes,
             .techs = detail.techs,
             .fields = detail.fields,
         };
     }
+    pub fn formatWrite(detail: DetailMore, array: anytype) void {
+        array.writeMany(".{ .index = ");
+        array.writeFormat(fmt.ud8(detail.index));
+        array.writeMany(", .kinds = ");
+        array.writeFormat(detail.kinds);
+        array.writeMany(", .layouts = ");
+        array.writeFormat(detail.layouts);
+        array.writeMany(", .modes = ");
+        array.writeFormat(detail.modes);
+        array.writeMany(", .fields = ");
+        array.writeFormat(detail.fields);
+        array.writeMany(", .techs = ");
+        array.writeFormat(detail.techs);
+        array.writeMany(", .specs = ");
+        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.specs));
+        array.writeMany(" }");
+    }
 };
 
-pub const Kind = packed struct {
+pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
     static: bool = false,
     parametric: bool = false,
+
+    pub usingnamespace StructOfBoolFormat(Kinds);
 };
-pub const Layout = packed struct {
+pub const Layouts = packed struct {
     structured: bool = false,
     unstructured: bool = false,
+
+    pub usingnamespace StructOfBoolFormat(Layouts);
 };
 pub const Modes = packed struct {
     read_write: bool = false,
     resize: bool = false,
     stream: bool = false,
+
+    pub usingnamespace StructOfBoolFormat(Modes);
 };
 pub const Fields = packed struct {
     automatic_storage: bool = false,
@@ -165,6 +218,8 @@ pub const Fields = packed struct {
     undefined_byte_address: bool = false,
     unallocated_byte_address: bool = false,
     unstreamed_byte_address: bool = false,
+
+    pub usingnamespace StructOfBoolFormat(Fields);
 };
 pub const Techniques = packed struct {
     auto_alignment: bool = false,
@@ -186,6 +241,7 @@ pub const Techniques = packed struct {
             disjunct,
         },
     };
+    pub usingnamespace StructOfBoolFormat(Techniques);
 };
 pub const Option = struct {
     kind: Option.Kind,
@@ -202,6 +258,21 @@ pub const Option = struct {
         field_field_names: []const []const u8,
     };
 };
+fn StructOfBoolFormat(comptime Format: type) type {
+    return (struct {
+        pub fn formatWrite(format: Format, array: anytype) void {
+            var len: usize = 0;
+            array.writeMany(".{ ");
+            inline for (@typeInfo(Format).Struct.fields) |field| {
+                if (@field(format, field.name)) {
+                    array.writeMany("." ++ field.name ++ " = true, ");
+                    len +%= 1;
+                }
+            }
+            array.overwriteManyBack(if (len == 0) "}" else " }");
+        }
+    });
+}
 
 pub const Variant = enum {
     __stripped,
@@ -357,7 +428,6 @@ const UnstructuredParametric = struct {
     high_alignment: u64,
     low_alignment: Alignment = default_alignment,
 };
-
 const UnstructuredStaticSegment = struct {
     bytes: u64,
     Allocator: BoundAllocator,
@@ -423,6 +493,12 @@ const sys = struct {
         _ = syscall1(60, rc);
         unreachable;
     }
+};
+
+pub const fmt_struct_init_literal = .{
+    .infer_type_names = true,
+    .omit_default_fields = true,
+    .omit_trailing_comma = true,
 };
 
 fn alignAbove(value: u64, comptime alignment: u64) u64 {
