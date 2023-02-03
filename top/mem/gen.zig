@@ -3,7 +3,6 @@ const builtin = @import("./../builtin.zig");
 
 pub usingnamespace sys;
 pub usingnamespace gen;
-pub usingnamespace common;
 
 const gen = struct {
     pub usingnamespace @import("./abstract_params.zig");
@@ -23,20 +22,20 @@ pub const AbstractSpec = union(enum) {
     }),
     allocated_byte_address: ReadWrite(union {
         _: Static,
-        // single_packed_approximate_capacity: Dynamic,
+        single_packed_approximate_capacity: Dynamic,
         unstreamed_byte_address: Stream(union {
             undefined_byte_address: Resize(union {
                 _: Static,
-                // single_packed_approximate_capacity: Dynamic,
-                // double_packed_approximate_capacity: Dynamic,
+                single_packed_approximate_capacity: Dynamic,
+                double_packed_approximate_capacity: Dynamic,
                 unallocated_byte_address: Dynamic,
             }),
             unallocated_byte_address: Dynamic,
         }),
         undefined_byte_address: Resize(union {
             _: Static,
-            // single_packed_approximate_capacity: Dynamic,
-            // double_packed_approximate_capacity: Dynamic,
+            single_packed_approximate_capacity: Dynamic,
+            double_packed_approximate_capacity: Dynamic,
             unallocated_byte_address: Dynamic,
         }),
         unallocated_byte_address: Dynamic,
@@ -71,13 +70,13 @@ pub const DetailLess = packed struct {
     }
     pub fn formatWrite(detail: DetailLess, array: anytype) void {
         array.writeMany(".{ .index = ");
-        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.index));
+        array.writeFormat(fmt.ud64(detail.index));
         array.writeMany(", .kinds = ");
-        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.kinds));
+        array.writeFormat(detail.kinds);
         array.writeMany(", .layouts = ");
-        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.layouts));
+        array.writeFormat(detail.layouts);
         array.writeMany(", .modes = ");
-        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.modes));
+        array.writeFormat(detail.modes);
         array.writeMany(" }");
     }
 };
@@ -186,7 +185,7 @@ pub const DetailMore = packed struct {
         array.writeMany(", .techs = ");
         array.writeFormat(detail.techs);
         array.writeMany(", .specs = ");
-        array.writeFormat(fmt.render(fmt_struct_init_literal, detail.specs));
+        writeStructOfBool(array, gen.Specifiers, detail.specs);
         array.writeMany(" }");
     }
 };
@@ -258,21 +257,115 @@ pub const Option = struct {
         field_field_names: []const []const u8,
     };
 };
-fn StructOfBoolFormat(comptime Format: type) type {
-    return (struct {
-        pub fn formatWrite(format: Format, array: anytype) void {
-            var len: usize = 0;
-            array.writeMany(".{ ");
-            inline for (@typeInfo(Format).Struct.fields) |field| {
-                if (@field(format, field.name)) {
-                    array.writeMany("." ++ field.name ++ " = true, ");
-                    len +%= 1;
-                }
-            }
-            array.overwriteManyBack(if (len == 0) "}" else " }");
-        }
-    });
-}
+
+pub const Mode = enum(u2) {
+    read_write,
+    read_write_resize,
+    read_write_stream,
+    read_write_stream_resize,
+    fn convert(modes: Modes) Mode {
+        if (builtin.int3a(
+            bool,
+            modes.read_write,
+            modes.resize,
+            modes.stream,
+        )) return .read_write_stream_resize;
+        if (builtin.int2a(
+            bool,
+            modes.read_write,
+            modes.resize,
+        )) return .read_write_resize;
+        if (builtin.int2a(
+            bool,
+            modes.read_write,
+            modes.stream,
+        )) return .read_write_stream;
+        return .read_write;
+    }
+};
+pub const Layout = enum(u1) {
+    structured,
+    unstructured,
+    fn convert(layouts: Layouts) Layout {
+        if (layouts.structured) return .structured;
+        if (layouts.unstructured) return .unstructured;
+        unreachable;
+    }
+};
+pub const Kind = enum(u2) {
+    automatic,
+    dynamic,
+    static,
+    parametric,
+    fn convert(kinds: Kinds) Kind {
+        if (kinds.automatic) return .automatic;
+        if (kinds.dynamic) return .dynamic;
+        if (kinds.static) return .static;
+        if (kinds.parametric) return .parametric;
+        unreachable;
+    }
+};
+pub const Brief = packed struct {
+    mode: Mode,
+    kind: Kind,
+    layout: Layout,
+    pub fn convert(detail: *const Detail) Brief {
+        return .{
+            .kind = Kind.convert(detail.kinds),
+            .layout = Layout.convert(detail.layouts),
+            .mode = Mode.convert(detail.modes),
+        };
+    }
+    fn name(brief: Brief) [:0]const u8 {
+        return switch (brief.layout) {
+            .structured => switch (brief.kind) {
+                .dynamic => switch (brief.mode) {
+                    .read_write => "StructuredView",
+                    .read_write_stream => "StructuredReader",
+                    .read_write_resize => "StructuredWriter",
+                    .read_write_stream_resize => "StructuredStream",
+                },
+                .parametric => switch (brief.mode) {
+                    .read_write_resize => "StructuredParametricWriter",
+                    .read_write_stream_resize => "StructuredParametricStream",
+                    else => unreachable,
+                },
+                .static => switch (brief.mode) {
+                    .read_write => "StructuredStaticView",
+                    .read_write_stream => "StructuredStaticReader",
+                    .read_write_resize => "StructuredStaticWriter",
+                    .read_write_stream_resize => "StructuredStaticStream",
+                },
+                .automatic => switch (brief.mode) {
+                    .read_write => "AutomaticView",
+                    .read_write_stream => "AutomaticReader",
+                    .read_write_resize => "AutomaticWriter",
+                    .read_write_stream_resize => "AutomaticStream",
+                },
+            },
+            .unstructured => switch (brief.kind) {
+                .dynamic => switch (brief.mode) {
+                    .read_write => "UnstructedView",
+                    .read_write_stream => "UnstructedReader",
+                    .read_write_resize => "UnstructedWriter",
+                    .read_write_stream_resize => "UnstructedStream",
+                },
+                .parametric => switch (brief.mode) {
+                    .read_write_resize => "UnstructedParametricWriter",
+                    .read_write_stream_resize => "UnstructedParametricStream",
+                    else => unreachable,
+                },
+                .static => switch (brief.mode) {
+                    .read_write => "UnstructedStaticView",
+                    .read_write_stream => "UnstructedStaticReader",
+                    .read_write_resize => "UnstructedStaticWriter",
+                    .read_write_stream_resize => "UnstructedStaticStream",
+                },
+                else => unreachable,
+            },
+        };
+    }
+};
 
 pub const Variant = enum {
     __stripped,
@@ -508,35 +601,6 @@ fn alignBelow(value: u64, comptime alignment: u64) u64 {
     return value & ~(alignment - 1);
 }
 
-const common = struct {
-    pub fn fieldNames(comptime T: type) []const []const u8 {
-        var field_names: []const []const u8 = &.{};
-        for (@typeInfo(T).Struct.fields) |field| {
-            field_names = field_names ++ [1][]const u8{field.name};
-        }
-        return field_names;
-    }
-    pub fn simpleTypeName(comptime T: type) []const u8 {
-        if (@typeInfo(T) == .Struct) {
-            var type_name: []const u8 = "struct { ";
-            for (@typeInfo(T).Struct.fields) |field_field| {
-                type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
-            }
-            type_name = type_name[0 .. type_name.len - 2] ++ " }";
-            return type_name;
-        } else {
-            return @typeName(T);
-        }
-    }
-    pub fn fieldTypeNames(comptime T: type) []const []const u8 {
-        var field_type_names: []const []const u8 = &.{};
-        for (@typeInfo(T).Struct.fields) |field| {
-            field_type_names = field_type_names ++ [1][]const u8{simpleTypeName(field.type)};
-        }
-        return field_type_names;
-    }
-};
-
 pub const Allocator = struct {
     start: u64,
     next: u64,
@@ -612,3 +676,47 @@ pub const Allocator = struct {
         allocator.finish = allocator.start;
     }
 };
+pub fn fieldNames(comptime T: type) []const []const u8 {
+    var field_names: []const []const u8 = &.{};
+    for (@typeInfo(T).Struct.fields) |field| {
+        field_names = field_names ++ [1][]const u8{field.name};
+    }
+    return field_names;
+}
+pub fn simpleTypeName(comptime T: type) []const u8 {
+    if (@typeInfo(T) == .Struct) {
+        var type_name: []const u8 = "struct { ";
+        for (@typeInfo(T).Struct.fields) |field_field| {
+            type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
+        }
+        type_name = type_name[0 .. type_name.len - 2] ++ " }";
+        return type_name;
+    } else {
+        return @typeName(T);
+    }
+}
+pub fn fieldTypeNames(comptime T: type) []const []const u8 {
+    var field_type_names: []const []const u8 = &.{};
+    for (@typeInfo(T).Struct.fields) |field| {
+        field_type_names = field_type_names ++ [1][]const u8{simpleTypeName(field.type)};
+    }
+    return field_type_names;
+}
+fn writeStructOfBool(array: anytype, comptime T: type, value: T) void {
+    var len: usize = 0;
+    array.writeMany(".{ ");
+    inline for (@typeInfo(T).Struct.fields) |field| {
+        if (@field(value, field.name)) {
+            array.writeMany("." ++ field.name ++ " = true, ");
+            len +%= 1;
+        }
+    }
+    array.overwriteManyBack(if (len == 0) "}" else " }");
+}
+fn StructOfBoolFormat(comptime Format: type) type {
+    return (struct {
+        pub fn formatWrite(format: Format, array: anytype) void {
+            writeStructOfBool(array, Format, format);
+        }
+    });
+}
