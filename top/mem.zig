@@ -819,6 +819,9 @@ pub fn view(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0
 pub fn StaticArray(comptime child: type, comptime count: u64) type {
     return mem.StructuredAutomaticVector(child, null, count, @alignOf(child), .{});
 }
+pub fn StaticView(comptime child: type, comptime count: u64) type {
+    return mem.StructuredAutomaticView(child, null, count, @alignOf(child), .{});
+}
 pub fn StaticString(comptime count: u64) type {
     return StaticArray(u8, count);
 }
