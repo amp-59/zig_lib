@@ -26,17 +26,7 @@ const fmt_spec = .{
     .infer_type_names = true,
     .omit_trailing_comma = true,
 };
-fn writeContainerVariantsStructsInternal(array: *Array, ctn_detail: *const gen.DetailLess) void {
-    array.writeMany("    .{ .index = ");
-    array.writeFormat(fmt.render(fmt_spec, ctn_detail.index));
-    array.writeMany(", .kind = ");
-    array.writeFormat(fmt.render(fmt_spec, ctn_detail.kind));
-    array.writeMany(", .layout = ");
-    array.writeFormat(fmt.render(fmt_spec, ctn_detail.layout));
-    array.writeMany(", .modes = ");
-    array.writeFormat(fmt.render(fmt_spec, ctn_detail.modes));
-    array.writeMany(" },\n");
-}
+
 fn writeContainerVariantStructs(array: *Array) void {
     array.writeMany("pub const ctn_variant_groups = [_][]const gen.DetailLess{\n");
     var uniques: mem.StaticArray(gen.DetailLess, gen.impl_details.len) = undefined;
@@ -54,22 +44,16 @@ fn writeContainerVariantStructs(array: *Array) void {
     }
     array.writeMany("};\n");
 }
+
+fn writeContainerVariantsStructsInternal(array: *Array, ctn_detail: *const gen.DetailLess) void {
+    array.writeMany("    ");
+    array.writeFormat(ctn_detail.*);
+    array.writeMany(",\n");
+}
 fn writeImplementationVariantStructsInternal(array: *Array, impl_detail: *const gen.Detail, specs: gen.Specifiers) void {
-    array.writeMany("        .{ .index = ");
-    array.writeFormat(fmt.render(fmt_spec, impl_detail.index));
-    array.writeMany(", .kind = ");
-    array.writeFormat(fmt.render(fmt_spec, impl_detail.kind));
-    array.writeMany(", .layout = ");
-    array.writeFormat(fmt.render(fmt_spec, impl_detail.layout));
-    array.writeMany(", .modes = ");
-    array.writeFormat(fmt.render(fmt_spec, impl_detail.modes));
-    array.writeMany(", .fields = ");
-    array.writeFormat(fmt.render(fmt_spec, impl_detail.fields));
-    array.writeMany(", .techs = ");
-    array.writeFormat(fmt.render(fmt_spec, impl_detail.techs));
-    array.writeMany(", .specs = ");
-    array.writeFormat(fmt.render(fmt_spec, specs));
-    array.writeMany(" },\n");
+    array.writeMany("        ");
+    array.writeFormat(impl_detail.more(specs));
+    array.writeMany(",\n");
 }
 
 fn writeImplementationsVariantStructs(array: *Array) void {
