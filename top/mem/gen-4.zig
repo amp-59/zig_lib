@@ -8,8 +8,7 @@ const testing = @import("./../testing.zig");
 const builtin = @import("./../builtin.zig");
 
 const gen = struct {
-    usingnamespace @import("./gen-0.zig");
-    usingnamespace @import("./gen-1.zig");
+    usingnamespace @import("./gen.zig");
 };
 const Array = mem.StaticString(1024 * 1024);
 
@@ -104,6 +103,270 @@ const fn_stds = .{
     .{ .tag = .appendAny,                       .kind = .append, .val = .Any,                       .loc = .Next,       .err = .Wrap },
 };
 // zig fmt: on
+
+pub const Fn = packed struct {
+    tag: Tag,
+    kind: Kind,
+    val: Value = .None,
+    loc: Location = .{ .Absolute = .AllDefined },
+    err: ErrorHandler = .None,
+    decl: builtin.CallingConvention = .Unspecified,
+    const Kind = union(enum) {
+        read,
+        refer,
+        write,
+        append,
+        helper,
+        special,
+        client,
+    };
+    const Value = enum(u4) {
+        None = 0,
+        One = 1,
+        Count = 2,
+        CountWithSentinel = 3,
+        Many = 4,
+        ManyWithSentinel = 5,
+        Fields = 6,
+        Args = 7,
+        Format = 8,
+        Any = 9,
+    };
+    const ErrorHandler = enum(u2) {
+        None = 0,
+        Try = 1,
+        Wrap = 2,
+    };
+    const Location = union(enum) {
+        Absolute: AbsoluteLocation,
+        Relative: RelativeLocation,
+    };
+    const AbsoluteLocation = enum(u2) {
+        /// All positions with defined values
+        AllDefined = 0,
+        /// Any position with a defined value
+        AnyDefined = 1,
+        // Any position with an undefined value
+        AnyUndefined = 2,
+        // All positions with undefined value
+        AllUndefined = 3,
+    };
+    const RelativeLocation = enum(u2) {
+        /// below unstreamed_byte_address: (overwrite|read)*Behind
+        Behind = 0,
+        /// unstreamed_byte_address and above: (overwrite|read)*Ahead
+        Ahead = 1,
+        /// below undefined_byte_address: re(write|read)*Back
+        Back = 2,
+        /// undefined_byte_address and above (write|append)*
+        Next = 3,
+    };
+    pub const Tag = enum {
+        defineAll,
+        undefineAll,
+        streamAll,
+        unstreamAll,
+        index,
+        count,
+        avail,
+        __at,
+        __ad,
+        __len,
+        __rem,
+        readAll,
+        referAllDefined,
+        readAllWithSentinel,
+        referAllDefinedWithSentinel,
+        __behind,
+        unstream,
+        readOneBehind,
+        readCountBehind,
+        readCountWithSentinelBehind,
+        referCountWithSentinelBehind,
+        readManyBehind,
+        readManyWithSentinelBehind,
+        referManyWithSentinelBehind,
+        readOneAt,
+        referOneAt,
+        overwriteOneAt,
+        readCountAt,
+        referCountAt,
+        overwriteCountAt,
+        readCountWithSentinelAt,
+        referCountWithSentinelAt,
+        readManyAt,
+        referManyAt,
+        overwriteManyAt,
+        readManyWithSentinelAt,
+        referManyWithSentinelAt,
+        stream,
+        readOneAhead,
+        readCountAhead,
+        readCountWithSentinelAhead,
+        readManyAhead,
+        readManyWithSentinelAhead,
+        __back,
+        undefine,
+        readOneBack,
+        referOneBack,
+        overwriteOneBack,
+        readCountBack,
+        referCountBack,
+        overwriteCountBack,
+        readCountWithSentinelBack,
+        referCountWithSentinelBack,
+        readManyBack,
+        referManyBack,
+        overwriteManyBack,
+        readManyWithSentinelBack,
+        referManyWithSentinelBack,
+        referAllUndefined,
+        referAllUndefinedWithSentinel,
+        define,
+        referOneUndefined,
+        writeOne,
+        referCountUndefined,
+        writeCount,
+        referManyUndefined,
+        writeMany,
+        writeFields,
+        writeArgs,
+        writeFormat,
+        writeAny,
+        static,
+        dynamic,
+        holder,
+        init,
+        grow,
+        deinit,
+        shrink,
+        increment,
+        decrement,
+        appendOne,
+        appendCount,
+        appendMany,
+        appendFields,
+        appendArgs,
+        appendFormat,
+        appendAny,
+    };
+    pub fn name(fn_info: Fn) []const u8 {
+        return @tagName(fn_info.tag);
+    }
+    pub fn isCount(fn_info: Fn) bool {
+        return fn_info.val == .Count or fn_info.val == .CountWithSentinel;
+    }
+    pub fn isMany(fn_info: Fn) bool {
+        return fn_info.val == .Many or fn_info.val == .ManyWithSentinel;
+    }
+    pub fn isSentineled(fn_info: Fn) bool {
+        return fn_info.val == .ManyWithSentinel or fn_info.val == .CountWithSentinel;
+    }
+    pub fn isRead(fn_info: Fn) bool {
+        return fn_info.kind == .read or fn_info.kind == .refer;
+    }
+    pub fn isWrite(fn_info: Fn) bool {
+        return builtin.int2v(bool, fn_info.kind == .write, fn_info.kind == .append);
+    }
+    pub fn isNext(fn_info: Fn) bool {
+        @setRuntimeSafety(false);
+        return builtin.int2a(bool, fn_info.isRelative(), fn_info.loc.Relative == .Next);
+    }
+    pub fn isBack(fn_info: Fn) bool {
+        @setRuntimeSafety(false);
+        return builtin.int2a(bool, fn_info.isRelative(), fn_info.loc.Relative == .Back);
+    }
+    pub fn isAhead(fn_info: Fn) bool {
+        @setRuntimeSafety(false);
+        return builtin.int2a(bool, fn_info.isRelative(), fn_info.loc.Relative == .Ahead);
+    }
+    pub fn isBehind(fn_info: Fn) bool {
+        @setRuntimeSafety(false);
+        return builtin.int2a(bool, fn_info.isRelative(), fn_info.loc.Relative == .Behind);
+    }
+    pub fn isRelative(fn_info: Fn) bool {
+        return fn_info.loc == .Relative;
+    }
+    pub fn isAny(fn_info: Fn) bool {
+        @setRuntimeSafety(false);
+        return builtin.int2a(
+            bool,
+            fn_info.loc == .Absolute,
+            fn_info.loc.Absolute == .AnyDefined,
+        );
+    }
+    pub fn isAll(fn_info: Fn) bool {
+        @setRuntimeSafety(false);
+        return builtin.int2a(
+            bool,
+            fn_info.loc == .Absolute,
+            fn_info.loc.Absolute == .AllDefined,
+        );
+    }
+    pub fn isEquivalent(fn_info: Fn) bool {
+        return builtin.int2a(
+            bool,
+            builtin.int2v(
+                bool,
+                fn_info.kind == .write,
+                fn_info.kind == .append,
+            ),
+            builtin.int3v(
+                bool,
+                fn_info.val == .One,
+                fn_info.val == .Many,
+                fn_info.val == .Count,
+            ),
+        );
+    }
+    pub fn isReinterpreted(fn_info: Fn) bool {
+        return builtin.int2a(
+            bool,
+            builtin.int2v(
+                bool,
+                fn_info.kind == .write,
+                fn_info.kind == .append,
+            ),
+            builtin.int3v(
+                bool,
+                fn_info.val == .Any,
+                fn_info.val == .Args,
+                fn_info.val == .Fields,
+            ),
+        );
+    }
+    pub fn isMulti(fn_info: Fn) bool {
+        return builtin.int2v(
+            bool,
+            builtin.int2v(
+                bool,
+                fn_info.val == .Count,
+                fn_info.val == .CountWithSentinel,
+            ),
+            builtin.int2v(
+                bool,
+                fn_info.val == .Many,
+                fn_info.val == .ManyWithSentinel,
+            ),
+        );
+    }
+    pub fn isPrimary(fn_info: Fn) bool {
+        return builtin.int2v(bool, fn_info.isRead() or fn_info.isWrite());
+    }
+    pub fn isHelper(fn_info: Fn) bool {
+        return fn_info.kind == .helper;
+    }
+    pub fn isSpecial(fn_info: Fn) bool {
+        return fn_info.kind == .special;
+    }
+    pub fn isInterface(fn_info: Fn) bool {
+        return fn_info.kind == .client;
+    }
+    pub fn isLocHelped(fn_info: Fn) bool {
+        @setRuntimeSafety(false);
+        return builtin.int3v(bool, fn_info.isAny(), fn_info.isBack(), fn_info.isBehind());
+    }
+};
 
 fn gatherContainerTypesInternal(comptime types: []const type, comptime T: type) []const type {
     var ret: []const type = types;
@@ -361,4 +624,13 @@ fn equivalentType(comptime dst_type: type, comptime src_type: type) bool {
     }
     return true;
 }
-pub fn generateContainerFunctions() void {}
+fn render(any: anytype) fmt.AnyFormat(.{ .enable_comptime_iterator = true }, @TypeOf(any)) {
+    return comptime fmt.render(.{ .enable_comptime_iterator = true }, any);
+}
+pub fn generateContainerFunctions() void {
+    var array: Array = .{};
+    inline for (gen.type_specs) |type_spec| {
+        array.writeAny(preset.reinterpret.fmt, .{ comptime render(type_spec.params), '\n' });
+    }
+    builtin.debug.write(array.readAll());
+}

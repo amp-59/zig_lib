@@ -1438,7 +1438,7 @@ pub const parse = opaque {
         var idx: u64 = 0;
         var value: T = 0;
         switch (radix) {
-            2 => while (idx != str.len) : (idx += 1) {
+            2 => while (idx != str.len) : (idx +%= 1) {
                 switch (str[idx]) {
                     '0'...'1' => {
                         value +%= fromSymbol(str[idx], 2) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
