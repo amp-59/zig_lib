@@ -7,7 +7,6 @@ const proc = @import("./../proc.zig");
 const preset = @import("./../preset.zig");
 const testing = @import("./../testing.zig");
 const builtin = @import("./../builtin.zig");
-
 const config = @import("./config.zig");
 const gen = struct {
     usingnamespace @import("./gen.zig");
@@ -15,10 +14,12 @@ const gen = struct {
     usingnamespace @import("./gen-1.zig");
     usingnamespace @import("./gen-2.zig");
 };
+
 const Array = mem.StaticString(1024 * 1024);
+const Args = mem.StaticArray([:0]const u8, 8);
 const fmt_spec = .{
-    .omit_default_fields = true,
     .infer_type_names = true,
+    .omit_default_fields = true,
     .omit_trailing_comma = true,
 };
 const boilerplate: []const u8 =
@@ -50,7 +51,6 @@ const key: [18]Fn = .{
     .{ .tag = .tell,                        .val = .Offset,     .loc = .Relative, .mut = .Mutable },
 };
 // zig fmt: on
-
 const word_type_name: [:0]const u8 = "u64";
 const impl_name: [:0]const u8 = "impl";
 const impl_type_name: [:0]const u8 = "Implementation";
@@ -101,10 +101,10 @@ const unallocated_byte_address_word_field_name: [:0]const u8 = "up_word";
 const unallocated_byte_address_word_access: [:0]const u8 = fieldAccess(impl_name, unallocated_byte_address_word_field_name);
 const unallocated_byte_address_word_ptr: [:0]const u8 = addressOf(unallocated_byte_address_word_access);
 const unallocated_byte_address_word_field: [:0]const u8 = paramDecl(unallocated_byte_address_word_field_name, word_type_name);
-
 const return_keyword: [:0]const u8 = "return ";
 const end_expression: [:0]const u8 = ";\n";
-
+const address_of_impl: [:0]const u8 = callPtrToInt(impl_name);
+const offset_of_automatic_storage: [:0]const u8 = callOffsetOf(impl_type_name, automatic_storage_field_name);
 fn arrayType(
     comptime type_name: [:0]const u8,
     comptime count_symbol: [:0]const u8,
@@ -143,7 +143,6 @@ fn callPtrToInt(comptime symbol_ptr: [:0]const u8) [:0]const u8 {
 fn callSizeOf(comptime type_name: [:0]const u8) [:0]const u8 {
     return "@sizeOf(" ++ type_name ++ ")";
 }
-
 const Fn = packed struct {
     tag: Tag,
     val: Value,
@@ -172,7 +171,6 @@ const Fn = packed struct {
     const Value = enum(u1) { Address, Offset };
     const Location = enum(u1) { Relative, Absolute };
     const Mutability = enum(u1) { Mutable, Immutable };
-
     inline fn fnName(impl_fn_info: *const Fn) []const u8 {
         return @tagName(impl_fn_info.tag);
     }
@@ -186,13 +184,13 @@ inline fn get(comptime tag: Fn.Tag) *const Fn {
     }
 }
 const Operand = union(enum) {
-    uni_op: *const UnaryOp,
-    bin_op: *const BinaryOp,
+    call2: *const FnCall2,
+    call1: *const FnCall1,
     call: *const FnCall,
+    deref: *const DereferenceOp,
     constant: usize,
     symbol: [:0]const u8,
     const Format = @This();
-
     pub fn formatWrite(format: Format, array: anytype) void {
         switch (format) {
             .symbol => |symbol| array.writeMany(symbol),
@@ -223,7 +221,7 @@ pub fn formatWriteCall2(op1: Operand, op2: Operand, array: anytype, fn_token: [:
     array.writeFormat(op2);
     array.writeOne(')');
 }
-pub inline fn GenericUnaryOpFormat(comptime Format: type) type {
+pub inline fn GenericFnCall1Format(comptime Format: type) type {
     return (struct {
         fn exec(array: anytype, op1: anytype) void {
             array.writeFormat(Format{ .op1 = Operand.init(op1) });
@@ -236,7 +234,7 @@ pub inline fn GenericUnaryOpFormat(comptime Format: type) type {
         }
     });
 }
-pub inline fn GenericBinaryOpFormat(comptime Format: type) type {
+pub inline fn GenericFnCall2Format(comptime Format: type) type {
     return (struct {
         fn exec(array: anytype, op1: anytype, op2: anytype) void {
             array.writeFormat(make(op1, op2));
@@ -249,11 +247,37 @@ pub inline fn GenericBinaryOpFormat(comptime Format: type) type {
         }
     });
 }
-const BinaryOp = struct {
+const AssignmentOp = struct {
+    op1: Operand,
+    op2: Operand,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeFormat(format.op1);
+        array.writeMany(" = ");
+        array.writeFormat(format.op2);
+    }
+};
+fn assignmentOp(op1: anytype, op2: anytype) AssignmentOp {
+    return .{
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+const DereferenceOp = struct {
+    op1: Operand,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeFormat(format.op1);
+        array.writeMany(".*");
+    }
+};
+fn dereferenceOp(op1: anytype) DereferenceOp {
+    return .{ .op1 = Operand.init(op1) };
+}
+const FnCall2 = struct {
     symbol: [:0]const u8,
     op1: Operand,
     op2: Operand,
-
     const Format = @This();
     const add_equ_fn_name: [:0]const u8 = "mach.addEqu64";
     const subtract_equ_fn_name: [:0]const u8 = "mach.subEqu64";
@@ -272,127 +296,134 @@ const BinaryOp = struct {
         "algo.unpackDoubleApproxS"
     else
         "algo.unpackDoubleApproxH";
-
+    const pointer_opaque_fn_name: [:0]const u8 = "pointerOpaque";
+    const pointer_one_fn_name: [:0]const u8 = "pointerOne";
     pub fn formatWrite(format: Format, array: anytype) void {
         formatWriteCall2(format.op1, format.op2, array, format.symbol);
     }
 };
-inline fn addEqualOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn addEqualOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.add_equ_fn_name,
+        .symbol = FnCall2.add_equ_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn subtractEqualOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn subtractEqualOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.subtract_equ_fn_name,
+        .symbol = FnCall2.subtract_equ_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn addOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn addOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.add_fn_name,
+        .symbol = FnCall2.add_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn alignAboveOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn alignAboveOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.subtract_fn_name,
+        .symbol = FnCall2.subtract_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn alignBelowOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn alignBelowOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.align_below_fn_name,
+        .symbol = FnCall2.align_below_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn andOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn andOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.and_fn_name,
+        .symbol = FnCall2.and_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn andNotOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn andNotOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.and_not_fn_name,
+        .symbol = FnCall2.and_not_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn conditionalMoveOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn conditionalMoveOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.conditional_move_fn_name,
+        .symbol = FnCall2.conditional_move_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn multiplyOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn multiplyOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.multiply_fn_name,
+        .symbol = FnCall2.multiply_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn orOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn orOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.or_fn_name,
+        .symbol = FnCall2.or_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn shiftLeftOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn shiftLeftOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.shift_left_fn_name,
+        .symbol = FnCall2.shift_left_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn shiftRightOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn shiftRightOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.shift_right_fn_name,
+        .symbol = FnCall2.shift_right_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn subtractOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn subtractOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.subtract_fn_name,
+        .symbol = FnCall2.subtract_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-inline fn unpackDoubleApproxOp(op1: anytype, op2: anytype) BinaryOp {
+inline fn unpackDoubleApproxOp(op1: anytype, op2: anytype) FnCall2 {
     return .{
-        .symbol = BinaryOp.unpack_double_fn_name,
+        .symbol = FnCall2.unpack_double_fn_name,
         .op1 = Operand.init(op1),
         .op2 = Operand.init(op2),
     };
 }
-const UnaryOp = struct {
+inline fn pointerOpaqueOp(op1: anytype, op2: anytype) FnCall2 {
+    return .{
+        .symbol = FnCall2.pointer_opaque_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+inline fn pointerOneOp(op1: anytype, op2: anytype) FnCall2 {
+    return .{
+        .symbol = FnCall2.pointer_one_fn_name,
+        .op1 = Operand.init(op1),
+        .op2 = Operand.init(op2),
+    };
+}
+const FnCall1 = struct {
     symbol: [:0]const u8,
     op1: Operand,
-
     const Format = @This();
     const unpack_single_fn_name: [:0]const u8 = if (config.packed_capacity_low)
         "algo.unpackSingleApproxB"
     else
         "algo.unpackSingleApproxA";
-
     pub inline fn formatWrite(format: Format, array: anytype) void {
         formatWriteCall1(format.op1, array, format.symbol);
-    }
-    inline fn unpackSingleApproxOp(op1: anytype) BinaryOp {
-        return .{
-            .symbol = unpack_single_fn_name,
-            .op1 = Operand.init(op1),
-        };
     }
 };
 const FnCall = struct {
@@ -423,7 +454,6 @@ fn writeFnSignatureGeneric(array: *Array, impl_variant: *const gen.DetailMore, i
 const Info = struct {
     start: u64,
     alias: ?*const Fn = null,
-
     fn setAlias(info: *Info, impl_fn_info: *const Fn) void {
         info.alias = impl_fn_info;
     }
@@ -494,62 +524,79 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailMore, impl_f
         .impl_variant = impl_variant,
         .impl_fn_info = get(.alignment),
     };
-    const subtract_op_1: BinaryOp = .{
-        .symbol = BinaryOp.subtract_fn_name,
+    const subtract_op_1: FnCall2 = .{
+        .symbol = FnCall2.subtract_fn_name,
         .op1 = .{ .symbol = low_alignment_specifier_name },
         .op2 = .{ .constant = 1 },
     };
-    const shift_left_op_65535_48: BinaryOp = .{
-        .symbol = BinaryOp.shift_left_fn_name,
+    const shift_left_op_65535_48: FnCall2 = .{
+        .symbol = FnCall2.shift_left_fn_name,
         .op1 = .{ .constant = 65535 },
         .op2 = .{ .constant = 48 },
     };
-    const shift_right_op_lb_16: BinaryOp = .{
-        .symbol = BinaryOp.shift_right_fn_name,
+    const shift_right_op_lb_16: FnCall2 = .{
+        .symbol = FnCall2.shift_right_fn_name,
         .op1 = .{ .symbol = allocated_byte_address_word_access },
         .op2 = .{ .constant = 16 },
     };
-    const shift_right_op_ub_16: BinaryOp = .{
-        .symbol = BinaryOp.shift_right_fn_name,
+    const shift_right_op_ub_16: FnCall2 = .{
+        .symbol = FnCall2.shift_right_fn_name,
         .op1 = .{ .symbol = undefined_byte_address_word_access },
         .op2 = .{ .constant = 16 },
     };
-    const or_op_1_65535_48: BinaryOp = .{
-        .symbol = BinaryOp.or_fn_name,
-        .op1 = .{ .bin_op = &subtract_op_1 },
-        .op2 = .{ .bin_op = &shift_left_op_65535_48 },
+    const or_op_1_65535_48: FnCall2 = .{
+        .symbol = FnCall2.or_fn_name,
+        .op1 = .{ .call2 = &subtract_op_1 },
+        .op2 = .{ .call2 = &shift_left_op_65535_48 },
     };
-    const unpck1x_op: UnaryOp = .{
-        .symbol = UnaryOp.unpack_single_fn_name,
+    const unpck1x_op: FnCall1 = .{
+        .symbol = FnCall1.unpack_single_fn_name,
         .op1 = .{ .symbol = allocated_byte_address_word_access },
     };
-    const unpck2x_op: BinaryOp = .{
-        .symbol = BinaryOp.unpack_double_fn_name,
+    const unpck2x_op: FnCall2 = .{
+        .symbol = FnCall2.unpack_double_fn_name,
         .op1 = .{ .symbol = allocated_byte_address_word_access },
         .op2 = .{ .symbol = undefined_byte_address_word_access },
     };
-    const address_of_impl: [:0]const u8 = callPtrToInt(impl_name);
-    const offset_of_automatic_storage: [:0]const u8 =
-        callOffsetOf(impl_type_name, automatic_storage_field_name);
+    const sentinel_ptr_op: FnCall2 = .{
+        .symbol = FnCall2.pointer_opaque_fn_name,
+        .op1 = .{ .symbol = child_specifier_name },
+        .op2 = .{ .symbol = sentinel_specifier_name },
+    };
+    const undefined_child_ptr_op: FnCall2 = .{
+        .symbol = FnCall2.pointer_one_fn_name,
+        .op1 = .{ .symbol = child_specifier_name },
+        .op2 = .{ .call = &undefined_byte_address },
+    };
+    const sentinel_ptr_deref_op: DereferenceOp = .{
+        .op1 = .{ .call2 = &sentinel_ptr_op },
+    };
+    const undefined_child_ptr_deref_op: DereferenceOp = .{
+        .op1 = .{ .call2 = &undefined_child_ptr_op },
+    };
     switch (impl_fn_info.tag) {
         .define => {
             array.writeFormat(addEqualOp(undefined_byte_address_word_ptr, offset_bytes_name));
-            if (impl_variant.specs.sentinel) {}
+            if (impl_variant.specs.sentinel) {
+                array.writeMany(end_expression);
+                array.writeFormat(assignmentOp(&undefined_child_ptr_deref_op, &sentinel_ptr_deref_op));
+            }
             return array.writeMany(end_expression);
         },
         .undefine => {
             array.writeFormat(subtractEqualOp(undefined_byte_address_word_ptr, offset_bytes_name));
-            if (impl_variant.specs.sentinel) {}
+            if (impl_variant.specs.sentinel) {
+                array.writeMany(end_expression);
+                array.writeFormat(assignmentOp(&undefined_child_ptr_deref_op, &sentinel_ptr_deref_op));
+            }
             return array.writeMany(end_expression);
         },
         .seek => {
             array.writeFormat(addEqualOp(unstreamed_byte_address_word_ptr, offset_bytes_name));
-            if (impl_variant.specs.sentinel) {}
             return array.writeMany(end_expression);
         },
         .tell => {
             array.writeFormat(subtractEqualOp(unstreamed_byte_address_word_ptr, offset_bytes_name));
-            if (impl_variant.specs.sentinel) {}
             return array.writeMany(end_expression);
         },
         .allocated_byte_address => {
@@ -715,7 +762,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailMore, impl_f
             }
             if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (impl_variant.specs.sentinel) {
-                    const align_below_op: BinaryOp = alignBelowOp(&unpck2x_op, high_alignment_specifier_name);
+                    const align_below_op: FnCall2 = alignBelowOp(&unpck2x_op, high_alignment_specifier_name);
                     array.writeFormat(subtractOp(&align_below_op, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 } else {
@@ -724,7 +771,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailMore, impl_f
                 }
             } else if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (impl_variant.specs.sentinel) {
-                    const align_below_op: BinaryOp = alignBelowOp(&unpck1x_op, high_alignment_specifier_name);
+                    const align_below_op: FnCall2 = alignBelowOp(&unpck1x_op, high_alignment_specifier_name);
                     array.writeFormat(subtractOp(&align_below_op, high_alignment_specifier_name));
                     return array.writeMany(end_expression);
                 } else {
@@ -732,7 +779,7 @@ fn writeFnBodyGeneric(array: *Array, impl_variant: *const gen.DetailMore, impl_f
                     return array.writeMany(end_expression);
                 }
             } else if (impl_variant.specs.sentinel) {
-                const subtract_op: BinaryOp = subtractOp(&allocated_byte_count, high_alignment_specifier_name);
+                const subtract_op: FnCall2 = subtractOp(&allocated_byte_count, high_alignment_specifier_name);
                 if (impl_variant.hasUnitAlignment()) {
                     array.writeFormat(subtract_op);
                     return array.writeMany(end_expression);
@@ -881,8 +928,6 @@ inline fn writeFields(array: *Array, impl_variant: *const gen.DetailMore) void {
     writeComptimeField(array, impl_variant, .writable_byte_count);
     writeComptimeField(array, impl_variant, .aligned_byte_count);
 }
-const Args = mem.StaticArray([:0]const u8, 8);
-
 fn getArgList(impl_variant: *const gen.DetailMore, impl_fn_info: *const Fn, sign: bool) Args {
     var array: Args = undefined;
     array.undefineAll();
@@ -925,25 +970,12 @@ fn writeFnSignatureOrCall(array: *Array, impl_variant: *const gen.DetailMore, im
     if (sign) array.writeMany("pub inline fn ");
     array.writeMany(impl_fn_info.fnName());
     array.writeMany("(");
-    for (list.readAll()) |arg| {
-        writeArgument(array, arg);
-    }
+    for (list.readAll()) |arg| writeArgument(array, arg);
     if (impl_fn_info.mut == .Mutable) {
-        array.writeMany(if (sign) ") void " else ")");
+        array.writeMany(builtin.cmov([]const u8, sign, ") void ", ")"));
     } else {
-        array.writeMany(if (sign) ") u64 " else ")");
+        array.writeMany(builtin.cmov([]const u8, sign, ") u64 ", ")"));
     }
-}
-fn writeHelpInformation(array: *Array, impl_variant: gen.DetailMore) void {
-    array.writeMany("// ");
-    inline for (@typeInfo(gen.DetailMore).Struct.fields[1..]) |field| {
-        inline for (@typeInfo(meta.Field(gen.DetailMore, field.name)).Struct.fields) |field_field| {
-            if (@field(@field(impl_variant, field.name), field_field.name)) {
-                array.writeMany(field_field.name ++ ", ");
-            }
-        }
-    }
-    array.writeMany("\n");
 }
 fn printFunctionsInTagOrder() void {
     var fn_index: usize = 0;
@@ -981,9 +1013,9 @@ fn hasCapability(impl_variant: *const gen.DetailMore, fn_info: *const Fn) bool {
         else => true,
     };
 }
+
 pub fn generateFnDefinitions() void {
-    var array: Array = undefined;
-    array.undefineAll();
+    var array: Array = .{};
     var impl_index: u64 = 0;
     for (gen.impl_variant_groups) |impl_group, spec_index| {
         for (impl_group) |impl_variant| {
