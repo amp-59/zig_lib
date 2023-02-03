@@ -66,10 +66,10 @@ inline fn writeDetailStructsInternal(array: *Array, comptime types: *[]const typ
         inline for (type_info.Union.fields) |field| {
             const tmp = detail.*;
             defer detail.* = tmp;
-            if (@hasField(gen.Kind, field.name)) {
-                @field(detail.kind, field.name) = true;
-            } else if (@hasField(gen.Layout, field.name)) {
-                @field(detail.layout, field.name) = true;
+            if (@hasField(gen.Kinds, field.name)) {
+                @field(detail.kinds, field.name) = true;
+            } else if (@hasField(gen.Layouts, field.name)) {
+                @field(detail.layouts, field.name) = true;
             } else if (@hasField(gen.Modes, field.name)) {
                 @field(detail.modes, field.name) = true;
             } else if (@hasField(gen.Fields, field.name)) {
@@ -94,19 +94,9 @@ inline fn writeDetailStructsInternal(array: *Array, comptime types: *[]const typ
     }
 }
 fn writeDetailStruct(array: *Array, detail: gen.Detail) void {
-    array.writeMany("    .{ .index = ");
-    array.writeFormat(fmt.ud64(detail.index));
-    array.writeMany(", .kind = ");
-    array.writeFormat(fmt.render(fmt_spec, detail.kind));
-    array.writeMany(", .layout = ");
-    array.writeFormat(fmt.render(fmt_spec, detail.layout));
-    array.writeMany(", .modes = ");
-    array.writeFormat(fmt.render(fmt_spec, detail.modes));
-    array.writeMany(", .fields = ");
-    array.writeFormat(fmt.render(fmt_spec, detail.fields));
-    array.writeMany(", .techs = ");
-    array.writeFormat(fmt.render(fmt_spec, detail.techs));
-    array.writeMany(" },\n");
+    array.writeMany("    ");
+    array.writeFormat(detail);
+    array.writeMany(",\n");
 }
 fn writeDetailStructs(array: *Array, comptime types: *[]const type) void {
     var detail: gen.Detail = .{};
