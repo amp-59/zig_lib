@@ -570,6 +570,9 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
 pub fn diff(comptime T: type, arg1: T, arg2: T) T {
     return subWrap(T, max(T, arg1, arg2), min(T, arg1, arg2));
 }
+pub fn cmov(comptime T: type, b: bool, argt: T, argf: T) T {
+    return if (b) argt else argf;
+}
 pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
@@ -1110,7 +1113,7 @@ pub const debug = opaque {
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, if (@typeInfo(T) == .Int) @min(arg1, arg2) > 10_000 else false);
         logFault(buf[0..len]);
     }
     pub fn write(buf: []const u8) void {
