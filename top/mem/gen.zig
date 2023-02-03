@@ -1,5 +1,13 @@
 pub usingnamespace sys;
+pub usingnamespace gen;
 pub usingnamespace common;
+
+const gen = struct {
+    pub usingnamespace @import("./abstract_params.zig");
+    pub usingnamespace @import("./type_specs.zig");
+    pub usingnamespace @import("./impl_details.zig");
+    pub usingnamespace @import("./impl_variant_groups.zig");
+};
 
 pub const AbstractSpec = union(enum) {
     automatic_storage: ReadWrite(union {
@@ -12,20 +20,20 @@ pub const AbstractSpec = union(enum) {
     }),
     allocated_byte_address: ReadWrite(union {
         _: Static,
-        single_packed_approximate_capacity: Dynamic,
+        // single_packed_approximate_capacity: Dynamic,
         unstreamed_byte_address: Stream(union {
             undefined_byte_address: Resize(union {
                 _: Static,
-                single_packed_approximate_capacity: Dynamic,
-                double_packed_approximate_capacity: Dynamic,
+                // single_packed_approximate_capacity: Dynamic,
+                // double_packed_approximate_capacity: Dynamic,
                 unallocated_byte_address: Dynamic,
             }),
             unallocated_byte_address: Dynamic,
         }),
         undefined_byte_address: Resize(union {
             _: Static,
-            single_packed_approximate_capacity: Dynamic,
-            double_packed_approximate_capacity: Dynamic,
+            // single_packed_approximate_capacity: Dynamic,
+            // double_packed_approximate_capacity: Dynamic,
             unallocated_byte_address: Dynamic,
         }),
         unallocated_byte_address: Dynamic,
@@ -35,6 +43,29 @@ pub const AbstractSpec = union(enum) {
         unstreamed_byte_address: Stream(Parametric),
     })),
 };
+
+pub const TypeSpecMap = struct {
+    params: type,
+    specs: []const type,
+    vars: type,
+};
+pub const DetailLess = packed struct {
+    index: u8 = undefined,
+    kind: Kind = .{},
+    layout: Layout = .{},
+    modes: Modes = .{},
+
+    fn more(detail: DetailLess, fields: Fields, techs: Techniques) Detail {
+        return .{
+            .index = detail.index,
+            .kind = detail.kind,
+            .layout = detail.layout,
+            .modes = detail.modes,
+            .techs = techs,
+            .fields = fields,
+        };
+    }
+};
 pub const Detail = packed struct {
     index: u8 = undefined,
     kind: Kind = .{},
@@ -42,7 +73,77 @@ pub const Detail = packed struct {
     modes: Modes = .{},
     fields: Fields = .{},
     techs: Techniques = .{},
+
+    pub fn less(detail: Detail) DetailLess {
+        return .{
+            .index = detail.index,
+            .kind = detail.kind,
+            .layout = detail.layout,
+            .modes = detail.modes,
+        };
+    }
+    pub fn more(detail: Detail, specs: gen.Specifiers) DetailMore {
+        return .{
+            .index = detail.index,
+            .kind = detail.kind,
+            .layout = detail.layout,
+            .modes = detail.modes,
+            .techs = detail.techs,
+            .fields = detail.fields,
+            .specifiers = specs,
+        };
+    }
 };
+pub const DetailMore = packed struct {
+    index: u8 = undefined,
+    kind: Kind = .{},
+    layout: Layout = .{},
+    modes: Modes = .{},
+    fields: Fields = .{},
+    techs: Techniques = .{},
+    specs: gen.Specifiers = .{},
+
+    pub fn isAutomatic(impl_variant: *const DetailMore) bool {
+        return impl_variant.kind.automatic;
+    }
+    pub fn isParametric(impl_variant: *const DetailMore) bool {
+        return impl_variant.kind.parametric;
+    }
+    pub fn isDynamic(impl_variant: *const DetailMore) bool {
+        return impl_variant.kind.dynamic;
+    }
+    pub fn isStatic(impl_variant: *const DetailMore) bool {
+        return impl_variant.kind.static;
+    }
+    pub fn hasUnitAlignment(impl_variant: *const DetailMore) bool {
+        return impl_variant.techs.unit_alignment or
+            impl_variant.kind.automatic;
+    }
+    pub fn hasLazyAlignment(impl_variant: *const DetailMore) bool {
+        return impl_variant.techs.lazy_alignment;
+    }
+    pub fn hasDisjunctAlignment(impl_variant: *const DetailMore) bool {
+        return impl_variant.techs.disjunct_alignment;
+    }
+    pub fn hasStaticMaximumLength(impl_variant: *const DetailMore) bool {
+        return impl_variant.kind.automatic or impl_variant.kind.static;
+    }
+    pub fn hasPackedApproximateCapacity(impl_variant: *const DetailMore) bool {
+        return impl_variant.techs.single_packed_approximate_capacity or
+            impl_variant.techs.double_packed_approximate_capacity;
+    }
+    pub fn less(detail: DetailMore) Detail {
+        return .{
+            .index = detail.index,
+            .kind = detail.kind,
+            .layout = detail.layout,
+            .modes = detail.modes,
+            .techs = detail.techs,
+            .fields = detail.fields,
+        };
+    }
+};
+
 pub const Kind = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
