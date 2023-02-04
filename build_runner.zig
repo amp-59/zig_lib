@@ -3,11 +3,9 @@ const srg = root.srg;
 const mem = srg.mem;
 const sys = srg.sys;
 const proc = srg.proc;
-const file = srg.file;
 const meta = srg.meta;
 const preset = srg.preset;
 const builder = srg.builder;
-const testing = srg.testing;
 const builtin = srg.builtin;
 
 pub const AddressSpace = builder.AddressSpace;
@@ -28,14 +26,20 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
     .{ .field_name = "verbose", .long = "--silent", .assign = Options.no, .descr = "do not show compile commands when executing" },
 });
-fn showAllCommands(ctx: builder.Context) void {
+fn commandNotFoundException(ctx: *const builder.Context, arg: [:0]const u8) !void {
+    var buf: [128 + 4096 + 512]u8 = undefined;
+    builtin.debug.logAlwaysAIO(&buf, &.{ "command not found: ", arg, "\n" });
+    showAllCommands(ctx);
+    return error.CommandNotFound;
+}
+fn showAllCommands(ctx: *const builder.Context) void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlways("commands:\n");
     for (ctx.cmds.readAll()) |cmd| {
         builtin.debug.logAlwaysAIO(&buf, &.{ @tagName(cmd.cmd), "\t", cmd.name.?, "\t", cmd.root, "\n" });
     }
 }
-fn execAllCommands(ctx: builder.Context) !void {
+fn execAllCommands(ctx: *const builder.Context) !void {
     for (ctx.cmds.readAll()) |cmd| {
         builtin.assertNotEqual(u64, 0, try cmd.exec());
     }
@@ -50,7 +54,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
     if (args.len < 5) {
-        file.noexcept.write(2, "Expected path to zig compiler, " ++
+        builtin.debug.logAlways("Expected path to zig compiler, " ++
             "build root directory path, " ++
             "cache root directory path, " ++
             "global cache root directory path");
@@ -74,29 +78,37 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     };
     try root.build(&ctx);
     const Cmd = @TypeOf(ctx.cmds.readOneAt(0).cmd);
-    for (args) |arg| {
+    for (args) |arg, index| {
         const name: [:0]const u8 = meta.manyToSlice(arg);
         if (mem.testEqualMany(u8, name, "all")) {
-            try execAllCommands(ctx);
+            try execAllCommands(&ctx);
             continue;
         }
         if (mem.testEqualMany(u8, name, "show")) {
-            showAllCommands(ctx);
+            showAllCommands(&ctx);
             continue;
         }
         inline for (@typeInfo(Cmd).Enum.fields) |field| {
             if (mem.testEqualMany(u8, name, field.name)) {
                 for (ctx.cmds.referAllDefined()) |*cmd| cmd.cmd = @field(Cmd, field.name);
+                args = args[index + 1 ..];
                 break;
             }
         }
     }
-    for (args) |arg| {
+    for (args) |arg, index| {
         const name: [:0]const u8 = meta.manyToSlice(arg);
+        if (mem.testEqualMany(u8, name, "--")) {
+            break;
+        }
         for (ctx.cmds.readAll()) |cmd| {
             if (mem.testEqualMany(u8, name, cmd.name.?)) {
+                ctx.args = ctx.args[index..];
                 builtin.assertNotEqual(u64, 0, try cmd.exec());
+                break;
             }
+        } else {
+            return commandNotFoundException(&ctx, name);
         }
     }
     sys.exit(0);
