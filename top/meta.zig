@@ -254,6 +254,9 @@ pub fn AlignSizeBW(comptime T: type) type { // Needs a better name
 /// Return the smallest integer type capable of storing `value`
 pub fn LeastBitSize(comptime value: anytype) type {
     const T: type = @TypeOf(value);
+    if (T == type) {
+        return LeastBitSize(@as(value, undefined));
+    }
     if (@sizeOf(T) == 0) {
         if (value < 0) {
             var U: type = i1;
@@ -277,7 +280,7 @@ pub fn LeastBitSize(comptime value: anytype) type {
     }
     return @Type(.{
         .Int = .{
-            .bits = @bitSizeOf(T) - @clz(value),
+            .bits = @bitSizeOf(T) - @clz(leastBitCast(value)),
             .signedness = .unsigned,
         },
     });
