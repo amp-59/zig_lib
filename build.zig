@@ -52,8 +52,8 @@ const std_parser_args = .{
     .macros = parsedir_std_macros,
     .packages = packages,
 };
-const parsedir_std_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = "\"std\"" }});
-const parsedir_lib_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = "\"lib\"" }});
+const parsedir_std_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = .{ .string = "std" } }});
+const parsedir_lib_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = .{ .string = "lib" } }});
 
 // zig fmt: off
 
@@ -65,6 +65,8 @@ fn memgen(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("mem_gen_4",      "top/mem/gen-4-aux.zig", .{ .build_mode = .ReleaseSmall });
     _ = ctx.addExecutable("mem_gen_5",      "top/mem/gen-5-aux.zig", .{ .build_mode = .ReleaseSmall });
 }
+// TODO Create super type for build options permitting the creation of
+// dependencies, etc. Like step.
 pub fn main(ctx: *builder.Context) !void {
     // Top test programs
     _ = ctx.addExecutable("builtin_test",   "top/builtin-test.zig", minor_test_args);
@@ -77,6 +79,7 @@ pub fn main(ctx: *builder.Context) !void {
     _ = ctx.addExecutable("render_test",    "top/render-test.zig",  minor_test_args);
     _ = ctx.addExecutable("thread_test",    "top/thread-test.zig",  minor_test_args);
     _ = ctx.addExecutable("virtual_test",   "top/virtual-test.zig", minor_test_args);
+    _ = ctx.addExecutable("builder_test",   "top/builder-test.zig", minor_test_args);
     // More complete test programs:
     _ = ctx.addExecutable("mca",            "test/mca.zig",         fast_test_args);
     _ = ctx.addExecutable("treez",          "test/treez.zig",       small_test_args);
