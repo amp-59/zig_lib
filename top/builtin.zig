@@ -3,43 +3,47 @@ pub const root = @import("root");
 
 pub usingnamespace builtin;
 // zig fmt: off
-pub const native_endian                   = zig.cpu.arch.endian();
-pub const is_little: bool                 = native_endian == .Little;
-pub const is_big: bool                    = native_endian == .Big;
-pub const is_safe: bool                   = config("is_safe",       bool,           zig.mode == .ReleaseSafe);
-pub const is_small: bool                  = config("is_small",      bool,           zig.mode == .ReleaseSmall);
-pub const is_fast: bool                   = config("is_fast",       bool,           zig.mode == .ReleaseFast);
-pub const is_debug: bool                  = config("is_debug",      bool,           zig.mode == .Debug);
-pub const is_correct: bool                = config("is_correct",    bool,           is_debug or is_safe);
-pub const is_perf: bool                   = config("is_perf",       bool,           is_small or is_fast);
-pub const is_verbose: bool                = config("is_verbose",    bool,           is_debug);
-pub const is_silent: bool                 = config("is_silent",     bool,           false);
-pub const AddressSpace                    = config("AddressSpace",  type,           info.address_space.generic);
-pub const logging: Logging                = config("logging",       Logging,        if (is_silent) Logging.silent else Logging.verbose);
-pub const build_root: ?[:0]const u8       = config("build_root",    ?[:0]const u8,  null);
-pub const root_src_file: ?[:0]const u8    = config("root_src_file", ?[:0]const u8,  null);
-const builtin = opaque {
-pub const SourceLocation                  = Src();
-pub const Type                            = @TypeOf(@typeInfo(void));
-pub const Struct                          = @TypeOf(@typeInfo(struct {}).Struct);
-pub const Array                           = @TypeOf(@typeInfo([0]void).Array);
-pub const Union                           = @TypeOf(@typeInfo(union {}).Union);
-pub const Enum                            = @TypeOf(@typeInfo(enum {}).Enum);
-pub const Pointer                         = @TypeOf(@typeInfo(*void).Pointer);
-pub const Size                            = @TypeOf(@typeInfo(*void).Pointer.size);
-pub const Signedness                      = @TypeOf(@typeInfo(u0).Int.signedness);
-pub const TypeId                                  = @typeInfo(Type).Union.tag_type.?;
-pub const StructField           = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.fields)).Pointer.child;
-pub const ContainerLayout                 = @TypeOf(@typeInfo(struct {}).Struct.layout);
-pub const Declaration           = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
-pub const EnumField             = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
-pub const UnionField            = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
-pub const CallingConvention               = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
-pub const FnParam               = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.params)).Pointer.child;
-pub const DeclLiteral                             = @Type(.EnumLiteral);
-pub const Endian                                  = @TypeOf(zig.cpu.arch.endian());
-};
+pub const native_endian         = zig.cpu.arch.endian();
+pub const is_little: bool       = native_endian == .Little;
+pub const is_big: bool          = native_endian == .Big;
+pub const is_safe: bool         = config("is_safe", bool, zig.mode == .ReleaseSafe);
+pub const is_small: bool        = config("is_small", bool, zig.mode == .ReleaseSmall);
+pub const is_fast: bool         = config("is_fast", bool, zig.mode == .ReleaseFast);
+pub const is_debug: bool        = config("is_debug", bool, zig.mode == .Debug);
+pub const is_correct: bool      = config("is_correct", bool, is_debug or is_safe);
+pub const is_perf: bool         = config("is_perf", bool, is_small or is_fast);
+pub const is_verbose: bool      = config("is_verbose", bool, is_debug);
+pub const is_silent: bool       = config("is_silent", bool, false);
+pub const AddressSpace          = config("AddressSpace", type, info.address_space.generic);
+pub const logging: Logging      = config("logging", Logging, if (is_silent) Logging.silent else Logging.verbose);
+// These are defined by the library builder
+pub const zig_exe: ?[:0]const u8            = config("zig_exe", ?[:0]const u8, null);
+pub const build_root: ?[:0]const u8         = config("build_root", ?[:0]const u8, null);
+pub const cache_dir: ?[:0]const u8          = config("cache_dir", ?[:0]const u8, null);
+pub const global_cache_dir: ?[:0]const u8   = config("global_cache_dir", ?[:0]const u8, null);
+pub const root_src_file: ?[:0]const u8      = config("root_src_file", ?[:0]const u8, null);
 // zig fmt: on
+const builtin = opaque {
+    pub const SourceLocation = Src();
+    pub const Type = @TypeOf(@typeInfo(void));
+    pub const Struct = @TypeOf(@typeInfo(struct {}).Struct);
+    pub const Array = @TypeOf(@typeInfo([0]void).Array);
+    pub const Union = @TypeOf(@typeInfo(union {}).Union);
+    pub const Enum = @TypeOf(@typeInfo(enum {}).Enum);
+    pub const Pointer = @TypeOf(@typeInfo(*void).Pointer);
+    pub const Size = @TypeOf(@typeInfo(*void).Pointer.size);
+    pub const Signedness = @TypeOf(@typeInfo(u0).Int.signedness);
+    pub const TypeId = @typeInfo(Type).Union.tag_type.?;
+    pub const StructField = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.fields)).Pointer.child;
+    pub const ContainerLayout = @TypeOf(@typeInfo(struct {}).Struct.layout);
+    pub const Declaration = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
+    pub const EnumField = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
+    pub const UnionField = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
+    pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
+    pub const FnParam = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.params)).Pointer.child;
+    pub const DeclLiteral = @Type(.EnumLiteral);
+    pub const Endian = @TypeOf(zig.cpu.arch.endian());
+};
 fn Src() type {
     return @TypeOf(@src());
 }
