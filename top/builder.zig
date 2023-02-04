@@ -1,3 +1,4 @@
+
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
@@ -102,86 +103,20 @@ pub const BuildCmd = struct {
                 len += @tagName(build.cmd).len + 1;
             },
         }
-        len +%= 12;
-        len +%= Path.formatLength(build.ctx.zigExePath());
-        len +%= 2;
-        len +%= 15;
-        len +%= Path.formatLength(build.ctx.buildRootPath());
-        len +%= 2;
+        len +%= Macro.formatLength(build.ctx.zigExePathMacro());
+        len +%= Macro.formatLength(build.ctx.buildRootPathMacro());
+        len +%= Macro.formatLength(build.ctx.cacheDirPathMacro());
+        len +%= Macro.formatLength(build.ctx.globalCacheDirPathMacro());
         if (build.watch) {
-            len +%= 10;
+            len +%= 8;
         }
         if (build.color) |how| {
-            len +%= 10;
+            len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.emit_bin) |emit_bin| {
             switch (emit_bin) {
-                .yes => |yes_optional_arg| {
-                    if (yes_optional_arg) |yes_arg| {
-                        len +%= 13;
-                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
-                        len +%= 1;
-                    } else {
-                        len +%= 13;
-                    }
-                },
-                .no => {
-                    len +%= 16;
-                },
-            }
-        }
-        if (build.emit_asm) |emit_asm| {
-            switch (emit_asm) {
-                .yes => |yes_optional_arg| {
-                    if (yes_optional_arg) |yes_arg| {
-                        len +%= 13;
-                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
-                        len +%= 1;
-                    } else {
-                        len +%= 13;
-                    }
-                },
-                .no => {
-                    len +%= 16;
-                },
-            }
-        }
-        if (build.emit_llvm_ir) |emit_llvm_ir| {
-            switch (emit_llvm_ir) {
-                .yes => |yes_optional_arg| {
-                    if (yes_optional_arg) |yes_arg| {
-                        len +%= 17;
-                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
-                        len +%= 1;
-                    } else {
-                        len +%= 17;
-                    }
-                },
-                .no => {
-                    len +%= 20;
-                },
-            }
-        }
-        if (build.emit_llvm_bc) |emit_llvm_bc| {
-            switch (emit_llvm_bc) {
-                .yes => |yes_optional_arg| {
-                    if (yes_optional_arg) |yes_arg| {
-                        len +%= 17;
-                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
-                        len +%= 1;
-                    } else {
-                        len +%= 17;
-                    }
-                },
-                .no => {
-                    len +%= 20;
-                },
-            }
-        }
-        if (build.emit_h) |emit_h| {
-            switch (emit_h) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 11;
@@ -196,40 +131,88 @@ pub const BuildCmd = struct {
                 },
             }
         }
+        if (build.emit_asm) |emit_asm| {
+            switch (emit_asm) {
+                .yes => |yes_optional_arg| {
+                    if (yes_optional_arg) |yes_arg| {
+                        len +%= 11;
+                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
+                        len +%= 1;
+                    } else {
+                        len +%= 11;
+                    }
+                },
+                .no => {
+                    len +%= 14;
+                },
+            }
+        }
+        if (build.emit_llvm_ir) |emit_llvm_ir| {
+            switch (emit_llvm_ir) {
+                .yes => |yes_optional_arg| {
+                    if (yes_optional_arg) |yes_arg| {
+                        len +%= 15;
+                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
+                        len +%= 1;
+                    } else {
+                        len +%= 15;
+                    }
+                },
+                .no => {
+                    len +%= 18;
+                },
+            }
+        }
+        if (build.emit_llvm_bc) |emit_llvm_bc| {
+            switch (emit_llvm_bc) {
+                .yes => |yes_optional_arg| {
+                    if (yes_optional_arg) |yes_arg| {
+                        len +%= 15;
+                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
+                        len +%= 1;
+                    } else {
+                        len +%= 15;
+                    }
+                },
+                .no => {
+                    len +%= 18;
+                },
+            }
+        }
+        if (build.emit_h) |emit_h| {
+            switch (emit_h) {
+                .yes => |yes_optional_arg| {
+                    if (yes_optional_arg) |yes_arg| {
+                        len +%= 9;
+                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
+                        len +%= 1;
+                    } else {
+                        len +%= 9;
+                    }
+                },
+                .no => {
+                    len +%= 12;
+                },
+            }
+        }
         if (build.emit_docs) |emit_docs| {
             switch (emit_docs) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
-                        len +%= 14;
+                        len +%= 12;
                         len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
                         len +%= 1;
                     } else {
-                        len +%= 14;
+                        len +%= 12;
                     }
                 },
                 .no => {
-                    len +%= 17;
+                    len +%= 15;
                 },
             }
         }
         if (build.emit_analysis) |emit_analysis| {
             switch (emit_analysis) {
-                .yes => |yes_optional_arg| {
-                    if (yes_optional_arg) |yes_arg| {
-                        len +%= 18;
-                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
-                        len +%= 1;
-                    } else {
-                        len +%= 18;
-                    }
-                },
-                .no => {
-                    len +%= 21;
-                },
-            }
-        }
-        if (build.emit_implib) |emit_implib| {
-            switch (emit_implib) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 16;
@@ -244,201 +227,217 @@ pub const BuildCmd = struct {
                 },
             }
         }
+        if (build.emit_implib) |emit_implib| {
+            switch (emit_implib) {
+                .yes => |yes_optional_arg| {
+                    if (yes_optional_arg) |yes_arg| {
+                        len +%= 14;
+                        len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
+                        len +%= 1;
+                    } else {
+                        len +%= 14;
+                    }
+                },
+                .no => {
+                    len +%= 17;
+                },
+            }
+        }
         if (build.show_builtin) {
-            len +%= 17;
+            len +%= 15;
         }
         if (build.cache_dir) |how| {
-            len +%= 14;
+            len +%= 12;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.global_cache_dir) |how| {
-            len +%= 21;
+            len +%= 19;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.zig_lib_dir) |how| {
-            len +%= 16;
+            len +%= 14;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.enable_cache) {
-            len +%= 17;
+            len +%= 15;
         }
         if (build.target) |how| {
-            len +%= 10;
-            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
-            len +%= 1;
-        }
-        if (build.cpu) |how| {
             len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
+        if (build.cpu) |how| {
+            len +%= 6;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
         if (build.cmodel) |how| {
-            len +%= 11;
+            len +%= 9;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.red_zone) |red_zone| {
             if (red_zone) {
-                len +%= 13;
-            } else {
-                len +%= 16;
-            }
-        }
-        if (build.omit_frame_pointer) |omit_frame_pointer| {
-            if (omit_frame_pointer) {
-                len +%= 23;
-            } else {
-                len +%= 26;
-            }
-        }
-        if (build.exec_model) |how| {
-            len +%= 15;
-            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
-            len +%= 1;
-        }
-        if (build.name) |how| {
-            len +%= 9;
-            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
-            len +%= 1;
-        }
-        if (build.O) |how| {
-            len +%= 5;
-            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
-            len +%= 1;
-        }
-        if (build.main_pkg_path) |how| {
-            len +%= 18;
-            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
-            len +%= 1;
-        }
-        if (build.pic) |pic| {
-            if (pic) {
-                len +%= 8;
-            } else {
-                len +%= 11;
-            }
-        }
-        if (build.pie) |pie| {
-            if (pie) {
-                len +%= 8;
-            } else {
-                len +%= 11;
-            }
-        }
-        if (build.lto) |lto| {
-            if (lto) {
-                len +%= 8;
-            } else {
-                len +%= 11;
-            }
-        }
-        if (build.stack_check) |stack_check| {
-            if (stack_check) {
-                len +%= 16;
-            } else {
-                len +%= 19;
-            }
-        }
-        if (build.sanitize_c) |sanitize_c| {
-            if (sanitize_c) {
-                len +%= 15;
-            } else {
-                len +%= 18;
-            }
-        }
-        if (build.valgrind) |valgrind| {
-            if (valgrind) {
-                len +%= 13;
-            } else {
-                len +%= 16;
-            }
-        }
-        if (build.sanitize_thread) |sanitize_thread| {
-            if (sanitize_thread) {
-                len +%= 20;
-            } else {
-                len +%= 23;
-            }
-        }
-        if (build.dll_export_fns) |dll_export_fns| {
-            if (dll_export_fns) {
-                len +%= 19;
-            } else {
-                len +%= 22;
-            }
-        }
-        if (build.unwind_tables) |unwind_tables| {
-            if (unwind_tables) {
-                len +%= 18;
-            } else {
-                len +%= 21;
-            }
-        }
-        if (build.llvm) |llvm| {
-            if (llvm) {
-                len +%= 9;
-            } else {
-                len +%= 12;
-            }
-        }
-        if (build.clang) |clang| {
-            if (clang) {
-                len +%= 10;
-            } else {
-                len +%= 13;
-            }
-        }
-        if (build.stage1) |stage1| {
-            if (stage1) {
                 len +%= 11;
             } else {
                 len +%= 14;
             }
         }
+        if (build.omit_frame_pointer) |omit_frame_pointer| {
+            if (omit_frame_pointer) {
+                len +%= 21;
+            } else {
+                len +%= 24;
+            }
+        }
+        if (build.exec_model) |how| {
+            len +%= 13;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.name) |how| {
+            len +%= 7;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.O) |how| {
+            len +%= 3;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.main_pkg_path) |how| {
+            len +%= 16;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.pic) |pic| {
+            if (pic) {
+                len +%= 6;
+            } else {
+                len +%= 9;
+            }
+        }
+        if (build.pie) |pie| {
+            if (pie) {
+                len +%= 6;
+            } else {
+                len +%= 9;
+            }
+        }
+        if (build.lto) |lto| {
+            if (lto) {
+                len +%= 6;
+            } else {
+                len +%= 9;
+            }
+        }
+        if (build.stack_check) |stack_check| {
+            if (stack_check) {
+                len +%= 14;
+            } else {
+                len +%= 17;
+            }
+        }
+        if (build.sanitize_c) |sanitize_c| {
+            if (sanitize_c) {
+                len +%= 13;
+            } else {
+                len +%= 16;
+            }
+        }
+        if (build.valgrind) |valgrind| {
+            if (valgrind) {
+                len +%= 11;
+            } else {
+                len +%= 14;
+            }
+        }
+        if (build.sanitize_thread) |sanitize_thread| {
+            if (sanitize_thread) {
+                len +%= 18;
+            } else {
+                len +%= 21;
+            }
+        }
+        if (build.dll_export_fns) |dll_export_fns| {
+            if (dll_export_fns) {
+                len +%= 17;
+            } else {
+                len +%= 20;
+            }
+        }
+        if (build.unwind_tables) |unwind_tables| {
+            if (unwind_tables) {
+                len +%= 16;
+            } else {
+                len +%= 19;
+            }
+        }
+        if (build.llvm) |llvm| {
+            if (llvm) {
+                len +%= 7;
+            } else {
+                len +%= 10;
+            }
+        }
+        if (build.clang) |clang| {
+            if (clang) {
+                len +%= 8;
+            } else {
+                len +%= 11;
+            }
+        }
+        if (build.stage1) |stage1| {
+            if (stage1) {
+                len +%= 9;
+            } else {
+                len +%= 12;
+            }
+        }
         if (build.single_threaded) |single_threaded| {
             if (single_threaded) {
+                len +%= 18;
+            } else {
+                len +%= 21;
+            }
+        }
+        if (build.builtin) {
+            len +%= 10;
+        }
+        if (build.function_sections) |function_sections| {
+            if (function_sections) {
                 len +%= 20;
             } else {
                 len +%= 23;
             }
         }
-        if (build.builtin) {
-            len +%= 12;
-        }
-        if (build.function_sections) |function_sections| {
-            if (function_sections) {
-                len +%= 22;
-            } else {
-                len +%= 25;
-            }
-        }
         if (build.strip) |strip| {
             if (strip) {
-                len +%= 10;
+                len +%= 8;
             } else {
-                len +%= 13;
+                len +%= 11;
             }
         }
         if (build.fmt) |how| {
-            len +%= 8;
+            len +%= 6;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.dirafter) |how| {
-            len +%= 12;
+            len +%= 10;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.system) |how| {
-            len +%= 11;
+            len +%= 9;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.include) |how| {
-            len +%= 5;
+            len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
@@ -451,82 +450,82 @@ pub const BuildCmd = struct {
         if (build.soname) |soname| {
             switch (soname) {
                 .yes => |yes_arg| {
-                    len +%= 11;
+                    len +%= 9;
                     len +%= mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg);
                     len +%= 1;
                 },
                 .no => {
-                    len +%= 14;
+                    len +%= 12;
                 },
             }
         }
         if (build.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
-                len +%= 16;
+                len +%= 14;
             } else {
-                len +%= 19;
+                len +%= 17;
             }
         }
         if (build.path) |how| {
-            len +%= 9;
+            len +%= 7;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.each_lib_rpath) |each_lib_rpath| {
             if (each_lib_rpath) {
-                len +%= 19;
+                len +%= 17;
             } else {
-                len +%= 22;
+                len +%= 20;
             }
         }
         if (build.no_each_lib_rpath) {
-            len +%= 22;
+            len +%= 20;
         }
         if (build.allow_shlib_undefined) |allow_shlib_undefined| {
             if (allow_shlib_undefined) {
-                len +%= 26;
+                len +%= 24;
             } else {
-                len +%= 29;
+                len +%= 27;
             }
         }
         if (build.no_allow_shlib_undefined) {
-            len +%= 29;
+            len +%= 27;
         }
         if (build.build_id) |build_id| {
             if (build_id) {
-                len +%= 13;
+                len +%= 11;
             } else {
-                len +%= 16;
+                len +%= 14;
             }
         }
         if (build.no_build_id) {
-            len +%= 16;
+            len +%= 14;
         }
         if (build.dynamic) {
-            len +%= 11;
+            len +%= 9;
         }
         if (build.static) {
-            len +%= 10;
+            len +%= 8;
         }
         if (build.gc_sections) |gc_sections| {
             if (gc_sections) {
-                len +%= 16;
+                len +%= 14;
             } else {
-                len +%= 19;
+                len +%= 17;
             }
         }
         if (build.stack) |how| {
-            len +%= 10;
+            len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         if (build.z) |how| {
-            len +%= 5;
+            len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
         len +%= Path.formatLength(build.ctx.sourceRootPath(build.root));
-        len +%= build.root.len + 1;
+        len +%= 1;
         return len;
     }
     fn buildWrite(build: Builder, array: anytype) u64 {
@@ -542,12 +541,10 @@ pub const BuildCmd = struct {
                 array.writeOne('\x00');
             },
         }
-        array.writeMany("-Dzig_exe=\"");
-        array.writeFormat(build.ctx.zigExePath());
-        array.writeMany("\"\x00");
-        array.writeMany("-Dbuild_root=\"");
-        array.writeFormat(build.ctx.buildRootPath());
-        array.writeMany("\"\x00");
+        array.writeFormat(build.ctx.zigExePathMacro());
+        array.writeFormat(build.ctx.buildRootPathMacro());
+        array.writeFormat(build.ctx.cacheDirPathMacro());
+        array.writeFormat(build.ctx.globalCacheDirPathMacro());
         if (build.watch) {
             array.writeMany("--watch\x00");
         }
@@ -1030,8 +1027,7 @@ pub const Pkg = struct {
     path: []const u8,
     deps: ?[]const @This() = null,
     pub fn formatWrite(pkg: Pkg, array: anytype) void {
-        array.writeMany("--pkg-begin");
-        array.writeOne(0);
+        array.writeMany("--pkg-begin\x00");
         array.writeMany(pkg.name);
         array.writeOne(0);
         array.writeMany(pkg.path);
@@ -1042,55 +1038,55 @@ pub const Pkg = struct {
                 dep.formatWrite(array);
             }
         }
-        array.writeMany("--pkg-end");
-        array.writeOne(0);
+        array.writeMany("--pkg-end\x00");
     }
     pub fn formatLength(pkg: Pkg) u64 {
         var len: u64 = 0;
-        len +%= 11;
-        len +%= 1;
-        len +%= pkg.name.len;
-        len +%= 1;
-        len +%= pkg.path.len;
-        len +%= 1;
+        len +%= 12;
+        len +%= pkg.name.len +% 1;
+        len +%= pkg.path.len +% 1;
         if (pkg.deps) |deps| {
             for (deps) |dep| {
                 len +%= 1;
                 len +%= dep.formatLength();
             }
         }
-        len +%= 9;
-        len +%= 1;
+        len +%= 10;
         return len;
     }
 };
 /// Zig says value does not need to be defined, in which case default to 1
 pub const Macro = struct {
     name: []const u8,
-    value: ?[]const u8,
+    value: union(enum) {
+        string: [:0]const u8,
+        symbol: [:0]const u8,
+        constant: usize,
+        path: Path,
+    },
     quote: bool = false,
     const Format = @This();
-    fn looksLikePath(format: Format) bool {
-        var no_sep: u64 = 0;
-        if (format.value) |value| {
-            for (value) |c| {
-                if (c == '/') no_sep += 1;
-            }
-        }
-        return no_sep > 1;
-    }
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-D");
         array.writeMany(format.name);
-        if (format.value) |value| {
-            array.writeMany("=");
-            if (format.quote or format.looksLikePath()) {
+        array.writeMany("=");
+        switch (format.value) {
+            .string => |string| {
                 array.writeOne('"');
-                array.writeMany(value);
+                array.writeMany(string);
                 array.writeOne('"');
-            } else {
-                array.writeMany(value);
-            }
+            },
+            .path => |path| {
+                array.writeOne('"');
+                array.writeFormat(path);
+                array.writeOne('"');
+            },
+            .symbol => |symbol| {
+                array.writeMany(symbol);
+            },
+            .constant => |constant| {
+                array.writeAny(fmt_spec, constant);
+            },
         }
         array.writeOne(0);
     }
@@ -1098,15 +1094,20 @@ pub const Macro = struct {
         var len: u64 = 0;
         len +%= 2;
         len +%= format.name.len;
-        if (format.value) |value| {
-            len +%= 1;
-            if (format.quote or format.looksLikePath()) {
-                len +%= 1;
-                len +%= value.len;
-                len +%= 1;
-            } else {
-                len +%= value.len;
-            }
+        len +%= 1;
+        switch (format.value) {
+            .string => |string| {
+                len +%= 1 +% string.len +% 1;
+            },
+            .path => |path| {
+                len +%= 1 +% path.formatLength() +% 1;
+            },
+            .symbol => |symbol| {
+                len +%= symbol.len;
+            },
+            .constant => |constant| {
+                len +%= mem.reinterpret.lengthAny(u8, fmt_spec, constant);
+            },
         }
         len +%= 1;
         return len;
@@ -1138,13 +1139,6 @@ pub const GlobalOptions = struct {
         options.build_mode = .Debug;
     }
 };
-pub fn dupeMany(ctx: *const Context, comptime T: type, values: []const T) []const T {
-    if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
-        return values;
-    }
-    ctx.array.writeMany(T, values);
-    return ctx.array.referManyBack(T, .{ .count = values.len });
-}
 pub const Context = struct {
     zig_exe: [:0]const u8,
     build_root: [:0]const u8,
@@ -1160,19 +1154,34 @@ pub const Context = struct {
     pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
 
     pub fn zigExePath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.zig_exe };
+        return ctx.path(ctx.zig_exe);
     }
     pub fn buildRootPath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.build_root };
+        return ctx.path(ctx.build_root);
     }
     pub fn cacheDirPath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.cache_dir };
+        return ctx.path(ctx.cache_dir);
     }
     pub fn globalCacheDirPath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.global_cache_dir };
+        return ctx.path(ctx.global_cache_dir);
     }
     pub fn sourceRootPath(ctx: *const Context, root: [:0]const u8) Path {
         return ctx.path(root);
+    }
+    pub fn zigExePathMacro(ctx: *const Context) Macro {
+        return .{ .name = "zig_exe", .value = .{ .path = zigExePath(ctx) } };
+    }
+    pub fn buildRootPathMacro(ctx: *const Context) Macro {
+        return .{ .name = "build_root", .value = .{ .path = buildRootPath(ctx) } };
+    }
+    pub fn cacheDirPathMacro(ctx: *const Context) Macro {
+        return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(ctx) } };
+    }
+    pub fn globalCacheDirPathMacro(ctx: *const Context) Macro {
+        return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(ctx) } };
+    }
+    pub fn sourceRootPathMacro(ctx: *const Context, root: [:0]const u8) Macro {
+        return .{ .name = "root", .value = .{ .path = ctx.sourceRootPath(root) } };
     }
     pub fn path(ctx: *const Context, name: [:0]const u8) Path {
         return .{ .ctx = ctx, .pathname = name };
@@ -1244,16 +1253,20 @@ pub const Path = struct {
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         if (format.ctx) |ctx| {
-            array.writeMany(ctx.build_root);
-            array.writeOne('/');
+            if (format.pathname[0] != '/') {
+                array.writeMany(ctx.build_root);
+                array.writeOne('/');
+            }
         }
         array.writeMany(format.pathname);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
         if (format.ctx) |ctx| {
-            len +%= ctx.build_root.len;
-            len +%= 1;
+            if (format.pathname[0] != '/') {
+                len +%= ctx.build_root.len;
+                len +%= 1;
+            }
         }
         len +%= format.pathname.len;
         return len;
@@ -1292,7 +1305,7 @@ fn Args(comptime name: [:0]const u8) type {
                 if (@field(args, field_name)) |field| {
                     return meta.concat(Macro, macros, .{
                         .name = field_name,
-                        .value = if (field) "1" else "0",
+                        .value = .{ .constant = if (field) 1 else 0 },
                     });
                 }
                 return macros;
