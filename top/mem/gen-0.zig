@@ -121,7 +121,7 @@ fn writeOptions(array: *Array) void {
         array.writeMany(@tagName(option.kind));
         array.writeMany(", .info = .{ .field_name = \"");
         array.writeMany(option.info.field_name);
-        array.writeMany("\", .field_field_names = &[_][]const u8{");
+        array.writeMany("\", .field_field_names = &[_][]const u8{ ");
         for (option.info.field_field_names) |field_field_name| {
             array.writeMany("\"");
             array.writeMany(field_field_name);
