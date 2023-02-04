@@ -1111,6 +1111,9 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     if (l_values.len != r_values.len) {
         return false;
     }
+    if (l_values.ptr == r_values.ptr) {
+        return true;
+    }
     var idx: usize = 0;
     while (idx != l_values.len) {
         if (!builtin.testEqual(T, l_values[idx], r_values[idx])) return false;
