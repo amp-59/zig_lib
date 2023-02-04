@@ -23,13 +23,6 @@ const Filtered = struct {
     []const Detail,
     []const Detail,
 };
-fn KeyVal(comptime T: type) type {
-    return struct {
-        key: u8 = 0,
-        val: T = .{},
-    };
-}
-
 fn filterTechnique(
     impl_groups: []const Detail,
     buf: []Detail,
