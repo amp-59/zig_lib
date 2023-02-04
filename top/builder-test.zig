@@ -54,9 +54,9 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     };
     var cmd: builder.BuildCmd = .{
         .ctx = &ctx,
-        .root = "top/builder-test.zig",
+        .root = "top/builtin-test.zig",
         .cmd = .run,
-        .name = "builder_test",
+        .name = "builtin_test",
         .O = .ReleaseFast,
         .strip = true,
         .enable_cache = true,
