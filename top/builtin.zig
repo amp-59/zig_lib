@@ -594,6 +594,9 @@ fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer,
     if (arg1.len != arg2.len) {
         return false;
     }
+    if (arg1.ptr == arg2.ptr) {
+        return true;
+    }
     var i: usize = 0;
     while (i != arg1.len) : (i += 1) {
         if (!testEqual(pointer_info.child, arg1[i], arg2[i])) {
