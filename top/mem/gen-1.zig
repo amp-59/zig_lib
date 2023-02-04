@@ -11,11 +11,16 @@ const gen = struct {
     usingnamespace @import("./gen-0.zig");
 };
 
-pub const Array = mem.StaticString(1024 * 1024);
+const Array = mem.StaticString(1024 * 1024);
+const Selection = mem.StaticArray([]const u8, 16);
 
 const fmt_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true };
 
-fn slices(comptime T: type) *[]const T {
+fn arrayPtr(comptime T: type, comptime n: usize) *[n]T {
+    var ptrs: [n]T = undefined;
+    return &ptrs;
+}
+fn slicePtr(comptime T: type) *[]const T {
     var ptrs: []const T = &.{};
     return &ptrs;
 }
@@ -41,24 +46,49 @@ pub inline fn paramImplGroups() [gen.abstract_params.len][]const gen.Detail {
     }
     return ret;
 }
-fn selectFieldNames(allocator: *gen.Allocator, impl_group: []const gen.Detail, field_names: []const []const u8) [][]const u8 {
+// TODO Find this maximum constant: maximum possible number of container groups
+//      This is determined by the bit size of Brief
+
+pub const impl_details_container_indices: []const u8 = blk: {
+    var tmp: []const u8 = &.{};
+    for (gen.impl_details) |*impl_detail| {
+        tmp = tmp ++ [1]u8{gen.Brief.index(impl_detail)};
+    }
+    break :blk tmp;
+};
+pub const impl_details_container_max_index: u8 = blk: {
+    var max: u8 = 0;
+    for (impl_details_container_indices) |index| {
+        max = @max(index, max);
+    }
+    break :blk max;
+};
+
+pub inline fn containerParamImplGroups() []const []const gen.Detail {
+    const max_len: usize = impl_details_container_max_index + 1;
+    comptime var ctn_detail_groups: [max_len][]const gen.Detail = .{&.{}} ** max_len;
+    inline for (gen.impl_details) |*impl_detail| {
+        const brief: gen.Brief = comptime gen.Brief.convert(impl_detail);
+        const index: u8 = comptime meta.leastBitCast(brief);
+        ctn_detail_groups[index] = ctn_detail_groups[index] ++ [1]gen.Detail{impl_detail.*};
+    }
+    return &ctn_detail_groups;
+}
+// TODO Find this maximum constant: maximum possible number of field_names
+fn selectFieldNames(toplevel_impl_group: []const gen.Detail, comptime option: gen.Option) mem.StaticArray([]const u8, 16) {
+    var array: mem.StaticArray([]const u8, 16) = undefined;
+    array.undefineAll();
     var bits: meta.Child(gen.Techniques) = 0;
-    for (impl_group) |impl_variant| {
+    for (toplevel_impl_group) |impl_variant| {
         bits |= meta.leastBitCast(impl_variant.techs);
     }
     const techs: gen.Techniques = @bitCast(gen.Techniques, bits);
-    var ret: [][]const u8 = allocator.allocate([]const u8, field_names.len);
-    var len: usize = 0;
-    inline for (@typeInfo(gen.Techniques).Struct.fields) |field| {
-        for (field_names) |field_name| {
-            if (!builtin.testEqual([]const u8, field.name, field_name)) {
-                continue;
-            }
-            ret[len] = field.name;
-            len +%= @boolToInt(@field(techs, field.name));
+    inline for (option.info.field_field_names) |field_name| {
+        if (@field(techs, field_name)) {
+            array.writeOne(field_name);
         }
     }
-    return ret[0..len];
+    return array;
 }
 // Questionable
 inline fn fieldsSuperSet(comptime types: *[]const type) []const builtin.Type.StructField {
@@ -218,10 +248,7 @@ fn writeStructFromFields(array: *Array, comptime struct_fields: []const builtin.
             comptime gen.simpleTypeName(field.type));
         if (comptime meta.defaultValue(field)) |default_value| {
             if (field.type == bool) {
-                array.writeMany(if (default_value)
-                    " = true, "
-                else
-                    " = false, ");
+                array.writeMany(if (default_value) " = true, " else " = false, ");
             } else {
                 array.writeMany(" = null, ");
             }
@@ -235,29 +262,32 @@ fn writeStructFromFields(array: *Array, comptime struct_fields: []const builtin.
         array.writeOne('}');
     }
 }
-pub fn writeTechniqueOptionsInternal(
-    array: *Array,
-    allocator: *gen.Allocator,
-    impl_group: []const gen.Detail,
-    comptime option: gen.Option,
-) void {
+pub fn writeTechniqueOptionsInternal(array: *Array, impl_group: []const gen.Detail, comptime option: gen.Option) void {
     const suffix: []const u8 = "_" ++ option.info.field_name;
     array.writeMany("    ");
-    var selection: [][]const u8 = selectFieldNames(allocator, impl_group, option.info.field_field_names);
+    const selection: Selection = selectFieldNames(impl_group, option);
     switch (option.kind) {
-        .standalone_optional => {},
-        .standalone_mandatory => {},
-        .mutually_exclusive_optional => {
-            switch (selection.len) {
+        .standalone => {
+            switch (selection.len()) {
                 0 => array.undefine(4),
                 1 => {
-                    array.writeMany(selection[0]);
+                    array.writeMany(selection.readOneAt(0));
+                    array.writeMany(": bool = false,\n");
+                },
+                else => unreachable,
+            }
+        },
+        .mutually_exclusive_optional => {
+            switch (selection.len()) {
+                0 => array.undefine(4),
+                1 => {
+                    array.writeMany(selection.readOneAt(0));
                     array.writeMany(": bool = false,\n");
                 },
                 else => {
                     array.writeMany(option.info.field_name);
                     array.writeMany(": ?enum { ");
-                    for (selection) |field_field_name| {
+                    for (selection.readAll()) |field_field_name| {
                         array.writeMany(mem.readBeforeFirstEqualMany(u8, suffix, field_field_name).?);
                         array.writeMany(", ");
                     }
@@ -267,17 +297,17 @@ pub fn writeTechniqueOptionsInternal(
             }
         },
         .mutually_exclusive_mandatory => {
-            switch (selection.len) {
+            switch (selection.len()) {
                 0 => array.undefine(4),
                 1 => {
                     array.writeMany("comptime ");
-                    array.writeMany(selection[0]);
+                    array.writeMany(selection.readOneAt(0));
                     array.writeMany(": bool = true,\n");
                 },
                 else => {
                     array.writeMany(option.info.field_name);
                     array.writeMany(": enum { ");
-                    for (selection) |field_field_name| {
+                    for (selection.readAll()) |field_field_name| {
                         array.writeMany(mem.readBeforeFirstEqualMany(u8, suffix, field_field_name).?);
                         array.writeMany(", ");
                     }
@@ -298,32 +328,30 @@ fn writeFile(array: *Array) void {
     defer gen.close(fd);
     gen.write(fd, array.readAll());
 }
-fn writeTechniqueOptions(array: *Array, allocator: *gen.Allocator, impl_group: []const gen.Detail, param_index: usize) void {
-    const s = allocator.save();
-    defer allocator.restore(s);
+fn writeTechniqueOptions(array: *Array, impl_group: []const gen.Detail, param_index: usize) void {
     array.writeMany("pub const Options");
     array.writeFormat(fmt.ud64(param_index));
     array.writeMany(" = struct {\n");
     inline for (gen.options) |field_option| {
-        writeTechniqueOptionsInternal(array, allocator, impl_group, field_option);
+        writeTechniqueOptionsInternal(array, impl_group, field_option);
     }
     array.writeMany("};\n");
 }
 pub fn generateSpecificationTypes() void {
-    const impl_groups: []const []const gen.Detail = comptime &paramImplGroups();
-    var allocator: gen.Allocator = gen.Allocator.init();
-    defer allocator.deinit();
-    const array: *Array = allocator.create(Array);
+    const impl_groups: []const []const gen.Detail = comptime containerParamImplGroups();
+    var array: Array = .{};
     array.writeMany(boilerplate);
     array.writeMany("pub const type_specs = [_]gen.TypeSpecMap{");
-    const types: *[]const type = comptime slices(type);
+    const types: *[]const type = comptime slicePtr(type);
     inline for (gen.abstract_params) |param| {
-        writeSpecifications(array, types, param);
+        writeSpecifications(&array, types, param);
     }
     array.writeMany("\n};\n");
     for (impl_groups) |impl_group, param_index| {
-        writeTechniqueOptions(array, &allocator, impl_group, param_index);
+        if (impl_group.len != 0) {
+            writeTechniqueOptions(&array, impl_group, param_index);
+        }
     }
-    writeSpecifiersStruct(array, types);
-    writeFile(array);
+    writeSpecifiersStruct(&array, types);
+    writeFile(&array);
 }
