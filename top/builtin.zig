@@ -883,38 +883,32 @@ pub const static = opaque {
         static.exactDivisionAssign(T, arg1, arg2);
     }
     pub fn assertBelow(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        const result: bool = arg1 < arg2;
-        if (!result and is_correct) {
+        if (is_correct and arg1 >= arg2) {
             debug.static.comparisonFailed(T, " < ", arg1, arg2);
         }
     }
     pub fn assertBelowOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        const result: bool = arg1 <= arg2;
-        if (!result and is_correct) {
+        if (is_correct and arg1 > arg2) {
             debug.static.comparisonFailed(T, " <= ", arg1, arg2);
         }
     }
     pub fn assertEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        const result: bool = arg1 == arg2;
-        if (!result and is_correct) {
+        if (is_correct and arg1 != arg2) {
             debug.static.comparisonFailed(T, " == ", arg1, arg2);
         }
     }
     pub fn assertNotEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        const result: bool = arg1 != arg2;
-        if (is_correct and !result) {
+        if (is_correct and arg1 == arg2) {
             debug.static.comparisonFailed(T, " != ", arg1, arg2);
         }
     }
     pub fn assertAboveOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        const result: bool = arg1 >= arg2;
-        if (!result and is_correct) {
+        if (is_correct and arg1 < arg2) {
             debug.static.comparisonFailed(T, " >= ", arg1, arg2);
         }
     }
     pub fn assertAbove(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        const result: bool = arg1 > arg2;
-        if (!result and is_correct) {
+        if (is_correct and arg1 <= arg2) {
             debug.static.comparisonFailed(T, " > ", arg1, arg2);
         }
     }
