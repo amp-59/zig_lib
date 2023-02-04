@@ -55,7 +55,6 @@ fn writeImplementationVariantStructsInternal(array: *Array, impl_detail: *const 
     array.writeFormat(impl_detail.more(specs));
     array.writeMany(",\n");
 }
-
 fn writeImplementationsVariantStructs(array: *Array) void {
     var accm_spec_index: u8 = 0;
     var matrix: [8][8]u8 = [1][8]u8{[1]u8{0} ** 8} ** 8;
@@ -104,7 +103,6 @@ fn writeImplementationVariantsFile(array: *Array) void {
 }
 pub fn generateVariantData() void {
     var array: Array = .{};
-    writeContainerVariantStructs(&array);
     writeImplementationsVariantStructs(&array);
     writeImplementationVariantsFile(&array);
 }
