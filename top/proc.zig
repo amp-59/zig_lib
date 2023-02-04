@@ -869,8 +869,8 @@ pub fn GenericOptions(comptime Options: type) type {
             builtin.static.assert(@hasDecl(Options, "Map"));
             builtin.static.assert(Options.Map == @This());
         }
-        fn tagCast(comptime child: type, comptime any: *const anyopaque) builtin.DeclLiteral {
-            return @ptrCast(*const builtin.DeclLiteral, @alignCast(@alignOf(child), any)).*;
+        fn tagCast(comptime child: type, comptime any: *const anyopaque) @Type(.EnumLiteral) {
+            return @ptrCast(*const @Type(.EnumLiteral), @alignCast(@alignOf(child), any)).*;
         }
         fn anyCast(comptime child: type, comptime any: *const anyopaque) child {
             return @ptrCast(*const child, @alignCast(@alignOf(child), any)).*;
@@ -917,7 +917,7 @@ pub fn GenericOptions(comptime Options: type) type {
                 },
             }
         }
-        fn helpMessage(comptime opt_map: []const Option) []const u8 {
+        pub fn helpMessage(comptime opt_map: []const Option) []const u8 {
             var buf: []const u8 = "option flags:\n";
             var max_width: comptime_int = 0;
             for (opt_map) |option| {
