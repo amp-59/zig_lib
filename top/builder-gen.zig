@@ -474,7 +474,11 @@ pub fn writeIndent(array: *Array, width: u64, values: []const u8) void {
 fn unhandledSpecification(comptime what_field: []const u8, comptime opt_spec: OptionSpec) noreturn {
     @compileError("todo: " ++ @tagName(getOptKind(opt_spec)) ++ ": " ++ what_field);
 }
-pub fn formatCompositeLiteral(array: *Array, comptime T: type, comptime subst: ?struct { import_type: type, type_name: []const u8 }) void {
+pub fn formatCompositeLiteral(
+    array: *Array,
+    comptime T: type,
+    comptime subst: ?struct { import_type: type, type_name: []const u8 },
+) void {
     const type_name: []const u8 = @typeName(T);
     const type_info: builtin.Type = @typeInfo(T);
     array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {");

@@ -45,15 +45,13 @@ pub const BuildCmd = struct {
                 len += @tagName(build.cmd).len + 1;
             },
         }
-        len +%= 12;
-        len +%= Path.formatLength(build.ctx.zigExePath());
-        len +%= 2;
-        len +%= 15;
-        len +%= Path.formatLength(build.ctx.buildRootPath());
-        len +%= 2;
+        len +%= Macro.formatLength(build.ctx.zigExePathMacro());
+        len +%= Macro.formatLength(build.ctx.buildRootPathMacro());
+        len +%= Macro.formatLength(build.ctx.cacheDirPathMacro());
+        len +%= Macro.formatLength(build.ctx.globalCacheDirPathMacro());
         _ = buildLength;
         len +%= Path.formatLength(build.ctx.sourceRootPath(build.root));
-        len +%= build.root.len + 1;
+        len +%= 1;
         return len;
     }
     fn buildWrite(build: Builder, array: anytype) u64 {
@@ -69,12 +67,10 @@ pub const BuildCmd = struct {
                 array.writeOne('\x00');
             },
         }
-        array.writeMany("-Dzig_exe=\"");
-        array.writeFormat(build.ctx.zigExePath());
-        array.writeMany("\"\x00");
-        array.writeMany("-Dbuild_root=\"");
-        array.writeFormat(build.ctx.buildRootPath());
-        array.writeMany("\"\x00");
+        array.writeFormat(build.ctx.zigExePathMacro());
+        array.writeFormat(build.ctx.buildRootPathMacro());
+        array.writeFormat(build.ctx.cacheDirPathMacro());
+        array.writeFormat(build.ctx.globalCacheDirPathMacro());
         _ = buildWrite;
         array.writeFormat(build.ctx.sourceRootPath(build.root));
         array.writeOne('\x00');
@@ -142,8 +138,7 @@ pub const Pkg = struct {
     path: []const u8,
     deps: ?[]const @This() = null,
     pub fn formatWrite(pkg: Pkg, array: anytype) void {
-        array.writeMany("--pkg-begin");
-        array.writeOne(0);
+        array.writeMany("--pkg-begin\x00");
         array.writeMany(pkg.name);
         array.writeOne(0);
         array.writeMany(pkg.path);
@@ -154,55 +149,55 @@ pub const Pkg = struct {
                 dep.formatWrite(array);
             }
         }
-        array.writeMany("--pkg-end");
-        array.writeOne(0);
+        array.writeMany("--pkg-end\x00");
     }
     pub fn formatLength(pkg: Pkg) u64 {
         var len: u64 = 0;
-        len +%= 11;
-        len +%= 1;
-        len +%= pkg.name.len;
-        len +%= 1;
-        len +%= pkg.path.len;
-        len +%= 1;
+        len +%= 12;
+        len +%= pkg.name.len +% 1;
+        len +%= pkg.path.len +% 1;
         if (pkg.deps) |deps| {
             for (deps) |dep| {
                 len +%= 1;
                 len +%= dep.formatLength();
             }
         }
-        len +%= 9;
-        len +%= 1;
+        len +%= 10;
         return len;
     }
 };
 /// Zig says value does not need to be defined, in which case default to 1
 pub const Macro = struct {
     name: []const u8,
-    value: ?[]const u8,
+    value: union(enum) {
+        string: [:0]const u8,
+        symbol: [:0]const u8,
+        constant: usize,
+        path: Path,
+    },
     quote: bool = false,
     const Format = @This();
-    fn looksLikePath(format: Format) bool {
-        var no_sep: u64 = 0;
-        if (format.value) |value| {
-            for (value) |c| {
-                if (c == '/') no_sep += 1;
-            }
-        }
-        return no_sep > 1;
-    }
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-D");
         array.writeMany(format.name);
-        if (format.value) |value| {
-            array.writeMany("=");
-            if (format.quote or format.looksLikePath()) {
+        array.writeMany("=");
+        switch (format.value) {
+            .string => |string| {
                 array.writeOne('"');
-                array.writeMany(value);
+                array.writeMany(string);
                 array.writeOne('"');
-            } else {
-                array.writeMany(value);
-            }
+            },
+            .path => |path| {
+                array.writeOne('"');
+                array.writeFormat(path);
+                array.writeOne('"');
+            },
+            .symbol => |symbol| {
+                array.writeMany(symbol);
+            },
+            .constant => |constant| {
+                array.writeAny(fmt_spec, constant);
+            },
         }
         array.writeOne(0);
     }
@@ -210,15 +205,20 @@ pub const Macro = struct {
         var len: u64 = 0;
         len +%= 2;
         len +%= format.name.len;
-        if (format.value) |value| {
-            len +%= 1;
-            if (format.quote or format.looksLikePath()) {
-                len +%= 1;
-                len +%= value.len;
-                len +%= 1;
-            } else {
-                len +%= value.len;
-            }
+        len +%= 1;
+        switch (format.value) {
+            .string => |string| {
+                len +%= 1 +% string.len +% 1;
+            },
+            .path => |path| {
+                len +%= 1 +% path.formatLength() +% 1;
+            },
+            .symbol => |symbol| {
+                len +%= symbol.len;
+            },
+            .constant => |constant| {
+                len +%= mem.reinterpret.lengthAny(u8, fmt_spec, constant);
+            },
         }
         len +%= 1;
         return len;
@@ -250,13 +250,6 @@ pub const GlobalOptions = struct {
         options.build_mode = .Debug;
     }
 };
-pub fn dupeMany(ctx: *const Context, comptime T: type, values: []const T) []const T {
-    if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
-        return values;
-    }
-    ctx.array.writeMany(T, values);
-    return ctx.array.referManyBack(T, .{ .count = values.len });
-}
 pub const Context = struct {
     zig_exe: [:0]const u8,
     build_root: [:0]const u8,
@@ -272,19 +265,34 @@ pub const Context = struct {
     pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
 
     pub fn zigExePath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.zig_exe };
+        return ctx.path(ctx.zig_exe);
     }
     pub fn buildRootPath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.build_root };
+        return ctx.path(ctx.build_root);
     }
     pub fn cacheDirPath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.cache_dir };
+        return ctx.path(ctx.cache_dir);
     }
     pub fn globalCacheDirPath(ctx: *const Context) Path {
-        return Path{ .pathname = ctx.global_cache_dir };
+        return ctx.path(ctx.global_cache_dir);
     }
     pub fn sourceRootPath(ctx: *const Context, root: [:0]const u8) Path {
         return ctx.path(root);
+    }
+    pub fn zigExePathMacro(ctx: *const Context) Macro {
+        return .{ .name = "zig_exe", .value = .{ .path = zigExePath(ctx) } };
+    }
+    pub fn buildRootPathMacro(ctx: *const Context) Macro {
+        return .{ .name = "build_root", .value = .{ .path = buildRootPath(ctx) } };
+    }
+    pub fn cacheDirPathMacro(ctx: *const Context) Macro {
+        return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(ctx) } };
+    }
+    pub fn globalCacheDirPathMacro(ctx: *const Context) Macro {
+        return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(ctx) } };
+    }
+    pub fn sourceRootPathMacro(ctx: *const Context, root: [:0]const u8) Macro {
+        return .{ .name = "root", .value = .{ .path = ctx.sourceRootPath(root) } };
     }
     pub fn path(ctx: *const Context, name: [:0]const u8) Path {
         return .{ .ctx = ctx, .pathname = name };
@@ -356,16 +364,20 @@ pub const Path = struct {
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         if (format.ctx) |ctx| {
-            array.writeMany(ctx.build_root);
-            array.writeOne('/');
+            if (format.pathname[0] != '/') {
+                array.writeMany(ctx.build_root);
+                array.writeOne('/');
+            }
         }
         array.writeMany(format.pathname);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
         if (format.ctx) |ctx| {
-            len +%= ctx.build_root.len;
-            len +%= 1;
+            if (format.pathname[0] != '/') {
+                len +%= ctx.build_root.len;
+                len +%= 1;
+            }
         }
         len +%= format.pathname.len;
         return len;
@@ -404,7 +416,7 @@ fn Args(comptime name: [:0]const u8) type {
                 if (@field(args, field_name)) |field| {
                     return meta.concat(Macro, macros, .{
                         .name = field_name,
-                        .value = if (field) "1" else "0",
+                        .value = .{ .constant = if (field) 1 else 0 },
                     });
                 }
                 return macros;
