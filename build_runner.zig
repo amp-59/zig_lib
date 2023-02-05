@@ -29,6 +29,7 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
 fn commandNotFoundException(ctx: *const builder.Context, arg: [:0]const u8) !void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlwaysAIO(&buf, &.{ "command not found: ", arg, "\n" });
+    builtin.debug.logAlways(comptime Options.Map.helpMessage(opts_map));
     showAllCommands(ctx);
     return error.CommandNotFound;
 }
@@ -36,7 +37,12 @@ fn showAllCommands(ctx: *const builder.Context) void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlways("commands:\n");
     for (ctx.cmds.readAll()) |cmd| {
-        builtin.debug.logAlwaysAIO(&buf, &.{ @tagName(cmd.cmd), "\t", cmd.name.?, "\t", cmd.root, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &.{ "    ", @tagName(cmd.cmd), "\t", cmd.name.?, "\t", cmd.root, "\n" });
+    }
+}
+fn setAllCommands(ctx: *const builder.Context, cmd_mode: meta.Field(builder.BuildCmd, "cmd")) void {
+    for (ctx.cmds.referAllDefined()) |*cmd| {
+        cmd.cmd = cmd_mode;
     }
 }
 fn execAllCommands(ctx: *const builder.Context) !void {
@@ -77,23 +83,37 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .array = &array,
     };
     try root.build(&ctx);
-    const Cmd = @TypeOf(ctx.cmds.readOneAt(0).cmd);
     for (args) |arg, index| {
         const name: [:0]const u8 = meta.manyToSlice(arg);
         if (mem.testEqualMany(u8, name, "all")) {
             try execAllCommands(&ctx);
+            proc.shift(&args, index);
             continue;
         }
         if (mem.testEqualMany(u8, name, "show")) {
             showAllCommands(&ctx);
+            proc.shift(&args, index);
             continue;
         }
-        inline for (@typeInfo(Cmd).Enum.fields) |field| {
-            if (mem.testEqualMany(u8, name, field.name)) {
-                for (ctx.cmds.referAllDefined()) |*cmd| cmd.cmd = @field(Cmd, field.name);
-                args = args[index + 1 ..];
-                break;
-            }
+        if (mem.testEqualMany(u8, name, "lib")) {
+            setAllCommands(&ctx, .lib);
+            proc.shift(&args, index);
+            continue;
+        }
+        if (mem.testEqualMany(u8, name, "obj")) {
+            setAllCommands(&ctx, .lib);
+            proc.shift(&args, index);
+            continue;
+        }
+        if (mem.testEqualMany(u8, name, "exe")) {
+            setAllCommands(&ctx, .exe);
+            proc.shift(&args, index);
+            continue;
+        }
+        if (mem.testEqualMany(u8, name, "run")) {
+            setAllCommands(&ctx, .exe);
+            proc.shift(&args, index);
+            continue;
         }
     }
     for (args) |arg, index| {
