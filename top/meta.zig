@@ -386,8 +386,8 @@ pub fn Child(comptime T: type) type {
                 .Array => |array_info| {
                     return array_info.child;
                 },
-                else => |child_type_info| {
-                    debug.unexpectedTypeTypeError(T, child_type_info, .Array);
+                else => {
+                    return pointer_info.child;
                 },
             }
         },
