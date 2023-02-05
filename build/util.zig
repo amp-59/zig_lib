@@ -129,6 +129,9 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     }
     ret.addPackage(srg);
     ret.install();
+    ret.link_gc_sections = true;
+    ret.disable_stack_probing = true;
+    ret.code_model = .kernel;
     make_step.dependOn(&ret.step);
     make_step.dependOn(&ret.install_step.?.step);
     run_step.dependOn(make_step);
