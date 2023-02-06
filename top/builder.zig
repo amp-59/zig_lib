@@ -1,3 +1,4 @@
+
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
@@ -49,7 +50,7 @@ pub const BuildCmd = struct {
     enable_cache: bool = false,
     target: ?[]const u8 = null,
     cpu: ?[]const u8 = null,
-    cmodel: ?enum(u3) { default = 0, tiny = 1, small = 2, kernel = 3, medium = 4, large = 5 } = null,
+    code_model: ?enum(u3) { default = 0, tiny = 1, small = 2, kernel = 3, medium = 4, large = 5 } = null,
     red_zone: ?bool = null,
     omit_frame_pointer: ?bool = null,
     exec_model: ?[]const u8 = null,
@@ -76,22 +77,40 @@ pub const BuildCmd = struct {
     dirafter: ?[]const u8 = null,
     system: ?[]const u8 = null,
     include: ?[]const u8 = null,
-    macros: ?Macros = null,
-    packages: ?Packages = null,
+    libc: ?[]const u8 = null,
+    library: ?[]const u8 = null,
+    library_directory: ?[]const u8 = null,
+    link_script: ?[]const u8 = null,
+    version_script: ?[]const u8 = null,
+    dynamic_linker: ?[]const u8 = null,
+    sysroot: ?[]const u8 = null,
+    version: bool = false,
+    entry: bool = false,
     soname: ?union(enum) { yes: []const u8, no: void } = null,
+    lld: ?bool = null,
     compiler_rt: ?bool = null,
-    path: ?[]const u8 = null,
+    rdynamic: bool = false,
+    rpath: ?[]const u8 = null,
     each_lib_rpath: ?bool = null,
-    no_each_lib_rpath: bool = false,
     allow_shlib_undefined: ?bool = null,
-    no_allow_shlib_undefined: bool = false,
     build_id: ?bool = null,
-    no_build_id: bool = false,
     dynamic: bool = false,
     static: bool = false,
+    symbolic: bool = false,
+    compress_debug_sections: ?enum(u1) { none = 0, zlib = 1 } = null,
     gc_sections: ?bool = null,
     stack: ?u64 = null,
+    image_base: ?u64 = null,
+    macros: ?Macros = null,
+    packages: ?Packages = null,
+    cflags: ?struct { flags: []const []const u8 } = null,
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null,
+    test_filter: ?[]const u8 = null,
+    test_name_prefix: ?[]const u8 = null,
+    test_cmd: bool = false,
+    test_cmd_bin: bool = false,
+    test_evented_io: bool = false,
+    test_no_exec: bool = false,
     fn buildLength(build: Builder) u64 {
         var len: u64 = 4;
         switch (build.cmd) {
@@ -273,7 +292,7 @@ pub const BuildCmd = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (build.cmodel) |how| {
+        if (build.code_model) |how| {
             len +%= 9;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
@@ -440,11 +459,46 @@ pub const BuildCmd = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (build.macros) |how| {
+        if (build.libc) |how| {
+            len +%= 7;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
         }
-        if (build.packages) |how| {
+        if (build.library) |how| {
+            len +%= 10;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.library_directory) |how| {
+            len +%= 20;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.link_script) |how| {
+            len +%= 9;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.version_script) |how| {
+            len +%= 17;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.dynamic_linker) |how| {
+            len +%= 17;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.sysroot) |how| {
+            len +%= 10;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.version) {
+            len +%= 10;
+        }
+        if (build.entry) {
+            len +%= 8;
         }
         if (build.soname) |soname| {
             switch (soname) {
@@ -458,6 +512,13 @@ pub const BuildCmd = struct {
                 },
             }
         }
+        if (build.lld) |lld| {
+            if (lld) {
+                len +%= 6;
+            } else {
+                len +%= 9;
+            }
+        }
         if (build.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
                 len +%= 14;
@@ -465,7 +526,10 @@ pub const BuildCmd = struct {
                 len +%= 17;
             }
         }
-        if (build.path) |how| {
+        if (build.rdynamic) {
+            len +%= 10;
+        }
+        if (build.rpath) |how| {
             len +%= 7;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
@@ -477,18 +541,12 @@ pub const BuildCmd = struct {
                 len +%= 20;
             }
         }
-        if (build.no_each_lib_rpath) {
-            len +%= 20;
-        }
         if (build.allow_shlib_undefined) |allow_shlib_undefined| {
             if (allow_shlib_undefined) {
                 len +%= 24;
             } else {
                 len +%= 27;
             }
-        }
-        if (build.no_allow_shlib_undefined) {
-            len +%= 27;
         }
         if (build.build_id) |build_id| {
             if (build_id) {
@@ -497,14 +555,19 @@ pub const BuildCmd = struct {
                 len +%= 14;
             }
         }
-        if (build.no_build_id) {
-            len +%= 14;
-        }
         if (build.dynamic) {
             len +%= 9;
         }
         if (build.static) {
             len +%= 8;
+        }
+        if (build.symbolic) {
+            len +%= 11;
+        }
+        if (build.compress_debug_sections) |how| {
+            len +%= 26;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
         }
         if (build.gc_sections) |gc_sections| {
             if (gc_sections) {
@@ -518,10 +581,46 @@ pub const BuildCmd = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
+        if (build.image_base) |how| {
+            len +%= 13;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.macros) |how| {
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+        }
+        if (build.packages) |how| {
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+        }
+        if (build.cflags) |how| {
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+        }
         if (build.z) |how| {
             len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
+        }
+        if (build.test_filter) |how| {
+            len +%= 14;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.test_name_prefix) |how| {
+            len +%= 19;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
+        }
+        if (build.test_cmd) {
+            len +%= 11;
+        }
+        if (build.test_cmd_bin) {
+            len +%= 15;
+        }
+        if (build.test_evented_io) {
+            len +%= 18;
+        }
+        if (build.test_no_exec) {
+            len +%= 15;
         }
         len +%= Path.formatLength(build.ctx.sourceRootPath(build.root));
         len +%= 1;
@@ -711,7 +810,7 @@ pub const BuildCmd = struct {
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (build.cmodel) |how| {
+        if (build.code_model) |how| {
             array.writeMany("-mcmodel\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
@@ -878,11 +977,46 @@ pub const BuildCmd = struct {
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (build.macros) |how| {
+        if (build.libc) |how| {
+            array.writeMany("--libc\x00");
             array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
         }
-        if (build.packages) |how| {
+        if (build.library) |how| {
+            array.writeMany("--library\x00");
             array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.library_directory) |how| {
+            array.writeMany("--library-directory\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.link_script) |how| {
+            array.writeMany("--script\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.version_script) |how| {
+            array.writeMany("--version-script\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.dynamic_linker) |how| {
+            array.writeMany("--dynamic-linker\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.sysroot) |how| {
+            array.writeMany("--sysroot\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.version) {
+            array.writeMany("--version\x00");
+        }
+        if (build.entry) {
+            array.writeMany("--entry\x00");
         }
         if (build.soname) |soname| {
             switch (soname) {
@@ -896,6 +1030,13 @@ pub const BuildCmd = struct {
                 },
             }
         }
+        if (build.lld) |lld| {
+            if (lld) {
+                array.writeMany("-fLLD\x00");
+            } else {
+                array.writeMany("-fno-LLD\x00");
+            }
+        }
         if (build.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
                 array.writeMany("-fcompiler-rt\x00");
@@ -903,7 +1044,10 @@ pub const BuildCmd = struct {
                 array.writeMany("-fno-compiler-rt\x00");
             }
         }
-        if (build.path) |how| {
+        if (build.rdynamic) {
+            array.writeMany("-rdynamic\x00");
+        }
+        if (build.rpath) |how| {
             array.writeMany("-rpath\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
@@ -915,18 +1059,12 @@ pub const BuildCmd = struct {
                 array.writeMany("-fno-each-lib-rpath\x00");
             }
         }
-        if (build.no_each_lib_rpath) {
-            array.writeMany("-fno-each-lib-rpath\x00");
-        }
         if (build.allow_shlib_undefined) |allow_shlib_undefined| {
             if (allow_shlib_undefined) {
                 array.writeMany("-fallow-shlib-undefined\x00");
             } else {
                 array.writeMany("-fno-allow-shlib-undefined\x00");
             }
-        }
-        if (build.no_allow_shlib_undefined) {
-            array.writeMany("-fno-allow-shlib-undefined\x00");
         }
         if (build.build_id) |build_id| {
             if (build_id) {
@@ -935,14 +1073,19 @@ pub const BuildCmd = struct {
                 array.writeMany("-fno-build-id\x00");
             }
         }
-        if (build.no_build_id) {
-            array.writeMany("-fno-build-id\x00");
-        }
         if (build.dynamic) {
             array.writeMany("-dynamic\x00");
         }
         if (build.static) {
             array.writeMany("-static\x00");
+        }
+        if (build.symbolic) {
+            array.writeMany("-Bsymbolic\x00");
+        }
+        if (build.compress_debug_sections) |how| {
+            array.writeMany("--compress-debug-sections\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
         }
         if (build.gc_sections) |gc_sections| {
             if (gc_sections) {
@@ -956,10 +1099,46 @@ pub const BuildCmd = struct {
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
+        if (build.image_base) |how| {
+            array.writeMany("--image-base\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.macros) |how| {
+            array.writeAny(fmt_spec, how);
+        }
+        if (build.packages) |how| {
+            array.writeAny(fmt_spec, how);
+        }
+        if (build.cflags) |how| {
+            array.writeAny(fmt_spec, how);
+        }
         if (build.z) |how| {
             array.writeMany("-z\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
+        }
+        if (build.test_filter) |how| {
+            array.writeMany("--test-filter\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.test_name_prefix) |how| {
+            array.writeMany("--test-name-prefix\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
+        }
+        if (build.test_cmd) {
+            array.writeMany("--test-cmd\x00");
+        }
+        if (build.test_cmd_bin) {
+            array.writeMany("--test-cmd-bin\x00");
+        }
+        if (build.test_evented_io) {
+            array.writeMany("--test-evented-io\x00");
+        }
+        if (build.test_no_exec) {
+            array.writeMany("--test-no-exec\x00");
         }
         array.writeFormat(build.ctx.sourceRootPath(build.root));
         array.writeOne('\x00');
@@ -1063,7 +1242,6 @@ pub const Macro = struct {
         constant: usize,
         path: Path,
     },
-    quote: bool = false,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-D");
@@ -1110,6 +1288,28 @@ pub const Macro = struct {
         }
         len +%= 1;
         return len;
+    }
+};
+pub const CFlags = struct {
+    flags: []const []const u8,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany("-cflags");
+        array.writeOne(0);
+        for (format.flags) |flag| {
+            array.writeMany(flag);
+            array.writeOne(0);
+        }
+        array.writeOne("--\x00");
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        len +%= 8;
+        for (format.flags) |flag| {
+            len +%= flag.len;
+            len +%= 1;
+        }
+        len +%= 3;
     }
 };
 pub const GlobalOptions = struct {

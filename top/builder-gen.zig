@@ -65,334 +65,341 @@ pub const OptionSpec = struct {
     and_no: ?*const OptionSpec = null,
 };
 pub const ExecutableOptions = opaque {
-    pub const watch_opt_spec: OptionSpec = .{ .string = "--watch" };
-    pub const color_opt_spec: OptionSpec = .{ .string = "--color", .arg_type = enum { on, off, auto } };
-    pub const emit_bin_opt_spec: OptionSpec = .{
+    pub const watch: OptionSpec = .{ .string = "--watch" };
+    pub const color: OptionSpec = .{ .string = "--color", .arg_type = enum { on, off, auto } };
+    pub const emit_bin: OptionSpec = .{
         .string = "-femit-bin",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-bin" },
     };
-    pub const emit_asm_opt_spec: OptionSpec = .{
+    pub const emit_asm: OptionSpec = .{
         .string = "-femit-asm",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-asm" },
     };
-    pub const emit_llvm_ir_opt_spec: OptionSpec = .{
+    pub const emit_llvm_ir: OptionSpec = .{
         .string = "-femit-llvm-ir",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-ir" },
     };
-    pub const emit_llvm_bc_opt_spec: OptionSpec = .{
+    pub const emit_llvm_bc: OptionSpec = .{
         .string = "-femit-llvm-bc",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-bc" },
     };
-    pub const emit_h_opt_spec: OptionSpec = .{
+    pub const emit_h: OptionSpec = .{
         .string = "-femit-h",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-h" },
     };
-    pub const emit_docs_opt_spec: OptionSpec = .{
+    pub const emit_docs: OptionSpec = .{
         .string = "-femit-docs",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-docs" },
     };
-    pub const emit_analysis_opt_spec: OptionSpec = .{
+    pub const emit_analysis: OptionSpec = .{
         .string = "-femit-analysis",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-analysis" },
     };
-    pub const emit_implib_opt_spec: OptionSpec = .{
+    pub const emit_implib: OptionSpec = .{
         .string = "-femit-implib",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-implib" },
     };
-    pub const show_builtin_opt_spec: OptionSpec = .{ .string = "--show-builtin" };
-    pub const cache_dir_opt_spec: OptionSpec = .{
+    pub const show_builtin: OptionSpec = .{ .string = "--show-builtin" };
+    pub const cache_dir: OptionSpec = .{
         .string = "--cache-dir",
         .arg_type = []const u8,
     };
-    pub const global_cache_dir_opt_spec: OptionSpec = .{
+    pub const global_cache_dir: OptionSpec = .{
         .string = "--global-cache-dir",
         .arg_type = []const u8,
     };
-    pub const zig_lib_dir_opt_spec: OptionSpec = .{
+    pub const zig_lib_dir: OptionSpec = .{
         .string = "--zig-lib-dir",
         .arg_type = []const u8,
     };
-    pub const enable_cache_opt_spec: OptionSpec = .{ .string = "--enable-cache" };
-    pub const target_opt_spec: OptionSpec = .{
+    pub const enable_cache: OptionSpec = .{ .string = "--enable-cache" };
+    pub const target: OptionSpec = .{
         .string = "-target",
         .arg_type = []const u8,
     };
-    pub const cpu_opt_spec: OptionSpec = .{
+    pub const cpu: OptionSpec = .{
         .string = "-mcpu",
         .arg_type = []const u8,
     };
-    pub const code_model_opt_spec: OptionSpec = .{
+    pub const code_model: OptionSpec = .{
         .string = "-mcmodel",
         .arg_type = enum { default, tiny, small, kernel, medium, large },
     };
-    pub const red_zone_opt_spec: OptionSpec = .{
+    pub const red_zone: OptionSpec = .{
         .string = "-mred-zone",
         .and_no = &.{ .string = "-mno-red-zone" },
     };
-    pub const omit_frame_pointer_opt_spec: OptionSpec = .{
+    pub const omit_frame_pointer: OptionSpec = .{
         .string = "-fomit-frame-pointer",
         .and_no = &.{ .string = "-fno-omit-frame-pointer" },
     };
-    pub const exec_model_opt_spec: OptionSpec = .{
+    pub const exec_model: OptionSpec = .{
         .string = "-mexec-model",
         .arg_type = []const u8,
     };
-    pub const name_opt_spec: OptionSpec = .{
+    pub const name: OptionSpec = .{
         .string = "--name",
         .arg_type = []const u8,
     };
-    pub const O_opt_spec: OptionSpec = .{
+    pub const O: OptionSpec = .{
         .string = "-O",
-        .arg_type = @TypeOf(builtin.zig.mode),
+        .arg_type = @TypeOf(@import("builtin").mode),
         .arg_type_name = "@TypeOf(builtin.zig.mode)",
     };
-    pub const main_pkg_path_opt_spec: OptionSpec = .{
+    pub const main_pkg_path: OptionSpec = .{
         .string = "--main-pkg-path",
         .arg_type = []const u8,
     };
-    pub const pic_opt_spec: OptionSpec = .{
+    pub const pic: OptionSpec = .{
         .string = "-fPIC",
         .and_no = &.{ .string = "-fno-PIC" },
     };
-    pub const pie_opt_spec: OptionSpec = .{
+    pub const pie: OptionSpec = .{
         .string = "-fPIE",
         .and_no = &.{ .string = "-fno-PIE" },
     };
-    pub const lto_opt_spec: OptionSpec = .{
+    pub const lto: OptionSpec = .{
         .string = "-flto",
         .and_no = &.{ .string = "-fno-lto" },
     };
-    pub const stack_check_opt_spec: OptionSpec = .{
+    pub const stack_check: OptionSpec = .{
         .string = "-fstack-check",
         .and_no = &.{ .string = "-fno-stack-check" },
     };
-    pub const sanitize_c_opt_spec: OptionSpec = .{
+    pub const sanitize_c: OptionSpec = .{
         .string = "-fsanitize-c",
         .and_no = &.{ .string = "-fno-sanitize-c" },
     };
-    pub const valgrind_opt_spec: OptionSpec = .{
+    pub const valgrind: OptionSpec = .{
         .string = "-fvalgrind",
         .and_no = &.{ .string = "-fno-valgrind" },
     };
-    pub const sanitize_thread_opt_spec: OptionSpec = .{
+    pub const sanitize_thread: OptionSpec = .{
         .string = "-fsanitize-thread",
         .and_no = &.{ .string = "-fno-sanitize-thread" },
     };
-    pub const dll_export_fns_opt_spec: OptionSpec = .{
+    pub const dll_export_fns: OptionSpec = .{
         .string = "-fdll-export-fns",
         .and_no = &.{ .string = "-fno-dll-export-fns" },
     };
-    pub const unwind_tables_opt_spec: OptionSpec = .{
+    pub const unwind_tables: OptionSpec = .{
         .string = "-funwind-tables",
         .and_no = &.{ .string = "-fno-unwind-tables" },
     };
-    pub const llvm_opt_spec: OptionSpec = .{
+    pub const llvm: OptionSpec = .{
         .string = "-fLLVM",
         .and_no = &.{ .string = "-fno-LLVM" },
     };
-    pub const clang_opt_spec: OptionSpec = .{
+    pub const clang: OptionSpec = .{
         .string = "-fClang",
         .and_no = &.{ .string = "-fno-Clang" },
     };
-    pub const stage1_opt_spec: OptionSpec = .{
+    pub const stage1: OptionSpec = .{
         .string = "-fstage1",
         .and_no = &.{ .string = "-fno-stage1" },
     };
-    pub const single_threaded_opt_spec: OptionSpec = .{
+    pub const single_threaded: OptionSpec = .{
         .string = "-fsingle-threaded",
         .and_no = &.{ .string = "-fno-single-threaded" },
     };
-    pub const builtin_opt_spec: OptionSpec = .{ .string = "-fbuiltin" };
-    pub const function_sections_opt_spec: OptionSpec = .{
+    pub const builtin: OptionSpec = .{ .string = "-fbuiltin" };
+    pub const function_sections: OptionSpec = .{
         .string = "-ffunction-sections",
         .and_no = &.{ .string = "-fno-function-sections" },
     };
-    pub const strip_opt_spec: OptionSpec = .{
+    pub const strip: OptionSpec = .{
         .string = "-fstrip",
         .and_no = &.{ .string = "-fno-strip" },
     };
-    pub const fmt_opt_spec: OptionSpec = .{
+    pub const fmt: OptionSpec = .{
         .string = "-ofmt",
         .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
     };
-    pub const dirafter_opt_spec: OptionSpec = .{
+    pub const dirafter: OptionSpec = .{
         .string = "-dirafter",
         .arg_type = []const u8,
     };
-    pub const system_opt_spec: OptionSpec = .{
+    pub const system: OptionSpec = .{
         .string = "-isystem",
         .arg_type = []const u8,
     };
-    pub const include_opt_spec: OptionSpec = .{
+    pub const include: OptionSpec = .{
         .string = "-I",
         .arg_type = []const u8,
     };
-    pub const libc_opt_spec: OptionSpec = .{
+    pub const libc: OptionSpec = .{
         .string = "--libc",
         .arg_type = []const u8,
     };
-    pub const library_opt_spec: OptionSpec = .{
+    pub const library: OptionSpec = .{
         .string = "--library",
         .arg_type = []const u8,
     };
-    pub const library_directory_opt_spec: OptionSpec = .{
+    pub const library_directory: OptionSpec = .{
         .string = "--library-directory",
         .arg_type = []const u8,
     };
-    pub const link_script_opt_spec: OptionSpec = .{
+    pub const link_script: OptionSpec = .{
         .string = "--script",
         .arg_type = []const u8,
     };
-    pub const version_script_opt_spec: OptionSpec = .{
+    pub const version_script: OptionSpec = .{
         .string = "--version-script",
         .arg_type = []const u8,
     };
-    pub const dynamic_linker_opt_spec: OptionSpec = .{
+    pub const dynamic_linker: OptionSpec = .{
         .string = "--dynamic-linker",
         .arg_type = []const u8,
     };
-    pub const sysroot_opt_spec: OptionSpec = .{
+    pub const sysroot: OptionSpec = .{
         .string = "--sysroot",
         .arg_type = []const u8,
     };
-    pub const version_opt_spec: OptionSpec = .{ .string = "--version" };
-    pub const entry_opt_spec: OptionSpec = .{ .string = "--entry" };
-    pub const soname_opt_spec: OptionSpec = .{
+    pub const version: OptionSpec = .{ .string = "--version" };
+    pub const entry: OptionSpec = .{ .string = "--entry" };
+    pub const soname: OptionSpec = .{
         .string = "-fsoname",
         .arg_type = []const u8,
         .and_no = &.{ .string = "-fno-soname" },
     };
-    pub const lld_opt_spec: OptionSpec = .{
+    pub const lld: OptionSpec = .{
         .string = "-fLLD",
         .and_no = &.{ .string = "-fno-LLD" },
     };
-    pub const compiler_rt_opt_spec: OptionSpec = .{
+    pub const compiler_rt: OptionSpec = .{
         .string = "-fcompiler-rt",
         .and_no = &.{ .string = "-fno-compiler-rt" },
     };
-    pub const rdynamic_opt_spec: OptionSpec = .{ .string = "-rdynamic" };
-    pub const rpath_opt_spec: OptionSpec = .{
+    pub const rdynamic: OptionSpec = .{ .string = "-rdynamic" };
+    pub const rpath: OptionSpec = .{
         .string = "-rpath",
         .arg_type = []const u8,
     };
-    pub const each_lib_rpath_opt_spec: OptionSpec = .{
+    pub const each_lib_rpath: OptionSpec = .{
         .string = "-feach-lib-rpath",
         .and_no = &.{ .string = "-fno-each-lib-rpath" },
     };
-    pub const allow_shlib_undefined_opt_spec: OptionSpec = .{
+    pub const allow_shlib_undefined: OptionSpec = .{
         .string = "-fallow-shlib-undefined",
         .and_no = &.{ .string = "-fno-allow-shlib-undefined" },
     };
-    pub const build_id_opt_spec: OptionSpec = .{
+    pub const build_id: OptionSpec = .{
         .string = "-fbuild-id",
         .and_no = &.{ .string = "-fno-build-id" },
     };
-    pub const dynamic_opt_spec: OptionSpec = .{ .string = "-dynamic" };
-    pub const static_opt_spec: OptionSpec = .{ .string = "-static" };
-    pub const symbolic_opt_spec: OptionSpec = .{ .string = "-Bsymbolic" };
+    pub const dynamic: OptionSpec = .{ .string = "-dynamic" };
+    pub const static: OptionSpec = .{ .string = "-static" };
+    pub const symbolic: OptionSpec = .{ .string = "-Bsymbolic" };
     pub const compress_debug_sections: OptionSpec = .{
         .string = "--compress-debug-sections",
         .arg_type = enum { none, zlib },
     };
-    pub const gc_sections_opt_spec: OptionSpec = .{
+    pub const gc_sections: OptionSpec = .{
         .string = "--gc-sections",
         .and_no = &.{ .string = "--no-gc-sections" },
     };
-    pub const stack_opt_spec: OptionSpec = .{
+    pub const stack: OptionSpec = .{
         .string = "--stack",
         .arg_type = u64,
     };
-    pub const image_base_opt_spec: OptionSpec = .{
+    pub const image_base: OptionSpec = .{
         .string = "--image-base",
         .arg_type = u64,
     };
-    pub const macros_opt_spec: OptionSpec = .{
+    pub const macros: OptionSpec = .{
         .arg_type = types.Macros,
         .arg_type_name = "Macros",
     };
-    pub const packages_opt_spec: OptionSpec = .{
+    pub const packages: OptionSpec = .{
         .arg_type = types.Packages,
         .arg_type_name = "Packages",
     };
-    pub const cflags_opt_spec: OptionSpec = .{
+    pub const cflags: OptionSpec = .{
         .arg_type = types.CFlags,
         .arg_type_name = "CFlags",
     };
+    pub const z: OptionSpec = .{
+        .string = "-z",
+        .arg_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro },
+    };
+    const test_filter: OptionSpec = .{
+        .string = "--test-filter",
+        .arg_type = []const u8,
+    };
+    const test_name_prefix: OptionSpec = .{
+        .string = "--test-name-prefix",
+        .arg_type = []const u8,
+    };
+    const test_cmd: OptionSpec = .{ .string = "--test-cmd" };
+    const test_cmd_bin: OptionSpec = .{ .string = "--test-cmd-bin" };
+    const test_evented_io: OptionSpec = .{ .string = "--test-evented-io" };
+    const test_no_exec: OptionSpec = .{ .string = "--test-no-exec" };
 
-    ///   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
-    ///   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
-    ///     -weak_library [lib]
-    ///   -framework [name]              (Darwin) link against framework
-    ///   -needed_framework [name]       (Darwin) link against framework (even if unused)
-    ///   -needed_library [lib]          (Darwin) link against system library (even if unused)
-    ///   -weak_framework [name]         (Darwin) link against framework and mark it and all referenced symbols as weak
-    ///   -F[dir]                        (Darwin) add search path for frameworks
-    ///   -install_name=[value]          (Darwin) add dylib's install name
-    ///   --entitlements [path]          (Darwin) add path to entitlements file for embedding in code signature
-    ///   -pagezero_size [value]         (Darwin) size of the __PAGEZERO segment in hexadecimal notation
-    ///   -search_paths_first            (Darwin) search each dir in library search paths for `libx.dylib` then `libx.a`
-    ///   -search_dylibs_first           (Darwin) search `libx.dylib` in each dir in library search paths, then `libx.a`
-    ///   -headerpad [value]             (Darwin) set minimum space for future expansion of the load commands in hexadecimal notation
-    ///   -headerpad_max_install_names   (Darwin) set enough space as if all paths were MAXPATHLEN
-    ///   -dead_strip                    (Darwin) remove functions and data that are unreachable by the entry point or exported symbols
-    ///   -dead_strip_dylibs             (Darwin) remove dylibs that are unreachable by the entry point or exported symbols
-    ///   --import-memory                (WebAssembly) import memory from the environment
-    ///   --import-table                 (WebAssembly) import function table from the host environment
-    ///   --export-table                 (WebAssembly) export function table to the host environment
-    ///   --initial-memory=[bytes]       (WebAssembly) initial size of the linear memory
-    ///   --max-memory=[bytes]           (WebAssembly) maximum size of the linear memory
-    ///   --shared-memory                (WebAssembly) use shared linear memory
-    ///   --global-base=[addr]           (WebAssembly) where to start to place global data
-    ///   --export=[value]               (WebAssembly) Force a symbol to be exported
-    ///
-    /// Test Options:
-    ///   --test-filter [text]           Skip tests that do not match filter
-    ///   --test-name-prefix [text]      Add prefix to all tests
-    ///   --test-cmd [arg]               Specify test execution command one arg at a time
-    ///   --test-cmd-bin                 Appends test binary path to test cmd args
-    ///   --test-evented-io              Runs the test in evented I/O mode
-    ///   --test-no-exec                 Compiles test binary without running it
-    ///
-    /// Debug Options (Zig Compiler Development):
-    ///   -ftime-report                Print timing diagnostics
-    ///   -fstack-report               Print stack size diagnostics
-    ///   --verbose-link               Display linker invocations
-    ///   --verbose-cc                 Display C compiler invocations
-    ///   --verbose-air                Enable compiler debug output for Zig AIR
-    ///   --verbose-mir                Enable compiler debug output for Zig MIR
-    ///   --verbose-llvm-ir            Enable compiler debug output for LLVM IR
-    ///   --verbose-cimport            Enable compiler debug output for C imports
-    ///   --verbose-llvm-cpu-features  Enable compiler debug output for LLVM CPU features
-    ///   --debug-log [scope]          Enable printing debug/info log messages for scope
-    ///   --debug-compile-errors       Crash with helpful diagnostics at the first compile error
-    ///   --debug-link-snapshot        Enable dumping of the linker's state in JSON
-    ///   -z [arg]                       Set linker extension flags
-    ///     nodelete                     Indicate that the object cannot be deleted from a process
-    ///     notext                       Permit read-only relocations in read-only segments
-    ///     defs                         Force a fatal error if any undefined symbols remain
-    ///     origin                       Indicate that the object must have its origin processed
-    ///     nocopyreloc                  Disable the creation of copy relocations
-    ///     now                          (default) Force all relocations to be processed on load
-    ///     lazy                         Don't force all relocations to be processed on load
-    ///     relro                        (default) Force all relocations to be read-only after processing
-    ///     norelro                      Don't force all relocations to be read-only after processing
-    pub const z_opt_spec: OptionSpec = .{ .string = "-z", .arg_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro } };
+    //   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
+    //   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
+    //     -weak_library [lib]
+    //   -framework [name]              (Darwin) link against framework
+    //   -needed_framework [name]       (Darwin) link against framework (even if unused)
+    //   -needed_library [lib]          (Darwin) link against system library (even if unused)
+    //   -weak_framework [name]         (Darwin) link against framework and mark it and all referenced symbols as weak
+    //   -F[dir]                        (Darwin) add search path for frameworks
+    //   -install_name=[value]          (Darwin) add dylib's install name
+    //   --entitlements [path]          (Darwin) add path to entitlements file for embedding in code signature
+    //   -pagezero_size [value]         (Darwin) size of the __PAGEZERO segment in hexadecimal notation
+    //   -search_paths_first            (Darwin) search each dir in library search paths for `libx.dylib` then `libx.a`
+    //   -search_dylibs_first           (Darwin) search `libx.dylib` in each dir in library search paths, then `libx.a`
+    //   -headerpad [value]             (Darwin) set minimum space for future expansion of the load commands in hexadecimal notation
+    //   -headerpad_max_install_names   (Darwin) set enough space as if all paths were MAXPATHLEN
+    //   -dead_strip                    (Darwin) remove functions and data that are unreachable by the entry point or exported symbols
+    //   -dead_strip_dylibs             (Darwin) remove dylibs that are unreachable by the entry point or exported symbols
+    //   --import-memory                (WebAssembly) import memory from the environment
+    //   --import-table                 (WebAssembly) import function table from the host environment
+    //   --export-table                 (WebAssembly) export function table to the host environment
+    //   --initial-memory=[bytes]       (WebAssembly) initial size of the linear memory
+    //   --max-memory=[bytes]           (WebAssembly) maximum size of the linear memory
+    //   --shared-memory                (WebAssembly) use shared linear memory
+    //   --global-base=[addr]           (WebAssembly) where to start to place global data
+    //   --export=[value]               (WebAssembly) Force a symbol to be exported
+    //
+    // Debug Options (Zig Compiler Development):
+    //   -ftime-report                Print timing diagnostics
+    //   -fstack-report               Print stack size diagnostics
+    //   --verbose-link               Display linker invocations
+    //   --verbose-cc                 Display C compiler invocations
+    //   --verbose-air                Enable compiler debug output for Zig AIR
+    //   --verbose-mir                Enable compiler debug output for Zig MIR
+    //   --verbose-llvm-ir            Enable compiler debug output for LLVM IR
+    //   --verbose-cimport            Enable compiler debug output for C imports
+    //   --verbose-llvm-cpu-features  Enable compiler debug output for LLVM CPU features
+    //   --debug-log [scope]          Enable printing debug/info log messages for scope
+    //   --debug-compile-errors       Crash with helpful diagnostics at the first compile error
+    //   --debug-link-snapshot        Enable dumping of the linker's state in JSON
+    //   -z [arg]                       Set linker extension flags
+    //     nodelete                     Indicate that the object cannot be deleted from a process
+    //     notext                       Permit read-only relocations in read-only segments
+    //     defs                         Force a fatal error if any undefined symbols remain
+    //     origin                       Indicate that the object must have its origin processed
+    //     nocopyreloc                  Disable the creation of copy relocations
+    //     now                          (default) Force all relocations to be processed on load
+    //     lazy                         Don't force all relocations to be processed on load
+    //     relro                        (default) Force all relocations to be read-only after processing
+    //     norelro                      Don't force all relocations to be read-only after processing
 };
 /// These are the various states of definition of options. The 'how not' and
 /// 'maybe how not' do not have any examples, but it is easier to think about if
@@ -1024,7 +1031,7 @@ pub fn writeFunctionBody(
             continue;
         }
         const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
-        const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
+        const what_field: []const u8 = decl.name;
         const what_switch: ?[]const u8 = opt_spec.string;
         if (opt_spec.arg_type) |arg_type| {
             if (@typeInfo(arg_type) == .Optional) {
@@ -1083,7 +1090,7 @@ pub fn writeStructMembers(array: *Array) void {
     inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
         const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
         const field_type: type = getOptType(opt_spec);
-        const what_field: []const u8 = decl.name[0 .. decl.name.len - 9];
+        const what_field: []const u8 = decl.name;
         array.writeMany(ws[0..width] ++ what_field ++ ": ");
         switch (@typeInfo(field_type)) {
             .Bool => {
