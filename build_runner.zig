@@ -90,11 +90,6 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             proc.shift(&args, index);
             continue;
         }
-        if (mem.testEqualMany(u8, name, "show")) {
-            showAllCommands(&ctx);
-            proc.shift(&args, index);
-            continue;
-        }
         if (mem.testEqualMany(u8, name, "lib")) {
             setAllCommands(&ctx, .lib);
             proc.shift(&args, index);
@@ -114,6 +109,10 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             setAllCommands(&ctx, .exe);
             proc.shift(&args, index);
             continue;
+        }
+        if (mem.testEqualMany(u8, name, "show")) {
+            showAllCommands(&ctx);
+            return;
         }
     }
     for (args) |arg, index| {
