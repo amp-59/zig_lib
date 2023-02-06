@@ -1006,88 +1006,88 @@ pub const debug = opaque {
     }
     fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U) noreturn {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = debug.intCastTruncatedBitsString(T, U, buf, arg);
+        var buf: [size]u8 = undefined;
+        const len: u64 = debug.intCastTruncatedBitsString(T, U, &buf, arg);
         logFault(buf[0..len]);
     }
     fn subCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = debug.subCausedOverflowString(T, buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        var buf: [size]u8 = undefined;
+        const len: u64 = debug.subCausedOverflowString(T, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logError(buf[0..len]);
         return error.SubCausedOverflow;
     }
     fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = debug.subCausedOverflowString(T, aboutFault(T), buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        var buf: [size]u8 = undefined;
+        const len: u64 = debug.subCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
     }
     fn addCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = debug.addCausedOverflowString(T, aboutError(T), buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        var buf: [size]u8 = undefined;
+        const len: u64 = debug.addCausedOverflowString(T, aboutError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logError(buf[0..len]);
         return error.AddCausedOverflow;
     }
     fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = debug.addCausedOverflowString(T, aboutFault(T), buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        var buf: [size]u8 = undefined;
+        const len: u64 = debug.addCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
     }
     fn mulCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = mulCausedOverflowString(T, aboutError(T), buf, arg1, arg2);
+        var buf: [size]u8 = undefined;
+        const len: u64 = mulCausedOverflowString(T, aboutError(T), &buf, arg1, arg2);
         logError(buf[0..len]);
         return error.MulCausedOverflow;
     }
     fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = mulCausedOverflowString(T, aboutFault(T), buf, arg1, arg2);
+        var buf: [size]u8 = undefined;
+        const len: u64 = mulCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2);
         logFault(buf[0..len]);
     }
     fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), buf, arg1, arg2, result, remainder);
+        var buf: [size]u8 = undefined;
+        const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), &buf, arg1, arg2, result, remainder);
         logError(buf[0..len]);
         return error.DivisionWithRemainder;
     }
     fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), buf, arg1, arg2, result, remainder);
+        var buf: [size]u8 = undefined;
+        const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), &buf, arg1, arg2, result, remainder);
         logFault(buf[0..len]);
     }
     fn incorrectAlignmentException(comptime T: type, address: usize, alignment: usize) Exception {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = incorrectAlignmentString(T, aboutError(T), buf, address, alignment, remainder);
+        var buf: [size]u8 = undefined;
+        const len: u64 = incorrectAlignmentString(T, aboutError(T), &buf, address, alignment, remainder);
         logError(buf[0..len]);
         return error.IncorrectAlignment;
     }
     fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize) noreturn {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = incorrectAlignmentString(T, aboutFault(T), buf, address, alignment, remainder);
+        var buf: [size]u8 = undefined;
+        const len: u64 = incorrectAlignmentString(T, aboutFault(T), &buf, address, alignment, remainder);
         logFault(buf[0..len]);
     }
     fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        const len: u64 = comparisonFailedString(T, aboutError(T), symbol, buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        var buf: [size]u8 = undefined;
+        const len: u64 = comparisonFailedString(T, aboutError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logError(buf[0..len]);
         return error.UnexpectedValue;
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var buf: []u8 = impendingBytes(size);
-        var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, buf, arg1, arg2, if (@typeInfo(T) == .Int) @min(arg1, arg2) > 10_000 else false);
+        var buf: [size]u8 = undefined;
+        var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, if (@typeInfo(T) == .Int) @min(arg1, arg2) > 10_000 else false);
         logFault(buf[0..len]);
     }
     pub fn write(buf: []const u8) void {
