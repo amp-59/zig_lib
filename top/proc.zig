@@ -493,14 +493,14 @@ pub const start = opaque {
     }
     pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
         @setCold(true);
-        var buf: []u8 = builtin.debug.impendingBytes(1024);
+        var buf: [1024]u8 = undefined;
         if (max_len == 0) {
-            builtin.debug.logFaultAIO(buf, &[_][]const u8{
+            builtin.debug.logFaultAIO(&buf, &[_][]const u8{
                 debug.about_error_s,             "indexing (",
                 builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
             });
         } else {
-            builtin.debug.logFaultAIO(buf, &[_][]const u8{
+            builtin.debug.logFaultAIO(&buf, &[_][]const u8{
                 debug.about_error_s,                      "index ",
                 builtin.fmt.ud64(idx).readAll(),          " above maximum ",
                 builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
@@ -510,8 +510,8 @@ pub const start = opaque {
     }
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
-        var buf: []u8 = builtin.debug.impendingBytes(1024);
-        builtin.debug.logFaultAIO(buf, &[_][]const u8{
+        var buf: [1024]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             debug.about_error_s,                 "sentinel mismatch: expected ",
             builtin.fmt.int(expected).readAll(), ", found ",
             builtin.fmt.int(actual).readAll(),   "\n",
@@ -519,8 +519,8 @@ pub const start = opaque {
     }
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
-        var buf: []u8 = builtin.debug.impendingBytes(1024);
-        builtin.debug.logFaultAIO(buf, &[_][]const u8{
+        var buf: [1024]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             debug.about_error_s,               "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
@@ -528,8 +528,8 @@ pub const start = opaque {
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
-        var buf: []u8 = builtin.debug.impendingBytes(1024);
-        builtin.debug.logFaultAIO(buf, &[_][]const u8{
+        var buf: [1024]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             debug.about_error_s, "access of union field '",
             @tagName(wanted),    "' while field '",
             @tagName(active),    "' is active",
@@ -540,7 +540,7 @@ pub const start = opaque {
         @compileError("error is discarded");
     }
     fn unexpectedReturnCodeValueError(rc: u64) void {
-        var buf: []u8 = builtin.debug.impendingBytes(512);
+        var buf: [512]u8 = undefined;
         builtin.debug.logFaultAIO(&buf, &[_][]const u8{
             "unexpected return value: ", builtin.fmt.ud64(rc).readAll(),
             "\n",
@@ -1040,7 +1040,7 @@ const debug = opaque {
         sys.noexcept.write(2, @ptrToInt(buf.ptr), buf.len);
     }
     pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
-        var buf: []u8 = builtin.debug.impendingBytes(4096 +% 128);
+        var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
         len += builtin.debug.writeMany(buf[len..], about_execve_0_s);
         len += builtin.debug.writeMany(buf[len..], filename);
@@ -1089,19 +1089,19 @@ const debug = opaque {
         sys.noexcept.write(2, @ptrToInt(buf.ptr), len);
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
-        var buf: []u8 = builtin.debug.impendingBytes(4096);
-        builtin.debug.logFaultAIO(buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
     }
     fn forkError(fork_error: anytype) void {
-        var buf: []u8 = builtin.debug.impendingBytes(16 +% 32 +% 512);
-        builtin.debug.logFaultAIO(buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
+        var buf: [16 +% 32 +% 512]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
     }
     fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
-        var buf: []u8 = builtin.debug.impendingBytes(16 +% 32 +% 512);
-        builtin.debug.logFaultAIO(buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
+        var buf: [16 +% 32 +% 512]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
     fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
-        var buf: []u8 = builtin.debug.impendingBytes(4096 +% 128);
+        var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
         const bad_opt: []const u8 = blk: {
             var idx: u64 = 0;
@@ -1156,7 +1156,7 @@ const debug = opaque {
     // Try to make these two less original
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
         const max_len: u64 = 4096 +% 128;
-        var buf: []u8 = builtin.debug.impendingBytes(max_len);
+        var buf: [max_len]u8 = undefined;
         var len: u64 = 0;
         len += builtin.debug.writeMany(buf[len..], about_execve_1_s);
         len += builtin.debug.writeMany(buf[len..], "(");
