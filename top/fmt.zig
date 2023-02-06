@@ -422,7 +422,7 @@ fn GenericFormat(comptime Format: type) type {
         }
         fn checkLen(len: u64) u64 {
             if (@hasDecl(Format, "max_len") and len != Format.max_len) {
-                @panic("formatter max length exceeded");
+                builtin.debug.logFault("formatter max length exceeded");
             }
             return len;
         }
