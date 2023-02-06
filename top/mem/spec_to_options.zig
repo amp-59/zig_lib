@@ -1,16 +1,11 @@
 //! This stage summarises the abstract specification.
 const mem = @import("./../mem.zig");
-
-pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
+const builtin = @import("./../builtin.zig");
 
 const gen = @import("./gen.zig");
 
-const builtin = struct {
-    const Type = @TypeOf(@typeInfo(void));
-};
-
-pub const Array = mem.StaticString(65536);
+pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
 
 fn fieldOption(comptime field: builtin.Type.StructField) gen.Option {
     comptime var field_names: []const []const u8 = &.{};
@@ -38,8 +33,7 @@ fn fieldOption(comptime field: builtin.Type.StructField) gen.Option {
         };
     }
 }
-
-fn writeOptions(array: *Array) void {
+fn writeOptions(array: *gen.String) void {
     array.writeMany("pub const options = [_]gen.Option{\n");
     inline for (@typeInfo(gen.Techniques.Options).Struct.fields) |field| {
         const option: gen.Option = fieldOption(field);
@@ -58,15 +52,16 @@ fn writeOptions(array: *Array) void {
     }
     array.writeMany("};\n");
 }
-pub fn specToOptions() void {
-    var array: Array = undefined;
-    array.undefineAll();
-    gen.writeImports(&array, @src(), &.{.{ .name = "gen", .path = "./gen.zig" }});
-    writeOptions(&array);
-    gen.writeFile(&array, "memgen_options_0.zig");
+pub fn specToOptions(array: *gen.String) void {
+    gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "./../../gen.zig" }});
+    writeOptions(array);
+    gen.writeFile(array, "memgen_options.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    specToOptions();
+    var buf: [1024 * 1024]u8 = undefined;
+    var array: gen.String = gen.String.init(&buf);
+    array.undefineAll();
+    specToOptions(&array);
     gen.exit(0);
 }
