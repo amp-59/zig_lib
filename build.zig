@@ -58,12 +58,7 @@ const parsedir_lib_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name
 // zig fmt: off
 
 fn memgen(ctx: *builder.Context) !void {
-    _ = ctx.addExecutable("mem_gen_0",      "top/mem/gen-0-aux.zig", .{ .build_mode = .ReleaseSmall });
-    _ = ctx.addExecutable("mem_gen_1",      "top/mem/gen-1-aux.zig", .{ .build_mode = .ReleaseSmall });
-    _ = ctx.addExecutable("mem_gen_2",      "top/mem/gen-2-aux.zig", .{ .build_mode = .ReleaseSmall });
-    _ = ctx.addExecutable("mem_gen_3",      "top/mem/gen-3-aux.zig", .{ .build_mode = .ReleaseSmall });
-    _ = ctx.addExecutable("mem_gen_4",      "top/mem/gen-4-aux.zig", .{ .build_mode = .ReleaseSmall });
-    _ = ctx.addExecutable("mem_gen_5",      "top/mem/gen-5-aux.zig", .{ .build_mode = .ReleaseSmall });
+    _ = ctx;
 }
 // TODO Create super type for build options permitting the creation of
 // dependencies, etc. Like step.
