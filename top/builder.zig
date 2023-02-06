@@ -72,6 +72,7 @@ pub const BuildCmd = struct {
     builtin: bool = false,
     function_sections: ?bool = null,
     strip: ?bool = null,
+    formatted_panics: ?bool = null,
     fmt: ?enum(u4) { elf = 0, c = 1, wasm = 2, coff = 3, macho = 4, spirv = 5, plan9 = 6, hex = 7, raw = 8 } = null,
     dirafter: ?[]const u8 = null,
     system: ?[]const u8 = null,
@@ -436,6 +437,13 @@ pub const BuildCmd = struct {
                 len +%= 8;
             } else {
                 len +%= 11;
+            }
+        }
+        if (build.formatted_panics) |formatted_panics| {
+            if (formatted_panics) {
+                len +%= 19;
+            } else {
+                len +%= 22;
             }
         }
         if (build.fmt) |how| {
@@ -954,6 +962,13 @@ pub const BuildCmd = struct {
                 array.writeMany("-fstrip\x00");
             } else {
                 array.writeMany("-fno-strip\x00");
+            }
+        }
+        if (build.formatted_panics) |formatted_panics| {
+            if (formatted_panics) {
+                array.writeMany("-fformatted-panics\x00");
+            } else {
+                array.writeMany("-fno-formatted-panics\x00");
             }
         }
         if (build.fmt) |how| {
