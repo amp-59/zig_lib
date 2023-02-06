@@ -19,7 +19,7 @@ pub usingnamespace proc.start;
 const std = @import("std");
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub const is_correct: bool = false;
+pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
 
 const PrintArray = mem.StaticString(4096);

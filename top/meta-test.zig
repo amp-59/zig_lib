@@ -5,7 +5,7 @@ const proc = @import("./proc.zig");
 pub usingnamespace proc.start;
 
 pub const is_verbose: bool = true;
-pub const is_correct: bool = true;
+pub const runtime_assertions: bool = true;
 
 fn basicTests() !void {
     try builtin.expect(8 == meta.alignAW(7));

@@ -4856,14 +4856,14 @@ pub const reinterpret = opaque {
         if (!@hasDecl(Format, "formatWrite")) {
             @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
-        if (builtin.is_correct and builtin.is_perf) {
+        if (builtin.runtime_assertions and builtin.is_perf) {
             const s_len: u64 = format.formatLength();
             const len_0: u64 = memory.impl.undefined_byte_address();
             format.formatWrite(memory);
             const len_1: u64 = memory.impl.undefined_byte_address();
             const t_len: u64 = builtin.sub(u64, len_1, len_0);
             builtin.assertBelowOrEqual(u64, t_len, s_len);
-        } else if (builtin.is_correct) {
+        } else if (builtin.runtime_assertions) {
             const s_len: u64 = format.formatLength();
             const len_0: u64 = memory.impl.undefined_byte_address();
             format.formatWrite(memory);

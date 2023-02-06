@@ -645,7 +645,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             }
         };
         comptime {
-            if (false and builtin.is_correct) {
+            if (false and builtin.runtime_assertions) {
                 if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
                     var prev: usize = 0;
                     for (AddressSpace.addr_spec.list) |item| {

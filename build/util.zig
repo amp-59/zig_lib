@@ -88,7 +88,7 @@ pub fn Args(comptime name: [:0]const u8) type {
         build_root: bool = true,
         root_src_file: bool = true,
         build_working_directory: bool = false,
-        is_correct: ?bool = null,
+        runtime_assertions: ?bool = null,
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
         is_tolerant: ?bool = null,
@@ -115,8 +115,8 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     if (args.build_root) {
         defineBuildRoot(builder, ret);
     }
-    if (args.is_correct) |is_correct| {
-        defineConfig(ret, "is_correct", is_correct);
+    if (args.runtime_assertions) |runtime_assertions| {
+        defineConfig(ret, "runtime_assertions", runtime_assertions);
     }
     if (args.is_tolerant) |is_tolerant| {
         defineConfig(ret, "is_tolerant", is_tolerant);

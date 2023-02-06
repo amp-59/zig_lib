@@ -15,7 +15,7 @@ const virtual_test = @import("./virtual-test.zig");
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub const is_correct: bool = true;
+pub const runtime_assertions: bool = true;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,

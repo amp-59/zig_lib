@@ -12,8 +12,8 @@ const types = @import("./builder-template.zig");
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub const is_verbose: bool = false;
-pub const is_correct: bool = false;
+pub const is_silent: bool = false;
+pub const runtime_assertions: bool = false;
 
 const Variant = enum(u1) { length, write };
 
@@ -24,12 +24,6 @@ const alloc_options = .{
     .require_filo_free = false,
     .require_geometric_growth = true,
     .trace_state = false,
-};
-const alloc_logging = .{
-    .arena = builtin.Logging.silent,
-    .map = builtin.Logging.silent,
-    .unmap = builtin.Logging.silent,
-    .remap = builtin.Logging.silent,
 };
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 24,

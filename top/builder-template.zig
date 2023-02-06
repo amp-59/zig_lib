@@ -352,7 +352,7 @@ pub const Context = struct {
             .name = name,
         };
         comptime var macros: []const Macro = args.macros orelse meta.empty;
-        macros = comptime args.setMacro(macros, "is_correct");
+        macros = comptime args.setMacro(macros, "runtime_assertions");
         macros = comptime args.setMacro(macros, "is_verbose");
         if (args.build_mode) |build_mode| {
             ret.O = build_mode;
@@ -417,7 +417,7 @@ fn Args(comptime name: [:0]const u8) type {
         build_working_directory: bool = false,
         is_test: ?bool = null,
         is_support: ?bool = null,
-        is_correct: ?bool = null,
+        runtime_assertions: ?bool = null,
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
         is_silent: ?bool = null,

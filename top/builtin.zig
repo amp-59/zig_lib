@@ -684,32 +684,32 @@ pub fn assert(b: bool) void {
     }
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
-    if (is_correct and arg1 >= arg2) {
+    if (runtime_assertions and arg1 >= arg2) {
         debug.comparisonFailedFault(T, " < ", arg1, arg2);
     }
 }
 pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (is_correct and arg1 > arg2) {
+    if (runtime_assertions and arg1 > arg2) {
         debug.comparisonFailedFault(T, " <= ", arg1, arg2);
     }
 }
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (is_correct and !testEqual(T, arg1, arg2)) {
+    if (runtime_assertions and !testEqual(T, arg1, arg2)) {
         debug.comparisonFailedFault(T, " == ", arg1, arg2);
     }
 }
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (is_correct and testEqual(T, arg1, arg2)) {
+    if (runtime_assertions and testEqual(T, arg1, arg2)) {
         debug.comparisonFailedFault(T, " != ", arg1, arg2);
     }
 }
 pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (is_correct and arg1 < arg2) {
+    if (runtime_assertions and arg1 < arg2) {
         debug.comparisonFailedFault(T, " >= ", arg1, arg2);
     }
 }
 pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
-    if (is_correct and arg1 <= arg2) {
+    if (runtime_assertions and arg1 <= arg2) {
         debug.comparisonFailedFault(T, " > ", arg1, arg2);
     }
 }
@@ -723,32 +723,32 @@ pub fn expect(b: bool) Exception!void {
     }
 }
 pub fn expectBelow(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (is_correct and arg1 >= arg2) {
+    if (runtime_assertions and arg1 >= arg2) {
         return debug.comparisonFailedException(T, " < ", arg1, arg2);
     }
 }
 pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (is_correct and arg1 > arg2) {
+    if (runtime_assertions and arg1 > arg2) {
         return debug.comparisonFailedException(T, " <= ", arg1, arg2);
     }
 }
 pub fn expectEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (is_correct and !testEqual(T, arg1, arg2)) {
+    if (runtime_assertions and !testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedException(T, " == ", arg1, arg2);
     }
 }
 pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (is_correct and testEqual(T, arg1, arg2)) {
+    if (runtime_assertions and testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedException(T, " != ", arg1, arg2);
     }
 }
 pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (is_correct and arg1 < arg2) {
+    if (runtime_assertions and arg1 < arg2) {
         return debug.comparisonFailedException(T, " >= ", arg1, arg2);
     }
 }
 pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (is_correct and arg1 <= arg2) {
+    if (runtime_assertions and arg1 <= arg2) {
         return debug.comparisonFailedException(T, " > ", arg1, arg2);
     }
 }
@@ -860,32 +860,32 @@ pub const static = opaque {
         static.exactDivisionAssign(T, arg1, arg2);
     }
     pub fn assertBelow(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (is_correct and arg1 >= arg2) {
+        if (runtime_assertions and arg1 >= arg2) {
             debug.static.comparisonFailed(T, " < ", arg1, arg2);
         }
     }
     pub fn assertBelowOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (is_correct and arg1 > arg2) {
+        if (runtime_assertions and arg1 > arg2) {
             debug.static.comparisonFailed(T, " <= ", arg1, arg2);
         }
     }
     pub fn assertEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (is_correct and arg1 != arg2) {
+        if (runtime_assertions and arg1 != arg2) {
             debug.static.comparisonFailed(T, " == ", arg1, arg2);
         }
     }
     pub fn assertNotEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (is_correct and arg1 == arg2) {
+        if (runtime_assertions and arg1 == arg2) {
             debug.static.comparisonFailed(T, " != ", arg1, arg2);
         }
     }
     pub fn assertAboveOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (is_correct and arg1 < arg2) {
+        if (runtime_assertions and arg1 < arg2) {
             debug.static.comparisonFailed(T, " >= ", arg1, arg2);
         }
     }
     pub fn assertAbove(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (is_correct and arg1 <= arg2) {
+        if (runtime_assertions and arg1 <= arg2) {
             debug.static.comparisonFailed(T, " > ", arg1, arg2);
         }
     }

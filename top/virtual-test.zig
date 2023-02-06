@@ -19,7 +19,7 @@ const root = opaque {
 const PrintArray = mem.StaticString(16384);
 
 pub const is_verbose: bool = false;
-pub const is_correct: bool = true;
+pub const runtime_assertions: bool = true;
 pub const render_type_names: bool = false;
 pub const render_radix: u16 = 10;
 pub const trivial_list: []const virtual.Arena = meta.slice(virtual.Arena, .{

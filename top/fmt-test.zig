@@ -8,7 +8,7 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_correct: bool = test_size;
+pub const runtime_assertions: bool = test_size;
 
 const PrintArray = mem.StaticString(4096);
 

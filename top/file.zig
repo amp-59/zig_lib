@@ -633,7 +633,7 @@ pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
     if (sys.read(fd, read_buf_addr, count)) |ret| {
         return ret;
     } else |read_error| {
-        if (builtin.is_correct) {
+        if (builtin.runtime_assertions) {
             debug.readError(read_error, fd);
         }
         return read_error;
@@ -644,7 +644,7 @@ pub fn write(fd: u64, write_buf: []const u8) !void {
     if (sys.write(fd, write_buf_addr, write_buf.len)) |ret| {
         builtin.assertEqual(u64, write_buf.len, ret);
     } else |write_error| {
-        if (builtin.is_correct) {
+        if (builtin.runtime_assertions) {
             debug.writeError(write_error, fd);
         }
         return write_error;

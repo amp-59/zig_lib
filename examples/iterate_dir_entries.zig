@@ -9,7 +9,7 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.exact_8;
 
-pub const is_correct: bool = false;
+pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{

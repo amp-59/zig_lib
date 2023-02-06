@@ -13,7 +13,7 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = true;
-pub const is_correct: bool = false;
+pub const runtime_assertions: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -31,7 +31,7 @@ const thread_spec = proc.CloneSpec{
 
 const general_macros: builder.Macros = &.{
     .{ .name = "is_verbose", .value = .{ .constant = 0 } },
-    .{ .name = "is_correct", .value = .{ .constant = 0 } },
+    .{ .name = "runtime_assertions", .value = .{ .constant = 0 } },
     .{ .name = "build_root", .value = .{ .string = builtin.build_root.? } },
 };
 const parsedir_std_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};

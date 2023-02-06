@@ -15,7 +15,7 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub const is_correct: bool = false;
+pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 

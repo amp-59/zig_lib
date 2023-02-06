@@ -14,7 +14,7 @@ const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_correct: bool = true;
+pub const runtime_assertions: bool = true;
 
 const AddressSpace = mem.GenericDiscreteAddressSpace(.{
     .label = "super",

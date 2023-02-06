@@ -9,35 +9,35 @@ const builtin = srg.builtin;
 const packages = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
 
 const minor_test_args = .{
-    .is_correct = true,
+    .runtime_assertions = true,
     .is_verbose = true,
     .packages = packages,
 };
 const algo_test_args = .{
-    .is_correct = true,
+    .runtime_assertions = true,
     .is_verbose = true,
     .build_mode = .ReleaseSmall,
     .packages = packages,
 };
 const fmt_test_args = .{
-    .is_correct = true,
+    .runtime_assertions = true,
     .is_verbose = true,
     .packages = packages,
 };
 const fast_test_args = .{
-    .is_correct = false,
+    .runtime_assertions = false,
     .is_verbose = false,
     .build_mode = .ReleaseFast,
     .packages = packages,
 };
 const small_test_args = .{
-    .is_correct = false,
+    .runtime_assertions = false,
     .is_verbose = false,
     .build_mode = .ReleaseSmall,
     .packages = packages,
 };
 const lib_parser_args = .{
-    .is_correct = false,
+    .runtime_assertions = false,
     .is_verbose = false,
     .is_silent = true,
     .build_mode = .ReleaseFast,
@@ -45,7 +45,7 @@ const lib_parser_args = .{
     .packages = packages,
 };
 const std_parser_args = .{
-    .is_correct = false,
+    .runtime_assertions = false,
     .is_verbose = false,
     .is_silent = true,
     .build_mode = .ReleaseFast,
