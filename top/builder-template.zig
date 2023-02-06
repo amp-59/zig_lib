@@ -175,7 +175,6 @@ pub const Macro = struct {
         constant: usize,
         path: Path,
     },
-    quote: bool = false,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-D");
@@ -222,6 +221,28 @@ pub const Macro = struct {
         }
         len +%= 1;
         return len;
+    }
+};
+pub const CFlags = struct {
+    flags: []const []const u8,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany("-cflags");
+        array.writeOne(0);
+        for (format.flags) |flag| {
+            array.writeMany(flag);
+            array.writeOne(0);
+        }
+        array.writeOne("--\x00");
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        len +%= 8;
+        for (format.flags) |flag| {
+            len +%= flag.len;
+            len +%= 1;
+        }
+        len +%= 3;
     }
 };
 pub const GlobalOptions = struct {
