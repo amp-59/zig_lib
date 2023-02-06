@@ -1162,11 +1162,6 @@ pub const debug = opaque {
         );
         unreachable;
     }
-    pub fn impendingBytes(len: usize) []u8 {
-        return @intToPtr([]u8, asm volatile (""
-            : [_] "={rbp}" (-> u64),
-        ) - len)[0..len];
-    }
     const static = opaque {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             comptime {

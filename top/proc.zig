@@ -621,7 +621,8 @@ pub const exception = opaque {
 fn exitWithError(error_name: []const u8) void {
     @setCold(true);
     @setRuntimeSafety(false);
-    debug.zigErrorReturnedByMain(builtin.debug.impendingBytes(4096), error_name);
+    var buf: [4096]u8 = undefined;
+    debug.zigErrorReturnedByMain(&buf, error_name);
     sys.exit(2);
 }
 const static = opaque {

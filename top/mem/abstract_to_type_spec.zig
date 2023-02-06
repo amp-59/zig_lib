@@ -209,7 +209,8 @@ pub fn abstractToTypeSpec(array: *gen.String) void {
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = gen.String.init(builtin.debug.impendingBytes(1024 * 1024));
+    var buf: [1024 * 1024]u8 = undefined;
+    var array: gen.String = gen.String.init(&buf);
     array.undefineAll();
     abstractToTypeSpec(&array);
     gen.exit(0);
