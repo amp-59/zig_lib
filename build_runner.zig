@@ -9,9 +9,9 @@ const builder = srg.builder;
 const builtin = srg.builtin;
 
 pub const AddressSpace = builder.AddressSpace;
-pub const is_verbose: bool = true;
+pub const is_verbose: bool = false;
 pub const is_correct: bool = false;
-pub const is_silent: bool = true;
+pub const is_silent: bool = false;
 
 pub usingnamespace proc.start;
 
@@ -83,13 +83,10 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .array = &array,
     };
     try root.build(&ctx);
-    for (args) |arg, index| {
-        const name: [:0]const u8 = meta.manyToSlice(arg);
-        if (mem.testEqualMany(u8, name, "all")) {
-            try execAllCommands(&ctx);
-            proc.shift(&args, index);
-            continue;
-        }
+    var index: u64 = 0;
+    while (index != args.len) {
+        const name: [:0]const u8 = meta.manyToSlice(args[index]);
+
         if (mem.testEqualMany(u8, name, "lib")) {
             setAllCommands(&ctx, .lib);
             proc.shift(&args, index);
@@ -106,7 +103,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             continue;
         }
         if (mem.testEqualMany(u8, name, "run")) {
-            setAllCommands(&ctx, .exe);
+            setAllCommands(&ctx, .run);
             proc.shift(&args, index);
             continue;
         }
@@ -114,9 +111,16 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             showAllCommands(&ctx);
             return;
         }
+        if (mem.testEqualMany(u8, name, "all")) {
+            try execAllCommands(&ctx);
+            proc.shift(&args, index);
+            continue;
+        }
+        index +%= 1;
     }
-    for (args) |arg, index| {
-        const name: [:0]const u8 = meta.manyToSlice(arg);
+    index = 0;
+    while (index != args.len) {
+        const name: [:0]const u8 = meta.manyToSlice(args[index]);
         if (mem.testEqualMany(u8, name, "--")) {
             break;
         }
@@ -129,6 +133,6 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         } else {
             return commandNotFoundException(&ctx, name);
         }
+        index +%= 1;
     }
-    sys.exit(0);
 }
