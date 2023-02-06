@@ -227,6 +227,10 @@ pub const ExecutableOptions = opaque {
         .string = "-fstrip",
         .and_no = &.{ .string = "-fno-strip" },
     };
+    pub const formatted_panics: OptionSpec = .{
+        .string = "-fformatted-panics",
+        .and_no = &.{ .string = "-fno-formatted-panics" },
+    };
     pub const fmt: OptionSpec = .{
         .string = "-ofmt",
         .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
