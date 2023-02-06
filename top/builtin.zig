@@ -4,6 +4,8 @@ pub const root = @import("root");
 pub usingnamespace builtin;
 pub usingnamespace @import("./static/memcpy.zig");
 pub usingnamespace @import("./static/memset.zig");
+pub usingnamespace @import("./static/zig_probe_stack.zig");
+
 // zig fmt: off
 pub const native_endian         = zig.cpu.arch.endian();
 pub const is_little: bool       = native_endian == .Little;
