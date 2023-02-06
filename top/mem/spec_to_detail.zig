@@ -9,8 +9,6 @@ pub const is_silent: bool = true;
 
 const gen = @import("./gen.zig");
 
-pub const Array = mem.StaticString(65536);
-
 fn ptr(comptime T: type) *T {
     var ret: T = undefined;
     return &ret;
@@ -24,8 +22,7 @@ fn typeId(comptime _: type) comptime_int {
     type_id.* += 1;
     return ret;
 }
-
-fn writeUnspecifiedDetailsInternal(array: *Array, comptime T: type, detail: *gen.Detail) void {
+fn writeUnspecifiedDetailsInternal(array: *gen.String, comptime T: type, detail: *gen.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
@@ -53,25 +50,27 @@ fn writeUnspecifiedDetailsInternal(array: *Array, comptime T: type, detail: *gen
         writeDetailStruct(array, detail.*);
     }
 }
-fn writeDetailStruct(array: *Array, detail: gen.Detail) void {
+fn writeDetailStruct(array: *gen.String, detail: gen.Detail) void {
     array.writeMany("    ");
     array.writeFormat(detail);
     array.writeMany(",\n");
 }
-fn writeUnspecifiedDetails(array: *Array) void {
+fn writeUnspecifiedDetails(array: *gen.String) void {
     var detail: gen.Detail = .{};
-    gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "./gen.zig" }});
-    array.writeMany("pub const impl_details = [_]gen.Detail{");
+    gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "../../detail.zig" }});
+    array.writeMany("pub const details: []const out.Detail = &[_]out.Detail{");
     writeUnspecifiedDetailsInternal(array, gen.AbstractSpec, &detail);
     array.writeMany("};\n");
 }
-pub fn generateImplementationSummary() void {
-    var array: Array = .{};
-    writeUnspecifiedDetails(&array);
-    gen.writeFile(&array, "memgen_detail_0");
+pub fn specToDetail(array: *gen.String) void {
+    writeUnspecifiedDetails(array);
+    gen.writeFile(array, "memgen_detail.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    generateImplementationSummary();
+    var buf: [1024 * 1024]u8 = undefined;
+    var array: gen.String = gen.String.init(&buf);
+    array.undefineAll();
+    specToDetail(&array);
     gen.exit(0);
 }
