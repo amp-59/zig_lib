@@ -1095,12 +1095,14 @@ const Branches = struct {
             showWithReferenceWriteInternal(Branches, t_branches, s_branches, array, "", null);
         }
         pub fn show(branches: Branches) void {
-            var array: PrintArray = .{};
+            var array: PrintArray = undefined;
+            array.undefineAll();
             showWrite(branches, &array);
             builtin.debug.logSuccess(array.readAll());
         }
         pub fn showWithReference(t_branches: Branches, s_branches: *Branches) void {
-            var array: PrintArray = .{};
+            var array: PrintArray = undefined;
+            array.undefineAll();
             showWithReferenceWrite(t_branches, s_branches, &array);
             builtin.debug.logSuccess(array.readAll());
         }
@@ -3644,21 +3646,24 @@ const debug = opaque {
         array.writeMany(", ");
     }
     fn mapNotice(addr: u64, len: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_map_0_s);
         addressRangeBytes(&array, addr, addr + len);
         array.writeMany("\n");
         builtin.debug.logAcquire(array.readAll());
     }
     fn unmapNotice(addr: u64, len: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_unmap_0_s);
         addressRangeBytes(&array, addr, addr + len);
         array.writeMany("\n");
         builtin.debug.logRelease(array.readAll());
     }
     fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(label orelse about_acq_0_s);
         array.writeMany("-");
         array.writeFormat(fmt.ud64(index));
@@ -3668,7 +3673,8 @@ const debug = opaque {
         builtin.debug.logAcquire(array.readAll());
     }
     fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(label orelse about_rel_0_s);
         array.writeMany("-");
         array.writeFormat(fmt.ud64(index));
@@ -3678,7 +3684,8 @@ const debug = opaque {
         builtin.debug.logRelease(array.readAll());
     }
     fn adviseNotice(addr: u64, len: u64, description_s: []const u8) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_advice_0_s);
         addressRangeBytes(&array, addr, addr + len);
         array.writeMany(", ");
@@ -3687,21 +3694,24 @@ const debug = opaque {
         builtin.debug.logSuccess(array.readAll());
     }
     fn resizeNotice(old_addr: u64, old_len: u64, new_len: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_remap_0_s);
         changedAddressRangeBytes(&array, old_addr, old_addr + old_len, old_addr, old_addr + new_len);
         array.writeMany("\n");
         builtin.debug.logAcquire(array.readAll());
     }
     fn moveNotice(old_addr: u64, old_len: u64, new_addr: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_move_0_s);
         changedAddressRangeBytes(&array, old_addr, old_addr + old_len, new_addr, new_addr + old_len);
         array.writeMany("\n");
         builtin.debug.logAcquire(array.readAll());
     }
     fn mapError(map_error: anytype, addr: u64, len: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_map_1_s);
         addressRangeBytes(&array, addr, addr + len);
         array.writeMany(" ");
@@ -3709,7 +3719,8 @@ const debug = opaque {
         builtin.debug.logError(array.readAll());
     }
     fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_unmap_1_s);
         addressRangeBytes(&array, addr, addr + len);
         array.writeMany(" ");
@@ -3718,7 +3729,8 @@ const debug = opaque {
         builtin.debug.logError(array.readAll());
     }
     fn arenaAcquireError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(label orelse about_acq_1_s);
         array.writeMany("-");
         array.writeFormat(fmt.ud64(index));
@@ -3730,7 +3742,8 @@ const debug = opaque {
         builtin.debug.logError(array.readAll());
     }
     fn arenaReleaseError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(label orelse about_rel_1_s);
         array.writeMany("-");
         array.writeFormat(fmt.ud64(index));
@@ -3742,7 +3755,8 @@ const debug = opaque {
         builtin.debug.logError(array.readAll());
     }
     fn adviseError(madvise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_advice_1_s);
         addressRangeBytes(&array, addr, addr + len);
         array.writeMany(", ");
@@ -3753,7 +3767,8 @@ const debug = opaque {
         builtin.debug.logError(array.readAll());
     }
     fn resizeError(mremap_err: anytype, old_addr: u64, old_len: u64, new_len: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_remap_1_s);
         changedAddressRangeBytes(&array, old_addr, old_addr + old_len, old_addr, old_addr + new_len);
         array.writeMany(" ");
@@ -3762,7 +3777,8 @@ const debug = opaque {
         builtin.debug.logError(array.readAll());
     }
     fn moveError(mremap_err: anytype, old_addr: u64, old_len: u64, new_addr: u64) void {
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeMany(about_move_1_s);
         changedAddressRangeBytes(&array, old_addr, old_addr + old_len, new_addr, new_addr + old_len);
         array.writeMany(" ");
@@ -3774,7 +3790,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
@@ -3787,7 +3804,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_ua_addr: u64 = s_ab_addr + s_aligned_bytes;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_ua_addr);
@@ -3802,7 +3820,8 @@ const debug = opaque {
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
         const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
         const t_uw_addr: u64 = t_ab_addr + t_aligned_bytes;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
         writeAddressSpaceB(&array, s_ab_addr, s_uw_addr, t_ab_addr, t_uw_addr);
@@ -3817,7 +3836,8 @@ const debug = opaque {
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
         const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
         const t_uw_addr: u64 = t_ab_addr + t_aligned_bytes;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
         writeAddressSpaceB(&array, s_ab_addr, s_uw_addr, t_ab_addr, t_uw_addr);
@@ -3831,7 +3851,8 @@ const debug = opaque {
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const uw_offset: u64 = @sizeOf(s_child) * @boolToInt(s_sentinel != null);
         const s_uw_addr: u64 = s_up_addr -% uw_offset;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_deallocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
@@ -3845,7 +3866,8 @@ const debug = opaque {
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const uw_offset: u64 = @sizeOf(s_child) * @boolToInt(s_sentinel != null);
         const s_uw_addr: u64 = s_up_addr -% uw_offset;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_deallocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
@@ -3858,7 +3880,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
@@ -3870,7 +3893,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_uw_addr: u64 = s_ab_addr + s_aligned_bytes;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_uw_addr);
@@ -3882,7 +3906,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
         writeAddressSpaceB(&array, s_ab_addr, s_up_addr, t_ab_addr, t_up_addr);
@@ -3894,7 +3919,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         writeModifyOperation(&array, s_ab_addr, s_aligned_bytes, t_ab_addr, t_aligned_bytes);
         writeAddressSpaceB(&array, s_ab_addr, s_up_addr, t_ab_addr, t_up_addr);
@@ -3906,7 +3932,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_ua_addr: u64 = s_ab_addr + s_aligned_bytes;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_ua_addr);
@@ -3917,7 +3944,8 @@ const debug = opaque {
     fn showDeallocateManyUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_deallocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_up_addr);
@@ -3928,7 +3956,8 @@ const debug = opaque {
     fn showDeallocateHolderUnstructured(_: u64, s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_deallocated_s);
         writeAddressSpaceA(&array, s_ab_addr, s_up_addr);
@@ -3941,7 +3970,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_filo_error_s ++ "attempted deallocation ");
         array.writeFormat(fmt.bytes(d_aligned_bytes));
@@ -3953,7 +3983,8 @@ const debug = opaque {
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
-        var array: PrintArray = .{};
+        var array: PrintArray = undefined;
+        array.undefineAll();
         array.writeFormat(src_fmt);
         array.writeMany(about_filo_error_s ++ "attempted resize ");
         array.writeFormat(fmt.bytes(d_aligned_bytes));
@@ -3966,7 +3997,8 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
         pub fn show(allocator: *Allocator, src: builtin.SourceLocation) void {
             if (Allocator.allocator_spec.logging.isSilent()) return;
             const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
-            var array: debug.PrintArray = .{};
+            var array: debug.PrintArray = undefined;
+            array.undefineAll();
             array.writeFormat(src_fmt);
             if (Allocator.allocator_spec.logging.head) {
                 array.writeMany(debug.about_next_s);
@@ -4011,7 +4043,8 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
             if (Allocator.allocator_spec.logging.isSilent()) return;
             if (Allocator.allocator_spec.options.trace_state) {
                 const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
-                var array: debug.PrintArray = .{};
+                var array: debug.PrintArray = undefined;
+                array.undefineAll();
                 array.writeFormat(src_fmt);
                 if (Allocator.allocator_spec.logging.head and
                     allocator.reference.ub_addr != allocator.ub_addr)
@@ -4196,7 +4229,8 @@ fn GenericPageAllocatorGraphics(comptime Allocator: type) type {
         pub fn show(allocator: *Allocator, src: builtin.SourceLocation) void {
             if (Allocator.allocator_spec.logging.isSilent()) return;
             const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
-            var array: debug.PrintArray = .{};
+            var array: debug.PrintArray = undefined;
+            array.undefineAll();
             array.writeFormat(src_fmt);
             if (Allocator.allocator_spec.logging.head) {
                 array.writeMany(debug.about_next_s);
@@ -4229,7 +4263,8 @@ fn GenericPageAllocatorGraphics(comptime Allocator: type) type {
             if (Allocator.allocator_spec.logging.isSilent()) return;
             if (Allocator.allocator_spec.options.trace_state) {
                 const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
-                var array: debug.PrintArray = .{};
+                var array: debug.PrintArray = undefined;
+                array.undefineAll();
                 array.writeFormat(src_fmt);
                 if (Allocator.allocator_spec.logging.head and
                     allocator.reference.ub_addr != allocator.ub_addr)
