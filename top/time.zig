@@ -155,7 +155,7 @@ pub const DateTime = extern struct {
     }
     pub inline fn init(epoch_seconds: u64) DateTime {
         if (epoch_seconds < leap_epoch) {
-            @panic("TODO: Dates before epoch");
+            builtin.debug.logFault("TODO: Dates before epoch");
         } else {
             const secs: u64 = epoch_seconds - leap_epoch;
             const days: u64 = secs / 86_400;
