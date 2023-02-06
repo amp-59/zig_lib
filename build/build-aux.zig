@@ -3,76 +3,9 @@ const build = std.build;
 
 const util = @import("./util.zig");
 
+const small = .{ .build_mode = .ReleaseSmall };
+
 // PROGRAM FILES ///////////////////////////////////////////////////////////////
-
-fn memoryImplementation(builder: *build.Builder) void {
-    const mem_gen = builder.step("mem_gen", "generate containers according to specification");
-    _ = mem_gen;
-    const spec_to_abstract = util.addProjectExecutable(
-        builder,
-        "spec_to_abstract",
-        "top/mem/spec_to_abstract.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    const spec_to_detail = util.addProjectExecutable(
-        builder,
-        "spec_to_detail",
-        "top/mem/spec_to_detail.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    const spec_to_options = util.addProjectExecutable(
-        builder,
-        "spec_to_options",
-        "top/mem/spec_to_options.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    const abstract_to_type_spec = util.addProjectExecutable(
-        builder,
-        "abstract_to_type_spec",
-        "top/mem/abstract_to_type_spec.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    abstract_to_type_spec.step.dependOn(&spec_to_options.run().step);
-    abstract_to_type_spec.step.dependOn(&spec_to_abstract.run().step);
-    const detail_to_options = util.addProjectExecutable(
-        builder,
-        "detail_to_specifiers",
-        "top/mem/detail_to_specifiers.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    abstract_to_type_spec.step.dependOn(&spec_to_detail.run().step);
-    _ = detail_to_options;
-    const detail_to_groups = util.addProjectExecutable(
-        builder,
-        "detail_to_groups",
-        "top/mem/detail_to_groups.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    detail_to_groups.step.dependOn(&spec_to_detail.run().step);
-    const detail_to_variants = util.addProjectExecutable(
-        builder,
-        "detail_to_variants",
-        "top/mem/detail_to_variants.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    detail_to_variants.step.dependOn(&spec_to_detail.run().step);
-    detail_to_variants.step.dependOn(&abstract_to_type_spec.run().step);
-    const generate_canonical = util.addProjectExecutable(
-        builder,
-        "generate_canonical",
-        "top/mem/generate_canonical.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    generate_canonical.step.dependOn(&detail_to_variants.run().step);
-    const variants_to_hierarchy = util.addProjectExecutable(
-        builder,
-        "variants_to_hierarchy",
-        "top/mem/variants_to_hierarchy.zig",
-        .{ .build_mode = .ReleaseSmall },
-    );
-    variants_to_hierarchy.step.dependOn(&generate_canonical.run().step);
-}
-
 pub fn main(builder: *build.Builder) !void {
     util.Context.init(builder);
     // Minor test programs:
@@ -102,10 +35,34 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{ .is_large_test = true, .build_root = true });
     _ = util.addProjectExecutable(builder, "container_test", "top/container-test.zig", .{ .is_large_test = true, .build_root = true });
     // Examples
-    _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", .{ .build_mode = .ReleaseSmall });
+    _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", small);
     _ = util.addProjectExecutable(builder, "restack", "examples/remap_stack.zig", .{});
     _ = util.addProjectExecutable(builder, "dynamic", "examples/dynamic_alloc.zig", .{});
     // Generators:
     _ = util.addProjectExecutable(builder, "builder_gen", "top/builder-gen.zig", .{ .build_mode = .ReleaseSmall });
-    memoryImplementation(builder);
+
+    // Memory implementation:
+    const mem_gen = builder.step("mem_gen", "generate containers according to specification");
+    {
+        const spec_to_abstract = util.addProjectExecutable(builder, "spec_to_abstract", "top/mem/spec_to_abstract.zig", small);
+        const spec_to_detail = util.addProjectExecutable(builder, "spec_to_detail", "top/mem/spec_to_detail.zig", small);
+        const spec_to_options = util.addProjectExecutable(builder, "spec_to_options", "top/mem/spec_to_options.zig", small);
+        const abstract_to_type_spec = util.addProjectExecutable(builder, "abstract_to_type_spec", "top/mem/abstract_to_type_spec.zig", small);
+        abstract_to_type_spec.step.dependOn(&spec_to_options.run().step);
+        abstract_to_type_spec.step.dependOn(&spec_to_abstract.run().step);
+        // const detail_to_options = util.addProjectExecutable(builder, "detail_to_options", "top/mem/detail_to_options.zig", small);
+        abstract_to_type_spec.step.dependOn(&spec_to_detail.run().step);
+        const detail_to_groups = util.addProjectExecutable(builder, "detail_to_groups", "top/mem/detail_to_groups.zig", small);
+        detail_to_groups.step.dependOn(&spec_to_detail.run().step);
+        const detail_to_variants = util.addProjectExecutable(builder, "detail_to_variants", "top/mem/detail_to_variants.zig", small);
+        detail_to_variants.step.dependOn(&spec_to_detail.run().step);
+        detail_to_variants.step.dependOn(&abstract_to_type_spec.run().step);
+        const generate_canonical = util.addProjectExecutable(builder, "generate_canonical", "top/mem/generate_canonical.zig", small);
+        generate_canonical.step.dependOn(&detail_to_variants.run().step);
+        const variants_to_hierarchy = util.addProjectExecutable(builder, "variants_to_hierarchy", "top/mem/variants_to_hierarchy.zig", small);
+        variants_to_hierarchy.step.dependOn(&generate_canonical.run().step);
+
+        // mem_gen.dependOn(&detail_to_options.run().step);
+        mem_gen.dependOn(&variants_to_hierarchy.run().step);
+    }
 }
