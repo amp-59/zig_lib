@@ -64,268 +64,278 @@ pub const OptionSpec = struct {
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?*const OptionSpec = null,
 };
-const SimpleInverse = struct {
-    /// Do not output machine code
-    pub const no_emit_bin_opt_spec: OptionSpec = .{ .string = "-fno-emit-bin" };
-    /// (default) Do not output .s (assembly code)
-    pub const no_emit_asm_opt_spec: OptionSpec = .{ .string = "-fno-emit-asm" };
-    /// (default) Do not produce a .ll file with LLVM IR
-    pub const no_emit_llvm_ir_opt_spec: OptionSpec = .{ .string = "-fno-emit-llvm-ir" };
-    /// (default) Do not produce a LLVM module as a .bc file
-    pub const no_emit_llvm_bc_opt_spec: OptionSpec = .{ .string = "-fno-emit-llvm-bc" };
-    /// (default) Do not generate a C header file (.h)
-    pub const no_emit_h_opt_spec: OptionSpec = .{ .string = "-fno-emit-h" };
-    /// (default) Do not produce docs/ dir with html documentation
-    pub const no_emit_docs_opt_spec: OptionSpec = .{ .string = "-fno-emit-docs" };
-    /// (default) Do not write analysis JSON file with type information
-    pub const no_emit_analysis_opt_spec: OptionSpec = .{ .string = "-fno-emit-analysis" };
-    /// Do not produce an import .lib when building a Windows DLL
-    pub const no_emit_implib_opt_spec: OptionSpec = .{ .string = "-fno-emit-implib" };
-    /// -mno-red-zone               Force-disable the "red-zone"
-    pub const no_red_zone_opt_spec: OptionSpec = .{ .string = "-mno-red-zone" };
-    /// -fno-omit-frame-pointer     Store the stack frame pointer
-    pub const no_omit_frame_pointer_opt_spec: OptionSpec = .{ .string = "-fno-omit-frame-pointer" };
-    /// -fno-PIC                    Force-disable Position Independent Code
-    pub const no_pic_opt_spec: OptionSpec = .{ .string = "-fno-PIC" };
-    /// -fno-PIE                    Force-disable Position Independent Executable
-    pub const no_pie_opt_spec: OptionSpec = .{ .string = "-fno-PIE" };
-    /// -fno-lto                    Force-disable Link Time Optimization
-    pub const no_lto_opt_spec: OptionSpec = .{ .string = "-fno-lto" };
-    /// -fno-stack-check            Disable stack probing in safe builds
-    pub const no_stack_check_opt_spec: OptionSpec = .{ .string = "-fno-stack-check" };
-    /// -fno-sanitize-c             Disable C undefined behavior detection in safe builds
-    pub const no_sanitize_c_opt_spec: OptionSpec = .{ .string = "-fno-sanitize-c" };
-    /// -fno-valgrind               Omit valgrind client requests in debug builds
-    pub const no_valgrind_opt_spec: OptionSpec = .{ .string = "-fno-valgrind" };
-    /// -fno-sanitize-thread        Disable Thread Sanitizer
-    pub const no_sanitize_thread_opt_spec: OptionSpec = .{ .string = "-fno-sanitize-thread" };
-    /// -fno-dll-export-fns         Force-disable marking exported functions as DLL exports
-    pub const no_dll_export_fns_opt_spec: OptionSpec = .{ .string = "-fno-dll-export-fns" };
-    /// -fno-unwind-tables          Never produce unwind table entries
-    pub const no_unwind_tables_opt_spec: OptionSpec = .{ .string = "-fno-unwind-tables" };
-    /// -fno-LLVM                   Prevent using LLVM as the codegen backend
-    pub const no_llvm_opt_spec: OptionSpec = .{ .string = "-fno-LLVM" };
-    /// -fno-Clang                  Prevent using Clang as the C/C++ compilation backend
-    pub const no_clang_opt_spec: OptionSpec = .{ .string = "-fno-Clang" };
-    /// -fno-stage1                 Prevent using bootstrap compiler as the codegen backend
-    pub const no_stage1_opt_spec: OptionSpec = .{ .string = "-fno-stage1" };
-    /// -fno-single-threaded        Code may not assume there is only one thread
-    pub const no_single_threaded_opt_spec: OptionSpec = .{ .string = "-fno-single-threaded" };
-    /// -fno-builtin                Disable implicit builtin knowledge of functions
-    pub const no_builtin_opt_spec: OptionSpec = .{ .string = "-fno-builtin" };
-    /// -fno-function-sections      All functions go into same section
-    pub const no_function_sections_opt_spec: OptionSpec = .{ .string = "-fno-function-sections" };
-    /// --no-gc-sections            Don't force removal of unreachable functions and data
-    pub const no_gc_sections_opt_spec: OptionSpec = .{ .string = "--no-gc-sections" };
-    /// -fno-strip                   Do no omit debug symbols
-    pub const no_strip_opt_spec: OptionSpec = .{ .string = "-fno-strip" };
-    ///   -fno-soname                    Disable emitting a SONAME
-    pub const no_soname_opt_spec: OptionSpec = .{ .string = "-fno-soname" };
-    ///   -fno-compiler-rt               Prevent including compiler-rt symbols in output
-    pub const no_compiler_rt_opt_spec: OptionSpec = .{ .string = "-fno-compiler-rt" };
-};
 pub const ExecutableOptions = opaque {
-    // Enable compiler REPL
     pub const watch_opt_spec: OptionSpec = .{ .string = "--watch" };
-    // Enable or disable colored error messages
     pub const color_opt_spec: OptionSpec = .{ .string = "--color", .arg_type = enum { on, off, auto } };
-    // (default) Output machine code
     pub const emit_bin_opt_spec: OptionSpec = .{
         .string = "-femit-bin",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_bin_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-bin" },
     };
-    // Output .s (assembly code)
     pub const emit_asm_opt_spec: OptionSpec = .{
         .string = "-femit-asm",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_asm_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-asm" },
     };
-    // Produce a .ll file with LLVM IR (requires LLVM extensions)
     pub const emit_llvm_ir_opt_spec: OptionSpec = .{
         .string = "-femit-llvm-ir",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_llvm_ir_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-llvm-ir" },
     };
-    // Produce a LLVM module as a .bc file (requires LLVM extensions)
     pub const emit_llvm_bc_opt_spec: OptionSpec = .{
         .string = "-femit-llvm-bc",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_llvm_bc_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-llvm-bc" },
     };
-    // Generate a C header file (.h)
     pub const emit_h_opt_spec: OptionSpec = .{
         .string = "-femit-h",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_h_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-h" },
     };
-    // Create a docs/ dir with html documentation
     pub const emit_docs_opt_spec: OptionSpec = .{
         .string = "-femit-docs",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_docs_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-docs" },
     };
-    // Write analysis JSON file with type information
     pub const emit_analysis_opt_spec: OptionSpec = .{
         .string = "-femit-analysis",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_analysis_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-analysis" },
     };
-    // (default) Produce an import .lib when building a Windows DLL
     pub const emit_implib_opt_spec: OptionSpec = .{
         .string = "-femit-implib",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
-        .and_no = &SimpleInverse.no_emit_implib_opt_spec,
+        .and_no = &.{ .string = "-fno-emit-implib" },
     };
-    // Output the source of @import(pub const builtin_opt_spec: OptionSpec = .{ .string = "builtin" } ) then exit
     pub const show_builtin_opt_spec: OptionSpec = .{ .string = "--show-builtin" };
-    // Override the local cache directory
-    pub const cache_dir_opt_spec: OptionSpec = .{ .string = "--cache-dir", .arg_type = []const u8 };
-    // Override the global cache directory
-    pub const global_cache_dir_opt_spec: OptionSpec = .{ .string = "--global-cache-dir", .arg_type = []const u8 };
-    // Override path to Zig installation lib directory
-    pub const zig_lib_dir_opt_spec: OptionSpec = .{ .string = "--zig-lib-dir", .arg_type = []const u8 };
-    // Output to cache directory; print path to stdout
+    pub const cache_dir_opt_spec: OptionSpec = .{
+        .string = "--cache-dir",
+        .arg_type = []const u8,
+    };
+    pub const global_cache_dir_opt_spec: OptionSpec = .{
+        .string = "--global-cache-dir",
+        .arg_type = []const u8,
+    };
+    pub const zig_lib_dir_opt_spec: OptionSpec = .{
+        .string = "--zig-lib-dir",
+        .arg_type = []const u8,
+    };
     pub const enable_cache_opt_spec: OptionSpec = .{ .string = "--enable-cache" };
-    // Compile Options:
-    ///  -target [name]            <arch><sub>-<os>-<abi> see the targets command
-    pub const target_opt_spec: OptionSpec = .{ .string = "-target", .arg_type = []const u8 };
-    /// -mcpu [cpu]               Specify target CPU and feature set
-    pub const cpu_opt_spec: OptionSpec = .{ .string = "-mcpu", .arg_type = []const u8 };
-    ///  -mcmodel=[default|tiny|   Limit range of code and data virtual addresses
-    ///            small|kernel|
-    ///            medium|large]
-    pub const cmodel_opt_spec: OptionSpec = .{ .string = "-mcmodel", .arg_type = enum { default, tiny, small, kernel, medium, large } };
-    /// -mred-zone                Force-enable the "red-zone"
-    pub const red_zone_opt_spec: OptionSpec = .{ .string = "-mred-zone", .and_no = &SimpleInverse.no_red_zone_opt_spec };
-    /// -fomit-frame-pointer      Omit the stack frame pointer
-    pub const omit_frame_pointer_opt_spec: OptionSpec = .{ .string = "-fomit-frame-pointer", .and_no = &SimpleInverse.no_omit_frame_pointer_opt_spec };
-    /// -mexec-model=[value]      (WASI) Execution model
-    pub const exec_model_opt_spec: OptionSpec = .{ .string = "-mexec-model", .arg_type = []const u8 };
-    /// --name [name]             Override root name (not a file path)
-    pub const name_opt_spec: OptionSpec = .{ .string = "--name", .arg_type = []const u8 };
-    /// -O [mode]                 Choose what to optimize for
-    ///    Debug                   (default) Optimizations off, safety on
-    ///    ReleaseFast             Optimizations on, safety off
-    ///    ReleaseSafe             Optimizations on, safety on
-    ///    ReleaseSmall            Optimize for small binary, safety off
-    //pub const O_opt_spec: OptionSpec = .{ .string = "-O", .arg_type = enum { Debug, ReleaseSafe, ReleaseSmall, ReleaseFast } };
-    pub const O_opt_spec: OptionSpec = .{ .string = "-O", .arg_type = @TypeOf(builtin.zig.mode), .arg_type_name = "@TypeOf(builtin.zig.mode)" };
-    // pub const pkg_end_opt_spec: OptionSpec = .{ .string = "--pkg-end" };
-    /// --main-pkg-path           Set the directory of the root package
-    pub const main_pkg_path_opt_spec: OptionSpec = .{ .string = "--main-pkg-path", .arg_type = []const u8 };
-    /// -fPIC                     Force-enable Position Independent Code
-    pub const pic_opt_spec: OptionSpec = .{ .string = "-fPIC", .and_no = &SimpleInverse.no_pic_opt_spec };
-    /// -fPIE                     Force-enable Position Independent Executable
-    pub const pie_opt_spec: OptionSpec = .{ .string = "-fPIE", .and_no = &SimpleInverse.no_pie_opt_spec };
-    /// -flto                     Force-enable Link Time Optimization (requires LLVM extensions)
-    pub const lto_opt_spec: OptionSpec = .{ .string = "-flto", .and_no = &SimpleInverse.no_lto_opt_spec };
-    /// -fstack-check             Enable stack probing in unsafe builds
-    pub const stack_check_opt_spec: OptionSpec = .{ .string = "-fstack-check", .and_no = &SimpleInverse.no_stack_check_opt_spec };
-    /// -fsanitize-c              Enable C undefined behavior detection in unsafe builds
-    pub const sanitize_c_opt_spec: OptionSpec = .{ .string = "-fsanitize-c", .and_no = &SimpleInverse.no_sanitize_c_opt_spec };
-    /// -fvalgrind                Include valgrind client requests in release builds
-    pub const valgrind_opt_spec: OptionSpec = .{ .string = "-fvalgrind", .and_no = &SimpleInverse.no_valgrind_opt_spec };
-    /// -fsanitize-thread         Enable Thread Sanitizer
-    pub const sanitize_thread_opt_spec: OptionSpec = .{ .string = "-fsanitize-thread", .and_no = &SimpleInverse.no_sanitize_thread_opt_spec };
-    /// -fdll-export-fns          Mark exported functions as DLL exports (Windows)
-    pub const dll_export_fns_opt_spec: OptionSpec = .{ .string = "-fdll-export-fns", .and_no = &SimpleInverse.no_dll_export_fns_opt_spec };
-    /// -funwind-tables           Always produce unwind table entries for all functions
-    pub const unwind_tables_opt_spec: OptionSpec = .{ .string = "-funwind-tables", .and_no = &SimpleInverse.no_unwind_tables_opt_spec };
-    /// -fLLVM                    Force using LLVM as the codegen backend
-    pub const llvm_opt_spec: OptionSpec = .{ .string = "-fLLVM", .and_no = &SimpleInverse.no_llvm_opt_spec };
-    /// -fClang                   Force using Clang as the C/C++ compilation backend
-    pub const clang_opt_spec: OptionSpec = .{ .string = "-fClang", .and_no = &SimpleInverse.no_clang_opt_spec };
-    /// -fstage1                  Force using bootstrap compiler as the codegen backend
-    pub const stage1_opt_spec: OptionSpec = .{ .string = "-fstage1", .and_no = &SimpleInverse.no_stage1_opt_spec };
-    /// -fsingle-threaded         Code assumes there is only one thread
-    pub const single_threaded_opt_spec: OptionSpec = .{ .string = "-fsingle-threaded", .and_no = &SimpleInverse.no_single_threaded_opt_spec };
-    /// -fbuiltin                 Enable implicit builtin knowledge of functions
+    pub const target_opt_spec: OptionSpec = .{
+        .string = "-target",
+        .arg_type = []const u8,
+    };
+    pub const cpu_opt_spec: OptionSpec = .{
+        .string = "-mcpu",
+        .arg_type = []const u8,
+    };
+    pub const code_model_opt_spec: OptionSpec = .{
+        .string = "-mcmodel",
+        .arg_type = enum { default, tiny, small, kernel, medium, large },
+    };
+    pub const red_zone_opt_spec: OptionSpec = .{
+        .string = "-mred-zone",
+        .and_no = &.{ .string = "-mno-red-zone" },
+    };
+    pub const omit_frame_pointer_opt_spec: OptionSpec = .{
+        .string = "-fomit-frame-pointer",
+        .and_no = &.{ .string = "-fno-omit-frame-pointer" },
+    };
+    pub const exec_model_opt_spec: OptionSpec = .{
+        .string = "-mexec-model",
+        .arg_type = []const u8,
+    };
+    pub const name_opt_spec: OptionSpec = .{
+        .string = "--name",
+        .arg_type = []const u8,
+    };
+    pub const O_opt_spec: OptionSpec = .{
+        .string = "-O",
+        .arg_type = @TypeOf(builtin.zig.mode),
+        .arg_type_name = "@TypeOf(builtin.zig.mode)",
+    };
+    pub const main_pkg_path_opt_spec: OptionSpec = .{
+        .string = "--main-pkg-path",
+        .arg_type = []const u8,
+    };
+    pub const pic_opt_spec: OptionSpec = .{
+        .string = "-fPIC",
+        .and_no = &.{ .string = "-fno-PIC" },
+    };
+    pub const pie_opt_spec: OptionSpec = .{
+        .string = "-fPIE",
+        .and_no = &.{ .string = "-fno-PIE" },
+    };
+    pub const lto_opt_spec: OptionSpec = .{
+        .string = "-flto",
+        .and_no = &.{ .string = "-fno-lto" },
+    };
+    pub const stack_check_opt_spec: OptionSpec = .{
+        .string = "-fstack-check",
+        .and_no = &.{ .string = "-fno-stack-check" },
+    };
+    pub const sanitize_c_opt_spec: OptionSpec = .{
+        .string = "-fsanitize-c",
+        .and_no = &.{ .string = "-fno-sanitize-c" },
+    };
+    pub const valgrind_opt_spec: OptionSpec = .{
+        .string = "-fvalgrind",
+        .and_no = &.{ .string = "-fno-valgrind" },
+    };
+    pub const sanitize_thread_opt_spec: OptionSpec = .{
+        .string = "-fsanitize-thread",
+        .and_no = &.{ .string = "-fno-sanitize-thread" },
+    };
+    pub const dll_export_fns_opt_spec: OptionSpec = .{
+        .string = "-fdll-export-fns",
+        .and_no = &.{ .string = "-fno-dll-export-fns" },
+    };
+    pub const unwind_tables_opt_spec: OptionSpec = .{
+        .string = "-funwind-tables",
+        .and_no = &.{ .string = "-fno-unwind-tables" },
+    };
+    pub const llvm_opt_spec: OptionSpec = .{
+        .string = "-fLLVM",
+        .and_no = &.{ .string = "-fno-LLVM" },
+    };
+    pub const clang_opt_spec: OptionSpec = .{
+        .string = "-fClang",
+        .and_no = &.{ .string = "-fno-Clang" },
+    };
+    pub const stage1_opt_spec: OptionSpec = .{
+        .string = "-fstage1",
+        .and_no = &.{ .string = "-fno-stage1" },
+    };
+    pub const single_threaded_opt_spec: OptionSpec = .{
+        .string = "-fsingle-threaded",
+        .and_no = &.{ .string = "-fno-single-threaded" },
+    };
     pub const builtin_opt_spec: OptionSpec = .{ .string = "-fbuiltin" };
-    /// -ffunction-sections       Places each function in a separate section
-    pub const function_sections_opt_spec: OptionSpec = .{ .string = "-ffunction-sections", .and_no = &SimpleInverse.no_function_sections_opt_spec };
-    /// -fstrip                   Omit debug symbols
-    pub const strip_opt_spec: OptionSpec = .{ .string = "-fstrip", .and_no = &SimpleInverse.no_strip_opt_spec };
-    /// -ofmt=[mode]              Override target object format
-    ///   elf                     Executable and Linking Format
-    ///   c                       C source code
-    ///   wasm                    WebAssembly
-    ///   coff                    Common Object File Format (Windows)
-    ///   macho                   macOS relocatables
-    ///   spirv                   Standard, Portable Intermediate Representation V (SPIR-V)
-    ///   plan9                   Plan 9 from Bell Labs object format
-    ///   hex  (planned feature)  Intel IHEX
-    ///   raw  (planned feature)  Dump machine code directly
-    pub const fmt_opt_spec: OptionSpec = .{ .string = "-ofmt", .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw } };
-    /// -dirafter [dir]           Add directory to AFTER include search path
-    pub const dirafter_opt_spec: OptionSpec = .{ .string = "-dirafter", .arg_type = []const u8 };
-    /// -isystem  [dir]           Add directory to SYSTEM include search path
-    pub const system_opt_spec: OptionSpec = .{ .string = "-isystem", .arg_type = []const u8 };
-    /// -I[dir]                   Add directory to include search path
-    pub const include_opt_spec: OptionSpec = .{ .string = "-I", .arg_type = []const u8 };
-    /// -D[macro]=[value]         Define C [macro] to [value] (1 if [value] omitted)
-    pub const macros_opt_spec: OptionSpec = .{ .arg_type = types.Macros, .arg_type_name = "Macros" };
-    /// --pkg-begin [name] [path] Make pkg available to import and push current pkg
-    pub const packages_opt_spec: OptionSpec = .{ .arg_type = types.Packages, .arg_type_name = "Packages" };
-    // --pkg-end                 Pop current pkg
-    /// --libc [file]             Provide a file which specifies libc paths
-    /// -cflags [flags] --        Set extra flags for the next positional C source files
-    /// Link Options:
-    ///   -l[lib], --library [lib]       Link against system library (only if actually used)
-    ///   -needed-l[lib],                Link against system library (even if unused)
-    ///     --needed-library [lib]
-    ///   -L[d], --library-directory [d] Add a directory to the library search path
-    ///   -T[script], --script [script]  Use a custom linker script
-    ///   --version-script [path]        Provide a version .map file
-    ///   --dynamic-linker [path]        Set the dynamic interpreter path (usually ld.so)
-    ///   --sysroot [path]               Set the system root directory (usually /)
-    ///   --version [ver]                Dynamic library semver
-    ///   --entry [name]                 Set the entrypoint symbol name
-    ///   -fsoname[=name]                Override the default SONAME value
-    pub const soname_opt_spec: OptionSpec = .{ .string = "-fsoname", .arg_type = []const u8, .and_no = &SimpleInverse.no_soname_opt_spec };
-    ///   -fLLD                          Force using LLD as the linker
-    ///   -fno-LLD                       Prevent using LLD as the linker
-    ///   -fcompiler-rt                  Always include compiler-rt symbols in output
-    pub const compiler_rt_opt_spec: OptionSpec = .{ .string = "-fcompiler-rt", .and_no = &SimpleInverse.no_compiler_rt_opt_spec };
-    ///   -rdynamic                      Add all symbols to the dynamic symbol table
-    ///   -rpath [path]                  Add directory to the runtime library search path
-    pub const path_opt_spec: OptionSpec = .{ .string = "-rpath", .arg_type = []const u8 };
-    ///   -feach-lib-rpath               Ensure adding rpath for each used dynamic library
-    pub const each_lib_rpath_opt_spec: OptionSpec = .{ .string = "-feach-lib-rpath", .and_no = &no_each_lib_rpath_opt_spec };
-    ///   -fno-each-lib-rpath            Prevent adding rpath for each used dynamic library
-    pub const no_each_lib_rpath_opt_spec: OptionSpec = .{ .string = "-fno-each-lib-rpath" };
-    ///   -fallow-shlib-undefined        Allows undefined symbols in shared libraries
-    pub const allow_shlib_undefined_opt_spec: OptionSpec = .{ .string = "-fallow-shlib-undefined", .and_no = &no_allow_shlib_undefined_opt_spec };
-    ///   -fno-allow-shlib-undefined     Disallows undefined symbols in shared libraries
-    pub const no_allow_shlib_undefined_opt_spec: OptionSpec = .{ .string = "-fno-allow-shlib-undefined" };
-    ///   -fbuild-id                     Helps coordinate stripped binaries with debug symbols
-    pub const build_id_opt_spec: OptionSpec = .{ .string = "-fbuild-id", .and_no = &no_build_id_opt_spec };
-    ///   -fno-build-id                  (default) Saves a bit of time linking
-    pub const no_build_id_opt_spec: OptionSpec = .{ .string = "-fno-build-id" };
-    ///   --eh-frame-hdr                 Enable C++ exception handling by passing --eh-frame-hdr to linker
-    ///   --emit-relocs                  Enable output of relocation sections for post build tools
-    /// -dynamic                       Force output to be dynamically linked
+    pub const function_sections_opt_spec: OptionSpec = .{
+        .string = "-ffunction-sections",
+        .and_no = &.{ .string = "-fno-function-sections" },
+    };
+    pub const strip_opt_spec: OptionSpec = .{
+        .string = "-fstrip",
+        .and_no = &.{ .string = "-fno-strip" },
+    };
+    pub const fmt_opt_spec: OptionSpec = .{
+        .string = "-ofmt",
+        .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
+    };
+    pub const dirafter_opt_spec: OptionSpec = .{
+        .string = "-dirafter",
+        .arg_type = []const u8,
+    };
+    pub const system_opt_spec: OptionSpec = .{
+        .string = "-isystem",
+        .arg_type = []const u8,
+    };
+    pub const include_opt_spec: OptionSpec = .{
+        .string = "-I",
+        .arg_type = []const u8,
+    };
+    pub const libc_opt_spec: OptionSpec = .{
+        .string = "--libc",
+        .arg_type = []const u8,
+    };
+    pub const library_opt_spec: OptionSpec = .{
+        .string = "--library",
+        .arg_type = []const u8,
+    };
+    pub const library_directory_opt_spec: OptionSpec = .{
+        .string = "--library-directory",
+        .arg_type = []const u8,
+    };
+    pub const link_script_opt_spec: OptionSpec = .{
+        .string = "--script",
+        .arg_type = []const u8,
+    };
+    pub const version_script_opt_spec: OptionSpec = .{
+        .string = "--version-script",
+        .arg_type = []const u8,
+    };
+    pub const dynamic_linker_opt_spec: OptionSpec = .{
+        .string = "--dynamic-linker",
+        .arg_type = []const u8,
+    };
+    pub const sysroot_opt_spec: OptionSpec = .{
+        .string = "--sysroot",
+        .arg_type = []const u8,
+    };
+    pub const version_opt_spec: OptionSpec = .{ .string = "--version" };
+    pub const entry_opt_spec: OptionSpec = .{ .string = "--entry" };
+    pub const soname_opt_spec: OptionSpec = .{
+        .string = "-fsoname",
+        .arg_type = []const u8,
+        .and_no = &.{ .string = "-fno-soname" },
+    };
+    pub const lld_opt_spec: OptionSpec = .{
+        .string = "-fLLD",
+        .and_no = &.{ .string = "-fno-LLD" },
+    };
+    pub const compiler_rt_opt_spec: OptionSpec = .{
+        .string = "-fcompiler-rt",
+        .and_no = &.{ .string = "-fno-compiler-rt" },
+    };
+    pub const rdynamic_opt_spec: OptionSpec = .{ .string = "-rdynamic" };
+    pub const rpath_opt_spec: OptionSpec = .{
+        .string = "-rpath",
+        .arg_type = []const u8,
+    };
+    pub const each_lib_rpath_opt_spec: OptionSpec = .{
+        .string = "-feach-lib-rpath",
+        .and_no = &.{ .string = "-fno-each-lib-rpath" },
+    };
+    pub const allow_shlib_undefined_opt_spec: OptionSpec = .{
+        .string = "-fallow-shlib-undefined",
+        .and_no = &.{ .string = "-fno-allow-shlib-undefined" },
+    };
+    pub const build_id_opt_spec: OptionSpec = .{
+        .string = "-fbuild-id",
+        .and_no = &.{ .string = "-fno-build-id" },
+    };
     pub const dynamic_opt_spec: OptionSpec = .{ .string = "-dynamic" };
-    /// -static                        Force output to be statically linked
     pub const static_opt_spec: OptionSpec = .{ .string = "-static" };
-    ///   -Bsymbolic                     Bind global references locally
-    ///   --compress-debug-sections=[e]  Debug section compression settings
-    ///       none                       No compression
-    ///       zlib                       Compression with deflate/inflate
-    ///   --gc-sections                  Force removal of functions and data that are unreachable by the entry point or exported symbols
-    pub const gc_sections_opt_spec: OptionSpec = .{ .string = "--gc-sections", .and_no = &SimpleInverse.no_gc_sections_opt_spec };
+    pub const symbolic_opt_spec: OptionSpec = .{ .string = "-Bsymbolic" };
+    pub const compress_debug_sections: OptionSpec = .{
+        .string = "--compress-debug-sections",
+        .arg_type = enum { none, zlib },
+    };
+    pub const gc_sections_opt_spec: OptionSpec = .{
+        .string = "--gc-sections",
+        .and_no = &.{ .string = "--no-gc-sections" },
+    };
+    pub const stack_opt_spec: OptionSpec = .{
+        .string = "--stack",
+        .arg_type = u64,
+    };
+    pub const image_base_opt_spec: OptionSpec = .{
+        .string = "--image-base",
+        .arg_type = u64,
+    };
+    pub const macros_opt_spec: OptionSpec = .{
+        .arg_type = types.Macros,
+        .arg_type_name = "Macros",
+    };
+    pub const packages_opt_spec: OptionSpec = .{
+        .arg_type = types.Packages,
+        .arg_type_name = "Packages",
+    };
+    pub const cflags_opt_spec: OptionSpec = .{
+        .arg_type = types.CFlags,
+        .arg_type_name = "CFlags",
+    };
+
     ///   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
-    ///   --stack [size]                 Override default stack size
-    pub const stack_opt_spec: OptionSpec = .{ .string = "--stack", .arg_type = u64 };
-    ///   --image-base [addr]            Set base address for executable image
     ///   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
     ///     -weak_library [lib]
     ///   -framework [name]              (Darwin) link against framework
