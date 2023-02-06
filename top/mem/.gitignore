@@ -1,4 +1,1 @@
-type_specs.zig
-impl_variant_groups.zig
-impl_details.zig
-abstract_params.zig
+zig-out
