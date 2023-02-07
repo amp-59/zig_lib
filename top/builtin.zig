@@ -14,12 +14,13 @@ pub const is_safe: bool         = config("is_safe", bool, zig.mode == .ReleaseSa
 pub const is_small: bool        = config("is_small", bool, zig.mode == .ReleaseSmall);
 pub const is_fast: bool         = config("is_fast", bool, zig.mode == .ReleaseFast);
 pub const is_debug: bool        = config("is_debug", bool, zig.mode == .Debug);
-pub const is_correct: bool      = config("is_correct", bool, is_debug or is_safe);
 pub const is_perf: bool         = config("is_perf", bool, is_small or is_fast);
 pub const is_verbose: bool      = config("is_verbose", bool, is_debug);
 pub const is_silent: bool       = config("is_silent", bool, false);
 pub const AddressSpace          = config("AddressSpace", type, info.address_space.generic);
 pub const logging: Logging      = config("logging", Logging, if (is_silent) Logging.silent else Logging.verbose);
+pub const runtime_assertions: bool  = config("runtime_assertions", bool, is_debug or is_safe);
+pub const comptime_assertions: bool = config("comptime_assertions", bool, is_debug);
 // These are defined by the library builder
 pub const zig_exe: ?[:0]const u8            = config("zig_exe", ?[:0]const u8, null);
 pub const build_root: ?[:0]const u8         = config("build_root", ?[:0]const u8, null);
@@ -220,7 +221,7 @@ fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-    if (is_debug and result[1] != 0) {
+    if (runtime_assertions and result[1] != 0) {
         debug.addCausedOverflowFault(T, arg1, arg2);
     }
     return result[0];
@@ -230,7 +231,7 @@ fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-    if (is_debug and result[1] != 0) {
+    if (runtime_assertions and result[1] != 0) {
         debug.subCausedOverflowFault(T, arg1, arg2);
     }
     return result[0];
@@ -240,7 +241,7 @@ fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-    if (is_debug and result[1] != 0) {
+    if (runtime_assertions and result[1] != 0) {
         debug.mulCausedOverflowFault(T, arg1, arg2);
     }
     return result[0];
@@ -251,7 +252,7 @@ fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
 fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
     const remainder: T = normalSubReturn(T, arg1, (result * arg2));
-    if (is_debug and remainder != 0) {
+    if (runtime_assertions and remainder != 0) {
         debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder);
     }
     return result;
@@ -779,42 +780,42 @@ pub const static = opaque {
     }
     fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingAddReturn(T, arg1.*, arg2);
-        if (is_debug and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalAddReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-        if (is_debug and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalSubAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingSubReturn(T, arg1.*, arg2);
-        if (is_debug and arg1.* < arg2) {
+        if (comptime_assertions and arg1.* < arg2) {
             debug.static.subCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalSubReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-        if (is_debug and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.subCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalMulAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingMulReturn(T, arg1.*, arg2);
-        if (is_debug and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalMulReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-        if (is_debug and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1, arg2);
         }
         return result[0];
@@ -822,7 +823,7 @@ pub const static = opaque {
     fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: T = arg1.* / arg2;
         const remainder: T = static.normalSubReturn(T, arg1.*, (result * arg2));
-        if (is_debug and remainder != 0) {
+        if (comptime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1.*, arg2, result, remainder);
         }
         arg1.* = result;
@@ -830,7 +831,7 @@ pub const static = opaque {
     fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: T = arg1 / arg2;
         const remainder: T = static.normalSubReturn(T, arg1, (result * arg2));
-        if (is_debug and remainder != 0) {
+        if (comptime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
         }
         return result;
@@ -860,32 +861,32 @@ pub const static = opaque {
         static.exactDivisionAssign(T, arg1, arg2);
     }
     pub fn assertBelow(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (runtime_assertions and arg1 >= arg2) {
+        if (comptime_assertions and arg1 >= arg2) {
             debug.static.comparisonFailed(T, " < ", arg1, arg2);
         }
     }
     pub fn assertBelowOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (runtime_assertions and arg1 > arg2) {
+        if (comptime_assertions and arg1 > arg2) {
             debug.static.comparisonFailed(T, " <= ", arg1, arg2);
         }
     }
     pub fn assertEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (runtime_assertions and arg1 != arg2) {
+        if (comptime_assertions and arg1 != arg2) {
             debug.static.comparisonFailed(T, " == ", arg1, arg2);
         }
     }
     pub fn assertNotEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (runtime_assertions and arg1 == arg2) {
+        if (comptime_assertions and arg1 == arg2) {
             debug.static.comparisonFailed(T, " != ", arg1, arg2);
         }
     }
     pub fn assertAboveOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (runtime_assertions and arg1 < arg2) {
+        if (comptime_assertions and arg1 < arg2) {
             debug.static.comparisonFailed(T, " >= ", arg1, arg2);
         }
     }
     pub fn assertAbove(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (runtime_assertions and arg1 <= arg2) {
+        if (comptime_assertions and arg1 <= arg2) {
             debug.static.comparisonFailed(T, " > ", arg1, arg2);
         }
     }
