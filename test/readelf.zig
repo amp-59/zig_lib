@@ -131,7 +131,7 @@ fn getLineOffsets(allocator_1: *SecondaryAllocator, many_8: Many8) !Many64 {
     }
     return .{ .impl = try allocator_1.convertHolderMany(Holder64I, Many64I, holder_64.impl) };
 }
-fn build(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void {
+fn compile(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void {
     var exe_order: build.BuildCmd = .{
         .root = src_path,
         .emit_bin = .{ .yes = so_path },
@@ -140,20 +140,17 @@ fn build(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void {
         .dynamic = true,
         .pic = true,
     };
-    _ = try exe_order.exec(vars);
-}
-fn compile(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void {
     const src_stat: file.Stat = file.stat(.{ .errors = null }, src_path);
     if (file.stat(.{}, so_path)) |so_stat| {
         if (so_stat.mtime.sec < src_stat.mtime.sec) {
-            try build(vars, src_path, so_path);
+            _ = try exe_order.compile(vars);
         } else if (show_up_to_date) {
             showLibraryUpToDate(src_path, so_path, src_stat, so_stat);
         }
     } else |stat_err| {
         switch (stat_err) {
             error.NoSuchFileOrDirectory => {
-                try build(vars, src_path, so_path);
+                _ = try exe_order.compile(vars);
             },
             else => {
                 return stat_err;
