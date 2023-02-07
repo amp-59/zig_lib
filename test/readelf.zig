@@ -9,7 +9,7 @@ const meta = srg.meta;
 const mach = srg.mach;
 const proc = srg.proc;
 const preset = srg.preset;
-const builder = srg.builder;
+const build = srg.build;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
@@ -132,7 +132,7 @@ fn getLineOffsets(allocator_1: *SecondaryAllocator, many_8: Many8) !Many64 {
     return .{ .impl = try allocator_1.convertHolderMany(Holder64I, Many64I, holder_64.impl) };
 }
 fn build(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void {
-    var exe_order: builder.BuildCmd = .{
+    var exe_order: build.BuildCmd = .{
         .root = src_path,
         .emit_bin = .{ .yes = so_path },
         .cmd = .lib,
