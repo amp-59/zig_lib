@@ -1,9 +1,12 @@
-pub const build = if (true) @import("build/build-aux.zig").main else main;
+const _ = struct {
+    pub const build = if (false) @import("build/build-aux.zig").main else main;
+};
 pub const srg = @import("./zig_lib.zig");
+pub usingnamespace @"_";
 const mem = srg.mem;
 const meta = srg.meta;
 const preset = srg.preset;
-const builder = srg.builder;
+const build = srg.build;
 const builtin = srg.builtin;
 
 const packages = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
@@ -52,48 +55,48 @@ const std_parser_args = .{
     .macros = parsedir_std_macros,
     .packages = packages,
 };
-const parsedir_std_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = .{ .string = "std" } }});
-const parsedir_lib_macros: builder.Macros = meta.slice(builder.Macro, .{.{ .name = "test_subject", .value = .{ .string = "lib" } }});
+const parsedir_std_macros: build.Macros = meta.slice(build.Macro, .{.{ .name = "test_subject", .value = .{ .string = "std" } }});
+const parsedir_lib_macros: build.Macros = meta.slice(build.Macro, .{.{ .name = "test_subject", .value = .{ .string = "lib" } }});
 
 // zig fmt: off
 
-fn memgen(ctx: *builder.Context) !void {
-    _ = ctx;
+fn memgen(builder: *build.Builder) !void {
+    _ = builder;
 }
 // TODO Create super type for build options permitting the creation of
 // dependencies, etc. Like step.
-pub fn main(ctx: *builder.Context) !void {
+pub fn main(builder: *build.Builder) !void {
     // Top test programs
-    _ = ctx.addExecutable("builtin_test",   "top/builtin-test.zig", minor_test_args);
-    _ = ctx.addExecutable("meta_test",      "top/meta-test.zig",    minor_test_args);
-    _ = ctx.addExecutable("mem_test",       "top/mem-test.zig",     minor_test_args);
-    _ = ctx.addExecutable("algo_test",      "top/algo-test.zig",    algo_test_args);
-    _ = ctx.addExecutable("file_test",      "top/file-test.zig",    minor_test_args);
-    _ = ctx.addExecutable("list_test",      "top/list-test.zig",    minor_test_args);
-    _ = ctx.addExecutable("fmt_test",       "top/fmt-test.zig",     fmt_test_args);
-    _ = ctx.addExecutable("render_test",    "top/render-test.zig",  minor_test_args);
-    _ = ctx.addExecutable("thread_test",    "top/thread-test.zig",  minor_test_args);
-    _ = ctx.addExecutable("virtual_test",   "top/virtual-test.zig", minor_test_args);
-    _ = ctx.addExecutable("builder_test",   "top/builder-test.zig", minor_test_args);
+    _ = builder.addExecutable("builtin_test",   "top/builtin-test.zig", minor_test_args);
+    _ = builder.addExecutable("meta_test",      "top/meta-test.zig",    minor_test_args);
+    _ = builder.addExecutable("mem_test",       "top/mem-test.zig",     minor_test_args);
+    _ = builder.addExecutable("algo_test",      "top/algo-test.zig",    algo_test_args);
+    _ = builder.addExecutable("file_test",      "top/file-test.zig",    minor_test_args);
+    _ = builder.addExecutable("list_test",      "top/list-test.zig",    minor_test_args);
+    _ = builder.addExecutable("fmt_test",       "top/fmt-test.zig",     fmt_test_args);
+    _ = builder.addExecutable("render_test",    "top/render-test.zig",  minor_test_args);
+    _ = builder.addExecutable("thread_test",    "top/thread-test.zig",  minor_test_args);
+    _ = builder.addExecutable("virtual_test",   "top/virtual-test.zig", minor_test_args);
+    _ = builder.addExecutable("build_test",   "top/build-test.zig", minor_test_args);
     // More complete test programs:
-    _ = ctx.addExecutable("mca",            "test/mca.zig",         fast_test_args);
-    _ = ctx.addExecutable("treez",          "test/treez.zig",       small_test_args);
-    _ = ctx.addExecutable("itos",           "test/itos.zig",        small_test_args);
-    _ = ctx.addExecutable("cat",            "test/cat.zig",         fast_test_args);
-    _ = ctx.addExecutable("hello",          "test/hello.zig",       small_test_args);
-    _ = ctx.addExecutable("readelf",        "test/readelf.zig",     minor_test_args);
-    _ = ctx.addExecutable("parsedir",       "test/parsedir.zig",    fast_test_args);
+    _ = builder.addExecutable("mca",            "test/mca.zig",         fast_test_args);
+    _ = builder.addExecutable("treez",          "test/treez.zig",       small_test_args);
+    _ = builder.addExecutable("itos",           "test/itos.zig",        small_test_args);
+    _ = builder.addExecutable("cat",            "test/cat.zig",         fast_test_args);
+    _ = builder.addExecutable("hello",          "test/hello.zig",       small_test_args);
+    _ = builder.addExecutable("readelf",        "test/readelf.zig",     minor_test_args);
+    _ = builder.addExecutable("parsedir",       "test/parsedir.zig",    fast_test_args);
     // Other test programs:
-    _ = ctx.addExecutable("impl_test",      "top/impl-test.zig",        .{});
-    _ = ctx.addExecutable("container_test", "top/container-test.zig",   .{});
-    _ = ctx.addExecutable("parse_test",     "top/parse-test.zig",       .{});
-    _ = ctx.addExecutable("lib_parser",     "test/parsedir.zig",        lib_parser_args);
-    _ = ctx.addExecutable("std_parser",     "test/parsedir.zig",        std_parser_args);
+    _ = builder.addExecutable("impl_test",      "top/impl-test.zig",        .{});
+    _ = builder.addExecutable("container_test", "top/container-test.zig",   .{});
+    _ = builder.addExecutable("parse_test",     "top/parse-test.zig",       .{});
+    _ = builder.addExecutable("lib_parser",     "test/parsedir.zig",        lib_parser_args);
+    _ = builder.addExecutable("std_parser",     "test/parsedir.zig",        std_parser_args);
     // Examples
-    _ = ctx.addExecutable("readdir",        "examples/iterate_dir_entries.zig",     small_test_args);
-    _ = ctx.addExecutable("dynamic",        "examples/dynamic_alloc.zig",           small_test_args);
-    _ = ctx.addExecutable("address_space",  "examples/custom_address_space.zig",    small_test_args);
+    _ = builder.addExecutable("readdir",        "examples/iterate_dir_entries.zig",     small_test_args);
+    _ = builder.addExecutable("dynamic",        "examples/dynamic_alloc.zig",           small_test_args);
+    _ = builder.addExecutable("address_space",  "examples/custom_address_space.zig",    small_test_args);
 
     // Generators:
-    try memgen(ctx);
+    try memgen(builder);
 }
