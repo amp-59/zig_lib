@@ -1,5 +1,5 @@
 const _ = struct {
-    pub const build = if (false) @import("build/build-aux.zig").main else main;
+    pub const build = if (true) @import("build/build-aux.zig").main else main;
 };
 pub const srg = @import("./zig_lib.zig");
 pub usingnamespace @"_";
