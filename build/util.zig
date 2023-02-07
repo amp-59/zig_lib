@@ -98,7 +98,7 @@ pub fn Args(comptime name: [:0]const u8) type {
     };
 }
 pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8, comptime path: [:0]const u8, args: Args(name)) *build.LibExeObjStep {
-    const ret: *build.LibExeObjStep = builder.addExecutable(.{ .name = name });
+    const ret: *build.LibExeObjStep = builder.addExecutable(.{ .name = name, .root_source_file = .{ .path = path } });
     ret.optimize = if (Context.build_mode_explicit) Context.build_mode else args.build_mode orelse Context.build_mode;
     ret.omit_frame_pointer = false;
     ret.single_threaded = false;
@@ -128,7 +128,7 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     if (args.is_perf) |is_perf| {
         defineConfig(ret, "is_perf", is_perf);
     }
-    ret.addModule("srg", Context.srg);
+    ret.addModule("zig_lib", Context.srg);
     ret.install();
     ret.link_gc_sections = true;
     ret.disable_stack_probing = true;
