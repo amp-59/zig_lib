@@ -24,12 +24,12 @@ pub const Members = struct {
     lhs: zig.Index,
     rhs: zig.Index,
     trailing: bool,
-    pub fn toSpan(self: Members, ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX) !zig.AstNode.SubRange {
-        if (self.len <= 2) {
-            const nodes = [2]zig.Index{ self.lhs, self.rhs };
-            return listToSpan(ast, allocator_x, nodes[0..self.len]);
+    pub fn toSpan(members: Members, ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX) !zig.AstNode.SubRange {
+        if (members.len <= 2) {
+            const nodes = [2]zig.Index{ members.lhs, members.rhs };
+            return listToSpan(ast, allocator_x, nodes[0..members.len]);
         } else {
-            return zig.AstNode.SubRange{ .start = self.lhs, .end = self.rhs };
+            return .{ .start = members.lhs, .end = members.rhs };
         }
     }
 };
@@ -186,9 +186,7 @@ pub fn parseContainerMembers(
                     const comptime_token = nextToken(ast);
                     const block = parseBlock(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
                         error.ParseError => blk: {
-                            findNextContainerMember(
-                                ast,
-                            );
+                            findNextContainerMember(ast);
                             break :blk null_node;
                         },
                         else => |mem_err| return mem_err,
@@ -212,9 +210,7 @@ pub fn parseContainerMembers(
                     defer last_field = identifier;
                     const container_field = expectContainerField(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
                         error.ParseError => {
-                            findNextContainerMember(
-                                ast,
-                            );
+                            findNextContainerMember(ast);
                             continue;
                         },
                         else => |mem_err| return mem_err,
@@ -365,9 +361,7 @@ pub fn parseContainerMembers(
                 // There is not allowed to be a decl after a field with no comma.
                 // Report error but recover parser.
                 try warn(ast, allocator_e, .expected_comma_after_field);
-                findNextContainerMember(
-                    ast,
-                );
+                findNextContainerMember(ast);
                 continue;
             },
         }
@@ -522,9 +516,7 @@ fn expectTestDeclRecoverable(
 ) Error!zig.Index {
     return expectTestDecl(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
         error.ParseError => {
-            findNextContainerMember(
-                ast,
-            );
+            findNextContainerMember(ast);
             return null_node;
         },
         else => |mem_error| return mem_error,
@@ -618,9 +610,7 @@ fn expectTopLevelDeclRecoverable(
 ) Error!zig.Index {
     return expectTopLevelDecl(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
         error.ParseError => {
-            findNextContainerMember(
-                ast,
-            );
+            findNextContainerMember(ast);
             return null_node;
         },
         else => |mem_error| return mem_error,
@@ -653,9 +643,7 @@ fn expectUsingNamespaceRecoverable(
 ) Error!zig.Index {
     return expectUsingNamespace(ast, allocator_n, allocator_e, allocator_x, allocator_s, array_s) catch |err| switch (err) {
         error.ParseError => {
-            findNextContainerMember(
-                ast,
-            );
+            findNextContainerMember(ast);
             return null_node;
         },
         else => |mem_error| return mem_error,
@@ -810,7 +798,7 @@ fn expectContainerField(
 ) Error!zig.Index {
     var main_token = tokenIndex(ast);
     _ = eatToken(ast, .keyword_comptime);
-    const tuple_like = readTagAhead(ast) != .identifier or relativeTagAhead(ast, 1) != .colon;
+    const tuple_like: bool = readTagAhead(ast) != .identifier or relativeTagAhead(ast, 1) != .colon;
     if (!tuple_like) {
         main_token = assertToken(ast, .identifier);
     }
