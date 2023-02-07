@@ -12,12 +12,16 @@ const types = @import("./build-template.zig");
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub const is_silent: bool = false;
+pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
 
 const Variant = enum(u1) { length, write };
 
 const use_function_type: bool = false;
+const prefer_inline: bool = true;
+const write_fn_name: bool = !prefer_inline;
+
 const initial_indent: u64 = if (use_function_type) 2 else 1;
 const alloc_options = .{
     .count_allocations = false,
@@ -45,6 +49,14 @@ const close_spec: file.CloseSpec = .{
     .errors = null,
 };
 const ws: [28]u8 = .{' '} ** 28;
+
+const kill_spaces: u64 = (initial_indent + 1) * 4;
+const build_members_loc_token: []const u8 = "__compile_command: void,";
+const format_members_loc_token: []const u8 = "__format_command: void,";
+const build_len_fn_body_loc_token: []const u8 = "_ = buildLength;";
+const build_write_fn_body_loc_token: []const u8 = "_ = buildWrite;";
+const format_len_fn_body_loc_token: []const u8 = "_ = formatLength;";
+const format_write_fn_body_loc_token: []const u8 = "_ = formatWrite;";
 pub const open_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = .append },
 };
@@ -58,9 +70,25 @@ pub const OptionSpec = struct {
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?*const OptionSpec = null,
 };
-pub const ExecutableOptions = opaque {
+pub const FormatCommandOptions = opaque {
+    pub const color: OptionSpec = .{
+        .string = "--color",
+        .arg_type = enum { auto, off, on },
+    };
+    pub const stdin: OptionSpec = .{ .string = "--sdtin" };
+    pub const check: OptionSpec = .{ .string = "--check" };
+    pub const ast_check: OptionSpec = .{ .string = "--ast-check" };
+    pub const exclude: OptionSpec = .{
+        .string = "--exclude",
+        .arg_type = []const u8,
+    };
+};
+pub const CompileCommandOptions = opaque {
     pub const watch: OptionSpec = .{ .string = "--watch" };
-    pub const color: OptionSpec = .{ .string = "--color", .arg_type = enum { on, off, auto } };
+    pub const color: OptionSpec = .{
+        .string = "--color",
+        .arg_type = enum { on, off, auto },
+    };
     pub const emit_bin: OptionSpec = .{
         .string = "-femit-bin",
         .arg_type = ?types.Path,
@@ -820,6 +848,7 @@ pub fn writeWhat(
     what_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeIf(array, width, what_field);
     writeSwitchNoAssign(array, width, what_switch.?, variant);
     writeIfClose(array, width);
@@ -831,6 +860,7 @@ pub fn writeWhatHow(
     what_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeIfHow(array, width, what_field);
     writeHow(array, width, what_switch, variant);
     writeIfClose(array, width);
@@ -843,6 +873,7 @@ pub fn writeWhatOrWhatNot(
     what_not_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeIfWhat(array, width, what_field);
     writeIfOr(array, width, what_field);
     writeSwitchNoAssign(array, width, what_switch.?, variant);
@@ -858,6 +889,7 @@ pub fn writeOptionalWhat(
     what_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeIfWhat(array, width, what_field);
     writeSwitch(array, width, what_field);
     writeYesOptionalProng(array, width);
@@ -875,6 +907,7 @@ pub fn writeNonOptionalWhat(
     what_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeIfWhat(array, width, what_field);
     writeSwitch(array, width, what_field);
     writeYesRequiredProng(array, width);
@@ -887,6 +920,7 @@ pub fn writeOptionalWhatNot(
     what_not_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeNoOptionalProng(array, width);
     writeNoOptionalIf(array, width);
     writeSwitchWithOptionalArg(array, width, what_not_switch.?, "no_arg", variant);
@@ -903,6 +937,7 @@ pub fn writeNonOptionalWhatNot(
     what_not_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeNoRequiredProng(array, width);
     writeNoRequiredArg(array, width, what_not_switch, variant);
     writeProngClose(array, width);
@@ -915,11 +950,15 @@ pub fn writeNoArgWhatNot(
     what_not_switch: ?[]const u8,
     variant: Variant,
 ) void {
+    if (write_fn_name) fnNameComment(array, @src());
     writeNoProng(array, width);
     writeSwitchNoAssign(array, width, what_not_switch.?, variant);
     writeProngClose(array, width);
     writeSwitchClose(array, width);
     writeIfClose(array, width);
+}
+fn fnNameComment(array: *Array, comptime src: builtin.SourceLocation) void {
+    array.writeMany("// " ++ src.fn_name ++ "\n");
 }
 pub fn getOptKind(comptime opt_spec: OptionSpec) Kind {
     if (opt_spec.arg_type) |arg_type| {
@@ -1018,32 +1057,244 @@ pub fn getOptType(comptime opt_spec: OptionSpec) type {
         }
     }
 }
-pub fn writeFunctionBody(
+fn writeFieldAccess(array: *Array, what_field: []const u8) void {
+    array.writeMany("target.cmd.");
+    array.writeMany(what_field);
+}
+fn writeOpenCall(array: *Array, fn_name: []const u8, variant: Variant) void {
+    switch (variant) {
+        .write => {
+            array.writeMany("write");
+            array.writeMany(fn_name);
+            array.writeMany("(array, ");
+        },
+        .length => {
+            array.writeMany("len +%= length");
+            array.writeMany(fn_name);
+            array.writeMany("(");
+        },
+    }
+}
+fn writeCall0(
     array: *Array,
+    fn_name: []const u8,
+    width: *u64,
+    what_field: []const u8,
     variant: Variant,
 ) void {
+    array.writeMany(ws[0..width.*]);
+    writeOpenCall(array, fn_name, variant);
+    writeFieldAccess(array, what_field);
+    array.writeMany(");\n");
+}
+fn writeCall1(
+    array: *Array,
+    fn_name: []const u8,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    variant: Variant,
+) void {
+    array.writeMany(ws[0..width.*]);
+    writeOpenCall(array, fn_name, variant);
+    writeFieldAccess(array, what_field);
+    array.writeMany(", ");
+    writeTerminatedArgument(array, what_switch, variant);
+    array.writeMany(");\n");
+}
+fn writeCall2(
+    array: *Array,
+    fn_name: []const u8,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    array.writeMany(ws[0..width.*]);
+    writeOpenCall(array, fn_name, variant);
+    writeFieldAccess(array, what_field);
+    array.writeMany(", ");
+    writeTerminatedArgument(array, what_switch, variant);
+    array.writeMany(", ");
+    writeTerminatedArgument(array, what_not_switch, variant);
+    array.writeMany(");\n");
+}
+fn writeCall3(
+    array: *Array,
+    fn_name: []const u8,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    array.writeMany(ws[0..width.*]);
+    writeOpenCall(array, fn_name, variant);
+    writeFieldAccess(array, what_field);
+    array.writeMany(", ");
+    writeEqualArgument(array, what_switch, variant);
+    array.writeMany(", ");
+    writeTerminatedArgument(array, what_switch, variant);
+    array.writeMany(", ");
+    writeTerminatedArgument(array, what_not_switch, variant);
+    array.writeMany(");\n");
+}
+fn writeTerminatedArgument(array: *Array, what_switch: []const u8, variant: Variant) void {
+    switch (variant) {
+        .write => {
+            array.writeMany("\"");
+            array.writeMany(what_switch);
+            array.writeMany("\\x00\"");
+        },
+        .length => {
+            array.writeFormat(fmt.ud64(1 + what_switch.len + 2));
+        },
+    }
+}
+fn writeEqualArgument(array: *Array, what_switch: []const u8, variant: Variant) void {
+    switch (variant) {
+        .write => {
+            array.writeMany("\"");
+            array.writeMany(what_switch);
+            array.writeMany("=\"");
+        },
+        .length => {
+            array.writeFormat(fmt.ud64(1 + what_switch.len + 2));
+        },
+    }
+}
+fn writeCallHow(array: *Array, width: *u64, what_field: []const u8, variant: Variant) void {
+    writeCall0(array, "How", width, what_field, variant);
+}
+fn writeCallWhat(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall1(array, "What", width, what_field, what_switch, variant);
+}
+fn writeCallWhatHow(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall1(array, "WhatHow", width, what_field, what_switch, variant);
+}
+fn writeCallWhatOrWhatNot(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall2(array, "WhatOrWhatNot", width, what_field, what_switch, what_not_switch, variant);
+}
+fn writeCallOptionalWhatOptionalWhatNot(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall3(array, "OptionalWhatOptionalWhatNot", width, what_field, what_switch, what_not_switch, variant);
+}
+fn writeCallOptionalWhatNonOptionalWhatNot(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall3(array, "OptionalWhatNonOptionalWhatNot", width, what_field, what_switch, what_not_switch, variant);
+}
+fn writeCallOptionalWhatNoArgWhatNot(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall3(array, "OptionalWhatNoArgWhatNot", width, what_field, what_switch, what_not_switch, variant);
+}
+fn writeCallNonOptionalWhatOptionalWhatNot(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: ?[]const u8,
+    variant: Variant,
+) void {
+    writeCall3(array, "NonOptionalWhatOptionalWhatNot", width, what_field, what_switch, what_not_switch, variant);
+}
+fn writeCallNonOptionalWhatNonOptionalWhatNot(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall3(array, "NonOptionalWhatNonOptionalWhatNot", width, what_field, what_switch, what_not_switch, variant);
+}
+fn writeCallNonOptionalWhatNoArgWhatNot(
+    array: *Array,
+    width: *u64,
+    what_field: []const u8,
+    what_switch: []const u8,
+    what_not_switch: []const u8,
+    variant: Variant,
+) void {
+    writeCall2(array, "NonOptionalWhatNoArgWhatNot", width, what_field, what_switch, what_not_switch, variant);
+}
+pub fn writeFunctionBody(comptime Namespace: type, array: *Array, variant: Variant) void {
     var width: u64 = (initial_indent * 4) + 4;
-    inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
-        const decl_type: type = @TypeOf(@field(ExecutableOptions, decl.name));
+    inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
+        if (!decl.is_pub) {
+            continue;
+        }
+        const decl_type: type = @TypeOf(@field(Namespace, decl.name));
         if (decl_type != OptionSpec) {
             continue;
         }
-        const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
+        const opt_spec: OptionSpec = @field(Namespace, decl.name);
         const what_field: []const u8 = decl.name;
         const what_switch: ?[]const u8 = opt_spec.string;
         if (opt_spec.arg_type) |arg_type| {
             if (@typeInfo(arg_type) == .Optional) {
                 if (opt_spec.and_no) |inverse| {
-                    writeOptionalWhat(array, &width, what_field, what_switch, variant);
                     const what_not_switch: ?[]const u8 = inverse.*.string;
                     if (inverse.*.arg_type) |no_arg_type| {
                         if (@typeInfo(no_arg_type) == .Optional) {
-                            writeOptionalWhatNot(array, &width, what_not_switch, variant);
+                            if (prefer_inline) {
+                                writeOptionalWhat(array, &width, what_field, what_switch, variant);
+                                writeOptionalWhatNot(array, &width, what_not_switch, variant);
+                            } else {
+                                writeCallOptionalWhatOptionalWhatNot(array, &width, what_field, what_switch.?, what_not_switch.?, variant);
+                            }
                         } else {
-                            writeNonOptionalWhatNot(array, &width, what_not_switch, variant);
+                            if (prefer_inline) {
+                                writeOptionalWhat(array, &width, what_field, what_switch, variant);
+                                writeNonOptionalWhatNot(array, &width, what_not_switch, variant);
+                            } else {
+                                writeCallOptionalWhatNonOptionalWhatNot(array, &width, what_field, what_switch.?, what_not_switch.?, variant);
+                            }
                         }
                     } else {
-                        writeNoArgWhatNot(array, &width, what_not_switch, variant);
+                        if (prefer_inline) {
+                            writeOptionalWhat(array, &width, what_field, what_switch, variant);
+                            writeNoArgWhatNot(array, &width, what_not_switch, variant);
+                        } else {
+                            writeCallOptionalWhatNoArgWhatNot(array, &width, what_field, what_switch.?, what_not_switch.?, variant);
+                        }
                     }
                 } else {
                     unhandledSpecification(what_field, opt_spec);
@@ -1051,42 +1302,68 @@ pub fn writeFunctionBody(
             } else {
                 if (opt_spec.and_no) |inverse| {
                     const what_not_switch: ?[]const u8 = inverse.*.string;
-                    writeNonOptionalWhat(array, &width, what_field, what_switch, variant);
                     if (inverse.*.arg_type) |no_arg_type| {
                         if (@typeInfo(no_arg_type) == .Optional) {
-                            writeOptionalWhatNot(array, &width, what_not_switch, variant);
+                            if (prefer_inline) {
+                                writeNonOptionalWhat(array, &width, what_field, what_switch, variant);
+                                writeOptionalWhatNot(array, &width, what_not_switch, variant);
+                            } else {
+                                writeCallNonOptionalWhatOptionalWhatNot(array, &width, what_field, what_switch.?, what_not_switch.?, variant);
+                            }
                         } else {
-                            writeNonOptionalWhatNot(array, &width, what_not_switch, variant);
+                            if (prefer_inline) {
+                                writeNonOptionalWhat(array, &width, what_field, what_switch, variant);
+                                writeNonOptionalWhatNot(array, &width, what_not_switch, variant);
+                            } else {
+                                writeCallNonOptionalWhatNonOptionalWhatNot(array, &width, what_field, what_switch.?, what_not_switch.?, variant);
+                            }
                         }
                     } else {
-                        writeNoArgWhatNot(array, &width, what_not_switch, variant);
+                        if (prefer_inline) {
+                            writeNonOptionalWhat(array, &width, what_field, what_switch, variant);
+                            writeNoArgWhatNot(array, &width, what_not_switch, variant);
+                        } else {
+                            writeCallNonOptionalWhatNoArgWhatNot(array, &width, what_field, what_switch.?, what_not_switch.?, variant);
+                        }
                     }
                 } else {
-                    writeWhatHow(array, &width, what_field, what_switch, variant);
+                    if (prefer_inline) {
+                        writeWhatHow(array, &width, what_field, what_switch, variant);
+                    } else {
+                        if (what_switch) |yes_switch| {
+                            writeCallWhatHow(array, &width, what_field, yes_switch, variant);
+                        } else {
+                            writeCallHow(array, &width, what_field, variant);
+                        }
+                    }
                 }
             }
         } else {
             if (opt_spec.and_no) |inverse| {
                 const what_not_switch: ?[]const u8 = inverse.*.string;
-                if (inverse.*.arg_type) |no_arg_type| {
-                    if (@typeInfo(no_arg_type) == .Optional) {
-                        unhandledSpecification(what_field, opt_spec);
-                    } else {
-                        unhandledSpecification(what_field, opt_spec);
-                    }
+                if (inverse.*.arg_type != null) {
+                    unhandledSpecification(what_field, opt_spec);
                 } else {
-                    writeWhatOrWhatNot(array, &width, what_field, what_switch, what_not_switch, variant);
+                    if (prefer_inline) {
+                        writeWhatOrWhatNot(array, &width, what_field, what_switch, what_not_switch, variant);
+                    } else {
+                        writeCallWhatOrWhatNot(array, &width, what_field, what_switch.?, what_not_switch.?, variant);
+                    }
                 }
             } else {
-                writeWhat(array, &width, what_field, what_switch, variant);
+                if (prefer_inline) {
+                    writeWhat(array, &width, what_field, what_switch, variant);
+                } else {
+                    writeCallWhat(array, &width, what_field, what_switch.?, variant);
+                }
             }
         }
     }
 }
-pub fn writeStructMembers(array: *Array) void {
+pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
     const width: u64 = (initial_indent * 4);
-    inline for (@typeInfo(ExecutableOptions).Opaque.decls) |decl| {
-        const opt_spec: OptionSpec = @field(ExecutableOptions, decl.name);
+    inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
+        const opt_spec: OptionSpec = @field(Namespace, decl.name);
         const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name;
         array.writeMany(ws[0..width] ++ what_field ++ ": ");
@@ -1159,14 +1436,6 @@ pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opt_map);
 
-    const members_loc_token: []const u8 = "_: void,";
-    const len_fn_body_loc_token: []const u8 = "_ = buildLength;";
-    const write_fn_body_loc_token: []const u8 = "_ = buildWrite;";
-    const kill_spaces: u64 = (initial_indent + 1) * 4;
-    const guess_i: u64 = 1209;
-    const guess_j: u64 = 1967;
-    const guess_k: u64 = 2839;
-
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
@@ -1186,17 +1455,26 @@ pub fn main(args_in: [][*:0]u8) !void {
     const build_src: []const u8 = subTemplate(template_src, "build-struct.zig").?;
     const types_src: []const u8 = subTemplate(template_src, "build-types.zig").?;
 
-    const members_offset: u64 = try guessSourceOffset(build_src, members_loc_token, guess_i);
-    const length_fn_body_offset: u64 = try guessSourceOffset(build_src, len_fn_body_loc_token, guess_j);
-    const write_fn_body_offset: u64 = try guessSourceOffset(build_src, write_fn_body_loc_token, guess_k);
+    const build_members_offset: u64 = try guessSourceOffset(build_src, build_members_loc_token, 6080);
+    const format_members_offset: u64 = try guessSourceOffset(build_src, format_members_loc_token, 6147);
+    const build_len_fn_body_offset: u64 = try guessSourceOffset(build_src, build_len_fn_body_loc_token, 6943);
+    const build_write_fn_body_offset: u64 = try guessSourceOffset(build_src, build_write_fn_body_loc_token, 7815);
+    const format_len_fn_body_offset: u64 = try guessSourceOffset(build_src, format_len_fn_body_loc_token, 8049);
+    const format_write_fn_body_offset: u64 = try guessSourceOffset(build_src, format_write_fn_body_loc_token, 8328);
 
-    array.writeMany(build_src[0 .. members_offset - (initial_indent * 4)]);
-    writeStructMembers(&array);
-    array.writeMany(build_src[members_offset + members_loc_token.len + 1 .. length_fn_body_offset - kill_spaces]);
-    writeFunctionBody(&array, .length);
-    array.writeMany(build_src[length_fn_body_offset + len_fn_body_loc_token.len + 1 .. write_fn_body_offset - kill_spaces]);
-    writeFunctionBody(&array, .write);
-    array.writeMany(build_src[write_fn_body_offset + write_fn_body_loc_token.len + 1 ..]);
+    array.writeMany(build_src[0 .. build_members_offset - (initial_indent * 4)]);
+    writeStructMembers(CompileCommandOptions, &array);
+    array.writeMany(build_src[build_members_offset + build_members_loc_token.len + 1 .. format_members_offset - (initial_indent * 4)]);
+    writeStructMembers(FormatCommandOptions, &array);
+    array.writeMany(build_src[format_members_offset + format_members_loc_token.len + 1 .. build_len_fn_body_offset - kill_spaces]);
+    writeFunctionBody(CompileCommandOptions, &array, .length);
+    array.writeMany(build_src[build_len_fn_body_offset + build_len_fn_body_loc_token.len + 1 .. build_write_fn_body_offset - kill_spaces]);
+    writeFunctionBody(CompileCommandOptions, &array, .write);
+    array.writeMany(build_src[build_write_fn_body_offset + build_write_fn_body_loc_token.len + 1 .. format_len_fn_body_offset - (initial_indent * 4)]);
+    writeFunctionBody(FormatCommandOptions, &array, .length);
+    array.writeMany(build_src[format_len_fn_body_offset + format_len_fn_body_loc_token.len + 1 .. format_write_fn_body_offset - kill_spaces]);
+    writeFunctionBody(FormatCommandOptions, &array, .write);
+    array.writeMany(build_src[format_write_fn_body_offset + format_write_fn_body_loc_token.len + 1 ..]);
     array.writeMany(types_src);
 
     if (options.output) |pathname| {
