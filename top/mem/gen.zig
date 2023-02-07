@@ -3,14 +3,6 @@ const meta = @import("./../meta.zig");
 const builtin = @import("./../builtin.zig");
 
 pub usingnamespace sys;
-pub usingnamespace gen;
-
-const gen = struct {
-    pub usingnamespace @import("./abstract_params.zig");
-    pub usingnamespace @import("./type_specs.zig");
-    pub usingnamespace @import("./impl_details.zig");
-    pub usingnamespace @import("./impl_variant_groups.zig");
-};
 
 pub const AbstractSpec = union(enum) {
     automatic_storage: ReadWrite(union {
@@ -100,7 +92,7 @@ pub const Detail = packed struct {
             .modes = detail.modes,
         };
     }
-    pub fn more(detail: *const Detail, specs: gen.Specifiers) DetailMore {
+    pub fn more(detail: *const Detail, specs: anytype) DetailMore {
         return .{
             .index = detail.index,
             .kinds = detail.kinds,
@@ -137,7 +129,7 @@ pub const DetailMore = packed struct {
     modes: Modes = .{},
     fields: Fields = .{},
     techs: Techniques = .{},
-    specs: gen.Specifiers = .{},
+    // specs: gen.Specifiers = .{},
 
     pub fn isAutomatic(impl_variant: *const DetailMore) bool {
         return impl_variant.kinds.automatic;
@@ -195,7 +187,7 @@ pub const DetailMore = packed struct {
         array.writeMany(", .techs = ");
         array.writeFormat(detail.techs);
         array.writeMany(", .specs = ");
-        writeStructOfBool(array, gen.Specifiers, detail.specs);
+        // writeStructOfBool(array, gen.Specifiers, detail.specs);
         array.writeMany(" }");
     }
 };
@@ -274,9 +266,10 @@ pub const Option = struct {
     };
 
     pub fn count(comptime option: Option, toplevel_impl_group: anytype) usize {
+        const backing_int: type = meta.Child(Techniques);
         var bits: meta.Child(Techniques) = 0;
         for (toplevel_impl_group) |impl_variant| {
-            bits |= meta.leastBitCast(impl_variant.techs);
+            bits |= @bitCast(backing_int, impl_variant.techs);
         }
         var len: usize = 0;
         inline for (option.info.field_field_names) |field_name| {
@@ -302,8 +295,8 @@ pub const Option = struct {
                 else => .compare_enumeration,
             },
         };
-        builtin.debug.write(@tagName(ret));
-        builtin.debug.write("\n");
+        //builtin.debug.write(@tagName(ret));
+        //builtin.debug.write("\n");
         return ret;
     }
     pub fn fieldName(comptime option: Option, comptime index: usize) []const u8 {
@@ -372,8 +365,8 @@ pub const Brief = packed struct {
             .mode = Mode.convert(detail.modes),
         };
     }
-    pub fn index(detail: anytype) u8 {
-        return meta.leastBitCast(convert(detail));
+    pub fn index(brief: Brief) u8 {
+        return meta.leastBitCast(brief);
     }
     pub fn name(brief: Brief) [:0]const u8 {
         switch (brief.layout) {
@@ -602,7 +595,7 @@ const sys = struct {
             : [_] "{rax}" (sysno),
               [_] "{rdi}" (arg1),
               [_] "{rsi}" (arg2),
-            : "rcx", "r11", "memory", "rax"
+            : "rcx", "r11", "memory"
         );
     }
     fn syscall3(sysno: u64, arg1: u64, arg2: u64, arg3: u64) u64 {
@@ -635,13 +628,16 @@ const sys = struct {
     pub fn create(pathname: [:0]const u8) u64 {
         return syscall3(2, @ptrToInt(pathname.ptr), 0x80241, 0o640);
     }
+    pub fn mkdir(pathname: [:0]const u8) void {
+        _ = syscall2(83, @ptrToInt(pathname.ptr), 0o700);
+    }
     pub fn close(fd: u64) void {
         _ = syscall1(3, fd);
     }
-    fn map(addr: u64, len: u64) void {
-        _ = syscall6(9, addr, len, 0x1 | 0x2, 0x20 | 0x02 | 0x100000, ~@as(u64, 0), 0);
+    pub fn map(addr: u64, len: u64) u64 {
+        return syscall6(9, addr, len, 0x1 | 0x2, 0x20 | 0x02 | 0x100000, ~@as(u64, 0), 0);
     }
-    fn unmap(addr: u64, len: u64) void {
+    pub fn unmap(addr: u64, len: u64) void {
         _ = syscall2(11, addr, len);
     }
     pub noinline fn exit(rc: u64) noreturn {
@@ -662,6 +658,69 @@ fn alignAbove(value: u64, comptime alignment: u64) u64 {
 fn alignBelow(value: u64, comptime alignment: u64) u64 {
     return value & ~(alignment - 1);
 }
+fn GenericArray(comptime T: type) type {
+    return (struct {
+        start: u64,
+        finish: u64,
+        const Array = @This();
+        pub fn init(any: []T) Array {
+            return .{ .start = @ptrToInt(any.ptr), .finish = @ptrToInt(any.ptr) };
+        }
+        pub fn define(array: *Array, count: usize) void {
+            array.finish +%= count;
+        }
+        pub fn undefine(array: *Array, count: usize) void {
+            array.finish -%= count;
+        }
+        pub fn referOneUndefined(array: Array) *T {
+            return @intToPtr(*T, array.finish);
+        }
+        pub fn writeCount(array: *Array, comptime count: usize, values: [count]T) void {
+            for (values) |value, index| {
+                @intToPtr(*T, array.finish + index).* = value;
+            }
+            array.finish +%= count;
+        }
+        pub fn writeMany(array: *Array, values: []const T) void {
+            for (values) |value, index| {
+                @intToPtr(*T, array.finish + index).* = value;
+            }
+            array.finish +%= values.len;
+        }
+        pub fn writeOne(array: *Array, value: T) void {
+            @intToPtr(*T, array.finish).* = value;
+            array.finish +%= 1;
+        }
+        pub fn writeOneBackwards(array: *Array, value: T) void {
+            array.finish -%= 1;
+            @intToPtr(*T, array.finish).* = value;
+        }
+        pub fn overwriteCountBack(array: Array, comptime count: usize, values: [count]T) void {
+            const next: u64 = array.finish - count;
+            for (values) |value, index| @intToPtr(*T, next + index).* = value;
+        }
+        pub fn overwriteManyBack(array: Array, values: []const T) void {
+            const next: u64 = array.finish - values.len;
+            for (values) |value, index| @intToPtr(*T, next + index).* = value;
+        }
+        pub fn overwriteOneBack(array: Array, value: T) void {
+            array.overwriteCountBack(1, [1]T{value});
+        }
+        pub fn readAll(array: Array) []const T {
+            return @intToPtr([*]const T, array.start)[0..array.len()];
+        }
+        pub fn undefineAll(array: *Array) void {
+            array.finish = array.start;
+        }
+        pub fn len(array: Array) usize {
+            return array.finish - array.start;
+        }
+        pub fn writeFormat(array: *Array, format: anytype) void {
+            format.formatWrite(array);
+        }
+    });
+}
+pub const String = GenericArray(u8);
 
 pub const Allocator = struct {
     start: u64,
@@ -689,7 +748,7 @@ pub const Allocator = struct {
     pub fn grow(allocator: *Allocator, finish: u64) void {
         const least: u64 = alignAbove(finish - allocator.finish, page_size);
         const len: u64 = @max(least, allocator.capacity() * 2);
-        sys.map(allocator.finish, len);
+        builtin.assert(sys.map(allocator.finish, len) == allocator.finish);
         allocator.finish += len;
     }
     pub fn reallocate(allocator: *Allocator, comptime T: type, count: u64, buf: []T) []T {
@@ -725,7 +784,7 @@ pub const Allocator = struct {
         allocator.next = start_addr;
     }
     pub fn init() Allocator {
-        sys.map(start_addr, page_size);
+        _ = sys.map(start_addr, page_size);
         return .{
             .start = start_addr,
             .next = start_addr,
@@ -738,6 +797,32 @@ pub const Allocator = struct {
         allocator.finish = allocator.start;
     }
 };
+pub fn writeImports(array: anytype, src: anytype, imports: []const struct { name: []const u8, path: []const u8 }) void {
+    array.writeMany("//! this file generated by ");
+    array.writeMany(src.file);
+    array.writeMany("\n");
+    for (imports) |import| {
+        array.writeMany("const ");
+        array.writeMany(import.name);
+        array.writeMany(" = @import(\"");
+        array.writeMany(import.path);
+        array.writeMany("\");\n");
+    }
+}
+pub fn writeFile(array: anytype, comptime name: []const u8) void {
+    const build_root: [:0]const u8 = @cImport({}).build_root;
+    const zig_out_dir: [:0]const u8 = build_root ++ "/top/mem/zig-out";
+    const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
+    sys.mkdir(zig_out_dir);
+    sys.mkdir(zig_out_src_dir);
+    const fd: u64 = sys.create(zig_out_src_dir ++ "/" ++ name);
+    defer sys.close(fd);
+    sys.write(fd, array.readAll());
+    array.undefineAll();
+}
+pub fn writeIndex(array: anytype, index: u8) void {
+    array.writeMany(builtin.fmt.ud8(index).readAll());
+}
 pub fn fieldNames(comptime T: type) []const []const u8 {
     var field_names: []const []const u8 = &.{};
     for (@typeInfo(T).Struct.fields) |field| {
@@ -764,7 +849,7 @@ pub fn fieldTypeNames(comptime T: type) []const []const u8 {
     }
     return field_type_names;
 }
-fn writeStructOfBool(array: anytype, comptime T: type, value: T) void {
+pub fn writeStructOfBool(array: anytype, comptime T: type, value: T) void {
     const Format = GenericStructOfBool(T);
     Format.formatWrite(value, array);
 }
