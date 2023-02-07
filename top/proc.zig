@@ -1051,6 +1051,12 @@ const debug = opaque {
         var i: u16 = 0;
         while (i != argc) : (i += 1) {
             const arg_len: u64 = strlen(args[i]);
+            if (arg_len == 0) {
+                buf[len] = '\'';
+                len +%= 1;
+                buf[len] = '\'';
+                len +%= 1;
+            }
             if (len +% arg_len >= buf.len - 37) {
                 break;
             }
@@ -1170,6 +1176,12 @@ const debug = opaque {
         var i: u16 = 0;
         while (i != argc) : (i += 1) {
             const arg_len: u64 = strlen(args[i]);
+            if (arg_len == 0) {
+                buf[len] = '\'';
+                len +%= 1;
+                buf[len] = '\'';
+                len +%= 1;
+            }
             if (len +% arg_len >= max_len - 37) {
                 break;
             }
