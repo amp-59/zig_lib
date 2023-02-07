@@ -4,18 +4,18 @@ const mem = srg.mem;
 const sys = srg.sys;
 const proc = srg.proc;
 const meta = srg.meta;
+const build = srg.build;
 const preset = srg.preset;
-const builder = srg.builder;
 const builtin = srg.builtin;
 
-pub const AddressSpace = builder.AddressSpace;
+pub const AddressSpace = build.AddressSpace;
 pub const is_verbose: bool = false;
 pub const runtime_assertions: bool = false;
 pub const is_silent: bool = false;
 
 pub usingnamespace proc.start;
 
-const Options = builder.GlobalOptions;
+const Options = build.GlobalOptions;
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
     .{ .field_name = "build_mode", .long = "-Drelease-fast", .assign = .{ .any = &(.ReleaseFast) }, .descr = "speed++" },
     .{ .field_name = "build_mode", .long = "-Drelease-small", .assign = .{ .any = &(.ReleaseSmall) }, .descr = "size--" },
@@ -26,35 +26,35 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
     .{ .field_name = "verbose", .long = "--silent", .assign = Options.no, .descr = "do not show compile commands when executing" },
 });
-fn commandNotFoundException(ctx: *const builder.Context, arg: [:0]const u8) !void {
+fn commandNotFoundException(builder: *const build.Builder, arg: [:0]const u8) !void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlwaysAIO(&buf, &.{ "command not found: ", arg, "\n" });
     builtin.debug.logAlways(comptime Options.Map.helpMessage(opts_map));
-    showAllCommands(ctx);
+    showAllCommands(builder);
     return error.CommandNotFound;
 }
-fn showAllCommands(ctx: *const builder.Context) void {
+fn showAllCommands(builder: *const build.Builder) void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlways("commands:\n");
-    for (ctx.cmds.readAll()) |cmd| {
-        builtin.debug.logAlwaysAIO(&buf, &.{ "    ", @tagName(cmd.cmd), "\t", cmd.name.?, "\t", cmd.root, "\n" });
+    for (builder.targets.readAll()) |target| {
+        builtin.debug.logAlwaysAIO(&buf, &.{ "    ", @tagName(target.cmd.kind), "\t", target.cmd.name.?, "\t", target.root, "\n" });
     }
 }
-fn setAllCommands(ctx: *const builder.Context, cmd_mode: meta.Field(builder.BuildCmd, "cmd")) void {
-    for (ctx.cmds.referAllDefined()) |*cmd| {
-        cmd.cmd = cmd_mode;
+fn setAllCommands(builder: *const build.Builder, cmd_mode: meta.Field(build.CompileCommand, "kind")) void {
+    for (builder.targets.referAllDefined()) |*target| {
+        target.cmd.kind = cmd_mode;
     }
 }
-fn execAllCommands(ctx: *const builder.Context) !void {
-    for (ctx.cmds.readAll()) |cmd| {
-        builtin.assertNotEqual(u64, 0, try cmd.exec());
+fn execAllCommands(builder: *const build.Builder) !void {
+    for (builder.targets.readAll()) |target| {
+        builtin.assertNotEqual(u64, 0, try target.compile());
     }
 }
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
-    var allocator: builder.Allocator = try builder.Allocator.init(&address_space);
+    var allocator: build.Allocator = try build.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator);
+    var array: build.Builder.ArrayU = build.Builder.ArrayU.init(&allocator);
     array.increment(void, &allocator, .{ .bytes = 1024 * 1024 * 16 });
     defer array.deinit(&allocator);
     var args: [][*:0]u8 = args_in;
@@ -71,7 +71,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     const cache_dir: [:0]const u8 = meta.manyToSlice(args[3]);
     const global_cache_dir: [:0]const u8 = meta.manyToSlice(args[4]);
     args = args[5..];
-    var ctx: builder.Context = .{
+    var builder: build.Builder = .{
         .zig_exe = zig_exe,
         .build_root = build_root,
         .cache_dir = cache_dir,
@@ -82,37 +82,37 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .allocator = &allocator,
         .array = &array,
     };
-    try root.build(&ctx);
+    try root.build(&builder);
     var index: u64 = 0;
     while (index != args.len) {
         const name: [:0]const u8 = meta.manyToSlice(args[index]);
 
         if (mem.testEqualMany(u8, name, "lib")) {
-            setAllCommands(&ctx, .lib);
+            setAllCommands(&builder, .lib);
             proc.shift(&args, index);
             continue;
         }
         if (mem.testEqualMany(u8, name, "obj")) {
-            setAllCommands(&ctx, .lib);
+            setAllCommands(&builder, .lib);
             proc.shift(&args, index);
             continue;
         }
         if (mem.testEqualMany(u8, name, "exe")) {
-            setAllCommands(&ctx, .exe);
+            setAllCommands(&builder, .exe);
             proc.shift(&args, index);
             continue;
         }
         if (mem.testEqualMany(u8, name, "run")) {
-            setAllCommands(&ctx, .run);
+            setAllCommands(&builder, .run);
             proc.shift(&args, index);
             continue;
         }
         if (mem.testEqualMany(u8, name, "show")) {
-            showAllCommands(&ctx);
+            showAllCommands(&builder);
             return;
         }
         if (mem.testEqualMany(u8, name, "all")) {
-            try execAllCommands(&ctx);
+            try execAllCommands(&builder);
             proc.shift(&args, index);
             continue;
         }
@@ -124,14 +124,14 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         if (mem.testEqualMany(u8, name, "--")) {
             break;
         }
-        for (ctx.cmds.readAll()) |cmd| {
-            if (mem.testEqualMany(u8, name, cmd.name.?)) {
-                ctx.args = ctx.args[index..];
-                builtin.assertNotEqual(u64, 0, try cmd.exec());
+        for (builder.targets.readAll()) |target| {
+            if (mem.testEqualMany(u8, name, target.cmd.name.?)) {
+                builder.args = builder.args[index..];
+                builtin.assertNotEqual(u64, 0, try target.compile());
                 break;
             }
         } else {
-            return commandNotFoundException(&ctx, name);
+            return commandNotFoundException(&builder, name);
         }
         index +%= 1;
     }
