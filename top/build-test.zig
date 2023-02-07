@@ -12,7 +12,8 @@ const builtin = @import("./builtin.zig");
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub const is_verbose: bool = true;
+pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
@@ -36,6 +37,9 @@ const general_macros: build.Macros = &.{
 };
 const parsedir_std_macros: build.Macros = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};
 const parsedir_lib_macros: build.Macros = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
+const zig_lib: build.Packages = &.{
+    .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
+};
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: builtin.AddressSpace = .{};
@@ -52,21 +56,10 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .allocator = &allocator,
         .array = &array,
     };
-    var cmd: build.BuildCmd = .{
-        .builder = &builder,
-        .root = "top/builtin-test.zig",
-        .cmd = .run,
-        .name = "builtin_test",
-        .O = .ReleaseFast,
-        .strip = true,
-        .enable_cache = true,
-        .global_cache_dir = null,
-        .cache_dir = null,
-        .stack = 8388608,
+    const target: *build.Target = builder.addExecutable("builtin_test", "top/builtin-test.zig", .{
+        .build_mode = .ReleaseFast,
         .macros = general_macros,
-        .packages = &.{
-            .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
-        },
-    };
-    _ = try cmd.allocateExec(&allocator);
+        .packages = zig_lib,
+    });
+    _ = try target.compile();
 }
