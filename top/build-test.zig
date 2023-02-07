@@ -6,7 +6,7 @@ const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const thread = @import("./thread.zig");
 const preset = @import("./preset.zig");
-const builder = @import("./builder.zig");
+const build = @import("./build.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
@@ -29,19 +29,19 @@ const thread_spec = proc.CloneSpec{
     .options = .{},
 };
 
-const general_macros: builder.Macros = &.{
+const general_macros: build.Macros = &.{
     .{ .name = "is_verbose", .value = .{ .constant = 0 } },
     .{ .name = "runtime_assertions", .value = .{ .constant = 0 } },
     .{ .name = "build_root", .value = .{ .string = builtin.build_root.? } },
 };
-const parsedir_std_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};
-const parsedir_lib_macros: builder.Macros = general_macros ++ [1]builder.Macro{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
+const parsedir_std_macros: build.Macros = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};
+const parsedir_lib_macros: build.Macros = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
-    var array: builder.Context.ArrayU = builder.Context.ArrayU.init(&allocator);
-    var ctx: builder.Context = .{
+    var array: build.Builder.ArrayU = build.Builder.ArrayU.init(&allocator);
+    var builder: build.Builder = .{
         .zig_exe = builtin.zig_exe.?,
         .build_root = builtin.build_root.?,
         .cache_dir = builtin.cache_dir.?,
@@ -52,8 +52,8 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .allocator = &allocator,
         .array = &array,
     };
-    var cmd: builder.BuildCmd = .{
-        .ctx = &ctx,
+    var cmd: build.BuildCmd = .{
+        .builder = &builder,
         .root = "top/builtin-test.zig",
         .cmd = .run,
         .name = "builtin_test",

@@ -1,5 +1,5 @@
 //! start
-// start-document builder-struct.zig
+// start-document build-struct.zig
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
@@ -29,73 +29,76 @@ pub const StaticString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{}
 pub const StaticPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
 const max_len: u64 = 65536;
 const max_args: u64 = 512;
-pub const BuildCmd = struct {
-    const Builder: type = @This();
-    ctx: *const Context,
-    cmd: enum { exe, lib, obj, fmt, ast_check, run },
-    root: [:0]const u8,
+
+pub const CompileCommand = struct {
+    kind: enum { exe, lib, obj, run },
     _: void,
-    fn buildLength(build: Builder) u64 {
+};
+pub const Target = struct {
+    root: [:0]const u8,
+    cmd: *CompileCommand,
+    flag: bool = false,
+
+    builder: *Builder,
+
+    fn buildLength(target: Target) u64 {
         var len: u64 = 4;
-        switch (build.cmd) {
+        switch (target.cmd.kind) {
             .lib, .exe, .obj => {
-                len += 6 + @tagName(build.cmd).len + 1;
+                len += 6 + @tagName(target.cmd.kind).len + 1;
             },
-            .fmt, .ast_check, .run => {
-                len += @tagName(build.cmd).len + 1;
+            .run => {
+                len += @tagName(target.cmd.kind).len + 1;
             },
         }
-        len +%= Macro.formatLength(build.ctx.zigExePathMacro());
-        len +%= Macro.formatLength(build.ctx.buildRootPathMacro());
-        len +%= Macro.formatLength(build.ctx.cacheDirPathMacro());
-        len +%= Macro.formatLength(build.ctx.globalCacheDirPathMacro());
+        len +%= Macro.formatLength(target.builder.zigExePathMacro());
+        len +%= Macro.formatLength(target.builder.buildRootPathMacro());
+        len +%= Macro.formatLength(target.builder.cacheDirPathMacro());
+        len +%= Macro.formatLength(target.builder.globalCacheDirPathMacro());
         _ = buildLength;
-        len +%= Path.formatLength(build.ctx.sourceRootPath(build.root));
+        len +%= Path.formatLength(target.builder.sourceRootPath(target.root));
         len +%= 1;
         return len;
     }
-    fn buildWrite(build: Builder, array: anytype) u64 {
+    fn buildWrite(target: Target, array: anytype) u64 {
         array.writeMany("zig\x00");
-        switch (build.cmd) {
+        switch (target.cmd.kind) {
             .lib, .exe, .obj => {
                 array.writeMany("build-");
-                array.writeMany(@tagName(build.cmd));
+                array.writeMany(@tagName(target.cmd.kind));
                 array.writeOne('\x00');
             },
-            .fmt, .ast_check, .run => {
-                array.writeMany(@tagName(build.cmd));
+            .run => {
+                array.writeMany(@tagName(target.cmd.kind));
                 array.writeOne('\x00');
             },
         }
-        array.writeFormat(build.ctx.zigExePathMacro());
-        array.writeFormat(build.ctx.buildRootPathMacro());
-        array.writeFormat(build.ctx.cacheDirPathMacro());
-        array.writeFormat(build.ctx.globalCacheDirPathMacro());
+        array.writeFormat(target.builder.zigExePathMacro());
+        array.writeFormat(target.builder.buildRootPathMacro());
+        array.writeFormat(target.builder.cacheDirPathMacro());
+        array.writeFormat(target.builder.globalCacheDirPathMacro());
         _ = buildWrite;
-        array.writeFormat(build.ctx.sourceRootPath(build.root));
+        array.writeFormat(target.builder.sourceRootPath(target.root));
         array.writeOne('\x00');
         return countArgs(array);
     }
-    pub fn allocateExec(builder: Builder, allocator: *Allocator) !u64 {
-        var array: String = try meta.wrap(String.init(allocator, builder.buildLength()));
+    pub fn compileA(target: Target, allocator: *Allocator) !u64 {
+        var array: String = try meta.wrap(String.init(allocator, target.buildLength()));
         defer array.deinit(allocator);
-        var args: Pointers = try meta.wrap(Pointers.init(allocator, builder.buildWrite(&array)));
+        var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
         defer args.deinit(allocator);
         builtin.assertBelowOrEqual(u64, array.len(), max_len);
         builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
-        builtin.assertEqual(u64, array.len(), builder.buildLength());
-        return builder.genericExec(args.referAllDefined());
+        builtin.assertEqual(u64, array.len(), target.buildLength());
+        return target.builder.exec(args.referAllDefined());
     }
-    pub fn exec(builder: Builder) !u64 {
+    pub fn compile(target: Target) !u64 {
         var array: StaticString = .{};
         var args: StaticPointers = .{};
-        builtin.assertBelowOrEqual(u64, builder.buildWrite(&array), max_args);
+        builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
         builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-        builtin.assertEqual(u64, array.len(), builder.buildLength());
-        return builder.genericExec(args.referAllDefined());
-    }
-    fn genericExec(builder: Builder, args: [][*:0]u8) !u64 {
-        return proc.command(.{}, builder.ctx.zig_exe, args, builder.ctx.vars);
+        builtin.assertEqual(u64, array.len(), target.buildLength());
+        return target.builder.exec(args.referAllDefined());
     }
 };
 /// Environment variables needed to find user home directory
@@ -129,8 +132,8 @@ fn makeArgs(array: anytype, args: anytype) u64 {
     }
     return args.len();
 }
-// finish-document builder-struct.zig
-// start-document builder-types.zig
+// finish-document build-struct.zig
+// start-document build-types.zig
 pub const Packages = []const Pkg;
 pub const Macros = []const Macro;
 pub const Pkg = struct {
@@ -254,9 +257,9 @@ pub const GlobalOptions = struct {
     pub const yes = .{ .boolean = true };
     pub const no = .{ .boolean = false };
     pub const debug = .{ .action = setDebug };
-    pub const release_fast = .{ .action = setReleaseFast };
-    pub const release_safe = .{ .action = setReleaseFast };
-    pub const release_small = .{ .action = setReleaseFast };
+    pub const release_fast = &(.ReleaseFast);
+    pub const release_safe = &(.ReleaseSafe);
+    pub const release_small = &(.ReleaseSmall);
 
     pub fn setReleaseFast(options: *GlobalOptions) void {
         options.build_mode = .ReleaseFast;
@@ -271,7 +274,7 @@ pub const GlobalOptions = struct {
         options.build_mode = .Debug;
     }
 };
-pub const Context = struct {
+pub const Builder = struct {
     zig_exe: [:0]const u8,
     build_root: [:0]const u8,
     cache_dir: [:0]const u8,
@@ -280,113 +283,119 @@ pub const Context = struct {
     args: [][*:0]u8,
     vars: [][*:0]u8,
     allocator: *Allocator,
-    cmds: ArrayC = .{},
+    targets: ArrayC = .{},
     array: *ArrayU,
-    const ArrayC = mem.StaticArray(BuildCmd, 64);
+    const ArrayC = mem.StaticArray(Target, 64);
     pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
 
-    pub fn zigExePath(ctx: *const Context) Path {
-        return ctx.path(ctx.zig_exe);
+    pub fn zigExePath(builder: *const Builder) Path {
+        return builder.path(builder.zig_exe);
     }
-    pub fn buildRootPath(ctx: *const Context) Path {
-        return ctx.path(ctx.build_root);
+    pub fn buildRootPath(builder: *const Builder) Path {
+        return builder.path(builder.build_root);
     }
-    pub fn cacheDirPath(ctx: *const Context) Path {
-        return ctx.path(ctx.cache_dir);
+    pub fn cacheDirPath(builder: *const Builder) Path {
+        return builder.path(builder.cache_dir);
     }
-    pub fn globalCacheDirPath(ctx: *const Context) Path {
-        return ctx.path(ctx.global_cache_dir);
+    pub fn globalCacheDirPath(builder: *const Builder) Path {
+        return builder.path(builder.global_cache_dir);
     }
-    pub fn sourceRootPath(ctx: *const Context, root: [:0]const u8) Path {
-        return ctx.path(root);
+    pub fn sourceRootPath(builder: *const Builder, root: [:0]const u8) Path {
+        return builder.path(root);
     }
-    pub fn zigExePathMacro(ctx: *const Context) Macro {
-        return .{ .name = "zig_exe", .value = .{ .path = zigExePath(ctx) } };
+    pub fn zigExePathMacro(builder: *const Builder) Macro {
+        return .{ .name = "zig_exe", .value = .{ .path = zigExePath(builder) } };
     }
-    pub fn buildRootPathMacro(ctx: *const Context) Macro {
-        return .{ .name = "build_root", .value = .{ .path = buildRootPath(ctx) } };
+    pub fn buildRootPathMacro(builder: *const Builder) Macro {
+        return .{ .name = "build_root", .value = .{ .path = buildRootPath(builder) } };
     }
-    pub fn cacheDirPathMacro(ctx: *const Context) Macro {
-        return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(ctx) } };
+    pub fn cacheDirPathMacro(builder: *const Builder) Macro {
+        return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(builder) } };
     }
-    pub fn globalCacheDirPathMacro(ctx: *const Context) Macro {
-        return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(ctx) } };
+    pub fn globalCacheDirPathMacro(builder: *const Builder) Macro {
+        return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(builder) } };
     }
-    pub fn sourceRootPathMacro(ctx: *const Context, root: [:0]const u8) Macro {
-        return .{ .name = "root", .value = .{ .path = ctx.sourceRootPath(root) } };
+    pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) Macro {
+        return .{ .name = "root", .value = .{ .path = builder.sourceRootPath(root) } };
     }
-    pub fn path(ctx: *const Context, name: [:0]const u8) Path {
-        return .{ .ctx = ctx, .pathname = name };
+    pub fn path(builder: *const Builder, name: [:0]const u8) Path {
+        return .{ .builder = builder, .pathname = name };
     }
-    pub fn dupe(ctx: *const Context, comptime T: type, value: T) *T {
-        ctx.writeOne(T, value);
-        return ctx.array.referOneBack(T);
+    pub fn dupe(builder: *const Builder, comptime T: type, value: T) *T {
+        builder.writeOne(T, value);
+        return builder.array.referOneBack(T);
     }
-    pub fn dupeMany(ctx: *const Context, comptime T: type, values: []const T) []const T {
+    pub fn dupeMany(builder: *const Builder, comptime T: type, values: []const T) []const T {
         if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
-        ctx.array.writeMany(T, values);
-        return ctx.array.referManyBack(T, .{ .count = values.len });
+        builder.array.writeMany(T, values);
+        return builder.array.referManyBack(T, .{ .count = values.len });
     }
-    pub fn dupeWithSentinel(ctx: *const Context, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
+    pub fn dupeWithSentinel(builder: *const Builder, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
         if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
-        defer ctx.array.define(T, .{ .count = 1 });
-        ctx.array.writeMany(T, values);
-        ctx.array.referOneUndefined(T).* = sentinel;
-        return ctx.array.referManyWithSentinelBack(T, 0, .{ .count = values.len });
+        defer builder.array.define(T, .{ .count = 1 });
+        builder.array.writeMany(T, values);
+        builder.array.referOneUndefined(T).* = sentinel;
+        return builder.array.referManyWithSentinelBack(T, 0, .{ .count = values.len });
     }
     pub fn addExecutable(
-        ctx: *Context,
+        builder: *Builder,
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
         comptime args: Args(name),
-    ) *BuildCmd {
-        const ret: *BuildCmd = ctx.cmds.referOneUndefined();
+    ) *Target {
+        const ret: *Target = builder.targets.referOneUndefined();
+        const cmd: *CompileCommand = builder.array.referOneUndefined(CompileCommand);
+        builder.array.define(CompileCommand, .{ .count = 1 });
         ret.* = .{
-            .ctx = ctx,
             .root = pathname,
-            .cmd = .exe,
-            .name = name,
+            .cmd = cmd,
+            .builder = builder,
         };
         comptime var macros: []const Macro = args.macros orelse meta.empty;
         macros = comptime args.setMacro(macros, "runtime_assertions");
         macros = comptime args.setMacro(macros, "is_verbose");
         if (args.build_mode) |build_mode| {
-            ret.O = build_mode;
+            ret.cmd.O = build_mode;
         }
-        if (ctx.options.build_mode) |build_mode| {
-            ret.O = build_mode;
+        if (builder.options.build_mode) |build_mode| {
+            ret.cmd.O = build_mode;
         }
         if (args.emit_bin_path) |bin_path| {
-            ret.emit_bin = .{ .yes = ctx.path(bin_path) };
+            ret.cmd.emit_bin = .{ .yes = builder.path(bin_path) };
         }
-        //if (args.emit_asm_path) |asm_path| {
-        //    ret.emit_asm = .{ .yes = ctx.path(asm_path) };
-        //}
-        ret.omit_frame_pointer = false;
-        ret.single_threaded = true;
-        ret.static = true;
-        ret.enable_cache = true;
-        ret.compiler_rt = false;
-        ret.strip = true;
-        ret.main_pkg_path = ctx.build_root;
-        ret.macros = macros;
-        ret.packages = args.packages;
-        ctx.cmds.define(1);
+        ret.cmd.* = .{
+            .kind = .exe,
+            .name = name,
+            .omit_frame_pointer = false,
+            .single_threaded = true,
+            .static = true,
+            .enable_cache = true,
+            .compiler_rt = false,
+            .strip = true,
+            .formatted_panics = false,
+            .main_pkg_path = builder.build_root,
+            .macros = macros,
+            .packages = args.packages,
+        };
+        builder.targets.define(1);
         return ret;
+    }
+    fn exec(builder: Builder, args: [][*:0]u8) !u64 {
+        return proc.command(.{}, builder.zig_exe, args, builder.vars);
     }
 };
 pub const Path = struct {
-    ctx: ?*const Context = null,
+    builder: ?*const Builder = null,
     pathname: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.ctx) |ctx| {
+        if (format.builder) |builder| {
             if (format.pathname[0] != '/') {
-                array.writeMany(ctx.build_root);
+                array.writeMany(builder.build_root);
                 array.writeOne('/');
             }
         }
@@ -394,9 +403,9 @@ pub const Path = struct {
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        if (format.ctx) |ctx| {
+        if (format.builder) |builder| {
             if (format.pathname[0] != '/') {
-                len +%= ctx.build_root.len;
+                len +%= builder.build_root.len;
                 len +%= 1;
             }
         }
@@ -445,4 +454,4 @@ fn Args(comptime name: [:0]const u8) type {
         }
     };
 }
-// finish-document builder-types.zig
+// finish-document build-types.zig

@@ -7,7 +7,7 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
-const types = @import("./builder-template.zig");
+const types = @import("./build-template.zig");
 
 pub usingnamespace proc.start;
 
@@ -53,7 +53,7 @@ pub const OptionSpec = struct {
     string: ?[]const u8 = null,
     /// Simple argument type
     arg_type: ?type = null,
-    /// Any argument type name; must be defined in builder-template.zig
+    /// Any argument type name; must be defined in build-template.zig
     arg_type_name: ?[]const u8 = null,
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?*const OptionSpec = null,
@@ -559,7 +559,7 @@ pub fn formatCompositeLiteral(
 }
 fn writeIf(array: *Array, width: *u64, what_field: []const u8) void {
     array.writeMany(ws[0..width.*]);
-    array.writeMany("if (build.");
+    array.writeMany("if (target.cmd.");
     array.writeMany(what_field);
     array.writeMany(") {\n");
     width.* += 4;
@@ -576,14 +576,14 @@ fn writeNoOptionalIf(array: *Array, width: *u64) void {
 }
 fn writeIfHow(array: *Array, width: *u64, what_field: []const u8) void {
     array.writeMany(ws[0..width.*]);
-    array.writeMany("if (build.");
+    array.writeMany("if (target.cmd.");
     array.writeMany(what_field);
     array.writeMany(") |how| {\n");
     width.* += 4;
 }
 fn writeIfWhat(array: *Array, width: *u64, what_field: []const u8) void {
     array.writeMany(ws[0..width.*]);
-    array.writeMany("if (build.");
+    array.writeMany("if (target.cmd.");
     array.writeMany(what_field);
     array.writeMany(") |");
     array.writeMany(what_field);
@@ -1151,9 +1151,9 @@ fn srcArray(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticA
     return ret;
 }
 fn writeFile(allocator: Allocator, array: Array, pathname: [:0]const u8) !void {
-    const builder_fd: u64 = try file.create(create_spec, pathname);
-    defer file.close(close_spec, builder_fd);
-    try file.write(builder_fd, array.readAll(allocator));
+    const build_fd: u64 = try file.create(create_spec, pathname);
+    defer file.close(close_spec, build_fd);
+    try file.write(build_fd, array.readAll(allocator));
 }
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
@@ -1163,9 +1163,9 @@ pub fn main(args_in: [][*:0]u8) !void {
     const len_fn_body_loc_token: []const u8 = "_ = buildLength;";
     const write_fn_body_loc_token: []const u8 = "_ = buildWrite;";
     const kill_spaces: u64 = (initial_indent + 1) * 4;
-    const guess_i: u64 = 1301;
-    const guess_j: u64 = 1909;
-    const guess_k: u64 = 2755;
+    const guess_i: u64 = 1209;
+    const guess_j: u64 = 1967;
+    const guess_k: u64 = 2839;
 
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
@@ -1174,7 +1174,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     defer array.deinit(&allocator);
     array.increment(&allocator, 1024 * 1024);
 
-    const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/builder-template.zig");
+    const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/build-template.zig");
     try mem.acquire(.{}, AddressSpace, &address_space, 1);
     const arena_1: mem.Arena = AddressSpace.arena(1);
 
@@ -1183,20 +1183,20 @@ pub fn main(args_in: [][*:0]u8) !void {
     const up_addr: u64 = mach.alignA64(ub_addr, 4096);
 
     const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
-    const builder_src: []const u8 = subTemplate(template_src, "builder-struct.zig").?;
-    const types_src: []const u8 = subTemplate(template_src, "builder-types.zig").?;
+    const build_src: []const u8 = subTemplate(template_src, "build-struct.zig").?;
+    const types_src: []const u8 = subTemplate(template_src, "build-types.zig").?;
 
-    const members_offset: u64 = try guessSourceOffset(builder_src, members_loc_token, guess_i);
-    const length_fn_body_offset: u64 = try guessSourceOffset(builder_src, len_fn_body_loc_token, guess_j);
-    const write_fn_body_offset: u64 = try guessSourceOffset(builder_src, write_fn_body_loc_token, guess_k);
+    const members_offset: u64 = try guessSourceOffset(build_src, members_loc_token, guess_i);
+    const length_fn_body_offset: u64 = try guessSourceOffset(build_src, len_fn_body_loc_token, guess_j);
+    const write_fn_body_offset: u64 = try guessSourceOffset(build_src, write_fn_body_loc_token, guess_k);
 
-    array.writeMany(builder_src[0 .. members_offset - (initial_indent * 4)]);
+    array.writeMany(build_src[0 .. members_offset - (initial_indent * 4)]);
     writeStructMembers(&array);
-    array.writeMany(builder_src[members_offset + members_loc_token.len + 1 .. length_fn_body_offset - kill_spaces]);
+    array.writeMany(build_src[members_offset + members_loc_token.len + 1 .. length_fn_body_offset - kill_spaces]);
     writeFunctionBody(&array, .length);
-    array.writeMany(builder_src[length_fn_body_offset + len_fn_body_loc_token.len + 1 .. write_fn_body_offset - kill_spaces]);
+    array.writeMany(build_src[length_fn_body_offset + len_fn_body_loc_token.len + 1 .. write_fn_body_offset - kill_spaces]);
     writeFunctionBody(&array, .write);
-    array.writeMany(builder_src[write_fn_body_offset + write_fn_body_loc_token.len + 1 ..]);
+    array.writeMany(build_src[write_fn_body_offset + write_fn_body_loc_token.len + 1 ..]);
     array.writeMany(types_src);
 
     if (options.output) |pathname| {

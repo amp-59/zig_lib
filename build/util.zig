@@ -3,7 +3,6 @@ const build = std.build;
 
 // BOILERPLATE ////////////////////////////////////////////////////////////////
 
-const srg: std.build.Pkg = .{ .name = "zig_lib", .source = .{ .path = "zig_lib.zig" } };
 pub const Context = opaque {
     var build_mode: std.builtin.Mode = .Debug;
     var build_mode_explicit: bool = undefined;
@@ -14,15 +13,17 @@ pub const Context = opaque {
     var run_step: *build.Step = undefined;
     var install_step: *build.Step = undefined;
     var fmt_step: *build.Step = undefined;
+    var srg: *std.build.Module = undefined;
     const always_strip: bool = true;
     pub fn init(b: *build.Builder) void {
         builder = b;
         Context.builder.reference_trace = 100;
-        Context.build_mode = builder.standardReleaseOptions();
+        Context.build_mode = builder.standardOptimizeOption(.{});
         Context.test_step = builder.step("test", "Run most tests");
         Context.test_all_step = builder.step("test-all", "Run all tests");
         Context.test_all_step.dependOn(Context.test_step);
         Context.run_step = builder.step("run", "Run programs");
+        Context.srg = b.createModule(.{ .source_file = .{ .path = "zig_lib.zig" } });
         Context.build_mode_explicit = build_mode != .Debug;
     }
 };
@@ -97,8 +98,8 @@ pub fn Args(comptime name: [:0]const u8) type {
     };
 }
 pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8, comptime path: [:0]const u8, args: Args(name)) *build.LibExeObjStep {
-    const ret: *build.LibExeObjStep = builder.addExecutableSource(name, build.FileSource.relative(path));
-    ret.build_mode = if (Context.build_mode_explicit) Context.build_mode else args.build_mode orelse Context.build_mode;
+    const ret: *build.LibExeObjStep = builder.addExecutable(.{ .name = name });
+    ret.optimize = if (Context.build_mode_explicit) Context.build_mode else args.build_mode orelse Context.build_mode;
     ret.omit_frame_pointer = false;
     ret.single_threaded = false;
     ret.image_base = 0x10000;
@@ -127,7 +128,7 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     if (args.is_perf) |is_perf| {
         defineConfig(ret, "is_perf", is_perf);
     }
-    ret.addPackage(srg);
+    ret.addModule("srg", Context.srg);
     ret.install();
     ret.link_gc_sections = true;
     ret.disable_stack_probing = true;

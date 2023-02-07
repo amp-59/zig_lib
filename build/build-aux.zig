@@ -39,7 +39,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "restack", "examples/remap_stack.zig", .{});
     _ = util.addProjectExecutable(builder, "dynamic", "examples/dynamic_alloc.zig", .{});
     // Generators:
-    _ = util.addProjectExecutable(builder, "builder_gen", "top/builder-gen.zig", .{ .build_mode = .ReleaseSmall });
+    _ = util.addProjectExecutable(builder, "build_gen", "top/build-gen.zig", .{ .build_mode = .ReleaseSmall });
 
     // Memory implementation:
     const mem_gen = builder.step("mem_gen", "generate containers according to specification");
