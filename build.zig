@@ -77,7 +77,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = builder.addExecutable("render_test",    "top/render-test.zig",  minor_test_args);
     _ = builder.addExecutable("thread_test",    "top/thread-test.zig",  minor_test_args);
     _ = builder.addExecutable("virtual_test",   "top/virtual-test.zig", minor_test_args);
-    _ = builder.addExecutable("build_test",   "top/build-test.zig", minor_test_args);
+    _ = builder.addExecutable("build_test",     "top/build-test.zig",   small_test_args);
     // More complete test programs:
     _ = builder.addExecutable("mca",            "test/mca.zig",         fast_test_args);
     _ = builder.addExecutable("treez",          "test/treez.zig",       small_test_args);
