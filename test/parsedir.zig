@@ -144,7 +144,7 @@ noinline fn parseAndWalkInternal(
                     array.referOneBack().name.writeMany(base_name);
                     const t0: time.TimeSpec = try time.realClock(null);
                     array.referOneBack().ast = if (test_standard)
-                        try std.zig.parse(allocator_e, source.readAllWithSentinel(0))
+                        try std.zig.Ast.parse(allocator_e, source.readAllWithSentinel(0), .zig)
                     else
                         try abstract.SyntaxTree.init(
                             allocator_n,
