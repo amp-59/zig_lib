@@ -1,4 +1,3 @@
-
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
@@ -1251,7 +1250,7 @@ pub const Target = struct {
     }
     fn formatLength(target: Target) u64 {
         var len: u64 = 8;
-            if (target.cmd.color) |how| {
+        if (target.cmd.color) |how| {
             len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
