@@ -1,6 +1,7 @@
 const fmt = @import("./../fmt.zig");
 const meta = @import("./../meta.zig");
 const builtin = @import("./../builtin.zig");
+const testing = @import("./../testing.zig");
 
 pub usingnamespace sys;
 
@@ -15,20 +16,20 @@ pub const AbstractSpec = union(enum) {
     }),
     allocated_byte_address: ReadWrite(union {
         _: Static,
-        single_packed_approximate_capacity: Dynamic,
+        //single_packed_approximate_capacity: Dynamic,
         unstreamed_byte_address: Stream(union {
             undefined_byte_address: Resize(union {
                 _: Static,
-                single_packed_approximate_capacity: Dynamic,
-                double_packed_approximate_capacity: Dynamic,
+                //single_packed_approximate_capacity: Dynamic,
+                //double_packed_approximate_capacity: Dynamic,
                 unallocated_byte_address: Dynamic,
             }),
             unallocated_byte_address: Dynamic,
         }),
         undefined_byte_address: Resize(union {
             _: Static,
-            single_packed_approximate_capacity: Dynamic,
-            double_packed_approximate_capacity: Dynamic,
+            //single_packed_approximate_capacity: Dynamic,
+            //double_packed_approximate_capacity: Dynamic,
             unallocated_byte_address: Dynamic,
         }),
         unallocated_byte_address: Dynamic,
@@ -44,154 +45,6 @@ pub const TypeSpecMap = struct {
     specs: []const type,
     vars: type,
 };
-
-pub const DetailLess = packed struct {
-    index: u8 = undefined,
-    kinds: Kinds = .{},
-    layouts: Layouts = .{},
-    modes: Modes = .{},
-
-    fn more(detail: DetailLess, fields: Fields, techs: Techniques) Detail {
-        return .{
-            .index = detail.index,
-            .kinds = detail.kind,
-            .layouts = detail.layouts,
-            .modes = detail.modes,
-            .techs = techs,
-            .fields = fields,
-        };
-    }
-    pub fn brief(detail: *const DetailLess) Brief {
-        return Brief.convert(detail);
-    }
-    pub fn formatWrite(detail: DetailLess, array: anytype) void {
-        array.writeMany(".{ .index = ");
-        array.writeFormat(fmt.ud64(detail.index));
-        array.writeMany(", .kinds = ");
-        array.writeFormat(detail.kinds);
-        array.writeMany(", .layouts = ");
-        array.writeFormat(detail.layouts);
-        array.writeMany(", .modes = ");
-        array.writeFormat(detail.modes);
-        array.writeMany(" }");
-    }
-};
-pub const Detail = packed struct {
-    index: u8 = undefined,
-    kinds: Kinds = .{},
-    layouts: Layouts = .{},
-    modes: Modes = .{},
-    fields: Fields = .{},
-    techs: Techniques = .{},
-
-    pub fn less(detail: *const Detail) DetailLess {
-        return .{
-            .index = detail.index,
-            .kinds = detail.kinds,
-            .layouts = detail.layouts,
-            .modes = detail.modes,
-        };
-    }
-    pub fn more(detail: *const Detail, specs: anytype) DetailMore {
-        return .{
-            .index = detail.index,
-            .kinds = detail.kinds,
-            .layouts = detail.layouts,
-            .modes = detail.modes,
-            .techs = detail.techs,
-            .fields = detail.fields,
-            .specs = specs,
-        };
-    }
-    pub fn brief(detail: *const Detail) Brief {
-        return Brief.convert(detail);
-    }
-    pub fn formatWrite(detail: Detail, array: anytype) void {
-        array.writeMany(".{ .index = ");
-        array.writeFormat(fmt.ud8(detail.index));
-        array.writeMany(", .kinds = ");
-        array.writeFormat(detail.kinds);
-        array.writeMany(", .layouts = ");
-        array.writeFormat(detail.layouts);
-        array.writeMany(", .modes = ");
-        array.writeFormat(detail.modes);
-        array.writeMany(", .fields = ");
-        array.writeFormat(detail.fields);
-        array.writeMany(", .techs = ");
-        array.writeFormat(detail.techs);
-        array.writeMany(" }");
-    }
-};
-pub const DetailMore = packed struct {
-    index: u8 = undefined,
-    kinds: Kinds = .{},
-    layouts: Layouts = .{},
-    modes: Modes = .{},
-    fields: Fields = .{},
-    techs: Techniques = .{},
-    // specs: gen.Specifiers = .{},
-
-    pub fn isAutomatic(impl_variant: *const DetailMore) bool {
-        return impl_variant.kinds.automatic;
-    }
-    pub fn isParametric(impl_variant: *const DetailMore) bool {
-        return impl_variant.kinds.parametric;
-    }
-    pub fn isDynamic(impl_variant: *const DetailMore) bool {
-        return impl_variant.kinds.dynamic;
-    }
-    pub fn isStatic(impl_variant: *const DetailMore) bool {
-        return impl_variant.kinds.static;
-    }
-    pub fn hasUnitAlignment(impl_variant: *const DetailMore) bool {
-        return impl_variant.techs.unit_alignment or
-            impl_variant.kinds.automatic;
-    }
-    pub fn hasLazyAlignment(impl_variant: *const DetailMore) bool {
-        return impl_variant.techs.lazy_alignment;
-    }
-    pub fn hasDisjunctAlignment(impl_variant: *const DetailMore) bool {
-        return impl_variant.techs.disjunct_alignment;
-    }
-    pub fn hasStaticMaximumLength(impl_variant: *const DetailMore) bool {
-        return impl_variant.kinds.automatic or impl_variant.kinds.static;
-    }
-    pub fn hasPackedApproximateCapacity(impl_variant: *const DetailMore) bool {
-        return impl_variant.techs.single_packed_approximate_capacity or
-            impl_variant.techs.double_packed_approximate_capacity;
-    }
-    pub fn brief(detail: *const DetailMore) Brief {
-        return Brief.convert(detail);
-    }
-    pub fn less(detail: *const DetailMore) Detail {
-        return .{
-            .index = detail.index,
-            .kinds = detail.kinds,
-            .layouts = detail.layouts,
-            .modes = detail.modes,
-            .techs = detail.techs,
-            .fields = detail.fields,
-        };
-    }
-    pub fn formatWrite(detail: *const DetailMore, array: anytype) void {
-        array.writeMany(".{ .index = ");
-        array.writeFormat(fmt.ud8(detail.index));
-        array.writeMany(", .kinds = ");
-        array.writeFormat(detail.kinds);
-        array.writeMany(", .layouts = ");
-        array.writeFormat(detail.layouts);
-        array.writeMany(", .modes = ");
-        array.writeFormat(detail.modes);
-        array.writeMany(", .fields = ");
-        array.writeFormat(detail.fields);
-        array.writeMany(", .techs = ");
-        array.writeFormat(detail.techs);
-        array.writeMany(", .specs = ");
-        // writeStructOfBool(array, gen.Specifiers, detail.specs);
-        array.writeMany(" }");
-    }
-};
-
 pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
@@ -265,39 +118,40 @@ pub const Option = struct {
         field_field_names: []const []const u8,
     };
 
-    pub fn count(comptime option: Option, toplevel_impl_group: anytype) usize {
-        const backing_int: type = meta.Child(Techniques);
-        var bits: meta.Child(Techniques) = 0;
-        for (toplevel_impl_group) |impl_variant| {
-            bits |= @bitCast(backing_int, impl_variant.techs);
-        }
+    pub fn count(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const *const Detail) usize {
         var len: usize = 0;
+        var techs: Techniques = .{};
+        inline for (@typeInfo(Techniques).Struct.fields) |field| {
+            for (toplevel_impl_group) |impl_variant| {
+                if (@field(impl_variant.techs, field.name)) {
+                    @field(techs, field.name) = true;
+                }
+            }
+        }
         inline for (option.info.field_field_names) |field_name| {
-            len +%= @boolToInt(@field(@bitCast(Techniques, bits), field_name));
+            len +%= @boolToInt(@field(techs, field_name));
         }
         return len;
     }
-    pub fn usage(comptime option: Option, toplevel_impl_group: anytype) Usage {
-        const ret: Usage = switch (option.kind) {
-            .standalone => switch (option.count(toplevel_impl_group)) {
-                0 => .eliminate_boolean_false,
-                1 => .test_boolean,
+    pub fn usage(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const *const Detail) Usage {
+        const value: usize = option.count(Detail, toplevel_impl_group);
+        switch (option.kind) {
+            .standalone => switch (value) {
+                0 => return .eliminate_boolean_false,
+                1 => return .test_boolean,
                 else => unreachable,
             },
-            .mutually_exclusive_optional => switch (option.count(toplevel_impl_group)) {
-                0 => .eliminate_boolean_false,
-                1 => .test_boolean,
-                else => .compare_optional_enumeration,
+            .mutually_exclusive_optional => switch (value) {
+                0 => return .eliminate_boolean_false,
+                1 => return .test_boolean,
+                else => return .compare_optional_enumeration,
             },
-            .mutually_exclusive_mandatory => switch (option.count(toplevel_impl_group)) {
-                0 => .eliminate_boolean_false,
-                1 => .eliminate_boolean_true,
-                else => .compare_enumeration,
+            .mutually_exclusive_mandatory => switch (value) {
+                0 => return .eliminate_boolean_false,
+                1 => return .eliminate_boolean_true,
+                else => return .compare_enumeration,
             },
-        };
-        //builtin.debug.write(@tagName(ret));
-        //builtin.debug.write("\n");
-        return ret;
+        }
     }
     pub fn fieldName(comptime option: Option, comptime index: usize) []const u8 {
         return option.info.field_field_names[index];
@@ -621,12 +475,17 @@ const sys = struct {
             : "rcx", "r11", "memory"
         );
     }
-
+    pub fn read(fd: u64, buf: []u8) u64 {
+        return syscall3(0, fd, @ptrToInt(buf.ptr), buf.len);
+    }
     pub fn write(fd: u64, buf: []const u8) void {
         _ = syscall3(1, fd, @ptrToInt(buf.ptr), buf.len);
     }
     pub fn create(pathname: [:0]const u8) u64 {
         return syscall3(2, @ptrToInt(pathname.ptr), 0x80241, 0o640);
+    }
+    pub fn open(pathname: [:0]const u8) u64 {
+        return syscall3(2, @ptrToInt(pathname.ptr), 0, 0);
     }
     pub fn mkdir(pathname: [:0]const u8) void {
         _ = syscall2(83, @ptrToInt(pathname.ptr), 0o700);
@@ -820,8 +679,8 @@ pub fn writeFile(array: anytype, comptime name: []const u8) void {
     sys.write(fd, array.readAll());
     array.undefineAll();
 }
-pub fn writeIndex(array: anytype, index: u8) void {
-    array.writeMany(builtin.fmt.ud8(index).readAll());
+pub fn writeIndex(array: anytype, index: u16) void {
+    array.writeMany(builtin.fmt.ud16(index).readAll());
 }
 pub fn fieldNames(comptime T: type) []const []const u8 {
     var field_names: []const []const u8 = &.{};
@@ -874,6 +733,23 @@ fn GenericStructOfBool(comptime Struct: type) type {
                 ret +%= @boolToInt(@field(bit_field, field.name));
             }
             return ret;
+        }
+    });
+}
+pub fn writeStructOfEnum(array: anytype, comptime T: type, value: T) void {
+    const Format = GenericStructOfEnum(T);
+    Format.formatWrite(value, array);
+}
+fn GenericStructOfEnum(comptime Struct: type) type {
+    return (struct {
+        pub fn formatWrite(format: Struct, array: anytype) void {
+            array.writeMany(".{ ");
+            inline for (@typeInfo(Struct).Struct.fields) |field| {
+                array.writeMany("." ++ field.name ++ " = .");
+                array.writeMany(@tagName(@field(format, field.name)));
+                array.writeMany(", ");
+            }
+            array.overwriteManyBack(" }");
         }
     });
 }
