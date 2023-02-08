@@ -10,7 +10,6 @@ const out = struct {
     usingnamespace @import("./zig-out/src/memgen_detail.zig");
     usingnamespace @import("./zig-out/src/memgen_type_spec.zig");
 };
-
 fn writeVariantStructInternal(array: *gen.String, impl_detail: out.Detail, specs: out.Specifiers) void {
     array.writeMany("    ");
     array.writeFormat(impl_detail.more(out.DetailMore, specs));
@@ -18,12 +17,15 @@ fn writeVariantStructInternal(array: *gen.String, impl_detail: out.Detail, specs
 }
 fn writeVariantStruct(array: *gen.String, comptime impl_detail: out.Detail) void {
     const type_spec: gen.TypeSpecMap = out.type_specs[impl_detail.index];
-    var vars: u8 = 0;
-    while (@popCount(vars) != @bitSizeOf(type_spec.vars)) : (vars +%= 1) {
+    var vars: u16 = 0;
+    while (vars <= @truncate(meta.Child(type_spec.vars), ~@as(u64, 0))) : (vars +%= 1) {
         var specs: out.Specifiers = .{};
         inline for (@typeInfo(type_spec.vars).Struct.fields) |field| {
             if (@hasField(out.Specifiers, field.name)) {
-                @field(specs, field.name) = @field(@bitCast(type_spec.vars, @truncate(meta.Child(type_spec.vars), vars)), field.name);
+                @field(specs, field.name) = @field(
+                    @bitCast(type_spec.vars, @truncate(meta.Child(type_spec.vars), vars)),
+                    field.name,
+                );
             }
         }
         writeVariantStructInternal(array, impl_detail, specs);
