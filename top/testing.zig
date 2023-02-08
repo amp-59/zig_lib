@@ -283,10 +283,10 @@ fn uniqueSet(comptime T: type, set: []const T) void {
             if (l_index != r_index) {
                 if (builtin.testEqual(T, set[l_index], set[r_index])) {
                     printN(4096, .{
-                        "identical: ", l_index,
-                        " == ",        r_index,
-                        '\n',          meta.leastRealBitCast(set[l_index]),
-                        " == ",        meta.leastRealBitCast(set[r_index]),
+                        "non-unique: ", l_index,
+                        " == ",         r_index,
+                        '\n',           meta.leastRealBitCast(set[l_index]),
+                        " == ",         meta.leastRealBitCast(set[r_index]),
                         '\n',
                     });
                 }
