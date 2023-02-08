@@ -9,6 +9,8 @@ pub const is_silent: bool = true;
 
 const gen = @import("./gen.zig");
 
+const out = @import("./detail.zig");
+
 fn ptr(comptime T: type) *T {
     var ret: T = undefined;
     return &ret;
@@ -22,7 +24,7 @@ fn typeId(comptime _: type) comptime_int {
     type_id.* += 1;
     return ret;
 }
-fn writeUnspecifiedDetailsInternal(array: *gen.String, comptime T: type, detail: *gen.Detail) void {
+fn writeUnspecifiedDetailsInternal(array: *gen.String, comptime T: type, detail: *out.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
@@ -50,13 +52,13 @@ fn writeUnspecifiedDetailsInternal(array: *gen.String, comptime T: type, detail:
         writeDetailStruct(array, detail.*);
     }
 }
-fn writeDetailStruct(array: *gen.String, detail: gen.Detail) void {
+fn writeDetailStruct(array: *gen.String, detail: out.Detail) void {
     array.writeMany("    ");
     array.writeFormat(detail);
     array.writeMany(",\n");
 }
 fn writeUnspecifiedDetails(array: *gen.String) void {
-    var detail: gen.Detail = .{};
+    var detail: out.Detail = .{};
     gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "../../detail.zig" }});
     array.writeMany("pub const details: []const out.Detail = &[_]out.Detail{");
     writeUnspecifiedDetailsInternal(array, gen.AbstractSpec, &detail);
