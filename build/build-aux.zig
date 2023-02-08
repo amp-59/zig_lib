@@ -49,7 +49,6 @@ pub fn main(builder: *build.Builder) !void {
         const abstract_to_type_spec = util.addProjectExecutable(builder, "abstract_to_type_spec", "top/mem/abstract_to_type_spec.zig", small);
         abstract_to_type_spec.step.dependOn(&spec_to_options.run().step);
         abstract_to_type_spec.step.dependOn(&spec_to_abstract.run().step);
-        // const detail_to_options = util.addProjectExecutable(builder, "detail_to_options", "top/mem/detail_to_options.zig", small);
         abstract_to_type_spec.step.dependOn(&spec_to_detail.run().step);
         const detail_to_variants = util.addProjectExecutable(builder, "detail_to_variants", "top/mem/detail_to_variants.zig", small);
         detail_to_variants.step.dependOn(&spec_to_detail.run().step);
@@ -62,11 +61,9 @@ pub fn main(builder: *build.Builder) !void {
         map_to_containers.step.dependOn(&variants_to_canonicals.run().step);
         const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", small);
         map_to_specifications.step.dependOn(&map_to_containers.run().step);
-
         const generate_references = util.addProjectExecutable(builder, "generate_references", "top/mem/generate_references.zig", .{});
         generate_references.step.dependOn(&map_to_specifications.run().step);
 
-        // mem_gen.dependOn(&detail_to_options.run().step);
         mem_gen.dependOn(&generate_references.run().step);
     }
 }
