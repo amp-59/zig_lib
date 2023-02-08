@@ -1410,7 +1410,6 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
         array.writeMany(",\n");
     }
 }
-
 const Options = struct {
     output: ?[:0]const u8 = null,
     pub const Map = proc.GenericOptions(Options);

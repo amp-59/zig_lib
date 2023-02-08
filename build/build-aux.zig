@@ -59,10 +59,17 @@ pub fn main(builder: *build.Builder) !void {
         detail_to_variants.step.dependOn(&abstract_to_type_spec.run().step);
         const generate_canonical = util.addProjectExecutable(builder, "generate_canonical", "top/mem/generate_canonical.zig", small);
         generate_canonical.step.dependOn(&detail_to_variants.run().step);
-        const variants_to_hierarchy = util.addProjectExecutable(builder, "variants_to_hierarchy", "top/mem/variants_to_hierarchy.zig", small);
-        variants_to_hierarchy.step.dependOn(&generate_canonical.run().step);
+        const variants_to_canonicals = util.addProjectExecutable(builder, "variants_to_canonicals", "top/mem/variants_to_canonicals.zig", small);
+        variants_to_canonicals.step.dependOn(&generate_canonical.run().step);
+        const map_to_containers = util.addProjectExecutable(builder, "map_to_containers", "top/mem/map_to_containers.zig", small);
+        map_to_containers.step.dependOn(&variants_to_canonicals.run().step);
+        const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", small);
+        map_to_specifications.step.dependOn(&map_to_containers.run().step);
+
+        const generate_references = util.addProjectExecutable(builder, "generate_references", "top/mem/generate_references.zig", .{});
+        generate_references.step.dependOn(&map_to_specifications.run().step);
 
         // mem_gen.dependOn(&detail_to_options.run().step);
-        mem_gen.dependOn(&variants_to_hierarchy.run().step);
+        mem_gen.dependOn(&generate_references.run().step);
     }
 }
