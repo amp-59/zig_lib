@@ -18,9 +18,9 @@ fn writeVariantStructInternal(array: *gen.String, impl_detail: out.Detail, specs
 }
 fn writeVariantStruct(array: *gen.String, comptime impl_detail: out.Detail) void {
     const type_spec: gen.TypeSpecMap = out.type_specs[impl_detail.index];
-    var vars: u8 = 1;
-    while (@popCount(vars) != @bitSizeOf(type_spec.vars) + 1) : (vars +%= 1) {
-        var specs: out.Specifiers = undefined;
+    var vars: u8 = 0;
+    while (@popCount(vars) != @bitSizeOf(type_spec.vars)) : (vars +%= 1) {
+        var specs: out.Specifiers = .{};
         inline for (@typeInfo(type_spec.vars).Struct.fields) |field| {
             if (@hasField(out.Specifiers, field.name)) {
                 @field(specs, field.name) = @field(@bitCast(type_spec.vars, @truncate(meta.Child(type_spec.vars), vars)), field.name);
