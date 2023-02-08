@@ -20,7 +20,7 @@ const out = struct {
     usingnamespace @import("./zig-out/src/memgen_variants.zig");
     usingnamespace @import("./zig-out/src/memgen_canonical.zig");
     usingnamespace @import("./zig-out/src/memgen_canonicals.zig");
-    usingnamespace @import("./zig-out/src/memgen_specifications.zig");
+    usingnamespace @import("./zig-out/src/memgen_container_specifications.zig");
 };
 
 const Args = mem.StaticArray([:0]const u8, 8);
@@ -1076,7 +1076,6 @@ fn writeReturnImplementation(array: *gen.String, impl_detail: *const out.DetailM
         array.writeMany(end_expression);
     }
 }
-
 const Filtered = struct {
     []const *const out.DetailMore,
     []const *const out.DetailMore,
@@ -1109,10 +1108,6 @@ fn filterTechnique(
     }
     return .{ f, buf[0..t_len] };
 }
-
-// TODO: constant maximum largest impl group
-// TODO: constant field names
-
 fn writeDeductionTestBoolean(
     allocator: *gen.Allocator,
     array: *gen.String,
@@ -1232,9 +1227,7 @@ fn writeDeduction(
         switch (tag) {
             .eliminate_boolean_false,
             .eliminate_boolean_true,
-            => {
-                return writeDeduction(allocator, array, toplevel_impl_group, impl_group, options[1..]);
-            },
+            => return writeDeduction(allocator, array, toplevel_impl_group, impl_group, options[1..]),
             .test_boolean => {
                 return writeDeductionTestBoolean(allocator, array, toplevel_impl_group, impl_group, options, options[0].info.field_field_names);
             },
@@ -1254,21 +1247,21 @@ pub fn generateReferences() void {
         .{ .name = "mach", .path = "../mach.zig" },
         .{ .name = "algo", .path = "../algo.zig" },
     });
+    array.writeMany(@embedFile("./reference-template.zig"));
+    var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
-    var spec_index: u16 = 0;
-    var impl_index: u16 = 0;
-
-    for (out.specifications) |ctn_group| {
-        defer ctn_index +%= 1;
-        for (ctn_group) |spec_group| {
-            defer spec_index +%= 1;
+    while (ctn_index != out.container_specifications.len) : (ctn_index +%= 1) {
+        const ctn_group: []const []const u16 = out.container_specifications[ctn_index];
+        var spec_index: u16 = 0;
+        while (spec_index != ctn_group.len) : (spec_index +%= 1) {
+            defer accm_spec_index +%= 1;
+            const spec_group: []const u16 = ctn_group[spec_index];
             if (spec_group.len == 0) {
                 continue;
             }
             array.writeMany("pub const Specification");
-            gen.writeIndex(&array, spec_index);
-            array.writeMany(" = struct {\n");
-            array.writeMany("const Specification = @This();\n");
+            gen.writeIndex(&array, accm_spec_index);
+            array.writeMany(" = struct {\nconst Specification = @This();\n");
             if (spec_group.len == 1) {
                 array.writeMany("pub fn Implementation(comptime spec: Specification) type {\n");
                 writeReturnImplementation(&array, &out.variants[spec_group[0]]);
@@ -1277,7 +1270,11 @@ pub fn generateReferences() void {
                 const save: gen.Allocator.Save = allocator.save();
                 defer allocator.restore(save);
                 const buf: []*const out.DetailMore = allocator.allocate(*const out.DetailMore, spec_group.len);
-                for (spec_group) |var_index, ptr_index| buf[ptr_index] = &out.variants[var_index];
+                var impl_index: u16 = 0;
+                while (impl_index != spec_group.len) : (impl_index +%= 1) {
+                    const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
+                    buf[impl_index] = impl_variant;
+                }
                 array.writeMany("pub fn Implementation(comptime spec: Specification, comptime options: anytype) type {\n");
                 writeDeduction(&allocator, &array, buf, buf, &out.options);
                 array.writeMany("}\n");
@@ -1286,28 +1283,32 @@ pub fn generateReferences() void {
         }
     }
     ctn_index = 0;
-    spec_index = 0;
-    for (out.specifications) |ctn_group| {
-        defer ctn_index +%= 1;
-        for (ctn_group) |spec_group| {
-            defer spec_index +%= 1;
-            for (spec_group) |var_index| {
-                defer impl_index +%= 1;
-                array.writeMany("inline fn ");
-                writeImplementationName(&array, &out.variants[var_index]);
+    accm_spec_index = 0;
+    while (ctn_index != out.container_specifications.len) : (ctn_index +%= 1) {
+        const ctn_group: []const []const u16 = out.container_specifications[ctn_index];
+        var spec_index: u16 = 0;
+        while (spec_index != ctn_group.len) : (spec_index +%= 1) {
+            defer accm_spec_index +%= 1;
+            const spec_group: []const u16 = ctn_group[spec_index];
+            var impl_index: u16 = 0;
+            while (impl_index != spec_group.len) : (impl_index +%= 1) {
+                if (spec_group.len == 0) {
+                    continue;
+                }
+                const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
+                array.writeMany("fn ");
+                writeImplementationName(&array, impl_variant);
                 array.writeMany("(comptime " ++ spec_name ++ ": " ++ generic_spec_type_name);
-                gen.writeIndex(&array, spec_index);
+                gen.writeIndex(&array, accm_spec_index);
                 array.writeMany(") type {\nreturn (struct {\n");
-                writeFields(&array, &out.variants[var_index]);
+                writeFields(&array, impl_variant);
                 array.writeMany("const " ++ impl_type_name ++ " = @This();\n");
-                writeDecls(&array, &out.variants[var_index]);
-                for (key) |impl_fn_info| writeFn(&array, &out.variants[var_index], &impl_fn_info);
+                writeDecls(&array, impl_variant);
+                for (key) |impl_fn_info| writeFn(&array, impl_variant, &impl_fn_info);
                 array.writeMany("});\n}\n");
-                impl_index +%= 1;
             }
         }
     }
-
     writeFile(&array);
 }
 pub const main = generateReferences;
