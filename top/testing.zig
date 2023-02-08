@@ -275,3 +275,22 @@ pub fn print(any: anytype) void {
     array.writeAny(fmt_spec, any);
     file.noexcept.write(2, array.readAll());
 }
+fn uniqueSet(comptime T: type, set: []const T) void {
+    var l_index: usize = 0;
+    while (l_index != set.len) : (l_index +%= 1) {
+        var r_index: usize = l_index;
+        while (r_index != set.len) : (r_index +%= 1) {
+            if (l_index != r_index) {
+                if (builtin.testEqual(T, set[l_index], set[r_index])) {
+                    printN(4096, .{
+                        "identical: ", l_index,
+                        " == ",        r_index,
+                        '\n',          meta.leastRealBitCast(set[l_index]),
+                        " == ",        meta.leastRealBitCast(set[r_index]),
+                        '\n',
+                    });
+                }
+            }
+        }
+    }
+}
