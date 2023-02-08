@@ -51,8 +51,6 @@ pub fn main(builder: *build.Builder) !void {
         abstract_to_type_spec.step.dependOn(&spec_to_abstract.run().step);
         // const detail_to_options = util.addProjectExecutable(builder, "detail_to_options", "top/mem/detail_to_options.zig", small);
         abstract_to_type_spec.step.dependOn(&spec_to_detail.run().step);
-        const detail_to_groups = util.addProjectExecutable(builder, "detail_to_groups", "top/mem/detail_to_groups.zig", small);
-        detail_to_groups.step.dependOn(&spec_to_detail.run().step);
         const detail_to_variants = util.addProjectExecutable(builder, "detail_to_variants", "top/mem/detail_to_variants.zig", small);
         detail_to_variants.step.dependOn(&spec_to_detail.run().step);
         detail_to_variants.step.dependOn(&abstract_to_type_spec.run().step);
