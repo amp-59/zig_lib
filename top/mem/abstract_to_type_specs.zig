@@ -146,9 +146,7 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
     }
     array.writeMany("\n    .{ .params = ");
     writeStructFromFields(array, p_struct_fields);
-    array.undefine(2);
-    array.writeMany(", options: options.Options0");
-    array.writeMany(" }, .specs = &[_]type{\n");
+    array.writeMany(", .specs = &[_]type{\n");
     inline for (s_struct_field_slices) |s_struct_fields| {
         array.writeMany("        ");
         writeStructFromFields(array, s_struct_fields);
@@ -195,7 +193,6 @@ fn writeSpecifiersStruct(array: *gen.String, field_names: mem.StaticArray([]cons
 pub fn abstractToTypeSpec(array: *gen.String) void {
     gen.writeImports(array, @src(), &.{
         .{ .name = "gen", .path = "./../../gen.zig" },
-        .{ .name = "options", .path = "./memgen_options.zig" },
     });
     var field_names: mem.StaticArray([]const u8, 16) = undefined;
     field_names.undefineAll();
@@ -205,7 +202,7 @@ pub fn abstractToTypeSpec(array: *gen.String) void {
     }
     array.writeMany("\n};\n");
     writeSpecifiersStruct(array, field_names);
-    gen.writeAuxiliarySourceFile(array, "memgen_type_spec.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_type_specs.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
