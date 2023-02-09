@@ -53,10 +53,10 @@ const ws: [28]u8 = .{' '} ** 28;
 const kill_spaces: u64 = (initial_indent + 1) * 4;
 const build_members_loc_token: []const u8 = "__compile_command: void,";
 const format_members_loc_token: []const u8 = "__format_command: void,";
-const build_len_fn_body_loc_token: []const u8 = "_ = buildLength;";
-const build_write_fn_body_loc_token: []const u8 = "_ = buildWrite;";
-const format_len_fn_body_loc_token: []const u8 = "_ = formatLength;";
-const format_write_fn_body_loc_token: []const u8 = "_ = formatWrite;";
+const build_len_fn_body_loc_token: []const u8 = "cmd = buildLength;";
+const build_write_fn_body_loc_token: []const u8 = "cmd = buildWrite;";
+const format_len_fn_body_loc_token: []const u8 = "cmd = formatLength;";
+const format_write_fn_body_loc_token: []const u8 = "cmd = formatWrite;";
 pub const open_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = .append },
 };
@@ -83,7 +83,7 @@ pub const FormatCommandOptions = opaque {
         .arg_type = []const u8,
     };
 };
-pub const CompileCommandOptions = opaque {
+pub const BuildCommandOptions = opaque {
     pub const watch: OptionSpec = .{ .string = "--watch" };
     pub const color: OptionSpec = .{
         .string = "--color",
@@ -349,12 +349,12 @@ pub const CompileCommandOptions = opaque {
         .arg_type = u64,
     };
     pub const macros: OptionSpec = .{
-        .arg_type = types.Macros,
-        .arg_type_name = "Macros",
+        .arg_type = []const types.Macro,
+        .arg_type_name = "[]const Macro",
     };
     pub const packages: OptionSpec = .{
-        .arg_type = types.Packages,
-        .arg_type_name = "Packages",
+        .arg_type = []const types.Pkg,
+        .arg_type_name = "[]const Pkg",
     };
     pub const cflags: OptionSpec = .{
         .arg_type = types.CFlags,
@@ -587,7 +587,7 @@ pub fn formatCompositeLiteral(
 }
 fn writeIf(array: *Array, width: *u64, what_field: []const u8) void {
     array.writeMany(ws[0..width.*]);
-    array.writeMany("if (target.cmd.");
+    array.writeMany("if (cmd.");
     array.writeMany(what_field);
     array.writeMany(") {\n");
     width.* += 4;
@@ -604,14 +604,14 @@ fn writeNoOptionalIf(array: *Array, width: *u64) void {
 }
 fn writeIfHow(array: *Array, width: *u64, what_field: []const u8) void {
     array.writeMany(ws[0..width.*]);
-    array.writeMany("if (target.cmd.");
+    array.writeMany("if (cmd.");
     array.writeMany(what_field);
     array.writeMany(") |how| {\n");
     width.* += 4;
 }
 fn writeIfWhat(array: *Array, width: *u64, what_field: []const u8) void {
     array.writeMany(ws[0..width.*]);
-    array.writeMany("if (target.cmd.");
+    array.writeMany("if (cmd.");
     array.writeMany(what_field);
     array.writeMany(") |");
     array.writeMany(what_field);
@@ -1058,7 +1058,7 @@ pub fn getOptType(comptime opt_spec: OptionSpec) type {
     }
 }
 fn writeFieldAccess(array: *Array, what_field: []const u8) void {
-    array.writeMany("target.cmd.");
+    array.writeMany("cmd.");
     array.writeMany(what_field);
 }
 fn writeOpenCall(array: *Array, fn_name: []const u8, variant: Variant) void {
@@ -1451,8 +1451,8 @@ pub fn main(args_in: [][*:0]u8) !void {
     const up_addr: u64 = mach.alignA64(ub_addr, 4096);
 
     const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
-    const build_src: []const u8 = subTemplate(template_src, "build-struct.zig").?;
-    const types_src: []const u8 = subTemplate(template_src, "build-types.zig").?;
+    var build_src: []u8 = @qualCast([]u8, subTemplate(template_src, "build-struct.zig").?);
+    var types_src: []u8 = @qualCast([]u8, subTemplate(template_src, "build-types.zig").?);
 
     const build_members_offset: u64 = try guessSourceOffset(build_src, build_members_loc_token, 6080);
     const format_members_offset: u64 = try guessSourceOffset(build_src, format_members_loc_token, 6147);
@@ -1462,14 +1462,14 @@ pub fn main(args_in: [][*:0]u8) !void {
     const format_write_fn_body_offset: u64 = try guessSourceOffset(build_src, format_write_fn_body_loc_token, 8328);
 
     array.writeMany(build_src[0 .. build_members_offset - (initial_indent * 4)]);
-    writeStructMembers(CompileCommandOptions, &array);
+    writeStructMembers(BuildCommandOptions, &array);
     array.writeMany(build_src[build_members_offset + build_members_loc_token.len + 1 .. format_members_offset - (initial_indent * 4)]);
     writeStructMembers(FormatCommandOptions, &array);
     array.writeMany(build_src[format_members_offset + format_members_loc_token.len + 1 .. build_len_fn_body_offset - kill_spaces]);
-    writeFunctionBody(CompileCommandOptions, &array, .length);
+    writeFunctionBody(BuildCommandOptions, &array, .length);
     array.writeMany(build_src[build_len_fn_body_offset + build_len_fn_body_loc_token.len + 1 .. build_write_fn_body_offset - kill_spaces]);
-    writeFunctionBody(CompileCommandOptions, &array, .write);
-    array.writeMany(build_src[build_write_fn_body_offset + build_write_fn_body_loc_token.len + 1 .. format_len_fn_body_offset - (initial_indent * 4)]);
+    writeFunctionBody(BuildCommandOptions, &array, .write);
+    array.writeMany(build_src[build_write_fn_body_offset + build_write_fn_body_loc_token.len + 1 .. format_len_fn_body_offset - kill_spaces]);
     writeFunctionBody(FormatCommandOptions, &array, .length);
     array.writeMany(build_src[format_len_fn_body_offset + format_len_fn_body_loc_token.len + 1 .. format_write_fn_body_offset - kill_spaces]);
     writeFunctionBody(FormatCommandOptions, &array, .write);
