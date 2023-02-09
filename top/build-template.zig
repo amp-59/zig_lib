@@ -22,6 +22,7 @@ pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
 pub const StaticString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const StaticPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
+pub const Dependencies = Allocator.StructuredVector(Dependency);
 
 const max_len: u64 = 65536;
 const max_args: u64 = 512;
@@ -37,25 +38,39 @@ pub const Builder = struct {
     targets: ArrayC = .{},
     array: *ArrayU,
     const ArrayC = mem.StaticArray(Target, 64);
-    pub fn addBuild(builder: *Builder, kind: OutputMode) *CompileCommand {
-        builder.array.writeOne(CompileCommand, .{
-            .kind = kind,
-            .omit_frame_pointer = false,
-            .single_threaded = true,
-            .static = true,
-            .enable_cache = true,
-            .compiler_rt = false,
-            .strip = true,
-            .formatted_panics = false,
-            .main_pkg_path = builder.build_root,
-        });
-        return builder.array.referOneBack(CompileCommand);
+    pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
+    pub fn addBuild(builder: *Builder, init: BuildCommand) *BuildCommand {
+        builder.array.writeOne(BuildCommand, init);
+        return builder.array.referOneBack(BuildCommand);
     }
-    pub fn addFormat(builder: *Builder) *FormatCommand {
-        builder.array.writeOne(FormatCommand, .{});
+    pub fn addFormat(builder: *Builder, init: FormatCommand) *FormatCommand {
+        builder.array.writeOne(FormatCommand, init);
         return builder.array.referOneBack(FormatCommand);
     }
-    pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
+    pub fn addRun(builder: *Builder, init: FormatCommand) *RunCommand {
+        builder.array.writeOne(FormatCommand, init);
+        return builder.array.referOneBack(FormatCommand);
+    }
+    pub fn zigExePathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = zigExePath(builder) };
+        return .{ .name = "zig_exe", .value = value };
+    }
+    pub fn buildRootPathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = buildRootPath(builder) };
+        return .{ .name = "build_root", .value = value };
+    }
+    pub fn cacheDirPathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = cacheDirPath(builder) };
+        return .{ .name = "cache_dir", .value = value };
+    }
+    pub fn globalCacheDirPathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = globalCacheDirPath(builder) };
+        return .{ .name = "global_cache_dir", .value = value };
+    }
+    pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) Macro {
+        const value: Macro.Value = .{ .path = builder.sourceRootPath(root) };
+        return .{ .name = "root", .value = value };
+    }
     pub fn zigExePath(builder: *const Builder) Path {
         return builder.path(builder.zig_exe);
     }
@@ -71,21 +86,6 @@ pub const Builder = struct {
     pub fn sourceRootPath(builder: *const Builder, root: [:0]const u8) Path {
         return builder.path(root);
     }
-    pub fn zigExePathMacro(builder: *const Builder) Macro {
-        return .{ .name = "zig_exe", .value = .{ .path = zigExePath(builder) } };
-    }
-    pub fn buildRootPathMacro(builder: *const Builder) Macro {
-        return .{ .name = "build_root", .value = .{ .path = buildRootPath(builder) } };
-    }
-    pub fn cacheDirPathMacro(builder: *const Builder) Macro {
-        return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(builder) } };
-    }
-    pub fn globalCacheDirPathMacro(builder: *const Builder) Macro {
-        return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(builder) } };
-    }
-    pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) Macro {
-        return .{ .name = "root", .value = .{ .path = builder.sourceRootPath(root) } };
-    }
     pub fn path(builder: *const Builder, name: [:0]const u8) Path {
         return .{ .builder = builder, .pathname = name };
     }
@@ -93,14 +93,23 @@ pub const Builder = struct {
         builder.writeOne(T, value);
         return builder.array.referOneBack(T);
     }
-    pub fn dupeMany(builder: *const Builder, comptime T: type, values: []const T) []const T {
+    pub fn dupeMany(
+        builder: *const Builder,
+        comptime T: type,
+        values: []const T,
+    ) []const T {
         if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
         builder.array.writeMany(T, values);
         return builder.array.referManyBack(T, .{ .count = values.len });
     }
-    pub fn dupeWithSentinel(builder: *const Builder, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
+    pub fn dupeWithSentinel(
+        builder: *const Builder,
+        comptime T: type,
+        comptime sentinel: T,
+        values: [:sentinel]const T,
+    ) [:sentinel]const T {
         if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
@@ -115,32 +124,42 @@ pub const Builder = struct {
         comptime pathname: [:0]const u8,
         comptime args: Args(name),
     ) *Target {
-        const ret: *Target = builder.targets.referOneUndefined();
-        const cmd: *CompileCommand = builder.addBuild(.exe);
-        builder.array.define(CompileCommand, .{ .count = 1 });
-        ret.* = .{
-            .root = pathname,
-            .cmd = cmd,
-            .builder = builder,
-        };
         comptime var macros: []const Macro = args.macros orelse meta.empty;
         macros = comptime args.setMacro(macros, "runtime_assertions");
         macros = comptime args.setMacro(macros, "is_verbose");
+        builder.targets.writeOne(.{
+            .root = pathname,
+            .build_cmd = builder.addBuild(.{
+                .name = name,
+                .macros = macros,
+                .kind = .exe,
+                .omit_frame_pointer = false,
+                .single_threaded = true,
+                .static = true,
+                .enable_cache = true,
+                .compiler_rt = false,
+                .strip = true,
+                .formatted_panics = false,
+                .main_pkg_path = builder.build_root,
+            }),
+            .fmt_cmd = builder.addFormat(.{
+                .ast_check = true,
+            }),
+            .builder = builder,
+        });
+        const ret: *Target = builder.targets.referOneBack();
         if (args.build_mode) |build_mode| {
-            ret.cmd.O = build_mode;
+            ret.build_cmd.O = build_mode;
         }
         if (args.packages) |packages| {
-            ret.cmd.packages = packages;
+            ret.build_cmd.packages = packages;
         }
         if (builder.options.build_mode) |build_mode| {
-            ret.cmd.O = build_mode;
+            ret.build_cmd.O = build_mode;
         }
         if (args.emit_bin_path) |bin_path| {
-            ret.cmd.emit_bin = .{ .yes = builder.path(bin_path) };
+            ret.build_cmd.emit_bin = .{ .yes = builder.path(bin_path) };
         }
-        ret.cmd.name = name;
-        ret.cmd.macros = macros;
-        builder.targets.define(1);
         return ret;
     }
     fn exec(builder: Builder, args: [][*:0]u8) !u64 {
@@ -153,47 +172,59 @@ pub const OutputMode = enum {
     obj,
     run,
 };
-pub const CompileCommand = struct {
+pub const BuildCommand = struct {
     kind: OutputMode,
     __compile_command: void,
 };
 pub const FormatCommand = struct {
     __format_command: void,
 };
+pub const RunCommand = struct {
+    args: Pointers,
+    vars: Pointers,
+};
 pub const Target = struct {
     root: [:0]const u8,
-    fmt: *FormatCommand = undefined,
-    cmd: *CompileCommand = undefined,
+    build_cmd: *BuildCommand,
+    fmt_cmd: ?*FormatCommand = null,
+    run_cmd: ?*RunCommand = null,
+    r_flag: bool = false,
+    f_flag: bool = false,
+    b_flag: bool = false,
+    deps: ?Dependencies = null,
+
     builder: *Builder,
     fn buildLength(target: Target) u64 {
+        const cmd: *const BuildCommand = target.build_cmd;
         var len: u64 = 4;
-        switch (target.cmd.kind) {
+        switch (cmd.kind) {
             .lib, .exe, .obj => {
-                len += 6 + @tagName(target.cmd.kind).len + 1;
+                len += 6 + @tagName(cmd.kind).len + 1;
             },
             .run => {
-                len += @tagName(target.cmd.kind).len + 1;
+                len += @tagName(cmd.kind).len + 1;
             },
         }
         len +%= Macro.formatLength(target.builder.zigExePathMacro());
         len +%= Macro.formatLength(target.builder.buildRootPathMacro());
         len +%= Macro.formatLength(target.builder.cacheDirPathMacro());
         len +%= Macro.formatLength(target.builder.globalCacheDirPathMacro());
-        _ = buildLength;
+        cmd = buildLength;
         len +%= Path.formatLength(target.builder.sourceRootPath(target.root));
         len +%= 1;
         return len;
     }
     fn buildWrite(target: Target, array: anytype) u64 {
+        const cmd: *const BuildCommand = target.build_cmd;
         array.writeMany("zig\x00");
-        switch (target.cmd.kind) {
+        switch (cmd.kind) {
             .lib, .exe, .obj => {
                 array.writeMany("build-");
-                array.writeMany(@tagName(target.cmd.kind));
+                array.writeMany(@tagName(cmd.kind));
                 array.writeOne('\x00');
             },
             .run => {
-                array.writeMany(@tagName(target.cmd.kind));
+                array.writeMany(@tagName(cmd.kind));
                 array.writeOne('\x00');
             },
         }
@@ -201,27 +232,36 @@ pub const Target = struct {
         array.writeFormat(target.builder.buildRootPathMacro());
         array.writeFormat(target.builder.cacheDirPathMacro());
         array.writeFormat(target.builder.globalCacheDirPathMacro());
-        _ = buildWrite;
+        cmd = buildWrite;
         array.writeFormat(target.builder.sourceRootPath(target.root));
         array.writeOne('\x00');
         return countArgs(array);
     }
     fn formatLength(target: Target) u64 {
+        const cmd: *const FormatCommand = target.fmt_cmd orelse {
+            var buf: [4096]u8 = undefined;
+            builtin.debug.logFaultAIO(&buf, &.{ "format command undefined for source: ", target.root, "\n" });
+        };
         var len: u64 = 8;
-        _ = formatLength;
+        cmd = formatLength;
         len +%= Path.formatLength(target.builder.sourceRootPath(target.root));
         len +%= 1;
         return len;
     }
     fn formatWrite(target: Target, array: anytype) u64 {
+        const cmd: *const FormatCommand = target.fmt_cmd orelse {
+            var buf: [4096]u8 = undefined;
+            builtin.debug.logFaultAIO(&buf, &.{ "format command undefined for source: ", target.root, "\n" });
+        };
         array.writeMany("zig\x00");
         array.writeMany("fmt\x00");
-        _ = formatWrite;
+        cmd = formatWrite;
         array.writeFormat(target.builder.sourceRootPath(target.root));
         array.writeOne('\x00');
         return countArgs(array);
     }
-    pub fn compileA(target: Target, allocator: *Allocator) !u64 {
+    pub fn buildA(target: *Target, allocator: *Allocator) !u64 {
+        if (target.fmt_cmd != null) _ = try target.format();
         var array: String = try meta.wrap(String.init(allocator, target.buildLength()));
         defer array.deinit(allocator);
         var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
@@ -229,26 +269,86 @@ pub const Target = struct {
         builtin.assertBelowOrEqual(u64, array.len(), max_len);
         builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-    pub fn compile(target: Target) !u64 {
+
+    pub fn build(target: *Target) !u64 {
+        try target.maybeInvokeDependencies();
+        if (target.fmt_cmd != null) _ = try target.format();
         var array: StaticString = .{};
         var args: StaticPointers = .{};
         builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
         builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
+    pub fn formatA(target: *Target, allocator: *Allocator) !u64 {
+        var array: String = try meta.wrap(String.init(allocator, target.formatLength()));
+        defer array.deinit(allocator);
+        var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
+        defer args.deinit(allocator);
+        builtin.assertBelowOrEqual(u64, array.len(), max_len);
+        builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
+        builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.f_flag = true;
+        return target.builder.exec(args.referAllDefined());
+    }
+    pub fn format(target: *Target) !u64 {
+        var array: StaticString = .{};
+        var args: StaticPointers = .{};
+        builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
+        builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+        builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.f_flag = true;
+        return target.builder.exec(args.referAllDefined());
+    }
+    pub fn run(_: Target) !void {}
+    pub fn dependOn(target: *Target, dependency: Dependency) void {
+        if (target.deps) |*deps| {
+            deps.writeOne(dependency);
+        } else {
+            target.deps = Dependencies.init(target.builder.allocator, 8);
+            return target.dependOn(dependency);
+        }
+    }
+    fn maybeInvokeDependencies(target: *Target) anyerror!void {
+        if (target.deps) |deps| {
+            for (deps.referAllDefined()) |dep| {
+                switch (dep.cmd) {
+                    .build => |cmd| {
+                        if (cmd) |build_cmd| {
+                            var tmp = dep.target.*;
+                            tmp.build_cmd = build_cmd;
+                            _ = try tmp.build();
+                        } else {
+                            _ = try dep.target.build();
+                        }
+                    },
+                    .run => |cmd| {
+                        if (cmd) |run_cmd| {
+                            var tmp = dep.target.*;
+                            tmp.run_cmd = run_cmd;
+                            _ = try tmp.run();
+                        } else {
+                            _ = try dep.target.run();
+                        }
+                    },
+                    .fmt => |cmd| {
+                        if (cmd) |fmt_cmd| {
+                            var tmp = dep.target.*;
+                            tmp.fmt_cmd = fmt_cmd;
+                            _ = try tmp.format();
+                        } else {
+                            _ = try dep.target.format();
+                        }
+                    },
+                }
+            }
+        }
+    }
 };
-/// Environment variables needed to find user home directory
-pub fn zigCacheDirGlobal(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
-    const home_pathname: [:0]const u8 = try file.home(vars);
-    var len: u64 = 0;
-    for (home_pathname) |c, i| buf[len + i] = c;
-    len += home_pathname.len;
-    for ("/.cache/zig") |c, i| buf[len + i] = c;
-    return buf[0 .. len + 11 :0];
-}
 fn countArgs(array: anytype) u64 {
     var count: u64 = 0;
     for (array.readAll()) |value| {
@@ -273,8 +373,16 @@ fn makeArgs(array: anytype, args: anytype) u64 {
 }
 // finish-document build-struct.zig
 // start-document build-types.zig
-pub const Packages = []const Pkg;
-pub const Macros = []const Macro;
+/// All dependencies are build dependencies
+pub const Dependency = struct {
+    target: *Target,
+    cmd: DependCommand,
+    pub const DependCommand = union(enum) {
+        fmt: ?*FormatCommand,
+        run: ?*RunCommand,
+        build: ?*BuildCommand,
+    };
+};
 pub const Pkg = struct {
     name: []const u8,
     path: []const u8,
@@ -308,16 +416,16 @@ pub const Pkg = struct {
         return len;
     }
 };
-/// Zig says value does not need to be defined, in which case default to 1
 pub const Macro = struct {
     name: []const u8,
-    value: union(enum) {
+    value: Value,
+    const Format = @This();
+    const Value = union(enum) {
         string: [:0]const u8,
         symbol: [:0]const u8,
         constant: usize,
         path: Path,
-    },
-    const Format = @This();
+    };
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-D");
         array.writeMany(format.name);
@@ -458,8 +566,8 @@ fn Args(comptime name: [:0]const u8) type {
         define_build_working_directory: bool = true,
         is_large_test: bool = false,
         strip: bool = true,
-        packages: ?Packages = null,
-        macros: ?Macros = null,
+        packages: ?[]const Pkg = null,
+        macros: ?[]const Macro = null,
         fn setMacro(
             comptime args: @This(),
             comptime macros: []const Macro,
