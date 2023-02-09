@@ -555,9 +555,13 @@ pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
+pub inline fn identity(any: anytype) @TypeOf(any) {
+    return any;
+}
 fn @"test"(b: bool) bool {
     return b;
 }
+
 // Currently, only the following non-trivial comparisons are supported:
 fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
     var i: usize = 0;
