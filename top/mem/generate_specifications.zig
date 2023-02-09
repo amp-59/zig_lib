@@ -1014,6 +1014,11 @@ fn printFunctionsInTagOrder() void {
         }
     }
 }
+fn writeFile(array: *gen.String) void {
+    const fd: u64 = gen.create(builtin.build_root.? ++ "/top/mem/reference.zig");
+    defer gen.close(fd);
+    gen.write(fd, array.readAll());
+}
 fn hasCapability(impl_variant: *const out.DetailMore, fn_info: *const Fn) bool {
     return switch (fn_info.tag) {
         .define,
@@ -1239,6 +1244,11 @@ fn writeDeduction(
 pub fn generateReferences() void {
     var allocator: gen.Allocator = gen.Allocator.init();
     var array: gen.String = gen.String.init(allocator.allocate(u8, 1024 * 1024));
+    gen.writeImports(&array, @src(), &.{
+        .{ .name = "mach", .path = "../mach.zig" },
+        .{ .name = "algo", .path = "../algo.zig" },
+    });
+    array.writeMany(@embedFile("./reference-template.zig"));
     var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
     while (ctn_index != out.container_specifications.len) : (ctn_index +%= 1) {
@@ -1247,25 +1257,33 @@ pub fn generateReferences() void {
         while (spec_index != ctn_group.len) : (spec_index +%= 1) {
             defer accm_spec_index +%= 1;
             const spec_group: []const u16 = ctn_group[spec_index];
-            var impl_index: u16 = 0;
-            while (impl_index != spec_group.len) : (impl_index +%= 1) {
-                if (spec_group.len == 0) {
-                    continue;
-                }
-                const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
-                array.writeMany("fn ");
-                writeImplementationName(&array, impl_variant);
-                array.writeMany("(comptime " ++ spec_name ++ ": " ++ generic_spec_type_name);
-                gen.writeIndex(&array, accm_spec_index);
-                array.writeMany(") type {\nreturn (struct {\n");
-                writeFields(&array, impl_variant);
-                array.writeMany("const " ++ impl_type_name ++ " = @This();\n");
-                writeDecls(&array, impl_variant);
-                for (key) |impl_fn_info| writeFn(&array, impl_variant, &impl_fn_info);
-                array.writeMany("});\n}\n");
+            if (spec_group.len == 0) {
+                continue;
             }
+            array.writeMany("pub const Specification");
+            gen.writeIndex(&array, accm_spec_index);
+            array.writeMany(" = struct {\nconst Specification = @This();\n");
+            if (spec_group.len == 1) {
+                array.writeMany("pub fn Implementation(comptime spec: Specification) type {\n");
+                writeReturnImplementation(&array, &out.variants[spec_group[0]]);
+                array.writeMany("}\n");
+            } else {
+                const save: gen.Allocator.Save = allocator.save();
+                defer allocator.restore(save);
+                const buf: []*const out.DetailMore = allocator.allocate(*const out.DetailMore, spec_group.len);
+                var impl_index: u16 = 0;
+                while (impl_index != spec_group.len) : (impl_index +%= 1) {
+                    const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
+                    buf[impl_index] = impl_variant;
+                }
+                array.writeMany("pub fn Implementation(comptime spec: Specification, comptime options: anytype) type {\n");
+                writeDeduction(&allocator, &array, buf, buf, &out.options);
+                array.writeMany("}\n");
+            }
+            array.writeMany("};\n");
         }
     }
-    gen.appendSourceFile(&array, "reference.zig");
+    gen.writeSourceFile(&array, "reference.zig");
 }
+
 pub const main = generateReferences;
