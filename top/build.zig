@@ -20,6 +20,7 @@ pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
 pub const StaticString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const StaticPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
+pub const Dependencies = Allocator.StructuredVector(Dependency);
 
 const max_len: u64 = 65536;
 const max_args: u64 = 512;
@@ -35,25 +36,39 @@ pub const Builder = struct {
     targets: ArrayC = .{},
     array: *ArrayU,
     const ArrayC = mem.StaticArray(Target, 64);
-    pub fn addBuild(builder: *Builder, kind: OutputMode) *CompileCommand {
-        builder.array.writeOne(CompileCommand, .{
-            .kind = kind,
-            .omit_frame_pointer = false,
-            .single_threaded = true,
-            .static = true,
-            .enable_cache = true,
-            .compiler_rt = false,
-            .strip = true,
-            .formatted_panics = false,
-            .main_pkg_path = builder.build_root,
-        });
-        return builder.array.referOneBack(CompileCommand);
+    pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
+    pub fn addBuild(builder: *Builder, init: BuildCommand) *BuildCommand {
+        builder.array.writeOne(BuildCommand, init);
+        return builder.array.referOneBack(BuildCommand);
     }
-    pub fn addFormat(builder: *Builder) *FormatCommand {
-        builder.array.writeOne(FormatCommand, .{});
+    pub fn addFormat(builder: *Builder, init: FormatCommand) *FormatCommand {
+        builder.array.writeOne(FormatCommand, init);
         return builder.array.referOneBack(FormatCommand);
     }
-    pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
+    pub fn addRun(builder: *Builder, init: FormatCommand) *RunCommand {
+        builder.array.writeOne(FormatCommand, init);
+        return builder.array.referOneBack(FormatCommand);
+    }
+    pub fn zigExePathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = zigExePath(builder) };
+        return .{ .name = "zig_exe", .value = value };
+    }
+    pub fn buildRootPathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = buildRootPath(builder) };
+        return .{ .name = "build_root", .value = value };
+    }
+    pub fn cacheDirPathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = cacheDirPath(builder) };
+        return .{ .name = "cache_dir", .value = value };
+    }
+    pub fn globalCacheDirPathMacro(builder: *const Builder) Macro {
+        const value: Macro.Value = .{ .path = globalCacheDirPath(builder) };
+        return .{ .name = "global_cache_dir", .value = value };
+    }
+    pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) Macro {
+        const value: Macro.Value = .{ .path = builder.sourceRootPath(root) };
+        return .{ .name = "root", .value = value };
+    }
     pub fn zigExePath(builder: *const Builder) Path {
         return builder.path(builder.zig_exe);
     }
@@ -69,21 +84,6 @@ pub const Builder = struct {
     pub fn sourceRootPath(builder: *const Builder, root: [:0]const u8) Path {
         return builder.path(root);
     }
-    pub fn zigExePathMacro(builder: *const Builder) Macro {
-        return .{ .name = "zig_exe", .value = .{ .path = zigExePath(builder) } };
-    }
-    pub fn buildRootPathMacro(builder: *const Builder) Macro {
-        return .{ .name = "build_root", .value = .{ .path = buildRootPath(builder) } };
-    }
-    pub fn cacheDirPathMacro(builder: *const Builder) Macro {
-        return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(builder) } };
-    }
-    pub fn globalCacheDirPathMacro(builder: *const Builder) Macro {
-        return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(builder) } };
-    }
-    pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) Macro {
-        return .{ .name = "root", .value = .{ .path = builder.sourceRootPath(root) } };
-    }
     pub fn path(builder: *const Builder, name: [:0]const u8) Path {
         return .{ .builder = builder, .pathname = name };
     }
@@ -91,14 +91,23 @@ pub const Builder = struct {
         builder.writeOne(T, value);
         return builder.array.referOneBack(T);
     }
-    pub fn dupeMany(builder: *const Builder, comptime T: type, values: []const T) []const T {
+    pub fn dupeMany(
+        builder: *const Builder,
+        comptime T: type,
+        values: []const T,
+    ) []const T {
         if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
         builder.array.writeMany(T, values);
         return builder.array.referManyBack(T, .{ .count = values.len });
     }
-    pub fn dupeWithSentinel(builder: *const Builder, comptime T: type, comptime sentinel: T, values: [:sentinel]const T) [:sentinel]const T {
+    pub fn dupeWithSentinel(
+        builder: *const Builder,
+        comptime T: type,
+        comptime sentinel: T,
+        values: [:sentinel]const T,
+    ) [:sentinel]const T {
         if (@ptrToInt(values.ptr) < builtin.AddressSpace.low(0)) {
             return values;
         }
@@ -113,32 +122,42 @@ pub const Builder = struct {
         comptime pathname: [:0]const u8,
         comptime args: Args(name),
     ) *Target {
-        const ret: *Target = builder.targets.referOneUndefined();
-        const cmd: *CompileCommand = builder.addBuild(.exe);
-        builder.array.define(CompileCommand, .{ .count = 1 });
-        ret.* = .{
-            .root = pathname,
-            .cmd = cmd,
-            .builder = builder,
-        };
         comptime var macros: []const Macro = args.macros orelse meta.empty;
         macros = comptime args.setMacro(macros, "runtime_assertions");
         macros = comptime args.setMacro(macros, "is_verbose");
+        builder.targets.writeOne(.{
+            .root = pathname,
+            .build_cmd = builder.addBuild(.{
+                .name = name,
+                .macros = macros,
+                .kind = .exe,
+                .omit_frame_pointer = false,
+                .single_threaded = true,
+                .static = true,
+                .enable_cache = true,
+                .compiler_rt = false,
+                .strip = true,
+                .formatted_panics = false,
+                .main_pkg_path = builder.build_root,
+            }),
+            .fmt_cmd = builder.addFormat(.{
+                .ast_check = true,
+            }),
+            .builder = builder,
+        });
+        const ret: *Target = builder.targets.referOneBack();
         if (args.build_mode) |build_mode| {
-            ret.cmd.O = build_mode;
+            ret.build_cmd.O = build_mode;
         }
         if (args.packages) |packages| {
-            ret.cmd.packages = packages;
+            ret.build_cmd.packages = packages;
         }
         if (builder.options.build_mode) |build_mode| {
-            ret.cmd.O = build_mode;
+            ret.build_cmd.O = build_mode;
         }
         if (args.emit_bin_path) |bin_path| {
-            ret.cmd.emit_bin = .{ .yes = builder.path(bin_path) };
+            ret.build_cmd.emit_bin = .{ .yes = builder.path(bin_path) };
         }
-        ret.cmd.name = name;
-        ret.cmd.macros = macros;
-        builder.targets.define(1);
         return ret;
     }
     fn exec(builder: Builder, args: [][*:0]u8) !u64 {
@@ -151,7 +170,7 @@ pub const OutputMode = enum {
     obj,
     run,
 };
-pub const CompileCommand = struct {
+pub const BuildCommand = struct {
     kind: OutputMode,
     watch: bool = false,
     color: ?enum(u2) { on = 0, off = 1, auto = 2 } = null,
@@ -222,8 +241,8 @@ pub const CompileCommand = struct {
     gc_sections: ?bool = null,
     stack: ?u64 = null,
     image_base: ?u64 = null,
-    macros: ?Macros = null,
-    packages: ?Packages = null,
+    macros: ?[]const Macro = null,
+    packages: ?[]const Pkg = null,
     cflags: ?struct { flags: []const []const u8 } = null,
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null,
     test_filter: ?[]const u8 = null,
@@ -240,34 +259,45 @@ pub const FormatCommand = struct {
     ast_check: bool = false,
     exclude: ?[]const u8 = null,
 };
+pub const RunCommand = struct {
+    args: Pointers,
+    vars: Pointers,
+};
 pub const Target = struct {
     root: [:0]const u8,
-    fmt: *FormatCommand = undefined,
-    cmd: *CompileCommand = undefined,
+    build_cmd: *BuildCommand,
+    fmt_cmd: ?*FormatCommand = null,
+    run_cmd: ?*RunCommand = null,
+    r_flag: bool = false,
+    f_flag: bool = false,
+    b_flag: bool = false,
+    deps: ?Dependencies = null,
+
     builder: *Builder,
     fn buildLength(target: Target) u64 {
+        const cmd: *const BuildCommand = target.build_cmd;
         var len: u64 = 4;
-        switch (target.cmd.kind) {
+        switch (cmd.kind) {
             .lib, .exe, .obj => {
-                len += 6 + @tagName(target.cmd.kind).len + 1;
+                len += 6 + @tagName(cmd.kind).len + 1;
             },
             .run => {
-                len += @tagName(target.cmd.kind).len + 1;
+                len += @tagName(cmd.kind).len + 1;
             },
         }
         len +%= Macro.formatLength(target.builder.zigExePathMacro());
         len +%= Macro.formatLength(target.builder.buildRootPathMacro());
         len +%= Macro.formatLength(target.builder.cacheDirPathMacro());
         len +%= Macro.formatLength(target.builder.globalCacheDirPathMacro());
-        if (target.cmd.watch) {
+        if (cmd.watch) {
             len +%= 8;
         }
-        if (target.cmd.color) |how| {
+        if (cmd.color) |how| {
             len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.emit_bin) |emit_bin| {
+        if (cmd.emit_bin) |emit_bin| {
             switch (emit_bin) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -283,7 +313,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_asm) |emit_asm| {
+        if (cmd.emit_asm) |emit_asm| {
             switch (emit_asm) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -299,7 +329,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_llvm_ir) |emit_llvm_ir| {
+        if (cmd.emit_llvm_ir) |emit_llvm_ir| {
             switch (emit_llvm_ir) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -315,7 +345,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_llvm_bc) |emit_llvm_bc| {
+        if (cmd.emit_llvm_bc) |emit_llvm_bc| {
             switch (emit_llvm_bc) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -331,7 +361,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_h) |emit_h| {
+        if (cmd.emit_h) |emit_h| {
             switch (emit_h) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -347,7 +377,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_docs) |emit_docs| {
+        if (cmd.emit_docs) |emit_docs| {
             switch (emit_docs) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -363,7 +393,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_analysis) |emit_analysis| {
+        if (cmd.emit_analysis) |emit_analysis| {
             switch (emit_analysis) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -379,7 +409,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_implib) |emit_implib| {
+        if (cmd.emit_implib) |emit_implib| {
             switch (emit_implib) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -395,253 +425,253 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.show_builtin) {
+        if (cmd.show_builtin) {
             len +%= 15;
         }
-        if (target.cmd.cache_dir) |how| {
+        if (cmd.cache_dir) |how| {
             len +%= 12;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.global_cache_dir) |how| {
+        if (cmd.global_cache_dir) |how| {
             len +%= 19;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.zig_lib_dir) |how| {
+        if (cmd.zig_lib_dir) |how| {
             len +%= 14;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.enable_cache) {
+        if (cmd.enable_cache) {
             len +%= 15;
         }
-        if (target.cmd.target) |how| {
+        if (cmd.target) |how| {
             len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.cpu) |how| {
+        if (cmd.cpu) |how| {
             len +%= 6;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.code_model) |how| {
+        if (cmd.code_model) |how| {
             len +%= 9;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.red_zone) |red_zone| {
+        if (cmd.red_zone) |red_zone| {
             if (red_zone) {
                 len +%= 11;
             } else {
                 len +%= 14;
             }
         }
-        if (target.cmd.omit_frame_pointer) |omit_frame_pointer| {
+        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
             if (omit_frame_pointer) {
                 len +%= 21;
             } else {
                 len +%= 24;
             }
         }
-        if (target.cmd.exec_model) |how| {
+        if (cmd.exec_model) |how| {
             len +%= 13;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.name) |how| {
+        if (cmd.name) |how| {
             len +%= 7;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.O) |how| {
+        if (cmd.O) |how| {
             len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.main_pkg_path) |how| {
+        if (cmd.main_pkg_path) |how| {
             len +%= 16;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.pic) |pic| {
+        if (cmd.pic) |pic| {
             if (pic) {
                 len +%= 6;
             } else {
                 len +%= 9;
             }
         }
-        if (target.cmd.pie) |pie| {
+        if (cmd.pie) |pie| {
             if (pie) {
                 len +%= 6;
             } else {
                 len +%= 9;
             }
         }
-        if (target.cmd.lto) |lto| {
+        if (cmd.lto) |lto| {
             if (lto) {
                 len +%= 6;
             } else {
                 len +%= 9;
             }
         }
-        if (target.cmd.stack_check) |stack_check| {
+        if (cmd.stack_check) |stack_check| {
             if (stack_check) {
                 len +%= 14;
             } else {
                 len +%= 17;
             }
         }
-        if (target.cmd.sanitize_c) |sanitize_c| {
+        if (cmd.sanitize_c) |sanitize_c| {
             if (sanitize_c) {
                 len +%= 13;
             } else {
                 len +%= 16;
             }
         }
-        if (target.cmd.valgrind) |valgrind| {
+        if (cmd.valgrind) |valgrind| {
             if (valgrind) {
                 len +%= 11;
             } else {
                 len +%= 14;
             }
         }
-        if (target.cmd.sanitize_thread) |sanitize_thread| {
+        if (cmd.sanitize_thread) |sanitize_thread| {
             if (sanitize_thread) {
                 len +%= 18;
             } else {
                 len +%= 21;
             }
         }
-        if (target.cmd.dll_export_fns) |dll_export_fns| {
+        if (cmd.dll_export_fns) |dll_export_fns| {
             if (dll_export_fns) {
                 len +%= 17;
             } else {
                 len +%= 20;
             }
         }
-        if (target.cmd.unwind_tables) |unwind_tables| {
+        if (cmd.unwind_tables) |unwind_tables| {
             if (unwind_tables) {
                 len +%= 16;
             } else {
                 len +%= 19;
             }
         }
-        if (target.cmd.llvm) |llvm| {
+        if (cmd.llvm) |llvm| {
             if (llvm) {
                 len +%= 7;
             } else {
                 len +%= 10;
             }
         }
-        if (target.cmd.clang) |clang| {
+        if (cmd.clang) |clang| {
             if (clang) {
                 len +%= 8;
             } else {
                 len +%= 11;
             }
         }
-        if (target.cmd.stage1) |stage1| {
+        if (cmd.stage1) |stage1| {
             if (stage1) {
                 len +%= 9;
             } else {
                 len +%= 12;
             }
         }
-        if (target.cmd.single_threaded) |single_threaded| {
+        if (cmd.single_threaded) |single_threaded| {
             if (single_threaded) {
                 len +%= 18;
             } else {
                 len +%= 21;
             }
         }
-        if (target.cmd.builtin) {
+        if (cmd.builtin) {
             len +%= 10;
         }
-        if (target.cmd.function_sections) |function_sections| {
+        if (cmd.function_sections) |function_sections| {
             if (function_sections) {
                 len +%= 20;
             } else {
                 len +%= 23;
             }
         }
-        if (target.cmd.strip) |strip| {
+        if (cmd.strip) |strip| {
             if (strip) {
                 len +%= 8;
             } else {
                 len +%= 11;
             }
         }
-        if (target.cmd.formatted_panics) |formatted_panics| {
+        if (cmd.formatted_panics) |formatted_panics| {
             if (formatted_panics) {
                 len +%= 19;
             } else {
                 len +%= 22;
             }
         }
-        if (target.cmd.fmt) |how| {
+        if (cmd.fmt) |how| {
             len +%= 6;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.dirafter) |how| {
+        if (cmd.dirafter) |how| {
             len +%= 10;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.system) |how| {
+        if (cmd.system) |how| {
             len +%= 9;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.include) |how| {
+        if (cmd.include) |how| {
             len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.libc) |how| {
+        if (cmd.libc) |how| {
             len +%= 7;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.library) |how| {
+        if (cmd.library) |how| {
             len +%= 10;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.library_directory) |how| {
+        if (cmd.library_directory) |how| {
             len +%= 20;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.link_script) |how| {
+        if (cmd.link_script) |how| {
             len +%= 9;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.version_script) |how| {
+        if (cmd.version_script) |how| {
             len +%= 17;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.dynamic_linker) |how| {
+        if (cmd.dynamic_linker) |how| {
             len +%= 17;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.sysroot) |how| {
+        if (cmd.sysroot) |how| {
             len +%= 10;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.version) {
+        if (cmd.version) {
             len +%= 10;
         }
-        if (target.cmd.entry) {
+        if (cmd.entry) {
             len +%= 8;
         }
-        if (target.cmd.soname) |soname| {
+        if (cmd.soname) |soname| {
             switch (soname) {
                 .yes => |yes_arg| {
                     len +%= 9;
@@ -653,90 +683,90 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.lld) |lld| {
+        if (cmd.lld) |lld| {
             if (lld) {
                 len +%= 6;
             } else {
                 len +%= 9;
             }
         }
-        if (target.cmd.compiler_rt) |compiler_rt| {
+        if (cmd.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
                 len +%= 14;
             } else {
                 len +%= 17;
             }
         }
-        if (target.cmd.rdynamic) {
+        if (cmd.rdynamic) {
             len +%= 10;
         }
-        if (target.cmd.rpath) |how| {
+        if (cmd.rpath) |how| {
             len +%= 7;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.each_lib_rpath) |each_lib_rpath| {
+        if (cmd.each_lib_rpath) |each_lib_rpath| {
             if (each_lib_rpath) {
                 len +%= 17;
             } else {
                 len +%= 20;
             }
         }
-        if (target.cmd.allow_shlib_undefined) |allow_shlib_undefined| {
+        if (cmd.allow_shlib_undefined) |allow_shlib_undefined| {
             if (allow_shlib_undefined) {
                 len +%= 24;
             } else {
                 len +%= 27;
             }
         }
-        if (target.cmd.build_id) |build_id| {
+        if (cmd.build_id) |build_id| {
             if (build_id) {
                 len +%= 11;
             } else {
                 len +%= 14;
             }
         }
-        if (target.cmd.dynamic) {
+        if (cmd.dynamic) {
             len +%= 9;
         }
-        if (target.cmd.static) {
+        if (cmd.static) {
             len +%= 8;
         }
-        if (target.cmd.symbolic) {
+        if (cmd.symbolic) {
             len +%= 11;
         }
-        if (target.cmd.compress_debug_sections) |how| {
+        if (cmd.compress_debug_sections) |how| {
             len +%= 26;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.gc_sections) |gc_sections| {
+        if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
                 len +%= 14;
             } else {
                 len +%= 17;
             }
         }
-        if (target.cmd.stack) |how| {
+        if (cmd.stack) |how| {
             len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.image_base) |how| {
+        if (cmd.image_base) |how| {
             len +%= 13;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.macros) |how| {
+        if (cmd.macros) |how| {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
         }
-        if (target.cmd.packages) |how| {
+        if (cmd.packages) |how| {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
         }
-        if (target.cmd.cflags) |how| {
+        if (cmd.cflags) |how| {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
         }
-        if (target.cmd.z) |how| {
+        if (cmd.z) |how| {
             len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
@@ -746,15 +776,16 @@ pub const Target = struct {
         return len;
     }
     fn buildWrite(target: Target, array: anytype) u64 {
+        const cmd: *const BuildCommand = target.build_cmd;
         array.writeMany("zig\x00");
-        switch (target.cmd.kind) {
+        switch (cmd.kind) {
             .lib, .exe, .obj => {
                 array.writeMany("build-");
-                array.writeMany(@tagName(target.cmd.kind));
+                array.writeMany(@tagName(cmd.kind));
                 array.writeOne('\x00');
             },
             .run => {
-                array.writeMany(@tagName(target.cmd.kind));
+                array.writeMany(@tagName(cmd.kind));
                 array.writeOne('\x00');
             },
         }
@@ -762,15 +793,15 @@ pub const Target = struct {
         array.writeFormat(target.builder.buildRootPathMacro());
         array.writeFormat(target.builder.cacheDirPathMacro());
         array.writeFormat(target.builder.globalCacheDirPathMacro());
-        if (target.cmd.watch) {
+        if (cmd.watch) {
             array.writeMany("--watch\x00");
         }
-        if (target.cmd.color) |how| {
+        if (cmd.color) |how| {
             array.writeMany("--color\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.emit_bin) |emit_bin| {
+        if (cmd.emit_bin) |emit_bin| {
             switch (emit_bin) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -786,7 +817,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_asm) |emit_asm| {
+        if (cmd.emit_asm) |emit_asm| {
             switch (emit_asm) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -802,7 +833,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_llvm_ir) |emit_llvm_ir| {
+        if (cmd.emit_llvm_ir) |emit_llvm_ir| {
             switch (emit_llvm_ir) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -818,7 +849,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_llvm_bc) |emit_llvm_bc| {
+        if (cmd.emit_llvm_bc) |emit_llvm_bc| {
             switch (emit_llvm_bc) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -834,7 +865,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_h) |emit_h| {
+        if (cmd.emit_h) |emit_h| {
             switch (emit_h) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -850,7 +881,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_docs) |emit_docs| {
+        if (cmd.emit_docs) |emit_docs| {
             switch (emit_docs) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -866,7 +897,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_analysis) |emit_analysis| {
+        if (cmd.emit_analysis) |emit_analysis| {
             switch (emit_analysis) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -882,7 +913,7 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.emit_implib) |emit_implib| {
+        if (cmd.emit_implib) |emit_implib| {
             switch (emit_implib) {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
@@ -898,253 +929,253 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.show_builtin) {
+        if (cmd.show_builtin) {
             array.writeMany("--show-builtin\x00");
         }
-        if (target.cmd.cache_dir) |how| {
+        if (cmd.cache_dir) |how| {
             array.writeMany("--cache-dir\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.global_cache_dir) |how| {
+        if (cmd.global_cache_dir) |how| {
             array.writeMany("--global-cache-dir\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.zig_lib_dir) |how| {
+        if (cmd.zig_lib_dir) |how| {
             array.writeMany("--zig-lib-dir\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.enable_cache) {
+        if (cmd.enable_cache) {
             array.writeMany("--enable-cache\x00");
         }
-        if (target.cmd.target) |how| {
+        if (cmd.target) |how| {
             array.writeMany("-target\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.cpu) |how| {
+        if (cmd.cpu) |how| {
             array.writeMany("-mcpu\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.code_model) |how| {
+        if (cmd.code_model) |how| {
             array.writeMany("-mcmodel\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.red_zone) |red_zone| {
+        if (cmd.red_zone) |red_zone| {
             if (red_zone) {
                 array.writeMany("-mred-zone\x00");
             } else {
                 array.writeMany("-mno-red-zone\x00");
             }
         }
-        if (target.cmd.omit_frame_pointer) |omit_frame_pointer| {
+        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
             if (omit_frame_pointer) {
                 array.writeMany("-fomit-frame-pointer\x00");
             } else {
                 array.writeMany("-fno-omit-frame-pointer\x00");
             }
         }
-        if (target.cmd.exec_model) |how| {
+        if (cmd.exec_model) |how| {
             array.writeMany("-mexec-model\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.name) |how| {
+        if (cmd.name) |how| {
             array.writeMany("--name\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.O) |how| {
+        if (cmd.O) |how| {
             array.writeMany("-O\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.main_pkg_path) |how| {
+        if (cmd.main_pkg_path) |how| {
             array.writeMany("--main-pkg-path\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.pic) |pic| {
+        if (cmd.pic) |pic| {
             if (pic) {
                 array.writeMany("-fPIC\x00");
             } else {
                 array.writeMany("-fno-PIC\x00");
             }
         }
-        if (target.cmd.pie) |pie| {
+        if (cmd.pie) |pie| {
             if (pie) {
                 array.writeMany("-fPIE\x00");
             } else {
                 array.writeMany("-fno-PIE\x00");
             }
         }
-        if (target.cmd.lto) |lto| {
+        if (cmd.lto) |lto| {
             if (lto) {
                 array.writeMany("-flto\x00");
             } else {
                 array.writeMany("-fno-lto\x00");
             }
         }
-        if (target.cmd.stack_check) |stack_check| {
+        if (cmd.stack_check) |stack_check| {
             if (stack_check) {
                 array.writeMany("-fstack-check\x00");
             } else {
                 array.writeMany("-fno-stack-check\x00");
             }
         }
-        if (target.cmd.sanitize_c) |sanitize_c| {
+        if (cmd.sanitize_c) |sanitize_c| {
             if (sanitize_c) {
                 array.writeMany("-fsanitize-c\x00");
             } else {
                 array.writeMany("-fno-sanitize-c\x00");
             }
         }
-        if (target.cmd.valgrind) |valgrind| {
+        if (cmd.valgrind) |valgrind| {
             if (valgrind) {
                 array.writeMany("-fvalgrind\x00");
             } else {
                 array.writeMany("-fno-valgrind\x00");
             }
         }
-        if (target.cmd.sanitize_thread) |sanitize_thread| {
+        if (cmd.sanitize_thread) |sanitize_thread| {
             if (sanitize_thread) {
                 array.writeMany("-fsanitize-thread\x00");
             } else {
                 array.writeMany("-fno-sanitize-thread\x00");
             }
         }
-        if (target.cmd.dll_export_fns) |dll_export_fns| {
+        if (cmd.dll_export_fns) |dll_export_fns| {
             if (dll_export_fns) {
                 array.writeMany("-fdll-export-fns\x00");
             } else {
                 array.writeMany("-fno-dll-export-fns\x00");
             }
         }
-        if (target.cmd.unwind_tables) |unwind_tables| {
+        if (cmd.unwind_tables) |unwind_tables| {
             if (unwind_tables) {
                 array.writeMany("-funwind-tables\x00");
             } else {
                 array.writeMany("-fno-unwind-tables\x00");
             }
         }
-        if (target.cmd.llvm) |llvm| {
+        if (cmd.llvm) |llvm| {
             if (llvm) {
                 array.writeMany("-fLLVM\x00");
             } else {
                 array.writeMany("-fno-LLVM\x00");
             }
         }
-        if (target.cmd.clang) |clang| {
+        if (cmd.clang) |clang| {
             if (clang) {
                 array.writeMany("-fClang\x00");
             } else {
                 array.writeMany("-fno-Clang\x00");
             }
         }
-        if (target.cmd.stage1) |stage1| {
+        if (cmd.stage1) |stage1| {
             if (stage1) {
                 array.writeMany("-fstage1\x00");
             } else {
                 array.writeMany("-fno-stage1\x00");
             }
         }
-        if (target.cmd.single_threaded) |single_threaded| {
+        if (cmd.single_threaded) |single_threaded| {
             if (single_threaded) {
                 array.writeMany("-fsingle-threaded\x00");
             } else {
                 array.writeMany("-fno-single-threaded\x00");
             }
         }
-        if (target.cmd.builtin) {
+        if (cmd.builtin) {
             array.writeMany("-fbuiltin\x00");
         }
-        if (target.cmd.function_sections) |function_sections| {
+        if (cmd.function_sections) |function_sections| {
             if (function_sections) {
                 array.writeMany("-ffunction-sections\x00");
             } else {
                 array.writeMany("-fno-function-sections\x00");
             }
         }
-        if (target.cmd.strip) |strip| {
+        if (cmd.strip) |strip| {
             if (strip) {
                 array.writeMany("-fstrip\x00");
             } else {
                 array.writeMany("-fno-strip\x00");
             }
         }
-        if (target.cmd.formatted_panics) |formatted_panics| {
+        if (cmd.formatted_panics) |formatted_panics| {
             if (formatted_panics) {
                 array.writeMany("-fformatted-panics\x00");
             } else {
                 array.writeMany("-fno-formatted-panics\x00");
             }
         }
-        if (target.cmd.fmt) |how| {
+        if (cmd.fmt) |how| {
             array.writeMany("-ofmt\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.dirafter) |how| {
+        if (cmd.dirafter) |how| {
             array.writeMany("-dirafter\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.system) |how| {
+        if (cmd.system) |how| {
             array.writeMany("-isystem\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.include) |how| {
+        if (cmd.include) |how| {
             array.writeMany("-I\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.libc) |how| {
+        if (cmd.libc) |how| {
             array.writeMany("--libc\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.library) |how| {
+        if (cmd.library) |how| {
             array.writeMany("--library\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.library_directory) |how| {
+        if (cmd.library_directory) |how| {
             array.writeMany("--library-directory\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.link_script) |how| {
+        if (cmd.link_script) |how| {
             array.writeMany("--script\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.version_script) |how| {
+        if (cmd.version_script) |how| {
             array.writeMany("--version-script\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.dynamic_linker) |how| {
+        if (cmd.dynamic_linker) |how| {
             array.writeMany("--dynamic-linker\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.sysroot) |how| {
+        if (cmd.sysroot) |how| {
             array.writeMany("--sysroot\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.version) {
+        if (cmd.version) {
             array.writeMany("--version\x00");
         }
-        if (target.cmd.entry) {
+        if (cmd.entry) {
             array.writeMany("--entry\x00");
         }
-        if (target.cmd.soname) |soname| {
+        if (cmd.soname) |soname| {
             switch (soname) {
                 .yes => |yes_arg| {
                     array.writeMany("-fsoname\x00");
@@ -1156,90 +1187,90 @@ pub const Target = struct {
                 },
             }
         }
-        if (target.cmd.lld) |lld| {
+        if (cmd.lld) |lld| {
             if (lld) {
                 array.writeMany("-fLLD\x00");
             } else {
                 array.writeMany("-fno-LLD\x00");
             }
         }
-        if (target.cmd.compiler_rt) |compiler_rt| {
+        if (cmd.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
                 array.writeMany("-fcompiler-rt\x00");
             } else {
                 array.writeMany("-fno-compiler-rt\x00");
             }
         }
-        if (target.cmd.rdynamic) {
+        if (cmd.rdynamic) {
             array.writeMany("-rdynamic\x00");
         }
-        if (target.cmd.rpath) |how| {
+        if (cmd.rpath) |how| {
             array.writeMany("-rpath\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.each_lib_rpath) |each_lib_rpath| {
+        if (cmd.each_lib_rpath) |each_lib_rpath| {
             if (each_lib_rpath) {
                 array.writeMany("-feach-lib-rpath\x00");
             } else {
                 array.writeMany("-fno-each-lib-rpath\x00");
             }
         }
-        if (target.cmd.allow_shlib_undefined) |allow_shlib_undefined| {
+        if (cmd.allow_shlib_undefined) |allow_shlib_undefined| {
             if (allow_shlib_undefined) {
                 array.writeMany("-fallow-shlib-undefined\x00");
             } else {
                 array.writeMany("-fno-allow-shlib-undefined\x00");
             }
         }
-        if (target.cmd.build_id) |build_id| {
+        if (cmd.build_id) |build_id| {
             if (build_id) {
                 array.writeMany("-fbuild-id\x00");
             } else {
                 array.writeMany("-fno-build-id\x00");
             }
         }
-        if (target.cmd.dynamic) {
+        if (cmd.dynamic) {
             array.writeMany("-dynamic\x00");
         }
-        if (target.cmd.static) {
+        if (cmd.static) {
             array.writeMany("-static\x00");
         }
-        if (target.cmd.symbolic) {
+        if (cmd.symbolic) {
             array.writeMany("-Bsymbolic\x00");
         }
-        if (target.cmd.compress_debug_sections) |how| {
+        if (cmd.compress_debug_sections) |how| {
             array.writeMany("--compress-debug-sections\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.gc_sections) |gc_sections| {
+        if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
                 array.writeMany("--gc-sections\x00");
             } else {
                 array.writeMany("--no-gc-sections\x00");
             }
         }
-        if (target.cmd.stack) |how| {
+        if (cmd.stack) |how| {
             array.writeMany("--stack\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.image_base) |how| {
+        if (cmd.image_base) |how| {
             array.writeMany("--image-base\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.macros) |how| {
+        if (cmd.macros) |how| {
             array.writeAny(fmt_spec, how);
         }
-        if (target.cmd.packages) |how| {
+        if (cmd.packages) |how| {
             array.writeAny(fmt_spec, how);
         }
-        if (target.cmd.cflags) |how| {
+        if (cmd.cflags) |how| {
             array.writeAny(fmt_spec, how);
         }
-        if (target.cmd.z) |how| {
+        if (cmd.z) |how| {
             array.writeMany("-z\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
@@ -1249,22 +1280,26 @@ pub const Target = struct {
         return countArgs(array);
     }
     fn formatLength(target: Target) u64 {
+        const cmd: *const FormatCommand = target.fmt_cmd orelse {
+            var buf: [4096]u8 = undefined;
+            builtin.debug.logFaultAIO(&buf, &.{ "format command undefined for source: ", target.root, "\n" });
+        };
         var len: u64 = 8;
-        if (target.cmd.color) |how| {
+        if (cmd.color) |how| {
             len +%= 8;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (target.cmd.stdin) {
+        if (cmd.stdin) {
             len +%= 8;
         }
-        if (target.cmd.check) {
+        if (cmd.check) {
             len +%= 8;
         }
-        if (target.cmd.ast_check) {
+        if (cmd.ast_check) {
             len +%= 12;
         }
-        if (target.cmd.exclude) |how| {
+        if (cmd.exclude) |how| {
             len +%= 10;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
@@ -1274,23 +1309,27 @@ pub const Target = struct {
         return len;
     }
     fn formatWrite(target: Target, array: anytype) u64 {
+        const cmd: *const FormatCommand = target.fmt_cmd orelse {
+            var buf: [4096]u8 = undefined;
+            builtin.debug.logFaultAIO(&buf, &.{ "format command undefined for source: ", target.root, "\n" });
+        };
         array.writeMany("zig\x00");
         array.writeMany("fmt\x00");
-        if (target.cmd.color) |how| {
+        if (cmd.color) |how| {
             array.writeMany("--color\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (target.cmd.stdin) {
+        if (cmd.stdin) {
             array.writeMany("--sdtin\x00");
         }
-        if (target.cmd.check) {
+        if (cmd.check) {
             array.writeMany("--check\x00");
         }
-        if (target.cmd.ast_check) {
+        if (cmd.ast_check) {
             array.writeMany("--ast-check\x00");
         }
-        if (target.cmd.exclude) |how| {
+        if (cmd.exclude) |how| {
             array.writeMany("--exclude\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
@@ -1299,7 +1338,8 @@ pub const Target = struct {
         array.writeOne('\x00');
         return countArgs(array);
     }
-    pub fn compileA(target: Target, allocator: *Allocator) !u64 {
+    pub fn buildA(target: *Target, allocator: *Allocator) !u64 {
+        if (target.fmt_cmd != null) _ = try target.format();
         var array: String = try meta.wrap(String.init(allocator, target.buildLength()));
         defer array.deinit(allocator);
         var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
@@ -1307,26 +1347,86 @@ pub const Target = struct {
         builtin.assertBelowOrEqual(u64, array.len(), max_len);
         builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-    pub fn compile(target: Target) !u64 {
+
+    pub fn build(target: *Target) !u64 {
+        try target.maybeInvokeDependencies();
+        if (target.fmt_cmd != null) _ = try target.format();
         var array: StaticString = .{};
         var args: StaticPointers = .{};
         builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
         builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
+    pub fn formatA(target: *Target, allocator: *Allocator) !u64 {
+        var array: String = try meta.wrap(String.init(allocator, target.formatLength()));
+        defer array.deinit(allocator);
+        var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
+        defer args.deinit(allocator);
+        builtin.assertBelowOrEqual(u64, array.len(), max_len);
+        builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
+        builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.f_flag = true;
+        return target.builder.exec(args.referAllDefined());
+    }
+    pub fn format(target: *Target) !u64 {
+        var array: StaticString = .{};
+        var args: StaticPointers = .{};
+        builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
+        builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+        builtin.assertEqual(u64, array.len(), target.buildLength());
+        target.f_flag = true;
+        return target.builder.exec(args.referAllDefined());
+    }
+    pub fn run(_: Target) !void {}
+    pub fn dependOn(target: *Target, dependency: Dependency) void {
+        if (target.deps) |*deps| {
+            deps.writeOne(dependency);
+        } else {
+            target.deps = Dependencies.init(target.builder.allocator, 8);
+            return target.dependOn(dependency);
+        }
+    }
+    fn maybeInvokeDependencies(target: *Target) anyerror!void {
+        if (target.deps) |deps| {
+            for (deps.referAllDefined()) |dep| {
+                switch (dep.cmd) {
+                    .build => |cmd| {
+                        if (cmd) |build_cmd| {
+                            var tmp = dep.target.*;
+                            tmp.build_cmd = build_cmd;
+                            _ = try tmp.build();
+                        } else {
+                            _ = try dep.target.build();
+                        }
+                    },
+                    .run => |cmd| {
+                        if (cmd) |run_cmd| {
+                            var tmp = dep.target.*;
+                            tmp.run_cmd = run_cmd;
+                            _ = try tmp.run();
+                        } else {
+                            _ = try dep.target.run();
+                        }
+                    },
+                    .fmt => |cmd| {
+                        if (cmd) |fmt_cmd| {
+                            var tmp = dep.target.*;
+                            tmp.fmt_cmd = fmt_cmd;
+                            _ = try tmp.format();
+                        } else {
+                            _ = try dep.target.format();
+                        }
+                    },
+                }
+            }
+        }
+    }
 };
-/// Environment variables needed to find user home directory
-pub fn zigCacheDirGlobal(vars: [][*:0]u8, buf: [:0]u8) ![:0]u8 {
-    const home_pathname: [:0]const u8 = try file.home(vars);
-    var len: u64 = 0;
-    for (home_pathname) |c, i| buf[len + i] = c;
-    len += home_pathname.len;
-    for ("/.cache/zig") |c, i| buf[len + i] = c;
-    return buf[0 .. len + 11 :0];
-}
 fn countArgs(array: anytype) u64 {
     var count: u64 = 0;
     for (array.readAll()) |value| {
@@ -1350,8 +1450,16 @@ fn makeArgs(array: anytype, args: anytype) u64 {
     return args.len();
 }
 
-pub const Packages = []const Pkg;
-pub const Macros = []const Macro;
+/// All dependencies are build dependencies
+pub const Dependency = struct {
+    target: *Target,
+    cmd: DependCommand,
+    pub const DependCommand = union(enum) {
+        fmt: ?*FormatCommand,
+        run: ?*RunCommand,
+        build: ?*BuildCommand,
+    };
+};
 pub const Pkg = struct {
     name: []const u8,
     path: []const u8,
@@ -1385,16 +1493,16 @@ pub const Pkg = struct {
         return len;
     }
 };
-/// Zig says value does not need to be defined, in which case default to 1
 pub const Macro = struct {
     name: []const u8,
-    value: union(enum) {
+    value: Value,
+    const Format = @This();
+    const Value = union(enum) {
         string: [:0]const u8,
         symbol: [:0]const u8,
         constant: usize,
         path: Path,
-    },
-    const Format = @This();
+    };
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-D");
         array.writeMany(format.name);
@@ -1535,8 +1643,8 @@ fn Args(comptime name: [:0]const u8) type {
         define_build_working_directory: bool = true,
         is_large_test: bool = false,
         strip: bool = true,
-        packages: ?Packages = null,
-        macros: ?Macros = null,
+        packages: ?[]const Pkg = null,
+        macros: ?[]const Macro = null,
         fn setMacro(
             comptime args: @This(),
             comptime macros: []const Macro,
