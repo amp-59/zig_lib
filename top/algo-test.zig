@@ -79,6 +79,6 @@ fn approximationTest() void {
     builtin.assertBelow(u64, total_returned - total_requested, (2 * total_requested) / 100);
 }
 pub fn main() !void {
-    //try compareLayeredShellShort();
-    try approximationTest();
+    // try compareLayeredShellShort();
+    approximationTest();
 }
