@@ -953,6 +953,12 @@ pub const noexcept = opaque {
         return sys.noexcept.read(fd, @ptrToInt(buf.ptr), buf.len);
     }
 };
+pub fn readRandom(buf: []u8) void {
+    sys.noexcept.getrandom(@ptrToInt(buf.ptr), buf.len, if (builtin.is_perf)
+        sys.GRND.INSECURE
+    else
+        sys.GRND.RANDOM);
+}
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
         data: mem.StaticString(bytes) = .{},
