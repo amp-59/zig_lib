@@ -51,7 +51,7 @@ fn mapToContainers(array: *gen.String) void {
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
-    gen.writeFile(array, "memgen_containers.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_containers.zig");
 }
 
 pub export fn _start() noreturn {

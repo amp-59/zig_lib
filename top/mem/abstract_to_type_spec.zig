@@ -205,7 +205,7 @@ pub fn abstractToTypeSpec(array: *gen.String) void {
     }
     array.writeMany("\n};\n");
     writeSpecifiersStruct(array, field_names);
-    gen.writeFile(array, "memgen_type_spec.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_type_spec.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);

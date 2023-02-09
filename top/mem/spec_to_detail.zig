@@ -66,7 +66,7 @@ fn writeUnspecifiedDetails(array: *gen.String) void {
 }
 pub fn specToDetail(array: *gen.String) void {
     writeUnspecifiedDetails(array);
-    gen.writeFile(array, "memgen_detail.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_detail.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);

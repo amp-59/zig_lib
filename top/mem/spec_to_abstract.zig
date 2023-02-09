@@ -48,7 +48,7 @@ pub fn specToAbstract(array: *gen.String) void {
     const types: *[]const type = comptime slices(type);
     gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "./../../gen.zig" }});
     writeAbstractParameters(array, types);
-    gen.writeFile(array, "memgen_abstract.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_abstract.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);

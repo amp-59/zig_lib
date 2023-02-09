@@ -49,7 +49,7 @@ fn mapToContainers(array: *gen.String) void {
         array.writeMany("},");
     }
     array.writeMany("};\n");
-    gen.writeFile(array, "memgen_container_specifications.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_container_specifications.zig");
 }
 
 pub export fn _start() noreturn {

@@ -38,7 +38,7 @@ fn detailToVariants(array: *gen.String) void {
         writeVariantStruct(array, impl_detail);
     }
     array.writeMany("};\n");
-    gen.writeFile(array, "memgen_variants.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_variants.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);

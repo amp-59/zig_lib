@@ -55,7 +55,7 @@ fn writeOptions(array: *gen.String) void {
 pub fn specToOptions(array: *gen.String) void {
     gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "./../../gen.zig" }});
     writeOptions(array);
-    gen.writeFile(array, "memgen_options.zig");
+    gen.writeAuxiliarySourceFile(array, "memgen_options.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
