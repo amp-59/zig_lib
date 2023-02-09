@@ -35,9 +35,7 @@ fn compareLayeredShellShort() !void {
     const values_2 = @intToPtr([*]u64, size + size)[0..(size / 0x8)];
     {
         const t_0 = try time.realClock(null);
-        algo.shellSortAsc1(u64, values_1);
-        algo.shellSortAsc2(u64, values_1);
-        algo.shellSortAsc(u64, values_1);
+        algo.layeredShellSortAsc(u64, values_1);
         const t_1 = try time.realClock(null);
         testing.printN(4096, .{ fmt.any(time.diff(t_1, t_0)), '\n' });
     }
@@ -81,6 +79,6 @@ fn approximationTest() void {
     builtin.assertBelow(u64, total_returned - total_requested, (2 * total_requested) / 100);
 }
 pub fn main() !void {
-    // try compareLayeredShellShort();
-    approximationTest();
+    //try compareLayeredShellShort();
+    try approximationTest();
 }
