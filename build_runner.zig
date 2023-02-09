@@ -37,18 +37,18 @@ fn showAllCommands(builder: *const build.Builder) void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlways("commands:\n");
     for (builder.targets.readAll()) |target, index| {
-        const cmd_name: []const u8 = target.cmd.name orelse builtin.fmt.ud64(index).readAll();
-        builtin.debug.logAlwaysAIO(&buf, &.{ "    ", @tagName(target.cmd.kind), "\t", cmd_name, "\t", target.root, "\n" });
+        const cmd_name: []const u8 = target.build_cmd.name orelse builtin.fmt.ud64(index).readAll();
+        builtin.debug.logAlwaysAIO(&buf, &.{ "    ", @tagName(target.build_cmd.kind), "\t", cmd_name, "\t", target.root, "\n" });
     }
 }
-fn setAllCommands(builder: *const build.Builder, cmd_mode: meta.Field(build.CompileCommand, "kind")) void {
+fn setAllCommands(builder: *const build.Builder, cmd_mode: meta.Field(build.BuildCommand, "kind")) void {
     for (builder.targets.referAllDefined()) |*target| {
-        target.cmd.kind = cmd_mode;
+        target.build_cmd.kind = cmd_mode;
     }
 }
 fn execAllCommands(builder: *const build.Builder) !void {
-    for (builder.targets.readAll()) |target| {
-        builtin.assertNotEqual(u64, 0, try target.compile());
+    for (builder.targets.referAllDefined()) |*target| {
+        builtin.assertNotEqual(u64, 0, try target.build());
     }
 }
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
@@ -87,7 +87,6 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var index: u64 = 0;
     while (index != args.len) {
         const name: [:0]const u8 = meta.manyToSlice(args[index]);
-
         if (mem.testEqualMany(u8, name, "lib")) {
             setAllCommands(&builder, .lib);
             proc.shift(&args, index);
@@ -125,11 +124,11 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         if (mem.testEqualMany(u8, name, "--")) {
             break;
         }
-        for (builder.targets.readAll()) |target| {
-            const cmd_name: []const u8 = target.cmd.name orelse continue;
+        for (builder.targets.referAllDefined()) |*target| {
+            const cmd_name: []const u8 = target.build_cmd.name orelse continue;
             if (mem.testEqualMany(u8, name, cmd_name)) {
                 builder.args = builder.args[index..];
-                builtin.assertNotEqual(u64, 0, try target.compile());
+                builtin.assertNotEqual(u64, 0, try target.build());
                 break;
             }
         } else {
