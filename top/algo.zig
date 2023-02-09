@@ -156,3 +156,51 @@ pub fn approxDouble(k_bytes: u64) u64 {
     const n_bytes_ctz: u64 = ~mach.shrx64(lit.max_bit_u64, n_bytes_cls);
     return mach.sub64(m_bytes, mach.shrx64(n_bytes_ctz, n_bytes_clz) +% 1);
 }
+pub fn insertionSortAsc(comptime T: type, values: []T) void {
+    var i: u64 = 1;
+    while (i != values.len) : (i +%= 1) {
+        const x: T = values[i];
+        var j: u64 = i -% 1;
+        while (j >= 0 and values[j] > x) : (j -%= 1) {
+            values[j +% 1] = values[j];
+        }
+        values[j +% 1] = x;
+    }
+}
+pub fn shellSortAsc(comptime T: type, values: []T) void {
+    var gap: u64 = values.len / 2;
+    while (gap != 0) : (gap /= 2) {
+        var i: u64 = gap;
+        while (i != values.len) : (i +%= 1) {
+            var j: u64 = i -% gap;
+            while (j < values.len and values[j] > values[j +% gap]) : (j -%= gap) {
+                const k: u64 = j +% gap;
+                const values_k: T = values[j];
+                values[j] = values[k];
+                values[k] = values_k;
+            }
+        }
+    }
+}
+fn shellSortAscTransform(comptime T: type, comptime transform: anytype, values: []T) void {
+    var gap: u64 = values.len / 2;
+    while (gap != 0) : (gap /= 2) {
+        var i: u64 = gap;
+        while (i != values.len) : (i +%= 1) {
+            var j: u64 = i -% gap;
+            while (j < values.len and
+                transform(values[j]) > transform(values[j +% gap])) : (j -%= gap)
+            {
+                const k: u64 = j +% gap;
+                const values_k: T = values[j];
+                values[j] = values[k];
+                values[k] = values_k;
+            }
+        }
+    }
+}
+pub fn layeredShellSortAsc(comptime T: type, values: []T) void {
+    shellSortAscTransform(T, approx, values);
+    shellSortAscTransform(T, approxDouble, values);
+    shellSortAscTransform(T, builtin.identity, values);
+}
