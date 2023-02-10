@@ -556,6 +556,9 @@ pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
+pub fn nullPointer(comptime T: type) *allowzero T {
+    return @intToPtr(*allowzero T, 0);
+}
 pub inline fn identity(any: anytype) @TypeOf(any) {
     return any;
 }
