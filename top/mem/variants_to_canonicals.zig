@@ -7,7 +7,7 @@ const out = struct {
     usingnamespace @import("./detail.zig");
     usingnamespace @import("./detail_more.zig");
 
-    usingnamespace @import("./zig-out/src/memgen_type_spec.zig");
+    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
     usingnamespace @import("./zig-out/src/memgen_variants.zig");
     usingnamespace @import("./zig-out/src/memgen_canonical.zig");
 };
