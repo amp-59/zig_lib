@@ -7,7 +7,7 @@ const out = struct {
     usingnamespace @import("./detail_more.zig");
 
     usingnamespace @import("./zig-out/src/memgen_detail.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_spec.zig");
+    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
     usingnamespace @import("./zig-out/src/memgen_variants.zig");
 };
 
@@ -126,11 +126,13 @@ fn writeFieldType(comptime field: CanonicalFieldSpec, array: *gen.String) void {
 fn writeCanonicalStruct(array: *gen.String, comptime spec: CanonicalSpec) void {
     inline for (spec.fields) |field| writeFieldType(field, array);
     array.writeMany("pub const " ++ spec.type_name ++ " = packed struct {\n");
+    array.writeMany("    index: u8,\n");
     inline for (spec.fields) |field| {
         array.writeMany("    " ++ field.dst_name ++ ": " ++ field.dst_type_name ++ ",\n");
     }
     array.writeMany("    pub fn convert(detail: anytype) " ++ spec.type_name ++ " {\n");
     array.writeMany("        return .{\n");
+    array.writeMany("            .index = detail.index,\n");
     inline for (spec.fields) |field| {
         array.writeMany("            ." ++ field.dst_name ++ " = " ++ field.dst_type_name ++ ".convert(detail." ++ field.src_name ++ "),\n");
     }
