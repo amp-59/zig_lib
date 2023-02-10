@@ -35,8 +35,8 @@ const general_macros: build.Macros = &.{
     .{ .name = "runtime_assertions", .value = .{ .constant = 0 } },
     .{ .name = "build_root", .value = .{ .string = builtin.build_root.? } },
 };
-const parsedir_std_macros: build.Macros = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};
-const parsedir_lib_macros: build.Macros = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
+const parsedir_std_macros: []const build.Macro = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};
+const parsedir_lib_macros: []const build.Macro = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
 const zig_lib: build.Packages = &.{
     .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
 };
