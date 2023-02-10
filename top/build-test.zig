@@ -30,14 +30,14 @@ const thread_spec = proc.CloneSpec{
     .options = .{},
 };
 
-const general_macros: build.Macros = &.{
+const general_macros: []const build.Macro = &.{
     .{ .name = "is_verbose", .value = .{ .constant = 0 } },
     .{ .name = "runtime_assertions", .value = .{ .constant = 0 } },
     .{ .name = "build_root", .value = .{ .string = builtin.build_root.? } },
 };
 const parsedir_std_macros: []const build.Macro = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};
 const parsedir_lib_macros: []const build.Macro = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
-const zig_lib: build.Packages = &.{
+const zig_lib: []const build.Pkg = &.{
     .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
 };
 
@@ -61,5 +61,5 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .macros = general_macros,
         .packages = zig_lib,
     });
-    _ = try target.compile();
+    try target.build();
 }
