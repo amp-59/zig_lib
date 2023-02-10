@@ -20,7 +20,7 @@ const Variant = enum(u1) { length, write };
 
 const use_function_type: bool = false;
 const prefer_inline: bool = true;
-const write_fn_name: bool = !prefer_inline;
+const write_fn_name: bool = false;
 
 const initial_indent: u64 = if (use_function_type) 2 else 1;
 const alloc_options = .{
@@ -479,8 +479,8 @@ pub fn guessSourceOffset(src: []const u8, comptime string: []const u8, guess: u6
     return error.SourceDoesNotContainArray;
 }
 fn subTemplate(src: [:0]const u8, comptime sub_name: [:0]const u8) ?[]const u8 {
-    const start_s: []const u8 = "// start-document " ++ sub_name;
-    const finish_s: []const u8 = "// finish-document " ++ sub_name;
+    const start_s: []const u8 = "// start-document " ++ sub_name ++ "\n";
+    const finish_s: []const u8 = "// finish-document " ++ sub_name ++ "\n";
     if (mem.indexOfFirstEqualMany(u8, start_s, src)) |after| {
         if (mem.indexOfFirstEqualMany(u8, finish_s, src[after..])) |before| {
             const ret: []const u8 = src[after + start_s.len .. after + before];
@@ -1453,6 +1453,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
     var build_src: []u8 = @qualCast([]u8, subTemplate(template_src, "build-struct.zig").?);
     var types_src: []u8 = @qualCast([]u8, subTemplate(template_src, "build-types.zig").?);
+    var option_fn_src: []u8 = @qualCast([]u8, subTemplate(template_src, "option-functions.zig").?);
 
     const build_members_offset: u64 = try guessSourceOffset(build_src, build_members_loc_token, 6080);
     const format_members_offset: u64 = try guessSourceOffset(build_src, format_members_loc_token, 6147);
@@ -1475,6 +1476,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     writeFunctionBody(FormatCommandOptions, &array, .write);
     array.writeMany(build_src[format_write_fn_body_offset + format_write_fn_body_loc_token.len + 1 ..]);
     array.writeMany(types_src);
+    if (!prefer_inline) array.writeMany(option_fn_src);
 
     if (options.output) |pathname| {
         try writeFile(allocator, array, pathname);

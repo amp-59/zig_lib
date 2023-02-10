@@ -1,4 +1,3 @@
-
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
@@ -161,8 +160,10 @@ pub const Builder = struct {
         }
         return ret;
     }
-    fn exec(builder: Builder, args: [][*:0]u8) !u64 {
-        return proc.command(.{}, builder.zig_exe, args, builder.vars);
+    fn exec(builder: Builder, args: [][*:0]u8) !void {
+        if (0 != try proc.command(.{}, builder.zig_exe, args, builder.vars)) {
+            return error.UnexpectedExitStatus;
+        }
     }
 };
 pub const OutputMode = enum {
@@ -1339,7 +1340,7 @@ pub const Target = struct {
         array.writeOne('\x00');
         return countArgs(array);
     }
-    pub fn buildA(target: *Target, allocator: *Allocator) !u64 {
+    pub fn buildA(target: *Target, allocator: *Allocator) !void {
         if (target.fmt_cmd != null) _ = try target.format();
         var array: String = try meta.wrap(String.init(allocator, target.buildLength()));
         defer array.deinit(allocator);
@@ -1351,8 +1352,7 @@ pub const Target = struct {
         target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-
-    pub fn build(target: *Target) !u64 {
+    pub fn build(target: *Target) !void {
         try target.maybeInvokeDependencies();
         if (target.fmt_cmd != null) _ = try target.format();
         var array: StaticString = .{};
@@ -1363,7 +1363,7 @@ pub const Target = struct {
         target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-    pub fn formatA(target: *Target, allocator: *Allocator) !u64 {
+    pub fn formatA(target: *Target, allocator: *Allocator) !void {
         var array: String = try meta.wrap(String.init(allocator, target.formatLength()));
         defer array.deinit(allocator);
         var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
@@ -1374,7 +1374,7 @@ pub const Target = struct {
         target.f_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-    pub fn format(target: *Target) !u64 {
+    pub fn format(target: *Target) !void {
         var array: StaticString = .{};
         var args: StaticPointers = .{};
         builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
@@ -1450,7 +1450,6 @@ fn makeArgs(array: anytype, args: anytype) u64 {
     }
     return args.len();
 }
-
 /// All dependencies are build dependencies
 pub const Dependency = struct {
     target: *Target,
@@ -1662,165 +1661,4 @@ fn Args(comptime name: [:0]const u8) type {
             }
         }
     };
-}
-fn lengthOptionalWhatNoArgWhatNot(
-    option: anytype,
-    len_equ: u64,
-    len_yes: u64,
-    len_no: u64,
-) u64 {
-    if (option) |value| {
-        switch (value) {
-            .yes => |yes_optional_arg| {
-                if (yes_optional_arg) |yes_arg| {
-                    return len_equ +% mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg) +% 1;
-                } else {
-                    return len_yes;
-                }
-            },
-            .no => {
-                return len_no;
-            },
-        }
-    }
-    return 0;
-}
-fn lengthNonOptionalWhatNoArgWhatNot(
-    option: anytype,
-    len_yes: u64,
-    len_no: u64,
-) u64 {
-    if (option) |value| {
-        switch (value) {
-            .yes => |yes_arg| {
-                return len_yes +% mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg) +% 1;
-            },
-            .no => {
-                return len_no;
-            },
-        }
-    }
-    return 0;
-}
-fn lengthWhatOrWhatNot(
-    option: anytype,
-    len_yes: u64,
-    len_no: u64,
-) u64 {
-    if (option) |value| {
-        if (value) {
-            return len_yes;
-        } else {
-            return len_no;
-        }
-    }
-    return 0;
-}
-fn lengthWhatHow(
-    option: anytype,
-    len_yes: u64,
-) u64 {
-    if (option) |how| {
-        return len_yes +% mem.reinterpret.lengthAny(u8, fmt_spec, how) +% 1;
-    }
-    return 0;
-}
-fn lengthWhat(option: bool, len_yes: u64) u64 {
-    if (option) {
-        return len_yes;
-    }
-    return 0;
-}
-fn lengthHow(
-    option: anytype,
-) u64 {
-    if (option) |how| {
-        return mem.reinterpret.lengthAny(u8, fmt_spec, how);
-    }
-    return 0;
-}
-fn writeOptionalWhatNoArgWhatNot(
-    array: anytype,
-    option: anytype,
-    equ_switch: []const u8,
-    yes_switch: []const u8,
-    no_switch: []const u8,
-) void {
-    if (option) |value| {
-        switch (value) {
-            .yes => |yes_optional_arg| {
-                if (yes_optional_arg) |yes_arg| {
-                    array.writeMany(equ_switch);
-                    array.writeAny(fmt_spec, yes_arg);
-                    array.writeOne('\x00');
-                } else {
-                    array.writeMany(yes_switch);
-                }
-            },
-            .no => {
-                array.writeMany(no_switch);
-            },
-        }
-    }
-}
-fn writeNonOptionalWhatNoArgWhatNot(
-    array: anytype,
-    option: anytype,
-    yes_switch: []const u8,
-    no_switch: []const u8,
-) void {
-    if (option) |value| {
-        switch (value) {
-            .yes => |yes_arg| {
-                array.writeMany(yes_switch);
-                array.writeAny(fmt_spec, yes_arg);
-                array.writeOne('\x00');
-            },
-            .no => {
-                array.writeMany(no_switch);
-            },
-        }
-    }
-}
-fn writeWhatOrWhatNot(
-    array: anytype,
-    option: anytype,
-    yes_switch: []const u8,
-    no_switch: []const u8,
-) void {
-    if (option) |value| {
-        if (value) {
-            array.writeMany(yes_switch);
-        } else {
-            array.writeMany(no_switch);
-        }
-    }
-}
-fn writeWhatHow(
-    array: anytype,
-    option: anytype,
-    yes_switch: []const u8,
-) void {
-    if (option) |value| {
-        array.writeMany(yes_switch);
-        array.writeAny(fmt_spec, value);
-        array.writeOne('\x00');
-    }
-}
-fn writeWhat(
-    array: anytype,
-    option: bool,
-    yes_switch: []const u8,
-) void {
-    if (option) {
-        array.writeMany(yes_switch);
-    }
-}
-fn writeHow(
-    array: anytype,
-    option: anytype,
-) void {
-    if (option) |how| {
-        array.writeAny(fmt_spec, how);
-    }
 }
