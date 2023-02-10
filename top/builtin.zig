@@ -1788,14 +1788,9 @@ pub const fmt = opaque {
     }
     pub fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
         return switch (type_info) {
-            .Array => |array_info| {
+            .Array, .Pointer, .Optional => {
                 const type_name: []const u8 = @typeName(@Type(type_info));
-                const child_type_name: []const u8 = @typeName(array_info.child);
-                return type_name[0 .. type_name.len -% child_type_name.len];
-            },
-            .Pointer => |pointer_info| {
-                const type_name: []const u8 = @typeName(@Type(type_info));
-                const child_type_name: []const u8 = @typeName(pointer_info.child);
+                const child_type_name: []const u8 = @typeName(@field(type_info, @tagName(type_info)).child);
                 return type_name[0 .. type_name.len -% child_type_name.len];
             },
             .Enum => |enum_info| {
