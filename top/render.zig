@@ -580,6 +580,11 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     };
 }
 fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
+    if (!spec.ignore_formatter_decls) {
+        if (@hasDecl(Union, "formatWrite") and @hasDecl(Union, "formatLength")) {
+            return FormatFormat(Union);
+        }
+    }
     return struct {
         value: Union,
         const Format: type = @This();
@@ -862,17 +867,23 @@ fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
         pub fn formatWrite(format: Format, array: anytype) void {
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
-                array.writeCount(12 + type_name.len, ("@intToPtr(" ++ type_name ++ ", ").*);
                 const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };
+                array.writeCount(12 + type_name.len, ("@intToPtr(" ++ type_name ++ ", ").*);
                 sub_format.formatWrite(array);
+                array.writeOne(')');
             } else if (@typeInfo(child) == .Fn) {
                 array.writeMany("*call");
             } else {
-                array.writeCount(7 + type_name.len, ("@as(" ++ type_name ++ ", &").*);
                 const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
+                if (!spec.infer_type_names) {
+                    array.writeCount(6 + type_name.len, ("@as(" ++ type_name ++ ", ").*);
+                }
+                array.writeOne('&');
                 sub_format.formatWrite(array);
+                if (!spec.infer_type_names) {
+                    array.writeOne(')');
+                }
             }
-            array.writeOne(')');
         }
         pub fn formatLength(format: Format) u64 {
             const type_name: []const u8 = comptime typeName(Pointer, spec);
@@ -899,7 +910,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
         const type_name: []const u8 = typeName(Pointer, spec);
         pub fn formatLengthAny(format: anytype) u64 {
-            var len: u64 = type_name.len + 2;
+            var len: u64 = @boolToInt(spec.infer_type_names) + type_name.len + 2;
             if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
                 inline for (format.value) |value| {
                     len +%= AnyFormat(spec, child).formatLength(.{ .value = value }) + 2;
@@ -916,9 +927,15 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         }
         pub fn formatWriteAny(format: anytype, array: anytype) void {
             if (format.value.len == 0) {
+                if (spec.infer_type_names) {
+                    array.writeOne('&');
+                }
                 array.writeMany(type_name);
                 array.writeCount(2, "{}".*);
             } else {
+                if (spec.infer_type_names) {
+                    array.writeOne('&');
+                }
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
                 if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
