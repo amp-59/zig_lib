@@ -8,7 +8,8 @@ pub const DetailMore = packed struct {
     fields: gen.Fields,
     techs: gen.Techniques,
     specs: Specifiers,
-    const Specifiers = @import("./zig-out/src/Specifiers.zig").Specifiers;
+    const Specifiers = @import("./zig-out/src/specifiers.zig").Specifiers;
+
     pub fn less(detail: *const DetailMore) .Detail {
         return .{
             .index = detail.index,
