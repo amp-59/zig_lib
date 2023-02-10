@@ -300,7 +300,7 @@ pub const Target = struct {
         var args: StaticPointers = .{};
         builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
         builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-        builtin.assertEqual(u64, array.len(), target.buildLength());
+        builtin.assertEqual(u64, array.len(), target.formatLength());
         target.f_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
