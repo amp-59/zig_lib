@@ -1,10 +1,20 @@
 const fmt = @import("./../fmt.zig");
+const mem = @import("./../mem.zig");
 const meta = @import("./../meta.zig");
+const preset = @import("./../preset.zig");
 const builtin = @import("./../builtin.zig");
 const testing = @import("./../testing.zig");
 const build_root = @cImport({}).build_root;
 
 pub usingnamespace sys;
+
+pub const String = mem.StaticString(1024 * 1024);
+pub const Allocator = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .errors = preset.allocator.errors.noexcept,
+    .logging = preset.allocator.logging.silent,
+    .options = preset.allocator.options.small,
+});
 
 pub const AbstractSpec = union(enum) {
     automatic_storage: ReadWrite(union {
@@ -546,157 +556,10 @@ const sys = struct {
         unreachable;
     }
 };
-
 pub const fmt_struct_init_literal = .{
     .infer_type_names = true,
     .omit_default_fields = true,
     .omit_trailing_comma = true,
-};
-
-fn alignAbove(value: u64, comptime alignment: u64) u64 {
-    return (value + (alignment - 1)) & ~(alignment - 1);
-}
-fn alignBelow(value: u64, comptime alignment: u64) u64 {
-    return value & ~(alignment - 1);
-}
-fn GenericArray(comptime T: type) type {
-    return (struct {
-        start: u64,
-        finish: u64,
-        const Array = @This();
-        pub fn init(any: []T) Array {
-            return .{ .start = @ptrToInt(any.ptr), .finish = @ptrToInt(any.ptr) };
-        }
-        pub fn define(array: *Array, count: usize) void {
-            array.finish +%= count;
-        }
-        pub fn undefine(array: *Array, count: usize) void {
-            array.finish -%= count;
-        }
-        pub fn referOneUndefined(array: Array) *T {
-            return @intToPtr(*T, array.finish);
-        }
-        pub fn writeCount(array: *Array, comptime count: usize, values: [count]T) void {
-            for (values) |value, index| {
-                @intToPtr(*T, array.finish + index).* = value;
-            }
-            array.finish +%= count;
-        }
-        pub fn writeMany(array: *Array, values: []const T) void {
-            for (values) |value, index| {
-                @intToPtr(*T, array.finish + index).* = value;
-            }
-            array.finish +%= values.len;
-        }
-        pub fn writeOne(array: *Array, value: T) void {
-            @intToPtr(*T, array.finish).* = value;
-            array.finish +%= 1;
-        }
-        pub fn writeOneBackwards(array: *Array, value: T) void {
-            array.finish -%= 1;
-            @intToPtr(*T, array.finish).* = value;
-        }
-        pub fn overwriteCountBack(array: Array, comptime count: usize, values: [count]T) void {
-            const next: u64 = array.finish - count;
-            for (values) |value, index| @intToPtr(*T, next + index).* = value;
-        }
-        pub fn overwriteManyBack(array: Array, values: []const T) void {
-            const next: u64 = array.finish - values.len;
-            for (values) |value, index| @intToPtr(*T, next + index).* = value;
-        }
-        pub fn overwriteOneBack(array: Array, value: T) void {
-            array.overwriteCountBack(1, [1]T{value});
-        }
-        pub fn readAll(array: Array) []const T {
-            return @intToPtr([*]const T, array.start)[0..array.len()];
-        }
-        pub fn undefineAll(array: *Array) void {
-            array.finish = array.start;
-        }
-        pub fn len(array: Array) usize {
-            return array.finish - array.start;
-        }
-        pub fn writeFormat(array: *Array, format: anytype) void {
-            format.formatWrite(array);
-        }
-    });
-}
-pub const String = GenericArray(u8);
-
-pub const Allocator = struct {
-    start: u64,
-    next: u64,
-    finish: u64,
-    const start_addr: u64 = 0x40000000;
-    const page_size: u64 = 0x1000;
-
-    const unit_alignment: u64 = 1;
-    const len_alignment: u64 = 1;
-    pub const Save = struct { next: u64 };
-
-    pub fn capacity(allocator: *const Allocator) u64 {
-        return allocator.finish - allocator.start;
-    }
-    pub fn length(allocator: *const Allocator) u64 {
-        return allocator.next - allocator.start;
-    }
-    pub fn save(allocator: *const Allocator) Save {
-        return .{ .next = allocator.next };
-    }
-    pub fn restore(allocator: *Allocator, state: Save) void {
-        allocator.next = state.next;
-    }
-    pub fn grow(allocator: *Allocator, finish: u64) void {
-        const least: u64 = alignAbove(finish - allocator.finish, page_size);
-        const len: u64 = @max(least, allocator.capacity() * 2);
-        builtin.assert(sys.map(allocator.finish, len) == allocator.finish);
-        allocator.finish += len;
-    }
-    pub fn reallocate(allocator: *Allocator, comptime T: type, count: u64, buf: []T) []T {
-        const bytes: u64 = @sizeOf(T) * buf.len;
-        if (allocator.next == @ptrToInt(buf.ptr) + bytes) {
-            allocator.next += @sizeOf(T) * count - bytes;
-            return buf.ptr[0..count];
-        }
-        const ret: []T = allocate(T, count);
-        for (ret) |*ptr, i| ptr.* = buf[i];
-        return ret;
-    }
-    pub fn create(allocator: *Allocator, comptime T: type) *T {
-        const alignment: u64 = @alignOf(T);
-        const bytes: u64 = @sizeOf(T);
-        const start: u64 = alignAbove(allocator.next, alignment);
-        const finish: u64 = start + bytes;
-        if (finish > allocator.finish) allocator.grow(finish);
-        allocator.next = finish;
-        return @intToPtr(*T, start);
-    }
-    pub fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
-        const alignment: u64 = @alignOf(T);
-        const size: u64 = @sizeOf(T);
-        const bytes: u64 = size * count;
-        const start: u64 = alignAbove(allocator.next, alignment);
-        const finish: u64 = start + bytes;
-        if (finish > allocator.finish) allocator.grow(finish);
-        allocator.next = finish;
-        return @intToPtr([*]T, start)[0..count];
-    }
-    pub fn reinit(allocator: *Allocator) void {
-        allocator.next = start_addr;
-    }
-    pub fn init() Allocator {
-        _ = sys.map(start_addr, page_size);
-        return .{
-            .start = start_addr,
-            .next = start_addr,
-            .finish = start_addr + page_size,
-        };
-    }
-    pub fn deinit(allocator: *Allocator) void {
-        sys.unmap(allocator.start, allocator.capacity());
-        allocator.next = allocator.start;
-        allocator.finish = allocator.start;
-    }
 };
 pub fn writeImports(array: anytype, src: anytype, imports: []const struct { name: []const u8, path: []const u8 }) void {
     array.writeMany("//! this file generated by ");
@@ -710,7 +573,6 @@ pub fn writeImports(array: anytype, src: anytype, imports: []const struct { name
         array.writeMany("\");\n");
     }
 }
-
 pub fn writeSourceFile(array: anytype, comptime pathname: [:0]const u8) void {
     const fd: u64 = sys.create(if (pathname[0] != '/')
         build_root ++ "/top/mem/" ++ pathname
@@ -753,13 +615,6 @@ pub fn writeFieldOfBool(array: anytype, any: anytype) void {
         }
     }
 }
-pub fn fieldNames(comptime T: type) []const []const u8 {
-    var field_names: []const []const u8 = &.{};
-    for (@typeInfo(T).Struct.fields) |field| {
-        field_names = field_names ++ [1][]const u8{field.name};
-    }
-    return field_names;
-}
 pub fn simpleTypeName(comptime T: type) []const u8 {
     if (@typeInfo(T) == .Struct) {
         var type_name: []const u8 = "struct { ";
@@ -771,13 +626,6 @@ pub fn simpleTypeName(comptime T: type) []const u8 {
     } else {
         return @typeName(T);
     }
-}
-pub fn fieldTypeNames(comptime T: type) []const []const u8 {
-    var field_type_names: []const []const u8 = &.{};
-    for (@typeInfo(T).Struct.fields) |field| {
-        field_type_names = field_type_names ++ [1][]const u8{simpleTypeName(field.type)};
-    }
-    return field_type_names;
 }
 pub fn writeStructOfBool(array: anytype, comptime T: type, value: T) void {
     const Format = GenericStructOfBool(T);
