@@ -162,8 +162,10 @@ pub const Builder = struct {
         }
         return ret;
     }
-    fn exec(builder: Builder, args: [][*:0]u8) !u64 {
-        return proc.command(.{}, builder.zig_exe, args, builder.vars);
+    fn exec(builder: Builder, args: [][*:0]u8) !void {
+        if (0 != try proc.command(.{}, builder.zig_exe, args, builder.vars)) {
+            return error.UnexpectedExitStatus;
+        }
     }
 };
 pub const OutputMode = enum {
@@ -260,7 +262,7 @@ pub const Target = struct {
         array.writeOne('\x00');
         return countArgs(array);
     }
-    pub fn buildA(target: *Target, allocator: *Allocator) !u64 {
+    pub fn buildA(target: *Target, allocator: *Allocator) !void {
         if (target.fmt_cmd != null) _ = try target.format();
         var array: String = try meta.wrap(String.init(allocator, target.buildLength()));
         defer array.deinit(allocator);
@@ -272,8 +274,7 @@ pub const Target = struct {
         target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-
-    pub fn build(target: *Target) !u64 {
+    pub fn build(target: *Target) !void {
         try target.maybeInvokeDependencies();
         if (target.fmt_cmd != null) _ = try target.format();
         var array: StaticString = .{};
@@ -284,7 +285,7 @@ pub const Target = struct {
         target.b_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-    pub fn formatA(target: *Target, allocator: *Allocator) !u64 {
+    pub fn formatA(target: *Target, allocator: *Allocator) !void {
         var array: String = try meta.wrap(String.init(allocator, target.formatLength()));
         defer array.deinit(allocator);
         var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
@@ -295,7 +296,7 @@ pub const Target = struct {
         target.f_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
-    pub fn format(target: *Target) !u64 {
+    pub fn format(target: *Target) !void {
         var array: StaticString = .{};
         var args: StaticPointers = .{};
         builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
@@ -585,6 +586,8 @@ fn Args(comptime name: [:0]const u8) type {
         }
     };
 }
+// finish-document build-types.zig
+// start-document option-functions.zig
 fn lengthOptionalWhatNoArgWhatNot(
     option: anytype,
     len_equ: u64,
@@ -746,4 +749,4 @@ fn writeHow(
         array.writeAny(fmt_spec, how);
     }
 }
-// finish-document build-types.zig
+// finish-document option-functions.zig
