@@ -30,6 +30,7 @@ pub const root_src_file: ?[:0]const u8      = config("root_src_file", ?[:0]const
 // zig fmt: on
 const builtin = opaque {
     pub const SourceLocation = Src();
+    pub const Mode = @TypeOf(zig.mode);
     pub const Type = @TypeOf(@typeInfo(void));
     pub const Struct = @TypeOf(@typeInfo(struct {}).Struct);
     pub const Array = @TypeOf(@typeInfo([0]void).Array);
