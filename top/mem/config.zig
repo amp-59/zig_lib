@@ -5,3 +5,4 @@ pub const prefer_operator_wrapper: bool = true;
 pub const packed_capacity_low: bool = false;
 pub const minimise_indirection: bool = true;
 pub const minimise_declaration: bool = true;
+pub const show_eliminated_options: bool = false;
