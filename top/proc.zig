@@ -403,9 +403,35 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
         return execve_error;
     }
 }
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) spec.Unwrapped(.wait4) {
-    var status: u64 = 0;
-    if (spec.call(.wait4, .{ WaitSpec.pid(id), @ptrToInt(&status), 0, 0, 0 })) |pid| {
+pub const Status = struct {
+    pub inline fn exitStatus(status: u32) u8 {
+        return @intCast(u8, (status & 0xff00) >> 8);
+    }
+    pub inline fn termSignal(status: u32) u32 {
+        return status & 0x7f;
+    }
+    pub inline fn stopSignal(status: u32) u32 {
+        return exitStatus(status);
+    }
+    pub inline fn ifExited(status: u32) bool {
+        return termSignal(status) == 0;
+    }
+    pub inline fn ifSignaled(status: u32) bool {
+        return ((status & 0x7f) + 1) >> 1 > 0;
+    }
+    pub inline fn ifStopped(status: u32) bool {
+        return (status & 0xff) == 0x7f;
+    }
+    pub inline fn ifContinued(status: u32) bool {
+        return status == 0xffff;
+    }
+    pub inline fn coreDump(status: u32) u32 {
+        return status & 0x80;
+    }
+};
+
+pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) spec.Unwrapped(.wait4) {
+    if (spec.call(.wait4, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 })) |pid| {
         return pid;
     } else |wait_error| {
         if (spec.logging.Error) {
@@ -414,10 +440,9 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) spec.Unwrapped(.wait4)
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64) spec.Unwrapped(.waitid) {
+pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) spec.Unwrapped(.waitid) {
     const idtype: IdType = spec.id_type;
     const flags: WaitId = spec.flags();
-    var info: SignalInfo = undefined;
     if (spec.call(.waitid, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 })) |pid| {
         return pid;
     } else |wait_error| {
@@ -437,11 +462,12 @@ pub fn fork(comptime spec: ForkSpec) spec.Unwrapped(.fork) {
         return fork_error;
     }
 }
-pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u64 {
+pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u8 {
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const pid: u64 = try fork(.{});
+    var status: u32 = 0;
     if (pid == 0) {
         if (spec.call(.execve, .{ filename_buf_addr, args_addr, vars_addr })) {
             unreachable;
@@ -455,13 +481,15 @@ pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.ar
     if (spec.logging.Success) {
         debug.executeNotice(pathname, args);
     }
-    return waitPid(.{}, .{ .pid = pid });
+    builtin.assertEqual(u64, pid, try waitPid(.{}, .{ .pid = pid }, &status));
+    return Status.exitStatus(status);
 }
-pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u64 {
+pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u8 {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const pid: u64 = try fork(.{});
+    var status: u32 = 0;
     if (pid == 0) {
         const flags: Execute = spec.flags();
         if (spec.call(.execveat, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val })) {
@@ -476,7 +504,8 @@ pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, ar
     if (spec.logging.Success) {
         debug.executeNotice(name, args);
     }
-    return waitPid(.{}, .{ .pid = pid });
+    builtin.assertEqual(u64, pid, try waitPid(.{}, .{ .pid = pid }, &status));
+    return Status.exitStatus(status);
 }
 pub const start = opaque {
     pub export fn _start() callconv(.Naked) noreturn {
