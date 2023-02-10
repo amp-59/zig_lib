@@ -17,10 +17,11 @@ pub usingnamespace proc.start;
 const out = struct {
     usingnamespace @import("./detail_more.zig");
     usingnamespace @import("./zig-out/src/memgen_options.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_spec.zig");
+    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
     usingnamespace @import("./zig-out/src/memgen_variants.zig");
     usingnamespace @import("./zig-out/src/memgen_canonical.zig");
     usingnamespace @import("./zig-out/src/memgen_canonicals.zig");
+    usingnamespace @import("./zig-out/src/memgen_type_descrs.zig");
     usingnamespace @import("./zig-out/src/memgen_container_specifications.zig");
 };
 
@@ -761,10 +762,12 @@ fn writeDecls(array: *gen.String, impl_variant: *const out.DetailMore) void {
     if (impl_variant.kinds.automatic or
         impl_variant.kinds.static)
     {
-        return array.writeMany("const Static = fn () callconv(.Inline) u64;\n");
+        return array.writeMany("const Static = fn () callconv(.Inline) " ++
+            sym.word_type_name ++ end_expression);
     }
     if (impl_variant.kinds.parametric) {
-        return array.writeMany("const Slave = fn (" ++ sym.slave_specifier_const_ptr_type_name ++ ") callconv(.Inline) u64;\n");
+        return array.writeMany("const Slave = fn (" ++ sym.slave_specifier_const_ptr_type_name ++ ") callconv(.Inline) " ++
+            sym.word_type_name ++ end_expression);
     }
     if (impl_variant.techs.unit_alignment) {
         return array.writeMany("pub const unit_alignment: usize = spec.unit_alignment;\n");
@@ -933,7 +936,7 @@ fn writeFnSignatureOrCall(array: *gen.String, impl_variant: *const out.DetailMor
     if (impl_fn_info.mut == .Mutable) {
         array.writeMany(builtin.cmov([]const u8, sign, ") void ", ")"));
     } else {
-        array.writeMany(builtin.cmov([]const u8, sign, ") u64 ", ")"));
+        array.writeMany(builtin.cmov([]const u8, sign, ") " ++ sym.word_type_name ++ " ", ")"));
     }
 }
 fn printFunctionsInTagOrder() void {
@@ -965,33 +968,6 @@ fn hasCapability(impl_variant: *const out.DetailMore, fn_info: *const Fn) bool {
         else => return true,
     }
 }
-fn writeImplementationName(array: *gen.String, impl_detail: *const out.DetailMore) void {
-    inline for (@typeInfo(gen.Layouts).Struct.fields) |field| {
-        if (@field(impl_detail.layouts, field.name)) {
-            array.writeMany(comptime fmt.toTitlecase(field.name));
-        }
-    }
-    inline for (@typeInfo(gen.Modes).Struct.fields) |field| {
-        if (@field(impl_detail.modes, field.name)) {
-            array.writeMany(comptime fmt.toTitlecase(field.name));
-        }
-    }
-    inline for (@typeInfo(gen.Kinds).Struct.fields) |field| {
-        if (@field(impl_detail.kinds, field.name)) {
-            array.writeMany(comptime fmt.toTitlecase(field.name));
-        }
-    }
-    inline for (@typeInfo(gen.Techniques).Struct.fields) |field| {
-        if (@field(impl_detail.techs, field.name)) {
-            array.writeMany(comptime fmt.toTitlecase(field.name));
-        }
-    }
-    inline for (@typeInfo(out.Specifiers).Struct.fields) |field| {
-        if (@field(impl_detail.specs, field.name)) {
-            array.writeMany(comptime fmt.toTitlecase(field.name));
-        }
-    }
-}
 pub fn generateReferences() void {
     var allocator: gen.Allocator = gen.Allocator.init();
     var array: gen.String = gen.String.init(allocator.allocate(u8, 1024 * 1024));
@@ -1010,7 +986,7 @@ pub fn generateReferences() void {
                 }
                 const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
                 array.writeMany("fn ");
-                writeImplementationName(&array, impl_variant);
+                impl_variant.writeName(&array);
                 array.writeMany("(comptime " ++ sym.spec_name ++ ": " ++ sym.generic_spec_type_name);
                 gen.writeIndex(&array, accm_spec_index);
                 array.writeMany(") type {\nreturn (struct {\n");
