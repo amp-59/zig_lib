@@ -1,8 +1,8 @@
 const gen = @import("./gen.zig");
-const out = @import("./zig-out/src/memgen_type_spec.zig");
+const out = @import("./zig-out/src/memgen_type_specs.zig");
 
 pub const DetailMore = packed struct {
-    index: u8 = undefined,
+    index: u8,
     kinds: gen.Kinds,
     layouts: gen.Layouts,
     modes: gen.Modes,
@@ -35,5 +35,12 @@ pub const DetailMore = packed struct {
         array.writeMany(", .specs = ");
         gen.writeStructOfBool(array, out.Specifiers, detail.specs);
         array.writeMany(" }");
+    }
+    pub fn writeName(detail: *const DetailMore, array: anytype) void {
+        gen.writeFieldOfBool(array, detail.layouts);
+        gen.writeFieldOfBool(array, detail.modes);
+        gen.writeFieldOfBool(array, detail.kinds);
+        gen.writeFieldOfBool(array, detail.techs);
+        gen.writeFieldOfBool(array, detail.specs);
     }
 };
