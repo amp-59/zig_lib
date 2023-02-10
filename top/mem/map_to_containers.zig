@@ -4,8 +4,8 @@ const builtin = @import("./../builtin.zig");
 const gen = @import("./gen.zig");
 
 const out = struct {
-    usingnamespace @import("./zig-out/src/memgen_canonical.zig");
-    usingnamespace @import("./zig-out/src/memgen_canonicals.zig");
+    usingnamespace @import("./zig-out/src/canonical.zig");
+    usingnamespace @import("./zig-out/src/canonicals.zig");
 };
 
 /// Containers are grouped by layout, kind, and mode.
@@ -51,7 +51,7 @@ fn mapToContainers(array: *gen.String) void {
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
-    gen.writeAuxiliarySourceFile(array, "memgen_containers.zig");
+    gen.writeAuxiliarySourceFile(array, "containers.zig");
 }
 
 pub export fn _start() noreturn {

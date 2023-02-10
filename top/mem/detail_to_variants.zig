@@ -7,8 +7,9 @@ const out = struct {
     usingnamespace @import("./detail.zig");
     usingnamespace @import("./detail_more.zig");
 
-    usingnamespace @import("./zig-out/src/memgen_detail.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
+    usingnamespace @import("./zig-out/src/impl_details.zig");
+    usingnamespace @import("./zig-out/src/type_specs.zig");
+    usingnamespace @import("./zig-out/src/specifiers.zig");
 };
 fn writeVariantStructInternal(array: *gen.String, impl_detail: out.Detail, specs: out.Specifiers) void {
     array.writeMany("    ");
@@ -33,12 +34,12 @@ fn writeVariantStruct(array: *gen.String, comptime impl_detail: out.Detail) void
 }
 fn detailToVariants(array: *gen.String) void {
     gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "../../detail_more.zig" }});
-    array.writeMany("pub const variants: []const out.DetailMore = &[_]out.DetailMore{\n");
-    inline for (out.details) |impl_detail| {
+    array.writeMany("pub const impl_variants: []const out.DetailMore = &[_]out.DetailMore{\n");
+    inline for (out.impl_details) |impl_detail| {
         writeVariantStruct(array, impl_detail);
     }
     array.writeMany("};\n");
-    gen.writeAuxiliarySourceFile(array, "memgen_variants.zig");
+    gen.writeAuxiliarySourceFile(array, "impl_variants.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);

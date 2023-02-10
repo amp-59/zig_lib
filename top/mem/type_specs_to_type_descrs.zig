@@ -5,7 +5,7 @@ const builtin = @import("./../builtin.zig");
 const testing = @import("./../testing.zig");
 
 const gen = @import("./gen.zig");
-const out = @import("./zig-out/src/memgen_type_specs.zig");
+const out = @import("./zig-out/src/type_specs.zig");
 
 fn mapContainersToParameters(array: *gen.String) void {
     const fmt_spec = .{ .infer_type_names = true, .ignore_formatter_decls = true };
@@ -34,7 +34,7 @@ fn mapContainersToParameters(array: *gen.String) void {
     }
     array.overwriteManyBack("};");
     array.writeMany("\n");
-    gen.writeAuxiliarySourceFile(array, "memgen_type_descrs.zig");
+    gen.writeAuxiliarySourceFile(array, "type_descrs.zig");
 }
 
 pub export fn _start() noreturn {

@@ -7,10 +7,11 @@ const preset = @import("./../preset.zig");
 const builtin = @import("./../builtin.zig");
 
 const gen = @import("./gen.zig");
-const out = @import("./zig-out/src/memgen_abstract.zig");
+const out = @import("./zig-out/src/abstract_params.zig");
+
 const fmt_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true };
 
-const AbstractSpec = @import("./AbstractSpec.zig");
+const AbstractSpec = @import("./abstract_spec.zig");
 
 fn slicePtr(comptime T: type) *[]const T {
     var ptrs: []const T = &.{};
@@ -180,15 +181,15 @@ fn writeStructFromFields(array: *gen.String, comptime struct_fields: []const bui
     }
 }
 fn writeSpecifiersStruct(array: *gen.String, field_names: mem.StaticArray([]const u8, 16)) void {
-    gen.writeAuxiliarySourceFile(array, "memgen_type_specs.zig");
-    // array.writeMany("pub const Specifiers = packed struct { ");
+    gen.writeAuxiliarySourceFile(array, "type_specs.zig");
+    array.writeMany("pub const Specifiers = packed struct { ");
     for (field_names.readAll()) |field_name| {
         array.writeMany(field_name);
         array.writeMany(": bool = false, ");
     }
-    gen.writeAuxiliarySourceFile("Specifiers.zig");
     array.undefine(2);
-    //array.writeMany(" };\n");
+    array.writeMany(" };\n");
+    gen.writeAuxiliarySourceFile(array, "specifiers.zig");
 }
 pub fn abstractToTypeSpec(array: *gen.String) void {
     gen.writeImports(array, @src(), &.{

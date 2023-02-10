@@ -17,13 +17,13 @@ pub const AddressSpace = preset.address_space.regular_128;
 
 const out = struct {
     usingnamespace @import("./detail_more.zig");
-    usingnamespace @import("./zig-out/src/memgen_options.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
-    usingnamespace @import("./zig-out/src/memgen_variants.zig");
-    usingnamespace @import("./zig-out/src/memgen_canonical.zig");
-    usingnamespace @import("./zig-out/src/memgen_canonicals.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_descrs.zig");
-    usingnamespace @import("./zig-out/src/memgen_container_specifications.zig");
+    usingnamespace @import("./zig-out/src/options.zig");
+    usingnamespace @import("./zig-out/src/type_specs.zig");
+    usingnamespace @import("./zig-out/src/variants.zig");
+    usingnamespace @import("./zig-out/src/canonical.zig");
+    usingnamespace @import("./zig-out/src/canonicals.zig");
+    usingnamespace @import("./zig-out/src/type_descrs.zig");
+    usingnamespace @import("./zig-out/src/container_specifications.zig");
 };
 
 const Args = mem.StaticArray([:0]const u8, 8);
@@ -987,7 +987,7 @@ pub fn generateReferences() void {
                 }
                 const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
                 array.writeMany("fn ");
-                impl_variant.writeName(&array);
+                impl_variant.writeImplementationName(&array);
                 array.writeMany("(comptime " ++ sym.spec_name ++ ": " ++ sym.generic_spec_type_name);
                 gen.writeIndex(&array, accm_spec_index);
                 array.writeMany(") type {\nreturn (struct {\n");

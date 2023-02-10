@@ -12,24 +12,25 @@ const gen = @import("./gen.zig");
 const config = @import("./config.zig");
 
 pub const AddressSpace = preset.address_space.regular_128;
-//pub usingnamespace proc.start;
-//pub usingnamespace proc.exception;
+
+pub usingnamespace proc.start;
+pub usingnamespace proc.exception;
 
 const Details = gen.Allocator.StructuredVector(*const out.DetailMore);
 
 const out = struct {
     usingnamespace @import("./detail_more.zig");
-    usingnamespace @import("./zig-out/src/memgen_options.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_descrs.zig");
-    usingnamespace @import("./zig-out/src/memgen_variants.zig");
-    usingnamespace @import("./zig-out/src/memgen_containers.zig");
-    usingnamespace @import("./zig-out/src/memgen_container_specifications.zig");
+    usingnamespace @import("./zig-out/src/options.zig");
+    usingnamespace @import("./zig-out/src/type_specs.zig");
+    usingnamespace @import("./zig-out/src/type_descrs.zig");
+    usingnamespace @import("./zig-out/src/variants.zig");
+    usingnamespace @import("./zig-out/src/containers.zig");
+    usingnamespace @import("./zig-out/src/container_specifications.zig");
 };
 fn writeReturnImplementation(array: *gen.String, impl_detail: out.DetailMore) void {
     const endl: bool = mem.testEqualManyBack(u8, " => ", array.readAll());
     array.writeMany("return ");
-    impl_detail.writeName(array);
+    impl_detail.writeImplementationName(array);
     array.writeMany("(spec)");
     if (endl) {
         array.writeMany(",\n");

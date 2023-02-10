@@ -6,9 +6,10 @@ const out = struct {
     usingnamespace @import("./detail.zig");
     usingnamespace @import("./detail_more.zig");
 
-    usingnamespace @import("./zig-out/src/memgen_detail.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
-    usingnamespace @import("./zig-out/src/memgen_variants.zig");
+    usingnamespace @import("./zig-out/src/impl_details.zig");
+    usingnamespace @import("./zig-out/src/type_specs.zig");
+    usingnamespace @import("./zig-out/src/impl_variants.zig");
+    usingnamespace @import("./zig-out/src/specifiers.zig");
 };
 
 const CanonicalSpec = struct {
@@ -65,7 +66,7 @@ const specs_spec: CanonicalFieldSpec = .{
     .detail = out.DetailMore,
 };
 fn writeFieldType(comptime field: CanonicalFieldSpec, array: *gen.String) void {
-    const sample: []const field.detail = if (field.detail == out.Detail) out.details else out.variants;
+    const sample: []const field.detail = if (field.detail == out.Detail) out.impl_details else out.impl_variants;
     const backing_int: type = meta.Child(field.src_type);
     const Uniques = mem.StaticArray(backing_int, 256);
     var uniques: Uniques = undefined;
@@ -139,7 +140,7 @@ fn writeCanonicalStruct(array: *gen.String, comptime spec: CanonicalSpec) void {
     array.writeMany("        };\n");
     array.writeMany("    }\n");
     array.writeMany("};\n");
-    gen.writeAuxiliarySourceFile(array, "memgen_canonical.zig");
+    gen.writeAuxiliarySourceFile(array, "canonical.zig");
 }
 
 pub export fn _start() noreturn {

@@ -15,41 +15,6 @@ pub const Allocator = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
     .options = preset.allocator.options.small,
 });
-
-pub const AbstractSpec = union(enum) {
-    automatic_storage: ReadWrite(union {
-        _: Automatic,
-        unstreamed_byte_address: Stream(union {
-            _: Automatic,
-            undefined_byte_address: Resize(Automatic),
-        }),
-        undefined_byte_address: Resize(Automatic),
-    }),
-    allocated_byte_address: ReadWrite(union {
-        _: Static,
-        single_packed_approximate_capacity: Dynamic,
-        unstreamed_byte_address: Stream(union {
-            undefined_byte_address: Resize(union {
-                _: Static,
-                single_packed_approximate_capacity: Dynamic,
-                double_packed_approximate_capacity: Dynamic,
-                unallocated_byte_address: Dynamic,
-            }),
-            unallocated_byte_address: Dynamic,
-        }),
-        undefined_byte_address: Resize(union {
-            _: Static,
-            single_packed_approximate_capacity: Dynamic,
-            double_packed_approximate_capacity: Dynamic,
-            unallocated_byte_address: Dynamic,
-        }),
-        unallocated_byte_address: Dynamic,
-    }),
-    undefined_byte_address: ReadWrite(Resize(union {
-        _: Parametric,
-        unstreamed_byte_address: Stream(Parametric),
-    })),
-};
 pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
@@ -130,9 +95,11 @@ pub const Option = struct {
         field_name: []const u8,
         field_field_names: []const []const u8,
     };
-
-    pub fn count(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const *const Detail) usize {
-        var len: usize = 0;
+    pub fn len(comptime option: Option) usize {
+        return option.info.field_field_names.len;
+    }
+    pub fn count(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail) usize {
+        var ret: usize = 0;
         var techs: Techniques = .{};
         inline for (@typeInfo(Techniques).Struct.fields) |field| {
             for (toplevel_impl_group) |impl_variant| {
@@ -142,11 +109,29 @@ pub const Option = struct {
             }
         }
         inline for (option.info.field_field_names) |field_name| {
-            len +%= @boolToInt(@field(techs, field_name));
+            ret +%= @boolToInt(@field(techs, field_name));
         }
-        return len;
+        return ret;
     }
-    pub fn usage(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const *const Detail) Usage {
+    pub fn names(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail) mem.StaticArray([]const u8, option.len()) {
+        var ret: mem.StaticArray([]const u8, option.len()) = undefined;
+        ret.undefineAll();
+        var techs: Techniques = .{};
+        inline for (@typeInfo(Techniques).Struct.fields) |field| {
+            for (toplevel_impl_group) |impl_variant| {
+                if (@field(impl_variant.techs, field.name)) {
+                    @field(techs, field.name) = true;
+                }
+            }
+        }
+        inline for (option.info.field_field_names) |field_name| {
+            if (@field(techs, field_name)) {
+                ret.writeOne(field_name);
+            }
+        }
+        return ret;
+    }
+    pub fn usage(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail) Usage {
         const value: usize = option.count(Detail, toplevel_impl_group);
         switch (option.kind) {
             .standalone => switch (value) {
@@ -172,164 +157,6 @@ pub const Option = struct {
     pub fn tagName(comptime option: Option, comptime index: usize) []const u8 {
         return option.fieldName(index)[0 .. option.fieldName(index).len - (option.info.field_name.len + 1)];
     }
-};
-pub const Variant = enum {
-    stripped,
-    derived,
-    optional_derived,
-    optional_variant,
-    decl_optional_derived,
-    decl_optional_variant,
-};
-pub fn Stripped(comptime T: type) type {
-    return union(enum) {
-        /// Input is mandatory in interface, removed from specification.
-        stripped: T,
-    };
-}
-pub fn Derived(comptime T: type) type {
-    return union(enum) {
-        /// Input is undefined in interface, invariant in specification
-        derived: T,
-    };
-}
-pub fn OptDrv(comptime T: type) type {
-    return union(enum) {
-        /// Input is optional in interface, invariant in specification:
-        /// alignment values.
-        optional_derived: ?T,
-    };
-}
-pub fn OptVar(comptime T: type) type {
-    return union(enum) {
-        /// Input is optional in interface, variant in specification:
-        /// sentinel and guard page values.
-        optional_variant: ?T,
-    };
-}
-pub fn DeclOptDrv(comptime T: type) type {
-    return union(enum) {
-        /// Input is mandatory container in interface, with optional
-        /// declarations, invariant in specification.
-        decl_optional_derived: T,
-    };
-}
-pub fn DeclOptVar(comptime T: type) type {
-    return union(enum) {
-        /// Input is mandatory container in interface, with optional
-        /// declarations, variant in specification: arena offsets.
-        decl_optional_variant: T,
-    };
-}
-fn ReadWrite(comptime T: type) type {
-    return (union(enum) { read_write: T });
-}
-fn Stream(comptime T: type) type {
-    return (union(enum) { stream: T });
-}
-fn Resize(comptime T: type) type {
-    return (union(enum) { resize: T });
-}
-const Automatic = union { automatic: union {
-    structured: AutoAlignment(AutomaticStuctured),
-} };
-const Static = union { static: union {
-    structured: NoSuperAlignment(StructuredStatic),
-    unstructured: NoSuperAlignment(UnstructuredStatic),
-} };
-const Dynamic = union { dynamic: union {
-    structured: NoSuperAlignment(Structured),
-    unstructured: NoSuperAlignment(Unstructured),
-} };
-const Parametric = union { parametric: union {
-    structured: NoPackedAlignment(StructuredParametric),
-    unstructured: NoPackedAlignment(UnstructuredParametric),
-} };
-fn AutoAlignment(comptime S: type) type {
-    return (union(enum) {
-        auto_alignment: S,
-    });
-}
-fn NoSuperAlignment(comptime S: type) type {
-    return (union(enum) {
-        unit_alignment: S,
-        lazy_alignment: S,
-        disjunct_alignment: S,
-    });
-}
-fn NoPackedAlignment(comptime S: type) type {
-    return (union(enum) {
-        unit_alignment: S,
-        lazy_alignment: S,
-    });
-}
-fn StrictAlignment(comptime S: type) type {
-    return (union(enum) {
-        unit_alignment: S,
-        disjunct_alignment: S,
-    });
-}
-fn AnyAlignment(comptime S: type) type {
-    return (union(enum) {
-        unit_alignment: S,
-        lazy_alignment: S,
-        super_alignment: S,
-        disjunct_alignment: S,
-    });
-}
-const Sentinel = OptVar(*const anyopaque);
-const default_sentinel: Sentinel = .{ .optional_variant = null };
-
-const Alignment = OptDrv(u64);
-const default_alignment: Alignment = .{ .optional_derived = null };
-
-const BoundAllocator = DeclOptVar(struct {
-    Allocator: type,
-    arena: struct { lb_addr: u64, up_addr: u64 },
-});
-const AutomaticStuctured = struct {
-    child: type,
-    sentinel: Sentinel = default_sentinel,
-    count: u64,
-    low_alignment: Alignment = default_alignment,
-};
-const Structured = struct {
-    child: type,
-    sentinel: Sentinel = default_sentinel,
-    low_alignment: Alignment = default_alignment,
-    Allocator: BoundAllocator,
-};
-const Unstructured = struct {
-    high_alignment: u64,
-    low_alignment: Alignment = default_alignment,
-    Allocator: BoundAllocator,
-};
-const StructuredStatic = struct {
-    child: type,
-    sentinel: Sentinel = default_sentinel,
-    count: u64,
-    low_alignment: Alignment = default_alignment,
-    Allocator: BoundAllocator,
-};
-const UnstructuredStatic = struct {
-    bytes: u64,
-    low_alignment: Alignment = default_alignment,
-    Allocator: BoundAllocator,
-};
-const StructuredParametric = struct {
-    Allocator: type,
-    child: type,
-    sentinel: Sentinel = default_sentinel,
-    low_alignment: Alignment = default_alignment,
-};
-const UnstructuredParametric = struct {
-    Allocator: type,
-    high_alignment: u64,
-    low_alignment: Alignment = default_alignment,
-};
-const UnstructuredStaticSegment = struct {
-    bytes: u64,
-    Allocator: BoundAllocator,
 };
 pub const TypeSpecMap = struct {
     params: type,
@@ -396,7 +223,7 @@ pub const TypeDescr = union(enum) {
             .type_decl => |type_decl| {
                 switch (type_decl) {
                     .Composition => |struct_defn| {
-                        len +%= struct_defn[0];
+                        len +%= struct_defn[0].len;
                         len +%= 3;
                         for (struct_defn[1]) |field| {
                             len +%= field[0].len;
@@ -420,6 +247,7 @@ pub const TypeDescr = union(enum) {
                 }
             },
         }
+        return len;
     }
     pub fn init(comptime T: type) TypeDescr {
         const type_info: builtin.Type = @typeInfo(T);

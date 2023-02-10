@@ -6,6 +6,8 @@ const builtin = @import("./../builtin.zig");
 
 const gen = @import("./gen.zig");
 
+const abstract_spec = @import("./abstract_spec.zig");
+
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
@@ -41,14 +43,14 @@ inline fn writeAbstractParametersInternal(
 }
 fn writeAbstractParameters(array: *gen.String, comptime types: *[]const type) void {
     array.writeMany("pub const abstract_params = [_]type{\n");
-    writeAbstractParametersInternal(array, types, gen.AbstractSpec);
+    writeAbstractParametersInternal(array, types, abstract_spec.AbstractSpec);
     array.writeMany("};\n");
 }
 pub fn specToAbstract(array: *gen.String) void {
     const types: *[]const type = comptime slices(type);
     gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "./../../gen.zig" }});
     writeAbstractParameters(array, types);
-    gen.writeAuxiliarySourceFile(array, "memgen_abstract.zig");
+    gen.writeAuxiliarySourceFile(array, "abstract_params.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);

@@ -9,7 +9,8 @@ pub const is_silent: bool = true;
 
 const gen = @import("./gen.zig");
 
-const out = @import("./detail.zig");
+const detail = @import("./detail.zig");
+const abstract_spec = @import("./abstract_spec.zig");
 
 fn ptr(comptime T: type) *T {
     var ret: T = undefined;
@@ -24,49 +25,49 @@ fn typeId(comptime _: type) comptime_int {
     type_id.* += 1;
     return ret;
 }
-fn writeUnspecifiedDetailsInternal(array: *gen.String, comptime T: type, detail: *out.Detail) void {
+fn writeUnspecifiedDetailInternal(array: *gen.String, comptime T: type, impl_detail: *detail.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
-            const tmp = detail.*;
-            defer detail.* = tmp;
+            const tmp = impl_detail.*;
+            defer impl_detail.* = tmp;
             if (@hasField(gen.Kinds, field.name)) {
-                @field(detail.kinds, field.name) = true;
+                @field(impl_detail.kinds, field.name) = true;
             }
             if (@hasField(gen.Layouts, field.name)) {
-                @field(detail.layouts, field.name) = true;
+                @field(impl_detail.layouts, field.name) = true;
             }
             if (@hasField(gen.Modes, field.name)) {
-                @field(detail.modes, field.name) = true;
+                @field(impl_detail.modes, field.name) = true;
             }
             if (@hasField(gen.Fields, field.name)) {
-                @field(detail.fields, field.name) = true;
+                @field(impl_detail.fields, field.name) = true;
             }
             if (@hasField(gen.Techniques, field.name)) {
-                @field(detail.techs, field.name) = true;
+                @field(impl_detail.techs, field.name) = true;
             }
-            writeUnspecifiedDetailsInternal(array, field.type, detail);
+            writeUnspecifiedDetailInternal(array, field.type, impl_detail);
         }
     } else if (type_info == .Struct) {
-        detail.index = typeId(T);
-        writeDetailStruct(array, detail.*);
+        impl_detail.index = typeId(T);
+        writeimpl_detailStruct(array, impl_detail.*);
     }
 }
-fn writeDetailStruct(array: *gen.String, detail: out.Detail) void {
+fn writeimpl_detailStruct(array: *gen.String, impl_detail: detail.Detail) void {
     array.writeMany("    ");
-    array.writeFormat(detail);
+    array.writeFormat(impl_detail);
     array.writeMany(",\n");
 }
 fn writeUnspecifiedDetails(array: *gen.String) void {
-    var detail: out.Detail = .{};
+    var impl_detail: detail.Detail = .{};
     gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "../../detail.zig" }});
-    array.writeMany("pub const details: []const out.Detail = &[_]out.Detail{");
-    writeUnspecifiedDetailsInternal(array, gen.AbstractSpec, &detail);
+    array.writeMany("pub const impl_details: []const out.Detail = &[_]out.Detail{");
+    writeUnspecifiedDetailInternal(array, abstract_spec.AbstractSpec, &impl_detail);
     array.writeMany("};\n");
 }
 pub fn specToDetail(array: *gen.String) void {
     writeUnspecifiedDetails(array);
-    gen.writeAuxiliarySourceFile(array, "memgen_detail.zig");
+    gen.writeAuxiliarySourceFile(array, "impl_details.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);

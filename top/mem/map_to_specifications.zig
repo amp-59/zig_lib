@@ -4,9 +4,9 @@ const builtin = @import("./../builtin.zig");
 const gen = @import("./gen.zig");
 
 const out = struct {
-    usingnamespace @import("./zig-out/src/memgen_canonical.zig");
-    usingnamespace @import("./zig-out/src/memgen_canonicals.zig");
-    usingnamespace @import("./zig-out/src/memgen_containers.zig");
+    usingnamespace @import("./zig-out/src/canonical.zig");
+    usingnamespace @import("./zig-out/src/canonicals.zig");
+    usingnamespace @import("./zig-out/src/containers.zig");
 };
 
 const Keys = mem.StaticArray(out.Specifier, 256);
@@ -49,7 +49,7 @@ fn mapToContainers(array: *gen.String) void {
         array.writeMany("},");
     }
     array.writeMany("};\n");
-    gen.writeAuxiliarySourceFile(array, "memgen_container_specifications.zig");
+    gen.writeAuxiliarySourceFile(array, "container_specifications.zig");
 }
 
 pub export fn _start() noreturn {

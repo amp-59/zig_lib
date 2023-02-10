@@ -7,9 +7,9 @@ const out = struct {
     usingnamespace @import("./detail.zig");
     usingnamespace @import("./detail_more.zig");
 
-    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
-    usingnamespace @import("./zig-out/src/memgen_variants.zig");
-    usingnamespace @import("./zig-out/src/memgen_canonical.zig");
+    usingnamespace @import("./zig-out/src/type_specs.zig");
+    usingnamespace @import("./zig-out/src/variants.zig");
+    usingnamespace @import("./zig-out/src/canonical.zig");
 };
 
 const Container = struct { out.Layout, out.Kind, out.Mode };
@@ -22,7 +22,7 @@ fn writeOneUnique(uniques: *Uniques, value: Container) void {
     uniques.writeOne(value);
 }
 fn variantsToCanonical(array: *gen.String) void {
-    gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "./memgen_canonical.zig" }});
+    gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "./canonical.zig" }});
     array.writeMany("pub const canonicals: []const out.Canonical = &[_]out.Canonical{\n");
     for (out.variants) |variant| {
         array.writeMany("    ");
@@ -30,7 +30,7 @@ fn variantsToCanonical(array: *gen.String) void {
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
-    gen.writeAuxiliarySourceFile(array, "memgen_canonicals.zig");
+    gen.writeAuxiliarySourceFile(array, "canonicals.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
