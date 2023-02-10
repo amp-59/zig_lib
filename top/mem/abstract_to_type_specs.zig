@@ -10,6 +10,8 @@ const gen = @import("./gen.zig");
 const out = @import("./zig-out/src/memgen_abstract.zig");
 const fmt_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true };
 
+const AbstractSpec = @import("./AbstractSpec.zig");
+
 fn slicePtr(comptime T: type) *[]const T {
     var ptrs: []const T = &.{};
     return &ptrs;
@@ -62,8 +64,8 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
             );
         } else {
             const field_union_field_name: []const u8 = field_type_info.Union.fields[0].name;
-            if (@hasField(gen.Variant, field_union_field_name)) {
-                switch (@field(gen.Variant, field_union_field_name)) {
+            if (@hasField(AbstractSpec.Variant, field_union_field_name)) {
+                switch (@field(AbstractSpec.Variant, field_union_field_name)) {
                     .stripped => {
                         p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, field);
                     },
@@ -178,13 +180,15 @@ fn writeStructFromFields(array: *gen.String, comptime struct_fields: []const bui
     }
 }
 fn writeSpecifiersStruct(array: *gen.String, field_names: mem.StaticArray([]const u8, 16)) void {
-    array.writeMany("pub const Specifiers = packed struct { ");
+    gen.writeAuxiliarySourceFile(array, "memgen_type_specs.zig");
+    // array.writeMany("pub const Specifiers = packed struct { ");
     for (field_names.readAll()) |field_name| {
         array.writeMany(field_name);
         array.writeMany(": bool = false, ");
     }
+    gen.writeAuxiliarySourceFile("Specifiers.zig");
     array.undefine(2);
-    array.writeMany(" };\n");
+    //array.writeMany(" };\n");
 }
 pub fn abstractToTypeSpec(array: *gen.String) void {
     gen.writeImports(array, @src(), &.{
@@ -198,7 +202,6 @@ pub fn abstractToTypeSpec(array: *gen.String) void {
     }
     array.writeMany("\n};\n");
     writeSpecifiersStruct(array, field_names);
-    gen.writeAuxiliarySourceFile(array, "memgen_type_specs.zig");
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
