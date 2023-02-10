@@ -8,7 +8,7 @@ const out = struct {
     usingnamespace @import("./detail_more.zig");
 
     usingnamespace @import("./zig-out/src/memgen_detail.zig");
-    usingnamespace @import("./zig-out/src/memgen_type_spec.zig");
+    usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
 };
 fn writeVariantStructInternal(array: *gen.String, impl_detail: out.Detail, specs: out.Specifiers) void {
     array.writeMany("    ");
