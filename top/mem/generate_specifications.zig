@@ -11,8 +11,11 @@ const builtin = @import("./../builtin.zig");
 const gen = @import("./gen.zig");
 const config = @import("./config.zig");
 
+pub const AddressSpace = preset.address_space.regular_128;
 pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
+
+const Details = gen.Allocator.StructuredVector(*const out.DetailMore);
 
 const out = struct {
     usingnamespace @import("./detail_more.zig");
@@ -80,7 +83,7 @@ fn writeDeductionTestBoolean(
             return writeDeduction(allocator, array, toplevel_impl_group, impl_group, options[1..]);
         }
     }
-    var buf: []*const out.DetailMore = allocator.allocate(*const out.DetailMore, impl_group.len);
+    var buf: []*const out.DetailMore = allocator.allocateIrreversible(*const out.DetailMore, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, field_names[0]);
     if (filtered[1].len != 0) {
         array.writeMany("if (options." ++ field_names[0] ++ ") {\n");
@@ -119,7 +122,7 @@ fn writeDeductionCompareEnumerationInternal(
         }
         return null;
     }
-    var buf: []*const out.DetailMore = allocator.allocate(*const out.DetailMore, impl_group.len);
+    var buf: []*const out.DetailMore = allocator.allocateIrreversible(*const out.DetailMore, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, options[0].info.field_field_names[field_index]);
     if (filtered[1].len != 0) {
         array.writeMany("." ++ comptime options[0].tagName(field_index) ++ " => ");
@@ -198,8 +201,11 @@ fn writeDeduction(
     }
 }
 pub fn generateReferences() void {
-    var allocator: gen.Allocator = gen.Allocator.init();
-    var array: gen.String = gen.String.init(allocator.allocate(u8, 1024 * 1024));
+    var address_space: AddressSpace = .{};
+    var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+    var array: gen.String = undefined;
+    array.undefineAll();
     gen.writeImports(&array, @src(), &.{
         .{ .name = "mach", .path = "../mach.zig" },
         .{ .name = "algo", .path = "../algo.zig" },
@@ -236,7 +242,7 @@ pub fn generateReferences() void {
             }
             const save: gen.Allocator.Save = allocator.save();
             defer allocator.restore(save);
-            const buf: []*const out.DetailMore = allocator.allocate(*const out.DetailMore, spec_group.len);
+            const buf: []*const out.DetailMore = allocator.allocateIrreversible(*const out.DetailMore, spec_group.len);
             var impl_index: u16 = 0;
             while (impl_index != spec_group.len) : (impl_index +%= 1) {
                 const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];

@@ -13,6 +13,7 @@ const sym = @import("./sym.zig");
 const config = @import("./config.zig");
 
 pub usingnamespace proc.start;
+pub const AddressSpace = preset.address_space.regular_128;
 
 const out = struct {
     usingnamespace @import("./detail_more.zig");
@@ -969,8 +970,8 @@ fn hasCapability(impl_variant: *const out.DetailMore, fn_info: *const Fn) bool {
     }
 }
 pub fn generateReferences() void {
-    var allocator: gen.Allocator = gen.Allocator.init();
-    var array: gen.String = gen.String.init(allocator.allocate(u8, 1024 * 1024));
+    var array: gen.String = undefined;
+    array.undefineAll();
     var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
     while (ctn_index != out.container_specifications.len) : (ctn_index +%= 1) {

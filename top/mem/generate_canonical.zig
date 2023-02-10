@@ -83,13 +83,13 @@ fn writeFieldType(comptime field: CanonicalFieldSpec, array: *gen.String) void {
     for (uniques.readAll()) |unique, index| {
         const value: field.src_type = @bitCast(field.src_type, unique);
         array.writeMany("    ");
-        const save: u64 = array.finish;
+        const save: u64 = array.len();
         inline for (@typeInfo(field.src_type).Struct.fields) |field_field| {
             if (@field(value, field_field.name)) {
                 array.writeMany(field_field.name ++ "_");
             }
         }
-        if (save == array.finish) {
+        if (save == array.len()) {
             array.writeMany("none");
         } else {
             array.undefine(1);
@@ -105,13 +105,13 @@ fn writeFieldType(comptime field: CanonicalFieldSpec, array: *gen.String) void {
         array.writeMany("            ");
         gen.writeIndex(array, unique);
         array.writeMany(" => return .");
-        const save: u64 = array.finish;
+        const save: u64 = array.len();
         inline for (@typeInfo(field.src_type).Struct.fields) |field_field| {
             if (@field(value, field_field.name)) {
                 array.writeMany(field_field.name ++ "_");
             }
         }
-        if (array.finish == save) {
+        if (save == array.len()) {
             array.writeMany("none");
         } else {
             array.undefine(1);
@@ -144,8 +144,9 @@ fn writeCanonicalStruct(array: *gen.String, comptime spec: CanonicalSpec) void {
 
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var buf: [1024 * 1024]u8 = undefined;
-    var array: gen.String = gen.String.init(&buf);
+    var array: gen.String = undefined;
+    array.undefineAll();
+
     writeCanonicalStruct(&array, .{ .fields = &.{ layout_spec, kind_spec, mode_spec, field_spec, tech_spec, specs_spec } });
     gen.exit(0);
 }
