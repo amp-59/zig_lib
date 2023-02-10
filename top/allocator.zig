@@ -340,6 +340,13 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
             return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
         }
+        pub const Save = struct { ub_addr: u64 };
+        pub fn save(allocator: *const Allocator) Save {
+            return .{ .ub_addr = allocator.unallocated_byte_address() };
+        }
+        pub fn restore(allocator: *Allocator, state: Save) void {
+            allocator.ub_addr = state.ub_addr;
+        }
         fn allocate(allocator: *Allocator, s_up_addr: u64) void {
             allocator.ub_addr = s_up_addr;
         }
@@ -461,6 +468,41 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             try meta.wrap(special.static.release(rel_part_spec, AddressSpace, address_space, arena_index));
         }
         pub usingnamespace ArenaReturnTypes(Allocator);
+        pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) []T {
+            const s_bytes: u64 = @sizeOf(T) * buf.len;
+            const t_bytes: u64 = @sizeOf(T) * count;
+            const s_up_addr: u64 = @ptrToInt(buf.ptr) + s_bytes;
+            const t_up_addr: u64 = @ptrToInt(buf.ptr) + t_bytes;
+            if (allocator.unallocated_byte_address() == s_up_addr) {
+                allocator.allocate(t_up_addr);
+                return buf.ptr[0..count];
+            }
+            const ret: []T = allocateIrreversible(T, count);
+            mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len);
+            return ret;
+        }
+        pub fn createIrreversible(allocator: *Allocator, comptime T: type) *T {
+            const s_bytes: u64 = @sizeOf(T);
+            const s_lb_addr: u64 = allocator.unallocated_byte_address();
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_up_addr: u64 = s_ab_addr + s_bytes;
+            if (s_up_addr > allocator.unmapped_byte_address()) {
+                allocator.mapBelow(s_up_addr);
+            }
+            allocator.allocate(s_up_addr);
+            return @intToPtr(*T, s_ab_addr);
+        }
+        pub fn allocateIrreversible(allocator: *Allocator, comptime T: type, count: u64) []T {
+            const s_bytes: u64 = @sizeOf(T) * count;
+            const s_lb_addr: u64 = allocator.unallocated_byte_address();
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_up_addr: u64 = s_ab_addr + s_bytes;
+            if (s_up_addr > allocator.unmapped_byte_address()) {
+                allocator.mapBelow(s_up_addr);
+            }
+            allocator.allocate(s_up_addr);
+            return @intToPtr([*]T, s_ab_addr)[0..count];
+        }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
@@ -656,6 +698,41 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             try meta.wrap(special.release(rel_part_spec, AddressSpace, address_space, arena_index));
         }
         pub usingnamespace ArenaReturnTypes(Allocator);
+        pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) []T {
+            const s_bytes: u64 = @sizeOf(T) * buf.len;
+            const t_bytes: u64 = @sizeOf(T) * count;
+            const s_up_addr: u64 = @ptrToInt(buf.ptr) + s_bytes;
+            const t_up_addr: u64 = @ptrToInt(buf.ptr) + t_bytes;
+            if (allocator.unallocated_byte_address() == s_up_addr) {
+                allocator.allocate(t_up_addr);
+                return buf.ptr[0..count];
+            }
+            const ret: []T = allocateIrreversible(T, count);
+            mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len);
+            return ret;
+        }
+        pub fn createIrreversible(allocator: *Allocator, comptime T: type) *T {
+            const s_bytes: u64 = @sizeOf(T);
+            const s_lb_addr: u64 = allocator.unallocated_byte_address();
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_up_addr: u64 = s_ab_addr + s_bytes;
+            if (s_up_addr > allocator.unmapped_byte_address()) {
+                allocator.mapBelow(s_up_addr);
+            }
+            allocator.allocate(s_up_addr);
+            return @intToPtr(*T, s_ab_addr);
+        }
+        pub fn allocateIrreversible(allocator: *Allocator, comptime T: type, count: u64) []T {
+            const s_bytes: u64 = @sizeOf(T) * count;
+            const s_lb_addr: u64 = allocator.unallocated_byte_address();
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_up_addr: u64 = s_ab_addr + s_bytes;
+            if (s_up_addr > allocator.unmapped_byte_address()) {
+                allocator.mapBelow(s_up_addr);
+            }
+            allocator.allocate(s_up_addr);
+            return @intToPtr([*]T, s_ab_addr)[0..count];
+        }
         pub usingnamespace GenericConfiguration(Allocator);
         pub usingnamespace GenericInterface(Allocator);
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
@@ -724,6 +801,13 @@ pub fn GenericPageAllocator(comptime spec: PageAllocatorSpec) type {
         }
         pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
             return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
+        }
+        pub const Save = struct { ub_addr: u64 };
+        pub fn save(allocator: *const Allocator) Save {
+            return .{ .ub_addr = allocator.unallocated_byte_address() };
+        }
+        pub fn restore(allocator: *Allocator, state: Save) void {
+            allocator.ub_addr = state.ub_addr;
         }
         inline fn allocate(allocator: *Allocator, s_up_addr: u64) void {
             allocator.ub_addr = s_up_addr;
@@ -3966,7 +4050,7 @@ const debug = opaque {
         builtin.debug.logSuccess(array.readAll());
     }
     fn showFiloDeallocateViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (builtin.is_perf) @panic(about_filo_error_s ++ "bad deallocate");
+        if (builtin.is_perf) builtin.debug.logFault(about_filo_error_s ++ "bad deallocate");
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
@@ -3979,7 +4063,7 @@ const debug = opaque {
         builtin.debug.logFault(array.readAll());
     }
     fn showFiloResizeViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (builtin.is_perf) @panic(about_filo_error_s ++ "bad resize");
+        if (builtin.is_perf) builtin.debug.logFault(about_filo_error_s ++ "bad resize");
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
