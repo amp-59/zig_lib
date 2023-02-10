@@ -12,8 +12,8 @@ const gen = @import("./gen.zig");
 const config = @import("./config.zig");
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub usingnamespace proc.start;
-pub usingnamespace proc.exception;
+//pub usingnamespace proc.start;
+//pub usingnamespace proc.exception;
 
 const Details = gen.Allocator.StructuredVector(*const out.DetailMore);
 
@@ -23,9 +23,10 @@ const out = struct {
     usingnamespace @import("./zig-out/src/memgen_type_specs.zig");
     usingnamespace @import("./zig-out/src/memgen_type_descrs.zig");
     usingnamespace @import("./zig-out/src/memgen_variants.zig");
+    usingnamespace @import("./zig-out/src/memgen_containers.zig");
     usingnamespace @import("./zig-out/src/memgen_container_specifications.zig");
 };
-fn writeReturnImplementation(array: *gen.String, impl_detail: *const out.DetailMore) void {
+fn writeReturnImplementation(array: *gen.String, impl_detail: out.DetailMore) void {
     const endl: bool = mem.testEqualManyBack(u8, " => ", array.readAll());
     array.writeMany("return ");
     impl_detail.writeName(array);
@@ -37,12 +38,12 @@ fn writeReturnImplementation(array: *gen.String, impl_detail: *const out.DetailM
     }
 }
 const Filtered = struct {
-    []const *const out.DetailMore,
-    []const *const out.DetailMore,
+    []const out.DetailMore,
+    []const out.DetailMore,
 };
 fn filterTechnique(
-    impl_groups: []const *const out.DetailMore,
-    buf: []*const out.DetailMore,
+    impl_groups: []const out.DetailMore,
+    buf: []out.DetailMore,
     comptime field_name: []const u8,
 ) Filtered {
     if (!@hasField(gen.Techniques, field_name)) {
@@ -59,10 +60,10 @@ fn filterTechnique(
             buf[f_idx] = impl_variant;
         }
     }
-    const f: []*const out.DetailMore = buf[f_idx..];
+    const f: []out.DetailMore = buf[f_idx..];
     f_idx = 0;
     while (f_idx != f.len) : (f_idx +%= 1) {
-        const a: *const out.DetailMore = f[f_idx];
+        const a: out.DetailMore = f[f_idx];
         f[f_idx] = f[f.len -% (1 +% f_idx)];
         f[f.len -% (1 +% f_idx)] = a;
     }
@@ -71,8 +72,8 @@ fn filterTechnique(
 fn writeDeductionTestBoolean(
     allocator: *gen.Allocator,
     array: *gen.String,
-    toplevel_impl_group: []const *const out.DetailMore,
-    impl_group: []const *const out.DetailMore,
+    toplevel_impl_group: []const out.DetailMore,
+    impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
     comptime field_names: []const []const u8,
 ) void {
@@ -83,7 +84,7 @@ fn writeDeductionTestBoolean(
             return writeDeduction(allocator, array, toplevel_impl_group, impl_group, options[1..]);
         }
     }
-    var buf: []*const out.DetailMore = allocator.allocateIrreversible(*const out.DetailMore, impl_group.len);
+    var buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, field_names[0]);
     if (filtered[1].len != 0) {
         array.writeMany("if (options." ++ field_names[0] ++ ") {\n");
@@ -108,11 +109,11 @@ fn writeDeductionTestBoolean(
 fn writeDeductionCompareEnumerationInternal(
     allocator: *gen.Allocator,
     array: *gen.String,
-    toplevel_impl_group: []const *const out.DetailMore,
-    impl_group: []const *const out.DetailMore,
+    toplevel_impl_group: []const out.DetailMore,
+    impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
     comptime field_index: usize,
-) ?[]const *const out.DetailMore {
+) ?[]const out.DetailMore {
     if (field_index == options[0].info.field_field_names.len and options.len != 1) {
         return impl_group;
     }
@@ -122,7 +123,7 @@ fn writeDeductionCompareEnumerationInternal(
         }
         return null;
     }
-    var buf: []*const out.DetailMore = allocator.allocateIrreversible(*const out.DetailMore, impl_group.len);
+    var buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, options[0].info.field_field_names[field_index]);
     if (filtered[1].len != 0) {
         array.writeMany("." ++ comptime options[0].tagName(field_index) ++ " => ");
@@ -142,14 +143,14 @@ fn writeDeductionCompareEnumerationInternal(
 fn writeDeductionCompareEnumeration(
     allocator: *gen.Allocator,
     array: *gen.String,
-    toplevel_impl_group: []const *const out.DetailMore,
-    impl_group: []const *const out.DetailMore,
+    toplevel_impl_group: []const out.DetailMore,
+    impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
 ) void {
     const save: gen.Allocator.Save = allocator.save();
     defer allocator.restore(save);
     array.writeMany("switch (options." ++ options[0].info.field_name ++ ") {\n");
-    const rem: ?[]const *const out.DetailMore =
+    const rem: ?[]const out.DetailMore =
         writeDeductionCompareEnumerationInternal(allocator, array, toplevel_impl_group, impl_group, options, 0);
     array.writeMany("}\n");
     writeDeduction(allocator, array, toplevel_impl_group, rem orelse return, options[1..]);
@@ -157,8 +158,8 @@ fn writeDeductionCompareEnumeration(
 fn writeDeductionCompareOptionalEnumeration(
     allocator: *gen.Allocator,
     array: *gen.String,
-    toplevel_impl_group: []const *const out.DetailMore,
-    impl_group: []const *const out.DetailMore,
+    toplevel_impl_group: []const out.DetailMore,
+    impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
 ) void {
     const save: gen.Allocator.Save = allocator.save();
@@ -166,7 +167,7 @@ fn writeDeductionCompareOptionalEnumeration(
     array.writeMany("if (options." ++ options[0].info.field_name ++ ") |" ++
         options[0].info.field_name ++ "| {\nswitch (" ++
         options[0].info.field_name ++ ") {\n");
-    const rem: ?[]const *const out.DetailMore =
+    const rem: ?[]const out.DetailMore =
         writeDeductionCompareEnumerationInternal(allocator, array, toplevel_impl_group, impl_group, options, 0);
     array.writeMany("}\n}\n");
     writeDeduction(allocator, array, toplevel_impl_group, rem orelse return, options[1..]);
@@ -174,8 +175,8 @@ fn writeDeductionCompareOptionalEnumeration(
 fn writeDeduction(
     allocator: *gen.Allocator,
     array: *gen.String,
-    toplevel_impl_group: []const *const out.DetailMore,
-    impl_group: []const *const out.DetailMore,
+    toplevel_impl_group: []const out.DetailMore,
+    impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
 ) void {
     if (options.len == 0) {
@@ -214,11 +215,22 @@ pub fn generateReferences() void {
     var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
     while (ctn_index != out.container_specifications.len) : (ctn_index +%= 1) {
-        const ctn_group: []const []const u16 = out.container_specifications[ctn_index];
+        const save: gen.Allocator.Save = allocator.save();
+        defer allocator.restore(save);
+        const ctn_buf: []const out.DetailMore = blk: {
+            const ctn_group: []const u16 = out.containers[ctn_index];
+            const buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, ctn_group.len);
+            var impl_index: u16 = 0;
+            while (impl_index != ctn_group.len) : (impl_index +%= 1) {
+                buf[impl_index] = out.variants[ctn_group[impl_index]];
+            }
+            break :blk buf;
+        };
+        const ctn_spec_group: []const []const u16 = out.container_specifications[ctn_index];
         var spec_index: u16 = 0;
-        while (spec_index != ctn_group.len) : (spec_index +%= 1) {
+        while (spec_index != ctn_spec_group.len) : (spec_index +%= 1) {
             defer accm_spec_index +%= 1;
-            const spec_group: []const u16 = ctn_group[spec_index];
+            const spec_group: []const u16 = ctn_spec_group[spec_index];
             if (spec_group.len == 0) {
                 continue;
             }
@@ -236,20 +248,20 @@ pub fn generateReferences() void {
             array.writeMany("const Specification = @This();\n");
             if (spec_group.len == 1) {
                 array.writeMany("pub fn Implementation(comptime spec: Specification) type {\n");
-                writeReturnImplementation(&array, &out.variants[spec_group[0]]);
+                writeReturnImplementation(&array, out.variants[spec_group[0]]);
                 array.writeMany("}\n" ++ "};\n");
                 continue;
             }
-            const save: gen.Allocator.Save = allocator.save();
-            defer allocator.restore(save);
-            const buf: []*const out.DetailMore = allocator.allocateIrreversible(*const out.DetailMore, spec_group.len);
-            var impl_index: u16 = 0;
-            while (impl_index != spec_group.len) : (impl_index +%= 1) {
-                const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
-                buf[impl_index] = impl_variant;
-            }
+            const ctn_spec_buf: []const out.DetailMore = blk: {
+                const buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, spec_group.len);
+                var impl_index: u16 = 0;
+                while (impl_index != spec_group.len) : (impl_index +%= 1) {
+                    buf[impl_index] = out.variants[spec_group[impl_index]];
+                }
+                break :blk buf;
+            };
             array.writeMany("pub fn Implementation(comptime spec: Specification, comptime options: anytype) type {\n");
-            writeDeduction(&allocator, &array, buf, buf, &out.options);
+            writeDeduction(&allocator, &array, ctn_buf, ctn_spec_buf, &out.options);
             array.writeMany("}\n" ++ "};\n");
         }
     }

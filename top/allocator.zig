@@ -675,9 +675,9 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
 }
 pub fn GenericIrreversibleInterface(comptime Allocator: type) type {
     return struct {
-        const Graphics = Allocator.Graphics;
+        const Graphics = GenericArenaAllocatorGraphics(Allocator);
         pub fn createIrreversible(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
-            defer Graphics.showWithReference(&allocator, @src());
+            defer Graphics.showWithReference(allocator, @src());
             const s_bytes: u64 = @sizeOf(T);
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
@@ -691,7 +691,7 @@ pub fn GenericIrreversibleInterface(comptime Allocator: type) type {
             return ret;
         }
         pub fn allocateIrreversible(allocator: *Allocator, comptime T: type, count: u64) Allocator.allocate_payload([]T) {
-            defer Graphics.showWithReference(&allocator, @src());
+            defer Graphics.showWithReference(allocator, @src());
             const s_bytes: u64 = @sizeOf(T) * count;
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
@@ -705,7 +705,7 @@ pub fn GenericIrreversibleInterface(comptime Allocator: type) type {
             return ret;
         }
         pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) Allocator.allocate_payload([]T) {
-            defer Graphics.showWithReference(&allocator, @src());
+            defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = @ptrToInt(buf.ptr);
             const s_aligned_bytes: u64 = @sizeOf(T) * buf.len;
             const t_aligned_bytes: u64 = @sizeOf(T) * count;
