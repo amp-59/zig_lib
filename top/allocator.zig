@@ -725,37 +725,43 @@ pub fn GenericIrreversibleInterface(comptime Allocator: type) type {
             return ret;
         }
         inline fn showCreate(comptime child: type, ptr: *child) void {
-            Graphics.showAllocateOneStructured(
-                child,
-                @ptrToInt(ptr),
-                @ptrToInt(ptr) + @sizeOf(child),
-                null,
-                @src(),
-                @returnAddress(),
-            );
+            if (Allocator.allocator_spec.logging.allocate) {
+                Graphics.showAllocateOneStructured(
+                    child,
+                    @ptrToInt(ptr),
+                    @ptrToInt(ptr) + @sizeOf(child),
+                    null,
+                    @src(),
+                    @returnAddress(),
+                );
+            }
         }
         inline fn showAllocate(comptime child: type, buf: []child) void {
-            Graphics.showAllocateManyStructured(
-                child,
-                @ptrToInt(buf.ptr),
-                @ptrToInt(buf.ptr) + @sizeOf(child) * buf.len,
-                null,
-                @src(),
-                @returnAddress(),
-            );
+            if (Allocator.allocator_spec.logging.allocate) {
+                Graphics.showAllocateManyStructured(
+                    child,
+                    @ptrToInt(buf.ptr),
+                    @ptrToInt(buf.ptr) + @sizeOf(child) * buf.len,
+                    null,
+                    @src(),
+                    @returnAddress(),
+                );
+            }
         }
         inline fn showReallocate(comptime child: type, s_buf: []child, t_buf: []child) void {
-            Graphics.showReallocateManyStructured(
-                child,
-                child,
-                @ptrToInt(s_buf.ptr),
-                @ptrToInt(s_buf.ptr) + @sizeOf(child) * s_buf.len,
-                @ptrToInt(t_buf.ptr),
-                @ptrToInt(t_buf.ptr) + @sizeOf(child) * t_buf.len,
-                null,
-                @src(),
-                @returnAddress(),
-            );
+            if (Allocator.allocator_spec.logging.reallocate) {
+                Graphics.showReallocateManyStructured(
+                    child,
+                    child,
+                    @ptrToInt(s_buf.ptr),
+                    @ptrToInt(s_buf.ptr) + @sizeOf(child) * s_buf.len,
+                    @ptrToInt(t_buf.ptr),
+                    @ptrToInt(t_buf.ptr) + @sizeOf(child) * t_buf.len,
+                    null,
+                    @src(),
+                    @returnAddress(),
+                );
+            }
         }
     };
 }
