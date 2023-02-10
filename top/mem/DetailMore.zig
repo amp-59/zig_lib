@@ -1,5 +1,4 @@
 const gen = @import("./gen.zig");
-const out = @import("./zig-out/src/memgen_type_specs.zig");
 
 pub const DetailMore = packed struct {
     index: u8,
@@ -8,7 +7,8 @@ pub const DetailMore = packed struct {
     modes: gen.Modes,
     fields: gen.Fields,
     techs: gen.Techniques,
-    specs: out.Specifiers,
+    specs: Specifiers,
+    const Specifiers = @import("./zig-out/src/Specifiers.zig").Specifiers;
     pub fn less(detail: *const DetailMore) .Detail {
         return .{
             .index = detail.index,
@@ -33,14 +33,19 @@ pub const DetailMore = packed struct {
         array.writeMany(", .techs = ");
         array.writeFormat(detail.techs);
         array.writeMany(", .specs = ");
-        gen.writeStructOfBool(array, out.Specifiers, detail.specs);
+        gen.writeStructOfBool(array, Specifiers, detail.specs);
         array.writeMany(" }");
     }
-    pub fn writeName(detail: *const DetailMore, array: anytype) void {
+    pub fn writeImplementationName(detail: *const DetailMore, array: anytype) void {
         gen.writeFieldOfBool(array, detail.layouts);
         gen.writeFieldOfBool(array, detail.modes);
         gen.writeFieldOfBool(array, detail.kinds);
         gen.writeFieldOfBool(array, detail.techs);
         gen.writeFieldOfBool(array, detail.specs);
+    }
+    pub fn writeContainerName(detail: *const DetailMore, array: anytype) void {
+        gen.writeFieldOfBool(array, detail.layouts);
+        gen.writeFieldOfBool(array, detail.modes);
+        gen.writeFieldOfBool(array, detail.kinds);
     }
 };
