@@ -39,8 +39,8 @@ fn mapContainersToParameters(array: *gen.String) void {
 
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var buf: [1024 * 1024]u8 = undefined;
-    var array: gen.String = gen.String.init(&buf);
+    var array: gen.String = undefined;
+    array.undefineAll();
     mapContainersToParameters(&array);
     gen.exit(0);
 }
