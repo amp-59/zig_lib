@@ -48,7 +48,7 @@ fn setAllCommands(builder: *const build.Builder, cmd_mode: meta.Field(build.Buil
 }
 fn execAllCommands(builder: *const build.Builder) !void {
     for (builder.targets.referAllDefined()) |*target| {
-        builtin.assertNotEqual(u64, 0, try target.build());
+        try target.build();
     }
 }
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
@@ -128,7 +128,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             const cmd_name: []const u8 = target.build_cmd.name orelse continue;
             if (mem.testEqualMany(u8, name, cmd_name)) {
                 builder.args = builder.args[index..];
-                builtin.assertNotEqual(u64, 0, try target.build());
+                try target.build();
                 break;
             }
         } else {
