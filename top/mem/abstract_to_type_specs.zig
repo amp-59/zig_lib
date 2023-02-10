@@ -7,9 +7,7 @@ const preset = @import("./../preset.zig");
 const builtin = @import("./../builtin.zig");
 
 const gen = @import("./gen.zig");
-
 const out = @import("./zig-out/src/memgen_abstract.zig");
-
 const fmt_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true };
 
 fn slicePtr(comptime T: type) *[]const T {
@@ -24,8 +22,6 @@ fn addUniqueFieldName(field_names: *mem.StaticArray([]const u8, 16), field_name:
     }
     field_names.writeOne(field_name);
 }
-
-// Questionable
 fn getFieldDefault(
     comptime field: builtin.Type.StructField,
     comptime field_name: []const u8,
@@ -68,16 +64,16 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
             const field_union_field_name: []const u8 = field_type_info.Union.fields[0].name;
             if (@hasField(gen.Variant, field_union_field_name)) {
                 switch (@field(gen.Variant, field_union_field_name)) {
-                    .__stripped => {
+                    .stripped => {
                         p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, field);
                     },
-                    .__derived => {
+                    .derived => {
                         s_struct_field_slices = addField(
                             s_struct_field_slices,
                             meta.structField(field.type, field.name, null),
                         );
                     },
-                    .__optional_derived => {
+                    .optional_derived => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
                         const s_field_type: type = meta.Child(p_field_type);
                         p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, meta.structField(
@@ -90,7 +86,7 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
                             meta.structField(s_field_type, field.name, null),
                         );
                     },
-                    .__optional_variant => {
+                    .optional_variant => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
                         const s_field_type: type = meta.Child(p_field_type);
                         p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, meta.structField(
@@ -108,7 +104,7 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
                             meta.structField(s_field_type, field.name, null),
                         );
                     },
-                    .__decl_optional_derived => {
+                    .decl_optional_derived => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
                         const fields: []const builtin.Type.StructField = meta.structFields(p_field_type);
                         p_struct_fields = meta.concat(
@@ -121,7 +117,7 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
                             meta.structField(fields[1].type, fields[1].name, null),
                         );
                     },
-                    .__decl_optional_variant => {
+                    .decl_optional_variant => {
                         const p_field_type: type = meta.Field(field.type, field_union_field_name);
                         const fields: []const builtin.Type.StructField = meta.structFields(p_field_type);
                         p_struct_fields = meta.concat(
