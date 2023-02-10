@@ -20,7 +20,7 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "build_mode", .long = "-Drelease-fast", .assign = .{ .any = &(.ReleaseFast) }, .descr = "speed++" },
     .{ .field_name = "build_mode", .long = "-Drelease-small", .assign = .{ .any = &(.ReleaseSmall) }, .descr = "size--" },
     .{ .field_name = "build_mode", .long = "-Drelease-safe", .assign = .{ .any = &(.ReleaseSafe) }, .descr = "safety++" },
-    .{ .field_name = "build_mode", .long = "-Ddebug", .assign = Options.debug, .descr = "crashing++ " },
+    .{ .field_name = "build_mode", .long = "-Ddebug", .assign = .{ .any = &(.Debug) }, .descr = "crashing++ " },
     .{ .field_name = "strip", .long = "-fstrip", .assign = Options.yes, .descr = "do not emit debug symbols" },
     .{ .field_name = "strip", .long = "-fno-strip", .assign = Options.no, .descr = "emit debug symbols" },
     .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
