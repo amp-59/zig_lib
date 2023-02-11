@@ -19,11 +19,11 @@ const out = struct {
     usingnamespace @import("./detail_more.zig");
     usingnamespace @import("./zig-out/src/options.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
-    usingnamespace @import("./zig-out/src/variants.zig");
+    usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
     usingnamespace @import("./zig-out/src/type_descrs.zig");
-    usingnamespace @import("./zig-out/src/container_specifications.zig");
+    usingnamespace @import("./zig-out/src/specifications.zig");
 };
 
 const Args = mem.StaticArray([:0]const u8, 8);
@@ -352,11 +352,6 @@ pub fn writeFnSignatureGeneric(array: *gen.String, impl_variant: *const out.Deta
 }
 
 fn writeFnBodyGeneric(array: *gen.String, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn, info: *Info) void {
-    // Should the reader find inconsistencies in the following logical
-    // structures (such as duplicating write operating in an inner scope, when
-    // that write would have identical semantics and result in fewer lines of
-    // code if moved to an outer scope), the reason is simple: at the time of
-    // writing, the chosen method resulted in a smaller binary.
     const allocated_byte_address: FnCall = .{
         .impl_variant = impl_variant,
         .impl_fn_info = get(.allocated_byte_address),
@@ -974,8 +969,8 @@ pub fn generateReferences() void {
     array.undefineAll();
     var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
-    while (ctn_index != out.container_specifications.len) : (ctn_index +%= 1) {
-        const ctn_group: []const []const u16 = out.container_specifications[ctn_index];
+    while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
+        const ctn_group: []const []const u16 = out.specifications[ctn_index];
         var spec_index: u16 = 0;
         while (spec_index != ctn_group.len) : (spec_index +%= 1) {
             defer accm_spec_index +%= 1;
@@ -985,7 +980,7 @@ pub fn generateReferences() void {
                 if (spec_group.len == 0) {
                     continue;
                 }
-                const impl_variant: *const out.DetailMore = &out.variants[spec_group[impl_index]];
+                const impl_variant: *const out.DetailMore = &out.impl_variants[spec_group[impl_index]];
                 array.writeMany("fn ");
                 impl_variant.writeImplementationName(&array);
                 array.writeMany("(comptime " ++ sym.spec_name ++ ": " ++ sym.generic_spec_type_name);
