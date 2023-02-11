@@ -531,19 +531,37 @@ pub fn shlEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
     return overflowingShlAssign(T, arg1, arg2);
 }
 pub fn min(comptime T: type, arg1: T, arg2: T) T {
-    if (@typeInfo(T) == .Int) {
+    if (@typeInfo(T) == .Int or @typeInfo(T) == .ComptimeInt or
+        @typeInfo(T) == .Float or @typeInfo(T) == .ComptimeFloat or
+        @typeInfo(T) == .Vector)
+    {
         return @min(arg1, arg2);
     } else {
-        const U: type = @Type(.{ .Int = @bitSizeOf(T), .signedness = .unsigned });
-        return @min(@bitCast(U, arg1), @bitCast(U, arg2));
+        const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
+        if (@ptrCast(*const U, &arg1).* <
+            @ptrCast(*const U, &arg2).*)
+        {
+            return arg1;
+        } else {
+            return arg2;
+        }
     }
 }
 pub fn max(comptime T: type, arg1: T, arg2: T) T {
-    if (@typeInfo(T) == .Int) {
+    if (@typeInfo(T) == .Int or @typeInfo(T) == .ComptimeInt or
+        @typeInfo(T) == .Float or @typeInfo(T) == .ComptimeFloat or
+        @typeInfo(T) == .Vector)
+    {
         return @max(arg1, arg2);
     } else {
-        const U: type = @Type(.{ .Int = @bitSizeOf(T), .signedness = .unsigned });
-        return @max(@bitCast(U, arg1), @bitCast(U, arg2));
+        const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
+        if (@ptrCast(*const U, &arg1).* >
+            @ptrCast(*const U, &arg2).*)
+        {
+            return arg1;
+        } else {
+            return arg2;
+        }
     }
 }
 pub fn diff(comptime T: type, arg1: T, arg2: T) T {
@@ -561,6 +579,9 @@ pub fn nullPointer(comptime T: type) *allowzero T {
 }
 pub inline fn identity(any: anytype) @TypeOf(any) {
     return any;
+}
+pub inline fn equ(comptime T: type, ptr: *T, value: T) void {
+    ptr.* = value;
 }
 fn @"test"(b: bool) bool {
     return b;
@@ -1873,7 +1894,7 @@ pub const Version = struct {
         if (lhs.patch > rhs.patch) return .gt;
         return .eq;
     }
-    pub fn parseVersion(comptime text: []const u8) !Version {
+    pub fn parseVersion(text: []const u8) !Version {
         var i: usize = 0;
         var j: usize = 0;
         while (i < text.len) : (i += 1) {

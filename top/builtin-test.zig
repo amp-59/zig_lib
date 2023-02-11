@@ -5,6 +5,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
+pub const comptime_assertions: bool = true;
 
 fn proper(comptime value: comptime_int) []const u8 {
     var s: []const u8 = "";
@@ -26,11 +27,9 @@ fn stupid(comptime value: comptime_int) []const u8 {
         return s[1 .. s.len - 5];
     }
 }
-pub fn main() !void {
+pub fn testIntToString() !void {
     const T: type = u64;
     var arg1: T = 0;
-    var arg2: T = 1;
-    var b: bool = true;
     var iint: i64 = -0xfee1dead;
     try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "-0xfee1dead");
     iint = -0x0;
@@ -51,8 +50,9 @@ pub fn main() !void {
     }
     try testing.expectEqualMany(u8, builtin.fmt.ub8(0).readAll(), "0b00000000");
     try testing.expectEqualMany(u8, builtin.fmt.ub8(1).readAll(), "0b00000001");
-    uint = @ptrToInt(&arg1);
-    while (uint < 0x100000) : (uint += 99) {
+    const start = @ptrToInt(&arg1);
+    uint = start;
+    while (uint - start < 0x100000) : (uint += 99) {
         builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.ud(u64, builtin.fmt.ud64(uint).readAll()));
@@ -86,7 +86,7 @@ pub fn main() !void {
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ud(u8, builtin.fmt.ud8(@truncate(u8, uint)).readAll()));
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
-    iint = @bitCast(isize, @ptrToInt(&arg1));
+    iint = @bitCast(isize, start);
     while (iint < 0x100000) : (iint += 99) {
         builtin.assertEqual(i64, iint, builtin.parse.ib(i64, builtin.fmt.ib64(iint).readAll()));
         builtin.assertEqual(i64, iint, builtin.parse.io(i64, builtin.fmt.io64(iint).readAll()));
@@ -121,75 +121,51 @@ pub fn main() !void {
         try builtin.expectEqual(i8, @truncate(i8, iint), builtin.parse.id(i8, builtin.fmt.id8(@truncate(i8, iint)).readAll()));
         try builtin.expectEqual(i8, @truncate(i8, iint), builtin.parse.ix(i8, builtin.fmt.ix8(@truncate(i8, iint)).readAll()));
     }
-
-    _ = builtin.build_root;
-    // Testing compilation
-    comptime {
-        var static_arg1: T = 0;
-        var static_arg2: T = 2;
-        var static_b: bool = true;
-        static_arg1 = builtin.static.add(T, static_arg1, static_arg2);
-        builtin.static.addEqu(T, &static_arg1, static_arg2);
-        static_arg1 = builtin.static.sub(T, static_arg1, static_arg2);
-        builtin.static.subEqu(T, &static_arg1, static_arg2);
-        static_arg1 = builtin.static.mul(T, static_arg1, static_arg2);
-        builtin.static.mulEqu(T, &static_arg1, static_arg2);
-        static_arg1 = builtin.static.divExact(T, static_arg1, static_arg2);
-        builtin.static.divEquExact(T, &static_arg1, static_arg2);
-        builtin.static.assertBelow(T, static_arg1, static_arg2);
-        builtin.static.assertBelowOrEqual(T, static_arg1, static_arg2);
-        static_arg1 = static_arg2;
-        builtin.static.assertEqual(T, static_arg1, static_arg2);
-        builtin.static.addEqu(u64, &static_arg1, 1);
-        builtin.static.assertAboveOrEqual(T, static_arg1, static_arg2);
-        builtin.static.assertAbove(T, static_arg1, static_arg2);
-        builtin.static.assert(static_b);
-    }
-    const f = struct {
-        fn eql(
-            comptime text: []const u8,
-            comptime v1: u32,
-            comptime v2: u32,
-            comptime v3: u32,
-        ) !void {
-            const v = try comptime builtin.Version.parseVersion(text);
-            comptime builtin.static.assertEqual(u32, v.major, v1);
-            comptime builtin.static.assertEqual(u32, v.minor, v2);
-            comptime builtin.static.assertEqual(u32, v.patch, v3);
-        }
-        fn err(comptime text: []const u8, comptime expected_err: anyerror) !void {
-            _ = comptime builtin.Version.parseVersion(text) catch |actual_err| {
-                if (actual_err == expected_err) return;
-                return actual_err;
-            };
-            return error.Unreachable;
-        }
+}
+fn expectVersionEqual(text: []const u8, v1: u32, v2: u32, v3: u32) !void {
+    const v = try builtin.Version.parseVersion(text);
+    builtin.assertEqual(u32, v.major, v1);
+    builtin.assertEqual(u32, v.minor, v2);
+    builtin.assertEqual(u32, v.patch, v3);
+}
+fn expectVersionError(text: []const u8, expected_err: anyerror) !void {
+    _ = builtin.Version.parseVersion(text) catch |actual_err| {
+        if (actual_err == expected_err) return;
+        return actual_err;
     };
-    try f.eql("2.6.32.11-svn21605", 2, 6, 32); // Debian PPC
-    try f.eql("2.11.2(0.329/5/3)", 2, 11, 2); // MinGW
-    try f.eql("5.4.0-1018-raspi", 5, 4, 0); // Ubuntu
-    try f.eql("5.7.12_3", 5, 7, 12); // Void
-    try f.eql("2.13-DEVELOPMENT", 2, 13, 0); // DragonFly
-    try f.eql("2.3-35", 2, 3, 0);
-    try f.eql("1a.4", 1, 0, 0);
-    try f.eql("3.b1.0", 3, 0, 0);
-    try f.eql("1.4beta", 1, 4, 0);
-    try f.eql("2.7.pre", 2, 7, 0);
-    try f.eql("0..3", 0, 0, 0);
-    try f.eql("8.008.", 8, 8, 0);
-    try f.eql("01...", 1, 0, 0);
-    try f.eql("55", 55, 0, 0);
-    try f.eql("4294967295.0.1", 4294967295, 0, 1);
-    try f.eql("429496729_6", 429496729, 0, 0);
-    try f.err("foobar", error.InvalidVersion);
-    try f.err("", error.InvalidVersion);
-    try f.err("-1", error.InvalidVersion);
-    try f.err("+4", error.InvalidVersion);
-    try f.err(".", error.InvalidVersion);
-    try f.err("....3", error.InvalidVersion);
-    try f.err("4294967296", error.Overflow);
-    try f.err("5000877755", error.Overflow);
-
+    return error.Unreachable;
+}
+fn testVersionParser() !void {
+    try expectVersionEqual("2.6.32.11-svn21605", 2, 6, 32); // Debian PPC
+    try expectVersionEqual("2.11.2(0.329/5/3)", 2, 11, 2); // MinGW
+    try expectVersionEqual("5.4.0-1018-raspi", 5, 4, 0); // Ubuntu
+    try expectVersionEqual("5.7.12_3", 5, 7, 12); // Void
+    try expectVersionEqual("2.13-DEVELOPMENT", 2, 13, 0); // DragonFly
+    try expectVersionEqual("2.3-35", 2, 3, 0);
+    try expectVersionEqual("1a.4", 1, 0, 0);
+    try expectVersionEqual("3.b1.0", 3, 0, 0);
+    try expectVersionEqual("1.4beta", 1, 4, 0);
+    try expectVersionEqual("2.7.pre", 2, 7, 0);
+    try expectVersionEqual("0..3", 0, 0, 0);
+    try expectVersionEqual("8.008.", 8, 8, 0);
+    try expectVersionEqual("01...", 1, 0, 0);
+    try expectVersionEqual("55", 55, 0, 0);
+    try expectVersionEqual("4294967295.0.1", 4294967295, 0, 1);
+    try expectVersionEqual("429496729_6", 429496729, 0, 0);
+    try expectVersionError("foobar", error.InvalidVersion);
+    try expectVersionError("", error.InvalidVersion);
+    try expectVersionError("-1", error.InvalidVersion);
+    try expectVersionError("+4", error.InvalidVersion);
+    try expectVersionError(".", error.InvalidVersion);
+    try expectVersionError("....3", error.InvalidVersion);
+    try expectVersionError("4294967296", error.Overflow);
+    try expectVersionError("5000877755", error.Overflow);
+}
+fn testRuntimeAssertionsCompile() !void {
+    const T: type = u64;
+    var b: bool = true;
+    var arg1: T = 0;
+    var arg2: T = 1;
     if (b) return;
     arg2 = builtin.add(T, arg1, arg2);
     arg2 = builtin.addSat(T, arg1, arg2);
@@ -247,4 +223,47 @@ pub fn main() !void {
     builtin.assertAboveOrEqual(T, arg1, arg2);
     builtin.assertAbove(T, arg1, arg2);
     builtin.assert(b);
+}
+fn testStaticAssertionsCompile() !void {
+    const T: type = u64;
+    comptime {
+        var static_arg1: T = 0;
+        var static_arg2: T = 2;
+        var static_b: bool = true;
+        static_arg1 = builtin.static.add(T, static_arg1, static_arg2);
+        builtin.static.addEqu(T, &static_arg1, static_arg2);
+        static_arg1 = builtin.static.sub(T, static_arg1, static_arg2);
+        builtin.static.subEqu(T, &static_arg1, static_arg2);
+        static_arg1 = builtin.static.mul(T, static_arg1, static_arg2);
+        builtin.static.mulEqu(T, &static_arg1, static_arg2);
+        static_arg1 = builtin.static.divExact(T, static_arg1, static_arg2);
+        builtin.static.divEquExact(T, &static_arg1, static_arg2);
+        builtin.static.assertBelow(T, static_arg1, static_arg2);
+        builtin.static.assertBelowOrEqual(T, static_arg1, static_arg2);
+        static_arg1 = static_arg2;
+        builtin.static.assertEqual(T, static_arg1, static_arg2);
+        builtin.static.addEqu(u64, &static_arg1, 1);
+        builtin.static.assertAboveOrEqual(T, static_arg1, static_arg2);
+        builtin.static.assertAbove(T, static_arg1, static_arg2);
+        builtin.static.assert(static_b);
+    }
+}
+fn testMinMax() !void {
+    const S = extern struct {
+        a: u64 = 0,
+        b: u64 = 0,
+    };
+    const s: S = .{ .a = 50, .b = 25 };
+    const t: S = .{ .a = 25, .b = 50 };
+    try builtin.expect(builtin.testEqual(u64, s.b, builtin.min(u64, s.a, s.b)));
+    try builtin.expect(builtin.testEqual(u64, t.b, builtin.max(u64, t.b, t.a)));
+    try builtin.expect(builtin.testEqual(S, s, builtin.min(S, t, s)));
+    try builtin.expect(builtin.testEqual(S, t, builtin.max(S, t, s)));
+}
+pub fn main() !void {
+    try testIntToString();
+    try testVersionParser();
+    try testRuntimeAssertionsCompile();
+    try testStaticAssertionsCompile();
+    try testMinMax();
 }
