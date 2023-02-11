@@ -1,11 +1,11 @@
 //! This stage derives specification variants
-const sys = @import("./../sys.zig");
-const mem = @import("./../mem.zig");
-const fmt = @import("./../fmt.zig");
-const meta = @import("./../meta.zig");
-const mach = @import("./../mach.zig");
-const preset = @import("./../preset.zig");
-const builtin = @import("./../builtin.zig");
+const sys = @import("../sys.zig");
+const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
+const meta = @import("../meta.zig");
+const mach = @import("../mach.zig");
+const preset = @import("../preset.zig");
+const builtin = @import("../builtin.zig");
 
 const gen = @import("./gen.zig");
 const out = @import("./zig-out/src/abstract_params.zig");
