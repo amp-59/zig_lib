@@ -232,3 +232,9 @@ fn callPtrToInt(comptime symbol_ptr: [:0]const u8) [:0]const u8 {
 fn callSizeOf(comptime type_name: [:0]const u8) [:0]const u8 {
     return "@sizeOf(" ++ type_name ++ ")";
 }
+
+pub const comptime_keyword: [:0]const u8 = "comptime ";
+pub const return_keyword: [:0]const u8 = "return ";
+pub const end_expression: [:0]const u8 = ";\n";
+pub const end_item: [:0]const u8 = ",\n";
+pub const end_small_item: [:0]const u8 = ", ";
