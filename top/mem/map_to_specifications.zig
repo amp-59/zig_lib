@@ -27,7 +27,7 @@ fn getKeys() Keys {
 }
 fn mapToContainers(array: *gen.String) void {
     const keys: Keys = getKeys();
-    array.writeMany("pub const container_specifications: []const []const []const u16 = &[_][]const []const u16{\n");
+    array.writeMany("pub const specifications: []const []const []const u16 = &[_][]const []const u16{\n");
     for (out.containers) |indices| {
         array.writeMany("&.{");
         for (keys.readAll()) |key| {
@@ -49,7 +49,7 @@ fn mapToContainers(array: *gen.String) void {
         array.writeMany("},");
     }
     array.writeMany("};\n");
-    gen.writeAuxiliarySourceFile(array, "container_specifications.zig");
+    gen.writeAuxiliarySourceFile(array, "specifications.zig");
 }
 
 pub export fn _start() noreturn {
