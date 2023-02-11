@@ -60,9 +60,10 @@ pub fn main(builder: *build.Builder) !void {
         const variants_to_canonicals = util.addProjectExecutable(builder, "variants_to_canonicals", "top/mem/variants_to_canonicals.zig", default);
         variants_to_canonicals.step.dependOn(&generate_canonical.run().step);
         const map_to_containers = util.addProjectExecutable(builder, "map_to_containers", "top/mem/map_to_containers.zig", default);
-        const generate_parameters = util.addProjectExecutable(builder, "generate_parameters", "top/mem/generate_parameters.zig", default);
-        generate_parameters.step.dependOn(&map_to_containers.run().step);
         map_to_containers.step.dependOn(&variants_to_canonicals.run().step);
+        const generate_parameters = util.addProjectExecutable(builder, "generate_parameters", "top/mem/generate_parameters.zig", default);
+        generate_parameters.step.dependOn(&type_specs_to_type_descrs.run().step);
+        generate_parameters.step.dependOn(&map_to_containers.run().step);
         const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", default);
         map_to_specifications.step.dependOn(&map_to_containers.run().step);
         const generate_specifications = util.addProjectExecutable(builder, "generate_specifications", "top/mem/generate_specifications.zig", default);
