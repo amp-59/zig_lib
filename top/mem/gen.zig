@@ -1,9 +1,9 @@
-const fmt = @import("./../fmt.zig");
-const mem = @import("./../mem.zig");
-const meta = @import("./../meta.zig");
-const preset = @import("./../preset.zig");
-const builtin = @import("./../builtin.zig");
-const testing = @import("./../testing.zig");
+const fmt = @import("../fmt.zig");
+const mem = @import("../mem.zig");
+const meta = @import("../meta.zig");
+const preset = @import("../preset.zig");
+const builtin = @import("../builtin.zig");
+const testing = @import("../testing.zig");
 const build_root = @cImport({}).build_root;
 
 pub usingnamespace sys;

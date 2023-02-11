@@ -1,7 +1,7 @@
 //! This stage summarises the abstract specification.
-const mem = @import("./../mem.zig");
-const sys = @import("./../sys.zig");
-const builtin = @import("./../builtin.zig");
+const mem = @import("../mem.zig");
+const sys = @import("../sys.zig");
+const builtin = @import("../builtin.zig");
 
 const gen = @import("./gen.zig");
 
@@ -54,7 +54,7 @@ fn writeOptions(array: *gen.String) void {
     array.writeMany("};\n");
 }
 pub fn specToOptions(array: *gen.String) void {
-    gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "./../../gen.zig" }});
+    gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "../../gen.zig" }});
     writeOptions(array);
     gen.writeAuxiliarySourceFile(array, "options.zig");
 }

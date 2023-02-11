@@ -194,7 +194,7 @@ fn writeSpecifiersStruct(array: *gen.String, field_names: mem.StaticArray([]cons
 }
 pub fn abstractToTypeSpec(array: *gen.String) void {
     gen.writeImports(array, @src(), &.{
-        .{ .name = "gen", .path = "./../../gen.zig" },
+        .{ .name = "gen", .path = "../../gen.zig" },
     });
     var field_names: mem.StaticArray([]const u8, 16) = undefined;
     field_names.undefineAll();
