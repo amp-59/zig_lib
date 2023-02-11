@@ -8,7 +8,7 @@ const out = struct {
     usingnamespace @import("./detail_more.zig");
 
     usingnamespace @import("./zig-out/src/type_specs.zig");
-    usingnamespace @import("./zig-out/src/variants.zig");
+    usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
 };
 
@@ -24,7 +24,7 @@ fn writeOneUnique(uniques: *Uniques, value: Container) void {
 fn variantsToCanonical(array: *gen.String) void {
     gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "./canonical.zig" }});
     array.writeMany("pub const canonicals: []const out.Canonical = &[_]out.Canonical{\n");
-    for (out.variants) |variant| {
+    for (out.impl_variants) |variant| {
         array.writeMany("    ");
         gen.writeStructOfEnum(array, out.Canonical, out.Canonical.convert(variant));
         array.writeMany(",\n");
