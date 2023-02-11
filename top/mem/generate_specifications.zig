@@ -233,7 +233,7 @@ pub fn generateReferences() void {
         .{ .name = "mach", .path = "../mach.zig" },
         .{ .name = "algo", .path = "../algo.zig" },
     });
-    array.writeMany(reference_src);
+    array.writeMany(template);
     var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
