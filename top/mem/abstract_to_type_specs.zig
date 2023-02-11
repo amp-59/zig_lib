@@ -6,18 +6,11 @@ const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
-const out = @import("./zig-out/src/abstract_params.zig");
-
-const fmt_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true };
-
-const AbstractSpec = @import("./abstract_spec.zig");
-
-fn slicePtr(comptime T: type) *[]const T {
-    var ptrs: []const T = &.{};
-    return &ptrs;
-}
+const out = struct {
+    usingnamespace @import("./abstract_spec.zig");
+    usingnamespace @import("./zig-out/src/abstract_params.zig");
+};
 fn addUniqueFieldName(field_names: *mem.StaticArray([]const u8, 16), field_name: []const u8) void {
     for (field_names.readAll()) |unique_field_name| {
         if (builtin.testEqual([]const u8, field_name, unique_field_name)) {
@@ -66,8 +59,8 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
             );
         } else {
             const field_union_field_name: []const u8 = field_type_info.Union.fields[0].name;
-            if (@hasField(AbstractSpec.Variant, field_union_field_name)) {
-                switch (@field(AbstractSpec.Variant, field_union_field_name)) {
+            if (@hasField(out.Variant, field_union_field_name)) {
+                switch (@field(out.Variant, field_union_field_name)) {
                     .stripped => {
                         p_struct_fields = meta.concat(builtin.Type.StructField, p_struct_fields, field);
                     },
@@ -182,7 +175,6 @@ fn writeStructFromFields(array: *gen.String, comptime struct_fields: []const bui
     }
 }
 fn writeSpecifiersStruct(array: *gen.String, field_names: mem.StaticArray([]const u8, 16)) void {
-    gen.writeAuxiliarySourceFile(array, "type_specs.zig");
     array.writeMany("pub const Specifiers = packed struct { ");
     for (field_names.readAll()) |field_name| {
         array.writeMany(field_name);
@@ -203,6 +195,7 @@ pub fn abstractToTypeSpec(array: *gen.String) void {
         writeSpecifications(array, param, &field_names);
     }
     array.writeMany("\n};\n");
+    gen.writeAuxiliarySourceFile(array, "type_specs.zig");
     writeSpecifiersStruct(array, field_names);
 }
 pub export fn _start() noreturn {
