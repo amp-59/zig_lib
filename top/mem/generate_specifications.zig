@@ -22,9 +22,6 @@ const template = @embedFile("./reference-template.zig");
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub usingnamespace proc.start;
-pub usingnamespace proc.exception;
-
-const Details = gen.Allocator.StructuredVector(*const out.DetailMore);
 
 fn writeReturnImplementation(array: *gen.String, impl_detail: out.DetailMore) void {
     const endl: bool = mem.testEqualManyBack(u8, " => ", array.readAll());
@@ -201,13 +198,13 @@ fn writeDeduction(
         }
     }
 }
-fn writeField(array: *gen.String, name: []const u8, type_descr: gen.TypeDescr) void {
+pub fn writeField(array: *gen.String, name: []const u8, type_descr: gen.TypeDescr) void {
     array.writeMany(name);
     array.writeMany(": ");
     array.writeFormat(type_descr);
     array.writeMany(",\n");
 }
-fn groupImplementations(allocator: *gen.Allocator, group_key: []const u16) []const out.DetailMore {
+pub fn groupImplementations(allocator: *gen.Allocator, group_key: []const u16) []const out.DetailMore {
     const buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, group_key.len);
     var impl_index: u16 = 0;
     while (impl_index != group_key.len) : (impl_index +%= 1) {
@@ -215,11 +212,10 @@ fn groupImplementations(allocator: *gen.Allocator, group_key: []const u16) []con
     }
     return buf;
 }
-
-fn implLeader(group_key: []const u16) out.DetailMore {
+pub fn implLeader(group_key: []const u16) out.DetailMore {
     return out.impl_variants[group_key[0]];
 }
-fn specIndex(leader: out.DetailMore) u8 {
+pub fn specIndex(leader: out.DetailMore) u8 {
     return builtin.popcnt(u8, meta.leastRealBitCast(leader.specs));
 }
 
