@@ -8,6 +8,21 @@ pub const Detail = packed struct {
     fields: gen.Fields = .{},
     techs: gen.Techniques = .{},
 
+    pub fn formatWrite(detail: Detail, array: anytype) void {
+        array.writeMany(".{ .index = ");
+        gen.writeIndex(array, detail.index);
+        array.writeMany(", .kinds = ");
+        array.writeFormat(detail.kinds);
+        array.writeMany(", .layouts = ");
+        array.writeFormat(detail.layouts);
+        array.writeMany(", .modes = ");
+        array.writeFormat(detail.modes);
+        array.writeMany(", .fields = ");
+        array.writeFormat(detail.fields);
+        array.writeMany(", .techs = ");
+        array.writeFormat(detail.techs);
+        array.writeMany(" }");
+    }
     pub fn less(detail: *const Detail, comptime DetailLess: type) DetailLess {
         return .{
             .index = detail.index,
@@ -26,20 +41,5 @@ pub const Detail = packed struct {
             .fields = detail.fields,
             .specs = specs,
         };
-    }
-    pub fn formatWrite(detail: Detail, array: anytype) void {
-        array.writeMany(".{ .index = ");
-        gen.writeIndex(array, detail.index);
-        array.writeMany(", .kinds = ");
-        array.writeFormat(detail.kinds);
-        array.writeMany(", .layouts = ");
-        array.writeFormat(detail.layouts);
-        array.writeMany(", .modes = ");
-        array.writeFormat(detail.modes);
-        array.writeMany(", .fields = ");
-        array.writeFormat(detail.fields);
-        array.writeMany(", .techs = ");
-        array.writeFormat(detail.techs);
-        array.writeMany(" }");
     }
 };
