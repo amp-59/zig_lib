@@ -44,36 +44,52 @@ pub fn main(builder: *build.Builder) !void {
     const mem_gen = builder.step("mem_gen", "generate containers according to specification");
     {
         const default = .{ .build_mode = .ReleaseSmall };
+
         const spec_to_abstract = util.addProjectExecutable(builder, "spec_to_abstract", "top/mem/spec_to_abstract.zig", default);
         const spec_to_detail = util.addProjectExecutable(builder, "spec_to_detail", "top/mem/spec_to_detail.zig", default);
         const spec_to_options = util.addProjectExecutable(builder, "spec_to_options", "top/mem/spec_to_options.zig", default);
-        const abstract_to_type_spec = util.addProjectExecutable(builder, "abstract_to_type_specs", "top/mem/abstract_to_type_specs.zig", default);
-        abstract_to_type_spec.step.dependOn(&spec_to_options.run().step);
-        abstract_to_type_spec.step.dependOn(&spec_to_abstract.run().step);
-        abstract_to_type_spec.step.dependOn(&spec_to_detail.run().step);
-        const type_specs_to_type_descrs = util.addProjectExecutable(builder, "type_specs_to_type_descrs", "top/mem/type_specs_to_type_descrs.zig", default);
-        const detail_to_variants = util.addProjectExecutable(builder, "detail_to_variants", "top/mem/detail_to_variants.zig", default);
-        detail_to_variants.step.dependOn(&spec_to_detail.run().step);
-        detail_to_variants.step.dependOn(&abstract_to_type_spec.run().step);
-        const generate_canonical = util.addProjectExecutable(builder, "generate_canonical", "top/mem/generate_canonical.zig", default);
-        generate_canonical.step.dependOn(&detail_to_variants.run().step);
-        const variants_to_canonicals = util.addProjectExecutable(builder, "variants_to_canonicals", "top/mem/variants_to_canonicals.zig", default);
-        variants_to_canonicals.step.dependOn(&generate_canonical.run().step);
-        const map_to_containers = util.addProjectExecutable(builder, "map_to_containers", "top/mem/map_to_containers.zig", default);
-        map_to_containers.step.dependOn(&variants_to_canonicals.run().step);
-        const generate_parameters = util.addProjectExecutable(builder, "generate_parameters", "top/mem/generate_parameters.zig", default);
-        generate_parameters.step.dependOn(&type_specs_to_type_descrs.run().step);
-        generate_parameters.step.dependOn(&map_to_containers.run().step);
-        const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", default);
-        map_to_specifications.step.dependOn(&map_to_containers.run().step);
-        const generate_specifications = util.addProjectExecutable(builder, "generate_specifications", "top/mem/generate_specifications.zig", default);
-        generate_specifications.step.dependOn(&map_to_specifications.run().step);
-        generate_specifications.step.dependOn(&type_specs_to_type_descrs.run().step);
-        const generate_references = util.addProjectExecutable(builder, "generate_references", "top/mem/generate_references.zig", default);
-        generate_references.step.dependOn(&generate_specifications.run().step);
-        const generate_containers = util.addProjectExecutable(builder, "generate_containers", "top/mem/generate_containers.zig", default);
-        generate_containers.step.dependOn(&generate_references.run().step);
 
-        mem_gen.dependOn(&generate_references.run().step);
+        const abstract_to_type_spec = util.addProjectExecutable(builder, "abstract_to_type_specs", "top/mem/abstract_to_type_specs.zig", default);
+        dependOn(abstract_to_type_spec, spec_to_abstract);
+
+        const type_specs_to_type_descrs = util.addProjectExecutable(builder, "type_specs_to_type_descrs", "top/mem/type_specs_to_type_descrs.zig", default);
+        dependOn(type_specs_to_type_descrs, abstract_to_type_spec);
+
+        const detail_to_variants = util.addProjectExecutable(builder, "detail_to_variants", "top/mem/detail_to_variants.zig", default);
+        dependOn(detail_to_variants, abstract_to_type_spec);
+        dependOn(detail_to_variants, spec_to_detail);
+
+        const generate_canonical = util.addProjectExecutable(builder, "generate_canonical", "top/mem/generate_canonical.zig", default);
+        const variants_to_canonicals = util.addProjectExecutable(builder, "variants_to_canonicals", "top/mem/variants_to_canonicals.zig", default);
+        dependOn(variants_to_canonicals, detail_to_variants);
+        dependOn(variants_to_canonicals, generate_canonical);
+
+        const map_to_containers = util.addProjectExecutable(builder, "map_to_containers", "top/mem/map_to_containers.zig", default);
+        dependOn(map_to_containers, variants_to_canonicals);
+
+        const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", default);
+        dependOn(map_to_specifications, map_to_containers);
+
+        const generate_specifications = util.addProjectExecutable(builder, "generate_specifications", "top/mem/generate_specifications.zig", default);
+        dependOn(generate_specifications, spec_to_options);
+        dependOn(generate_specifications, type_specs_to_type_descrs);
+        dependOn(generate_specifications, map_to_specifications);
+
+        const generate_references = util.addProjectExecutable(builder, "generate_references", "top/mem/generate_references.zig", default);
+        dependOn(generate_references, map_to_containers);
+        dependOn(generate_references, generate_specifications);
+
+        const generate_parameters = util.addProjectExecutable(builder, "generate_parameters", "top/mem/generate_parameters.zig", default);
+        dependOn(generate_parameters, spec_to_options);
+        dependOn(generate_parameters, type_specs_to_type_descrs);
+        dependOn(generate_parameters, map_to_containers);
+
+        const generate_containers = util.addProjectExecutable(builder, "generate_containers", "top/mem/generate_containers.zig", default);
+        dependOn(generate_containers, generate_parameters);
+
+        mem_gen.dependOn(&generate_containers.run().step);
     }
+}
+fn dependOn(dependant: *build.CompileStep, dependency: *build.CompileStep) void {
+    dependant.step.dependOn(&dependency.run().step);
 }
