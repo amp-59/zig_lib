@@ -1,4 +1,5 @@
 //! This stage summarises the abstract specification.
+const sys = @import("./../sys.zig");
 const mem = @import("./../mem.zig");
 const fmt = @import("./../fmt.zig");
 const preset = @import("./../preset.zig");
@@ -57,5 +58,5 @@ pub export fn _start() noreturn {
     var array: gen.String = undefined;
     array.undefineAll();
     specToAbstract(&array);
-    gen.exit(0);
+    sys.exit(0);
 }

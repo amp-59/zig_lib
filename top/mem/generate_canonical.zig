@@ -1,3 +1,4 @@
+const sys = @import("../sys.zig");
 const mem = @import("../mem.zig");
 const meta = @import("../meta.zig");
 const builtin = @import("../builtin.zig");
@@ -149,5 +150,5 @@ pub export fn _start() noreturn {
     array.undefineAll();
 
     writeCanonicalStruct(&array, .{ .fields = &.{ layout_spec, kind_spec, mode_spec, field_spec, tech_spec, specs_spec } });
-    gen.exit(0);
+    sys.exit(0);
 }

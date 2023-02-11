@@ -44,7 +44,19 @@ pub fn isFunction(comptime T: type) bool {
 pub fn isContainer(comptime T: type) bool {
     return isTypeType(T, container_types);
 }
-
+fn ptr(comptime T: type) *T {
+    var ret: T = 0;
+    return &ret;
+}
+const type_id: *comptime_int = ptr(comptime_int);
+comptime {
+    type_id.* = 0;
+}
+pub fn typeId(comptime _: type) comptime_int {
+    const ret: comptime_int = type_id.*;
+    type_id.* += 1;
+    return ret;
+}
 /// If the input is a union return the active field else return the input.
 pub fn resolve(comptime any: anytype) if (@typeInfo(@TypeOf(any)) == .Union)
     @TypeOf(comptime @field(any, @tagName(any)))

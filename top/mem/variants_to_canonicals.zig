@@ -1,3 +1,4 @@
+const sys = @import("../sys.zig");
 const mem = @import("../mem.zig");
 const meta = @import("../meta.zig");
 const builtin = @import("../builtin.zig");
@@ -37,5 +38,5 @@ pub export fn _start() noreturn {
     var array: gen.String = undefined;
     array.undefineAll();
     variantsToCanonical(&array);
-    gen.exit(0);
+    sys.exit(0);
 }

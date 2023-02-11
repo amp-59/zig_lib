@@ -1,9 +1,9 @@
-const mem = @import("./../mem.zig");
-const fmt = @import("./../fmt.zig");
-const meta = @import("./../meta.zig");
-const builtin = @import("./../builtin.zig");
-const testing = @import("./../testing.zig");
-
+const sys = @import("../sys.zig");
+const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
+const meta = @import("../meta.zig");
+const builtin = @import("../builtin.zig");
+const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
 const out = @import("./zig-out/src/type_specs.zig");
 
@@ -36,11 +36,10 @@ fn mapContainersToParameters(array: *gen.String) void {
     array.writeMany("\n");
     gen.writeAuxiliarySourceFile(array, "type_descrs.zig");
 }
-
 pub export fn _start() noreturn {
     @setAlignStack(16);
     var array: gen.String = undefined;
     array.undefineAll();
     mapContainersToParameters(&array);
-    gen.exit(0);
+    sys.exit(0);
 }

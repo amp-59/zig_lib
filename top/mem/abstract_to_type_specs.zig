@@ -1,4 +1,5 @@
 //! This stage derives specification variants
+const sys = @import("./../sys.zig");
 const mem = @import("./../mem.zig");
 const fmt = @import("./../fmt.zig");
 const meta = @import("./../meta.zig");
@@ -209,5 +210,5 @@ pub export fn _start() noreturn {
     var array: gen.String = undefined;
     array.undefineAll();
     abstractToTypeSpec(&array);
-    gen.exit(0);
+    sys.exit(0);
 }

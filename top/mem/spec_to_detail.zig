@@ -1,31 +1,21 @@
 //! This stage summarises the abstract specification.
 const mem = @import("./../mem.zig");
 const fmt = @import("./../fmt.zig");
+const proc = @import("./../proc.zig");
+const meta = @import("./../meta.zig");
 const preset = @import("./../preset.zig");
 const builtin = @import("./../builtin.zig");
+const gen = @import("./gen.zig");
+const out = struct {
+    usingnamespace @import("./detail.zig");
+    usingnamespace @import("./abstract_spec.zig");
+};
 
+pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
-const gen = @import("./gen.zig");
-
-const detail = @import("./detail.zig");
-const abstract_spec = @import("./abstract_spec.zig");
-
-fn ptr(comptime T: type) *T {
-    var ret: T = undefined;
-    return &ret;
-}
-const type_id: *comptime_int = ptr(comptime_int);
-comptime {
-    type_id.* = 0;
-}
-fn typeId(comptime _: type) comptime_int {
-    const ret: comptime_int = type_id.*;
-    type_id.* += 1;
-    return ret;
-}
-fn writeUnspecifiedDetailInternal(array: *gen.String, comptime T: type, impl_detail: *detail.Detail) void {
+fn writeUnspecifiedDetailInternal(array: *gen.String, comptime T: type, impl_detail: *out.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {

@@ -1,5 +1,6 @@
-const mem = @import("./../mem.zig");
-const builtin = @import("./../builtin.zig");
+const sys = @import("../sys.zig");
+const mem = @import("../mem.zig");
+const builtin = @import("../builtin.zig");
 
 const gen = @import("./gen.zig");
 
@@ -57,5 +58,5 @@ pub export fn _start() noreturn {
     var array: gen.String = undefined;
     array.undefineAll();
     mapToContainers(&array);
-    gen.exit(0);
+    sys.exit(0);
 }
