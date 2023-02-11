@@ -10,16 +10,6 @@ pub const DetailMore = packed struct {
     specs: Specifiers,
     const Specifiers = @import("./zig-out/src/specifiers.zig").Specifiers;
 
-    pub fn less(detail: *const DetailMore) .Detail {
-        return .{
-            .index = detail.index,
-            .kinds = detail.kinds,
-            .layouts = detail.layouts,
-            .modes = detail.modes,
-            .techs = detail.techs,
-            .fields = detail.fields,
-        };
-    }
     pub fn formatWrite(detail: *const DetailMore, array: anytype) void {
         array.writeMany(".{ .index = ");
         gen.writeIndex(array, detail.index);
@@ -48,5 +38,13 @@ pub const DetailMore = packed struct {
         gen.writeFieldOfBool(array, detail.layouts);
         gen.writeFieldOfBool(array, detail.modes);
         gen.writeFieldOfBool(array, detail.kinds);
+    }
+    pub fn less(detail: *const DetailMore, comptime DetailLess: type) DetailLess {
+        return .{
+            .index = detail.index,
+            .kinds = detail.kinds,
+            .layouts = detail.layouts,
+            .modes = detail.modes,
+        };
     }
 };
