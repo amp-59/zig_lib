@@ -198,27 +198,6 @@ fn writeDeduction(
         }
     }
 }
-pub fn writeField(array: *gen.String, name: []const u8, type_descr: gen.TypeDescr) void {
-    array.writeMany(name);
-    array.writeMany(": ");
-    array.writeFormat(type_descr);
-    array.writeMany(",\n");
-}
-pub fn groupImplementations(allocator: *gen.Allocator, group_key: []const u16) []const out.DetailMore {
-    const buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, group_key.len);
-    var impl_index: u16 = 0;
-    while (impl_index != group_key.len) : (impl_index +%= 1) {
-        buf[impl_index] = out.impl_variants[group_key[impl_index]];
-    }
-    return buf;
-}
-pub fn implLeader(group_key: []const u16) out.DetailMore {
-    return out.impl_variants[group_key[0]];
-}
-pub fn specIndex(leader: out.DetailMore) u8 {
-    return builtin.popcnt(u8, meta.leastRealBitCast(leader.specs));
-}
-
 pub fn generateReferences() void {
     var address_space: AddressSpace = .{};
     var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
@@ -235,18 +214,18 @@ pub fn generateReferences() void {
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
         const save: gen.Allocator.Save = allocator.save();
         defer allocator.restore(save);
-        const ctn_buf: []const out.DetailMore = groupImplementations(&allocator, out.containers[ctn_index]);
+        const ctn_buf: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, out.containers[ctn_index], out.impl_variants);
         const ctn_spec_group: []const []const u16 = out.specifications[ctn_index];
         var spec_index: u16 = 0;
         while (spec_index != ctn_spec_group.len) : (spec_index +%= 1) {
             const spec_group: []const u16 = ctn_spec_group[spec_index];
             if (spec_group.len != 0) {
-                const leader: out.DetailMore = implLeader(spec_group);
+                const leader: out.DetailMore = gen.implLeader(out.DetailMore, spec_group, out.impl_variants);
                 array.writeMany("pub const Specification");
                 gen.writeIndex(&array, accm_spec_index);
                 array.writeMany(" = struct {\n");
-                for (out.type_descrs[leader.index].specs[specIndex(leader)].type_decl.Composition[1]) |field| {
-                    writeField(&array, field[0], field[1]);
+                for (out.type_descrs[leader.index].specs[gen.specIndex(out.DetailMore, leader)].type_decl.Composition[1]) |field| {
+                    gen.writeField(&array, field[0], field[1]);
                 }
                 array.writeMany("const Specification = @This();\npub fn Implementation(comptime spec: Specification");
                 if (spec_group.len == 1) {
@@ -254,7 +233,7 @@ pub fn generateReferences() void {
                     writeReturnImplementation(&array, out.impl_variants[spec_group[0]]);
                 } else {
                     array.writeMany(", comptime options: anytype) type {\n");
-                    writeDeduction(&allocator, &array, ctn_buf, groupImplementations(&allocator, spec_group), &out.options);
+                    writeDeduction(&allocator, &array, ctn_buf, gen.groupImplementations(&allocator, out.DetailMore, spec_group, out.impl_variants), &out.options);
                 }
                 array.writeMany("}\n};\n");
             }
