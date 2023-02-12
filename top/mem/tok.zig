@@ -11,6 +11,7 @@ pub const impl_type_name: [:0]const u8 = "Implementation";
 pub const impl_ptr_type_name: [:0]const u8 = pointerTo(impl_type_name);
 pub const impl_const_ptr_type_name: [:0]const u8 = constPointerTo(impl_type_name);
 pub const impl_param: [:0]const u8 = paramDecl(impl_name, impl_ptr_type_name);
+pub const impl_field: [:0]const u8 = paramDecl(impl_name, impl_type_name);
 pub const impl_const_param: [:0]const u8 = paramDecl(impl_name, impl_const_ptr_type_name);
 pub const spec_name: [:0]const u8 = "spec";
 pub const generic_spec_type_name: [:0]const u8 = "Specification";
@@ -167,6 +168,17 @@ pub const pointer_many_fn_name: [:0]const u8 = "pointerMany";
 pub const pointer_many_with_sentinel_fn_name: [:0]const u8 = "pointerManyWithSentinel";
 pub const pointer_count_fn_name: [:0]const u8 = "pointerCount";
 pub const pointer_count_with_sentinel_fn_name: [:0]const u8 = "pointerCountWithSentinel";
+pub const length_format_fn_name: [:0]const u8 = fieldAccess("reinterpret", "lengthFormat");
+pub const length_args_fn_name: [:0]const u8 = fieldAccess("reinterpret", "lengthArgs");
+pub const length_fields_fn_name: [:0]const u8 = fieldAccess("reinterpret", "lengthFields");
+pub const length_any_fn_name: [:0]const u8 = fieldAccess("reinterpret", "lengthAny");
+pub const write_format_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeFormat");
+pub const write_fields_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeFieldsStructured");
+pub const write_fields_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeFieldsUnstructured");
+pub const write_args_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeArgsStructured");
+pub const write_args_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeArgsUnstructured");
+pub const write_any_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyStructured");
+pub const write_any_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyUnstructured");
 
 fn machFnName(comptime name: [:0]const u8) [:0]const u8 {
     return "mach." ++ name ++ word_type_name[1..];
@@ -203,7 +215,7 @@ fn sliceType(
     }
 }
 fn fieldAccess(comptime symbol: [:0]const u8, field_name: [:0]const u8) [:0]const u8 {
-    return symbol ++ "." ++ field_name;
+    return symbol ++ period_operator ++ field_name;
 }
 fn callSimple(comptime symbol: [:0]const u8) [:0]const u8 {
     return symbol ++ "()";
@@ -215,13 +227,13 @@ fn pointerTo(comptime type_name: [:0]const u8) [:0]const u8 {
     return "*" ++ type_name;
 }
 fn constPointerTo(comptime type_name: [:0]const u8) [:0]const u8 {
-    return "*const " ++ type_name;
+    return "*" ++ const_keyword ++ type_name;
 }
 fn paramDecl(comptime symbol: [:0]const u8, type_name: [:0]const u8) [:0]const u8 {
-    return symbol ++ ": " ++ type_name;
+    return symbol ++ colon_operator ++ type_name;
 }
 fn comptimeParamDecl(comptime symbol: [:0]const u8, type_name: [:0]const u8) [:0]const u8 {
-    return "comptime " ++ symbol ++ ": " ++ type_name;
+    return comptime_keyword ++ symbol ++ colon_operator ++ type_name;
 }
 fn callOffsetOf(comptime type_name: [:0]const u8, comptime field_name: [:0]const u8) [:0]const u8 {
     return "@offsetOf(" ++ type_name ++ ", \"" ++ field_name ++ "\")";
@@ -234,7 +246,15 @@ fn callSizeOf(comptime type_name: [:0]const u8) [:0]const u8 {
 }
 
 pub const comptime_keyword: [:0]const u8 = "comptime ";
+pub const const_keyword: [:0]const u8 = "const ";
 pub const return_keyword: [:0]const u8 = "return ";
+pub const var_keyword: [:0]const u8 = "var ";
+
+pub const colon_operator: [:0]const u8 = ": ";
+pub const period_operator: [:0]const u8 = ".";
+pub const equal_operator: [:0]const u8 = " = ";
+pub const period_asterisk_operator: [:0]const u8 = ".*";
+
 pub const end_expression: [:0]const u8 = ";\n";
 pub const end_item: [:0]const u8 = ",\n";
 pub const end_small_item: [:0]const u8 = ", ";
