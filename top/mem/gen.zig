@@ -8,7 +8,12 @@ const build_root = @cImport({}).build_root;
 
 pub usingnamespace sys;
 
+const tok = @import("./tok.zig");
+
 pub const String = mem.StaticString(1024 * 1024);
+pub const ArgList = mem.StaticArray([:0]const u8, 16);
+pub const ListKind = enum { Parameter, Argument };
+
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .errors = preset.allocator.errors.noexcept,
@@ -424,6 +429,38 @@ pub fn appendAuxiliarySourceFile(array: *String, comptime name: [:0]const u8) vo
 pub fn writeIndex(array: *String, index: u16) void {
     array.writeMany(builtin.fmt.ud16(index).readAll());
 }
+pub fn writeField(array: *String, name: []const u8, type_descr: TypeDescr) void {
+    array.writeMany(name);
+    array.writeMany(": ");
+    array.writeFormat(type_descr);
+    array.writeMany(",\n");
+}
+pub fn groupImplementations(allocator: *Allocator, comptime Detail: type, group_key: []const u16, group: []const Detail) []const Detail {
+    const buf: []Detail = allocator.allocateIrreversible(Detail, group_key.len);
+    var impl_index: u16 = 0;
+    while (impl_index != group_key.len) : (impl_index +%= 1) {
+        buf[impl_index] = group[group_key[impl_index]];
+    }
+    return buf;
+}
+pub fn implLeader(comptime Detail: type, group_key: []const u16, group: []const Detail) Detail {
+    return group[group_key[0]];
+}
+pub fn specIndex(comptime Detail: type, leader: Detail) u8 {
+    return builtin.popcnt(u8, meta.leastRealBitCast(leader.specs));
+}
+pub fn writeComma(array: *String) void {
+    const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
+    const j1: bool = mem.testEqualManyBack(u8, tok.end_small_item, array.readAll());
+    if (builtin.int2a(bool, !j0, !j1)) {
+        array.writeMany(tok.end_small_item);
+    }
+}
+pub fn writeArgument(array: *String, argument_name: [:0]const u8) void {
+    writeComma(array);
+    array.writeMany(argument_name);
+}
+
 pub fn writeFieldOfBool(array: anytype, any: anytype) void {
     inline for (@typeInfo(@TypeOf(any)).Struct.fields) |field| {
         if (@field(any, field.name)) {
