@@ -5,11 +5,11 @@ const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
-const sym = @import("./sym.zig");
+const tok = @import("./tok.zig");
 const out = struct {
     usingnamespace @import("./detail_more.zig");
-    usingnamespace @import("./zig-out/src/type_descrs.zig");
     usingnamespace @import("./zig-out/src/options.zig");
+    usingnamespace @import("./zig-out/src/type_descrs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/containers.zig");
 };
@@ -90,12 +90,6 @@ fn writeOptions(array: *gen.String, toplevel_impl_group: []const out.DetailMore)
     }
     array.writeMany("};\n");
 }
-fn writeField(array: *gen.String, name: []const u8, type_descr: gen.TypeDescr) void {
-    array.writeMany(name);
-    array.writeMany(": ");
-    array.writeFormat(type_descr);
-    array.writeMany(",\n");
-}
 fn generateParameters() void {
     var address_space: AddressSpace = .{};
     var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
@@ -114,7 +108,7 @@ fn generateParameters() void {
         out.impl_variants[ctn_group[0]].writeContainerName(&array);
         array.writeMany("Spec = struct {\n");
         for (out.type_descrs[out.impl_variants[ctn_group[0]].index].params.type_decl.Composition[1]) |field| {
-            writeField(&array, field[0], field[1]);
+            gen.writeField(&array, field[0], field[1]);
         }
         const buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, ctn_group.len);
         var impl_index: u16 = 0;
