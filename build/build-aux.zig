@@ -37,6 +37,7 @@ pub fn main(builder: *build.Builder) !void {
     // Examples
     _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", small);
     _ = util.addProjectExecutable(builder, "dynamic", "examples/dynamic_alloc.zig", .{});
+    _ = util.addProjectExecutable(builder, "sortfile", "examples/sortfile.zig", .{ .build_mode = .ReleaseFast });
     // Generators:
     _ = util.addProjectExecutable(builder, "build_gen", "top/build-gen.zig", .{ .build_mode = .ReleaseSmall });
 
