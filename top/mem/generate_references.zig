@@ -8,18 +8,16 @@ const preset = @import("../preset.zig");
 const testing = @import("../testing.zig");
 const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
-const tok = @import("./sym.zig");
+const tok = @import("./tok.zig");
 const config = @import("./config.zig");
 const out = struct {
     usingnamespace @import("./detail_more.zig");
-    usingnamespace @import("./zig-out/src/options.zig");
-    usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
-    usingnamespace @import("./zig-out/src/type_descrs.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
+const implementation = @import("./implementation.zig");
 
 pub usingnamespace proc.start;
 
@@ -28,87 +26,8 @@ pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
 const Args = mem.StaticArray([:0]const u8, 8);
-// zig fmt: off
-const key: [18]Fn = .{
-    .{ .tag = .allocated_byte_address,      .val = .Address,    .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .aligned_byte_address,        .val = .Address,    .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .unstreamed_byte_address,     .val = .Address,    .loc = .Relative, .mut = .Immutable },
-    .{ .tag = .undefined_byte_address,      .val = .Address,    .loc = .Relative, .mut = .Immutable },
-    .{ .tag = .unwritable_byte_address,     .val = .Address,    .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .unallocated_byte_address,    .val = .Address,    .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .allocated_byte_count,        .val = .Offset,     .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .aligned_byte_count,          .val = .Offset,     .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .streamed_byte_count,         .val = .Offset,     .loc = .Relative, .mut = .Immutable },
-    .{ .tag = .unstreamed_byte_count,       .val = .Offset,     .loc = .Relative, .mut = .Immutable },
-    .{ .tag = .writable_byte_count,         .val = .Offset,     .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .undefined_byte_count,        .val = .Offset,     .loc = .Relative, .mut = .Immutable },
-    .{ .tag = .defined_byte_count,          .val = .Offset,     .loc = .Relative, .mut = .Immutable },
-    .{ .tag = .alignment,                   .val = .Offset,     .loc = .Absolute, .mut = .Immutable },
-    .{ .tag = .define,                      .val = .Offset,     .loc = .Relative, .mut = .Mutable },
-    .{ .tag = .undefine,                    .val = .Offset,     .loc = .Relative, .mut = .Mutable },
-    .{ .tag = .seek,                        .val = .Offset,     .loc = .Relative, .mut = .Mutable },
-    .{ .tag = .tell,                        .val = .Offset,     .loc = .Relative, .mut = .Mutable },
-};
-// zig fmt: on
+const Fn = implementation.Fn;
 
-const Fn = packed struct {
-    tag: Tag,
-    val: Value,
-    loc: Location,
-    mut: Mutability,
-    const Tag = enum(u5) {
-        allocated_byte_address,
-        aligned_byte_address,
-        unstreamed_byte_address,
-        undefined_byte_address,
-        unwritable_byte_address,
-        unallocated_byte_address,
-        allocated_byte_count,
-        aligned_byte_count,
-        streamed_byte_count,
-        unstreamed_byte_count,
-        writable_byte_count,
-        undefined_byte_count,
-        defined_byte_count,
-        alignment,
-        define,
-        undefine,
-        seek,
-        tell,
-    };
-    const Value = enum(u1) { Address, Offset };
-    const Location = enum(u1) { Relative, Absolute };
-    const Mutability = enum(u1) { Mutable, Immutable };
-    inline fn fnName(impl_fn_info: *const Fn) []const u8 {
-        return @tagName(impl_fn_info.tag);
-    }
-    inline fn get(comptime tag: Fn.Tag) *const Fn {
-        comptime {
-            for (key) |val| {
-                if (val.tag == tag) return &val;
-            }
-            unreachable;
-        }
-    }
-    fn hasCapability(fn_info: *const Fn, impl_variant: *const out.DetailMore) bool {
-        switch (fn_info.tag) {
-            .alignment => return !(impl_variant.kinds.automatic or impl_variant.techs.unit_alignment),
-            .define,
-            .undefine,
-            .undefined_byte_address,
-            .defined_byte_count,
-            .undefined_byte_count,
-            => return impl_variant.modes.resize,
-            .seek,
-            .tell,
-            .unstreamed_byte_address,
-            .streamed_byte_count,
-            .unstreamed_byte_count,
-            => return impl_variant.modes.stream,
-            else => return true,
-        }
-    }
-};
 const Info = struct {
     start: u64,
     alias: ?*const Fn = null,
@@ -116,6 +35,7 @@ const Info = struct {
         info.alias = impl_fn_info;
     }
 };
+
 pub const Operand = union(enum) {
     // call5: *const FnCall5,
     // call4: *const FnCall4,
@@ -244,32 +164,6 @@ pub fn formatWriteCall5(op1: Operand, op2: Operand, op3: Operand, op4: Operand, 
     array.writeMany(tok.end_small_item);
     array.writeFormat(op5);
     array.writeOne(')');
-}
-pub inline fn GenericFnCall1Format(comptime Format: type) type {
-    return (struct {
-        fn exec(array: anytype, op1: anytype) void {
-            array.writeFormat(Format{ .op1 = Operand.init(op1) });
-        }
-        fn make(op1: anytype) Format {
-            return .{ .op1 = Operand.init(op1) };
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            return formatWriteCall1(format.op1, array, Format.fn_token);
-        }
-    });
-}
-pub inline fn GenericFnCall2Format(comptime Format: type) type {
-    return (struct {
-        fn exec(array: anytype, op1: anytype, op2: anytype) void {
-            array.writeFormat(make(op1, op2));
-        }
-        fn make(op1: anytype, op2: anytype) Format {
-            return .{ .op1 = Operand.init(op1), .op2 = Operand.init(op2) };
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            return formatWriteCall2(format.op1, format.op2, array, Format.fn_token);
-        }
-    });
 }
 pub const AssignmentOp = struct {
     op1: Operand,
@@ -411,13 +305,12 @@ pub inline fn pointerOneOp(op1: anytype, op2: anytype) FnCall2 {
         .op2 = Operand.init(op2),
     };
 }
-
 pub const FnCall = struct {
     impl_variant: *const out.DetailMore,
     impl_fn_info: *const Fn,
     const Format = @This();
-    pub inline fn formatWrite(format: Format, array: anytype) void {
-        writeFunctionSignatureOrCall(array, format.impl_variant, format.impl_fn_info, false);
+    pub inline fn formatWrite(format: Format, array: *gen.String) void {
+        format.impl_fn_info.writeCall(array, format.impl_variant);
     }
 };
 pub fn writeComma(array: *gen.String) void {
@@ -431,73 +324,46 @@ pub fn writeArgument(array: *gen.String, argument_name: [:0]const u8) void {
     writeComma(array);
     array.writeMany(argument_name);
 }
-pub fn writeImplFunctionCallGeneric(array: *gen.String, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn) void {
-    writeFunctionSignatureOrCall(array, impl_variant, impl_fn_info, false);
-}
-pub fn writeImplFunctionSignatureGeneric(array: *gen.String, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn) void {
-    writeFunctionSignatureOrCall(array, impl_variant, impl_fn_info, true);
-}
-
 fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn, info: *Info) void {
     const allocated_byte_address: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.allocated_byte_address),
+        .impl_fn_info = implementation.get(.allocated_byte_address),
     };
     const aligned_byte_address: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.aligned_byte_address),
+        .impl_fn_info = implementation.get(.aligned_byte_address),
     };
     const unstreamed_byte_address: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.unstreamed_byte_address),
+        .impl_fn_info = implementation.get(.unstreamed_byte_address),
     };
     const undefined_byte_address: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.undefined_byte_address),
+        .impl_fn_info = implementation.get(.undefined_byte_address),
     };
     const unwritable_byte_address: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.unwritable_byte_address),
+        .impl_fn_info = implementation.get(.unwritable_byte_address),
     };
     const unallocated_byte_address: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.unallocated_byte_address),
+        .impl_fn_info = implementation.get(.unallocated_byte_address),
     };
     const allocated_byte_count: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.allocated_byte_count),
+        .impl_fn_info = implementation.get(.allocated_byte_count),
     };
     const aligned_byte_count: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.aligned_byte_count),
+        .impl_fn_info = implementation.get(.aligned_byte_count),
     };
-    const streamed_byte_count: FnCall = .{
-        .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.streamed_byte_count),
-    };
-    _ = streamed_byte_count;
-    const unstreamed_byte_count: FnCall = .{
-        .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.unstreamed_byte_count),
-    };
-    _ = unstreamed_byte_count;
     const writable_byte_count: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.writable_byte_count),
+        .impl_fn_info = implementation.get(.writable_byte_count),
     };
-    const undefined_byte_count: FnCall = .{
-        .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.undefined_byte_count),
-    };
-    _ = undefined_byte_count;
-    const defined_byte_count: FnCall = .{
-        .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.defined_byte_count),
-    };
-    _ = defined_byte_count;
     const alignment: FnCall = .{
         .impl_variant = impl_variant,
-        .impl_fn_info = Fn.get(.alignment),
+        .impl_fn_info = implementation.get(.alignment),
     };
     const subtract_op_1: FnCall2 = .{
         .symbol = tok.subtract_fn_name,
@@ -533,21 +399,21 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
         .op1 = .{ .symbol = tok.allocated_byte_address_word_access },
         .op2 = .{ .symbol = tok.undefined_byte_address_word_access },
     };
-    const sentinel_ptr_op: FnCall2 = .{
+    const sentinel_pointer_op: FnCall2 = .{
         .symbol = tok.pointer_opaque_fn_name,
         .op1 = .{ .symbol = tok.child_specifier_name },
         .op2 = .{ .symbol = tok.sentinel_specifier_name },
     };
-    const undefined_child_ptr_op: FnCall2 = .{
+    const undefined_child_pointer_op: FnCall2 = .{
         .symbol = tok.pointer_one_fn_name,
         .op1 = .{ .symbol = tok.child_specifier_name },
         .op2 = .{ .call_impl = &undefined_byte_address },
     };
-    const sentinel_ptr_deref_op: DereferenceOp = .{
-        .op1 = .{ .call2 = &sentinel_ptr_op },
+    const sentinel_pointer_deref_op: DereferenceOp = .{
+        .op1 = .{ .call2 = &sentinel_pointer_op },
     };
-    const undefined_child_ptr_deref_op: DereferenceOp = .{
-        .op1 = .{ .call2 = &undefined_child_ptr_op },
+    const undefined_child_pointer_deref_op: DereferenceOp = .{
+        .op1 = .{ .call2 = &undefined_child_pointer_op },
     };
     const has_static_maximum_length: bool =
         impl_variant.kinds.automatic or
@@ -558,13 +424,12 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
     const has_unit_alignment: bool =
         impl_variant.techs.auto_alignment or
         impl_variant.techs.unit_alignment;
-
     switch (impl_fn_info.tag) {
         .define => {
             array.writeFormat(addEqualOp(tok.undefined_byte_address_word_ptr, tok.offset_bytes_name));
             if (impl_variant.specs.sentinel) {
                 array.writeMany(tok.end_expression);
-                array.writeFormat(assignmentOp(&undefined_child_ptr_deref_op, &sentinel_ptr_deref_op));
+                array.writeFormat(assignmentOp(&undefined_child_pointer_deref_op, &sentinel_pointer_deref_op));
             }
             return array.writeMany(tok.end_expression);
         },
@@ -572,7 +437,7 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
             array.writeFormat(subtractEqualOp(tok.undefined_byte_address_word_ptr, tok.offset_bytes_name));
             if (impl_variant.specs.sentinel) {
                 array.writeMany(tok.end_expression);
-                array.writeFormat(assignmentOp(&undefined_child_ptr_deref_op, &sentinel_ptr_deref_op));
+                array.writeFormat(assignmentOp(&undefined_child_pointer_deref_op, &sentinel_pointer_deref_op));
             }
             return array.writeMany(tok.end_expression);
         },
@@ -832,12 +697,12 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
     }
 }
 fn writeFunctions(array: *gen.String, impl_variant: *const out.DetailMore) void {
-    for (key) |*impl_fn_info| {
+    for (implementation.key) |*impl_fn_info| {
         if (!impl_fn_info.hasCapability(impl_variant)) {
             continue;
         }
         var info: Info = .{ .start = array.len() };
-        writeImplFunctionSignatureGeneric(array, impl_variant, impl_fn_info);
+        impl_fn_info.writeSignature(array, impl_variant);
         array.writeMany("{\n");
         writeFunctionBodyGeneric(array, impl_variant, impl_fn_info, &info);
         array.writeMany("}\n");
@@ -874,7 +739,7 @@ fn writeSimpleRedecl(array: *gen.String, impl_fn_info: *const Fn, info: *Info) v
         info.alias = null;
     }
 }
-fn writeComptimeFieldInternal(array: *gen.String, fn_tag: Fn.Tag, args: *const Args) void {
+fn writeComptimeFieldInternal(array: *gen.String, fn_tag: Fn.Tag, args: *const gen.ArgList) void {
     if (args.len() == 0) {
         array.writeMany(tok.comptime_keyword);
         array.writeMany(@tagName(fn_tag));
@@ -893,7 +758,7 @@ fn writeComptimeFieldInternal(array: *gen.String, fn_tag: Fn.Tag, args: *const A
     }
 }
 inline fn writeComptimeField(array: *gen.String, impl_variant: *const out.DetailMore, comptime fn_tag: Fn.Tag) void {
-    const args: Args = getArgList(impl_variant, Fn.get(fn_tag), false);
+    const args: gen.ArgList = implementation.getArgList(impl_variant, implementation.get(fn_tag), .Parameter);
     writeComptimeFieldInternal(array, fn_tag, &args);
 }
 inline fn writeFields(array: *gen.String, impl_variant: *const out.DetailMore) void {
@@ -929,105 +794,12 @@ inline fn writeFields(array: *gen.String, impl_variant: *const out.DetailMore) v
     writeComptimeField(array, impl_variant, .writable_byte_count);
     writeComptimeField(array, impl_variant, .aligned_byte_count);
 }
-fn getArgList(impl_variant: *const out.DetailMore, impl_fn_info: *const Fn, sign: bool) Args {
-    var array: Args = undefined;
-    array.undefineAll();
-    if (impl_fn_info.mut == .Mutable) {
-        array.writeOne(mach.cmovx(
-            sign,
-            tok.impl_param,
-            tok.impl_name,
-        ));
-        array.writeOne(mach.cmovx(
-            sign,
-            tok.offset_bytes_param,
-            tok.offset_bytes_name,
-        ));
-    } else //
-    if (impl_variant.kinds.parametric) {
-        if (impl_fn_info.val == .Address) {
-            if (impl_fn_info.loc == .Absolute) {
-                array.writeOne(mach.cmovx(
-                    sign,
-                    tok.slave_specifier_const_ptr_param,
-                    tok.slave_specifier_name,
-                ));
-            } else {
-                array.writeOne(mach.cmovx(
-                    sign,
-                    tok.impl_const_param,
-                    tok.impl_name,
-                ));
-            }
-        } else if (impl_fn_info.val == .Offset) {
-            if (impl_fn_info.tag == .unstreamed_byte_count and
-                impl_variant.fields.undefined_byte_address)
-            {
-                array.writeOne(mach.cmovx(
-                    sign,
-                    tok.impl_const_param,
-                    tok.impl_name,
-                ));
-            } else if (impl_fn_info.loc == .Relative) {
-                array.writeOne(mach.cmovx(
-                    sign,
-                    tok.impl_const_param,
-                    tok.impl_name,
-                ));
-                array.writeOne(mach.cmovx(
-                    sign,
-                    tok.slave_specifier_const_ptr_param,
-                    tok.slave_specifier_name,
-                ));
-            } else {
-                array.writeOne(mach.cmovx(
-                    sign,
-                    tok.slave_specifier_const_ptr_param,
-                    tok.slave_specifier_name,
-                ));
-            }
-        }
-    } else //
-    if (impl_variant.kinds.automatic or
-        impl_variant.kinds.static)
-    {
-        const has_unit_alignment: bool =
-            impl_variant.techs.auto_alignment or
-            impl_variant.techs.unit_alignment;
-        const criteria_full: bool =
-            impl_fn_info.tag == .writable_byte_count or
-            impl_fn_info.tag == .aligned_byte_count or
-            impl_fn_info.tag == .allocated_byte_count and has_unit_alignment;
-        if (!criteria_full) {
-            array.writeOne(mach.cmovx(
-                sign,
-                tok.impl_const_param,
-                tok.impl_name,
-            ));
-        }
-    } else {
-        array.writeOne(mach.cmovx(
-            sign,
-            tok.impl_const_param,
-            tok.impl_name,
-        ));
-    }
-    return array;
-}
+
 fn writeReturnType(array: *gen.String, impl_fn_info: *const Fn) void {
-    array.writeMany(builtin.cmov([]const u8, impl_fn_info.mut == .Mutable, " void ", " " ++ tok.word_type_name ++ " "));
-}
-fn writeFunctionSignatureOrCall(array: *gen.String, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn, sign: bool) void {
-    const list: Args = getArgList(impl_variant, impl_fn_info, sign);
-    if (sign) {
-        array.writeMany("pub inline fn ");
-    }
-    array.writeMany(impl_fn_info.fnName());
-    array.writeMany("(");
-    for (list.readAll()) |arg| writeArgument(array, arg);
-    array.writeMany(")");
-    if (sign) {
-        writeReturnType(array, impl_fn_info);
+    if (impl_fn_info.mut == .Mutable) {
+        array.writeMany(" void ");
+    } else {
+        array.writeMany(" " ++ tok.word_type_name ++ " ");
     }
 }
 inline fn writeTypeFunction(array: *gen.String, accm_spec_index: u16, impl_variant: *const out.DetailMore) void {
