@@ -95,10 +95,8 @@ fn generateParameters() void {
     var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
     var array: gen.String = undefined;
     array.undefineAll();
-    gen.writeImports(&array, @src(), &.{.{
-        .name = "reference",
-        .path = "reference.zig",
-    }});
+    gen.writeImports(&array, @src(), &.{});
+    gen.copySourceFile(&array, "container-template.zig");
     var ctn_index: u16 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
         const save: gen.Allocator.Save = allocator.save();
