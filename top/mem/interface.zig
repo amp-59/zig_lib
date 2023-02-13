@@ -1,28 +1,26 @@
 const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
 const out = @import("./detail_less.zig");
-
 // zig fmt: off
 pub const key: [87]Fn = .{
-    .{ .tag = .defineAll,                       .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .undefineAll,                     .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .streamAll,                       .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .unstreamAll,                     .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .index,                           .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .count,                           .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .avail,                           .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .__at,                            .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .__ad,                            .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .__len,                           .kind = .special,                                   .loc = .AllDefined },
-    .{ .tag = .__rem,                           .kind = .special,                                   .loc = .AllDefined },
+    .{ .tag = .defineAll,                       .kind = .set,                                       .loc = .AllDefined },
+    .{ .tag = .undefineAll,                     .kind = .set,                                       .loc = .AllDefined },
+    .{ .tag = .streamAll,                       .kind = .set,                                       .loc = .AllDefined },
+    .{ .tag = .unstreamAll,                     .kind = .set,                                       .loc = .AllDefined },
+    .{ .tag = .index,                           .kind = .get,                                       .loc = .AllDefined },
+    .{ .tag = .len,                             .kind = .get,                                       .loc = .AllDefined },
+    .{ .tag = .avail,                           .kind = .get,                                       .loc = .AllDefined },
+    .{ .tag = .__at,                            .kind = .get,                                       .loc = .AllDefined },
+    .{ .tag = .__ad,                            .kind = .get,                                       .loc = .AllDefined },
+    .{ .tag = .__len,                           .kind = .get,                                       .loc = .AllDefined },
+    .{ .tag = .__rem,                           .kind = .get,                                       .loc = .AllUndefined },
     .{ .tag = .readAll,                         .kind = .read,      .val = .Many,                   .loc = .AllDefined },
     .{ .tag = .referAllDefined,                 .kind = .refer,     .val = .Many,                   .loc = .AllDefined },
     .{ .tag = .readAllWithSentinel,             .kind = .read,      .val = .ManyWithSentinel,       .loc = .AllDefined },
     .{ .tag = .referAllDefinedWithSentinel,     .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AllDefined },
-    .{ .tag = .__behind,                        .kind = .special,                                   .loc = .Behind },
-    .{ .tag = .unstream,                        .kind = .special,                                   .loc = .Behind },
+    .{ .tag = .__behind,                        .kind = .get,                                       .loc = .Behind },
+    .{ .tag = .unstream,                        .kind = .set,                                       .loc = .Behind },
     .{ .tag = .readOneBehind,                   .kind = .read,      .val = .One,                    .loc = .Behind },
     .{ .tag = .readCountBehind,                 .kind = .read,      .val = .Count,                  .loc = .Behind },
     .{ .tag = .readCountWithSentinelBehind,     .kind = .read,      .val = .CountWithSentinel,      .loc = .Behind },
@@ -43,14 +41,14 @@ pub const key: [87]Fn = .{
     .{ .tag = .overwriteManyAt,                 .kind = .write,     .val = .Many,                   .loc = .AnyDefined },
     .{ .tag = .readManyWithSentinelAt,          .kind = .read,      .val = .ManyWithSentinel,       .loc = .AnyDefined },
     .{ .tag = .referManyWithSentinelAt,         .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AnyDefined },
-    .{ .tag = .stream,                          .kind = .special,                                   .loc = .Ahead },
+    .{ .tag = .stream,                          .kind = .set,                                       .loc = .Ahead },
     .{ .tag = .readOneAhead,                    .kind = .read,      .val = .One,                    .loc = .Ahead },
     .{ .tag = .readCountAhead,                  .kind = .read,      .val = .Count,                  .loc = .Ahead },
     .{ .tag = .readCountWithSentinelAhead,      .kind = .read,      .val = .CountWithSentinel,      .loc = .Ahead },
     .{ .tag = .readManyAhead,                   .kind = .read,      .val = .Many,                   .loc = .Ahead },
     .{ .tag = .readManyWithSentinelAhead,       .kind = .read,      .val = .ManyWithSentinel,       .loc = .Ahead },
-    .{ .tag = .__back,                          .kind = .special,                                   .loc = .Back },
-    .{ .tag = .undefine,                        .kind = .special,                                   .loc = .Back },
+    .{ .tag = .__back,                          .kind = .get,                                       .loc = .Back },
+    .{ .tag = .undefine,                        .kind = .set,                                       .loc = .Back },
     .{ .tag = .readOneBack,                     .kind = .read,      .val = .One,                    .loc = .Back },
     .{ .tag = .referOneBack,                    .kind = .refer,     .val = .One,                    .loc = .Back },
     .{ .tag = .overwriteOneBack,                .kind = .write,     .val = .One,                    .loc = .Back },
@@ -66,7 +64,7 @@ pub const key: [87]Fn = .{
     .{ .tag = .referManyWithSentinelBack,       .kind = .refer,     .val = .ManyWithSentinel,       .loc = .Back },
     .{ .tag = .referAllUndefined,               .kind = .refer,     .val = .Many,                   .loc = .AllUndefined },
     .{ .tag = .referAllUndefinedWithSentinel,   .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AllUndefined },
-    .{ .tag = .define,                          .kind = .special,                                   .loc = .Next },
+    .{ .tag = .define,                          .kind = .set,                                       .loc = .Next },
     .{ .tag = .referOneUndefined,               .kind = .refer,     .val = .One,                    .loc = .Next },
     .{ .tag = .writeOne,                        .kind = .write,     .val = .One,                    .loc = .Next },
     .{ .tag = .referCountUndefined,             .kind = .refer,     .val = .Count,                  .loc = .Next },
@@ -77,9 +75,9 @@ pub const key: [87]Fn = .{
     .{ .tag = .writeArgs,                       .kind = .write,     .val = .Args,                   .loc = .Next },
     .{ .tag = .writeFormat,                     .kind = .write,     .val = .Format,                 .loc = .Next },
     .{ .tag = .writeAny,                        .kind = .write,     .val = .Any,                    .loc = .Next },
-    .{ .tag = .static,                          .kind = .special,                                   .err = .Wrap },
-    .{ .tag = .dynamic,                         .kind = .special,                                   .err = .Wrap },
-    .{ .tag = .holder,                          .kind = .special,                                   .err = .Wrap },
+    .{ .tag = .static,                          .kind = .transform,                                 .err = .Wrap },
+    .{ .tag = .dynamic,                         .kind = .transform,                                 .err = .Wrap },
+    .{ .tag = .holder,                          .kind = .transform,                                 .err = .Wrap },
     .{ .tag = .init,                            .kind = .allocate,                                  .err = .Wrap },
     .{ .tag = .grow,                            .kind = .reallocate,                                .err = .Wrap },
     .{ .tag = .deinit,                          .kind = .deallocate,                                .err = .Wrap },
@@ -99,11 +97,9 @@ pub inline fn get(comptime tag: Fn.Tag) *const Fn {
         for (key) |val| {
             if (val.tag == tag) return &val;
         }
-        unreachable;
     }
 }
 // zig fmt: on
-
 pub const Fn = packed struct {
     tag: Tag,
     kind: Kind,
@@ -111,16 +107,17 @@ pub const Fn = packed struct {
     loc: Location = .AllDefined,
     err: ErrorHandler = .None,
     decl: builtin.CallingConvention = .Unspecified,
-    pub const Kind = enum(u3) {
+    pub const Kind = enum(u4) {
         read,
         refer,
         write,
         append,
-        special,
-
+        get,
+        set,
         allocate,
         reallocate,
         deallocate,
+        transform,
     };
     const Value = enum(u4) {
         None = 0,
@@ -133,6 +130,7 @@ pub const Fn = packed struct {
         Args = 7,
         Format = 8,
         Any = 9,
+        Location = 10,
     };
     const ErrorHandler = enum(u2) {
         None = 0,
@@ -163,7 +161,7 @@ pub const Fn = packed struct {
         streamAll,
         unstreamAll,
         index,
-        count,
+        len,
         avail,
         __at,
         __ad,
@@ -246,190 +244,756 @@ pub const Fn = packed struct {
         appendFormat,
         appendAny,
     };
-    inline fn fnName(impl_fn_info: *const Fn) []const u8 {
-        return @tagName(impl_fn_info.tag);
+    pub inline fn fnName(ctn_fn_info: *const Fn) [:0]const u8 {
+        return @tagName(ctn_fn_info.tag);
     }
     pub fn hasCapability(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess) bool {
-        switch (ctn_fn_info.kind) {
-            .read => {
-                return true;
+        _ = ctn_detail;
+        _ = ctn_fn_info;
+        if (return true) {}
+    }
+    pub fn argList(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess, list_kind: gen.ListKind) gen.ArgList { // 8KiB
+        var array: gen.ArgList = undefined;
+        array.undefineAll();
+        const array_ptr_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.array_ptr_param,
+            .Argument => tok.array_name,
+        };
+        const array_const_ptr_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.array_const_ptr_param,
+            .Argument => tok.array_name,
+        };
+        const allocator_ptr_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.allocator_ptr_param,
+            .Argument => tok.allocator_name,
+        };
+        const allocator_const_ptr_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.allocator_const_ptr_param,
+            .Argument => tok.allocator_name,
+        };
+        const child_type_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.child_param,
+            .Argument => tok.child_type_name,
+        };
+        const sentinel_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.s_sentinel_param,
+            .Argument => tok.sentinel_name,
+        };
+        const read_count_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.read_count_param,
+            .Argument => tok.read_count_name,
+        };
+        const read_many_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.read_many_param,
+            .Argument => tok.read_many_name,
+        };
+        const value_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.value_param,
+            .Argument => tok.value_name,
+        };
+        const count_values_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.count_values_param,
+            .Argument => tok.count_values_name,
+        };
+        const write_count_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.write_count_param,
+            .Argument => tok.write_count_name,
+        };
+        const many_values_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.many_values_param,
+            .Argument => tok.many_values_name,
+        };
+        const format_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.format_param,
+            .Argument => tok.format_name,
+        };
+        const reinterpret_spec_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.reinterpret_spec_param,
+            .Argument => tok.reinterpret_spec_name,
+        };
+        const args_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.args_param,
+            .Argument => tok.args_name,
+        };
+        const any_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.any_param,
+            .Argument => tok.any_name,
+        };
+        const fields_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.fields_param,
+            .Argument => tok.fields_name,
+        };
+        const amount_symbol: [:0]const u8 = blk: {
+            if (ctn_detail.layouts.unstructured) {
+                break :blk switch (list_kind) {
+                    .Parameter => tok.amount_param,
+                    .Argument => tok.amount_name,
+                };
+            } else {
+                break :blk switch (list_kind) {
+                    .Parameter => tok.count_param,
+                    .Argument => tok.count_name,
+                };
+            }
+        };
+        const offset_symbol: [:0]const u8 = blk: {
+            if (ctn_detail.layouts.unstructured) {
+                break :blk switch (list_kind) {
+                    .Parameter => tok.offset_amount_param,
+                    .Argument => tok.offset_name,
+                };
+            } else {
+                break :blk switch (list_kind) {
+                    .Parameter => tok.offset_param,
+                    .Argument => tok.offset_name,
+                };
+            }
+        };
+        switch (ctn_fn_info.tag) {
+            .defineAll,
+            .undefineAll,
+            .streamAll,
+            .unstreamAll,
+            => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
             },
-            .refer => {
-                return true;
+            .len,
+            .index,
+            .avail,
+            => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
             },
-            .write => {
-                return true;
+            .__at,
+            .__len,
+            .__rem,
+            => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(offset_symbol);
             },
-            .append => {
-                return ctn_detail.modes.resize;
+            .__ad,
+            .__back,
+            .__behind,
+            => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(offset_symbol);
             },
-            .special => {},
-            .allocate => {},
-            .reallocate => {},
-            .deallocate => {},
+            .readAll,
+            .referAllDefined,
+            => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+            },
+            .readAllWithSentinel,
+            .referAllDefinedWithSentinel,
+            => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(sentinel_symbol);
+            },
+            .unstream => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(amount_symbol);
+            },
+            .stream => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(amount_symbol);
+            },
+            .undefine => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(amount_symbol);
+            },
+            .define => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(amount_symbol);
+            },
+            .readOneBehind => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+            },
+            .readCountBehind => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+            },
+            .readCountWithSentinelBehind => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .readManyBehind => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+            },
+            .readManyWithSentinelBehind => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .readOneAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(offset_symbol);
+            },
+            .readCountAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .readCountWithSentinelAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .readManyAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .readManyWithSentinelAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .readOneAhead => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+            },
+            .readCountAhead => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+            },
+            .readCountWithSentinelAhead => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .readManyAhead => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_many_symbol);
+            },
+            .readManyWithSentinelAhead => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(sentinel_symbol);
+                array.writeOne(read_many_symbol);
+            },
+            .readOneBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+            },
+            .readCountBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+            },
+            .readCountWithSentinelBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .readManyBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_many_symbol);
+            },
+            .readManyWithSentinelBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_many_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .overwriteOneAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+
+                array.writeOne(value_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .overwriteCountAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+
+                array.writeOne(write_count_symbol);
+                array.writeOne(count_values_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .overwriteManyAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(many_values_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .overwriteOneBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(value_symbol);
+            },
+            .overwriteCountBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(write_count_symbol);
+                array.writeOne(count_values_symbol);
+            },
+            .overwriteManyBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(many_values_symbol);
+            },
+            .referCountWithSentinelBehind => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .referManyWithSentinelBehind => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(sentinel_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .referOneAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(offset_symbol);
+            },
+            .referCountAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .referCountWithSentinelAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .referManyAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .referManyWithSentinelAt => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(sentinel_symbol);
+                array.writeOne(offset_symbol);
+            },
+            .referOneBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+            },
+            .referCountBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+            },
+            .referManyBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+            },
+            .referCountWithSentinelBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .referManyWithSentinelBack => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+                array.writeOne(sentinel_symbol);
+            },
+            .referAllUndefined => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+            },
+            .referAllUndefinedWithSentinel => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(sentinel_symbol);
+            },
+            .referOneUndefined => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+            },
+            .referCountUndefined => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(read_count_symbol);
+            },
+            .referManyUndefined => {
+                array.writeOne(array_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+            },
+
+            .static => {},
+            .dynamic => {},
+            .holder => {},
+
+            .init => {},
+            .grow => {},
+            .deinit => {},
+            .shrink => {},
+
+            .increment,
+            .decrement,
+            => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(offset_symbol);
+            },
+
+            .writeOne => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(value_symbol);
+            },
+            .appendOne => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(value_symbol);
+            },
+            .writeCount => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(write_count_symbol);
+                array.writeOne(count_values_symbol);
+            },
+            .appendCount => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(write_count_symbol);
+                array.writeOne(count_values_symbol);
+            },
+            .writeMany => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(many_values_symbol);
+            },
+            .appendMany => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(many_values_symbol);
+            },
+            .writeFormat => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(format_symbol);
+            },
+            .appendFormat => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(format_symbol);
+            },
+            .writeFields => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(reinterpret_spec_symbol);
+                array.writeOne(fields_symbol);
+            },
+            .appendFields => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(reinterpret_spec_symbol);
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(fields_symbol);
+            },
+            .writeArgs => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(reinterpret_spec_symbol);
+                array.writeOne(args_symbol);
+            },
+            .appendArgs => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(reinterpret_spec_symbol);
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(args_symbol);
+            },
+            .writeAny => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(reinterpret_spec_symbol);
+                array.writeOne(any_symbol);
+            },
+            .appendAny => {
+                array.writeOne(array_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                array.writeOne(reinterpret_spec_symbol);
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(any_symbol);
+            },
         }
-        return true;
+        return array;
     }
     pub fn writeCall(ctn_fn_info: *const Fn, array: *gen.String, ctn_detail: *const out.DetailLess) void {
-        const list: gen.ArgList = getArgList(ctn_detail, ctn_fn_info, .Argument);
+        const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         array.writeMany(ctn_fn_info.fnName());
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
         array.writeMany(")");
     }
     pub fn writeSignature(ctn_fn_info: *const Fn, array: *gen.String, ctn_detail: *const out.DetailLess) void {
-        const list: gen.ArgList = getArgList(ctn_detail, ctn_fn_info, .Parameter);
+        const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
         array.writeMany("pub fn ");
         array.writeMany(ctn_fn_info.fnName());
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
-        array.writeMany(") u64 ");
+        array.writeMany(") ");
     }
 };
-pub fn getArgList(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn, list_kind: gen.ListKind) gen.ArgList {
-    var array: gen.ArgList = undefined;
-    array.undefineAll();
-    const is_count: bool =
-        ctn_fn_info.val == .Count or
-        ctn_fn_info.val == .CountWithSentinel;
-    const is_special: bool = ctn_fn_info.kind == .special;
-    const is_write: bool =
-        ctn_fn_info.kind == .write or
-        ctn_fn_info.kind == .append;
-    if (is_special or is_write) {
-        array.writeOne(switch (list_kind) {
-            .Parameter => tok.array_ptr_param,
-            .Argument => tok.array_name,
-        });
-    } else {
-        array.writeOne(switch (list_kind) {
-            .Parameter => tok.array_const_ptr_param,
-            .Argument => tok.array_name,
-        });
+pub fn getReturnType(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) [:0]const u8 {
+    _ = ctn_detail;
+    switch (ctn_fn_info.kind) {
+        .write => return tok.void_type_name,
+        .append => return tok.allocator_void_type_name,
+        .refer => switch (ctn_fn_info.val) {
+            .One => return tok.child_ptr_type_name,
+            .Count => return tok.child_array_ptr_type_name,
+            .CountWithSentinel => return tok.child_array_ptr_with_sentinel_type_name,
+            .Many => return tok.child_slice_type_name,
+            .ManyWithSentinel => return tok.child_slice_with_sentinel_type_name,
+            else => return tok.void_type_name,
+        },
+        .read => switch (ctn_fn_info.val) {
+            .One => return tok.child_type_name,
+            .Count => return tok.child_array_type_name,
+            .CountWithSentinel => return tok.child_array_with_sentinel_type_name,
+            .Many => return tok.child_const_slice_type_name,
+            .ManyWithSentinel => return tok.child_const_slice_with_sentinel_type_name,
+            else => return tok.void_type_name,
+        },
+        else => return tok.void_type_name,
     }
-    if (ctn_detail.layouts.unstructured) {
-        array.writeOne(switch (list_kind) {
-            .Parameter => tok.child_param,
-            .Argument => tok.child_name,
-        });
-    }
-    const is_reinterpreted: bool =
-        is_write and
-        ctn_fn_info.val == .Any or
-        ctn_fn_info.val == .Args or
-        ctn_fn_info.val == .Fields;
-    if (is_reinterpreted) {
-        array.writeOne(switch (list_kind) {
-            .Parameter => tok.reinterpret_spec_param,
-            .Argument => tok.reinterpret_spec_name,
-        });
-    }
-    const is_absolute: bool =
-        ctn_fn_info.loc == .AllDefined or
-        ctn_fn_info.loc == .AllUndefined or
-        ctn_fn_info.loc == .AnyDefined or
-        ctn_fn_info.loc == .AnyUndefined;
-    if (ctn_fn_info.kind == .append) {
-        array.writeOne(switch (list_kind) {
-            .Parameter => tok.allocator_ptr_param,
-            .Argument => tok.allocator_name,
-        });
-    } else //
-    if (ctn_detail.kinds.parametric and is_absolute) {
-        array.writeOne(switch (list_kind) {
-            .Parameter => tok.allocator_param,
-            .Argument => tok.allocator_name,
-        });
-    }
-    const is_read: bool =
-        ctn_fn_info.kind == .read or
-        ctn_fn_info.kind == .refer;
-    if (is_count) {
-        if (is_read) {
-            array.writeOne(switch (list_kind) {
-                .Parameter => tok.read_count_param,
-                .Argument => tok.read_count_name,
-            });
-        }
-        if (is_write) {
-            array.writeOne(switch (list_kind) {
-                .Parameter => tok.write_count_param,
-                .Argument => tok.write_count_name,
-            });
-        }
-    }
-    const has_sentinel: bool =
-        ctn_fn_info.val == .ManyWithSentinel or
-        ctn_fn_info.val == .CountWithSentinel;
-    if (has_sentinel) {
-        if (ctn_detail.layouts.structured) {
-            array.writeOne(switch (list_kind) {
-                .Parameter => tok.s_sentinel_param,
-                .Argument => tok.sentinel_name,
-            });
-        } else {
-            array.writeOne(switch (list_kind) {
-                .Parameter => tok.u_sentinel_param,
-                .Argument => tok.sentinel_name,
-            });
-        }
-    }
-    const is_many: bool =
-        ctn_fn_info.val == .Many or
-        ctn_fn_info.val == .ManyWithSentinel;
-    const is_relative: bool =
-        ctn_fn_info.loc == .Behind or
-        ctn_fn_info.loc == .Ahead or
-        ctn_fn_info.loc == .Back or
-        ctn_fn_info.loc == .Next;
-    const is_any: bool =
-        ctn_fn_info.loc == .AnyDefined or
-        ctn_fn_info.loc == .AnyUndefined;
-    if (is_any or (is_relative and is_read and is_many)) {
-        if (ctn_detail.layouts.structured) {
-            array.writeOne(switch (list_kind) {
-                .Parameter => tok.offset_int_param,
-                .Argument => tok.offset_name,
-            });
-        } else {
-            array.writeOne(switch (list_kind) {
-                .Parameter => tok.offset_amt_param,
-                .Argument => tok.offset_name,
-            });
-        }
-    }
-    if (is_write) {
-        switch (ctn_fn_info.val) {
-            .Count => array.writeOne(switch (list_kind) {
-                .Parameter => tok.count_values_param,
-                .Argument => tok.count_values_name,
-            }),
-            .Many => array.writeOne(switch (list_kind) {
-                .Parameter => tok.many_values_param,
-                .Argument => tok.many_values_name,
-            }),
-            .One => array.writeOne(switch (list_kind) {
-                .Parameter => tok.value_param,
-                .Argument => tok.value_name,
-            }),
-            .Format => array.writeOne(switch (list_kind) {
-                .Parameter => tok.format_param,
-                .Argument => tok.format_name,
-            }),
-            .Fields => array.writeOne(switch (list_kind) {
-                .Parameter => tok.fields_param,
-                .Argument => tok.fields_name,
-            }),
-            .Args => array.writeOne(switch (list_kind) {
-                .Parameter => tok.args_param,
-                .Argument => tok.args_name,
-            }),
-            .Any => array.writeOne(switch (list_kind) {
-                .Parameter => tok.any_param,
-                .Argument => tok.any_name,
-            }),
-            else => return array,
-        }
-    }
-    return array;
 }
