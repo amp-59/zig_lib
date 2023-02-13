@@ -25,7 +25,7 @@ fn print(buf: []u8, off: u64, ss: []const []const u8) void {
     file.noexcept.write(1, buf[0 .. off + write(buf, off, ss)]);
 }
 fn compareLayeredShellShort() !void {
-    const size = 0x4000000;
+    const size = 0x400000;
     try mem.map(.{ .options = .{} }, size, size);
     try mem.map(.{ .options = .{} }, size + size, size);
     const rnbuf: []u8 = @intToPtr([*]u8, size)[0..size];
@@ -35,13 +35,13 @@ fn compareLayeredShellShort() !void {
     const values_2 = @intToPtr([*]u64, size + size)[0..(size / 0x8)];
     {
         const t_0 = try time.realClock(null);
-        algo.layeredShellSortAsc(u64, values_1);
+        algo.shellSortAsc(u64, values_1);
         const t_1 = try time.realClock(null);
         testing.printN(4096, .{ fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
         const t_0 = try time.realClock(null);
-        algo.shellSortAsc(u64, values_2);
+        algo.layeredShellSortAsc(u64, values_2);
         const t_1 = try time.realClock(null);
         testing.printN(4096, .{ fmt.any(time.diff(t_1, t_0)), '\n' });
     }
@@ -55,7 +55,7 @@ fn approximationTest() void {
     var n_aligned_bytes: u32 = 1;
     var total_requested: u64 = 0;
     var total_returned: u64 = 0;
-    while (n_aligned_bytes < lit.max_bit_u32) : (n_aligned_bytes += 1) {
+    while (n_aligned_bytes < lit.max_bit_u16) : (n_aligned_bytes += 1) {
         const s_lb_counts: u16 = algo.partialPackSingleApprox(n_aligned_bytes);
         const o_aligned_bytes: u64 = algo.partialUnpackSingleApprox(s_lb_counts);
         const s_ub_counts: u16 = algo.partialPackDoubleApprox(n_aligned_bytes, o_aligned_bytes);
@@ -79,6 +79,6 @@ fn approximationTest() void {
     builtin.assertBelow(u64, total_returned - total_requested, (2 * total_requested) / 100);
 }
 pub fn main() !void {
-    // try compareLayeredShellShort();
+    try compareLayeredShellShort();
     approximationTest();
 }
