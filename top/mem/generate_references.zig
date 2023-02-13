@@ -9,6 +9,7 @@ const testing = @import("../testing.zig");
 const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
+const expr = @import("./expr.zig");
 const config = @import("./config.zig");
 const out = struct {
     usingnamespace @import("./detail_more.zig");
@@ -25,7 +26,6 @@ pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
-const Args = mem.StaticArray([:0]const u8, 8);
 const Fn = implementation.Fn;
 
 const Info = struct {
@@ -35,284 +35,166 @@ const Info = struct {
         info.alias = impl_fn_info;
     }
 };
-
-pub const Operand = union(enum) {
-    // call5: *const FnCall5,
-    // call4: *const FnCall4,
-    // call3: *const FnCall3,
-    call2: *const FnCall2,
-    call1: *const FnCall1,
-
-    call_impl: *const FnCall,
-    // call_intr: *const IntrFnCall,
-    deref: *const DereferenceOp,
-    constant: usize,
-    symbol: [:0]const u8,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        switch (format) {
-            .symbol => |symbol| array.writeMany(symbol),
-            .constant => |constant| array.writeFormat(fmt.ud64(constant)),
-            inline else => |op| op.formatWrite(array),
-        }
-    }
-    fn init(any: anytype) Operand {
-        inline for (@typeInfo(Operand).Union.fields) |field| {
-            if (field.type == @TypeOf(any)) {
-                return @unionInit(Operand, field.name, any);
-            }
-        }
-        @compileError(@typeName(@TypeOf(any)));
-    }
-};
-pub const FnCall1 = struct {
-    symbol: [:0]const u8,
-    op1: Operand,
-    const Format = @This();
-    pub inline fn formatWrite(format: Format, array: anytype) void {
-        formatWriteCall1(format.op1, array, format.symbol);
-    }
-};
-pub const FnCall2 = struct {
-    symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        formatWriteCall2(format.op1, format.op2, array, format.symbol);
-    }
-};
-pub const FnCall3 = struct {
-    symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
-    op3: Operand,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        formatWriteCall3(format.op1, format.op2, array, format.symbol);
-    }
-};
-pub const FnCall4 = struct {
-    symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
-    op3: Operand,
-    op4: Operand,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        formatWriteCall4(format.op1, format.op2, array, format.symbol);
-    }
-};
-pub const FnCall5 = struct {
-    symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
-    op3: Operand,
-    op4: Operand,
-    op5: Operand,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        formatWriteCall5(format.op1, format.op2, array, format.symbol);
-    }
-};
-pub fn formatWriteCall1(op1: Operand, array: anytype, fn_token: [:0]const u8) void {
-    array.writeMany(fn_token);
-    array.writeOne('(');
-    array.writeFormat(op1);
-    array.writeOne(')');
-}
-pub fn formatWriteCall2(op1: Operand, op2: Operand, array: anytype, fn_token: [:0]const u8) void {
-    array.writeMany(fn_token);
-    array.writeOne('(');
-    array.writeFormat(op1);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op2);
-    array.writeOne(')');
-}
-pub fn formatWriteCall3(op1: Operand, op2: Operand, op3: Operand, array: anytype, fn_token: [:0]const u8) void {
-    array.writeMany(fn_token);
-    array.writeOne('(');
-    array.writeFormat(op1);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op2);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op3);
-    array.writeOne(')');
-}
-pub fn formatWriteCall4(op1: Operand, op2: Operand, op3: Operand, op4: Operand, array: anytype, fn_token: [:0]const u8) void {
-    array.writeMany(fn_token);
-    array.writeOne('(');
-    array.writeFormat(op1);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op2);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op3);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op4);
-    array.writeOne(')');
-}
-pub fn formatWriteCall5(op1: Operand, op2: Operand, op3: Operand, op4: Operand, op5: Operand, array: anytype, fn_token: [:0]const u8) void {
-    array.writeMany(fn_token);
-    array.writeOne('(');
-    array.writeFormat(op1);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op2);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op3);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op4);
-    array.writeMany(tok.end_small_item);
-    array.writeFormat(op5);
-    array.writeOne(')');
-}
 pub const AssignmentOp = struct {
-    op1: Operand,
-    op2: Operand,
+    op1: expr.Operand,
+    op2: expr.Operand,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeFormat(format.op1);
-        array.writeMany(" = ");
+        array.writeMany(tok.equal_operator);
         array.writeFormat(format.op2);
     }
 };
 pub fn assignmentOp(op1: anytype, op2: anytype) AssignmentOp {
     return .{
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub const DereferenceOp = struct {
-    op1: Operand,
+pub const FieldAccessOp = struct {
+    op1: expr.Operand,
+    symbol: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeFormat(format.op1);
-        array.writeMany(".*");
+        array.writeMany(tok.period_asterisk_operator);
+        array.writeMany(format.symbol);
     }
 };
-pub fn dereferenceOp(op1: anytype) DereferenceOp {
-    return .{ .op1 = Operand.init(op1) };
+pub const ConstDeclOp = struct {
+    var_name: [:0]const u8,
+    type_name: [:0]const u8,
+    op1: expr.Operand,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany(tok.const_keyword);
+        array.writeMany(format.var_name);
+        array.writeMany(tok.colon_operator);
+        array.writeMany(format.type_name);
+        array.writeMany(tok.equal_operator);
+        array.writeFormat(format.op1);
+        array.writeMany(tok.end_expression);
+    }
+};
+pub const VarDeclOp = struct {
+    var_name: [:0]const u8,
+    type_name: [:0]const u8,
+    op1: expr.Operand,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany(tok.var_keyword);
+        array.writeFormat(format.var_name);
+        array.writeMany(tok.colon_operator);
+        array.writeFormat(format.type_name);
+        array.writeMany(tok.equal_operator);
+        array.writeFormat(format.op1);
+        array.writeMany(tok.end_expression);
+    }
+};
+pub inline fn dereferenceOp(op1: anytype) expr.Parentheses {
+    return .{
+        .op = expr.Operand.init(op1),
+        .rhs = ".*",
+    };
 }
-
-pub inline fn addEqualOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn addEqualOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.add_equ_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn subtractEqualOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn subtractEqualOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.subtract_equ_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn addOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn addOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.add_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn alignAboveOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn alignAboveOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.subtract_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn alignBelowOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn alignBelowOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.align_below_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn andOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn andOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.and_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn andNotOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn andNotOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.and_not_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn conditionalMoveOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn conditionalMoveOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.conditional_move_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn multiplyOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn multiplyOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.multiply_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn orOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn orOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.or_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn shiftLeftOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn shiftLeftOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.shift_left_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn shiftRightOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn shiftRightOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.shift_right_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn subtractOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn subtractOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.subtract_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn unpackDoubleApproxOp(op1: anytype, op2: anytype) FnCall2 {
+pub inline fn unpackDoubleApproxOp(op1: anytype, op2: anytype) expr.FnCall2 {
     return .{
         .symbol = tok.unpack_double_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
+        .op1 = expr.Operand.init(op1),
+        .op2 = expr.Operand.init(op2),
     };
 }
-pub inline fn pointerOpaqueOp(op1: anytype, op2: anytype) FnCall2 {
-    return .{
-        .symbol = tok.pointer_opaque_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
-    };
-}
-pub inline fn pointerOneOp(op1: anytype, op2: anytype) FnCall2 {
-    return .{
-        .symbol = tok.pointer_one_fn_name,
-        .op1 = Operand.init(op1),
-        .op2 = Operand.init(op2),
-    };
-}
-pub const FnCall = struct {
-    impl_variant: *const out.DetailMore,
-    impl_fn_info: *const Fn,
-    const Format = @This();
-    pub inline fn formatWrite(format: Format, array: *gen.String) void {
-        format.impl_fn_info.writeCall(array, format.impl_variant);
-    }
-};
 pub fn writeComma(array: *gen.String) void {
     const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
     const j1: bool = mem.testEqualManyBack(u8, tok.end_small_item, array.readAll());
@@ -325,95 +207,97 @@ pub fn writeArgument(array: *gen.String, argument_name: [:0]const u8) void {
     array.writeMany(argument_name);
 }
 fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn, info: *Info) void {
-    const allocated_byte_address: FnCall = .{
+    const allocated_byte_address: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.allocated_byte_address),
     };
-    const aligned_byte_address: FnCall = .{
+    const aligned_byte_address: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.aligned_byte_address),
     };
-    const unstreamed_byte_address: FnCall = .{
+    const unstreamed_byte_address: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.unstreamed_byte_address),
     };
-    const undefined_byte_address: FnCall = .{
+    const undefined_byte_address: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.undefined_byte_address),
     };
-    const unwritable_byte_address: FnCall = .{
+    const unwritable_byte_address: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.unwritable_byte_address),
     };
-    const unallocated_byte_address: FnCall = .{
+    const unallocated_byte_address: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.unallocated_byte_address),
     };
-    const allocated_byte_count: FnCall = .{
+    const allocated_byte_count: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.allocated_byte_count),
     };
-    const aligned_byte_count: FnCall = .{
+    const aligned_byte_count: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.aligned_byte_count),
     };
-    const writable_byte_count: FnCall = .{
+    const writable_byte_count: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.writable_byte_count),
     };
-    const alignment: FnCall = .{
+    const alignment: expr.FnCallImpl = .{
         .impl_variant = impl_variant,
         .impl_fn_info = implementation.get(.alignment),
     };
-    const subtract_op_1: FnCall2 = .{
+    const subtract_op_1: expr.FnCall2 = .{
         .symbol = tok.subtract_fn_name,
         .op1 = .{ .symbol = tok.low_alignment_specifier_name },
         .op2 = .{ .constant = 1 },
     };
-    const shift_left_op_65535_48: FnCall2 = .{
+    const shift_left_op_65535_48: expr.FnCall2 = .{
         .symbol = tok.shift_left_fn_name,
         .op1 = .{ .constant = 65535 },
         .op2 = .{ .constant = 48 },
     };
-    const shift_right_op_lb_16: FnCall2 = .{
+    const shift_right_op_lb_16: expr.FnCall2 = .{
         .symbol = tok.shift_right_fn_name,
         .op1 = .{ .symbol = tok.allocated_byte_address_word_access },
         .op2 = .{ .constant = 16 },
     };
-    const shift_right_op_ub_16: FnCall2 = .{
+    const shift_right_op_ub_16: expr.FnCall2 = .{
         .symbol = tok.shift_right_fn_name,
         .op1 = .{ .symbol = tok.undefined_byte_address_word_access },
         .op2 = .{ .constant = 16 },
     };
-    const or_op_1_65535_48: FnCall2 = .{
+    const or_op_1_65535_48: expr.FnCall2 = .{
         .symbol = tok.or_fn_name,
         .op1 = .{ .call2 = &subtract_op_1 },
         .op2 = .{ .call2 = &shift_left_op_65535_48 },
     };
-    const unpck1x_op: FnCall1 = .{
+    const unpck1x_op: expr.FnCall1 = .{
         .symbol = tok.unpack_single_fn_name,
         .op1 = .{ .symbol = tok.allocated_byte_address_word_access },
     };
-    const unpck2x_op: FnCall2 = .{
+    const unpck2x_op: expr.FnCall2 = .{
         .symbol = tok.unpack_double_fn_name,
         .op1 = .{ .symbol = tok.allocated_byte_address_word_access },
         .op2 = .{ .symbol = tok.undefined_byte_address_word_access },
     };
-    const sentinel_pointer_op: FnCall2 = .{
+    const sentinel_pointer_op: expr.FnCall2 = .{
         .symbol = tok.pointer_opaque_fn_name,
         .op1 = .{ .symbol = tok.child_specifier_name },
         .op2 = .{ .symbol = tok.sentinel_specifier_name },
     };
-    const undefined_child_pointer_op: FnCall2 = .{
+    const undefined_child_pointer_op: expr.FnCall2 = .{
         .symbol = tok.pointer_one_fn_name,
         .op1 = .{ .symbol = tok.child_specifier_name },
         .op2 = .{ .call_impl = &undefined_byte_address },
     };
-    const sentinel_pointer_deref_op: DereferenceOp = .{
-        .op1 = .{ .call2 = &sentinel_pointer_op },
+    const sentinel_pointer_deref_op: expr.Parentheses = .{
+        .op = .{ .call2 = &sentinel_pointer_op },
+        .rhs = ".*",
     };
-    const undefined_child_pointer_deref_op: DereferenceOp = .{
-        .op1 = .{ .call2 = &undefined_child_pointer_op },
+    const undefined_child_pointer_deref_op: expr.Parentheses = .{
+        .op = .{ .call2 = &undefined_child_pointer_op },
+        .rhs = ".*",
     };
     const has_static_maximum_length: bool =
         impl_variant.kinds.automatic or
@@ -424,7 +308,7 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
     const has_unit_alignment: bool =
         impl_variant.techs.auto_alignment or
         impl_variant.techs.unit_alignment;
-    switch (impl_fn_info.tag) {
+    switch (impl_fn_info.*) {
         .define => {
             array.writeFormat(addEqualOp(tok.undefined_byte_address_word_ptr, tok.offset_bytes_name));
             if (impl_variant.specs.sentinel) {
@@ -614,7 +498,7 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
             }
             if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (impl_variant.specs.sentinel) {
-                    const align_below_op: FnCall2 = alignBelowOp(&unpck2x_op, tok.high_alignment_specifier_name);
+                    const align_below_op: expr.FnCall2 = alignBelowOp(&unpck2x_op, tok.high_alignment_specifier_name);
                     array.writeFormat(subtractOp(&align_below_op, tok.high_alignment_specifier_name));
                     return array.writeMany(tok.end_expression);
                 } else {
@@ -623,7 +507,7 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
                 }
             } else if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (impl_variant.specs.sentinel) {
-                    const align_below_op: FnCall2 = alignBelowOp(&unpck1x_op, tok.high_alignment_specifier_name);
+                    const align_below_op: expr.FnCall2 = alignBelowOp(&unpck1x_op, tok.high_alignment_specifier_name);
                     array.writeFormat(subtractOp(&align_below_op, tok.high_alignment_specifier_name));
                     return array.writeMany(tok.end_expression);
                 } else {
@@ -631,7 +515,7 @@ fn writeFunctionBodyGeneric(array: *gen.String, impl_variant: *const out.DetailM
                     return array.writeMany(tok.end_expression);
                 }
             } else if (impl_variant.specs.sentinel) {
-                const subtract_op: FnCall2 = subtractOp(&allocated_byte_count, tok.high_alignment_specifier_name);
+                const subtract_op: expr.FnCall2 = subtractOp(&allocated_byte_count, tok.high_alignment_specifier_name);
                 if (has_unit_alignment) {
                     array.writeFormat(subtract_op);
                     return array.writeMany(tok.end_expression);
@@ -732,14 +616,14 @@ fn writeSimpleRedecl(array: *gen.String, impl_fn_info: *const Fn, info: *Info) v
     if (info.alias) |impl_fn_alias_info| {
         array.undefine(array.len() - info.start);
         array.writeMany("pub const ");
-        array.writeMany(@tagName(impl_fn_info.tag));
+        array.writeMany(impl_fn_info.fnName());
         array.writeMany(" = ");
-        array.writeMany(@tagName(impl_fn_alias_info.tag));
+        array.writeMany(impl_fn_alias_info.fnName());
         array.writeMany(";\n");
         info.alias = null;
     }
 }
-fn writeComptimeFieldInternal(array: *gen.String, fn_tag: Fn.Tag, args: *const gen.ArgList) void {
+fn writeComptimeFieldInternal(array: *gen.String, fn_tag: Fn, args: *const gen.ArgList) void {
     if (args.len() == 0) {
         array.writeMany(tok.comptime_keyword);
         array.writeMany(@tagName(fn_tag));
@@ -757,8 +641,8 @@ fn writeComptimeFieldInternal(array: *gen.String, fn_tag: Fn.Tag, args: *const g
         return array.writeMany(tok.end_item);
     }
 }
-inline fn writeComptimeField(array: *gen.String, impl_variant: *const out.DetailMore, comptime fn_tag: Fn.Tag) void {
-    const args: gen.ArgList = implementation.getArgList(impl_variant, implementation.get(fn_tag), .Parameter);
+inline fn writeComptimeField(array: *gen.String, impl_variant: *const out.DetailMore, comptime fn_tag: Fn) void {
+    const args: gen.ArgList = implementation.get(fn_tag).argList(impl_variant, .Parameter);
     writeComptimeFieldInternal(array, fn_tag, &args);
 }
 inline fn writeFields(array: *gen.String, impl_variant: *const out.DetailMore) void {
