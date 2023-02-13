@@ -89,13 +89,22 @@ pub const VarDeclOp = struct {
     }
 };
 fn setImplToMember(callable: *expr.Callable) void {
+    if (callable.* == .call0) {
+        callable.* = .{ .call1 = .{
+            .symbol = callable.call0.symbol,
+            .op1 = .{ .symbol = tok.array_impl },
+        } };
+    } else {
+        callable.subst(
+            .{ .symbol = tok.impl_name },
+            .{ .symbol = tok.array_impl },
+        );
+    }
     callable.set("member", true);
-    callable.subst(
-        .{ .symbol = tok.impl_name },
-        .{ .symbol = tok.array_name ++ "." ++ tok.impl_name },
-    );
 }
+
 fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+    const is_one: bool = ctn_fn_info.val == .One;
     const is_count: bool =
         ctn_fn_info.val == .Count or
         ctn_fn_info.val == .CountWithSentinel;
@@ -105,6 +114,15 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
     const is_write: bool =
         ctn_fn_info.kind == .write or
         ctn_fn_info.kind == .append;
+    const is_read: bool =
+        ctn_fn_info.kind == .read or
+        ctn_fn_info.kind == .refer;
+    const is_relative: bool =
+        ctn_fn_info.loc == .Next or
+        ctn_fn_info.loc == .Back or
+        ctn_fn_info.loc == .Behind or
+        ctn_fn_info.loc == .Ahead;
+
     var __at_fn_call: expr.Callable = expr.Callable.init(ctn_detail, interface.get(.__at));
     var __ad_fn_call: expr.Callable = expr.Callable.init(ctn_detail, interface.get(.__ad));
     var __back_fn_call: expr.Callable = expr.Callable.init(ctn_detail, interface.get(.__back));
@@ -148,12 +166,26 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
 
     const length_call: *expr.Callable = &len_fn_call;
     const offset_name_op: expr.Operand = .{ .symbol = tok.offset_name };
+
     const location_call_op: expr.Operand = location_call.op();
     const length_call_op: expr.Operand = length_call.op();
+
+    const location_op: expr.Operand = blk: {
+        if (is_read and is_relative) {
+            if (is_one) {
+                location_call.subst(offset_name_op, .{ .constant = 1 });
+            }
+            if (is_count or is_many) {
+                location_call.subst(offset_name_op, .{ .symbol = tok.count_name });
+            }
+        }
+        break :blk location_call_op;
+    };
+
     const length_op: expr.Operand = blk: {
         if (is_write) {
             if (is_count) {
-                break :blk .{ .symbol = tok.write_count_name };
+                break :blk .{ .symbol = tok.count_name };
             }
             if (is_many) {
                 break :blk .{ .symbol = tok.many_values_len };
@@ -161,34 +193,35 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         }
         break :blk length_call_op;
     };
+
     const pointer_one_call: expr.FnCall2 = .{
         .symbol = tok.intr_pointer_one_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
-        .op2 = location_call_op,
+        .op2 = location_op,
     };
     const pointer_many_call: expr.FnCall3 = .{
         .symbol = tok.intr_pointer_many_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
-        .op2 = location_call_op,
+        .op2 = location_op,
         .op3 = length_op,
     };
     const pointer_count_call: expr.FnCall3 = .{
         .symbol = tok.intr_pointer_count_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
-        .op2 = location_call_op,
+        .op2 = location_op,
         .op3 = length_op,
     };
     const pointer_many_with_sentinel_call: expr.FnCall4 = .{
         .symbol = tok.intr_pointer_many_with_sentinel_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
-        .op2 = location_call_op,
+        .op2 = location_op,
         .op3 = length_op,
         .op4 = .{ .symbol = tok.sentinel_name },
     };
     const pointer_count_with_sentinel_call: expr.FnCall4 = .{
         .symbol = tok.intr_pointer_count_with_sentinel_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
-        .op2 = location_call_op,
+        .op2 = location_op,
         .op3 = length_op,
         .op4 = .{ .symbol = tok.sentinel_name },
     };
@@ -253,9 +286,9 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
             }
         },
         .read => {
-            location_call.subst(offset_name_op, switch (ctn_fn_info.val) {
+            length_call.subst(offset_name_op, switch (ctn_fn_info.val) {
                 .One => .{ .constant = 1 },
-                else => .{ .symbol = tok.read_count_name },
+                else => .{ .symbol = tok.count_name },
             });
             array.writeMany(tok.return_keyword);
             const deref_pointer_one_call: expr.Parentheses = .{
@@ -355,7 +388,7 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                 if (ctn_fn_info.tag == .appendCount) {
                     increment_fn_call.subst(
                         offset_name_op,
-                        .{ .symbol = tok.write_count_name },
+                        .{ .symbol = tok.count_name },
                     );
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
@@ -424,7 +457,7 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                     array.writeMany(tok.write_one_impl_fn_name ++ "(");
                     gen.writeArgument(array, tok.child_type_name);
                     gen.writeComma(array);
-                    array.writeFormat(location_call_op);
+                    array.writeFormat(location_op);
                     gen.writeArgument(array, tok.value_name);
                     array.writeMany(")");
                     return array.writeMany(tok.end_expression);
@@ -440,7 +473,7 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                     array.writeMany(tok.write_many_impl_fn_name ++ "(");
                     gen.writeArgument(array, tok.child_type_name);
                     gen.writeComma(array);
-                    array.writeFormat(location_call_op);
+                    array.writeFormat(location_op);
                     gen.writeArgument(array, tok.many_values_name);
                     array.writeMany(")");
                     return array.writeMany(tok.end_expression);
@@ -454,16 +487,16 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                     return array.writeMany(tok.end_expression);
                 } else {
                     if (config.implement_count_as_one) {
-                        array.writeMany(tok.write_one_impl_name ++ "([" ++ tok.write_count_name ++ "]");
+                        array.writeMany(tok.write_one_impl_name ++ "([" ++ tok.count_name ++ "]");
                         array.writeMany(tok.child_type_name);
                         gen.writeComma(array);
-                        array.writeFormat(location_call_op);
+                        array.writeFormat(location_op);
                     } else {
                         array.writeMany(tok.write_count_impl_fn_name ++ "(");
                         gen.writeArgument(array, tok.child_type_name);
                         gen.writeComma(array);
-                        array.writeFormat(location_call_op);
-                        gen.writeArgument(array, tok.write_count_name);
+                        array.writeFormat(location_op);
+                        gen.writeArgument(array, tok.count_name);
                     }
                     gen.writeArgument(array, tok.count_values_name);
                     array.writeMany(")");
@@ -490,6 +523,131 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         else => unreachable,
     }
 }
+fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+    const child_size_symbol: [:0]const u8 =
+        if (ctn_detail.layouts.structured)
+        tok.child_size_name
+    else
+        tok.call_sizeof_child;
+    var writable_byte_count: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.writable_byte_count),
+    );
+    setImplToMember(&writable_byte_count);
+    var defined_byte_count: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.defined_byte_count),
+    );
+    setImplToMember(&defined_byte_count);
+    var undefined_byte_count: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.undefined_byte_count),
+    );
+    setImplToMember(&undefined_byte_count);
+    var aligned_byte_address_call: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.aligned_byte_address),
+    );
+    setImplToMember(&aligned_byte_address_call);
+    var undefined_byte_address_call: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.undefined_byte_address),
+    );
+    setImplToMember(&undefined_byte_address_call);
+    var unstreamed_byte_address_call: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.unstreamed_byte_address),
+    );
+    setImplToMember(&unstreamed_byte_address_call);
+    const mul_op_offset_child_size = expr.FnCall2{
+        .symbol = tok.multiply_fn_name,
+        .op1 = .{ .symbol = tok.offset_name },
+        .op2 = .{ .symbol = child_size_symbol },
+    };
+    switch (ctn_fn_info.tag) {
+        .len => {
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.div_trunc_fn_name,
+                .op1 = if (ctn_detail.modes.resize)
+                    defined_byte_count.op()
+                else
+                    writable_byte_count.op(),
+                .op2 = .{ .symbol = child_size_symbol },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+        .avail => {
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.div_trunc_fn_name,
+                .op1 = undefined_byte_count.op(),
+                .op2 = .{ .symbol = child_size_symbol },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+        .__at => {
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.add_fn_name,
+                .op1 = aligned_byte_address_call.op(),
+                .op2 = .{ .call2 = &mul_op_offset_child_size },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+        .__ad => {
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.add_fn_name,
+                .op1 = undefined_byte_address_call.op(),
+                .op2 = .{ .call2 = &mul_op_offset_child_size },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+        .__len => {
+            var len_fn_call: expr.Callable =
+                expr.Callable.init(ctn_detail, interface.get(.len));
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.subtract_fn_name,
+                .op1 = len_fn_call.op(),
+                .op2 = .{ .symbol = tok.offset_name },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+        .__rem => {
+            var avail_fn_call: expr.Callable =
+                expr.Callable.init(ctn_detail, interface.get(.avail));
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.subtract_fn_name,
+                .op1 = avail_fn_call.op(),
+                .op2 = .{ .symbol = tok.offset_name },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+        .__back => {
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.subtract_fn_name,
+                .op1 = undefined_byte_address_call.op(),
+                .op2 = .{ .call2 = &mul_op_offset_child_size },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+        .__behind => {
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall2{
+                .symbol = tok.subtract_fn_name,
+                .op1 = unstreamed_byte_address_call.op(),
+                .op2 = .{ .call2 = &mul_op_offset_child_size },
+            });
+            return array.writeMany(tok.end_expression);
+        },
+
+        else => functionBodyUndefinedNotice(ctn_detail, ctn_fn_info),
+    }
+}
 fn functionBodyUndefinedNotice(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
@@ -508,10 +666,11 @@ fn writeFunctionBodyGeneric(array: *gen.String, ctn_detail: *const out.DetailLes
         ctn_fn_info.kind == .write or
         ctn_fn_info.kind == .append;
     const is_primary: bool = is_read or is_write;
+
     if (is_primary) {
         return writeFunctionBodyPrimary(array, ctn_detail, ctn_fn_info);
     }
-    // functionBodyUndefinedNotice(ctn_detail, ctn_fn_info);
+    writeFunctionBodySpecial(array, ctn_detail, ctn_fn_info);
 }
 fn writeFunctions(array: *gen.String, ctn_detail: *const out.DetailLess) void {
     for (interface.key) |*ctn_fn_info| {
@@ -529,6 +688,7 @@ fn writeDeclarations(array: *gen.String, ctn_detail: *const out.DetailLess) void
     array.writeMany("const " ++ tok.array_type_name ++ " = @This();\n");
     if (ctn_detail.layouts.structured) {
         array.writeMany("const " ++ tok.child_type_name ++ " = spec." ++ tok.child_type_name ++ ";\n");
+        array.writeMany("const " ++ tok.child_size_name ++ " = " ++ tok.call_sizeof_child ++ ";\n");
     }
     if (ctn_detail.kinds.dynamic or
         ctn_detail.kinds.parametric or
