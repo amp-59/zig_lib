@@ -394,7 +394,7 @@ pub fn appendAuxiliarySourceFile(array: *String, comptime name: [:0]const u8) vo
     sys.mkdir(zig_out_src_dir);
     appendSourceFile(array, zig_out_src_dir ++ "/" ++ name);
 }
-pub fn writeIndex(array: *String, index: u16) void {
+pub fn writeIndex(array: anytype, index: u16) void {
     array.writeMany(builtin.fmt.ud16(index).readAll());
 }
 pub fn writeField(array: *String, name: []const u8, type_descr: TypeDescr) void {
