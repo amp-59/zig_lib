@@ -6,4 +6,5 @@ pub const packed_capacity_low: bool = false;
 pub const minimise_indirection: bool = true;
 pub const minimise_declaration: bool = true;
 pub const show_eliminated_options: bool = false;
-pub const implement_write_inline: bool = true;
+pub const implement_write_inline: bool = false;
+pub const implement_count_as_one: bool = false;
