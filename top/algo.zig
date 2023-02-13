@@ -23,7 +23,7 @@ fn unpackSingleApproxA(s_counts_h: u64) u64 {
     const s_counts_l: u16 = builtin.shrY(u64, u16, s_counts_h, 48);
     return unpackSingleApproxB(s_counts_l);
 }
-fn approx(n_bytes: u64) u64 {
+pub fn approx(n_bytes: u64) u64 {
     const n_bytes_clz: u8 = builtin.lzcnt(u64, n_bytes);
     const l_bytes_cls: u8 = builtin.lzcnt(u64, ~mach.shlx64(n_bytes, n_bytes_clz));
     return reverseApproximateAbove(n_bytes_clz, l_bytes_cls);
@@ -182,7 +182,7 @@ pub fn shellSortAsc(comptime T: type, values: []T) void {
         }
     }
 }
-fn shellSortAscTransform(comptime T: type, comptime transform: anytype, values: []T) void {
+pub fn shellSortAscTransform(comptime T: type, comptime transform: anytype, values: []T) void {
     var gap: u64 = values.len / 2;
     while (gap != 0) : (gap /= 2) {
         var i: u64 = gap;
@@ -199,7 +199,24 @@ fn shellSortAscTransform(comptime T: type, comptime transform: anytype, values: 
         }
     }
 }
+
+pub fn isSortedAsc(comptime T: type, values: []T) bool {
+    if (values.len == 0) {
+        return true;
+    }
+    var i: u64 = 0;
+    var prev: T = values[0];
+    while (i != values.len) : (i +%= 1) {
+        const next: T = values[i];
+        if (prev > next) {
+            return false;
+        }
+        prev = next;
+    }
+    return true;
+}
 pub fn layeredShellSortAsc(comptime T: type, values: []T) void {
+    if (isSortedAsc(T, values)) return;
     shellSortAscTransform(T, approx, values);
     shellSortAscTransform(T, approxDouble, values);
     shellSortAscTransform(T, builtin.identity, values);
