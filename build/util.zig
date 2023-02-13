@@ -90,6 +90,7 @@ pub fn Args(comptime name: [:0]const u8) type {
         root_src_file: bool = true,
         build_working_directory: bool = false,
         runtime_assertions: ?bool = null,
+        is_silent: ?bool = null,
         is_perf: ?bool = null,
         is_verbose: ?bool = null,
         is_tolerant: ?bool = null,
