@@ -51,6 +51,9 @@ fn showFile(buf: []u64) void {
         }
     }
 }
+
+// TODO: Add an option or command to sort in place, as the previous behaviour
+
 pub fn main(args: [][*:0]u8) !void {
     if (args.len != 3) {
         builtin.debug.logFault(
