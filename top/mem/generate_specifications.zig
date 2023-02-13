@@ -4,6 +4,7 @@ const fmt = @import("../fmt.zig");
 const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
 const proc = @import("../proc.zig");
+const file = @import("../file.zig");
 const preset = @import("../preset.zig");
 const testing = @import("../testing.zig");
 const builtin = @import("../builtin.zig");
@@ -18,7 +19,6 @@ const out = struct {
     usingnamespace @import("./zig-out/src/containers.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
-const template = @embedFile("./reference-template.zig");
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub usingnamespace proc.start;
@@ -198,7 +198,7 @@ fn writeDeduction(
         }
     }
 }
-pub fn generateReferences() void {
+pub fn generateReferences() !void {
     var address_space: AddressSpace = .{};
     var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
@@ -208,7 +208,7 @@ pub fn generateReferences() void {
         .{ .name = "mach", .path = "../mach.zig" },
         .{ .name = "algo", .path = "../algo.zig" },
     });
-    array.writeMany(template);
+    gen.copySourceFile(&array, "reference-template.zig");
     var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
