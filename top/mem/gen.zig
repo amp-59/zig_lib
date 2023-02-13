@@ -1,6 +1,7 @@
 const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const meta = @import("../meta.zig");
+const file = @import("../file.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 const testing = @import("../testing.zig");
@@ -318,68 +319,27 @@ pub const TypeDescr = union(enum) {
         }
     }
 };
-
 const sys = struct {
-    fn syscall1(sysno: u64, arg1: u64) u64 {
-        return asm volatile ("syscall"
-            : [_] "={rax}" (-> u64),
-            : [_] "{rax}" (sysno),
-              [_] "{rdi}" (arg1),
-            : "rcx", "r11", "memory"
-        );
-    }
-    fn syscall2(sysno: u64, arg1: u64, arg2: u64) u64 {
-        return asm volatile ("syscall"
-            : [_] "={rax}" (-> u64),
-            : [_] "{rax}" (sysno),
-              [_] "{rdi}" (arg1),
-              [_] "{rsi}" (arg2),
-            : "rcx", "r11", "memory"
-        );
-    }
-    fn syscall3(sysno: u64, arg1: u64, arg2: u64, arg3: u64) u64 {
-        return asm volatile ("syscall"
-            : [_] "={rax}" (-> u64),
-            : [_] "{rax}" (sysno),
-              [_] "{rdi}" (arg1),
-              [_] "{rsi}" (arg2),
-              [_] "{rdx}" (arg3),
-            : "rcx", "r11", "memory"
-        );
-    }
-    fn syscall6(sysno: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) u64 {
-        return asm volatile ("syscall"
-            : [_] "={rax}" (-> u64),
-            : [_] "{rax}" (sysno),
-              [_] "{rdi}" (arg1),
-              [_] "{rsi}" (arg2),
-              [_] "{rdx}" (arg3),
-              [_] "{r10}" (arg4),
-              [_] "{r8}" (arg5),
-              [_] "{r9}" (arg6),
-            : "rcx", "r11", "memory"
-        );
-    }
     pub fn read(fd: u64, buf: []u8) u64 {
-        return syscall3(0, fd, @ptrToInt(buf.ptr), buf.len);
+        return file.noexcept.read(fd, buf);
     }
     pub fn write(fd: u64, buf: []const u8) void {
-        _ = syscall3(1, fd, @ptrToInt(buf.ptr), buf.len);
+        return file.noexcept.write(fd, buf);
     }
     pub fn create(pathname: [:0]const u8) u64 {
-        return syscall3(2, @ptrToInt(pathname.ptr), 0x80241, 0o640);
+        return file.create(.{ .errors = null, .options = .{ .write = .truncate, .exclusive = false } }, pathname);
     }
     pub fn open(pathname: [:0]const u8) u64 {
-        return syscall3(2, @ptrToInt(pathname.ptr), 0, 0);
+        return file.open(.{ .errors = null, .options = .{ .read = true, .write = null } }, pathname);
     }
     pub fn append(pathname: [:0]const u8) u64 {
-        return syscall3(2, @ptrToInt(pathname.ptr), 0x442, 0);
+        return file.open(.{ .errors = null, .options = .{ .write = .append } }, pathname);
     }
     pub fn mkdir(pathname: [:0]const u8) void {
-        _ = syscall2(83, @ptrToInt(pathname.ptr), 0o700);
+        file.makeDir(.{ .errors = null }, pathname);
     }
     pub fn close(fd: u64) void {
-        _ = syscall1(3, fd);
+        file.close(.{ .errors = null }, fd);
     }
 };
 pub fn writeImports(array: *String, src: builtin.SourceLocation, imports: []const Import) void {
@@ -411,6 +371,14 @@ pub fn appendSourceFile(array: *String, comptime pathname: [:0]const u8) void {
     defer sys.close(fd);
     sys.write(fd, array.readAll());
     array.undefineAll();
+}
+pub fn copySourceFile(array: *String, comptime pathname: [:0]const u8) void {
+    const fd: u64 = sys.open(if (pathname[0] != '/')
+        build_root ++ "/top/mem/" ++ pathname
+    else
+        pathname);
+    array.define(file.noexcept.read(fd, array.referAllUndefined()));
+    sys.close(fd);
 }
 pub fn writeAuxiliarySourceFile(array: *String, comptime name: [:0]const u8) void {
     const zig_out_dir: [:0]const u8 = build_root ++ "/top/mem/zig-out";
