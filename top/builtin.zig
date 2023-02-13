@@ -1109,16 +1109,22 @@ pub const debug = opaque {
     }
     fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
         @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = comparisonFailedString(T, aboutError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logError(buf[0..len]);
+        if (@typeInfo(T) == .Int) {
+            var buf: [size]u8 = undefined;
+            const len: u64 = comparisonFailedString(T, aboutError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+            logError(buf[0..len]);
+        }
         return error.UnexpectedValue;
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        var buf: [size]u8 = undefined;
-        var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, if (@typeInfo(T) == .Int) @min(arg1, arg2) > 10_000 else false);
-        logFault(buf[0..len]);
+        if (@typeInfo(T) == .Int) {
+            var buf: [size]u8 = undefined;
+            var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+            logFault(buf[0..len]);
+        } else {
+            logFault("assertion failed");
+        }
     }
     pub fn write(buf: []const u8) void {
         asm volatile (
