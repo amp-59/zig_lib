@@ -544,6 +544,16 @@ fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLes
         implementation.get(.undefined_byte_count),
     );
     setImplToMember(&undefined_byte_count);
+    var streamed_byte_count: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.streamed_byte_count),
+    );
+    setImplToMember(&streamed_byte_count);
+    var unstreamed_byte_count: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.unstreamed_byte_count),
+    );
+    setImplToMember(&unstreamed_byte_count);
     var aligned_byte_address_call: expr.Callable = expr.Callable.init(
         ctn_detail.more(),
         implementation.get(.aligned_byte_address),
@@ -559,11 +569,45 @@ fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLes
         implementation.get(.unstreamed_byte_address),
     );
     setImplToMember(&unstreamed_byte_address_call);
+    var define_call: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.define),
+    );
+    setImplToMember(&define_call);
+    var undefine_call: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.undefine),
+    );
+    setImplToMember(&undefine_call);
+    var seek_call: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.seek),
+    );
+    setImplToMember(&seek_call);
+    var tell_call: expr.Callable = expr.Callable.init(
+        ctn_detail.more(),
+        implementation.get(.tell),
+    );
+    setImplToMember(&tell_call);
+    const amount_of_type_to_bytes_call: expr.FnCall2 = .{
+        .symbol = tok.amount_of_type_to_bytes_fn_name,
+        .op1 = .{ .symbol = tok.amount_name },
+        .op2 = .{ .symbol = tok.child_type_name },
+    };
     const mul_op_offset_child_size = expr.FnCall2{
         .symbol = tok.multiply_fn_name,
         .op1 = .{ .symbol = tok.offset_name },
         .op2 = .{ .symbol = child_size_symbol },
     };
+    const mul_op_count_child_size = expr.FnCall2{
+        .symbol = tok.multiply_fn_name,
+        .op1 = .{ .symbol = tok.count_name },
+        .op2 = .{ .symbol = child_size_symbol },
+    };
+    const amount_call: expr.FnCall2 = if (ctn_detail.layouts.structured)
+        mul_op_count_child_size
+    else
+        amount_of_type_to_bytes_call;
     switch (ctn_fn_info.tag) {
         .len => {
             array.writeMany(tok.return_keyword);
@@ -644,7 +688,70 @@ fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLes
             });
             return array.writeMany(tok.end_expression);
         },
-
+        .define => {
+            define_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                .{ .call2 = &amount_call },
+            );
+            array.writeFormat(define_call.op());
+            return array.writeMany(tok.end_expression);
+        },
+        .defineAll => {
+            define_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                undefined_byte_count.op(),
+            );
+            array.writeFormat(define_call.op());
+            return array.writeMany(tok.end_expression);
+        },
+        .undefine => {
+            undefine_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                .{ .call2 = &amount_call },
+            );
+            array.writeFormat(undefine_call.op());
+            return array.writeMany(tok.end_expression);
+        },
+        .undefineAll => {
+            undefine_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                defined_byte_count.op(),
+            );
+            array.writeFormat(undefine_call.op());
+            return array.writeMany(tok.end_expression);
+        },
+        .stream => {
+            seek_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                .{ .call2 = &amount_call },
+            );
+            array.writeFormat(seek_call.op());
+            return array.writeMany(tok.end_expression);
+        },
+        .streamAll => {
+            seek_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                unstreamed_byte_count.op(),
+            );
+            array.writeFormat(seek_call.op());
+            return array.writeMany(tok.end_expression);
+        },
+        .unstream => {
+            tell_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                .{ .call2 = &amount_call },
+            );
+            array.writeFormat(tell_call.op());
+            return array.writeMany(tok.end_expression);
+        },
+        .unstreamAll => {
+            tell_call.subst(
+                .{ .symbol = tok.offset_bytes_name },
+                streamed_byte_count.op(),
+            );
+            array.writeFormat(tell_call.op());
+            return array.writeMany(tok.end_expression);
+        },
         else => functionBodyUndefinedNotice(ctn_detail, ctn_fn_info),
     }
 }
