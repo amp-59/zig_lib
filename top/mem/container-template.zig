@@ -9,7 +9,7 @@ pub inline fn amountToCountOfType(amt: Amount, comptime child: type) u64 {
         .count => |count| count,
     };
 }
-pub inline fn amountToBytesOfType(amt: Amount, comptime child: type) u64 {
+pub inline fn amountOfTypeToBytes(amt: Amount, comptime child: type) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes,
         .count => |count| count * @sizeOf(child),
@@ -21,7 +21,7 @@ pub inline fn amountToCountOfLength(amt: Amount, length: u64) u64 {
         .count => |count| count,
     };
 }
-pub inline fn amountToBytesOfLength(amt: Amount, length: u64) u64 {
+pub inline fn amountOfLengthToBytes(amt: Amount, length: u64) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes,
         .count => |count| count * length,
@@ -32,12 +32,12 @@ inline fn hasSentinel(comptime impl_type: type) bool {
         @hasDecl(impl_type, "Specification") and
         @hasField(impl_type.Specification, "sentinel");
 }
-pub inline fn amountToCountReserved(amt: Amount, comptime impl_type: type) u64 {
+pub inline fn amountReservedToCount(amt: Amount, comptime impl_type: type) u64 {
     return amountToCountOfLength(amt, impl_type.high_alignment) +
         builtin.int(hasSentinel(impl_type));
 }
-pub inline fn amountToBytesReserved(amt: Amount, comptime impl_type: type) u64 {
-    return amountToBytesOfLength(amt, impl_type.high_alignment) +
+pub inline fn amountReservedToBytes(amt: Amount, comptime impl_type: type) u64 {
+    return amountOfLengthToBytes(amt, impl_type.high_alignment) +
         mach.cmov64z(hasSentinel(impl_type), impl_type.high_alignment);
 }
 fn writeOneInternal(comptime child: type, next: u64, value: child) void {
