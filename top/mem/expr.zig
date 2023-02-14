@@ -14,18 +14,21 @@ pub const Operand = union(OperandTag) {
     call: *const FnCall,
     constant: usize,
     symbol: [:0]const u8,
+    any: []const Operand,
 
     const OperandTag = enum(u4) {
         call,
         constant,
         symbol,
+        any,
     };
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         switch (format) {
             .symbol => |symbol| array.writeMany(symbol),
             .constant => |constant| array.writeFormat(fmt.ud64(constant)),
-            inline else => |op| op.formatWrite(array),
+            .call => |call| call.formatWrite(array),
+            .any => |any| for (any) |op| op.formatWrite(array),
         }
     }
     pub fn init(any: anytype) Operand {
@@ -181,17 +184,6 @@ pub const FnCall = struct {
         return ret;
     }
 };
-pub const Parentheses = struct {
-    lhs: [:0]const u8 = "",
-    op: Operand,
-    rhs: [:0]const u8 = "",
-    const Format = @This();
-    pub inline fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany(format.lhs);
-        array.writeFormat(format.op);
-        array.writeMany(format.rhs);
-    }
-};
 pub const AssignmentOp = struct {
     op1: Operand,
     op2: Operand,
@@ -202,7 +194,7 @@ pub const AssignmentOp = struct {
         array.writeFormat(format.op2);
     }
 };
-pub const ForLoopOp = struct {
+pub const ForLoop = struct {
     op1: Operand,
     symbol1: [:0]const u8,
     symbol2: [:0]const u8,
@@ -211,13 +203,13 @@ pub const ForLoopOp = struct {
         array.writeMany("for (");
         array.writeFormat(format.op1);
         array.writeMany(") |");
-        array.writeFormat(format.symbol1);
-        array.writeFormat(", ");
-        array.writeFormat(format.symbol2);
-        array.writeFormat("| ");
+        array.writeMany(format.symbol1);
+        array.writeMany(", ");
+        array.writeMany(format.symbol2);
+        array.writeMany("| ");
     }
 };
-pub const FieldAccessOp = struct {
+pub const FieldAccess = struct {
     op1: Operand,
     symbol: [:0]const u8,
     const Format = @This();
@@ -227,7 +219,7 @@ pub const FieldAccessOp = struct {
         array.writeMany(format.symbol);
     }
 };
-pub const ConstDeclOp = struct {
+pub const ConstDecl = struct {
     var_name: [:0]const u8,
     type_name: [:0]const u8,
     op1: Operand,
@@ -242,7 +234,7 @@ pub const ConstDeclOp = struct {
         array.writeMany(tok.end_expression);
     }
 };
-pub const VarDeclOp = struct {
+pub const VarDecl = struct {
     var_name: [:0]const u8,
     type_name: [:0]const u8,
     op1: Operand,
@@ -258,8 +250,11 @@ pub const VarDeclOp = struct {
     }
 };
 
-pub inline fn dereference(op1: Operand) Parentheses {
-    return .{ .op = op1, .rhs = tok.period_asterisk_operator };
+pub inline fn dereference(op1: Operand) [2]Operand {
+    return .{ op1, .{ .symbol = tok.period_asterisk_operator } };
+}
+pub inline fn assign(op1: Operand, op2: Operand) [3]Operand {
+    return .{ op1, .{ .symbol = tok.equal_operator }, op2 };
 }
 pub inline fn addEqu(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.add_equ_fn_name, .op1 = op1, .op2 = op2 });
