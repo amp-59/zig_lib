@@ -27,7 +27,7 @@ pub usingnamespace proc.exception;
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
-pub const is_silent: bool = false;
+pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
 
 const Fn = interface.Fn;
@@ -88,22 +88,15 @@ pub const VarDeclOp = struct {
         array.writeMany(tok.end_expression);
     }
 };
-fn setImplToMember(callable: *expr.Callable) void {
-    if (callable.* == .call0) {
-        callable.* = .{ .call1 = .{
-            .symbol = callable.call0.symbol,
-            .op1 = .{ .symbol = tok.array_impl },
-        } };
-    } else {
-        callable.subst(
-            .{ .symbol = tok.impl_name },
-            .{ .symbol = tok.array_impl },
-        );
+fn setImplToMember(callable: *expr.FnCall) void {
+    if (callable.ops.len == 0) {
+        callable.ops = callable.ops.ptr[0..1];
     }
-    callable.set("member", true);
+    callable.ops[0] = .{ .symbol = tok.array_impl };
+    callable.member = true;
 }
 
-fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+fn writeFunctionBodyPrimary(allocator: *gen.Allocator, array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
     const is_one: bool = ctn_fn_info.val == .One;
     const is_count: bool =
         ctn_fn_info.val == .Count or
@@ -122,27 +115,45 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         ctn_fn_info.loc == .Back or
         ctn_fn_info.loc == .Behind or
         ctn_fn_info.loc == .Ahead;
-
-    var __at_fn_call: expr.Callable = expr.Callable.init(ctn_detail, interface.get(.__at));
-    var __ad_fn_call: expr.Callable = expr.Callable.init(ctn_detail, interface.get(.__ad));
-    var __back_fn_call: expr.Callable = expr.Callable.init(ctn_detail, interface.get(.__back));
-    var __behind_fn_call: expr.Callable = expr.Callable.init(ctn_detail, interface.get(.__behind));
-    var aligned_byte_address_call: expr.Callable = expr.Callable.init(
+    var __at_fn_call: expr.FnCall = expr.FnCall.intr(
+        allocator,
+        ctn_detail,
+        interface.get(.__at),
+    );
+    var __ad_fn_call: expr.FnCall = expr.FnCall.intr(
+        allocator,
+        ctn_detail,
+        interface.get(.__ad),
+    );
+    var __back_fn_call: expr.FnCall = expr.FnCall.intr(
+        allocator,
+        ctn_detail,
+        interface.get(.__back),
+    );
+    var __behind_fn_call: expr.FnCall = expr.FnCall.intr(
+        allocator,
+        ctn_detail,
+        interface.get(.__behind),
+    );
+    var aligned_byte_address_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.aligned_byte_address),
     );
     setImplToMember(&aligned_byte_address_call);
-    var undefined_byte_address_call: expr.Callable = expr.Callable.init(
+    var undefined_byte_address_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.undefined_byte_address),
     );
     setImplToMember(&undefined_byte_address_call);
-    var unstreamed_byte_address_call: expr.Callable = expr.Callable.init(
+    var unstreamed_byte_address_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.unstreamed_byte_address),
     );
     setImplToMember(&unstreamed_byte_address_call);
-    const location_call: *expr.Callable = switch (ctn_fn_info.loc) {
+    const location_call: *expr.FnCall = switch (ctn_fn_info.loc) {
         .AnyDefined => &__at_fn_call,
         .AnyUndefined => &__ad_fn_call,
         .Back => &__back_fn_call,
@@ -152,24 +163,12 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         .Next => &undefined_byte_address_call,
         .Ahead => &unstreamed_byte_address_call,
     };
-    var len_fn_call: expr.Callable =
-        expr.Callable.init(ctn_detail, interface.get(.len));
-    var avail_fn_call: expr.Callable =
-        expr.Callable.init(ctn_detail, interface.get(.avail));
-    _ = avail_fn_call;
-    var __len_fn_call: expr.Callable =
-        expr.Callable.init(ctn_detail, interface.get(.__len));
-    _ = __len_fn_call;
-    var __rem_fn_call: expr.Callable =
-        expr.Callable.init(ctn_detail, interface.get(.__rem));
-    _ = __rem_fn_call;
-
-    const length_call: *expr.Callable = &len_fn_call;
+    var len_fn_call: expr.FnCall =
+        expr.FnCall.intr(allocator, ctn_detail, interface.get(.len));
+    const length_call: *expr.FnCall = &len_fn_call;
     const offset_name_op: expr.Operand = .{ .symbol = tok.offset_name };
-
     const location_call_op: expr.Operand = location_call.op();
     const length_call_op: expr.Operand = length_call.op();
-
     const location_op: expr.Operand = blk: {
         if (is_read and is_relative) {
             if (is_one) {
@@ -181,7 +180,6 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         }
         break :blk location_call_op;
     };
-
     const length_op: expr.Operand = blk: {
         if (is_write) {
             if (is_count) {
@@ -193,45 +191,51 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         }
         break :blk length_call_op;
     };
-
-    const pointer_one_call: expr.FnCall2 = .{
+    const pointer_one_call: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall2, .{
         .symbol = tok.intr_pointer_one_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
         .op2 = location_op,
-    };
-    const pointer_many_call: expr.FnCall3 = .{
+    });
+    const pointer_many_call: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall3, .{
         .symbol = tok.intr_pointer_many_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
         .op2 = location_op,
         .op3 = length_op,
-    };
-    const pointer_count_call: expr.FnCall3 = .{
+    });
+    const pointer_count_call: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall3, .{
         .symbol = tok.intr_pointer_count_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
         .op2 = location_op,
         .op3 = length_op,
-    };
-    const pointer_many_with_sentinel_call: expr.FnCall4 = .{
+    });
+    const pointer_many_with_sentinel_call: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall4, .{
         .symbol = tok.intr_pointer_many_with_sentinel_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
         .op2 = location_op,
         .op3 = length_op,
         .op4 = .{ .symbol = tok.sentinel_name },
-    };
-    const pointer_count_with_sentinel_call: expr.FnCall4 = .{
+    });
+    const pointer_count_with_sentinel_call: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall4, .{
         .symbol = tok.intr_pointer_count_with_sentinel_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
         .op2 = location_op,
         .op3 = length_op,
         .op4 = .{ .symbol = tok.sentinel_name },
-    };
-    const write_format: expr.FnCall3 = .{
+    });
+    const write_format: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall3, .{
         .symbol = tok.write_format_fn_name,
         .op1 = .{ .symbol = tok.child_type_name },
         .op2 = .{ .symbol = tok.array_name },
         .op3 = .{ .symbol = tok.format_name },
-    };
-    const write_fields: expr.FnCall4 = .{
+    });
+    const write_fields: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall4, .{
         .symbol = if (ctn_detail.layouts.structured)
             tok.write_fields_structured_fn_name
         else
@@ -240,8 +244,9 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         .op2 = .{ .symbol = tok.reinterpret_spec_name },
         .op3 = .{ .symbol = tok.array_name },
         .op4 = .{ .symbol = tok.fields_name },
-    };
-    const write_args: expr.FnCall4 = .{
+    });
+    const write_args: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall4, .{
         .symbol = if (ctn_detail.layouts.structured)
             tok.write_args_structured_fn_name
         else
@@ -250,8 +255,9 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         .op2 = .{ .symbol = tok.reinterpret_spec_name },
         .op3 = .{ .symbol = tok.array_name },
         .op4 = .{ .symbol = tok.args_name },
-    };
-    const write_any: expr.FnCall4 = .{
+    });
+    const write_any: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall4, .{
         .symbol = if (ctn_detail.layouts.structured)
             tok.write_any_structured_fn_name
         else
@@ -260,7 +266,7 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         .op2 = .{ .symbol = tok.reinterpret_spec_name },
         .op3 = .{ .symbol = tok.array_name },
         .op4 = .{ .symbol = tok.any_name },
-    };
+    });
     switch (ctn_fn_info.kind) {
         .refer => {
             array.writeMany(tok.return_keyword);
@@ -290,21 +296,21 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                 .One => .{ .constant = 1 },
                 else => .{ .symbol = tok.count_name },
             });
-            array.writeMany(tok.return_keyword);
-            const deref_pointer_one_call: expr.Parentheses = .{
-                .op = .{ .call2 = &pointer_one_call },
+            const pointer_one_call_deref_stx: expr.Parentheses = .{
+                .op = .{ .call = &pointer_one_call },
                 .rhs = tok.period_asterisk_operator,
             };
-            const deref_pointer_count_call: expr.Parentheses = .{
-                .op = .{ .call3 = &pointer_count_call },
+            const pointer_count_call_deref_stx: expr.Parentheses = .{
+                .op = .{ .call = &pointer_count_call },
                 .rhs = tok.period_asterisk_operator,
             };
             const deref_pointer_count_with_sentinel_call: expr.Parentheses = .{
-                .op = .{ .call4 = &pointer_count_with_sentinel_call },
+                .op = .{ .call = &pointer_count_with_sentinel_call },
                 .rhs = tok.period_asterisk_operator,
             };
+            array.writeMany(tok.return_keyword);
             if (ctn_fn_info.val == .One) {
-                array.writeFormat(deref_pointer_one_call);
+                array.writeFormat(pointer_one_call_deref_stx);
                 return array.writeMany(tok.end_expression);
             }
             if (ctn_fn_info.val == .Many) {
@@ -316,7 +322,7 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                 return array.writeMany(tok.end_expression);
             }
             if (ctn_fn_info.val == .Count) {
-                array.writeFormat(deref_pointer_count_call);
+                array.writeFormat(pointer_count_call_deref_stx);
                 return array.writeMany(tok.end_expression);
             }
             if (ctn_fn_info.val == .CountWithSentinel) {
@@ -326,29 +332,42 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         },
         .append => {
             if (ctn_fn_info.kind == .append) {
-                const length_format: expr.FnCall2 = .{
+                var data_0: [2]expr.Operand = undefined;
+                _ = data_0;
+                var data_1: [3]expr.Operand = undefined;
+                _ = data_1;
+                var data_2: [3]expr.Operand = undefined;
+                _ = data_2;
+                var data_4: [3]expr.Operand = undefined;
+                _ = data_4;
+
+                const length_format: expr.FnCall =
+                    expr.FnCall.data(&data, expr.FnCall2, .{
                     .symbol = tok.length_format_fn_name,
                     .op1 = .{ .symbol = tok.child_type_name },
                     .op2 = .{ .symbol = tok.format_name },
-                };
-                const length_fields: expr.FnCall3 = .{
+                });
+                const length_fields: expr.FnCall =
+                    expr.FnCall.allocate(allocator, expr.FnCall3, .{
                     .symbol = tok.length_fields_fn_name,
                     .op1 = .{ .symbol = tok.child_type_name },
                     .op2 = .{ .symbol = tok.reinterpret_spec_name },
                     .op3 = .{ .symbol = tok.fields_name },
-                };
-                const length_args: expr.FnCall3 = .{
+                });
+                const length_args: expr.FnCall =
+                    expr.FnCall.allocate(allocator, expr.FnCall3, .{
                     .symbol = tok.length_args_fn_name,
                     .op1 = .{ .symbol = tok.child_type_name },
                     .op2 = .{ .symbol = tok.reinterpret_spec_name },
                     .op3 = .{ .symbol = tok.args_name },
-                };
-                const length_any: expr.FnCall3 = .{
+                });
+                const length_any: expr.FnCall =
+                    expr.FnCall.allocate(allocator, expr.FnCall3, .{
                     .symbol = tok.length_any_fn_name,
                     .op1 = .{ .symbol = tok.child_type_name },
                     .op2 = .{ .symbol = tok.reinterpret_spec_name },
                     .op3 = .{ .symbol = tok.any_name },
-                };
+                });
                 const write_one_intr_call: expr.FnCallIntr = .{
                     .ctn_detail = ctn_detail,
                     .ctn_fn_info = interface.get(.writeOne),
@@ -377,8 +396,12 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                     .ctn_detail = ctn_detail,
                     .ctn_fn_info = interface.get(.writeAny),
                 };
-                var increment_fn_call: expr.Callable =
-                    expr.Callable.init(ctn_detail, interface.get(.increment));
+                var increment_fn_call: expr.FnCall =
+                    expr.FnCall.intr(
+                    allocator,
+                    ctn_detail,
+                    interface.get(.increment),
+                );
                 if (ctn_fn_info.tag == .appendOne) {
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
@@ -386,60 +409,42 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
                     return array.writeMany(tok.end_expression);
                 }
                 if (ctn_fn_info.tag == .appendCount) {
-                    increment_fn_call.subst(
-                        offset_name_op,
-                        .{ .symbol = tok.count_name },
-                    );
+                    increment_fn_call.subst(offset_name_op, .{ .symbol = tok.count_name });
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
                     array.writeFormat(write_count_intr_call);
                     return array.writeMany(tok.end_expression);
                 }
                 if (ctn_fn_info.tag == .appendMany) {
-                    increment_fn_call.subst(
-                        offset_name_op,
-                        .{ .symbol = tok.many_values_len },
-                    );
+                    increment_fn_call.subst(offset_name_op, .{ .symbol = tok.many_values_len });
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
                     array.writeFormat(write_many_intr_call);
                     return array.writeMany(tok.end_expression);
                 }
                 if (ctn_fn_info.tag == .appendFormat) {
-                    increment_fn_call.subst(
-                        offset_name_op,
-                        .{ .call2 = &length_format },
-                    );
+                    increment_fn_call.subst(offset_name_op, .{ .call = &length_format });
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
                     array.writeFormat(write_format_intr_call);
                     return array.writeMany(tok.end_expression);
                 }
                 if (ctn_fn_info.tag == .appendArgs) {
-                    increment_fn_call.subst(
-                        offset_name_op,
-                        .{ .call3 = &length_args },
-                    );
+                    increment_fn_call.subst(offset_name_op, .{ .call = &length_args });
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
                     array.writeFormat(write_args_intr_call);
                     return array.writeMany(tok.end_expression);
                 }
                 if (ctn_fn_info.tag == .appendFields) {
-                    increment_fn_call.subst(
-                        offset_name_op,
-                        .{ .call3 = &length_fields },
-                    );
+                    increment_fn_call.subst(offset_name_op, .{ .call = &length_fields });
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
                     array.writeFormat(write_fields_intr_call);
                     return array.writeMany(tok.end_expression);
                 }
                 if (ctn_fn_info.tag == .appendAny) {
-                    increment_fn_call.subst(
-                        offset_name_op,
-                        .{ .call3 = &length_any },
-                    );
+                    increment_fn_call.subst(offset_name_op, .{ .call = &length_any });
                     array.writeFormat(increment_fn_call.op());
                     array.writeMany(tok.end_expression);
                     array.writeFormat(write_any_intr_call);
@@ -523,175 +528,201 @@ fn writeFunctionBodyPrimary(array: *gen.String, ctn_detail: *const out.DetailLes
         else => unreachable,
     }
 }
-fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+fn writeFunctionBodySpecial(allocator: *gen.Allocator, array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
     const child_size_symbol: [:0]const u8 =
         if (ctn_detail.layouts.structured)
         tok.child_size_name
     else
         tok.call_sizeof_child;
-    var writable_byte_count: expr.Callable = expr.Callable.init(
+    var writable_byte_count: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.writable_byte_count),
     );
     setImplToMember(&writable_byte_count);
-    var defined_byte_count: expr.Callable = expr.Callable.init(
+    var defined_byte_count: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.defined_byte_count),
     );
     setImplToMember(&defined_byte_count);
-    var undefined_byte_count: expr.Callable = expr.Callable.init(
+    var undefined_byte_count: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.undefined_byte_count),
     );
     setImplToMember(&undefined_byte_count);
-    var streamed_byte_count: expr.Callable = expr.Callable.init(
+    var streamed_byte_count: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.streamed_byte_count),
     );
     setImplToMember(&streamed_byte_count);
-    var unstreamed_byte_count: expr.Callable = expr.Callable.init(
+    var unstreamed_byte_count: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.unstreamed_byte_count),
     );
     setImplToMember(&unstreamed_byte_count);
-    var aligned_byte_address_call: expr.Callable = expr.Callable.init(
+    var aligned_byte_address_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.aligned_byte_address),
     );
     setImplToMember(&aligned_byte_address_call);
-    var undefined_byte_address_call: expr.Callable = expr.Callable.init(
+    var undefined_byte_address_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.undefined_byte_address),
     );
     setImplToMember(&undefined_byte_address_call);
-    var unstreamed_byte_address_call: expr.Callable = expr.Callable.init(
+    var unstreamed_byte_address_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.unstreamed_byte_address),
     );
     setImplToMember(&unstreamed_byte_address_call);
-    var define_call: expr.Callable = expr.Callable.init(
+    var define_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.define),
     );
     setImplToMember(&define_call);
-    var undefine_call: expr.Callable = expr.Callable.init(
+    var undefine_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.undefine),
     );
     setImplToMember(&undefine_call);
-    var seek_call: expr.Callable = expr.Callable.init(
+    var seek_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.seek),
     );
     setImplToMember(&seek_call);
-    var tell_call: expr.Callable = expr.Callable.init(
+    var tell_call: expr.FnCall = expr.FnCall.impl(
+        allocator,
         ctn_detail.more(),
         implementation.get(.tell),
     );
     setImplToMember(&tell_call);
-    const amount_of_type_to_bytes_call: expr.FnCall2 = .{
+    const amount_of_type_to_bytes_call: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall2, .{
         .symbol = tok.amount_of_type_to_bytes_fn_name,
         .op1 = .{ .symbol = tok.amount_name },
         .op2 = .{ .symbol = tok.child_type_name },
-    };
-    const mul_op_offset_child_size = expr.FnCall2{
+    });
+    const mul_op_offset_child_size: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall2, .{
         .symbol = tok.multiply_fn_name,
         .op1 = .{ .symbol = tok.offset_name },
         .op2 = .{ .symbol = child_size_symbol },
-    };
-    const mul_op_count_child_size = expr.FnCall2{
+    });
+    const mul_op_count_child_size: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall2, .{
         .symbol = tok.multiply_fn_name,
         .op1 = .{ .symbol = tok.count_name },
         .op2 = .{ .symbol = child_size_symbol },
-    };
-    const amount_call: expr.FnCall2 = if (ctn_detail.layouts.structured)
+    });
+
+    var data: [8]expr.Operand = undefined;
+    const amount_call: expr.FnCall = if (ctn_detail.layouts.structured)
         mul_op_count_child_size
     else
         amount_of_type_to_bytes_call;
     switch (ctn_fn_info.tag) {
         .len => {
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.div_trunc_fn_name,
                 .op1 = if (ctn_detail.modes.resize)
                     defined_byte_count.op()
                 else
                     writable_byte_count.op(),
                 .op2 = .{ .symbol = child_size_symbol },
-            });
+            }));
+            return array.writeMany(tok.end_expression);
+        },
+        .index => {
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
+                .symbol = tok.div_trunc_fn_name,
+                .op1 = streamed_byte_count.op(),
+                .op2 = .{ .symbol = child_size_symbol },
+            }));
             return array.writeMany(tok.end_expression);
         },
         .avail => {
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.div_trunc_fn_name,
                 .op1 = undefined_byte_count.op(),
                 .op2 = .{ .symbol = child_size_symbol },
-            });
+            }));
             return array.writeMany(tok.end_expression);
         },
         .__at => {
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.add_fn_name,
                 .op1 = aligned_byte_address_call.op(),
-                .op2 = .{ .call2 = &mul_op_offset_child_size },
-            });
+                .op2 = .{ .call = &mul_op_offset_child_size },
+            }));
             return array.writeMany(tok.end_expression);
         },
         .__ad => {
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.add_fn_name,
                 .op1 = undefined_byte_address_call.op(),
-                .op2 = .{ .call2 = &mul_op_offset_child_size },
-            });
+                .op2 = .{ .call = &mul_op_offset_child_size },
+            }));
             return array.writeMany(tok.end_expression);
         },
         .__len => {
-            var len_fn_call: expr.Callable =
-                expr.Callable.init(ctn_detail, interface.get(.len));
+            var len_fn_call: expr.FnCall =
+                expr.FnCall.intr(allocator, ctn_detail, interface.get(.len));
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.subtract_fn_name,
                 .op1 = len_fn_call.op(),
                 .op2 = .{ .symbol = tok.offset_name },
-            });
+            }));
             return array.writeMany(tok.end_expression);
         },
         .__rem => {
-            var avail_fn_call: expr.Callable =
-                expr.Callable.init(ctn_detail, interface.get(.avail));
+            var avail_fn_call: expr.FnCall =
+                expr.FnCall.intr(allocator, ctn_detail, interface.get(.avail));
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.subtract_fn_name,
                 .op1 = avail_fn_call.op(),
                 .op2 = .{ .symbol = tok.offset_name },
-            });
+            }));
             return array.writeMany(tok.end_expression);
         },
         .__back => {
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.subtract_fn_name,
                 .op1 = undefined_byte_address_call.op(),
-                .op2 = .{ .call2 = &mul_op_offset_child_size },
-            });
+                .op2 = .{ .call = &mul_op_offset_child_size },
+            }));
             return array.writeMany(tok.end_expression);
         },
         .__behind => {
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.FnCall2{
+            array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.subtract_fn_name,
                 .op1 = unstreamed_byte_address_call.op(),
-                .op2 = .{ .call2 = &mul_op_offset_child_size },
-            });
+                .op2 = .{ .call = &mul_op_offset_child_size },
+            }));
             return array.writeMany(tok.end_expression);
         },
         .define => {
             define_call.subst(
                 .{ .symbol = tok.offset_bytes_name },
-                .{ .call2 = &amount_call },
+                .{ .call = &amount_call },
             );
             array.writeFormat(define_call.op());
             return array.writeMany(tok.end_expression);
@@ -707,7 +738,7 @@ fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLes
         .undefine => {
             undefine_call.subst(
                 .{ .symbol = tok.offset_bytes_name },
-                .{ .call2 = &amount_call },
+                .{ .call = &amount_call },
             );
             array.writeFormat(undefine_call.op());
             return array.writeMany(tok.end_expression);
@@ -723,7 +754,7 @@ fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLes
         .stream => {
             seek_call.subst(
                 .{ .symbol = tok.offset_bytes_name },
-                .{ .call2 = &amount_call },
+                .{ .call = &amount_call },
             );
             array.writeFormat(seek_call.op());
             return array.writeMany(tok.end_expression);
@@ -739,7 +770,7 @@ fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLes
         .unstream => {
             tell_call.subst(
                 .{ .symbol = tok.offset_bytes_name },
-                .{ .call2 = &amount_call },
+                .{ .call = &amount_call },
             );
             array.writeFormat(tell_call.op());
             return array.writeMany(tok.end_expression);
@@ -752,6 +783,35 @@ fn writeFunctionBodySpecial(array: *gen.String, ctn_detail: *const out.DetailLes
             array.writeFormat(tell_call.op());
             return array.writeMany(tok.end_expression);
         },
+        .init => {
+            const wrap_in_error_call: expr.FnCall =
+                expr.FnCall.allocate(allocator, expr.FnCall1, .{
+                .symbol = tok.wrap_fn_name,
+                .op1 = .{ .symbol = "allocator.allocate(" ++ tok.impl_type_name ++ ")" },
+            });
+            const wrap_in_try_stx: expr.Parentheses = .{
+                .lhs = "try ",
+                .op = .{ .call = &wrap_in_error_call },
+            };
+            const impl_field_init_stx: expr.Parentheses = .{
+                .lhs = ".{ ." ++ tok.impl_name ++ " = ",
+                .op = .{ .parens = &wrap_in_try_stx },
+                .rhs = "}",
+            };
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(impl_field_init_stx);
+            return array.writeMany(tok.end_expression);
+        },
+        .deinit => {},
+        .grow => {},
+        .shrink => {},
+        .increment => {},
+        .decrement => {},
+
+        .holder => {},
+        .static => {},
+        .dynamic => {},
+
         else => functionBodyUndefinedNotice(ctn_detail, ctn_fn_info),
     }
 }
@@ -765,7 +825,7 @@ fn functionBodyUndefinedNotice(ctn_detail: *const out.DetailLess, ctn_fn_info: *
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
-fn writeFunctionBodyGeneric(array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
     const is_read: bool =
         ctn_fn_info.kind == .read or
         ctn_fn_info.kind == .refer;
@@ -775,11 +835,11 @@ fn writeFunctionBodyGeneric(array: *gen.String, ctn_detail: *const out.DetailLes
     const is_primary: bool = is_read or is_write;
 
     if (is_primary) {
-        return writeFunctionBodyPrimary(array, ctn_detail, ctn_fn_info);
+        return writeFunctionBodyPrimary(allocator, array, ctn_detail, ctn_fn_info);
     }
-    writeFunctionBodySpecial(array, ctn_detail, ctn_fn_info);
+    writeFunctionBodySpecial(allocator, array, ctn_detail, ctn_fn_info);
 }
-fn writeFunctions(array: *gen.String, ctn_detail: *const out.DetailLess) void {
+fn writeFunctions(allocator: *gen.Allocator, array: *gen.String, ctn_detail: *const out.DetailLess) void {
     for (interface.key) |*ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
@@ -787,12 +847,18 @@ fn writeFunctions(array: *gen.String, ctn_detail: *const out.DetailLess) void {
         ctn_fn_info.writeSignature(array, ctn_detail);
         array.writeMany(interface.getReturnType(ctn_detail, ctn_fn_info));
         array.writeMany("{\n");
-        writeFunctionBodyGeneric(array, ctn_detail, ctn_fn_info);
+        writeFunctionBodyGeneric(allocator, array, ctn_detail, ctn_fn_info);
         array.writeMany("}\n");
     }
 }
-fn writeDeclarations(array: *gen.String, ctn_detail: *const out.DetailLess) void {
+fn writeDeclarations(allocator: *gen.Allocator, array: *gen.String, ctn_detail: *const out.DetailLess) void {
     array.writeMany("const " ++ tok.array_type_name ++ " = @This();\n");
+    if (ctn_detail.kinds.dynamic or
+        ctn_detail.kinds.parametric or
+        ctn_detail.kinds.static)
+    {
+        array.writeMany("const " ++ tok.allocator_type_name ++ " = spec." ++ tok.allocator_type_name ++ ";\n");
+    }
     if (ctn_detail.layouts.structured) {
         array.writeMany("const " ++ tok.child_type_name ++ " = spec." ++ tok.child_type_name ++ ";\n");
         array.writeMany("const " ++ tok.child_size_name ++ " = " ++ tok.call_sizeof_child ++ ";\n");
@@ -803,14 +869,15 @@ fn writeDeclarations(array: *gen.String, ctn_detail: *const out.DetailLess) void
     {
         array.writeMany("const " ++ tok.allocator_type_name ++ " = spec." ++ tok.allocator_type_name ++ ";\n");
     }
-    const deduce_impl_type_call: expr.FnCall1 = .{
+    const deduce_impl_type_call: expr.FnCall =
+        expr.FnCall.allocate(allocator, expr.FnCall1, .{
         .symbol = "spec.deduce",
         .op1 = .{ .symbol = "params.options" },
-    };
+    });
     const impl_type_decl: ConstDeclOp = .{
         .var_name = tok.impl_type_name,
         .type_name = tok.type_type_name,
-        .op1 = .{ .call1 = &deduce_impl_type_call },
+        .op1 = .{ .call = &deduce_impl_type_call },
     };
     array.writeFormat(impl_type_decl);
 }
@@ -836,29 +903,32 @@ inline fn writeFields(array: *gen.String) void {
     array.writeMany(tok.impl_field);
     array.writeMany(tok.end_item);
 }
-inline fn writeTypeFunction(array: *gen.String, ctn_detail: *const out.DetailLess) void {
+inline fn writeTypeFunction(allocator: *gen.Allocator, array: *gen.String, ctn_detail: *const out.DetailLess) void {
     array.writeMany("pub fn ");
     ctn_detail.writeContainerName(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ": anytype) type {\nreturn (struct {\n");
     {
         writeFields(array);
-        writeDeclarations(array, ctn_detail);
-        writeFunctions(array, ctn_detail);
+        writeDeclarations(allocator, array, ctn_detail);
+        writeFunctions(allocator, array, ctn_detail);
     }
     array.writeMany("});\n}\n");
 }
 
 pub fn generateContainers() !void {
+    var address_space: AddressSpace = .{};
+    var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
     var array: gen.String = undefined;
     array.undefineAll();
-
     var ctn_index: u16 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
+        const s = allocator.save();
+        defer allocator.restore(s);
         const ctn_group: []const u16 = out.containers[ctn_index];
         if (ctn_group.len == 0) {
             continue;
         }
-        writeTypeFunction(&array, out.impl_variants[ctn_group[0]].less());
+        writeTypeFunction(&allocator, &array, out.impl_variants[ctn_group[0]].less());
     }
     gen.appendSourceFile(&array, "container.zig");
 }

@@ -5,6 +5,12 @@ pub const word_type_name: [:0]const u8 = @typeName(config.word_size_type);
 pub const type_type_name: [:0]const u8 = "type";
 pub const generic_type_name: [:0]const u8 = "anytype";
 
+// Namespace
+pub const builtin_name_space: [:0]const u8 = "builtin";
+pub const reference_name_space: [:0]const u8 = "reference";
+pub const mach_name_space: [:0]const u8 = "mach";
+pub const meta_name_space: [:0]const u8 = "meta";
+
 // Implementation
 pub const impl_name: [:0]const u8 = "impl";
 pub const impl_type_name: [:0]const u8 = "Implementation";
@@ -31,8 +37,6 @@ pub const slave_specifier_const_ptr_param: [:0]const u8 = paramDecl(slave_specif
 pub const slave_specifier_call_unallocated_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, "unallocated_byte_address"));
 pub const slave_specifier_call_unmapped_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, "unmapped_byte_address"));
 pub const slave_specifier_call_unaddressable_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, "unaddressable_byte_address"));
-pub const offset_bytes_name: [:0]const u8 = "x_bytes";
-pub const offset_bytes_param: [:0]const u8 = paramDecl(offset_bytes_name, word_type_name);
 pub const automatic_storage_type_name: [:0]const u8 = arrayType(child_specifier_name, count_specifier_name, null);
 pub const automatic_storage_with_sentinel_type_name: [:0]const u8 = arrayType(child_specifier_name, count_specifier_name, sentinel_specifier_name);
 pub const automatic_storage_field_name: [:0]const u8 = "auto";
@@ -70,7 +74,6 @@ pub const array_const_ptr_type_name: [:0]const u8 = constPointerTo(array_type_na
 pub const array_param: [:0]const u8 = paramDecl(array_name, array_type_name);
 pub const array_ptr_param: [:0]const u8 = paramDecl(array_name, array_ptr_type_name);
 pub const array_const_ptr_param: [:0]const u8 = paramDecl(array_name, array_const_ptr_type_name);
-pub const reference_name_space: [:0]const u8 = "reference";
 pub const void_type_name: [:0]const u8 = "void";
 pub const child_type_name: [:0]const u8 = "child";
 pub const child_param: [:0]const u8 = comptimeParamDecl(child_type_name, type_type_name);
@@ -113,7 +116,6 @@ pub const new_count_name: [:0]const u8 = "new_count";
 pub const new_amount_name: [:0]const u8 = "new_amount";
 pub const new_offset_name: [:0]const u8 = "new_offset";
 pub const offset_param: [:0]const u8 = paramDecl(offset_name, word_type_name);
-pub const offset_amount_param: [:0]const u8 = paramDecl(offset_name, amount_type_name);
 pub const init_count_param: [:0]const u8 = paramDecl(init_count_name, word_type_name);
 pub const init_amount_param: [:0]const u8 = paramDecl(init_amount_name, amount_type_name);
 pub const init_offset_param: [:0]const u8 = paramDecl(init_offset_name, word_type_name);
@@ -151,7 +153,90 @@ pub const holder_type_param: [:0]const u8 = comptimeParamDecl(holder_type_name, 
 pub const static_type_param: [:0]const u8 = comptimeParamDecl(static_type_name, type_type_name);
 pub const dynamic_type_param: [:0]const u8 = comptimeParamDecl(dynamic_type_name, type_type_name);
 
+// Allocator
+pub const source_impl_type_name: [:0]const u8 = "s_impl_type";
+pub const target_impl_type_name: [:0]const u8 = "t_impl_type";
+pub const source_impl_name: [:0]const u8 = "s_impl";
+pub const target_impl_name: [:0]const u8 = "t_impl";
+pub const source_impl_ptr_name: [:0]const u8 = "s_impl_ptr";
+pub const target_impl_ptre_name: [:0]const u8 = "t_impl_ptr";
+pub const input_amount_name: [:0]const u8 = "n_amt";
+pub const source_amount_name: [:0]const u8 = "s_amt";
+pub const option_amount_name: [:0]const u8 = "o_amt";
+pub const offset_amount_name: [:0]const u8 = "x_amt";
+pub const target_amount_name: [:0]const u8 = "t_amt";
+pub const input_bytes_name: [:0]const u8 = "n_bytes";
+pub const source_bytes_name: [:0]const u8 = "s_bytes";
+pub const option_bytes_name: [:0]const u8 = "o_bytes";
+pub const offset_bytes_name: [:0]const u8 = "x_bytes";
+pub const target_bytes_name: [:0]const u8 = "t_bytes";
+pub const input_count_name: [:0]const u8 = "n_count";
+pub const source_count_name: [:0]const u8 = "s_count";
+pub const option_count_name: [:0]const u8 = "o_count";
+pub const offset_count_name: [:0]const u8 = "x_count";
+pub const target_count_name: [:0]const u8 = "t_count";
+pub const input_aligned_bytes_name: [:0]const u8 = "n_aligned_bytes";
+pub const source_aligned_bytes_name: [:0]const u8 = "s_aligned_bytes";
+pub const option_aligned_bytes_name: [:0]const u8 = "o_aligned_bytes";
+pub const offset_aligned_bytes_name: [:0]const u8 = "x_aligned_bytes";
+pub const target_aligned_bytes_name: [:0]const u8 = "t_aligned_bytes";
+pub const source_allocated_byte_address_name: [:0]const u8 = "s_lb_addr";
+pub const target_allocated_byte_address_name: [:0]const u8 = "t_lb_addr";
+pub const source_unstreamed_byte_address_name: [:0]const u8 = "s_ss_addr";
+pub const target_unstreamed_byte_address_name: [:0]const u8 = "t_ss_addr";
+pub const source_aligned_byte_address_name: [:0]const u8 = "s_ab_addr";
+pub const target_aligned_byte_address_name: [:0]const u8 = "t_ab_addr";
+pub const source_undefined_byte_address_name: [:0]const u8 = "s_ub_addr";
+pub const target_undefined_byte_address_name: [:0]const u8 = "t_ub_addr";
+pub const source_unallocated_byte_address_name: [:0]const u8 = "s_up_addr";
+pub const target_unallocated_byte_address_name: [:0]const u8 = "t_up_addr";
+pub const source_single_approximation_counts_name: [:0]const u8 = "s_lb_counts";
+pub const source_double_approximation_counts_name: [:0]const u8 = "s_ub_counts";
+pub const target_single_approximation_counts_name: [:0]const u8 = "t_lb_counts";
+pub const target_double_approximation_counts_name: [:0]const u8 = "t_ub_counts";
+pub const source_impl_type_param: [:0]const u8 = paramDecl(source_impl_type_name, word_type_name);
+pub const target_impl_type_param: [:0]const u8 = paramDecl(target_impl_type_name, word_type_name);
+pub const source_impl_param: [:0]const u8 = paramDecl(source_impl_name, word_type_name);
+pub const target_impl_param: [:0]const u8 = paramDecl(target_impl_name, word_type_name);
+pub const source_impl_ptr_param: [:0]const u8 = paramDecl(source_impl_ptr_name, word_type_name);
+pub const target_impl_ptre_param: [:0]const u8 = paramDecl(target_impl_ptre_name, word_type_name);
+pub const input_amount_param: [:0]const u8 = paramDecl(input_amount_name, word_type_name);
+pub const source_amount_param: [:0]const u8 = paramDecl(source_amount_name, word_type_name);
+pub const option_amount_param: [:0]const u8 = paramDecl(option_amount_name, word_type_name);
+pub const offset_amount_param: [:0]const u8 = paramDecl(offset_amount_name, word_type_name);
+pub const target_amount_param: [:0]const u8 = paramDecl(target_amount_name, word_type_name);
+pub const input_bytes_param: [:0]const u8 = paramDecl(input_bytes_name, word_type_name);
+pub const source_bytes_param: [:0]const u8 = paramDecl(source_bytes_name, word_type_name);
+pub const option_bytes_param: [:0]const u8 = paramDecl(option_bytes_name, word_type_name);
+pub const offset_bytes_param: [:0]const u8 = paramDecl(offset_bytes_name, word_type_name);
+pub const target_bytes_param: [:0]const u8 = paramDecl(target_bytes_name, word_type_name);
+pub const input_count_param: [:0]const u8 = paramDecl(input_count_name, word_type_name);
+pub const source_count_param: [:0]const u8 = paramDecl(source_count_name, word_type_name);
+pub const option_count_param: [:0]const u8 = paramDecl(option_count_name, word_type_name);
+pub const offset_count_param: [:0]const u8 = paramDecl(offset_count_name, word_type_name);
+pub const target_count_param: [:0]const u8 = paramDecl(target_count_name, word_type_name);
+pub const input_aligned_bytes_param: [:0]const u8 = paramDecl(input_aligned_bytes_name, word_type_name);
+pub const source_aligned_bytes_param: [:0]const u8 = paramDecl(source_aligned_bytes_name, word_type_name);
+pub const option_aligned_bytes_param: [:0]const u8 = paramDecl(option_aligned_bytes_name, word_type_name);
+pub const offset_aligned_bytes_param: [:0]const u8 = paramDecl(offset_aligned_bytes_name, word_type_name);
+pub const target_aligned_bytes_param: [:0]const u8 = paramDecl(target_aligned_bytes_name, word_type_name);
+pub const source_allocated_byte_address_param: [:0]const u8 = paramDecl(source_allocated_byte_address_name, word_type_name);
+pub const target_allocated_byte_address_param: [:0]const u8 = paramDecl(target_allocated_byte_address_name, word_type_name);
+pub const source_unstreamed_byte_address_param: [:0]const u8 = paramDecl(source_unstreamed_byte_address_name, word_type_name);
+pub const target_unstreamed_byte_address_param: [:0]const u8 = paramDecl(target_unstreamed_byte_address_name, word_type_name);
+pub const source_aligned_byte_address_param: [:0]const u8 = paramDecl(source_aligned_byte_address_name, word_type_name);
+pub const target_aligned_byte_address_param: [:0]const u8 = paramDecl(target_aligned_byte_address_name, word_type_name);
+pub const source_undefined_byte_address_param: [:0]const u8 = paramDecl(source_undefined_byte_address_name, word_type_name);
+pub const target_undefined_byte_address_param: [:0]const u8 = paramDecl(target_undefined_byte_address_name, word_type_name);
+pub const source_unallocated_byte_address_param: [:0]const u8 = paramDecl(source_unallocated_byte_address_name, word_type_name);
+pub const target_unallocated_byte_address_param: [:0]const u8 = paramDecl(target_unallocated_byte_address_name, word_type_name);
+pub const source_single_approximation_counts_param: [:0]const u8 = paramDecl(source_single_approximation_counts_name, word_type_name);
+pub const source_double_approximation_counts_param: [:0]const u8 = paramDecl(source_double_approximation_counts_name, word_type_name);
+pub const target_single_approximation_counts_param: [:0]const u8 = paramDecl(target_single_approximation_counts_name, word_type_name);
+pub const target_double_approximation_counts_param: [:0]const u8 = paramDecl(target_double_approximation_counts_name, word_type_name);
+
 // Functions
+pub const wrap_fn_name: [:0]const u8 = metaFnName("wrap");
 pub const add_equ_fn_name: [:0]const u8 = machFnName("addEqu");
 pub const subtract_equ_fn_name: [:0]const u8 = machFnName("subEqu");
 pub const add_fn_name: [:0]const u8 = machFnName("add");
@@ -208,8 +293,11 @@ pub const write_args_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpr
 pub const write_any_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyStructured");
 pub const write_any_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyUnstructured");
 
+fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
+    return fieldAccess(meta_name_space, name);
+}
 fn machFnName(comptime name: [:0]const u8) [:0]const u8 {
-    return "mach." ++ name ++ word_type_name[1..];
+    return fieldAccess(mach_name_space, name ++ word_type_name[1..]);
 }
 fn arrayType(
     comptime type_name: [:0]const u8,

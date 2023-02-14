@@ -10,127 +10,16 @@ const out = struct {
 const interface = @import("./interface.zig");
 const implementation = @import("./implementation.zig");
 
-pub const Callable = union(enum) {
-    call0: FnCall0,
-    call1: FnCall1,
-    call2: FnCall2,
-    call3: FnCall3,
-    call4: FnCall4,
-    call5: FnCall5,
-
-    pub fn op(callable: *const Callable) Operand {
-        switch (callable.*) {
-            .call0 => return .{ .call0 = &callable.call0 },
-            .call1 => return .{ .call1 = &callable.call1 },
-            .call2 => return .{ .call2 = &callable.call2 },
-            .call3 => return .{ .call3 = &callable.call3 },
-            .call4 => return .{ .call4 = &callable.call4 },
-            .call5 => return .{ .call5 = &callable.call5 },
-        }
-    }
-    pub fn init(detail: anytype, fn_info: anytype) Callable {
-        const array: gen.ArgList = fn_info.argList(detail, .Argument);
-        const symbols: []const [:0]const u8 = array.readAll();
-        switch (symbols.len) {
-            0 => return .{ .call0 = .{
-                .symbol = fn_info.fnName(),
-            } },
-            1 => return .{ .call1 = .{
-                .symbol = fn_info.fnName(),
-                .op1 = .{ .symbol = symbols[0] },
-            } },
-            2 => return .{ .call2 = .{
-                .symbol = fn_info.fnName(),
-                .op1 = .{ .symbol = symbols[0] },
-                .op2 = .{ .symbol = symbols[1] },
-            } },
-            3 => return .{ .call3 = .{
-                .symbol = fn_info.fnName(),
-                .op1 = .{ .symbol = symbols[0] },
-                .op2 = .{ .symbol = symbols[1] },
-                .op3 = .{ .symbol = symbols[2] },
-            } },
-            4 => return .{ .call4 = .{
-                .symbol = fn_info.fnName(),
-                .op1 = .{ .symbol = symbols[0] },
-                .op2 = .{ .symbol = symbols[1] },
-                .op3 = .{ .symbol = symbols[2] },
-                .op4 = .{ .symbol = symbols[3] },
-            } },
-            5 => return .{ .call5 = .{
-                .symbol = fn_info.fnName(),
-                .op1 = .{ .symbol = symbols[0] },
-                .op2 = .{ .symbol = symbols[1] },
-                .op3 = .{ .symbol = symbols[2] },
-                .op4 = .{ .symbol = symbols[3] },
-                .op5 = .{ .symbol = symbols[4] },
-            } },
-            else => unreachable,
-        }
-    }
-    pub fn subst(callable: *Callable, dst: Operand, src: Operand) void {
-        switch (callable.*) {
-            inline .call0,
-            .call1,
-            .call2,
-            .call3,
-            .call4,
-            .call5,
-            => |call, tag| {
-                var tmp = call;
-                inline for (@typeInfo(@TypeOf(call)).Struct.fields) |field| {
-                    if (field.type == Operand) {
-                        if (builtin.testEqual(Operand, dst, @field(call, field.name))) {
-                            @field(tmp, field.name) = src;
-                        }
-                    }
-                }
-                callable.* = @unionInit(Callable, @tagName(tag), tmp);
-            },
-        }
-    }
-    pub fn set(callable: *Callable, comptime field_name: [:0]const u8, value: anytype) void {
-        switch (callable.*) {
-            inline .call0,
-            .call1,
-            .call2,
-            .call3,
-            .call4,
-            .call5,
-            => |_, tag| {
-                @field(@field(callable, @tagName(tag)), field_name) = value;
-            },
-        }
-    }
-};
 pub const Operand = union(OperandTag) {
-    call0: *const FnCall0,
-    call1: *const FnCall1,
-    call2: *const FnCall2,
-    call3: *const FnCall3,
-    call4: *const FnCall4,
-    call5: *const FnCall5,
-    call_impl: *const FnCallImpl,
-    call_intr: *const FnCallIntr,
+    call: *const FnCall,
     constant: usize,
-
     symbol: [:0]const u8,
-    parens: *const Parentheses,
 
     const OperandTag = enum(u4) {
-        call0,
-        call1,
-        call2,
-        call3,
-        call4,
-        call5,
-        call_impl,
-        call_intr,
+        call,
         constant,
         symbol,
-        parens,
     };
-
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         switch (format) {
@@ -157,29 +46,12 @@ pub const FnCall0 = struct {
     symbol: [:0]const u8,
     member: bool = member_call,
     const Format = @This();
-    pub inline fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany(format.symbol);
-        array.writeMany("()");
-    }
 };
 pub const FnCall1 = struct {
     symbol: [:0]const u8,
     op1: Operand,
     member: bool = member_call,
     const Format = @This();
-    pub inline fn formatWrite(format: Format, array: anytype) void {
-        if (format.member) {
-            array.writeFormat(format.op1);
-            array.writeOne('.');
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-        } else {
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-            array.writeFormat(format.op1);
-        }
-        array.writeOne(')');
-    }
 };
 pub const FnCall2 = struct {
     symbol: [:0]const u8,
@@ -187,21 +59,6 @@ pub const FnCall2 = struct {
     op2: Operand,
     member: bool = member_call,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.member) {
-            array.writeFormat(format.op1);
-            array.writeOne('.');
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-        } else {
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-            array.writeFormat(format.op1);
-            array.writeMany(tok.end_small_item);
-        }
-        array.writeFormat(format.op2);
-        array.writeOne(')');
-    }
 };
 pub const FnCall3 = struct {
     symbol: [:0]const u8,
@@ -210,23 +67,6 @@ pub const FnCall3 = struct {
     op3: Operand,
     member: bool = member_call,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.member) {
-            array.writeFormat(format.op1);
-            array.writeOne('.');
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-        } else {
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-            array.writeFormat(format.op1);
-            array.writeMany(tok.end_small_item);
-        }
-        array.writeFormat(format.op2);
-        array.writeMany(tok.end_small_item);
-        array.writeFormat(format.op3);
-        array.writeOne(')');
-    }
 };
 pub const FnCall4 = struct {
     symbol: [:0]const u8,
@@ -236,25 +76,6 @@ pub const FnCall4 = struct {
     op4: Operand,
     member: bool = member_call,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.member) {
-            array.writeFormat(format.op1);
-            array.writeOne('.');
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-        } else {
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-            array.writeFormat(format.op1);
-            array.writeMany(tok.end_small_item);
-        }
-        array.writeFormat(format.op2);
-        array.writeMany(tok.end_small_item);
-        array.writeFormat(format.op3);
-        array.writeMany(tok.end_small_item);
-        array.writeFormat(format.op4);
-        array.writeOne(')');
-    }
 };
 pub const FnCall5 = struct {
     symbol: [:0]const u8,
@@ -265,27 +86,6 @@ pub const FnCall5 = struct {
     op5: Operand,
     member: bool = member_call,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.member) {
-            array.writeFormat(format.op1);
-            array.writeOne('.');
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-        } else {
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-            array.writeFormat(format.op1);
-            array.writeMany(tok.end_small_item);
-        }
-        array.writeFormat(format.op2);
-        array.writeMany(tok.end_small_item);
-        array.writeFormat(format.op3);
-        array.writeMany(tok.end_small_item);
-        array.writeFormat(format.op4);
-        array.writeMany(tok.end_small_item);
-        array.writeFormat(format.op5);
-        array.writeOne(')');
-    }
 };
 pub const FnCallImpl = struct {
     impl_variant: *const out.DetailMore,
@@ -305,6 +105,82 @@ pub const FnCallIntr = struct {
         format.ctn_fn_info.writeCall(array, format.ctn_detail);
     }
 };
+pub const FnCall = struct {
+    symbol: [:0]const u8,
+    ops: []Operand,
+    member: bool = member_call,
+    const Format = @This();
+
+    pub fn op(call: *const FnCall) Operand {
+        return .{ .call = call };
+    }
+    pub fn subst(call: *FnCall, dst: Operand, src: Operand) void {
+        for (call.ops) |*ptr| {
+            if (builtin.testEqual(Operand, dst, ptr.*)) ptr.* = src;
+        }
+    }
+    pub fn formatWrite(format: Format, array: anytype) void {
+        if (format.member) {
+            array.writeFormat(format.ops[0]);
+            array.writeOne('.');
+            array.writeMany(format.symbol);
+            array.writeOne('(');
+            var len: u64 = 1;
+            while (len != format.ops.len) : (len +%= 1) {
+                array.writeFormat(format.ops[len]);
+                array.writeMany(tok.end_small_item);
+            }
+            if (len != 1) {
+                array.undefine(tok.end_small_item.len);
+            }
+            array.writeOne(')');
+        } else {
+            array.writeMany(format.symbol);
+            array.writeOne('(');
+            var len: u64 = 0;
+            while (len != format.ops.len) : (len +%= 1) {
+                array.writeFormat(format.ops[len]);
+                array.writeMany(tok.end_small_item);
+            }
+            if (len != 0) {
+                array.undefine(tok.end_small_item.len);
+            }
+            array.writeOne(')');
+        }
+    }
+    pub fn impl(allocator: *gen.Allocator, impl_detail: *const out.DetailMore, impl_fn_info: *const implementation.Fn) FnCall {
+        const arg_list: gen.ArgList = impl_fn_info.argList(impl_detail, .Argument);
+        const ops: []Operand = allocator.allocateIrreversible(Operand, @max(arg_list.len(), 1));
+        for (arg_list.readAll()) |symbol, i| {
+            ops[i] = .{ .symbol = symbol };
+        }
+        return .{ .symbol = impl_fn_info.fnName(), .ops = ops[0..arg_list.len()] };
+    }
+    pub fn intr(allocator: *gen.Allocator, ctn_detail: *const out.DetailLess, ctn_fn_info: *const interface.Fn) FnCall {
+        const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
+        const ops: []Operand = allocator.allocateIrreversible(Operand, @max(arg_list.len(), 1));
+        for (arg_list.readAll()) |symbol, i| {
+            ops[i] = .{ .symbol = symbol };
+        }
+        return .{ .symbol = ctn_fn_info.fnName(), .ops = ops };
+    }
+    pub fn allocate(allocator: *gen.Allocator, comptime Call: type, call: Call) FnCall {
+        return data(allocator.allocateIrreversible(Operand, @max((@typeInfo(Call).Struct.fields.len - 1), 1)), Call, call);
+    }
+    pub fn data(buf: []Operand, comptime Call: type, call: Call) FnCall {
+        const fields: []const builtin.Type.StructField = @typeInfo(Call).Struct.fields;
+        var ret: FnCall = .{ .symbol = call.symbol, .member = call.member, .ops = buf };
+        var len: u64 = 0;
+        inline for (fields) |field| {
+            if (field.type == Operand) {
+                ret.ops[len] = @field(call, field.name);
+                len +%= 1;
+            }
+        }
+        ret.ops = ret.ops[0..len];
+        return ret;
+    }
+};
 pub const Parentheses = struct {
     lhs: [:0]const u8 = "",
     op: Operand,
@@ -316,3 +192,117 @@ pub const Parentheses = struct {
         array.writeMany(format.rhs);
     }
 };
+pub const AssignmentOp = struct {
+    op1: Operand,
+    op2: Operand,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeFormat(format.op1);
+        array.writeMany(tok.equal_operator);
+        array.writeFormat(format.op2);
+    }
+};
+pub const ForLoopOp = struct {
+    op1: Operand,
+    symbol1: [:0]const u8,
+    symbol2: [:0]const u8,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany("for (");
+        array.writeFormat(format.op1);
+        array.writeMany(") |");
+        array.writeFormat(format.symbol1);
+        array.writeFormat(", ");
+        array.writeFormat(format.symbol2);
+        array.writeFormat("| ");
+    }
+};
+pub const FieldAccessOp = struct {
+    op1: Operand,
+    symbol: [:0]const u8,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeFormat(format.op1);
+        array.writeMany(tok.period_asterisk_operator);
+        array.writeMany(format.symbol);
+    }
+};
+pub const ConstDeclOp = struct {
+    var_name: [:0]const u8,
+    type_name: [:0]const u8,
+    op1: Operand,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany(tok.const_keyword);
+        array.writeMany(format.var_name);
+        array.writeMany(tok.colon_operator);
+        array.writeMany(format.type_name);
+        array.writeMany(tok.equal_operator);
+        array.writeFormat(format.op1);
+        array.writeMany(tok.end_expression);
+    }
+};
+pub const VarDeclOp = struct {
+    var_name: [:0]const u8,
+    type_name: [:0]const u8,
+    op1: Operand,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany(tok.var_keyword);
+        array.writeFormat(format.var_name);
+        array.writeMany(tok.colon_operator);
+        array.writeFormat(format.type_name);
+        array.writeMany(tok.equal_operator);
+        array.writeFormat(format.op1);
+        array.writeMany(tok.end_expression);
+    }
+};
+
+pub inline fn dereference(op1: Operand) Parentheses {
+    return .{ .op = op1, .rhs = tok.period_asterisk_operator };
+}
+pub inline fn addEqu(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.add_equ_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn subEqu(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.subtract_equ_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn add(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.add_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn alignA(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.subtract_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn alignB(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.align_below_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn @"and"(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.and_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn andn(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.and_not_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn cmov(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.conditional_move_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn mul(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.multiply_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn @"or"(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.or_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn shl(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shift_left_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn shr(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shift_right_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn sub(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.subtract_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn unpck2x(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.unpack_double_fn_name, .op1 = op1, .op2 = op2 });
+}
+pub inline fn unpck1x(allocator: *gen.Allocator, op1: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall1, .{ .symbol = tok.unpack_single_fn_name, .op1 = op1 });
+}
