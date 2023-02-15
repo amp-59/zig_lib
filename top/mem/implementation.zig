@@ -1,11 +1,12 @@
 const builtin = @import("../builtin.zig");
+const testing = @import("../testing.zig");
 
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
 const out = @import("./detail_more.zig");
 
 // zig fmt: off
-pub const key: [18]Fn = .{
+pub const key: [19]Fn = .{
     .allocated_byte_address,
     .aligned_byte_address,
     .unstreamed_byte_address,
@@ -24,6 +25,7 @@ pub const key: [18]Fn = .{
     .undefine,
     .seek,
     .tell,
+    .construct,
 };
 // zig fmt: on
 pub inline fn get(comptime tag: Fn) *const Fn {
@@ -48,25 +50,41 @@ pub const Fn = enum(u5) {
     undefine = 15,
     seek = 16,
     tell = 17,
+    construct = 18,
+
     pub inline fn fnName(impl_fn_info: *const Fn) [:0]const u8 {
         return @tagName(impl_fn_info.*);
     }
     pub fn hasCapability(fn_info: *const Fn, impl_variant: *const out.DetailMore) bool {
+        const is_always_aligned: bool =
+            impl_variant.techs.auto_alignment or
+            impl_variant.techs.unit_alignment;
         switch (fn_info.*) {
-            .alignment => return !(impl_variant.kinds.automatic or impl_variant.techs.unit_alignment),
             .define,
             .undefine,
             .undefined_byte_address,
             .defined_byte_count,
             .undefined_byte_count,
-            => return impl_variant.modes.resize,
+            => {
+                return impl_variant.modes.resize;
+            },
             .seek,
             .tell,
             .unstreamed_byte_address,
             .streamed_byte_count,
             .unstreamed_byte_count,
-            => return impl_variant.modes.stream,
-            else => return true,
+            => return {
+                return impl_variant.modes.stream;
+            },
+            .alignment => {
+                return !is_always_aligned;
+            },
+            else => {
+                return true;
+            },
+            .construct => {
+                return !impl_variant.kinds.automatic;
+            },
         }
     }
     pub fn argList(impl_fn_info: *const Fn, impl_variant: *const out.DetailMore, list_kind: gen.ListKind) gen.ArgList {
@@ -80,96 +98,150 @@ pub const Fn = enum(u5) {
         const has_active_alignment: bool =
             impl_variant.techs.disjunct_alignment or
             impl_variant.techs.lazy_alignment;
+        const impl_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.impl_param,
+            .Argument => tok.impl_name,
+        };
+        const offset_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.offset_bytes_param,
+            .Argument => tok.offset_bytes_name,
+        };
+        const impl_const_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.impl_const_param,
+            .Argument => tok.impl_name,
+        };
+        const slave_const_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.slave_specifier_const_ptr_param,
+            .Argument => tok.slave_specifier_name,
+        };
         switch (impl_fn_info.*) {
             .define, .undefine, .seek, .tell => {
-                array.writeOne(switch (list_kind) {
-                    .Parameter => tok.impl_param,
-                    .Argument => tok.impl_name,
-                });
-                array.writeOne(switch (list_kind) {
-                    .Parameter => tok.offset_bytes_param,
-                    .Argument => tok.offset_bytes_name,
-                });
+                array.writeOne(impl_symbol);
+                array.writeOne(offset_symbol);
             },
             .unstreamed_byte_count => {
-                array.writeOne(switch (list_kind) {
-                    .Parameter => tok.impl_const_param,
-                    .Argument => tok.impl_name,
-                });
+                array.writeOne(impl_const_symbol);
             },
             .undefined_byte_address,
             .unstreamed_byte_address,
             => {
-                array.writeOne(switch (list_kind) {
-                    .Parameter => tok.impl_const_param,
-                    .Argument => tok.impl_name,
-                });
+                array.writeOne(impl_const_symbol);
             },
             .undefined_byte_count,
             .defined_byte_count,
             .streamed_byte_count,
             => {
-                array.writeOne(switch (list_kind) {
-                    .Parameter => tok.impl_const_param,
-                    .Argument => tok.impl_name,
-                });
+                array.writeOne(impl_const_symbol);
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(switch (list_kind) {
-                        .Parameter => tok.slave_specifier_const_ptr_param,
-                        .Argument => tok.slave_specifier_name,
-                    });
+                    array.writeOne(slave_const_symbol);
                 }
             },
             .writable_byte_count,
             .aligned_byte_count,
             => {
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(switch (list_kind) {
-                        .Parameter => tok.slave_specifier_const_ptr_param,
-                        .Argument => tok.slave_specifier_name,
-                    });
+                    array.writeOne(slave_const_symbol);
                 } else if (has_dynamic_maximum_length) {
-                    array.writeOne(switch (list_kind) {
-                        .Parameter => tok.impl_const_param,
-                        .Argument => tok.impl_name,
-                    });
+                    array.writeOne(impl_const_symbol);
                 }
             },
             .allocated_byte_count => {
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(switch (list_kind) {
-                        .Parameter => tok.slave_specifier_const_ptr_param,
-                        .Argument => tok.slave_specifier_name,
-                    });
+                    array.writeOne(slave_const_symbol);
                 } else if (has_static_maximum_length) {
                     if (has_active_alignment) {
-                        array.writeOne(switch (list_kind) {
-                            .Parameter => tok.impl_const_param,
-                            .Argument => tok.impl_name,
-                        });
+                        array.writeOne(impl_const_symbol);
                     }
                 } else {
-                    array.writeOne(switch (list_kind) {
-                        .Parameter => tok.impl_const_param,
-                        .Argument => tok.impl_name,
-                    });
+                    array.writeOne(impl_const_symbol);
                 }
             },
-            else => {
+            .allocated_byte_address,
+            .aligned_byte_address,
+            .unwritable_byte_address,
+            .unallocated_byte_address,
+            .alignment,
+            => {
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(switch (list_kind) {
-                        .Parameter => tok.slave_specifier_const_ptr_param,
-                        .Argument => tok.slave_specifier_name,
-                    });
+                    array.writeOne(slave_const_symbol);
                 } else {
-                    array.writeOne(switch (list_kind) {
-                        .Parameter => tok.impl_const_param,
-                        .Argument => tok.impl_name,
-                    });
+                    array.writeOne(impl_const_symbol);
+                }
+            },
+            .construct => {
+                const source_allocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
+                    .Parameter => tok.source_allocated_byte_address_param,
+                    .Argument => tok.source_allocated_byte_address_name,
+                };
+                const source_aligned_byte_address_symbol: [:0]const u8 = switch (list_kind) {
+                    .Parameter => tok.source_aligned_byte_address_param,
+                    .Argument => tok.source_aligned_byte_address_name,
+                };
+                const source_unallocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
+                    .Parameter => tok.source_unallocated_byte_address_param,
+                    .Argument => tok.source_unallocated_byte_address_name,
+                };
+                const source_single_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
+                    .Parameter => tok.source_single_approximation_counts_param,
+                    .Argument => tok.source_single_approximation_counts_name,
+                };
+                const source_double_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
+                    .Parameter => tok.source_double_approximation_counts_param,
+                    .Argument => tok.source_double_approximation_counts_name,
+                };
+                if (impl_variant.fields.allocated_byte_address) {
+                    array.writeOne(source_allocated_byte_address_symbol);
+                }
+                if (impl_variant.fields.undefined_byte_address or
+                    impl_variant.fields.unstreamed_byte_address or
+                    impl_variant.techs.disjunct_alignment)
+                {
+                    array.writeOne(source_aligned_byte_address_symbol);
+                }
+                if (impl_variant.techs.single_packed_approximate_capacity) {
+                    array.writeOne(source_single_approximation_counts_symbol);
+                }
+                if (impl_variant.techs.double_packed_approximate_capacity) {
+                    array.writeOne(source_single_approximation_counts_symbol);
+                    array.writeOne(source_double_approximation_counts_symbol);
+                }
+                if (impl_variant.fields.unallocated_byte_address) {
+                    array.writeOne(source_unallocated_byte_address_symbol);
                 }
             },
         }
         return array;
+    }
+    pub fn returnType(impl_fn_info: *const Fn) [:0]const u8 {
+        switch (impl_fn_info.*) {
+            .define,
+            .undefine,
+            .seek,
+            .tell,
+            => {
+                return tok.void_type_name;
+            },
+            .allocated_byte_address,
+            .aligned_byte_address,
+            .unstreamed_byte_address,
+            .undefined_byte_address,
+            .unwritable_byte_address,
+            .unallocated_byte_address,
+            .allocated_byte_count,
+            .aligned_byte_count,
+            .streamed_byte_count,
+            .unstreamed_byte_count,
+            .writable_byte_count,
+            .undefined_byte_count,
+            .defined_byte_count,
+            .alignment,
+            => {
+                return tok.word_type_name;
+            },
+            .construct => {
+                return tok.impl_type_name;
+            },
+        }
     }
     pub fn writeCall(impl_fn_info: *const Fn, array: *gen.String, impl_detail: *const out.DetailMore) void {
         const list: gen.ArgList = impl_fn_info.argList(impl_detail, .Argument);
@@ -184,6 +256,7 @@ pub const Fn = enum(u5) {
         array.writeMany(impl_fn_info.fnName());
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
-        array.writeMany(") u64 ");
+        array.writeMany(") ");
+        array.writeMany(impl_fn_info.returnType());
     }
 };

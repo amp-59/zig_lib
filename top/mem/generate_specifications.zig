@@ -233,7 +233,8 @@ pub fn generateReferences() !void {
                     writeReturnImplementation(&array, out.impl_variants[spec_group[0]]);
                 } else {
                     array.writeMany(", comptime options: anytype) type {\n");
-                    writeDeduction(&allocator, &array, ctn_buf, gen.groupImplementations(&allocator, out.DetailMore, spec_group, out.impl_variants), &out.options);
+                    const toplevel_impl_group: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, spec_group, out.impl_variants);
+                    writeDeduction(&allocator, &array, ctn_buf, toplevel_impl_group, &out.options);
                 }
                 array.writeMany("}\n};\n");
             }
