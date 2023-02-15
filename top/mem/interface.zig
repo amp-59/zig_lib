@@ -2,6 +2,7 @@ const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
 const out = @import("./detail_less.zig");
+const config = @import("./config.zig");
 // zig fmt: off
 pub const key: [87]Fn = .{
     .{ .tag = .defineAll,                       .kind = .set,                                       .loc = .AllDefined },
@@ -92,6 +93,7 @@ pub const key: [87]Fn = .{
     .{ .tag = .appendFormat,                    .kind = .append, .val = .Format,    .loc = .Next,   .err = .Wrap },
     .{ .tag = .appendAny,                       .kind = .append, .val = .Any,       .loc = .Next,   .err = .Wrap },
 };
+// zig fmt: on
 pub inline fn get(comptime tag: Fn.Tag) *const Fn {
     comptime {
         for (key) |val| {
@@ -99,7 +101,6 @@ pub inline fn get(comptime tag: Fn.Tag) *const Fn {
         }
     }
 }
-// zig fmt: on
 pub const Fn = packed struct {
     tag: Tag,
     kind: Kind,
@@ -248,9 +249,98 @@ pub const Fn = packed struct {
         return @tagName(ctn_fn_info.tag);
     }
     pub fn hasCapability(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess) bool {
-        _ = ctn_detail;
-        _ = ctn_fn_info;
-        if (return true) {}
+        switch (ctn_fn_info.tag) {
+            .defineAll => {},
+            .undefineAll => {},
+            .streamAll => {},
+            .unstreamAll => {},
+            .index => {},
+            .len => {},
+            .avail => {},
+            .__at => {},
+            .__ad => {},
+            .__len => {},
+            .__rem => {},
+            .readAll => {},
+            .referAllDefined => {},
+            .readAllWithSentinel => {},
+            .referAllDefinedWithSentinel => {},
+            .__behind => {},
+            .unstream => {},
+            .readOneBehind => {},
+            .readCountBehind => {},
+            .readCountWithSentinelBehind => {},
+            .referCountWithSentinelBehind => {},
+            .readManyBehind => {},
+            .readManyWithSentinelBehind => {},
+            .referManyWithSentinelBehind => {},
+            .readOneAt => {},
+            .referOneAt => {},
+            .overwriteOneAt => {},
+            .readCountAt => {},
+            .referCountAt => {},
+            .overwriteCountAt => {},
+            .readCountWithSentinelAt => {},
+            .referCountWithSentinelAt => {},
+            .readManyAt => {},
+            .referManyAt => {},
+            .overwriteManyAt => {},
+            .readManyWithSentinelAt => {},
+            .referManyWithSentinelAt => {},
+            .stream => {},
+            .readOneAhead => {},
+            .readCountAhead => {},
+            .readCountWithSentinelAhead => {},
+            .readManyAhead => {},
+            .readManyWithSentinelAhead => {},
+            .__back => {},
+            .undefine => {},
+            .readOneBack => {},
+            .referOneBack => {},
+            .overwriteOneBack => {},
+            .readCountBack => {},
+            .referCountBack => {},
+            .overwriteCountBack => {},
+            .readCountWithSentinelBack => {},
+            .referCountWithSentinelBack => {},
+            .readManyBack => {},
+            .referManyBack => {},
+            .overwriteManyBack => {},
+            .readManyWithSentinelBack => {},
+            .referManyWithSentinelBack => {},
+            .referAllUndefined => {},
+            .referAllUndefinedWithSentinel => {},
+            .define => {},
+            .referOneUndefined => {},
+            .writeOne => {},
+            .referCountUndefined => {},
+            .writeCount => {},
+            .referManyUndefined => {},
+            .writeMany => {},
+            .writeFields => {},
+            .writeArgs => {},
+            .writeFormat => {},
+            .writeAny => {},
+            .static => return !ctn_detail.kinds.static and !ctn_detail.kinds.automatic,
+            .dynamic => return !ctn_detail.kinds.dynamic and !ctn_detail.kinds.automatic,
+            .holder => return !ctn_detail.kinds.parametric and !ctn_detail.kinds.automatic,
+            .init,
+            .deinit,
+            => return !ctn_detail.kinds.automatic,
+            .grow,
+            .shrink,
+            .appendOne,
+            .appendCount,
+            .appendMany,
+            .appendFields,
+            .appendArgs,
+            .appendFormat,
+            .appendAny,
+            .increment,
+            .decrement,
+            => return !ctn_detail.kinds.automatic or ctn_detail.kinds.static,
+        }
+        return true;
     }
     pub fn argList(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess, list_kind: gen.ListKind) gen.ArgList { // 8KiB
         var array: gen.ArgList = undefined;
@@ -279,14 +369,6 @@ pub const Fn = packed struct {
             .Parameter => tok.s_sentinel_param,
             .Argument => tok.sentinel_name,
         };
-        const read_count_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.read_count_param,
-            .Argument => tok.read_count_name,
-        };
-        const read_many_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.read_many_param,
-            .Argument => tok.read_many_name,
-        };
         const value_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => tok.value_param,
             .Argument => tok.value_name,
@@ -295,9 +377,13 @@ pub const Fn = packed struct {
             .Parameter => tok.count_values_param,
             .Argument => tok.count_values_name,
         };
-        const write_count_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.write_count_param,
-            .Argument => tok.write_count_name,
+        const count_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.count_param,
+            .Argument => tok.count_name,
+        };
+        const static_count_symbol: [:0]const u8 = switch (list_kind) {
+            .Parameter => tok.static_count_param,
+            .Argument => tok.count_name,
         };
         const many_values_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => tok.many_values_param,
@@ -372,7 +458,18 @@ pub const Fn = packed struct {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
             },
-            .__at,
+            .__at => {
+                if (!ctn_detail.kinds.parametric) {
+                    array.writeOne(array_const_ptr_symbol);
+                }
+                if (ctn_detail.layouts.unstructured) {
+                    array.writeOne(child_type_symbol);
+                }
+                if (ctn_detail.kinds.parametric) {
+                    array.writeOne(allocator_const_ptr_symbol);
+                }
+                array.writeOne(offset_symbol);
+            },
             .__len,
             .__rem,
             => {
@@ -457,14 +554,14 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
             },
             .readCountWithSentinelBehind => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(sentinel_symbol);
             },
             .readManyBehind => {
@@ -472,14 +569,18 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
             },
             .readManyWithSentinelBehind => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
                 array.writeOne(sentinel_symbol);
             },
             .readOneAt => {
@@ -500,7 +601,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(offset_symbol);
             },
             .readCountWithSentinelAt => {
@@ -511,7 +612,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(sentinel_symbol);
                 array.writeOne(offset_symbol);
             },
@@ -523,7 +624,9 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
                 array.writeOne(offset_symbol);
             },
             .readManyWithSentinelAt => {
@@ -534,7 +637,9 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
                 array.writeOne(sentinel_symbol);
                 array.writeOne(offset_symbol);
             },
@@ -549,14 +654,14 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
             },
             .readCountWithSentinelAhead => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(sentinel_symbol);
             },
             .readManyAhead => {
@@ -564,15 +669,19 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_many_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
             },
             .readManyWithSentinelAhead => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
                 array.writeOne(sentinel_symbol);
-                array.writeOne(read_many_symbol);
             },
             .readOneBack => {
                 array.writeOne(array_const_ptr_symbol);
@@ -585,14 +694,14 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
             },
             .readCountWithSentinelBack => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(sentinel_symbol);
             },
             .readManyBack => {
@@ -600,14 +709,18 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_many_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
             },
             .readManyWithSentinelBack => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_many_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
                 array.writeOne(sentinel_symbol);
             },
             .overwriteOneAt => {
@@ -630,8 +743,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-
-                array.writeOne(write_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(count_values_symbol);
                 array.writeOne(offset_symbol);
             },
@@ -658,7 +770,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(write_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(count_values_symbol);
             },
             .overwriteManyBack => {
@@ -673,7 +785,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(sentinel_symbol);
             },
             .referManyWithSentinelBehind => {
@@ -702,7 +814,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(offset_symbol);
             },
             .referCountWithSentinelAt => {
@@ -713,7 +825,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(sentinel_symbol);
                 array.writeOne(offset_symbol);
             },
@@ -725,7 +837,9 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
                 array.writeOne(offset_symbol);
             },
             .referManyWithSentinelAt => {
@@ -750,21 +864,23 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
             },
             .referManyBack => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
             },
             .referCountWithSentinelBack => {
                 array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(sentinel_symbol);
             },
             .referManyWithSentinelBack => {
@@ -772,7 +888,9 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                if (config.user_defined_length) {
+                    array.writeOne(count_symbol);
+                }
                 array.writeOne(sentinel_symbol);
             },
             .referAllUndefined => {
@@ -808,7 +926,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
-                array.writeOne(read_count_symbol);
+                array.writeOne(static_count_symbol);
             },
             .referManyUndefined => {
                 array.writeOne(array_const_ptr_symbol);
@@ -823,12 +941,21 @@ pub const Fn = packed struct {
             .static => {},
             .dynamic => {},
             .holder => {},
-
-            .init => {},
-            .grow => {},
-            .deinit => {},
-            .shrink => {},
-
+            .init => {
+                array.writeOne(allocator_ptr_symbol);
+                if (ctn_detail.kinds.dynamic) {
+                    array.writeOne(count_symbol);
+                }
+            },
+            .grow, .shrink => {
+                array.writeOne(array_ptr_symbol);
+                array.writeOne(allocator_ptr_symbol);
+                array.writeOne(count_symbol);
+            },
+            .deinit => {
+                array.writeOne(array_ptr_symbol);
+                array.writeOne(allocator_ptr_symbol);
+            },
             .increment,
             .decrement,
             => {
@@ -861,7 +988,7 @@ pub const Fn = packed struct {
                     array.writeOne(child_type_symbol);
                 }
                 array.writeOne(allocator_ptr_symbol);
-                array.writeOne(write_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(count_values_symbol);
             },
             .appendCount => {
@@ -870,7 +997,7 @@ pub const Fn = packed struct {
                     array.writeOne(child_type_symbol);
                 }
                 array.writeOne(allocator_ptr_symbol);
-                array.writeOne(write_count_symbol);
+                array.writeOne(static_count_symbol);
                 array.writeOne(count_values_symbol);
             },
             .writeMany => {
@@ -977,7 +1104,6 @@ pub fn getReturnType(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) 
     _ = ctn_detail;
     switch (ctn_fn_info.kind) {
         .write => return tok.void_type_name,
-        .append => return tok.allocator_void_type_name,
         .refer => switch (ctn_fn_info.val) {
             .One => return tok.child_ptr_type_name,
             .Count => return tok.child_array_ptr_type_name,
@@ -994,6 +1120,7 @@ pub fn getReturnType(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) 
             .ManyWithSentinel => return tok.child_const_slice_with_sentinel_type_name,
             else => return tok.void_type_name,
         },
+        .append => return tok.allocator_void_type_name,
         else => return tok.void_type_name,
     }
 }
