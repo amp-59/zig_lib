@@ -589,7 +589,155 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
             ));
             return array.writeMany(tok.end_expression);
         },
-        .construct => {},
+        .construct => {
+            array.writeMany(tok.return_keyword);
+            array.writeMany(".{ ");
+            const or_r = expr.@"or"(
+                allocator,
+                .{ .symbol = tok.source_aligned_byte_address_name },
+                .{ .call = &expr.sub(
+                    allocator,
+                    .{ .symbol = tok.source_aligned_byte_address_name },
+                    .{ .symbol = tok.source_allocated_byte_address_name },
+                ) },
+            );
+            if (impl_variant.fields.allocated_byte_address) {
+                if (has_packed_approximate_capacity) {
+                    if (impl_variant.techs.disjunct_alignment) {
+                        const init_lb_word: [4]expr.Operand = expr.initialize(
+                            tok.allocated_byte_address_word_field_name,
+                            .{ .call = if (config.packed_capacity_low) &expr.@"or"(
+                                allocator,
+                                .{ .call = &if (config.packed_capacity_low) expr.shl(
+                                    allocator,
+                                    .{ .call = &or_r },
+                                    .{ .constant = 16 },
+                                ) },
+                                .{ .symbol = tok.source_single_approximation_counts_name },
+                            ) else expr.@"or"(
+                                allocator,
+                                .{ .call = &expr.shl(
+                                    allocator,
+                                    .{ .symbol = tok.source_single_approximation_counts_name },
+                                    .{ .constant = 48 },
+                                ) },
+                                .{ .call = &or_r },
+                            ) },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    } else {
+                        const init_lb_word: [4]expr.Operand = expr.initialize(
+                            tok.allocated_byte_address_word_field_name,
+                            .{ .call = &if (config.packed_capacity_low) expr.@"or"(
+                                allocator,
+                                .{ .call = &expr.shl(
+                                    allocator,
+                                    .{ .symbol = tok.source_allocated_byte_address_name },
+                                    .{ .constant = 16 },
+                                ) },
+                                .{ .symbol = tok.source_single_approximation_counts_name },
+                            ) else expr.@"or"(
+                                allocator,
+                                .{ .call = &expr.shl(
+                                    allocator,
+                                    .{ .symbol = tok.source_single_approximation_counts_name },
+                                    .{ .constant = 48 },
+                                ) },
+                                .{ .symbol = tok.source_allocated_byte_address_name },
+                            ) },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    }
+                } else {
+                    if (impl_variant.techs.disjunct_alignment) {
+                        const init_lb_word: [4]expr.Operand = expr.initialize(
+                            tok.allocated_byte_address_word_field_name,
+                            .{ .call = &or_r },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    } else {
+                        const init_lb_word: [4]expr.Operand = expr.initialize(
+                            tok.allocated_byte_address_word_field_name,
+                            .{ .symbol = tok.source_allocated_byte_address_name },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    }
+                }
+            }
+            if (impl_variant.fields.undefined_byte_address) {
+                if (has_packed_approximate_capacity) {
+                    if (impl_variant.techs.disjunct_alignment) {
+                        const init_ub_word: [4]expr.Operand = expr.initialize(
+                            tok.undefined_byte_address_word_field_name,
+                            .{ .call = if (config.packed_capacity_low) &expr.@"or"(
+                                allocator,
+                                .{ .call = &if (config.packed_capacity_low) expr.shl(
+                                    allocator,
+                                    .{ .call = &or_r },
+                                    .{ .constant = 16 },
+                                ) },
+                                .{ .symbol = tok.source_single_approximation_counts_name },
+                            ) else expr.@"or"(
+                                allocator,
+                                .{ .call = &expr.shl(
+                                    allocator,
+                                    .{ .symbol = tok.source_single_approximation_counts_name },
+                                    .{ .constant = 48 },
+                                ) },
+                                .{ .call = &or_r },
+                            ) },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    } else {
+                        const init_ub_word: [4]expr.Operand = expr.initialize(
+                            tok.undefined_byte_address_word_field_name,
+                            .{ .call = &if (config.packed_capacity_low) expr.@"or"(
+                                allocator,
+                                .{ .call = &expr.shl(
+                                    allocator,
+                                    .{ .symbol = tok.source_aligned_byte_address_name },
+                                    .{ .constant = 16 },
+                                ) },
+                                .{ .symbol = tok.source_single_approximation_counts_name },
+                            ) else expr.@"or"(
+                                allocator,
+                                .{ .call = &expr.shl(
+                                    allocator,
+                                    .{ .symbol = tok.source_single_approximation_counts_name },
+                                    .{ .constant = 48 },
+                                ) },
+                                .{ .symbol = tok.source_aligned_byte_address_name },
+                            ) },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    }
+                } else {
+                    if (impl_variant.techs.disjunct_alignment) {
+                        const init_ub_word: [4]expr.Operand = expr.initialize(
+                            tok.undefined_byte_address_word_field_name,
+                            .{ .call = &or_r },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    } else {
+                        const init_ub_word: [4]expr.Operand = expr.initialize(
+                            tok.undefined_byte_address_word_field_name,
+                            .{ .symbol = tok.source_aligned_byte_address_name },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    }
+                }
+            }
+            array.writeMany("}");
+            return array.writeMany(tok.end_expression);
+        },
     }
 }
 fn writeFunctions(allocator: *gen.Allocator, array: *gen.String, impl_variant: *const out.DetailMore) void {
