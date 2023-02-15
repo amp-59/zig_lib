@@ -11,10 +11,6 @@ pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 // Right now it is difficult to get Zig vectors to produce consistent results,
 // so this is not an option.
 pub fn DiscreteBitSet(comptime bits: u16) type {
-    const real_bits: u16 = meta.alignAW(bits);
-    if (bits != real_bits) {
-        return DiscreteBitSet(real_bits);
-    }
     const Data: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(Data);
     return (extern struct {
@@ -508,7 +504,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
     return (extern struct {
         impl: Implementation align(8) = defaultValue(spec),
         pub const RegularAddressSpace = @This();
-        pub const Index: type = meta.AlignSizeAW(builtin.ShiftAmount(u64));
+        pub const Index: type = RegularAddressSpaceSpec.Index(spec);
         pub const Implementation: type = spec.Implementation();
         pub const addr_spec: RegularAddressSpaceSpec = spec;
         pub fn unset(address_space: *RegularAddressSpace, index: Index) bool {
@@ -559,7 +555,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             return AddressSpace.addr_spec.label;
         }
         pub fn invert(addr: u64) AddressSpace.Index {
-            return AddressSpace.addr_spec.invert(addr);
+            return @intCast(AddressSpace.Index, AddressSpace.addr_spec.invert(addr));
         }
         pub fn SubSpace(comptime label_or_index: anytype) type {
             return GenericSubSpace(AddressSpace.addr_spec.subspace.?, label_or_index);
@@ -572,7 +568,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(check_false);
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                     if (!address_space.impl.check(arena_index)) {
-                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -580,7 +576,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(check_true);
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                     if (address_space.impl.check(arena_index)) {
-                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -610,7 +606,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(check_false);
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                     if (!address_space.impl.check(arena_index)) {
-                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -618,7 +614,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(check_true);
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
                     if (address_space.impl.check(arena_index)) {
-                        array.writeMany(builtin.fmt.ud(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
