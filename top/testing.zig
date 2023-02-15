@@ -275,7 +275,7 @@ pub fn print(any: anytype) void {
     array.writeAny(fmt_spec, any);
     file.noexcept.write(2, array.readAll());
 }
-fn uniqueSet(comptime T: type, set: []const T) void {
+pub fn uniqueSet(comptime T: type, set: []const T) void {
     var l_index: usize = 0;
     while (l_index != set.len) : (l_index +%= 1) {
         var r_index: usize = l_index;
