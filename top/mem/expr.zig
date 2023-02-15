@@ -184,16 +184,6 @@ pub const FnCall = struct {
         return ret;
     }
 };
-pub const AssignmentOp = struct {
-    op1: Operand,
-    op2: Operand,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeFormat(format.op1);
-        array.writeMany(tok.equal_operator);
-        array.writeFormat(format.op2);
-    }
-};
 pub const ForLoop = struct {
     op1: Operand,
     symbol1: [:0]const u8,
@@ -250,6 +240,12 @@ pub const VarDecl = struct {
     }
 };
 
+pub inline fn initialize(symbol: [:0]const u8, op1: Operand) [4]Operand {
+    return .{ .{ .symbol = "." }, .{ .symbol = symbol }, .{ .symbol = " = " }, op1 };
+}
+pub inline fn initializer(op1: Operand) [3]Operand {
+    return .{ .{ .symbol = ".{ " }, op1, .{ .symbol = " }" } };
+}
 pub inline fn dereference(op1: Operand) [2]Operand {
     return .{ op1, .{ .symbol = tok.period_asterisk_operator } };
 }
