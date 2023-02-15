@@ -3815,7 +3815,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logRelease(array.readAll());
     }
-    fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaAcquireNotice(index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(label orelse about_acq_0_s);
@@ -3826,7 +3826,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logAcquire(array.readAll());
     }
-    fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaReleaseNotice(index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(label orelse about_rel_0_s);
@@ -3882,7 +3882,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logError(array.readAll());
     }
-    fn arenaAcquireError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaAcquireError(arena_error: anytype, index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(label orelse about_acq_1_s);
@@ -3895,7 +3895,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logError(array.readAll());
     }
-    fn arenaReleaseError(arena_error: anytype, index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaReleaseError(arena_error: anytype, index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(label orelse about_rel_1_s);
