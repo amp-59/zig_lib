@@ -6,7 +6,7 @@ pub const prefer_operator_wrapper: bool = true;
 /// If `true` approximate length counts are stored in the least significant
 /// bits. This makes finding the length more efficient. The efficiency of
 /// finding addresses on the same word is theoretically unchanged.
-pub const packed_capacity_low: bool = false;
+pub const packed_capacity_low: bool = true;
 pub const minimise_indirection: bool = true;
 /// Omit declarations within containers which are not strictly necessary.
 /// Increases node count while decreasing line count.
