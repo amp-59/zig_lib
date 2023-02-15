@@ -132,6 +132,7 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     ret.addModule("zig_lib", Context.srg);
     ret.install();
     ret.link_gc_sections = true;
+    ret.link_function_sections = true;
     ret.disable_stack_probing = true;
     ret.code_model = .kernel;
     make_step.dependOn(&ret.step);
