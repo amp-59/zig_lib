@@ -20,7 +20,7 @@ pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
 const map_spec: thread.MapSpec = .{ .options = .{} };
-const thread_spec: proc.CloneSpec = .{ .errors = null, .return_type = u64, .options = .{} };
+const thread_spec: proc.CloneSpec = .{ .errors = .{}, .return_type = u64, .options = .{} };
 const Allocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .options = .{
@@ -391,7 +391,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     var allocator_1: Allocator1 = try Allocator1.init(&address_space);
     defer allocator_1.deinit(&address_space);
     const stack_addr: u64 = mach.cmov64(Options.print_in_second_thread, try thread.map(map_spec, 8), 0);
-    defer thread.unmap(.{ .errors = null }, 8);
+    defer thread.unmap(.{ .errors = .{} }, 8);
     try meta.wrap(allocator_0.map(64 * 1024 * 1024));
     try meta.wrap(allocator_1.map(64 * 1024 * 1024));
     for (names.readAll()) |arg| {
