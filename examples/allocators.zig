@@ -14,7 +14,10 @@ pub usingnamespace proc.start;
 const Allocator = mem.GenericRtArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .logging = preset.allocator.logging.verbose,
-    .options = preset.allocator.options.small,
+    .options = .{
+        .require_map = false,
+        .require_unmap = false,
+    },
 });
 const Allocators = mem.StaticArray(Allocator, count);
 
@@ -24,31 +27,30 @@ const Allocators = mem.StaticArray(Allocator, count);
 const start: u64 = 0x40000000;
 // Also 1GiB. Would rather not do something weird like size = start.
 // This is the size of each arena.
-const size: u64 = 1024 * 1024 * 1024;
-const count: u64 = 1024;
+const size: u64 = 1024 * 1024;
+const count: u64 = 16;
 const finish: u64 = start + (size * count);
 
 const multi_arena: virtual.RegularMultiArena = .{
     .label = "1024x1GiB",
     .lb_addr = start,
-    .ab_addr = start,
     .up_addr = finish,
     .divisions = count,
+    .options = .{ .require_map = true, .require_unmap = true },
 };
 
 fn init(address_space: *AddressSpace, allocators: *Allocators) !void {
-    var arena_index: u16 = 0;
+    var arena_index: AddressSpace.Index = 0;
     while (arena_index != count) : (arena_index +%= 1) {
         allocators.referOneAt(arena_index).* = try Allocator.init(address_space, arena_index);
     }
 }
 fn deinit(address_space: *AddressSpace, allocators: *Allocators) void {
-    var arena_index: u16 = 0;
+    var arena_index: AddressSpace.Index = 0;
     while (arena_index != count) : (arena_index +%= 1) {
         allocators.referOneAt(arena_index).deinit(address_space);
     }
 }
-
 pub fn main() !void {
     var address_space: AddressSpace = .{};
     var allocators: Allocators = undefined;

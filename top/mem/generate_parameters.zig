@@ -1,5 +1,6 @@
 //! Group variants by container to generate parameter variants.
 const fmt = @import("../fmt.zig");
+const mem = @import("../mem.zig");
 const proc = @import("../proc.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
@@ -16,7 +17,16 @@ const out = struct {
 const config = @import("./config.zig");
 
 pub usingnamespace proc.start;
-pub const AddressSpace = preset.address_space.regular_128;
+
+pub const AddressSpace = mem.GenericRegularAddressSpace(.{
+    .lb_addr = 0,
+    .lb_offset = 0x40000000,
+    .divisions = 8,
+    .errors = .{
+        .acquire = .abort,
+        .release = .abort,
+    },
+});
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
