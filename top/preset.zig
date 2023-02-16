@@ -6,7 +6,11 @@ const preset = @This();
 const builtin = @import("./builtin.zig");
 
 pub const address_space = opaque {
-    pub const regular_128 = mem.GenericRegularAddressSpace(.{ .divisions = 128 });
+    pub const regular_128 = mem.GenericRegularAddressSpace(.{
+        .lb_addr = 0,
+        .lb_offset = 0x40000000,
+        .divisions = 128,
+    });
     pub const exact_8 = mem.GenericDiscreteAddressSpace(.{
         .list = meta.slice(mem.Arena, .{
             .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
@@ -98,23 +102,23 @@ pub const allocator = opaque {
             // enforce yet.
             .acquire = null,
             .release = null,
-            .map = null,
-            .remap = null,
-            .unmap = null,
+            .map = .{},
+            .remap = .{},
+            .unmap = .{},
         };
         pub const uniform: mem.AllocatorErrors = .{
             .acquire = error.UnderSupply,
             .release = null,
-            .map = &.{},
-            .remap = &.{},
-            .unmap = null,
+            .map = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
+            .remap = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
+            .unmap = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
         };
         pub const critical: mem.AllocatorErrors = .{
-            .map = mmap.errors.mem,
-            .remap = mremap.errors.all,
+            .map = .{ .throw = mmap.errors.mem },
+            .remap = .{ .throw = mremap.errors.all },
             .release = error.OverSupply,
             .acquire = error.UnderSupply,
-            .unmap = munmap.errors.all,
+            .unmap = .{ .throw = munmap.errors.all },
         };
     };
 };
@@ -122,12 +126,12 @@ pub const mmap = opaque {
     pub const function = opaque {
         pub const default: sys.Config = .{
             .tag = .mmap,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = .{
             .tag = .mmap,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -170,12 +174,12 @@ pub const mremap = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .mremap,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = .{
             .tag = .mremap,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -193,12 +197,12 @@ pub const munmap = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .munmap,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept: sys.Config = .{
             .tag = .munmap,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -214,12 +218,12 @@ pub const brk = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .brk,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = .{
             .tag = .brk,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -235,12 +239,12 @@ pub const chdir = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .chdir,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = .{
             .tag = .chdir,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -258,12 +262,12 @@ pub const close = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .close,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept: sys.Config = .{
             .tag = .close,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -281,7 +285,7 @@ pub const clone3 = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .clone3,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
@@ -302,7 +306,7 @@ pub const open = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .open,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         const dir: sys.Config = .{
@@ -336,17 +340,17 @@ pub const read = opaque {
     pub const function = opaque {
         pub const default: sys.Config = .{
             .tag = .read,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = .{
             .tag = .read,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
         pub const noexcept_nodiscard: sys.Config = .{
             .tag = .read,
-            .errors = null,
+            .errors = .{},
             .return_type = isize,
         };
     };
@@ -358,7 +362,7 @@ pub const read = opaque {
 };
 pub const clock_gettime = opaque {
     pub const config = opaque {
-        pub const default: sys.Config = .{ .tag = .clock_gettime, .errors = errors.all, .return_type = void };
+        pub const default: sys.Config = .{ .tag = .clock_gettime, .errors = .{ .throw = errors.all }, .return_type = void };
         pub const noexcept: sys.Config = default.reconfigure(null, void);
     };
     pub const function = opaque {
@@ -375,12 +379,12 @@ pub const execve = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .execve,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const dir_default: sys.Config = .{
             .tag = .execveat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, void);
@@ -405,7 +409,7 @@ pub const fork = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .fork,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
@@ -423,7 +427,7 @@ pub const getcwd = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .getcwd,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
@@ -442,7 +446,7 @@ pub const getdents = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .getdents64,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
@@ -460,7 +464,7 @@ pub const getrandom = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .getrandom,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
@@ -478,7 +482,7 @@ pub const dup = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .dup,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
@@ -497,7 +501,7 @@ pub const dup2 = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .dup2,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
@@ -516,7 +520,7 @@ pub const dup3 = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .dup3,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
@@ -536,7 +540,7 @@ pub const ioctl = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .ioctl,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
@@ -554,7 +558,7 @@ pub const madvise = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .madvise,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
@@ -572,12 +576,12 @@ pub const mkdir = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .mkdir,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const dir_default: sys.Config = .{
             .tag = .mkdirat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
@@ -596,7 +600,7 @@ pub const memfd_create = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .memfd_create,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
@@ -614,12 +618,12 @@ pub const truncate = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .truncate,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const file_default: sys.Config = .{
             .tag = .ftruncate,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
@@ -638,12 +642,12 @@ pub const mknod = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .mknod,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const dir_default: sys.Config = .{
             .tag = .mknodat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, void);
@@ -666,7 +670,7 @@ pub const open_by_handle_at = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .open_by_handle_at,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
@@ -682,7 +686,7 @@ pub const name_to_handle_at = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .name_to_handle_at,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
@@ -698,7 +702,7 @@ pub const nanosleep = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .nanosleep,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
@@ -716,12 +720,12 @@ pub const readlink = opaque {
     pub const function = opaque {
         pub const default: sys.Config = .{
             .tag = .readlink,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const dir_default: sys.Config = .{
             .tag = .readlinkat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
@@ -736,7 +740,7 @@ pub const rmdir = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .rmdir,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
@@ -755,7 +759,7 @@ pub const sigaction = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .rt_sigaction,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, void);
@@ -774,22 +778,22 @@ pub const stat = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .stat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const file_default: sys.Config = .{
             .tag = .fstat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const dir_default: sys.Config = .{
             .tag = .newfstatat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const link_default: sys.Config = .{
             .tag = .lstat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, void);
@@ -818,12 +822,12 @@ pub const unlink = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .unlink,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const dir_default: sys.Config = .{
             .tag = .unlinkat,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept = default.reconfigure(null, void);
@@ -844,7 +848,7 @@ pub const write = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .write,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
@@ -866,22 +870,22 @@ pub const getid = opaque {
     pub const config = opaque {
         pub const user: sys.Config = .{
             .tag = .getuid,
-            .errors = null,
+            .errors = .{},
             .return_type = u16,
         };
         pub const group: sys.Config = .{
             .tag = .getgid,
-            .errors = null,
+            .errors = .{},
             .return_type = u16,
         };
         pub const effective_user: sys.Config = .{
             .tag = .geteuid,
-            .errors = null,
+            .errors = .{},
             .return_type = u16,
         };
         pub const effective_group: sys.Config = .{
             .tag = .getegid,
-            .errors = null,
+            .errors = .{},
             .return_type = u16,
         };
     };
@@ -896,12 +900,12 @@ pub const wait = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .wait4,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept: sys.Config = .{
             .tag = .wait4,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -919,12 +923,12 @@ pub const waitid = opaque {
     pub const config = opaque {
         pub const default: sys.Config = .{
             .tag = .waitid,
-            .errors = errors.all,
+            .errors = .{ .throw = errors.all },
             .return_type = void,
         };
         pub const noexcept: sys.Config = .{
             .tag = .waitid,
-            .errors = null,
+            .errors = .{},
             .return_type = void,
         };
     };
@@ -942,7 +946,7 @@ pub const exit = opaque {
     pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .exit,
-            .errors = null,
+            .errors = .{},
             .return_type = noreturn,
         };
     };
