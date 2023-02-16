@@ -101,7 +101,7 @@ pub const ReleaseSpec = struct {
 };
 pub const MapSpec = struct {
     options: Options,
-    errors: ?[]const sys.ErrorCode = sys.mmap_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -157,7 +157,7 @@ pub const MapSpec = struct {
 };
 pub const MoveSpec = struct {
     options: Options,
-    errors: ?[]const sys.ErrorCode = sys.mremap_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -174,14 +174,14 @@ pub const MoveSpec = struct {
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const RemapSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.mremap_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const UnmapSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.munmap_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.munmap_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -189,7 +189,7 @@ pub const UnmapSpec = struct {
 };
 pub const AdviseSpec = struct {
     options: Options,
-    errors: ?[]const sys.ErrorCode = sys.madvise_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Options = struct {
@@ -368,7 +368,7 @@ pub const AdviseSpec = struct {
 };
 pub const FdSpec = struct {
     options: Options = .{},
-    errors: ?[]const sys.ErrorCode = sys.memfd_create_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.memfd_create_errors },
     return_type: type = u64,
     logging: builtin.Logging = .{},
     const Specification = @This();

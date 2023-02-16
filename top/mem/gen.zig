@@ -327,19 +327,19 @@ const sys = struct {
         return file.noexcept.write(fd, buf);
     }
     pub fn create(pathname: [:0]const u8) u64 {
-        return file.create(.{ .errors = null, .options = .{ .write = .truncate, .exclusive = false } }, pathname);
+        return file.create(.{ .errors = .{}, .options = .{ .write = .truncate, .exclusive = false } }, pathname);
     }
     pub fn open(pathname: [:0]const u8) u64 {
-        return file.open(.{ .errors = null, .options = .{ .read = true, .write = null } }, pathname);
+        return file.open(.{ .errors = .{}, .options = .{ .read = true, .write = null } }, pathname);
     }
     pub fn append(pathname: [:0]const u8) u64 {
-        return file.open(.{ .errors = null, .options = .{ .write = .append } }, pathname);
+        return file.open(.{ .errors = .{}, .options = .{ .write = .append } }, pathname);
     }
     pub fn mkdir(pathname: [:0]const u8) void {
-        file.makeDir(.{ .errors = null }, pathname);
+        file.makeDir(.{ .errors = .{} }, pathname);
     }
     pub fn close(fd: u64) void {
-        file.close(.{ .errors = null }, fd);
+        file.close(.{ .errors = .{} }, fd);
     }
 };
 pub fn writeImports(array: *String, src: builtin.SourceLocation, imports: []const Import) void {

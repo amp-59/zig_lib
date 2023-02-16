@@ -37,11 +37,10 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) spec.Unwrapped(.munm
         }
         return unmap_error;
     }
-    try meta.wrap(mem.unmap(spec, st_addr, len));
 }
 pub const MapSpec = struct {
     options: Options,
-    errors: ?[]const sys.ErrorCode = sys.mmap_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();

@@ -209,7 +209,7 @@ pub const TerminalAttributes = extern struct {
 
 // Getting terminal attributes is classed as a resource acquisition.
 const TerminalAttributesSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.ioctl_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
 };
@@ -352,7 +352,7 @@ pub const ModeSpec = struct {
 pub const MakeDirSpec = struct {
     options: Options = .{},
     mode: ModeSpec = ModeSpec.dir_mode,
-    errors: ?[]const sys.ErrorCode = sys.mkdir_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -362,7 +362,7 @@ pub const MakeDirSpec = struct {
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const RemoveDirSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.rmdir_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.rmdir_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -372,7 +372,7 @@ pub const RemoveDirSpec = struct {
 pub const CreateSpec = struct {
     options: Options = .{},
     mode: ModeSpec = ModeSpec.file_mode,
-    errors: ?[]const sys.ErrorCode = sys.open_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -416,7 +416,7 @@ pub const CreateSpec = struct {
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const UnlinkSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.unlink_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.unlink_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -424,7 +424,7 @@ pub const UnlinkSpec = struct {
 };
 pub const PathSpec = struct {
     options: Options = .{},
-    errors: ?[]const sys.ErrorCode = sys.open_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -451,7 +451,7 @@ pub const PathSpec = struct {
 pub const OpenSpec = struct {
     options: Options,
     return_type: type = u64,
-    errors: ?[]const sys.ErrorCode = sys.open_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     logging: builtin.Logging = .{},
     const Specification = @This();
     const Options = struct {
@@ -515,7 +515,7 @@ pub const OpenSpec = struct {
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const CloseSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.close_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -523,7 +523,7 @@ pub const CloseSpec = struct {
 };
 pub const StatSpec = struct {
     options: Options = .{},
-    errors: ?[]const sys.ErrorCode = sys.stat_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
     logging: builtin.Logging = .{},
     return_type: type = void,
     const Specification = @This();
@@ -540,7 +540,7 @@ pub const StatSpec = struct {
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const GetWorkingDirectorySpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.readlink_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -548,7 +548,7 @@ pub const GetWorkingDirectorySpec = struct {
 };
 pub const ReadLinkSpec = struct {
     options: Options = .{},
-    errors: ?[]const sys.ErrorCode = sys.readlink_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -567,7 +567,7 @@ pub const ReadLinkSpec = struct {
 // TODO: Define default options suited to mapping files.
 pub const MapSpec = struct {
     options: Options,
-    errors: ?[]const sys.ErrorCode = sys.mmap_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
@@ -622,7 +622,7 @@ pub const MapSpec = struct {
     usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const TruncateSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.truncate_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.truncate_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();

@@ -193,7 +193,7 @@ pub const CloneArgs = extern struct {
 
 pub const WaitSpec = struct {
     options: Options = .{},
-    errors: ?[]const sys.ErrorCode = sys.wait_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
     logging: builtin.Logging = .{},
     return_type: type = u64,
     const Specification = @This();
@@ -234,7 +234,7 @@ pub const WaitSpec = struct {
 pub const WaitIdSpec = struct {
     id_type: IdType,
     options: Options,
-    errors: ?[]const sys.ErrorCode = sys.wait_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
     logging: builtin.Logging = .{},
     return_type: type = u64,
     const Specification = @This();
@@ -271,7 +271,7 @@ pub const WaitIdSpec = struct {
     pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const ForkSpec = struct {
-    errors: ?[]const sys.ErrorCode = sys.fork_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
     logging: builtin.Logging = .{},
     return_type: ?type = u64,
     const Specification = @This();
@@ -279,7 +279,7 @@ pub const ForkSpec = struct {
 };
 pub const ExecuteSpec = struct {
     options: Options = .{},
-    errors: ?[]const sys.ErrorCode = sys.execve_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
     return_type: type = void,
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
@@ -299,7 +299,7 @@ pub const ExecuteSpec = struct {
 };
 pub const CloneSpec = struct {
     options: Options,
-    errors: ?[]const sys.ErrorCode = sys.clone_errors,
+    errors: sys.ErrorPolicy = .{ .throw = sys.clone_errors },
     return_type: type = isize,
     logging: builtin.Logging = .{},
     const Options = struct {

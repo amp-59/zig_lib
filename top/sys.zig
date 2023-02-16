@@ -1,4 +1,5 @@
 //! Linux x86_64
+const meta = @import("./meta.zig");
 pub const MAP = opaque {
     pub const FILE: usize = 0x0;
     pub const SHARED: usize = 0x1;
@@ -1264,7 +1265,7 @@ pub const ErrorCode = enum(i9) {
     // DEADLOCK = -35, // Resource deadlock avoided
     // NOTSUP = -95, // Operation not supported
 
-    fn errorName(error_code: ErrorCode) []const u8 {
+    pub fn errorName(error_code: ErrorCode) []const u8 {
         return switch (error_code) {
             .PERM => "OperationNotPermitted",
             .NOENT => "NoSuchFileOrDirectory",
@@ -1401,6 +1402,7 @@ pub const ErrorCode = enum(i9) {
         };
     }
 };
+pub const ErrorPolicy = meta.ExternalError(ErrorCode);
 pub const Function = enum(u9) {
     read = 0,
     write = 1,
@@ -1820,7 +1822,6 @@ pub const Function = enum(u9) {
         };
     }
 };
-
 pub const brk_errors: []const ErrorCode = &[_]ErrorCode{.NOMEM};
 pub const chdir_errors: []const ErrorCode = &[_]ErrorCode{
     .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
@@ -2197,70 +2198,70 @@ pub fn FunctionInterfaceSpec(comptime Specification: type) type {
 /// discard any non-error return value when *_FIXED_NOREPLACE is set, as any
 /// non-error return value will be equal to the input address.
 const config = opaque {
-    const read: Config = .{ .tag = .read, .errors = read_errors, .return_type = usize };
-    const write: Config = .{ .tag = .write, .errors = write_errors, .return_type = usize };
-    const open: Config = .{ .tag = .open, .errors = open_errors, .return_type = usize };
-    const openat: Config = .{ .tag = .openat, .errors = open_errors, .return_type = usize };
-    const close: Config = .{ .tag = .close, .errors = close_errors, .return_type = void };
-    const ioctl: Config = .{ .tag = .ioctl, .errors = ioctl_errors, .return_type = void };
-    const brk: Config = .{ .tag = .brk, .errors = brk_errors, .return_type = usize };
-    const mmap: Config = .{ .tag = .mmap, .errors = mmap_errors, .return_type = usize };
-    const munmap: Config = .{ .tag = .munmap, .errors = munmap_errors, .return_type = void };
-    const mremap: Config = .{ .tag = .mremap, .errors = mremap_errors, .return_type = usize };
-    const madvise: Config = .{ .tag = .madvise, .errors = madvise_errors, .return_type = void };
-    const memfd_create: Config = .{ .tag = .memfd_create, .errors = memfd_create_errors, .return_type = usize };
-    const stat: Config = .{ .tag = .stat, .errors = stat_errors, .return_type = void };
-    const fstat: Config = .{ .tag = .fstat, .errors = stat_errors, .return_type = void };
-    const lstat: Config = .{ .tag = .lstat, .errors = stat_errors, .return_type = void };
-    const statx: Config = .{ .tag = .statx, .errors = stat_errors, .return_type = void };
-    const newfstatat: Config = .{ .tag = .newfstatat, .errors = stat_errors, .return_type = void };
-    const mknod: Config = .{ .tag = .mknod, .errors = mknod_errors, .return_type = void };
-    const mknodat: Config = .{ .tag = .mknodat, .errors = mknod_errors, .return_type = void };
-    const getcwd: Config = .{ .tag = .getcwd, .errors = getcwd_errors, .return_type = usize };
-    const getdents64: Config = .{ .tag = .getdents64, .errors = getdents_errors, .return_type = usize };
-    const readlink: Config = .{ .tag = .readlink, .errors = readlink_errors, .return_type = usize };
-    const readlinkat: Config = .{ .tag = .readlinkat, .errors = readlink_errors, .return_type = usize };
-    const getuid: Config = .{ .tag = .getuid, .errors = null, .return_type = u16 };
-    const getgid: Config = .{ .tag = .getgid, .errors = null, .return_type = u16 };
-    const geteuid: Config = .{ .tag = .geteuid, .errors = null, .return_type = u16 };
-    const getegid: Config = .{ .tag = .getegid, .errors = null, .return_type = u16 };
-    const getrandom: Config = .{ .tag = .getrandom, .errors = getrandom_errors, .return_type = void };
-    const unlink: Config = .{ .tag = .unlink, .errors = unlink_errors, .return_type = void };
-    const unlinkat: Config = .{ .tag = .unlinkat, .errors = unlink_errors, .return_type = void };
-    const truncate: Config = .{ .tag = .truncate, .errors = truncate_errors, .return_type = void };
-    const ftruncate: Config = .{ .tag = .ftruncate, .errors = truncate_errors, .return_type = void };
-    const mkdir: Config = .{ .tag = .mkdir, .errors = mkdir_errors, .return_type = void };
-    const mkdirat: Config = .{ .tag = .mkdirat, .errors = mkdir_errors, .return_type = void };
-    const rmdir: Config = .{ .tag = .rmdir, .errors = rmdir_errors, .return_type = void };
-    const clock_gettime: Config = .{ .tag = .clock_gettime, .errors = clock_get_errors, .return_type = void };
-    const nanosleep: Config = .{ .tag = .nanosleep, .errors = nanosleep_errors, .return_type = void };
-    const dup: Config = .{ .tag = .dup, .errors = dup_errors, .return_type = usize };
-    const dup2: Config = .{ .tag = .dup2, .errors = dup_errors, .return_type = usize };
-    const dup3: Config = .{ .tag = .dup3, .errors = dup_errors, .return_type = usize };
-    const fork: Config = .{ .tag = .fork, .errors = fork_errors, .return_type = usize };
-    const wait4: Config = .{ .tag = .wait4, .errors = wait_errors, .return_type = void };
-    const waitid: Config = .{ .tag = .waitid, .errors = wait_errors, .return_type = void };
-    const clone: Config = .{ .tag = .clone, .errors = clone_errors, .return_type = usize };
-    const clone3: Config = .{ .tag = .clone3, .errors = clone_errors, .return_type = usize };
-    const execve: Config = .{ .tag = .execve, .errors = execve_errors, .return_type = usize };
-    const execveat: Config = .{ .tag = .execveat, .errors = execveat_errors, .return_type = usize };
-    const rt_sigaction: Config = .{ .tag = .rt_sigaction, .errors = sigaction_errors, .return_type = void };
-    const name_to_handle_at: Config = .{ .tag = .name_to_handle_at, .errors = name_to_handle_at_errors, .return_type = usize };
-    const open_by_handle_at: Config = .{ .tag = .open_by_handle_at, .errors = open_by_handle_at_errors, .return_type = usize };
-    const exit: Config = .{ .tag = .exit, .errors = null, .return_type = noreturn };
+    const read: Config = .{ .tag = .read, .errors = .{ .throw = read_errors }, .return_type = usize };
+    const write: Config = .{ .tag = .write, .errors = .{ .throw = write_errors }, .return_type = usize };
+    const open: Config = .{ .tag = .open, .errors = .{ .throw = open_errors }, .return_type = usize };
+    const openat: Config = .{ .tag = .openat, .errors = .{ .throw = open_errors }, .return_type = usize };
+    const close: Config = .{ .tag = .close, .errors = .{ .throw = close_errors }, .return_type = void };
+    const ioctl: Config = .{ .tag = .ioctl, .errors = .{ .throw = ioctl_errors }, .return_type = void };
+    const brk: Config = .{ .tag = .brk, .errors = .{ .throw = brk_errors }, .return_type = usize };
+    const mmap: Config = .{ .tag = .mmap, .errors = .{ .throw = mmap_errors }, .return_type = usize };
+    const munmap: Config = .{ .tag = .munmap, .errors = .{ .throw = munmap_errors }, .return_type = void };
+    const mremap: Config = .{ .tag = .mremap, .errors = .{ .throw = mremap_errors }, .return_type = usize };
+    const madvise: Config = .{ .tag = .madvise, .errors = .{ .throw = madvise_errors }, .return_type = void };
+    const memfd_create: Config = .{ .tag = .memfd_create, .errors = .{ .throw = memfd_create_errors }, .return_type = usize };
+    const stat: Config = .{ .tag = .stat, .errors = .{ .throw = stat_errors }, .return_type = void };
+    const fstat: Config = .{ .tag = .fstat, .errors = .{ .throw = stat_errors }, .return_type = void };
+    const lstat: Config = .{ .tag = .lstat, .errors = .{ .throw = stat_errors }, .return_type = void };
+    const statx: Config = .{ .tag = .statx, .errors = .{ .throw = stat_errors }, .return_type = void };
+    const newfstatat: Config = .{ .tag = .newfstatat, .errors = .{ .throw = stat_errors }, .return_type = void };
+    const mknod: Config = .{ .tag = .mknod, .errors = .{ .throw = mknod_errors }, .return_type = void };
+    const mknodat: Config = .{ .tag = .mknodat, .errors = .{ .throw = mknod_errors }, .return_type = void };
+    const getcwd: Config = .{ .tag = .getcwd, .errors = .{ .throw = getcwd_errors }, .return_type = usize };
+    const getdents64: Config = .{ .tag = .getdents64, .errors = .{ .throw = getdents_errors }, .return_type = usize };
+    const readlink: Config = .{ .tag = .readlink, .errors = .{ .throw = readlink_errors }, .return_type = usize };
+    const readlinkat: Config = .{ .tag = .readlinkat, .errors = .{ .throw = readlink_errors }, .return_type = usize };
+    const getuid: Config = .{ .tag = .getuid, .errors = .{}, .return_type = u16 };
+    const getgid: Config = .{ .tag = .getgid, .errors = .{}, .return_type = u16 };
+    const geteuid: Config = .{ .tag = .geteuid, .errors = .{}, .return_type = u16 };
+    const getegid: Config = .{ .tag = .getegid, .errors = .{}, .return_type = u16 };
+    const getrandom: Config = .{ .tag = .getrandom, .errors = .{ .throw = getrandom_errors }, .return_type = void };
+    const unlink: Config = .{ .tag = .unlink, .errors = .{ .throw = unlink_errors }, .return_type = void };
+    const unlinkat: Config = .{ .tag = .unlinkat, .errors = .{ .throw = unlink_errors }, .return_type = void };
+    const truncate: Config = .{ .tag = .truncate, .errors = .{ .throw = truncate_errors }, .return_type = void };
+    const ftruncate: Config = .{ .tag = .ftruncate, .errors = .{ .throw = truncate_errors }, .return_type = void };
+    const mkdir: Config = .{ .tag = .mkdir, .errors = .{ .throw = mkdir_errors }, .return_type = void };
+    const mkdirat: Config = .{ .tag = .mkdirat, .errors = .{ .throw = mkdir_errors }, .return_type = void };
+    const rmdir: Config = .{ .tag = .rmdir, .errors = .{ .throw = rmdir_errors }, .return_type = void };
+    const clock_gettime: Config = .{ .tag = .clock_gettime, .errors = .{ .throw = clock_get_errors }, .return_type = void };
+    const nanosleep: Config = .{ .tag = .nanosleep, .errors = .{ .throw = nanosleep_errors }, .return_type = void };
+    const dup: Config = .{ .tag = .dup, .errors = .{ .throw = dup_errors }, .return_type = usize };
+    const dup2: Config = .{ .tag = .dup2, .errors = .{ .throw = dup_errors }, .return_type = usize };
+    const dup3: Config = .{ .tag = .dup3, .errors = .{ .throw = dup_errors }, .return_type = usize };
+    const fork: Config = .{ .tag = .fork, .errors = .{ .throw = fork_errors }, .return_type = usize };
+    const wait4: Config = .{ .tag = .wait4, .errors = .{ .throw = wait_errors }, .return_type = void };
+    const waitid: Config = .{ .tag = .waitid, .errors = .{ .throw = wait_errors }, .return_type = void };
+    const clone: Config = .{ .tag = .clone, .errors = .{ .throw = clone_errors }, .return_type = usize };
+    const clone3: Config = .{ .tag = .clone3, .errors = .{ .throw = clone_errors }, .return_type = usize };
+    const execve: Config = .{ .tag = .execve, .errors = .{ .throw = execve_errors }, .return_type = usize };
+    const execveat: Config = .{ .tag = .execveat, .errors = .{ .throw = execveat_errors }, .return_type = usize };
+    const rt_sigaction: Config = .{ .tag = .rt_sigaction, .errors = .{ .throw = sigaction_errors }, .return_type = void };
+    const name_to_handle_at: Config = .{ .tag = .name_to_handle_at, .errors = .{ .throw = name_to_handle_at_errors }, .return_type = usize };
+    const open_by_handle_at: Config = .{ .tag = .open_by_handle_at, .errors = .{ .throw = open_by_handle_at_errors }, .return_type = usize };
+    const exit: Config = .{ .tag = .exit, .errors = .{}, .return_type = noreturn };
     const noexcept = opaque {
         // Called before main
-        pub const rt_sigaction = config.rt_sigaction.reconfigure(null, void);
+        pub const rt_sigaction = config.rt_sigaction.reconfigure(.{}, void);
         // Resource deallocation must succeed
-        pub const munmap = config.munmap.reconfigure(null, void);
-        pub const close = config.close.reconfigure(null, void);
-        pub const unlink = config.unlink.reconfigure(null, void);
+        pub const munmap = config.munmap.reconfigure(.{}, void);
+        pub const close = config.close.reconfigure(.{}, void);
+        pub const unlink = config.unlink.reconfigure(.{}, void);
         // Testing
-        pub const getrandom = config.getrandom.reconfigure(null, void);
-        pub const write = config.write.reconfigure(null, void);
+        pub const getrandom = config.getrandom.reconfigure(.{}, void);
+        pub const write = config.write.reconfigure(.{}, void);
         // Called after main
-        pub const readlink = config.readlink.reconfigure(null, i64);
-        pub const read = config.read.reconfigure(null, u64);
+        pub const readlink = config.readlink.reconfigure(.{}, i64);
+        pub const read = config.read.reconfigure(.{}, u64);
     };
 };
 

@@ -128,7 +128,7 @@ fn testArenaIntersection() !void {
     file.noexcept.write(2, array.readAll());
 }
 fn testRegularAddressSpace() !void {
-    const AddressSpace = virtual.GenericRegularAddressSpace(.{ .divisions = 8 });
+    const AddressSpace = virtual.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
     var address_space: AddressSpace = .{};
     const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
     const Array = Allocator.StructuredVector(u8);

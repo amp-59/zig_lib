@@ -17,48 +17,32 @@ pub const itos = builtin.fmt.ux;
 
 pub const AddressSpace = preset.address_space.regular_128;
 
-const default_errors: bool = !@hasDecl(@import("root"), "errors");
 const invalid_holder_state: u64 = (0b110000110000 << 48);
-const move_spec = if (default_errors) .{
+
+const move_spec = .{
     .options = .{},
     .logging = logging,
-} else .{
-    .options = .{},
-    .logging = logging,
-    .errors = builtin.root.errors,
+    .errors = .{ .abort = sys.mremap_errors },
 };
-const map_spec = if (default_errors)
-.{
+const map_spec = .{
     .options = .{},
     .logging = logging,
-} else .{
-    .options = .{},
-    .logging = logging,
-    .errors = builtin.root.errors,
+    .errors = .{ .abort = sys.mmap_errors },
 };
-const resize_spec = if (default_errors)
-.{
+const resize_spec = .{
     .logging = logging,
-} else .{
-    .logging = logging,
-    .errors = builtin.root.errors,
+    .errors = .{ .abort = sys.mremap_errors },
 };
-const unmap_spec = if (default_errors)
-.{
+const unmap_spec = .{
     .logging = logging,
-} else .{
-    .logging = logging,
-    .errors = builtin.root.errors,
+    .errors = .{ .abort = sys.munmap_errors },
 };
 const advice_opts = .{ .property = .{ .dump = true } };
-const advise_spec = if (default_errors)
-.{
+
+const advise_spec = .{
     .options = advice_opts,
     .logging = logging,
-} else .{
-    .options = advice_opts,
-    .logging = logging,
-    .errors = builtin.root.errors,
+    .errors = .{ .abort = sys.madvise_errors },
 };
 const wr_spec: mem.ReinterpretSpec = .{
     .composite = .{ .format = true },
@@ -66,7 +50,6 @@ const wr_spec: mem.ReinterpretSpec = .{
 };
 
 const logging = .{ .Acquire = is_verbose, .Release = is_verbose };
-const errors = &.{};
 
 fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.unmap(unmap_spec, 0x7000000, 0x3000000 * 2));
