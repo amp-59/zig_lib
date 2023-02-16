@@ -211,7 +211,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             .logging = dir_spec.logging.open,
         };
         const dir_close_spec: file.CloseSpec = .{
-            .errors = null,
+            .errors = .{},
             .logging = dir_spec.logging.close,
         };
         pub var disordered: u64 = 0;
