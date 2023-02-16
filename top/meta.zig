@@ -626,6 +626,68 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
         },
     }
 }
+pub fn InternalError(comptime Error: type) type {
+    return (union(enum) {
+        /// Return this error for any exception
+        throw: Error,
+        /// Abort the program for any exception
+        abort,
+        ignore,
+    });
+}
+pub fn ExternalError(comptime Value: type) type {
+    builtin.static.assert(@hasDecl(Value, "errorName"));
+    return (struct {
+        /// Throw error if unwrapping yields any of these values
+        throw: ?[]const Value = null,
+        /// Abort the program if unwrapping yields any of these values
+        abort: ?[]const Value = null,
+    });
+}
+pub fn ZigError(comptime Value: type, comptime return_codes: []const Value, comptime catch_all: ?[]const u8) type {
+    var error_set: []const builtin.Type.Error = &.{};
+    for (return_codes) |error_code| {
+        error_set = error_set ++ [1]builtin.Type.Error{.{ .name = error_code.errorName() }};
+    }
+    if (catch_all) |error_name| {
+        error_set = error_set ++ [1]builtin.Type.Error{.{ .name = error_name }};
+    }
+    return @Type(.{ .ErrorSet = error_set });
+}
+
+/// Attempt to match a return value against a set of error codes--returning the
+/// corresponding zig error on success.
+pub fn zigErrorThrow(
+    comptime Value: type,
+    comptime values: []const Value,
+    ret: isize,
+    comptime catch_all: ?[]const u8,
+) ZigError(Value, values, catch_all) {
+    const Error = ZigError(Value, values, catch_all);
+    inline for (values) |value| {
+        if (ret == @enumToInt(value)) {
+            return @field(Error, value.errorName());
+        }
+    }
+    if (catch_all) |error_name| {
+        return @field(Error, error_name);
+    }
+}
+/// Attempt to match a return value against a set of error codes--aborting the
+/// program on success.
+/// This function is exceptional in this namespace for its use of system calls.
+pub fn zigErrorAbort(
+    comptime Value: type,
+    comptime values: []const Value,
+    ret: isize,
+) void {
+    inline for (values) |value| {
+        if (ret == @enumToInt(value)) {
+            var buf: [4608]u8 = undefined;
+            builtin.debug.logAbort(&buf, value.errorName());
+        }
+    }
+}
 /// Return the value part of a function error union return type.
 pub fn ReturnPayload(comptime any_function: anytype) type {
     const T: type = @TypeOf(any_function);
