@@ -24,7 +24,7 @@ const input_open_spec: file.OpenSpec = .{
     },
 };
 const input_close_spec: file.CloseSpec = .{
-    .errors = null,
+    .errors = .{},
 };
 const output_file_spec: file.CreateSpec = .{
     .options = .{
@@ -34,7 +34,7 @@ const output_file_spec: file.CreateSpec = .{
     },
 };
 const output_close_spec: file.CloseSpec = .{
-    .errors = null,
+    .errors = .{},
 };
 const Stdio = enum(u2) {
     stdin = 0,
