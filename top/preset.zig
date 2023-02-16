@@ -66,7 +66,6 @@ pub const allocator = opaque {
     };
     pub const logging = opaque {
         pub const verbose: mem.AllocatorLogging = .{
-            .arena = builtin.Logging.verbose,
             .head = true,
             .sentinel = true,
             .metadata = true,
@@ -81,7 +80,6 @@ pub const allocator = opaque {
             .deallocate = true,
         };
         pub const silent: mem.AllocatorLogging = .{
-            .arena = builtin.Logging.silent,
             .head = false,
             .sentinel = false,
             .metadata = false,
@@ -98,17 +96,11 @@ pub const allocator = opaque {
     };
     pub const errors = opaque {
         pub const noexcept: mem.AllocatorErrors = .{
-            // This should not be allowed, but no consistency within library to
-            // enforce yet.
-            .acquire = null,
-            .release = null,
             .map = .{},
             .remap = .{},
             .unmap = .{},
         };
         pub const uniform: mem.AllocatorErrors = .{
-            .acquire = error.UnderSupply,
-            .release = null,
             .map = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
             .remap = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
             .unmap = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
@@ -116,8 +108,6 @@ pub const allocator = opaque {
         pub const critical: mem.AllocatorErrors = .{
             .map = .{ .throw = mmap.errors.mem },
             .remap = .{ .throw = mremap.errors.all },
-            .release = error.OverSupply,
-            .acquire = error.UnderSupply,
             .unmap = .{ .throw = munmap.errors.all },
         };
     };
