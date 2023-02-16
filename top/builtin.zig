@@ -1130,12 +1130,33 @@ pub const debug = opaque {
         asm volatile (
             \\syscall
             :
-            : [sysno] "{rax}" (1), // linux sys_write
-              [arg1] "{rdi}" (2), // stderr
-              [arg2] "{rsi}" (@ptrToInt(buf.ptr)),
-              [arg3] "{rdx}" (buf.len),
+            : [_] "{rax}" (1), // linux sys_write
+              [_] "{rdi}" (2), // stderr
+              [_] "{rsi}" (buf.ptr),
+              [_] "{rdx}" (buf.len),
             : "rcx", "r11", "memory", "rax"
         );
+    }
+    fn name(buf: []u8) u64 {
+        const rc: i64 = asm volatile (
+            \\syscall
+            : [rc] "={rax}" (-> isize),
+            : [sysno] "{rax}" (89), // linux readlink
+              [_] "{rdi}" ("/proc/self/exe"), // symlink to executable
+              [_] "{rsi}" (buf.ptr), // message buf ptr
+              [_] "{rdx}" (buf.len), // message buf len
+            : "rcx", "r11", "memory"
+        );
+        return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
+    }
+    fn abort() noreturn {
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (60), // linux sys_exit
+              [arg1] "{rdi}" (2), // exit code
+        );
+        unreachable;
     }
     // At the time of writing, this function benefits from inlining but
     // writeMulti does not.
@@ -1170,6 +1191,14 @@ pub const debug = opaque {
         if (logging.Fault) write(buf);
         abort();
     }
+    pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
+        var len: u64 = 0;
+        len +%= writeMany(buf[len..], about_error_p0_s);
+        len +%= about_error_p0_s.len;
+        len +%= name(buf[len..]);
+        len +%= writeMulti(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
+        logFault(buf);
+    }
     pub inline fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
         write(buf[0..writeMulti(buf, slices)]);
     }
@@ -1189,15 +1218,7 @@ pub const debug = opaque {
         if (logging.Fault) write(buf[0..writeMulti(buf, slices)]);
         abort();
     }
-    fn abort() noreturn {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (60), // linux sys_exit
-              [arg1] "{rdi}" (2), // exit code
-        );
-        unreachable;
-    }
+
     const static = opaque {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             comptime {
