@@ -1197,7 +1197,7 @@ pub const debug = opaque {
         len +%= about_error_p0_s.len;
         len +%= name(buf[len..]);
         len +%= writeMulti(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
-        logFault(buf);
+        logFault(buf[0..len]);
     }
     pub inline fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
         write(buf[0..writeMulti(buf, slices)]);
