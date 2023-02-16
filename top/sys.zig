@@ -2077,31 +2077,18 @@ fn ConfiguredSystemCall(comptime fn_conf: Config) type {
         const Function = @TypeOf(function);
     };
 }
-pub fn ZigError(comptime return_codes: []const ErrorCode) type {
-    var error_set: []const @TypeOf(@typeInfo(void)).Error = &.{};
-    for (return_codes) |error_code| {
-        error_set = error_set ++ [1]@TypeOf(@typeInfo(void)).Error{.{ .name = error_code.errorName() }};
-    }
-    return @Type(.{ .ErrorSet = error_set ++ [1]@TypeOf(@typeInfo(void)).Error{.{ .name = "OpaqueSystemError" }} });
-}
-pub fn zigError(comptime errors: []const ErrorCode, ret: isize) ZigError(errors) {
-    inline for (errors) |@"error"| {
-        if (ret == @enumToInt(@"error")) {
-            return @field(ZigError(errors), @"error".errorName());
-        }
-    }
-    return error.OpaqueSystemError;
-}
 pub const Config = struct {
     tag: Function,
-    errors: ?[]const ErrorCode,
+    errors: ErrorPolicy,
     return_type: type,
+
+    const catch_all: []const u8 = "OpaqueSystemError";
 
     /// Returns translation of configured system error codes--if any--to Zig
     /// error set.
     pub fn Errors(comptime fn_conf: Config) type {
-        if (fn_conf.errors) |errors| {
-            return ZigError(errors);
+        if (fn_conf.errors.throw) |errors| {
+            return meta.ZigError(ErrorCode, errors, catch_all);
         }
         return error{};
     }
@@ -2111,8 +2098,8 @@ pub const Config = struct {
     }
     /// No try if no error.
     pub fn Unwrapped(comptime fn_conf: Config) type {
-        if (fn_conf.errors) |errors| {
-            return ZigError(errors)!fn_conf.return_type;
+        if (fn_conf.errors.throw) |errors| {
+            return meta.ZigError(ErrorCode, errors, catch_all)!fn_conf.return_type;
         } else {
             return fn_conf.return_type;
         }
@@ -2121,8 +2108,8 @@ pub const Config = struct {
     /// which interface with system calls and use the result but discard or
     /// return something else to the user.
     pub fn Replaced(comptime fn_conf: Config, comptime T: type) type {
-        if (fn_conf.errors) |errors| {
-            return ZigError(errors)!T;
+        if (fn_conf.errors.throw) |errors| {
+            return meta.ZigError(ErrorCode, errors, catch_all)!T;
         } else {
             return T;
         }
@@ -2132,7 +2119,7 @@ pub const Config = struct {
     }
     pub fn reconfigure(
         comptime fn_conf: Config,
-        comptime errors: ?[]const ErrorCode,
+        comptime errors: ErrorPolicy,
         comptime return_type: ?type,
     ) Config {
         return .{
@@ -2145,8 +2132,11 @@ pub const Config = struct {
         return @enumToInt(fn_conf.tag);
     }
     fn wrap(comptime fn_conf: Config, ret: isize) Unwrapped(fn_conf) {
-        if (fn_conf.errors) |errors| {
-            if (ret < 0) return zigError(errors, ret);
+        if (fn_conf.errors.throw) |errors| {
+            if (ret < 0) return meta.zigErrorThrow(ErrorCode, errors, ret, catch_all);
+        }
+        if (fn_conf.errors.abort) |errors| {
+            if (ret < 0) return meta.zigErrorAbort(ErrorCode, errors, ret);
         }
         if (fn_conf.return_type == void) {
             return;
