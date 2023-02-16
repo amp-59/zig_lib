@@ -21,6 +21,7 @@ pub const Allocator = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
     .options = preset.allocator.options.small,
 });
+
 pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,

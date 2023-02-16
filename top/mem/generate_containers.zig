@@ -25,7 +25,12 @@ const implementation = @import("./implementation.zig");
 pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = mem.GenericRegularAddressSpace(.{
+    .lb_addr = 0,
+    .lb_offset = 0x40000000,
+    .divisions = 8,
+    .errors = .{ .acquire = .ignore, .release = .ignore },
+});
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
@@ -61,12 +66,15 @@ fn writeFunctionBodyPrimary(allocator: *gen.Allocator, array: *gen.String, ctn_d
         ctn_fn_info.loc == .Ahead;
     var len_fn_call: expr.FnCall =
         expr.FnCall.intr(allocator, ctn_detail, interface.get(.len));
-    //    var avail_fn_call: expr.FnCall =
-    //        expr.FnCall.intr(allocator, ctn_detail, interface.get(.avail));
-    //    var __len_fn_call: expr.FnCall =
-    //        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__len));
-    //    var __rem_fn_call: expr.FnCall =
-    //        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__rem));
+    var avail_fn_call: expr.FnCall =
+        expr.FnCall.intr(allocator, ctn_detail, interface.get(.avail));
+    _ = avail_fn_call;
+    var __len_fn_call: expr.FnCall =
+        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__len));
+    _ = __len_fn_call;
+    var __rem_fn_call: expr.FnCall =
+        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__rem));
+    _ = __rem_fn_call;
     var __at_fn_call: expr.FnCall =
         expr.FnCall.intr(allocator, ctn_detail, interface.get(.__at));
     var __ad_fn_call: expr.FnCall =
