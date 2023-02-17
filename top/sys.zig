@@ -1403,7 +1403,7 @@ pub const ErrorCode = enum(i9) {
     }
 };
 pub const ErrorPolicy = meta.ExternalError(ErrorCode);
-pub const Function = enum(u9) {
+pub const Fn = enum(u9) {
     read = 0,
     write = 1,
     open = 2,
@@ -1764,7 +1764,7 @@ pub const Function = enum(u9) {
     landlock_restrict_self = 446,
     memfd_secret = 447,
 
-    fn args(comptime function: Function) comptime_int {
+    fn args(comptime function: Fn) comptime_int {
         return switch (function) {
             .read => 3,
             .write => 3,
@@ -1973,66 +1973,66 @@ inline fn syscall0(comptime sysno: usize) isize {
         : "rax", "rcx", "r11", "memory"
     );
 }
-inline fn syscall1(comptime sysno: usize, arg1: usize) isize {
+inline fn syscall1(comptime sysno: usize, args: [1]usize) isize {
     return asm volatile ("syscall"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (sysno),
-          [_] "{rdi}" (arg1),
+          [_] "{rdi}" (args[0]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall2(comptime sysno: usize, arg1: usize, arg2: usize) isize {
+inline fn syscall2(comptime sysno: usize, args: [2]usize) isize {
     return asm volatile ("syscall"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (sysno),
-          [_] "{rdi}" (arg1),
-          [_] "{rsi}" (arg2),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall3(comptime sysno: usize, arg1: usize, arg2: usize, arg3: usize) isize {
+inline fn syscall3(comptime sysno: usize, args: [3]usize) isize {
     return asm volatile ("syscall"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (sysno),
-          [_] "{rdi}" (arg1),
-          [_] "{rsi}" (arg2),
-          [_] "{rdx}" (arg3),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall4(comptime sysno: usize, arg1: usize, arg2: usize, arg3: usize, arg4: usize) isize {
+inline fn syscall4(comptime sysno: usize, args: [4]usize) isize {
     return asm volatile ("syscall"
         : [_] "={rax}" (-> isize),
         : [_] "{rax}" (sysno),
-          [_] "{rdi}" (arg1),
-          [_] "{rsi}" (arg2),
-          [_] "{rdx}" (arg3),
-          [_] "{r10}" (arg4),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
+          [_] "{r10}" (args[3]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall5(comptime sysno: usize, arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize) isize {
+inline fn syscall5(comptime sysno: usize, args: [5]usize) isize {
     return asm volatile ("syscall"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (sysno),
-          [_] "{rdi}" (arg1),
-          [_] "{rsi}" (arg2),
-          [_] "{rdx}" (arg3),
-          [_] "{r10}" (arg4),
-          [_] "{r8}" (arg5),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
+          [_] "{r10}" (args[3]),
+          [_] "{r8}" (args[4]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall6(comptime sysno: usize, arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize, arg6: usize) isize {
+inline fn syscall6(comptime sysno: usize, args: [6]usize) isize {
     return asm volatile ("syscall"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (sysno),
-          [_] "{rdi}" (arg1),
-          [_] "{rsi}" (arg2),
-          [_] "{rdx}" (arg3),
-          [_] "{r10}" (arg4),
-          [_] "{r8}" (arg5),
-          [_] "{r9}" (arg6),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
+          [_] "{r10}" (args[3]),
+          [_] "{r8}" (args[4]),
+          [_] "{r9}" (args[5]),
         : "rcx", "r11", "memory"
     );
 }
@@ -2042,238 +2042,41 @@ const syscalls = .{
     syscall4, syscall5,
     syscall6,
 };
-fn ConfiguredSystemCall(comptime fn_conf: Config) type {
-    return struct {
-        const Unwrapped: type = fn_conf.Unwrapped();
-        const sysno: usize = fn_conf.sysno();
-        const syscallWithError = .{
-            syscallWithError0, syscallWithError1,
-            syscallWithError2, syscallWithError3,
-            syscallWithError4, syscallWithError5,
-            syscallWithError6,
-        };
-        inline fn syscallWithError0() Unwrapped {
-            return fn_conf.wrap(syscall0(sysno));
-        }
-        inline fn syscallWithError1(arg1: usize) Unwrapped {
-            return fn_conf.wrap(syscall1(sysno, arg1));
-        }
-        inline fn syscallWithError2(arg1: usize, arg2: usize) Unwrapped {
-            return fn_conf.wrap(syscall2(sysno, arg1, arg2));
-        }
-        inline fn syscallWithError3(arg1: usize, arg2: usize, arg3: usize) Unwrapped {
-            return fn_conf.wrap(syscall3(sysno, arg1, arg2, arg3));
-        }
-        inline fn syscallWithError4(arg1: usize, arg2: usize, arg3: usize, arg4: usize) Unwrapped {
-            return fn_conf.wrap(syscall4(sysno, arg1, arg2, arg3, arg4));
-        }
-        inline fn syscallWithError5(arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize) Unwrapped {
-            return fn_conf.wrap(syscall5(sysno, arg1, arg2, arg3, arg4, arg5));
-        }
-        inline fn syscallWithError6(arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize, arg6: usize) Unwrapped {
-            return fn_conf.wrap(syscall6(sysno, arg1, arg2, arg3, arg4, arg5, arg6));
-        }
-        const function = syscallWithError[fn_conf.tag.args()];
-        const Function = @TypeOf(function);
-    };
+pub fn Call(comptime errors: ?[]const ErrorCode, comptime return_type: type) type {
+    if (errors) |throw| {
+        return meta.ZigError(ErrorCode, throw, "OpaqueSystemError")!return_type;
+    }
+    return return_type;
 }
-pub const Config = struct {
-    tag: Function,
-    errors: ErrorPolicy,
-    return_type: type,
-
-    const catch_all: []const u8 = "OpaqueSystemError";
-
-    /// Returns translation of configured system error codes--if any--to Zig
-    /// error set.
-    pub fn Errors(comptime fn_conf: Config) type {
-        if (fn_conf.errors.throw) |errors| {
-            return meta.ZigError(ErrorCode, errors, catch_all);
-        }
-        return error{};
-    }
-    /// Always require try.
-    pub fn Wrapped(comptime fn_conf: Config) type {
-        return fn_conf.Errors()!fn_conf.return_type;
-    }
-    /// No try if no error.
-    pub fn Unwrapped(comptime fn_conf: Config) type {
-        if (fn_conf.errors.throw) |errors| {
-            return meta.ZigError(ErrorCode, errors, catch_all)!fn_conf.return_type;
-        } else {
-            return fn_conf.return_type;
-        }
-    }
-    /// Replace the return value type with another type. Useful for functions
-    /// which interface with system calls and use the result but discard or
-    /// return something else to the user.
-    pub fn Replaced(comptime fn_conf: Config, comptime T: type) type {
-        if (fn_conf.errors.throw) |errors| {
-            return meta.ZigError(ErrorCode, errors, catch_all)!T;
-        } else {
-            return T;
-        }
-    }
-    pub fn function(comptime fn_conf: Config) ConfiguredSystemCall(fn_conf).Function {
-        return ConfiguredSystemCall(fn_conf).function;
-    }
-    pub fn reconfigure(
-        comptime fn_conf: Config,
-        comptime errors: ErrorPolicy,
-        comptime return_type: ?type,
-    ) Config {
-        return .{
-            .tag = fn_conf.tag,
-            .errors = errors,
-            .return_type = return_type orelse fn_conf.return_type,
-        };
-    }
-    fn sysno(comptime fn_conf: Config) usize {
-        return @enumToInt(fn_conf.tag);
-    }
-    fn wrap(comptime fn_conf: Config, ret: isize) Unwrapped(fn_conf) {
-        if (fn_conf.errors.throw) |errors| {
-            if (ret < 0) return meta.zigErrorThrow(ErrorCode, errors, ret, catch_all);
-        }
-        if (fn_conf.errors.abort) |errors| {
-            if (ret < 0) return meta.zigErrorAbort(ErrorCode, errors, ret);
-        }
-        if (fn_conf.return_type == void) {
-            return;
-        }
-        if (fn_conf.return_type != noreturn) {
-            return @intCast(fn_conf.return_type, ret);
-        }
-        unreachable;
-    }
-    pub fn call(comptime fn_conf: Config, args: anytype) Wrapped(fn_conf) {
-        return fn_conf.wrap(@call(.always_inline, syscalls[fn_conf.tag.args()], .{@enumToInt(fn_conf.tag)} ++ args));
-    }
-};
-pub fn FunctionInterfaceSpec(comptime Specification: type) type {
-    return struct {
-        fn default(comptime function: Function) Config {
-            return @field(config, @tagName(function));
-        }
-        fn configure(comptime spec: Specification, comptime function: Function) Config {
-            return Config.reconfigure(default(function), spec.errors, spec.return_type);
-        }
-        /// Returns translation of configured system error codes--if any--to Zig
-        /// error set.
-        pub fn Errors(comptime spec: Specification, comptime function: Function) type {
-            return Config.Errors(configure(spec, function));
-        }
-        /// Always require try.
-        pub fn Wrapped(comptime spec: Specification, comptime function: Function) type {
-            return Config.Wrapped(configure(spec, function));
-        }
-        /// No try if no error.
-        pub fn Unwrapped(comptime spec: Specification, comptime function: Function) type {
-            return Config.Unwrapped(configure(spec, function));
-        }
-        /// Replace the return value type with another type. Useful for functions
-        /// which interface with system calls and use the result but discard or
-        /// return something else to the user.
-        pub fn Replaced(comptime spec: Specification, comptime function: Function, comptime T: type) type {
-            return Config.Replaced(configure(spec, function), T);
-        }
-        pub fn call(comptime spec: Specification, comptime function: Function, args: anytype) Wrapped(spec, function) {
-            return Config.call(configure(spec, function), args);
-        }
-    };
+pub fn Error(comptime errors: []const ErrorCode) type {
+    return meta.ZigError(ErrorCode, errors, "OpaqueSystemError");
 }
-/// Higher level functions give options to configure which errors are handled
-/// or lumped into a catch-all, or ignored entirely. With this interface it is
-/// also possible to configure to discard return values. e.g. mmap or mremap can
-/// discard any non-error return value when *_FIXED_NOREPLACE is set, as any
-/// non-error return value will be equal to the input address.
-const config = opaque {
-    const read: Config = .{ .tag = .read, .errors = .{ .throw = read_errors }, .return_type = usize };
-    const write: Config = .{ .tag = .write, .errors = .{ .throw = write_errors }, .return_type = usize };
-    const open: Config = .{ .tag = .open, .errors = .{ .throw = open_errors }, .return_type = usize };
-    const openat: Config = .{ .tag = .openat, .errors = .{ .throw = open_errors }, .return_type = usize };
-    const close: Config = .{ .tag = .close, .errors = .{ .throw = close_errors }, .return_type = void };
-    const ioctl: Config = .{ .tag = .ioctl, .errors = .{ .throw = ioctl_errors }, .return_type = void };
-    const brk: Config = .{ .tag = .brk, .errors = .{ .throw = brk_errors }, .return_type = usize };
-    const mmap: Config = .{ .tag = .mmap, .errors = .{ .throw = mmap_errors }, .return_type = usize };
-    const munmap: Config = .{ .tag = .munmap, .errors = .{ .throw = munmap_errors }, .return_type = void };
-    const mremap: Config = .{ .tag = .mremap, .errors = .{ .throw = mremap_errors }, .return_type = usize };
-    const madvise: Config = .{ .tag = .madvise, .errors = .{ .throw = madvise_errors }, .return_type = void };
-    const memfd_create: Config = .{ .tag = .memfd_create, .errors = .{ .throw = memfd_create_errors }, .return_type = usize };
-    const stat: Config = .{ .tag = .stat, .errors = .{ .throw = stat_errors }, .return_type = void };
-    const fstat: Config = .{ .tag = .fstat, .errors = .{ .throw = stat_errors }, .return_type = void };
-    const lstat: Config = .{ .tag = .lstat, .errors = .{ .throw = stat_errors }, .return_type = void };
-    const statx: Config = .{ .tag = .statx, .errors = .{ .throw = stat_errors }, .return_type = void };
-    const newfstatat: Config = .{ .tag = .newfstatat, .errors = .{ .throw = stat_errors }, .return_type = void };
-    const mknod: Config = .{ .tag = .mknod, .errors = .{ .throw = mknod_errors }, .return_type = void };
-    const mknodat: Config = .{ .tag = .mknodat, .errors = .{ .throw = mknod_errors }, .return_type = void };
-    const getcwd: Config = .{ .tag = .getcwd, .errors = .{ .throw = getcwd_errors }, .return_type = usize };
-    const getdents64: Config = .{ .tag = .getdents64, .errors = .{ .throw = getdents_errors }, .return_type = usize };
-    const readlink: Config = .{ .tag = .readlink, .errors = .{ .throw = readlink_errors }, .return_type = usize };
-    const readlinkat: Config = .{ .tag = .readlinkat, .errors = .{ .throw = readlink_errors }, .return_type = usize };
-    const getuid: Config = .{ .tag = .getuid, .errors = .{}, .return_type = u16 };
-    const getgid: Config = .{ .tag = .getgid, .errors = .{}, .return_type = u16 };
-    const geteuid: Config = .{ .tag = .geteuid, .errors = .{}, .return_type = u16 };
-    const getegid: Config = .{ .tag = .getegid, .errors = .{}, .return_type = u16 };
-    const getrandom: Config = .{ .tag = .getrandom, .errors = .{ .throw = getrandom_errors }, .return_type = void };
-    const unlink: Config = .{ .tag = .unlink, .errors = .{ .throw = unlink_errors }, .return_type = void };
-    const unlinkat: Config = .{ .tag = .unlinkat, .errors = .{ .throw = unlink_errors }, .return_type = void };
-    const truncate: Config = .{ .tag = .truncate, .errors = .{ .throw = truncate_errors }, .return_type = void };
-    const ftruncate: Config = .{ .tag = .ftruncate, .errors = .{ .throw = truncate_errors }, .return_type = void };
-    const mkdir: Config = .{ .tag = .mkdir, .errors = .{ .throw = mkdir_errors }, .return_type = void };
-    const mkdirat: Config = .{ .tag = .mkdirat, .errors = .{ .throw = mkdir_errors }, .return_type = void };
-    const rmdir: Config = .{ .tag = .rmdir, .errors = .{ .throw = rmdir_errors }, .return_type = void };
-    const clock_gettime: Config = .{ .tag = .clock_gettime, .errors = .{ .throw = clock_get_errors }, .return_type = void };
-    const nanosleep: Config = .{ .tag = .nanosleep, .errors = .{ .throw = nanosleep_errors }, .return_type = void };
-    const dup: Config = .{ .tag = .dup, .errors = .{ .throw = dup_errors }, .return_type = usize };
-    const dup2: Config = .{ .tag = .dup2, .errors = .{ .throw = dup_errors }, .return_type = usize };
-    const dup3: Config = .{ .tag = .dup3, .errors = .{ .throw = dup_errors }, .return_type = usize };
-    const fork: Config = .{ .tag = .fork, .errors = .{ .throw = fork_errors }, .return_type = usize };
-    const wait4: Config = .{ .tag = .wait4, .errors = .{ .throw = wait_errors }, .return_type = void };
-    const waitid: Config = .{ .tag = .waitid, .errors = .{ .throw = wait_errors }, .return_type = void };
-    const clone: Config = .{ .tag = .clone, .errors = .{ .throw = clone_errors }, .return_type = usize };
-    const clone3: Config = .{ .tag = .clone3, .errors = .{ .throw = clone_errors }, .return_type = usize };
-    const execve: Config = .{ .tag = .execve, .errors = .{ .throw = execve_errors }, .return_type = usize };
-    const execveat: Config = .{ .tag = .execveat, .errors = .{ .throw = execveat_errors }, .return_type = usize };
-    const rt_sigaction: Config = .{ .tag = .rt_sigaction, .errors = .{ .throw = sigaction_errors }, .return_type = void };
-    const name_to_handle_at: Config = .{ .tag = .name_to_handle_at, .errors = .{ .throw = name_to_handle_at_errors }, .return_type = usize };
-    const open_by_handle_at: Config = .{ .tag = .open_by_handle_at, .errors = .{ .throw = open_by_handle_at_errors }, .return_type = usize };
-    const exit: Config = .{ .tag = .exit, .errors = .{}, .return_type = noreturn };
-    const noexcept = opaque {
-        // Called before main
-        pub const rt_sigaction = config.rt_sigaction.reconfigure(.{}, void);
-        // Resource deallocation must succeed
-        pub const munmap = config.munmap.reconfigure(.{}, void);
-        pub const close = config.close.reconfigure(.{}, void);
-        pub const unlink = config.unlink.reconfigure(.{}, void);
-        // Testing
-        pub const getrandom = config.getrandom.reconfigure(.{}, void);
-        pub const write = config.write.reconfigure(.{}, void);
-        // Called after main
-        pub const readlink = config.readlink.reconfigure(.{}, i64);
-        pub const read = config.read.reconfigure(.{}, u64);
+pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors.throw, return_type) {
+    const ret: isize = switch (tag.args()) {
+        0 => syscall0(@enumToInt(tag), args),
+        1 => syscall1(@enumToInt(tag), args),
+        2 => syscall2(@enumToInt(tag), args),
+        3 => syscall3(@enumToInt(tag), args),
+        4 => syscall4(@enumToInt(tag), args),
+        5 => syscall5(@enumToInt(tag), args),
+        6 => syscall6(@enumToInt(tag), args),
+        else => unreachable,
     };
-};
-
-// Select system functions without configuration
-pub const exit = config.exit.function();
-pub const getuid = config.getuid.function();
-pub const getgid = config.getgid.function();
-pub const geteuid = config.geteuid.function();
-pub const getegid = config.getegid.function();
-pub const getcwd = config.getgid.function();
-pub const getdents = config.getdents64.function();
-pub const write = config.write.function();
-pub const read = config.read.function();
-pub const clock_gettime = config.clock_gettime.function();
-pub const readlinkat = config.readlinkat.function();
-pub const noexcept = struct {
-    pub const rt_sigaction = config.noexcept.rt_sigaction.function();
-    pub const munmap = config.noexcept.munmap.function();
-    pub const close = config.noexcept.close.function();
-    pub const unlink = config.noexcept.unlink.function();
-    pub const getrandom = config.noexcept.getrandom.function();
-    pub const write = config.noexcept.write.function();
-    pub const readlink = config.noexcept.readlink.function();
-    pub const read = config.noexcept.read.function();
-};
+    if (errors.throw) |throw| {
+        if (ret < 0) {
+            return meta.zigErrorThrow(ErrorCode, throw, ret, "OpaqueSystemError");
+        }
+    }
+    if (errors.abort) |abort| {
+        if (ret < 0) {
+            return meta.zigErrorAbort(ErrorCode, abort, ret);
+        }
+    }
+    if (return_type == void) {
+        return;
+    }
+    if (return_type != noreturn) {
+        return @intCast(return_type, ret);
+    }
+    unreachable;
+}
