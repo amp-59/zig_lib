@@ -3,8 +3,6 @@ const lit = srg.lit;
 const sys = srg.sys;
 const fmt = srg.fmt;
 const mem = srg.mem;
-const mach = srg.mach;
-const time = srg.time;
 const file = srg.file;
 const meta = srg.meta;
 const proc = srg.proc;
@@ -14,36 +12,41 @@ const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = mem.GenericRegularAddressSpace(.{
+    .lb_addr = 0,
+    .lb_offset = 0x40000000,
+    .divisions = 32,
+});
+
 pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
+pub const is_silent: bool = false;
 
-const map_spec: thread.MapSpec = .{ .options = .{} };
-const thread_spec: proc.CloneSpec = .{ .errors = .{}, .return_type = u64, .options = .{} };
+const map_spec: thread.MapSpec = .{
+    .errors = .{},
+    .options = .{},
+};
+const thread_spec: proc.CloneSpec = .{
+    .errors = .{},
+    .options = .{},
+    .return_type = u64,
+};
 const Allocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .options = .{
-        .count_allocations = false,
-        .require_filo_free = false,
-        .require_geometric_growth = true,
-        .trace_state = false,
-        .count_branches = false,
+    .options = blk: {
+        var tmp = preset.allocator.options.small;
+        tmp.init_commit = 32768;
+        tmp.prefer_remap = false;
+        break :blk tmp;
     },
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 1,
-    .options = .{
-        .count_allocations = false,
-        .require_filo_free = false,
-        .require_geometric_growth = true,
-        .trace_state = false,
-        .count_branches = false,
-    },
-    .errors = preset.allocator.errors.noexcept,
+    .options = preset.allocator.options.small,
     .logging = preset.allocator.logging.silent,
+    .errors = preset.allocator.errors.noexcept,
 });
 const String1 = Allocator1.StructuredHolder(u8);
 const String0 = Allocator0.StructuredHolder(u8);
@@ -56,23 +59,18 @@ const Options = struct {
     follow: bool = false,
     wide: bool = false,
     max_depth: ?u8 = null,
-
     pub const Map = proc.GenericOptions(Options);
-
     const plain_print: bool = false;
     const print_in_second_thread: bool = true;
-    const never_print_mid_line: bool = false;
     const always_show_hidden: bool = true;
     const permit_switch_arrows: bool = false;
     const use_wide_arrows: bool = false;
     const always_try_empty_dir_correction: bool = false;
-
     const about_all_s: []const u8 = "show hidden file system objects";
     const about_follow_s: []const u8 = "follow symbolic links";
     const about_no_follow_s: []const u8 = "do not " ++ about_follow_s;
     const about_wide_s: []const u8 = "display entries using wide character symbols";
     const about_max_depth_s: []const u8 = "limit the maximum depth of recursion";
-
     const yes = .{ .boolean = true };
     const no = .{ .boolean = false };
     const int = .{ .convert = convertToInt };
@@ -219,11 +217,7 @@ fn writeAndWalk(
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
-
-    while (list.at(index)) |_| : (index += 1) {
-        //while (index != list.count) : (index += 1) {
-        const entry: *DirStream.Entry = list.at(index) orelse break;
-
+    while (list.at(index)) |entry| : (index += 1) {
         const is_last: bool = index == list.count - 1;
         const indent: []const u8 = if (is_last) Style.spc_s else Style.bar_s;
         if (!Options.plain_print) {
@@ -243,7 +237,7 @@ fn writeAndWalk(
                 }
                 results.dirs += 1;
                 const len_0: u64 = array.len(allocator_1.*);
-                const s_arrow_s: []const u8 = mach.cmovx(is_last, Style.last_dir_arrow_s, Style.dir_arrow_s);
+                const s_arrow_s: []const u8 = if (is_last) Style.last_dir_arrow_s else Style.dir_arrow_s;
                 try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
                     if (Options.plain_print) {
                         break :blk .{ alts_buf.readAll(), base_name, endl_s };
@@ -255,7 +249,7 @@ fn writeAndWalk(
                 writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth + 1) catch {};
                 const t_total: u64 = results.total();
                 if (try_empty_dir_correction) {
-                    const t_arrow_s: []const u8 = mach.cmovx(is_last, Style.last_empty_dir_arrow_s, Style.empty_dir_arrow_s);
+                    const t_arrow_s: []const u8 = if (is_last) Style.last_empty_dir_arrow_s else Style.empty_dir_arrow_s;
                     if (s_total == t_total) {
                         array.undefine(array.len(allocator_1.*) -% len_0);
                         array.writeAny(preset.reinterpret.ptr, .{ alts_buf.readAll(), t_arrow_s, base_name, endl_s });
@@ -264,7 +258,7 @@ fn writeAndWalk(
             },
             .symbolic_link => {
                 results.links += 1;
-                const arrow: []const u8 = mach.cmovx(is_last, Style.last_link_arrow_s, Style.link_arrow_s);
+                const arrow: []const u8 = if (is_last) Style.last_link_arrow_s else Style.link_arrow_s;
                 const style: []const u8 = lit.fx.color.fg.cyan;
                 if (options.follow) {
                     try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
@@ -291,7 +285,7 @@ fn writeAndWalk(
             },
             else => {
                 results.files += 1;
-                const arrow: []const u8 = mach.cmovx(is_last, Style.last_file_arrow_s, Style.file_arrow_s);
+                const arrow: []const u8 = if (is_last) Style.last_file_arrow_s else Style.file_arrow_s;
                 try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
                     if (Options.plain_print) {
                         break :blk .{ alts_buf.readAll(), base_name, endl_s };
@@ -340,10 +334,10 @@ inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1
     const many: []const u8 = array.readManyAt(allocator, offset);
     if (many.len > (n - 1)) {
         if (n == 1) {
-            file.noexcept.write(2, many);
+            file.noexcept.write(1, many);
             return many.len;
         } else if (many[many.len - 1] == '\n') {
-            file.noexcept.write(2, many);
+            file.noexcept.write(1, many);
             return many.len;
         }
     }
@@ -390,7 +384,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     defer allocator_0.deinit(&address_space);
     var allocator_1: Allocator1 = try Allocator1.init(&address_space);
     defer allocator_1.deinit(&address_space);
-    const stack_addr: u64 = mach.cmov64(Options.print_in_second_thread, try thread.map(map_spec, 8), 0);
+    const stack_addr: u64 = if (Options.print_in_second_thread) try meta.wrap(thread.map(map_spec, 8)) else 0;
     defer thread.unmap(.{ .errors = .{} }, 8);
     try meta.wrap(allocator_0.map(64 * 1024 * 1024));
     try meta.wrap(allocator_1.map(64 * 1024 * 1024));
