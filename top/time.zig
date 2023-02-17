@@ -16,7 +16,7 @@ pub const days_per_400y: u64 = (days_per_year * 400) + 97;
 pub const days_per_100y: u64 = (days_per_year * 100) + 24;
 pub const leap_epoch: u64 = 946_684_800 + (86_400 * (31 + 29));
 
-pub const Clock = meta.EnumBitField(enum(u64) {
+pub const Kind = enum(u64) {
     realtime = CLOCK.REALTIME,
     monotonic = CLOCK.MONOTONIC,
     process_cputime_id = CLOCK.PROCESS_CPUTIME_ID,
@@ -29,7 +29,7 @@ pub const Clock = meta.EnumBitField(enum(u64) {
     boottime_alarm = CLOCK.BOOTTIME_ALARM,
     tai = CLOCK.TAI,
     const CLOCK = sys.CLOCK;
-});
+};
 pub const Month = enum {
     January,
     February,
@@ -44,49 +44,16 @@ pub const Month = enum {
     November,
     December,
 };
-pub fn realClock(comptime clock_spec: ?RealClock) !TimeSpec {
+pub const ClockSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
+};
+pub fn get(comptime clock_spec: ClockSpec, kind: Kind) sys.Call(clock_spec.errors.throw, TimeSpec) {
     var ts: TimeSpec = undefined;
-    const flags: Clock = .{ .tag = if (clock_spec) |spec|
-        switch (spec) {
-            .alarm => .realtime_alarm,
-            .coarse => .realtime_coarse,
-        }
-    else
-        .realtime };
-    try sys.clock_gettime(flags.val, @ptrToInt(&ts));
-    return ts;
-}
-pub fn montonicClock(comptime clock_spec: ?MonotonicClock) !TimeSpec {
-    var ts: TimeSpec = undefined;
-    const flags: Clock = .{ .tag = if (clock_spec) |spec|
-        switch (spec) {
-            .raw => .monotonic_raw,
-            .coarse => .monotonic_coarse,
-        }
-    else
-        .monotonic };
-    try sys.clock_gettime(flags.val, @ptrToInt(&ts));
-    return ts;
-}
-pub fn cpuClock(comptime clock_spec: CPUClock) !TimeSpec {
-    var ts: TimeSpec = undefined;
-    const flags: Clock = .{ .tag = switch (clock_spec) {
-        .process => .process_cputime_id,
-        .thread => .thread_cputime_id,
-    } };
-    try sys.clock_gettime(flags.val, @ptrToInt(&ts));
-    return ts;
-}
-pub fn bootClock(comptime clock_spec: ?BootClock) !TimeSpec {
-    var ts: TimeSpec = undefined;
-    const flags: Clock = .{ .tag = if (clock_spec) |spec|
-        switch (spec) {
-            .alarm => .boottime_alarm,
-        }
-    else
-        .boottime };
-    try sys.clock_gettime(flags.val, @ptrToInt(&ts));
-    return ts;
+    if (meta.wrap(sys.call(.clock_gettime, clock_spec.errors, void, .{ @enumToInt(kind), @ptrToInt(&ts) }))) {
+        return ts;
+    } else |clock_error| {
+        return clock_error;
+    }
 }
 pub fn nanoSleepB(req: TimeSpec) !void {
     try sys.nanosleep(@ptrToInt(&req), 0);
@@ -99,16 +66,12 @@ pub fn nanoSleepA(req: TimeSpec) !TimeSpec {
 const SleepSpec = struct {
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
-    logging: builtin.Logging = .{},
-
     pub usingnamespace sys.FunctionInterfaceSpec(SleepSpec);
 };
-pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) spec.Unwrapped(.nanosleep) {
-    if (spec.call(.nanosleep, .{ @ptrToInt(&ts), 0 })) {
-        return;
-    } else |nanosleep_error| {
+pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) sys.Call(spec.errors.throw, void) {
+    spec.call(.nanosleep, .{ @ptrToInt(&ts), 0 }) catch |nanosleep_error| {
         return nanosleep_error;
-    }
+    };
 }
 pub fn diff(arg1: TimeSpec, arg2: TimeSpec) TimeSpec {
     var ret: TimeSpec = .{
