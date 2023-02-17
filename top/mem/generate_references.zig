@@ -75,35 +75,35 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
     const has_unit_alignment: bool =
         impl_variant.techs.auto_alignment or
         impl_variant.techs.unit_alignment;
-    const subtract_call_1: expr.FnCall =
+    const sub_call_1: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
-        .symbol = tok.subtract_fn_name,
+        .symbol = tok.sub_fn_name,
         .op1 = .{ .symbol = tok.low_alignment_specifier_name },
         .op2 = .{ .constant = 1 },
     });
-    const shift_left_call_65535_48: expr.FnCall =
+    const shl_call_65535_48: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
-        .symbol = tok.shift_left_fn_name,
+        .symbol = tok.shl_fn_name,
         .op1 = .{ .constant = 65535 },
         .op2 = .{ .constant = 48 },
     });
-    const shift_right_call_lb_16: expr.FnCall =
+    const shr_call_lb_16: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
-        .symbol = tok.shift_right_fn_name,
+        .symbol = tok.shr_fn_name,
         .op1 = .{ .symbol = tok.allocated_byte_address_word_access },
         .op2 = .{ .constant = 16 },
     });
-    const shift_right_call_ub_16: expr.FnCall =
+    const shr_call_ub_16: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
-        .symbol = tok.shift_right_fn_name,
+        .symbol = tok.shr_fn_name,
         .op1 = .{ .symbol = tok.undefined_byte_address_word_access },
         .op2 = .{ .constant = 16 },
     });
     const or_call_1_65535_48: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
         .symbol = tok.or_fn_name,
-        .op1 = .{ .call = &subtract_call_1 },
-        .op2 = .{ .call = &shift_left_call_65535_48 },
+        .op1 = .{ .call = &sub_call_1 },
+        .op2 = .{ .call = &shl_call_65535_48 },
     });
     const pointer_opaque_call_sentinel: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
@@ -142,13 +142,13 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                 impl_variant.techs.single_packed_approximate_capacity)
             {
                 if (config.packed_capacity_low) {
-                    array.writeFormat(shift_right_call_lb_16);
+                    array.writeFormat(shr_call_lb_16);
                     return array.writeMany(tok.end_expression);
                 }
                 array.writeFormat(expr.andn(
                     allocator,
                     .{ .symbol = tok.allocated_byte_address_word_access },
-                    .{ .call = &shift_left_call_65535_48 },
+                    .{ .call = &shl_call_65535_48 },
                 ));
                 return array.writeMany(tok.end_expression);
             }
@@ -173,8 +173,8 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                     if (config.packed_capacity_low) {
                         array.writeFormat(expr.andn(
                             allocator,
-                            .{ .call = &shift_right_call_lb_16 },
-                            .{ .call = &subtract_call_1 },
+                            .{ .call = &shr_call_lb_16 },
+                            .{ .call = &sub_call_1 },
                         ));
                         return array.writeMany(tok.end_expression);
                     }
@@ -188,7 +188,7 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                 array.writeFormat(expr.andn(
                     allocator,
                     .{ .symbol = tok.allocated_byte_address_word_access },
-                    .{ .call = &subtract_call_1 },
+                    .{ .call = &sub_call_1 },
                 ));
                 return array.writeMany(tok.end_expression);
             }
@@ -221,13 +221,13 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
             array.writeMany(tok.return_keyword);
             if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (config.packed_capacity_low) {
-                    array.writeFormat(shift_right_call_ub_16);
+                    array.writeFormat(shr_call_ub_16);
                     return array.writeMany(tok.end_expression);
                 }
                 array.writeFormat(expr.andn(
                     allocator,
                     .{ .symbol = tok.undefined_byte_address_word_access },
-                    .{ .call = &shift_left_call_65535_48 },
+                    .{ .call = &shl_call_65535_48 },
                 ));
                 return array.writeMany(tok.end_expression);
             }
@@ -383,14 +383,14 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                     .op1 = .{ .symbol = tok.allocated_byte_address_word_access },
                 });
                 if (impl_variant.specs.sentinel) {
-                    const align_below_call: expr.FnCall = expr.alignB(
+                    const alignb_call: expr.FnCall = expr.alignB(
                         allocator,
                         .{ .call = &unpck1x_call },
                         .{ .symbol = tok.high_alignment_specifier_name },
                     );
                     array.writeFormat(expr.sub(
                         allocator,
-                        .{ .call = &align_below_call },
+                        .{ .call = &alignb_call },
                         .{ .symbol = tok.high_alignment_specifier_name },
                     ));
                     return array.writeMany(tok.end_expression);
@@ -410,14 +410,14 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                     .op2 = .{ .symbol = tok.undefined_byte_address_word_access },
                 });
                 if (impl_variant.specs.sentinel) {
-                    const align_below_call: expr.FnCall = expr.alignB(
+                    const alignb_call: expr.FnCall = expr.alignB(
                         allocator,
                         .{ .call = &unpck2x_call },
                         .{ .symbol = tok.high_alignment_specifier_name },
                     );
                     array.writeFormat(expr.sub(
                         allocator,
-                        .{ .call = &align_below_call },
+                        .{ .call = &alignb_call },
                         .{ .symbol = tok.high_alignment_specifier_name },
                     ));
                     return array.writeMany(tok.end_expression);
@@ -430,18 +430,18 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                     return array.writeMany(tok.end_expression);
                 }
             } else if (impl_variant.specs.sentinel) {
-                const subtract_call: expr.FnCall = expr.sub(
+                const sub_call: expr.FnCall = expr.sub(
                     allocator,
                     .{ .call = &allocated_byte_count_call },
                     .{ .symbol = tok.high_alignment_specifier_name },
                 );
                 if (has_unit_alignment) {
-                    array.writeFormat(subtract_call);
+                    array.writeFormat(sub_call);
                     return array.writeMany(tok.end_expression);
                 } else {
                     array.writeFormat(expr.sub(
                         allocator,
-                        .{ .call = &subtract_call },
+                        .{ .call = &sub_call },
                         .{ .call = &alignment },
                     ));
                     return array.writeMany(tok.end_expression);
@@ -520,15 +520,15 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                 if (config.packed_capacity_low) {
                     array.writeFormat(expr.@"and"(
                         allocator,
-                        .{ .call = &shift_right_call_lb_16 },
-                        .{ .call = &subtract_call_1 },
+                        .{ .call = &shr_call_lb_16 },
+                        .{ .call = &sub_call_1 },
                     ));
                     return array.writeMany(tok.end_expression);
                 } else {
                     array.writeFormat(expr.@"and"(
                         allocator,
                         .{ .symbol = tok.allocated_byte_address_word_access },
-                        .{ .call = &subtract_call_1 },
+                        .{ .call = &sub_call_1 },
                     ));
                     return array.writeMany(tok.end_expression);
                 }
@@ -592,154 +592,140 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
         .construct => {
             array.writeMany(tok.return_keyword);
             array.writeMany(".{ ");
-            const or_r = expr.@"or"(
+            const sub_or_ab_lb_ab: expr.FnCall = expr.subOr(
                 allocator,
                 .{ .symbol = tok.source_aligned_byte_address_name },
-                .{ .call = &expr.sub(
-                    allocator,
-                    .{ .symbol = tok.source_aligned_byte_address_name },
-                    .{ .symbol = tok.source_allocated_byte_address_name },
-                ) },
+                .{ .symbol = tok.source_allocated_byte_address_name },
+                .{ .symbol = tok.source_aligned_byte_address_name },
             );
             if (impl_variant.fields.allocated_byte_address) {
                 if (has_packed_approximate_capacity) {
                     if (impl_variant.techs.disjunct_alignment) {
-                        const init_lb_word: [4]expr.Operand = expr.initialize(
-                            tok.allocated_byte_address_word_field_name,
-                            .{ .call = if (config.packed_capacity_low) &expr.@"or"(
+                        if (config.packed_capacity_low) {
+                            const shl_or_sub_or_16_lb_c: expr.FnCall = expr.shlOr(
                                 allocator,
-                                .{ .call = &if (config.packed_capacity_low) expr.shl(
-                                    allocator,
-                                    .{ .call = &or_r },
-                                    .{ .constant = 16 },
-                                ) },
+                                .{ .call = &sub_or_ab_lb_ab },
+                                .{ .constant = 16 },
                                 .{ .symbol = tok.source_single_approximation_counts_name },
-                            ) else expr.@"or"(
+                            );
+                            const init_lb_word: [4]expr.Operand = expr.initialize(
+                                tok.allocated_byte_address_word_field_name,
+                                .{ .call = &shl_or_sub_or_16_lb_c },
+                            );
+                            expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                            array.writeMany(tok.end_small_item);
+                        } else {
+                            const shl_or_lb_c_48_sub_or: expr.FnCall = expr.shlOr(
                                 allocator,
-                                .{ .call = &expr.shl(
-                                    allocator,
-                                    .{ .symbol = tok.source_single_approximation_counts_name },
-                                    .{ .constant = 48 },
-                                ) },
-                                .{ .call = &or_r },
-                            ) },
-                        );
-                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
-                        array.writeMany(tok.end_small_item);
+                                .{ .symbol = tok.source_single_approximation_counts_name },
+                                .{ .constant = 48 },
+                                .{ .call = &sub_or_ab_lb_ab },
+                            );
+                            const init_lb_word: [4]expr.Operand = expr.initialize(
+                                tok.allocated_byte_address_word_field_name,
+                                .{ .call = &shl_or_lb_c_48_sub_or },
+                            );
+                            expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                            array.writeMany(tok.end_small_item);
+                        }
                     } else {
-                        const init_lb_word: [4]expr.Operand = expr.initialize(
-                            tok.allocated_byte_address_word_field_name,
-                            .{ .call = &if (config.packed_capacity_low) expr.@"or"(
+                        if (config.packed_capacity_low) {
+                            const shl_or_ab_16_lb_c: expr.FnCall = expr.shlOr(
                                 allocator,
-                                .{ .call = &expr.shl(
-                                    allocator,
-                                    .{ .symbol = tok.source_allocated_byte_address_name },
-                                    .{ .constant = 16 },
-                                ) },
-                                .{ .symbol = tok.source_single_approximation_counts_name },
-                            ) else expr.@"or"(
-                                allocator,
-                                .{ .call = &expr.shl(
-                                    allocator,
-                                    .{ .symbol = tok.source_single_approximation_counts_name },
-                                    .{ .constant = 48 },
-                                ) },
                                 .{ .symbol = tok.source_allocated_byte_address_name },
-                            ) },
-                        );
-                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
-                        array.writeMany(tok.end_small_item);
+                                .{ .constant = 16 },
+                                .{ .symbol = tok.source_single_approximation_counts_name },
+                            );
+                            const init_lb_word: [4]expr.Operand = expr.initialize(
+                                tok.allocated_byte_address_word_field_name,
+                                .{ .call = &shl_or_ab_16_lb_c },
+                            );
+                            expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                            array.writeMany(tok.end_small_item);
+                        } else {
+                            const shl_or_lb_c_48_ab: expr.FnCall = expr.shlOr(
+                                allocator,
+                                .{ .symbol = tok.source_single_approximation_counts_name },
+                                .{ .constant = 48 },
+                                .{ .symbol = tok.source_allocated_byte_address_name },
+                            );
+                            const init_lb_word: [4]expr.Operand = expr.initialize(
+                                tok.allocated_byte_address_word_field_name,
+                                .{ .call = &shl_or_lb_c_48_ab },
+                            );
+                            expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                            array.writeMany(tok.end_small_item);
+                        }
                     }
                 } else {
-                    if (impl_variant.techs.disjunct_alignment) {
-                        const init_lb_word: [4]expr.Operand = expr.initialize(
-                            tok.allocated_byte_address_word_field_name,
-                            .{ .call = &or_r },
-                        );
-                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
-                        array.writeMany(tok.end_small_item);
-                    } else {
-                        const init_lb_word: [4]expr.Operand = expr.initialize(
-                            tok.allocated_byte_address_word_field_name,
-                            .{ .symbol = tok.source_allocated_byte_address_name },
-                        );
-                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
-                        array.writeMany(tok.end_small_item);
-                    }
+                    const init_ss_word: [4]expr.Operand = expr.initialize(
+                        tok.allocated_byte_address_word_field_name,
+                        .{ .symbol = tok.source_allocated_byte_address_name },
+                    );
+                    expr.Operand.formatWrite(.{ .any = &init_ss_word }, array);
+                    array.writeMany(tok.end_small_item);
                 }
             }
+            if (impl_variant.fields.unstreamed_byte_address) {
+                const init_ss_word: [4]expr.Operand = expr.initialize(
+                    tok.unstreamed_byte_address_word_field_name,
+                    .{ .symbol = tok.source_aligned_byte_address_name },
+                );
+                expr.Operand.formatWrite(.{ .any = &init_ss_word }, array);
+                array.writeMany(tok.end_small_item);
+            }
             if (impl_variant.fields.undefined_byte_address) {
-                if (has_packed_approximate_capacity) {
-                    if (impl_variant.techs.disjunct_alignment) {
+                if (impl_variant.techs.double_packed_approximate_capacity) {
+                    if (config.packed_capacity_low) {
+                        const shl_or_ab_16_ub_c: expr.FnCall = expr.shlOr(
+                            allocator,
+                            .{ .symbol = tok.source_aligned_byte_address_name },
+                            .{ .constant = 16 },
+                            .{ .symbol = tok.source_double_approximation_counts_name },
+                        );
                         const init_ub_word: [4]expr.Operand = expr.initialize(
                             tok.undefined_byte_address_word_field_name,
-                            .{ .call = if (config.packed_capacity_low) &expr.@"or"(
-                                allocator,
-                                .{ .call = &if (config.packed_capacity_low) expr.shl(
-                                    allocator,
-                                    .{ .call = &or_r },
-                                    .{ .constant = 16 },
-                                ) },
-                                .{ .symbol = tok.source_single_approximation_counts_name },
-                            ) else expr.@"or"(
-                                allocator,
-                                .{ .call = &expr.shl(
-                                    allocator,
-                                    .{ .symbol = tok.source_single_approximation_counts_name },
-                                    .{ .constant = 48 },
-                                ) },
-                                .{ .call = &or_r },
-                            ) },
+                            .{ .call = &shl_or_ab_16_ub_c },
                         );
                         expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
                         array.writeMany(tok.end_small_item);
                     } else {
+                        const shl_or_ub_c_48_ab: expr.FnCall = expr.shlOr(
+                            allocator,
+                            .{ .symbol = tok.source_double_approximation_counts_name },
+                            .{ .constant = 48 },
+                            .{ .symbol = tok.source_aligned_byte_address_name },
+                        );
                         const init_ub_word: [4]expr.Operand = expr.initialize(
                             tok.undefined_byte_address_word_field_name,
-                            .{ .call = &if (config.packed_capacity_low) expr.@"or"(
-                                allocator,
-                                .{ .call = &expr.shl(
-                                    allocator,
-                                    .{ .symbol = tok.source_aligned_byte_address_name },
-                                    .{ .constant = 16 },
-                                ) },
-                                .{ .symbol = tok.source_single_approximation_counts_name },
-                            ) else expr.@"or"(
-                                allocator,
-                                .{ .call = &expr.shl(
-                                    allocator,
-                                    .{ .symbol = tok.source_single_approximation_counts_name },
-                                    .{ .constant = 48 },
-                                ) },
-                                .{ .symbol = tok.source_aligned_byte_address_name },
-                            ) },
+                            .{ .call = &shl_or_ub_c_48_ab },
                         );
                         expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
                         array.writeMany(tok.end_small_item);
                     }
                 } else {
-                    if (impl_variant.techs.disjunct_alignment) {
-                        const init_ub_word: [4]expr.Operand = expr.initialize(
-                            tok.undefined_byte_address_word_field_name,
-                            .{ .call = &or_r },
-                        );
-                        expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
-                        array.writeMany(tok.end_small_item);
-                    } else {
-                        const init_ub_word: [4]expr.Operand = expr.initialize(
-                            tok.undefined_byte_address_word_field_name,
-                            .{ .symbol = tok.source_aligned_byte_address_name },
-                        );
-                        expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
-                        array.writeMany(tok.end_small_item);
-                    }
+                    const init_ub_word: [4]expr.Operand = expr.initialize(
+                        tok.undefined_byte_address_word_field_name,
+                        .{ .symbol = tok.source_aligned_byte_address_name },
+                    );
+                    expr.Operand.formatWrite(.{ .any = &init_ub_word }, array);
+                    array.writeMany(tok.end_small_item);
                 }
+            }
+            if (impl_variant.fields.unallocated_byte_address) {
+                const init_ss_word: [4]expr.Operand = expr.initialize(
+                    tok.unallocated_byte_address_word_field_name,
+                    .{ .symbol = tok.source_unallocated_byte_address_name },
+                );
+                expr.Operand.formatWrite(.{ .any = &init_ss_word }, array);
+                array.writeMany(tok.end_small_item);
             }
             array.writeMany("}");
             return array.writeMany(tok.end_expression);
         },
     }
 }
+
 fn writeFunctions(allocator: *gen.Allocator, array: *gen.String, impl_variant: *const out.DetailMore) void {
     for (implementation.key) |*impl_fn_info| {
         if (!impl_fn_info.hasCapability(impl_variant)) {
@@ -861,7 +847,7 @@ inline fn writeTypeFunction(allocator: *gen.Allocator, array: *gen.String, accm_
     }
     array.writeMany("});\n}\n");
 }
-pub fn generateReferences() void {
+pub fn generateReferences() !void {
     var address_space: AddressSpace = .{};
     var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
     var array: gen.String = undefined;
