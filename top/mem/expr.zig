@@ -297,3 +297,9 @@ pub inline fn unpck2x(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnC
 pub inline fn unpck1x(allocator: *gen.Allocator, op1: Operand) FnCall {
     return FnCall.allocate(allocator, FnCall1, .{ .symbol = tok.unpack_single_fn_name, .op1 = op1 });
 }
+pub inline fn subOr(allocator: *gen.Allocator, op1: Operand, op2: Operand, op3: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall3, .{ .symbol = tok.sub_or_fn_name, .op1 = op1, .op2 = op2, .op3 = op3 });
+}
+pub inline fn shlOr(allocator: *gen.Allocator, op1: Operand, op2: Operand, op3: Operand) FnCall {
+    return FnCall.allocate(allocator, FnCall3, .{ .symbol = tok.shl_or_fn_name, .op1 = op1, .op2 = op2, .op3 = op3 });
+}
