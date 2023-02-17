@@ -102,7 +102,7 @@ fn writeOptions(array: *gen.String, toplevel_impl_group: []const out.DetailMore)
 }
 fn generateParameters() void {
     var address_space: AddressSpace = .{};
-    var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
+    var allocator: gen.Allocator = gen.Allocator.init(&address_space);
     var array: gen.String = undefined;
     array.undefineAll();
     gen.writeImports(&array, @src(), &.{});

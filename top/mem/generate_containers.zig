@@ -26,11 +26,19 @@ pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
-    .lb_addr = 0,
+    .lb_addr = 0x0,
     .lb_offset = 0x40000000,
-    .divisions = 8,
-    .errors = .{ .acquire = .ignore, .release = .ignore },
+    .divisions = 64,
+    .errors = preset.address_space.errors.noexcept,
+    .logging = preset.address_space.logging.silent,
 });
+const Allocator = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
+    .arena_index = 0,
+    .errors = preset.allocator.errors.noexcept,
+    .logging = preset.allocator.logging.silent,
+});
+
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
@@ -903,7 +911,7 @@ inline fn writeTypeFunction(allocator: *gen.Allocator, array: *gen.String, ctn_d
 
 pub fn generateContainers() !void {
     var address_space: AddressSpace = .{};
-    var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
+    var allocator: gen.Allocator = gen.Allocator.init(&address_space);
     var array: gen.String = undefined;
     array.undefineAll();
     var ctn_index: u16 = 0;
