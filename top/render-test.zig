@@ -16,6 +16,8 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub const runtime_assertions: bool = true;
+pub const is_silent: bool = true;
+pub const is_verbose: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -128,7 +130,7 @@ fn hasDecls(comptime T: type) bool {
         type_info == .Union or type_info == .Enum;
 }
 fn allocateRunTest(allocator: *Allocator, array: *Array, format: anytype, expected: ?[]const u8) !void {
-    try array.appendFormat(allocator, format);
+    try meta.wrap(array.appendFormat(allocator, format));
     if (expected) |value| {
         try testing.expectEqualMany(u8, array.readAll(allocator.*), value);
     } else {
