@@ -451,27 +451,27 @@ pub noinline fn monitor(comptime T: type, ptr: *volatile T) void {
         else => @compileError("???"),
     }
 }
-inline fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
+fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
     if (AddressSpace.addr_spec.options.thread_safe) {
         return address_space.atomicSet(index);
     } else {
         return address_space.set(index);
     }
 }
-inline fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
+fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
     if (AddressSpace.addr_spec.options.thread_safe) {
         return address_space.atomicUnset(index);
     } else {
         return address_space.unset(index);
     }
 }
-inline fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
+fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     if (address_space.set(spec.divisions)) {
         try meta.wrap(map(AddressSpace.map_spec, spec.super().low(), spec.super().capacity()));
     }
 }
-inline fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
+fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     if (address_space.count() == 1 and address_space.unset(spec.divisions)) {
         try meta.wrap(unmap(AddressSpace.unmap_spec, spec.super().low(), spec.super().capacity()));
@@ -521,14 +521,14 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
     }
 }
 pub const static = opaque {
-    inline fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
+    fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
         if (comptime AddressSpace.arena(index).options.thread_safe) {
             return address_space.atomicSet(index);
         } else {
             return address_space.set(index);
         }
     }
-    inline fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
+    fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
         if (comptime AddressSpace.arena(index).options.thread_safe) {
             return address_space.atomicUnset(index);
         } else {
