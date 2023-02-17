@@ -34,15 +34,15 @@ fn compareLayeredShellShort() !void {
     @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
     const values_2 = @intToPtr([*]u64, size + size)[0..(size / 0x8)];
     {
-        const t_0 = try time.realClock(null);
+        const t_0 = try time.get(.{}, .realtime);
         algo.shellSortAsc(u64, values_1);
-        const t_1 = try time.realClock(null);
+        const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
-        const t_0 = try time.realClock(null);
+        const t_0 = try time.get(.{}, .realtime);
         algo.layeredShellSortAsc(u64, values_2);
-        const t_1 = try time.realClock(null);
+        const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     for (values_1) |value, index| {
