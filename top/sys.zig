@@ -2053,7 +2053,7 @@ pub fn Error(comptime errors: []const ErrorCode) type {
 }
 pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors.throw, return_type) {
     const ret: isize = switch (tag.args()) {
-        0 => syscall0(@enumToInt(tag), args),
+        0 => syscall0(@enumToInt(tag)),
         1 => syscall1(@enumToInt(tag), args),
         2 => syscall2(@enumToInt(tag), args),
         3 => syscall3(@enumToInt(tag), args),
