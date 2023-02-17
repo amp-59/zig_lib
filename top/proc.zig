@@ -271,7 +271,7 @@ pub const WaitIdSpec = struct {
 pub const ForkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
     logging: builtin.Logging = .{},
-    return_type: ?type = u64,
+    return_type: type = u64,
     const Specification = @This();
 };
 pub const ExecuteSpec = struct {
@@ -426,7 +426,7 @@ pub const Status = struct {
 };
 
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors.throw, spec.return_type) {
-    if (spec.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 })) |pid| {
+    if (meta.wrap(sys.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
         if (spec.logging.Error) {
@@ -438,7 +438,7 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys
 pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(spec.errors.throw, spec.return_type) {
     const idtype: IdType = spec.id_type;
     const flags: WaitId = spec.flags();
-    if (spec.call(.waitid, spec.errors, spec.return_type, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 })) |pid| {
+    if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
         if (spec.logging.Error) {
@@ -447,8 +447,8 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(sp
         return wait_error;
     }
 }
-pub fn fork(comptime spec: ForkSpec) spec.Unwrapped(.fork) {
-    if (spec.call(.fork, spec.errors, spec.return_type, .{})) |pid| {
+pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors.throw, spec.return_type) {
+    if (meta.wrap(sys.call(.fork, spec.errors, spec.return_type, .{}))) |pid| {
         return pid;
     } else |fork_error| {
         if (spec.logging.Error) {
