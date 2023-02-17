@@ -44,6 +44,24 @@ pub fn isFunction(comptime T: type) bool {
 pub fn isContainer(comptime T: type) bool {
     return isTypeType(T, container_types);
 }
+
+pub fn assertType(comptime T: type, comptime tag: builtin.TypeId) void {
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info != tag) {
+        debug.unexpectedTypeTypeError(T, type_info, tag);
+    }
+}
+pub fn assertHasDecl(comptime T: type, decl_name: []const u8) void {
+    if (!@hasDecl(T, decl_name)) {
+        debug.declError(T, decl_name);
+    }
+}
+pub fn assertHasField(comptime T: type, field_name: []const u8) void {
+    if (!@hasField(T, field_name)) {
+        debug.fieldError(T, field_name);
+    }
+}
+
 fn ptr(comptime T: type) *T {
     var ret: T = 0;
     return &ret;
@@ -516,8 +534,9 @@ pub fn ManyToSlice(comptime T: type) type {
     return @Type(type_info);
 }
 /// A useful meta type for representing bit fields with uncertain values.
-/// Properly rendered by `fmt.any`.
+/// Properly rendered by `fmt.any`. E must be an enumeration type.
 pub fn EnumBitField(comptime E: type) type {
+    builtin.assert(isEnum(E));
     return (packed union {
         tag: Tag,
         val: Int,
@@ -626,22 +645,27 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
         },
     }
 }
-pub fn InternalError(comptime Error: type) type {
-    return (union(enum) {
+/// `E` must be an error type.
+pub fn InternalError(comptime E: type) type {
+    assertType(E, .Error);
+    return union(enum) {
         /// Return this error for any exception
-        throw: Error,
+        throw: E,
         /// Abort the program for any exception
         abort,
         ignore,
-    });
+        pub const Error = E;
+    };
 }
-pub fn ExternalError(comptime Value: type) type {
-    builtin.static.assert(@hasDecl(Value, "errorName"));
+pub fn ExternalError(comptime E: type) type {
+    assertType(E, .Error);
+    assertHasDecl(E, "errorName");
     return (struct {
         /// Throw error if unwrapping yields any of these values
-        throw: ?[]const Value = null,
+        throw: ?[]const E = null,
         /// Abort the program if unwrapping yields any of these values
-        abort: ?[]const Value = null,
+        abort: ?[]const E = null,
+        pub const Enum = E;
     });
 }
 pub fn ZigError(comptime Value: type, comptime return_codes: []const Value, comptime catch_all: ?[]const u8) type {
@@ -1034,7 +1058,7 @@ const debug = opaque {
     }
     fn declError(comptime T: type, comptime identifier: []const u8) noreturn {
         @compileError(declList("undeclared identifier '" ++ identifier ++
-            "' in container '" ++ @typeName(T) ++ "' with declarations: ", @typeInfo(T)));
+            "' in container '" ++ @typeName(T) ++ "' with declarations: ", declList(@typeInfo(T))));
     }
     fn invalidTypeErrorDescr(comptime Invalid: type, comptime descr: []const u8) noreturn {
         @compileError("invalid type `" ++ @typeName(Invalid) ++ "': " ++ descr ++ "\n");
