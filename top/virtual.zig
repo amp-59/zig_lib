@@ -377,7 +377,6 @@ pub const RegularMultiArena = struct {
         return meta.LeastRealBitSize(multi_arena.divisions);
     }
     fn Implementation(comptime multi_arena: MultiArena) type {
-        builtin.static.assert(multi_arena.divisions & 0b111 == 0);
         const extra: u16 = @boolToInt(multi_arena.options.require_map);
         if (multi_arena.options.thread_safe) {
             return ThreadSafeSet(multi_arena.divisions + extra);
@@ -426,7 +425,7 @@ pub const RegularMultiArena = struct {
         return mach.alignA64(multi_arena.up_addr - multi_arena.lb_addr, multi_arena.alignment);
     }
     pub fn capacityEach(comptime multi_arena: MultiArena) usize {
-        return capacityAll(multi_arena) / multi_arena.divisions;
+        return @divExact(capacityAll(multi_arena), multi_arena.divisions);
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
         return @intCast(Index(multi_arena), (addr - multi_arena.lb_addr) / capacityEach(multi_arena));
