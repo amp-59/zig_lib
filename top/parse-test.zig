@@ -24,8 +24,8 @@ pub const is_verbose: bool = false;
 
 const PrintArray = mem.StaticString(4096);
 
-pub const input_open_spec: file.OpenSpec = .{ .errors = null, .options = .{ .read = true, .write = null } };
-pub const input_close_spec: file.CloseSpec = .{ .errors = null };
+pub const input_open_spec: file.OpenSpec = .{ .errors = .{}, .options = .{ .read = true, .write = null } };
+pub const input_close_spec: file.CloseSpec = .{ .errors = .{} };
 
 const targets: [8][:0]const u8 = .{
     builtin.lib_build_root ++ "/top/parse-test.zig",
@@ -165,7 +165,7 @@ pub fn main(args: [][*:0]u8) !void {
 
     var address_space: builtin.AddressSpace = .{};
     if (args.len > 1) {
-        const t0: time.TimeSpec = try time.realClock(null);
+        const t0: time.TimeSpec = try time.get(.{}, .realtime);
         for (args[1..]) |arg| {
             var allocator_n = try zig.Allocator.Node.init(&address_space);
             defer allocator_n.deinit(&address_space);
@@ -186,7 +186,7 @@ pub fn main(args: [][*:0]u8) !void {
                 testing.print(.{ "nodes: ", fmt.udh(ast.nodes.len()), '\n' });
             }
             if (show_time) {
-                testing.print(.{fmt.udh(time.diff(try time.realClock(null), t0).nsec)});
+                testing.print(.{fmt.udh(time.diff(try time.get(.{}, .realtime), t0).nsec)});
             }
             if (show_duplicates) {
                 const Duplicate = mem.StaticArray(u32, 32);
