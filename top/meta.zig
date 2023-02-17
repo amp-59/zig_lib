@@ -44,24 +44,28 @@ pub fn isFunction(comptime T: type) bool {
 pub fn isContainer(comptime T: type) bool {
     return isTypeType(T, container_types);
 }
-
 pub fn assertType(comptime T: type, comptime tag: builtin.TypeId) void {
-    const type_info: builtin.Type = @typeInfo(T);
-    if (type_info != tag) {
-        debug.unexpectedTypeTypeError(T, type_info, tag);
+    if (builtin.comptime_assertions) {
+        const type_info: builtin.Type = @typeInfo(T);
+        if (type_info != tag) {
+            debug.unexpectedTypeTypeError(T, type_info, tag);
+        }
     }
 }
 pub fn assertHasDecl(comptime T: type, decl_name: []const u8) void {
-    if (!@hasDecl(T, decl_name)) {
-        debug.declError(T, decl_name);
+    if (builtin.comptime_assertions) {
+        if (!@hasDecl(T, decl_name)) {
+            debug.declError(T, decl_name);
+        }
     }
 }
 pub fn assertHasField(comptime T: type, field_name: []const u8) void {
-    if (!@hasField(T, field_name)) {
-        debug.fieldError(T, field_name);
+    if (builtin.comptime_assertions) {
+        if (!@hasField(T, field_name)) {
+            debug.fieldError(T, field_name);
+        }
     }
 }
-
 fn ptr(comptime T: type) *T {
     var ret: T = 0;
     return &ret;
@@ -647,7 +651,7 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
 }
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
-    assertType(E, .Error);
+    assertType(E, .ErrorSet);
     return union(enum) {
         /// Return this error for any exception
         throw: E,
@@ -658,7 +662,7 @@ pub fn InternalError(comptime E: type) type {
     };
 }
 pub fn ExternalError(comptime E: type) type {
-    assertType(E, .Error);
+    assertType(E, .Enum);
     assertHasDecl(E, "errorName");
     return (struct {
         /// Throw error if unwrapping yields any of these values
