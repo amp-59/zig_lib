@@ -101,9 +101,9 @@ pub const allocator = opaque {
             .unmap = .{},
         };
         pub const uniform: mem.AllocatorErrors = .{
-            .map = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
-            .remap = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
-            .unmap = .{ .throw = &.{sys.ErrorCode.OPAQUE} },
+            .map = .{ .throw = &.{} },
+            .remap = .{ .throw = &.{} },
+            .unmap = .{ .abort = &.{} },
         };
         pub const critical: mem.AllocatorErrors = .{
             .map = .{ .throw = mmap.errors.mem },
