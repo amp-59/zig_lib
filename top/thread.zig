@@ -5,13 +5,13 @@ const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
-pub fn map(comptime spec: MapSpec, arena_index: u8) spec.Replaced(.mmap, u64) {
+pub fn map(comptime spec: MapSpec, arena_index: u8) sys.Call(spec.errors.throw, u64) {
     const up_addr = builtin.AddressSpace.high(arena_index);
     const s_bytes: u64 = 8192;
     const st_addr: u64 = up_addr - s_bytes;
     const mmap_prot: mem.Prot = spec.prot();
     const mmap_flags: mem.Map = spec.flags();
-    if (spec.call(.mmap, .{ st_addr, s_bytes, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 })) {
+    if (meta.wrap(sys.call(.mmap, spec.errors, void, .{ st_addr, s_bytes, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
         if (spec.logging.Acquire) {
             mem.debug.mapNotice(st_addr, s_bytes);
         }
@@ -23,11 +23,11 @@ pub fn map(comptime spec: MapSpec, arena_index: u8) spec.Replaced(.mmap, u64) {
     }
     return st_addr;
 }
-pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) spec.Unwrapped(.munmap) {
+pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) sys.Call(spec.errors.throw, void) {
     const up_addr = builtin.AddressSpace.high(arena_index);
     const st_addr = mach.alignA64(up_addr - 8192, 4096);
     const len: u64 = up_addr - st_addr;
-    if (spec.call(.munmap, .{ st_addr, up_addr - st_addr })) {
+    if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ st_addr, up_addr - st_addr }))) {
         if (spec.logging.Release) {
             mem.debug.unmapNotice(st_addr, len);
         }
@@ -41,7 +41,6 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) spec.Unwrapped(.munm
 pub const MapSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-    return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
     const Visibility = enum { shared, shared_validate, private };
@@ -92,5 +91,4 @@ pub const MapSpec = struct {
         }
         return prot_bitfield;
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
