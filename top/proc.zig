@@ -605,7 +605,7 @@ pub const exception = opaque {
     fn setSignalAction(signo: u64, noalias new_action: *const SignalAction, noalias old_action: ?*SignalAction) void {
         const sa_new_addr: u64 = @ptrToInt(new_action);
         const sa_old_addr: u64 = if (old_action) |action| @ptrToInt(action) else 0;
-        sys.noexcept.rt_sigaction(signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)));
+        sys.call(.rt_sigaction, .{}, void, .{ signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)) });
     }
     fn resetExceptionHandlers() void {
         var act = SignalAction{ .handler = sys.SIG.DFL, .flags = 0, .restorer = 0 };
