@@ -13,8 +13,6 @@ pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
-pub const ResourceError = error{ UnderSupply, OverSupply };
-pub const ResourceErrorPolicy = meta.InternalError(ResourceError);
 pub const Map = meta.EnumBitField(enum(u64) {
     anonymous = MAP.ANONYMOUS,
     file = MAP.FILE,

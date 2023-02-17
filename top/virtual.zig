@@ -1,9 +1,13 @@
 const lit = @import("./lit.zig");
+const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
+const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
 const word_size: u8 = @bitSizeOf(usize);
 
+pub const ResourceError = error{ UnderSupply, OverSupply };
+pub const ResourceErrorPolicy = meta.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 
