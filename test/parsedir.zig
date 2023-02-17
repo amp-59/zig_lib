@@ -25,7 +25,7 @@ pub const is_silent: bool = true;
 
 const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec = proc.CloneSpec{
-    .errors = null,
+    .errors = .{},
     .return_type = u64,
     .options = .{},
 };
@@ -92,7 +92,7 @@ const open_spec: file.OpenSpec = .{
     },
 };
 const close_spec: file.CloseSpec = .{
-    .errors = null,
+    .errors = .{},
 };
 const stat_spec: file.StatSpec = .{};
 
@@ -142,7 +142,7 @@ noinline fn parseAndWalkInternal(
                     try array.appendOne(allocator_1, undefined);
                     const source: zig.SourceArray = try fileBuf(allocator_n, dir.fd, base_name);
                     array.referOneBack().name.writeMany(base_name);
-                    const t0: time.TimeSpec = try time.realClock(null);
+                    const t0: time.TimeSpec = try time.get(.{}, .realtime);
                     array.referOneBack().ast = if (test_standard)
                         try std.zig.Ast.parse(allocator_e, source.readAllWithSentinel(0), .zig)
                     else
@@ -153,7 +153,7 @@ noinline fn parseAndWalkInternal(
                             allocator_s,
                             source,
                         );
-                    const t1: time.TimeSpec = try time.realClock(null);
+                    const t1: time.TimeSpec = try time.get(.{}, .realtime);
                     array.referOneBack().ts = time.diff(t1, t0);
                 }
             },
