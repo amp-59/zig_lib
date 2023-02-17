@@ -69,7 +69,7 @@ const SleepSpec = struct {
     pub usingnamespace sys.FunctionInterfaceSpec(SleepSpec);
 };
 pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) sys.Call(spec.errors.throw, void) {
-    spec.call(.nanosleep, .{ @ptrToInt(&ts), 0 }) catch |nanosleep_error| {
+    meta.wrap(sys.call(.nanosleep, spec.errors, spec.return_type, .{ @ptrToInt(&ts), 0 })) catch |nanosleep_error| {
         return nanosleep_error;
     };
 }
