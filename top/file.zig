@@ -359,7 +359,6 @@ pub const MakeDirSpec = struct {
     const Options = struct {
         exclusive: bool = true,
     };
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const RemoveDirSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.rmdir_errors },
@@ -367,7 +366,6 @@ pub const RemoveDirSpec = struct {
     logging: builtin.Logging = .{},
     const Specification = @This();
     const special_fn = sys.special.rmdir;
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const CreateSpec = struct {
     options: Options = .{},
@@ -413,14 +411,12 @@ pub const CreateSpec = struct {
         }
         return flags_bitfield;
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const UnlinkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.unlink_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const PathSpec = struct {
     options: Options = .{},
@@ -446,7 +442,6 @@ pub const PathSpec = struct {
         }
         return flags_bitfield;
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const OpenSpec = struct {
     options: Options,
@@ -512,14 +507,12 @@ pub const OpenSpec = struct {
         }
         return flags_bitfield;
     }
-    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
-    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const StatSpec = struct {
     options: Options = .{},
@@ -537,14 +530,12 @@ pub const StatSpec = struct {
         }
         return flags_bitfield;
     }
-    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const GetWorkingDirectorySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
     logging: builtin.Logging = .{},
     const Specification = @This();
-    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const ReadLinkSpec = struct {
     options: Options = .{},
@@ -562,7 +553,6 @@ pub const ReadLinkSpec = struct {
         }
         return flags_bitfield;
     }
-    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 // TODO: Define default options suited to mapping files.
 pub const MapSpec = struct {
@@ -619,14 +609,12 @@ pub const MapSpec = struct {
         }
         return prot_bitfield;
     }
-    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const TruncateSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.truncate_errors },
     return_type: type = void,
     logging: builtin.Logging = .{},
     const Specification = @This();
-    usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
@@ -650,10 +638,10 @@ pub fn write(fd: u64, write_buf: []const u8) !void {
         return write_error;
     }
 }
-pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
+pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
-    if (spec.call(.open, .{ pathname_buf_addr, flags.val, 0 })) |fd| {
+    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
         if (spec.logging.Acquire) {
             debug.openNotice(pathname, fd);
         }
@@ -665,10 +653,10 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) spec.Unwrapped(.ope
         return open_error;
     }
 }
-pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) spec.Unwrapped(.openat) {
+pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = spec.flags();
-    if (spec.call(.openat, .{ dir_fd, name_buf_addr, flags.val })) |fd| {
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val }))) |fd| {
         if (spec.logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
         }
@@ -707,10 +695,10 @@ pub fn dirname(pathname: []const u8) []const u8 {
 pub fn basename(pathname: []const u8) []const u8 {
     return pathname[indexOfBasenameStart(pathname)..];
 }
-pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
+pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
-    if (spec.call(.open, .{ pathname_buf_addr, flags.val, 0 })) |fd| {
+    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
         if (spec.logging.Acquire) {
             debug.openNotice(pathname, fd);
         }
@@ -722,7 +710,7 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) spec.Unwrapped(.ope
         return open_error;
     }
 }
-pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) spec.Unwrapped(.openat) {
+pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     if (spec.call(.openat, dir_fd, name_buf_addr, spec.pathFlags())) |fd| {
         if (spec.logging.Acquire) {
@@ -736,11 +724,11 @@ pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) spec.Unw
         return open_error;
     }
 }
-pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) spec.Unwrapped(.open) {
+pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
     const mode: Mode = spec.mode.mode();
-    if (spec.call(.open, .{ pathname_buf_addr, flags.val, mode.val })) |fd| {
+    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, mode.val }))) |fd| {
         if (spec.logging.Acquire) {
             debug.createNotice(pathname, fd, spec.mode.describe());
         }
@@ -752,8 +740,8 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) spec.Unwrapped(
         return open_error;
     }
 }
-pub fn close(comptime spec: CloseSpec, fd: u64) spec.Unwrapped(.close) {
-    if (spec.call(.close, .{fd})) {
+pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    if (meta.wrap(sys.call(.close, spec.errors, spec.return_type, .{fd}))) {
         if (spec.logging.Release) {
             debug.closeNotice(fd);
         }
@@ -764,10 +752,10 @@ pub fn close(comptime spec: CloseSpec, fd: u64) spec.Unwrapped(.close) {
         return close_error;
     }
 }
-pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) spec.Unwrapped(.mkdir) {
+pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const mode: Mode = spec.mode.mode();
-    if (spec.call(.mkdir, .{ pathname_buf_addr, mode.val })) {
+    if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, mode.val }))) {
         if (spec.logging.Success) {
             debug.makeDirNotice(pathname, spec.mode.describe());
         }
@@ -778,10 +766,10 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) spec.Unwrappe
         return mkdir_error;
     }
 }
-pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) spec.Unwrapped(.mkdirat) {
+pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const mode: Mode = spec.mode.mode();
-    if (spec.call(.mkdirat, .{ dir_fd, name_buf_addr, mode.val })) {
+    if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, mode.val }))) {
         if (spec.logging.Success) {
             debug.makeDirAtNotice(dir_fd, name, spec.mode.describe());
         }
@@ -792,9 +780,9 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sp
         return mkdir_error;
     }
 }
-pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) spec.Replaced(.getcwd, [:0]const u8) {
+pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.Call(spec.errors.throw, [:0]const u8) {
     const buf_addr: u64 = @ptrToInt(buf.ptr);
-    if (spec.call(.getcwd, .{ buf_addr, buf.len })) |len| {
+    if (meta.wrap(sys.call(.getcwd, spec.errors, spec.return_type, .{ buf_addr, buf.len }))) |len| {
         buf[len] = 0;
         const ret: [:0]const u8 = buf[0..len :0];
         if (spec.logging.Success) {
@@ -808,10 +796,10 @@ pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) spec.Replaced(.
         return getcwd_error;
     }
 }
-pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) spec.Replaced(.readlink, [:0]const u8) {
+pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.Call(spec.errors.throw, [:0]const u8) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const buf_addr: u64 = @ptrToInt(buf.ptr);
-    if (spec.call(.readlink, .{ pathname_buf_addr, buf_addr, buf.len })) |len| {
+    if (meta.wrap(sys.call(.readlink, spec.errors, spec.return_type, .{ pathname_buf_addr, buf_addr, buf.len }))) |len| {
         return buf[0..len :0];
     } else |readlink_error| {
         if (spec.logging.Error) {
@@ -820,10 +808,10 @@ pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) 
         return readlink_error;
     }
 }
-pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, buf: []u8) spec.Replaced(.readlinkat, [:0]const u8) {
+pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, buf: []u8) sys.Call(spec.errors.throw, [:0]const u8) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const buf_addr: u64 = @ptrToInt(buf.ptr);
-    if (spec.call(.readlinkat, .{ dir_fd, name_buf_addr, buf_addr, buf.len })) |len| {
+    if (meta.wrap(sys.call(.readlinkat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, buf_addr, buf.len }))) |len| {
         return buf[0..len :0];
     } else |readlink_error| {
         if (spec.logging.Error) {
@@ -832,9 +820,9 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
         return readlink_error;
     }
 }
-pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) spec.Unwrapped(.unlink) {
+pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    if (spec.call(.unlink, .{pathname_buf_addr})) {
+    if (meta.wrap(sys.call(.unlink, spec.errors, spec.return_type, .{pathname_buf_addr}))) {
         if (spec.logging.Success) {
             debug.unlinkNotice(pathname);
         }
@@ -845,9 +833,9 @@ pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) spec.Unwrapped(
         return unlink_error;
     }
 }
-pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) spec.Unwrapped(.rmdir) {
+pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    if (spec.call(.rmdir, .{pathname_buf_addr})) {
+    if (sys.call(.rmdir, spec.errors, spec.return_type, .{pathname_buf_addr})) {
         if (spec.logging.Success) {
             debug.removeDirNotice(pathname);
         }
@@ -858,11 +846,11 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) spec.Unwr
         return rmdir_error;
     }
 }
-pub fn stat(comptime spec: StatSpec, pathname: [:0]const u8) spec.Replaced(.stat, Stat) {
+pub fn stat(comptime spec: StatSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, Stat) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
-    spec.call(.stat, .{ pathname_buf_addr, st_buf_addr }) catch |stat_error| {
+    meta.wrap(sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr })) catch |stat_error| {
         if (spec.logging.Error) {
             debug.statError(stat_error, pathname);
         }
@@ -870,10 +858,10 @@ pub fn stat(comptime spec: StatSpec, pathname: [:0]const u8) spec.Replaced(.stat
     };
     return st;
 }
-pub fn fstat(comptime spec: StatSpec, fd: u64) spec.Replaced(.fstat, Stat) {
+pub fn fstat(comptime spec: StatSpec, fd: u64) sys.Call(spec.errors.throw, Stat) {
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
-    spec.call(.fstat, .{ fd, st_buf_addr }) catch |stat_error| {
+    meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr })) catch |stat_error| {
         if (builtin.is_verbose) {
             debug.fstatError(stat_error, fd);
         }
@@ -881,7 +869,7 @@ pub fn fstat(comptime spec: StatSpec, fd: u64) spec.Replaced(.fstat, Stat) {
     };
     return st;
 }
-pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) spec.Replaced(.newfstatat, Stat) {
+pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, Stat) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
@@ -902,12 +890,12 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) spec.Re
 ///     up_addr: u64 = alignAbove(addr + st.size, page_size),
 /// };
 /// ```
-pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Replaced(.mmap, u64) {
+pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors.throw, spec.return_type) {
     const flags: mem.Map = spec.flags();
     const prot: mem.Prot = spec.prot();
     const st: Stat = try fstat(.{ .errors = &.{} }, fd);
     const len: u64 = mach.alignA64(st.size, 4096);
-    if (spec.call(.mmap, .{ addr, len, prot.val, flags.val, fd, 0 })) {
+    if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
         if (spec.logging.Acquire) {
             mem.debug.mapNotice(addr, len);
         }
@@ -919,8 +907,8 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) spec.Replaced(.mmap, u64)
         return map_error;
     }
 }
-pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) spec.Unwrapped(.truncate) {
-    if (spec.call(.truncate, .{ pathname, offset })) |ret| {
+pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ pathname, offset }))) |ret| {
         if (spec.logging.Success) {
             debug.truncateNotice(pathname, offset);
         }
@@ -932,8 +920,8 @@ pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64
         return truncate_error;
     }
 }
-pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) spec.Unwrapped(.ftruncate) {
-    if (spec.call(.ftruncate, .{ fd, offset })) |ret| {
+pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    if (meta.wrap(sys.call(.ftruncate, spec.errors, spec.return_type, .{ fd, offset }))) |ret| {
         if (spec.logging.Success) {
             debug.ftruncateNotice(fd, offset);
         }
@@ -947,17 +935,17 @@ pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) spec.Unwrapp
 }
 pub const noexcept = opaque {
     pub fn write(fd: u64, buf: []const u8) void {
-        sys.noexcept.write(fd, @ptrToInt(buf.ptr), buf.len);
+        sys.call(.write, .{}, void, .{ fd, @ptrToInt(buf.ptr), buf.len });
     }
     pub fn read(fd: u64, buf: []u8) u64 {
-        return sys.noexcept.read(fd, @ptrToInt(buf.ptr), buf.len);
+        return sys.call(.read, .{}, u64, .{ fd, @ptrToInt(buf.ptr), buf.len });
     }
 };
 pub fn readRandom(buf: []u8) void {
-    sys.noexcept.getrandom(@ptrToInt(buf.ptr), buf.len, if (builtin.is_perf)
+    sys.call(.getrandom, .{}, void, .{ @ptrToInt(buf.ptr), buf.len, if (builtin.is_perf)
         sys.GRND.INSECURE
     else
-        sys.GRND.RANDOM);
+        sys.GRND.RANDOM });
 }
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
@@ -972,7 +960,7 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             const high_alignment: u64 = @sizeOf(child);
             const low_alignment: u64 = @alignOf(child);
             if (random.data.len() == 0) {
-                sys.noexcept.getrandom(random.data.impl.aligned_byte_address(), bytes, dev);
+                sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
             }
             if (high_alignment + low_alignment > bytes) {
                 @compileError("requested type " ++ @typeName(T) ++ " is too large");
@@ -985,7 +973,7 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
                 const t_lb_addr: u64 = random.data.impl.undefined_byte_address();
                 const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
                 const t_up_addr: u64 = t_ab_addr + high_alignment;
-                sys.noexcept.getrandom(random.data.impl.aligned_byte_address(), bytes, dev);
+                sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
                 random.data.define(t_up_addr - t_lb_addr);
                 return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
             }
