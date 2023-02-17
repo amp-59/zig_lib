@@ -23,6 +23,34 @@ pub const address_space = opaque {
             .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
         }),
     });
+    pub const logging = opaque {
+        pub const verbose: mem.AddressSpaceLogging = .{
+            .release = builtin.Logging.verbose,
+            .acquire = builtin.Logging.verbose,
+            .map = builtin.Logging.verbose,
+            .unmap = builtin.Logging.verbose,
+        };
+        pub const silent: mem.AddressSpaceLogging = .{
+            .release = builtin.Logging.silent,
+            .acquire = builtin.Logging.silent,
+            .map = builtin.Logging.silent,
+            .unmap = builtin.Logging.silent,
+        };
+    };
+    pub const errors = opaque {
+        pub const noexcept: mem.AddressSpaceErrors = .{
+            .release = .ignore,
+            .acquire = .ignore,
+            .map = .{},
+            .unmap = .{},
+        };
+        pub const silent: mem.AddressSpaceErrors = .{
+            .acquire = .{ .throw = error.UnderSupply },
+            .release = .abort,
+            .map = .{ .throw = sys.mmap_errors },
+            .unmap = .{ .abort = sys.munmap_errors },
+        };
+    };
 };
 pub const reinterpret = opaque {
     pub const flat: mem.ReinterpretSpec = .{};
