@@ -56,5 +56,5 @@ pub export fn _start() noreturn {
     var array: gen.String = undefined;
     array.undefineAll();
     specToAbstract(&array);
-    sys.exit(0);
+    sys.call(.exit, .{}, noreturn, .{0});
 }

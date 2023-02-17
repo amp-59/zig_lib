@@ -148,7 +148,13 @@ pub export fn _start() noreturn {
     @setAlignStack(16);
     var array: gen.String = undefined;
     array.undefineAll();
-
-    writeCanonicalStruct(&array, .{ .fields = &.{ layout_spec, kind_spec, mode_spec, field_spec, tech_spec, specs_spec } });
-    sys.exit(0);
+    writeCanonicalStruct(&array, .{ .fields = &.{
+        layout_spec,
+        kind_spec,
+        mode_spec,
+        field_spec,
+        tech_spec,
+        specs_spec,
+    } });
+    sys.call(.exit, .{}, noreturn, .{0});
 }

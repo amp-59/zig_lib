@@ -41,5 +41,5 @@ pub export fn _start() noreturn {
     var array: gen.String = undefined;
     array.undefineAll();
     mapContainersToParameters(&array);
-    sys.exit(0);
+    sys.call(.exit, .{}, noreturn, .{0});
 }
