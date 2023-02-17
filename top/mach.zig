@@ -2,7 +2,6 @@
 //! and bit-shifts. For operator wrappers which unambiguously mimic Zig's
 //! default behaviour see builtin.zig.
 const lit = @import("./lit.zig");
-const builtin = @import("./builtin.zig");
 
 // For operations with no comptime operands and register-sized integers prefer
 // the following four functions. These reference the assembly directly below,
@@ -217,6 +216,31 @@ pub inline fn mulAdd16(arg1: u16, arg2: u16, arg3: u16) u16 {
 pub inline fn mulAdd8(arg1: u8, arg2: u8, arg3: u8) u8 {
     return add8(mul8(arg1, arg2), arg3);
 }
+pub inline fn shlOr64(arg1: u64, arg2: u64, arg3: u64) u64 {
+    return or64(shl64(arg1, arg2), arg3);
+}
+pub inline fn shlOr32(arg1: u32, arg2: u32, arg3: u32) u32 {
+    return or32(shl32(arg1, arg2), arg3);
+}
+pub inline fn shlOr16(arg1: u16, arg2: u16, arg3: u16) u16 {
+    return or16(shl16(arg1, arg2), arg3);
+}
+pub inline fn shlOr8(arg1: u8, arg2: u8, arg3: u8) u8 {
+    return or8(shl8(arg1, arg2), arg3);
+}
+pub inline fn subOr64(arg1: u64, arg2: u64, arg3: u64) u64 {
+    return or64(sub64(arg1, arg2), arg3);
+}
+pub inline fn subOr32(arg1: u32, arg2: u32, arg3: u32) u32 {
+    return or32(sub32(arg1, arg2), arg3);
+}
+pub inline fn subOr16(arg1: u16, arg2: u16, arg3: u16) u16 {
+    return or16(sub16(arg1, arg2), arg3);
+}
+pub inline fn subOr8(arg1: u8, arg2: u8, arg3: u8) u8 {
+    return or8(sub8(arg1, arg2), arg3);
+}
+
 pub inline fn subEqu64(arg1: *u64, arg2: u64) void {
     arg1.* = sub(u64, arg1.*, arg2);
 }
@@ -316,6 +340,36 @@ pub inline fn orn32(arg1: u32, arg2: u32) u32 {
 }
 pub inline fn xor32(arg1: u32, arg2: u32) u32 {
     return xor(u32, arg1, arg2);
+}
+pub inline fn and16(arg1: u16, arg2: u16) u16 {
+    return @"and"(u16, arg1, arg2);
+}
+pub inline fn andn16(arg1: u16, arg2: u16) u16 {
+    return @"and"(u16, arg1, ~arg2);
+}
+pub inline fn or16(arg1: u16, arg2: u16) u16 {
+    return @"or"(u16, arg1, arg2);
+}
+pub inline fn orn16(arg1: u16, arg2: u16) u16 {
+    return @"or"(u16, arg1, ~arg2);
+}
+pub inline fn xor16(arg1: u16, arg2: u16) u16 {
+    return xor(u16, arg1, arg2);
+}
+pub inline fn and8(arg1: u8, arg2: u8) u8 {
+    return @"and"(u8, arg1, arg2);
+}
+pub inline fn andn8(arg1: u8, arg2: u8) u8 {
+    return @"and"(u8, arg1, ~arg2);
+}
+pub inline fn or8(arg1: u8, arg2: u8) u8 {
+    return @"or"(u8, arg1, arg2);
+}
+pub inline fn orn8(arg1: u8, arg2: u8) u8 {
+    return @"or"(u8, arg1, ~arg2);
+}
+pub inline fn xor8(arg1: u8, arg2: u8) u8 {
+    return xor(u8, arg1, arg2);
 }
 
 pub inline fn alignA(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
