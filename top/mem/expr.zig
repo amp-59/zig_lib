@@ -256,16 +256,16 @@ pub inline fn addEqu(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCa
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.add_equ_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn subEqu(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.subtract_equ_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.sub_equ_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn add(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.add_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn alignA(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.subtract_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.sub_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn alignB(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.align_below_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.alignb_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn @"and"(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.and_fn_name, .op1 = op1, .op2 = op2 });
@@ -274,22 +274,22 @@ pub inline fn andn(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.and_not_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn cmov(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.conditional_move_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.cmov_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn mul(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.multiply_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.mul_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn @"or"(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.or_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn shl(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shift_left_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shl_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn shr(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shift_right_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shr_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn sub(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
-    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.subtract_fn_name, .op1 = op1, .op2 = op2 });
+    return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.sub_fn_name, .op1 = op1, .op2 = op2 });
 }
 pub inline fn unpck2x(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.unpack_double_fn_name, .op1 = op1, .op2 = op2 });

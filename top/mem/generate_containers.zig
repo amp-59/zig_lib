@@ -606,13 +606,13 @@ fn writeFunctionBodySpecial(allocator: *gen.Allocator, array: *gen.String, ctn_d
     });
     const mul_op_offset_child_size: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
-        .symbol = tok.multiply_fn_name,
+        .symbol = tok.mul_fn_name,
         .op1 = .{ .symbol = tok.offset_name },
         .op2 = .{ .symbol = child_size_symbol },
     });
     const mul_op_count_child_size: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
-        .symbol = tok.multiply_fn_name,
+        .symbol = tok.mul_fn_name,
         .op1 = .{ .symbol = tok.count_name },
         .op2 = .{ .symbol = child_size_symbol },
     });
@@ -675,7 +675,7 @@ fn writeFunctionBodySpecial(allocator: *gen.Allocator, array: *gen.String, ctn_d
                 expr.FnCall.intr(allocator, ctn_detail, interface.get(.len));
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
-                .symbol = tok.subtract_fn_name,
+                .symbol = tok.sub_fn_name,
                 .op1 = len_fn_call.op(),
                 .op2 = .{ .symbol = tok.offset_name },
             }));
@@ -686,7 +686,7 @@ fn writeFunctionBodySpecial(allocator: *gen.Allocator, array: *gen.String, ctn_d
                 expr.FnCall.intr(allocator, ctn_detail, interface.get(.avail));
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
-                .symbol = tok.subtract_fn_name,
+                .symbol = tok.sub_fn_name,
                 .op1 = avail_fn_call.op(),
                 .op2 = .{ .symbol = tok.offset_name },
             }));
@@ -695,7 +695,7 @@ fn writeFunctionBodySpecial(allocator: *gen.Allocator, array: *gen.String, ctn_d
         .__back => {
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
-                .symbol = tok.subtract_fn_name,
+                .symbol = tok.sub_fn_name,
                 .op1 = undefined_byte_address_call.op(),
                 .op2 = .{ .call = &mul_op_offset_child_size },
             }));
@@ -704,7 +704,7 @@ fn writeFunctionBodySpecial(allocator: *gen.Allocator, array: *gen.String, ctn_d
         .__behind => {
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
-                .symbol = tok.subtract_fn_name,
+                .symbol = tok.sub_fn_name,
                 .op1 = unstreamed_byte_address_call.op(),
                 .op2 = .{ .call = &mul_op_offset_child_size },
             }));
