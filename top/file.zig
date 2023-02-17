@@ -618,10 +618,10 @@ pub const TruncateSpec = struct {
 };
 pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
-    if (sys.read(fd, read_buf_addr, count)) |ret| {
+    if (sys.call(.read, .{ .throw = sys.read_errors }, u64, .{ fd, read_buf_addr, count })) |ret| {
         return ret;
     } else |read_error| {
-        if (builtin.runtime_assertions) {
+        if (builtin.logging.Error) {
             debug.readError(read_error, fd);
         }
         return read_error;
@@ -629,10 +629,10 @@ pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
 }
 pub fn write(fd: u64, write_buf: []const u8) !void {
     const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
-    if (sys.write(fd, write_buf_addr, write_buf.len)) |ret| {
+    if (sys.call(.write, .{ .throw = sys.write_errors }, u64, .{ fd, write_buf_addr, write_buf.len })) |ret| {
         builtin.assertEqual(u64, write_buf.len, ret);
     } else |write_error| {
-        if (builtin.runtime_assertions) {
+        if (builtin.logging.Error) {
             debug.writeError(write_error, fd);
         }
         return write_error;
@@ -712,7 +712,7 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.error
 }
 pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    if (spec.call(.openat, dir_fd, name_buf_addr, spec.pathFlags())) |fd| {
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, spec.pathFlags() }))) |fd| {
         if (spec.logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
         }
@@ -874,7 +874,7 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Cal
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
     const flags: Open = spec.flags();
-    spec.call(.newfstatat, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }) catch |stat_error| {
+    meta.wrap(sys.call(.newfstatat, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val })) catch |stat_error| {
         if (builtin.is_verbose) {
             debug.fstatAtError(stat_error, dir_fd, name);
         }
@@ -890,10 +890,10 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Cal
 ///     up_addr: u64 = alignAbove(addr + st.size, page_size),
 /// };
 /// ```
-pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors.throw, u64) {
     const flags: mem.Map = spec.flags();
     const prot: mem.Prot = spec.prot();
-    const st: Stat = try fstat(.{ .errors = &.{} }, fd);
+    const st: Stat = fstat(.{ .errors = .{ .abort = &.{sys.ErrorCode.OPAQUE} } }, fd);
     const len: u64 = mach.alignA64(st.size, 4096);
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
         if (spec.logging.Acquire) {
