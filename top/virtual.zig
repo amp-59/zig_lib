@@ -198,13 +198,13 @@ pub const Arena = struct {
         return arena.up_addr -% arena.lb_addr;
     }
 };
-const MultiArenaLogging = struct {
+pub const AddressSpaceLogging = struct {
     acquire: builtin.Logging = .{},
     release: builtin.Logging = .{},
     map: builtin.Logging = .{},
-    unmap_errors: builtin.Logging = .{},
+    unmap: builtin.Logging = .{},
 };
-const MultiArenaErrors = struct {
+pub const AddressSpaceErrors = struct {
     acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },
     release: ResourceErrorPolicy = .abort,
     map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
@@ -222,8 +222,8 @@ pub const DiscreteMultiArena = struct {
     list: []const Arena,
     subspace: ?[]const meta.Generic = null,
 
-    errors: MultiArenaErrors = .{},
-    logging: MultiArenaLogging = .{},
+    errors: AddressSpaceErrors = .{},
+    logging: AddressSpaceLogging = .{},
 
     pub const MultiArena: type = @This();
 
@@ -367,8 +367,8 @@ pub const RegularMultiArena = struct {
     alignment: u64 = 4096,
     subspace: ?[]const meta.Generic = null,
 
-    errors: MultiArenaErrors = .{},
-    logging: MultiArenaLogging = .{},
+    errors: AddressSpaceErrors = .{},
+    logging: AddressSpaceLogging = .{},
     options: ArenaOptions = .{},
 
     pub const MultiArena = @This();
