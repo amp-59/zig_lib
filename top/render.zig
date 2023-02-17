@@ -18,7 +18,6 @@ pub const RenderSpec = struct {
     omit_type_names: bool = false,
     infer_type_names: bool = false,
     infer_type_names_recursively: bool = false,
-    zig_type_names: bool = false,
     type_cast_generic: bool = true,
 
     inline_field_types: bool = true,
