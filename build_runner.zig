@@ -65,7 +65,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             "build root directory path, " ++
             "cache root directory path, " ++
             "global cache root directory path");
-        sys.exit(2);
+        sys.call(.exit, .{}, noreturn, .{2});
     }
     const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
     const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
