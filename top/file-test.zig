@@ -17,40 +17,40 @@ const exec_zig: bool = false;
 const errors: sys.ErrorPolicy = .{};
 
 const getcwd_spec: file.GetWorkingDirectorySpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.getcwd_errors },
 };
 const make_dir_spec: file.MakeDirSpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.mkdir_errors },
 };
 const create_spec: file.CreateSpec = .{
     .options = .{},
-    .errors = errors,
+    .errors = .{ .throw = sys.open_errors },
 };
 const open_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = null },
-    .errors = errors,
+    .errors = .{ .throw = sys.open_errors },
 };
 const open_dir_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = null, .directory = true },
-    .errors = errors,
+    .errors = .{ .throw = sys.open_errors },
 };
 const remove_dir_spec: file.RemoveDirSpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.rmdir_errors },
 };
 const unlink_spec: file.UnlinkSpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.unlink_errors },
 };
 const close_spec: file.CloseSpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.close_errors },
 };
 const stat_spec: file.StatSpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.stat_errors },
 };
 const ftruncate_spec: file.TruncateSpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.truncate_errors },
 };
 const truncate_spec: file.TruncateSpec = .{
-    .errors = errors,
+    .errors = .{ .throw = sys.truncate_errors },
 };
 fn testFileOperationsRound1() !void {
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test"));
