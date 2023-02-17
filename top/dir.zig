@@ -14,7 +14,10 @@ pub const DirStreamSpec = struct {
 
     const Specification = @This();
 
-    const Errors = struct {};
+    const Errors = struct {
+        getdents: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
+        open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+    };
     const Options = struct {
         init_read_all: bool = true,
         shrink_after_read: bool = true,
@@ -25,7 +28,6 @@ pub const DirStreamSpec = struct {
         open: builtin.Logging = .{},
         close: builtin.Logging = .{},
     };
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const Kind = enum(u8) {
     regular = sys.S.IFREG >> 12,
@@ -232,11 +234,11 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             mem.set(s_lb_addr, @as(u8, 0), s_bytes);
         }
         fn read(dir: *const DirStream) !u64 {
-            return sys.getdents(
+            return sys.call(.getdents64, spec.errors.getdents, u64, .{
                 dir.fd,
                 dir.blk.undefined_byte_address(),
                 dir.blk.undefined_byte_count(),
-            );
+            });
         }
         fn grow(dir: *DirStream, allocator: *Allocator) !void {
             const s_bytes: u64 = dir.blk.writable_byte_count();
