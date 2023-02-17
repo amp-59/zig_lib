@@ -12,8 +12,6 @@ pub usingnamespace proc.start;
 const regular_address_space_with_two_subspaces = virtual.RegularAddressSpaceSpec{
     .label = "regular-4x5B",
     .lb_addr = 0,
-    .ab_addr = 0,
-    .xb_addr = 20,
     .up_addr = 20,
     .divisions = 4,
     .alignment = 1,
@@ -28,8 +26,6 @@ const regular_address_space_with_two_subspaces = virtual.RegularAddressSpaceSpec
         .{
             .label = "regular-5x1B",
             .lb_addr = 0,
-            .ab_addr = 0,
-            .xb_addr = 5,
             .up_addr = 5,
             .divisions = 5,
             .alignment = 1,

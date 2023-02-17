@@ -16,13 +16,13 @@ pub fn main(args_in: [][*:0]u8) !void {
         const fd: u64 = file.open(.{ .options = .{ .read = true } }, arg) catch {
             continue;
         };
-        defer file.close(.{ .errors = null }, fd);
+        defer file.close(.{ .errors = .{} }, fd);
         const lb_addr: u64 = 0x40000000;
         const up_addr: u64 = file.map(.{ .options = .{ .visibility = .private } }, lb_addr, fd) catch {
             continue;
         };
         const s_bytes: u64 = mach.alignA(up_addr - lb_addr, 4096);
-        defer mem.unmap(.{ .errors = null }, lb_addr, s_bytes);
+        defer mem.unmap(.{ .errors = .{} }, lb_addr, s_bytes);
         file.noexcept.write(1, mem.pointerMany(u8, lb_addr, s_bytes));
     }
 }

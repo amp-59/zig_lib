@@ -45,5 +45,5 @@ pub export fn _start() void {
         inline for (hello_world) |c, i| s.auto[i] = c;
         file.noexcept.write(2, z.auto[0..hello_world.len]);
     }
-    sys.exit(0);
+    sys.call(.exit, .{}, noreturn, .{0});
 }
