@@ -229,7 +229,6 @@ pub const WaitSpec = struct {
             ret.set(.continued);
         }
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const WaitIdSpec = struct {
     id_type: IdType,
@@ -268,14 +267,12 @@ pub const WaitIdSpec = struct {
         }
         return ret;
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const ForkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
     logging: builtin.Logging = .{},
     return_type: ?type = u64,
     const Specification = @This();
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const ExecuteSpec = struct {
     options: Options = .{},
@@ -295,7 +292,6 @@ pub const ExecuteSpec = struct {
         }
         return flags_bitfield;
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
 pub const CloneSpec = struct {
     options: Options,
@@ -361,13 +357,12 @@ pub const CloneSpec = struct {
             .tls_addr = builtin.add(u64, stack_addr, 0x8),
         };
     }
-    pub usingnamespace sys.FunctionInterfaceSpec(Specification);
 };
-pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) spec.Unwrapped(.execve) {
+pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors.throw, spec.return_type) {
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    if (spec.call(.execve, .{ filename_buf_addr, args_addr, vars_addr })) {
+    if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
         unreachable;
     } else |execve_error| {
         if (spec.logging.Error) {
@@ -376,11 +371,11 @@ pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_
         return execve_error;
     }
 }
-pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) spec.Unwrapped(.execveat) {
+pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors.throw, spec.return_type) {
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: Execute = spec.flags();
-    if (spec.call(.execveat, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val })) {
+    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
         unreachable;
     } else |execve_error| {
         if (spec.logging.Error) {
@@ -389,12 +384,12 @@ pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, var
         return execve_error;
     }
 }
-pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) spec.Unwrapped(.execveat) {
+pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: Execute = spec.flags();
-    if (spec.call(.execveat, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val })) {
+    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
         unreachable;
     } else |execve_error| {
         if (spec.logging.Error) {
@@ -430,8 +425,8 @@ pub const Status = struct {
     }
 };
 
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) spec.Unwrapped(.wait4) {
-    if (spec.call(.wait4, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 })) |pid| {
+pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors.throw, spec.return_type) {
+    if (spec.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 })) |pid| {
         return pid;
     } else |wait_error| {
         if (spec.logging.Error) {
@@ -440,10 +435,10 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) spe
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) spec.Unwrapped(.waitid) {
+pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(spec.errors.throw, spec.return_type) {
     const idtype: IdType = spec.id_type;
     const flags: WaitId = spec.flags();
-    if (spec.call(.waitid, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 })) |pid| {
+    if (spec.call(.waitid, spec.errors, spec.return_type, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 })) |pid| {
         return pid;
     } else |wait_error| {
         if (spec.logging.Error) {
@@ -453,7 +448,7 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) spec.Unwrap
     }
 }
 pub fn fork(comptime spec: ForkSpec) spec.Unwrapped(.fork) {
-    if (spec.call(.fork, .{})) |pid| {
+    if (spec.call(.fork, spec.errors, spec.return_type, .{})) |pid| {
         return pid;
     } else |fork_error| {
         if (spec.logging.Error) {
@@ -469,7 +464,7 @@ pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.ar
     const pid: u64 = try fork(.{});
     var status: u32 = 0;
     if (pid == 0) {
-        if (spec.call(.execve, .{ filename_buf_addr, args_addr, vars_addr })) {
+        if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
             unreachable;
         } else |execve_error| {
             if (spec.logging.Error) {
@@ -492,7 +487,7 @@ pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, ar
     var status: u32 = 0;
     if (pid == 0) {
         const flags: Execute = spec.flags();
-        if (spec.call(.execveat, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val })) {
+        if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
             unreachable;
         } else |execve_error| {
             if (spec.logging.Error) {
@@ -517,8 +512,8 @@ pub const start = opaque {
     }
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?usize) noreturn {
         @setCold(true);
-        sys.noexcept.write(2, @ptrToInt(msg.ptr), msg.len);
-        sys.exit(2);
+        sys.call(.write, .{}, void, .{ 2, @ptrToInt(msg.ptr), msg.len });
+        sys.call(.exit, .{}, noreturn, .{2});
     }
     pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
         @setCold(true);
@@ -535,7 +530,7 @@ pub const start = opaque {
                 builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
             });
         }
-        sys.exit(2);
+        sys.call(.exit, .{}, noreturn, .{2});
     }
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
@@ -563,7 +558,7 @@ pub const start = opaque {
             @tagName(wanted),    "' while field '",
             @tagName(active),    "' is active",
         });
-        sys.exit(2);
+        sys.call(.exit, .{}, noreturn, .{2});
     }
     pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
         @compileError("error is discarded");
@@ -625,7 +620,7 @@ pub const exception = opaque {
             SIG.FPE => "SIGFPE",
             else => unreachable,
         }, info.fields.fault.addr);
-        sys.exit(2);
+        sys.call(.exit, .{}, noreturn, .{2});
     }
     pub fn restoreRunTime() callconv(.Naked) void {
         switch (builtin.zig.zig_backend) {
@@ -651,8 +646,8 @@ fn exitWithError(error_name: []const u8) void {
     @setCold(true);
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    debug.zigErrorReturnedByMain(&buf, error_name);
-    sys.exit(2);
+    builtin.debug.logAbort(&buf, error_name);
+    sys.call(.exit, .{}, noreturn, .{2});
 }
 const static = opaque {
     var stack_addr: u64 = 0;
@@ -711,31 +706,31 @@ pub noinline fn callMain() noreturn {
         }
         if (main_return_type == void) {
             @call(.auto, main, params);
-            sys.exit(0);
+            sys.call(.exit, .{}, noreturn, .{0});
         }
         if (main_return_type == u8) {
-            sys.exit(@call(.auto, main, params));
+            sys.call(.exit, .{}, noreturn, .{@call(.auto, main, params)});
         }
         if (main_return_type_info == .ErrorUnion and
             main_return_type_info.ErrorUnion.payload == void)
         {
             if (@call(.auto, main, params)) {
-                sys.exit(0);
+                sys.call(.exit, .{}, noreturn, .{0});
             } else |err| {
                 @setCold(true);
                 exitWithError(@errorName(err));
-                sys.exit(@intCast(u8, @errorToInt(err)));
+                sys.call(.exit, .{}, noreturn, .{@intCast(u8, @errorToInt(err))});
             }
         }
         if (main_return_type_info == .ErrorUnion and
             main_return_type_info.ErrorUnion.payload == u8)
         {
             if (@call(.auto, builtin.root.main, params)) |rc| {
-                sys.exit(rc);
+                sys.call(.exit, .{}, noreturn, .{rc});
             } else |err| {
                 @setCold(true);
                 exitWithError(@errorName(err));
-                sys.exit(@intCast(u8, @errorToInt(err)));
+                sys.call(.exit, .{}, noreturn, .{@intCast(u8, @errorToInt(err))});
             }
         }
         if (main_return_type_info == .ErrorSet) {
@@ -763,12 +758,12 @@ pub noinline fn callClone(
     result_ptr: anytype,
     function: anytype,
     args: anytype,
-) spec.Unwrapped(.clone3) {
+) sys.Call(spec.errors.throw, spec.return_type) {
     const Fn: type = @TypeOf(function);
     const cl_args: CloneArgs = spec.args(stack_addr);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
-    const cl_sysno: u64 = @enumToInt(sys.Function.clone3);
+    const cl_sysno: u64 = @enumToInt(sys.Fn.clone3);
     const ret_off: u64 = 0;
     const call_off: u64 = 8;
     const args_off: u64 = 16;
@@ -827,8 +822,11 @@ pub noinline fn callClone(
             ::: "rax", "rdi");
         unreachable;
     }
-    if (spec.errors) |errors| {
-        if (rc < 0) return sys.zigError(errors, rc);
+    if (spec.errors.throw) |errors| {
+        if (rc < 0) return meta.zigErrorThrow(errors, rc);
+    }
+    if (spec.errors.abort) |errors| {
+        if (rc < 0) return meta.zigErrorAbort(errors, rc);
     }
     if (spec.return_type == void) {
         return;
@@ -1042,11 +1040,11 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
         }
         if (builtin.testEqual([]const u8, "--help", arg1)) {
             debug.optionNotice(Options, all_options);
-            sys.exit(0);
+            sys.call(.exit, .{}, noreturn, .{0});
         }
         if (arg1.len != 0 and arg1[0] == '-') {
             debug.optionError(Options, all_options, arg1);
-            sys.exit(2);
+            sys.call(.exit, .{}, noreturn, .{2});
         }
         index += 1;
     }
@@ -1067,7 +1065,7 @@ const debug = opaque {
 
     fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
         const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
-        sys.noexcept.write(2, @ptrToInt(buf.ptr), buf.len);
+        builtin.debug.write(buf);
     }
     pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
         var buf: [4096 +% 128]u8 = undefined;
@@ -1103,26 +1101,6 @@ const debug = opaque {
             len += 1;
         }
         builtin.debug.write(buf[0..len]);
-    }
-    fn writeExecutablePathname(buf: []u8) u64 {
-        const rc: i64 = sys.noexcept.readlink(
-            @ptrToInt("/proc/self/exe"),
-            @ptrToInt(buf.ptr),
-            buf.len,
-        );
-        if (rc < 0) {
-            return ~@as(u64, 0);
-        } else {
-            return @intCast(u64, rc);
-        }
-    }
-    fn zigErrorReturnedByMain(buf: []u8, symbol: []const u8) void {
-        var len: u64 = 0;
-        len +%= builtin.debug.writeMany(buf[len..], about_error_s);
-        len +%= about_error_s.len;
-        len +%= writeExecutablePathname(buf[len..]);
-        len +%= builtin.debug.writeMulti(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
-        sys.noexcept.write(2, @ptrToInt(buf.ptr), len);
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [4096]u8 = undefined;
