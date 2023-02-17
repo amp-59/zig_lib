@@ -139,7 +139,7 @@ fn testRegularAddressSpace() !void {
     var i: u8 = 1;
     try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
     while (i != AddressSpace.addr_spec.divisions) : (i += 1) {
-        try mem.acquire(.{}, AddressSpace, &address_space, i);
+        try mem.acquire(AddressSpace, &address_space, i);
         try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
         file.noexcept.write(2, array.readAll());
         array.undefineAll();
@@ -157,7 +157,7 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
     comptime var i: u8 = 1;
     try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
-        try mem.static.acquire(.{}, AddressSpace, &address_space, i);
+        try mem.static.acquire(AddressSpace, &address_space, i);
         try array.appendFormat(&allocator, fmt.any(address_space));
         try array.appendMany(&allocator, "\n");
         file.noexcept.write(2, array.readAll());
@@ -166,7 +166,7 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
     file.noexcept.write(2, array.readAll());
     i = 1;
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
-        try mem.static.release(.{}, AddressSpace, &address_space, i);
+        mem.static.release(AddressSpace, &address_space, i);
         try array.appendFormat(&allocator, fmt.any(address_space));
         try array.appendMany(&allocator, "\n");
         file.noexcept.write(2, array.readAll());
@@ -266,8 +266,6 @@ pub fn main() !void {
         .list = complex_list,
         .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
             .lb_addr = complex_list[34].lb_addr,
-            .ab_addr = complex_list[34].lb_addr,
-            .xb_addr = complex_list[42].up_addr,
             .up_addr = complex_list[42].up_addr,
             .divisions = 16,
             .options = .{ .thread_safe = true },
