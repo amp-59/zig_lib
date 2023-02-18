@@ -22,8 +22,10 @@ pub const RenderSpec = struct {
 
     inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
+    address_view: bool = false,
 
     ignore_formatter_decls: bool = true,
+    ignore_reinterpret_decls: bool = true,
     ignore_container_decls: bool = false,
 
     const RadixFieldName = struct {
@@ -192,6 +194,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
 pub const BoolFormat = struct {
     value: bool,
     const Format: type = @This();
+
     pub fn formatWrite(format: Format, array: anytype) void {
         if (format.value) {
             array.writeCount(4, "true".*);
@@ -589,6 +592,9 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         const Format: type = @This();
         const fields: []const builtin.UnionField = @typeInfo(Union).Union.fields;
         const type_name: []const u8 = typeName(Union, spec);
+        // This is the actual tag type
+        const tag_type: ?type = @typeInfo(Union).Union.tag_type;
+        // This is the bit-field tag type name
         const tag_type_name: []const u8 = typeName(@typeInfo(fields[0].type).Enum.tag_type, spec);
         const show_enum_field: bool = fields.len == 2 and (@typeInfo(fields[0].type) == .Enum and
             fields[1].type == @typeInfo(fields[0].type).Enum.tag_type);
@@ -687,6 +693,31 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
             return len;
         }
+        fn formatWriteUntagged(format: Format, array: anytype) void {
+            if (@hasDecl(Union, "tagged") and
+                @hasDecl(Union, "Tagged") and
+                !spec.ignore_reinterpret_decls)
+            {
+                const TaggedFormat = AnyFormat(spec, Union.Tagged);
+                const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
+                tagged_format.formatWrite(array);
+            } else {
+                array.writeMany(type_name ++ "{}");
+            }
+        }
+        fn formatLengthUntagged(format: Format) u64 {
+            var len: u64 = 0;
+            if (@hasDecl(Union, "tagged") and
+                @hasDecl(Union, "Tagged") and
+                !spec.ignore_reinterpret_decls)
+            {
+                const TaggedFormat = AnyFormat(spec, Union.Tagged);
+                len +%= TaggedFormat.formatLength(.{ .value = format.value.tagged() });
+            } else {
+                len +%= type_name.len +% 2;
+            }
+            return len;
+        }
         fn formatWriteField(array: anytype, field_name_format: fmt.IdentifierFormat, field_format: anytype) void {
             array.writeOne('.');
             field_name_format.formatWrite(array);
@@ -698,46 +729,46 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             if (show_enum_field) {
                 return formatWriteEnumField(format, array);
             }
+            if (tag_type == null) {
+                return formatWriteUntagged(format, array);
+            }
             if (fields.len == 0) {
                 array.writeMany(type_name ++ "{}");
             } else {
                 array.writeMany(type_name ++ "{ ");
-                if (comptime @typeInfo(Union).Union.tag_type) |tag_type| {
-                    inline for (fields) |field| {
-                        if (format.value == @field(tag_type, field.name)) {
-                            const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                            if (field.type == void) {
-                                array.undefine(2);
-                                return field_name_format.formatWrite(array);
-                            } else {
-                                const FieldFormat: type = AnyFormat(spec, field.type);
-                                const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                                formatWriteField(array, field_name_format, field_format);
-                            }
+                inline for (fields) |field| {
+                    if (format.value == @field(tag_type.?, field.name)) {
+                        const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                        if (field.type == void) {
+                            array.undefine(2);
+                            return field_name_format.formatWrite(array);
+                        } else {
+                            const FieldFormat: type = AnyFormat(spec, field.type);
+                            const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
+                            formatWriteField(array, field_name_format, field_format);
                         }
                     }
-                    array.overwriteCountBack(2, " }".*);
-                } else {
-                    array.overwriteOneBack('}');
                 }
+                array.overwriteCountBack(2, " }".*);
             }
         }
-        pub fn formatLength(format: anytype) u64 {
+        pub fn formatLength(format: Format) u64 {
             if (show_enum_field) {
                 return format.formatLengthEnumField();
             }
+            if (tag_type == null) {
+                return formatLengthUntagged(format);
+            }
             var len: u64 = type_name.len + 2;
-            if (comptime @typeInfo(Union).Union.tag_type) |tag_type| {
-                inline for (fields) |field| {
-                    if (format.value == @field(tag_type, field.name)) {
-                        const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                        if (field.type == void) {
-                            return len + 1 + field_name_format.formatLength();
-                        } else {
-                            const FieldFormat = AnyFormat(spec, field.type);
-                            const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
-                            len +%= 1 + field_name_format.formatLength() + 3 + field_format.formatLength() + 2;
-                        }
+            inline for (fields) |field| {
+                if (format.value == @field(tag_type.?, field.name)) {
+                    const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                    if (field.type == void) {
+                        return len + 1 + field_name_format.formatLength();
+                    } else {
+                        const FieldFormat = AnyFormat(spec, field.type);
+                        const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
+                        len +%= 1 + field_name_format.formatLength() + 3 + field_format.formatLength() + 2;
                     }
                 }
             }
@@ -856,6 +887,24 @@ fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
+const AddressFormat = struct {
+    value: usize,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        const addr_format = fmt.uxsize(format.value);
+        array.writeMany("@(");
+        array.writeFormat(addr_format);
+        array.writeMany(")");
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        const addr_format = fmt.uxsize(format.value);
+        len +%= 2;
+        len +%= addr_format.formatLength();
+        len +%= 1;
+        return len;
+    }
+};
 fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
     return struct {
         value: Pointer,
@@ -864,37 +913,52 @@ fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = (4 + typeName(Pointer, spec).len + 3) + AnyFormat(spec, child).max_len + 1;
         pub fn formatWrite(format: Format, array: anytype) void {
+            const address: usize = @ptrToInt(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
-                const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };
+                const sub_format: SubFormat = .{ .value = address };
                 array.writeCount(12 + type_name.len, ("@intToPtr(" ++ type_name ++ ", ").*);
                 sub_format.formatWrite(array);
                 array.writeOne(')');
-            } else if (@typeInfo(child) == .Fn) {
-                array.writeMany("*call");
             } else {
-                const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                if (!spec.infer_type_names) {
-                    array.writeCount(6 + type_name.len, ("@as(" ++ type_name ++ ", ").*);
+                if (spec.address_view) {
+                    const addr_view_format: AddressFormat = .{ .value = address };
+                    addr_view_format.formatWrite(array);
                 }
-                array.writeOne('&');
-                sub_format.formatWrite(array);
-                if (!spec.infer_type_names) {
-                    array.writeOne(')');
+                if (@typeInfo(child) == .Fn) {
+                    array.writeMany("*call");
+                } else {
+                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
+                    if (!spec.infer_type_names) {
+                        array.writeCount(6 + type_name.len, ("@as(" ++ type_name ++ ", ").*);
+                    }
+                    array.writeOne('&');
+                    sub_format.formatWrite(array);
+                    if (!spec.infer_type_names) {
+                        array.writeOne(')');
+                    }
                 }
             }
         }
         pub fn formatLength(format: Format) u64 {
             const type_name: []const u8 = comptime typeName(Pointer, spec);
+            const address: usize = @ptrToInt(format.value);
+            var len: u64 = type_name.len;
             if (child == anyopaque) {
-                const sub_format: SubFormat = .{ .value = @ptrToInt(format.value) };
-                return 10 + type_name.len + 2 + sub_format.formatLength() + 1;
-            } else if (@typeInfo(child) == .Fn) {
-                return 5;
+                const sub_format: SubFormat = .{ .value = address };
+                len +%= 10 +% type_name.len +% 2 +% sub_format.formatLength() +% 1;
             } else {
-                const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                return 4 + type_name.len + 3 + sub_format.formatLength() + 1;
+                if (spec.address_view) {
+                    len +%= AddressFormat.formatLength(.{ .value = address });
+                }
+                if (@typeInfo(child) == .Fn) {
+                    len +%= 5;
+                } else {
+                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
+                    len +%= 4 + type_name.len + 3 + sub_format.formatLength() + 1;
+                }
             }
+            return len;
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
@@ -997,6 +1061,10 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             return len;
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
+            if (spec.address_view) {
+                const addr_view_format: AddressFormat = .{ .value = @ptrToInt(format.value.ptr) };
+                addr_view_format.formatWrite(array);
+            }
             if (comptime child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
@@ -1012,19 +1080,25 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             return formatWriteAny(format, array);
         }
         pub fn formatLength(format: anytype) u64 {
+            var len: u64 = 0;
+            if (spec.address_view) {
+                len +%= AddressFormat.formatWrite(.{ .value = @ptrToInt(format.value.ptr) });
+            }
             if (comptime child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        return formatLengthMultiLineStringLiteral(format);
+                        len +%= formatLengthMultiLineStringLiteral(format);
                     }
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        return formatLengthStringLiteral(format);
+                        len +%= formatLengthStringLiteral(format);
                     }
                 }
+            } else {
+                len +%= formatLengthAny(format);
             }
-            return formatLengthAny(format);
+            return len;
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
