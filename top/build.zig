@@ -10,9 +10,9 @@ const fmt_spec: mem.ReinterpretSpec = blk: {
     tmp.integral = .{ .format = .dec };
     break :blk tmp;
 };
-pub const AddressSpace = preset.address_space.exact_8;
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
+    .AddressSpace = builtin.AddressSpace,
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
 });
