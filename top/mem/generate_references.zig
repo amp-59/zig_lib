@@ -659,12 +659,21 @@ fn writeFunctionBodyGeneric(allocator: *gen.Allocator, array: *gen.String, impl_
                         }
                     }
                 } else {
-                    const init_lb_word: [4]expr.Operand = expr.initialize(
-                        tok.allocated_byte_address_word_field_name,
-                        .{ .symbol = tok.source_allocated_byte_address_name },
-                    );
-                    expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
-                    array.writeMany(tok.end_small_item);
+                    if (impl_variant.techs.disjunct_alignment) {
+                        const init_lb_word: [4]expr.Operand = expr.initialize(
+                            tok.allocated_byte_address_word_field_name,
+                            .{ .call = &sub_or_ab_lb_ab },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    } else {
+                        const init_lb_word: [4]expr.Operand = expr.initialize(
+                            tok.allocated_byte_address_word_field_name,
+                            .{ .symbol = tok.source_allocated_byte_address_name },
+                        );
+                        expr.Operand.formatWrite(.{ .any = &init_lb_word }, array);
+                        array.writeMany(tok.end_small_item);
+                    }
                 }
             }
             if (impl_variant.fields.unstreamed_byte_address) {
