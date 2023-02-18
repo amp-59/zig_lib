@@ -18,10 +18,10 @@ const std = @import("std");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.exact_8;
+pub const AddressSpace = preset.address_space.regular_128;
 pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
+pub const is_silent: bool = false;
 
 const map_spec: thread.MapSpec = .{ .options = .{} };
 const thread_spec = proc.CloneSpec{
@@ -41,6 +41,7 @@ const wait_spec: proc.WaitIdSpec = .{
     },
 };
 const Allocator0 = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
     .arena_index = 4,
     .options = .{
         .count_allocations = true,
@@ -52,6 +53,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
     .arena_index = 5,
     .options = .{
         .count_allocations = false,
@@ -185,9 +187,11 @@ fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
     defer allocator_0.deinit(address_space);
     defer allocator_1.deinit(address_space);
     defer allocator_n.deinit(address_space);
-    defer if (!test_standard) allocator_e.deinit(address_space);
-    defer allocator_x.deinit(address_space);
-    defer allocator_s.deinit(address_space);
+    defer if (!test_standard) {
+        allocator_e.deinit(address_space);
+        allocator_x.deinit(address_space);
+        allocator_s.deinit(address_space);
+    };
     var ast_array: SyntaxTreeArray = SyntaxTreeArray.init(&allocator_1);
     defer ast_array.deinit(&allocator_1);
     const allocator = if (test_standard) allocator_e else &allocator_e;
