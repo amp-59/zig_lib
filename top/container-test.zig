@@ -5,7 +5,10 @@ const proc = @import("./proc.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
-const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0 });
+const Allocator = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .AddressSpace = AddressSpace,
+});
 pub usingnamespace proc.start;
 pub const AddressSpace = preset.address_space.regular_128;
 fn testAutomaticAppend(comptime spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
