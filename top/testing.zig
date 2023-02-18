@@ -231,16 +231,21 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     file.noexcept.write(2, array.readAll());
     return array.readAll().len;
 }
-const fmt_spec: mem.ReinterpretSpec = blk: {
+
+const reinterpret_spec: mem.ReinterpretSpec = builtin.config("reinterpret_spec", mem.ReinterpretSpec, blk: {
     var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
     tmp.integral = .{ .format = .dec };
     break :blk tmp;
-};
+});
 
 pub fn printN(comptime n: usize, any: anytype) void {
     var array: mem.StaticString(n) = undefined;
     array.undefineAll();
-    array.writeAny(fmt_spec, any);
+    if (@hasDecl(builtin.root, "render_spec")) {
+        array.writeFormat(fmt.render(builtin.root.render_spec, any));
+    } else {
+        array.writeAny(reinterpret_spec, any);
+    }
     file.noexcept.write(2, array.readAll());
 }
 const Static = struct {
@@ -272,7 +277,11 @@ pub fn print(any: anytype) void {
         break :blk &Static.array.?;
     };
     defer array.undefineAll();
-    array.writeAny(fmt_spec, any);
+    if (@hasDecl(builtin.root, "render_spec")) {
+        array.writeFormat(fmt.render(builtin.root.render_spec, any));
+    } else {
+        array.writeAny(reinterpret_spec, any);
+    }
     file.noexcept.write(2, array.readAll());
 }
 pub fn uniqueSet(comptime T: type, set: []const T) void {
