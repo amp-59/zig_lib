@@ -129,6 +129,7 @@ fn testAllocatedImplementation() !void {
         .arena_index = 0,
         .options = .{ .trace_state = true },
         .logging = preset.allocator.logging.verbose,
+        .AddressSpace = AddressSpace,
     });
     var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
@@ -202,6 +203,7 @@ const AllocatorX = mem.GenericArenaAllocator(.{
     .options = preset.allocator.options.small,
     .errors = preset.allocator.errors.noexcept,
     .logging = preset.allocator.logging.silent,
+    .AddressSpace = AddressSpace,
 });
 
 export fn resizeMany(allocator: *AllocatorX, array: *AllocatorX.StructuredHolder(u8), x: u64) void {

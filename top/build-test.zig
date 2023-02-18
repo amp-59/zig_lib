@@ -20,6 +20,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
+    .AddressSpace = AddressSpace,
 });
 
 const try_multi_threaded: bool = false;

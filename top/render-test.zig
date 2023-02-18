@@ -21,6 +21,7 @@ pub const is_verbose: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
+    .AddressSpace = AddressSpace,
     .logging = preset.allocator.logging.silent,
     .options = preset.allocator.options.small,
 });

@@ -10,9 +10,9 @@ const preset = srg.preset;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
-
-pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
+pub const AddressSpace = preset.address_space.regular_128;
 
 const prune_weak: bool = false;
 const prune_fmt: bool = true;
@@ -94,6 +94,7 @@ const FixedString = Allocator.StructuredVector(u8);
 const SmallString = Allocator.StructuredHolder(u8);
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
+    .AddressSpace = AddressSpace,
     .options = .{
         .count_allocations = true,
         .count_useful_bytes = true,
