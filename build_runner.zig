@@ -8,14 +8,18 @@ const build = srg.build;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
-pub const AddressSpace = build.AddressSpace;
-pub const is_verbose: bool = true;
-pub const runtime_assertions: bool = false;
-pub const is_silent: bool = false;
-
 pub usingnamespace proc.start;
+pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
+pub const AddressSpace = mem.GenericRegularAddressSpace(multi_arena);
 
 const Options = build.GlobalOptions;
+const multi_arena: mem.RegularMultiArena = .{
+    .lb_addr = 0,
+    .lb_offset = 0x40000000,
+    .divisions = 64,
+    .logging = preset.address_space.logging.verbose,
+};
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
     .{ .field_name = "build_mode", .long = "-Drelease-fast", .assign = .{ .any = &(.ReleaseFast) }, .descr = "speed++" },
     .{ .field_name = "build_mode", .long = "-Drelease-small", .assign = .{ .any = &(.ReleaseSmall) }, .descr = "size--" },
