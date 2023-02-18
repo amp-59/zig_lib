@@ -18,14 +18,19 @@ const config = @import("./config.zig");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = mem.GenericRegularAddressSpace(.{
+const Allocator = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .errors = preset.allocator.errors.noexcept,
+    .logging = preset.allocator.logging.silent,
+    .options = preset.allocator.options.small,
+    .AddressSpace = AddressSpace,
+});
+const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
-    .divisions = 8,
-    .errors = .{
-        .acquire = .abort,
-        .release = .abort,
-    },
+    .divisions = 128,
+    .errors = .{},
+    .logging = preset.address_space.logging.silent,
 });
 const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
 
