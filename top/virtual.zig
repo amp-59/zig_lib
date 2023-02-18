@@ -208,7 +208,7 @@ pub const AddressSpaceErrors = struct {
     acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },
     release: ResourceErrorPolicy = .abort,
     map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-    unmap: sys.ErrorPolicy = .{ .throw = sys.munmap_errors },
+    unmap: sys.ErrorPolicy = .{ .abort = sys.munmap_errors },
 };
 pub const ArenaReference = struct {
     index: comptime_int,
@@ -372,7 +372,6 @@ pub const RegularMultiArena = struct {
     options: ArenaOptions = .{},
 
     pub const MultiArena = @This();
-
     fn Index(comptime multi_arena: MultiArena) type {
         return meta.LeastRealBitSize(multi_arena.divisions);
     }
@@ -384,6 +383,25 @@ pub const RegularMultiArena = struct {
             return DiscreteBitSet(multi_arena.divisions + extra);
         }
     }
+    pub inline fn addressable_byte_address(comptime multi_arena: MultiArena) u64 {
+        return mach.add64(multi_arena.lb_addr, multi_arena.lb_offset);
+    }
+    pub inline fn allocated_byte_address(comptime multi_arena: MultiArena) u64 {
+        return multi_arena.lb_addr;
+    }
+    pub inline fn unallocated_byte_address(comptime multi_arena: MultiArena) u64 {
+        return mach.sub64(multi_arena.up_addr, multi_arena.up_offset);
+    }
+    pub inline fn unaddressable_byte_address(comptime multi_arena: MultiArena) u64 {
+        return multi_arena.up_addr;
+    }
+    pub inline fn allocated_byte_count(comptime multi_arena: MultiArena) u64 {
+        return mach.sub64(unallocated_byte_address(multi_arena), allocated_byte_address(multi_arena));
+    }
+    pub inline fn addressable_byte_count(comptime multi_arena: MultiArena) u64 {
+        return mach.sub64(unaddressable_byte_address(multi_arena), addressable_byte_address(multi_arena));
+    }
+
     fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
         var max_index: Index(multi_arena) = multi_arena.invert(sub_arena.high());
@@ -515,6 +533,22 @@ fn RegularTypes(comptime AddressSpace: type) type {
             }
             break :blk void;
         };
+        pub const map_void: type = blk: {
+            if (AddressSpace.addr_spec.options.require_map and
+                AddressSpace.addr_spec.errors.map.throw != null)
+            {
+                break :blk sys.Error(AddressSpace.addr_spec.errors.map.throw.?)!void;
+            }
+            break :blk void;
+        };
+        pub const unmap_void: type = blk: {
+            if (AddressSpace.addr_spec.options.require_unmap and
+                AddressSpace.addr_spec.errors.unmap.throw != null)
+            {
+                break :blk sys.Error(AddressSpace.addr_spec.errors.unmap.throw.?)!void;
+            }
+            break :blk void;
+        };
     };
 }
 fn DiscreteTypes(comptime AddressSpace: type) type {
@@ -549,6 +583,39 @@ fn DiscreteTypes(comptime AddressSpace: type) type {
             }
             return void;
         }
+        pub fn map_void(comptime index: AddressSpace.Index) type {
+            if (AddressSpace.addr_spec.options(index).require_map and
+                AddressSpace.addr_spec.errors.map.throw != null)
+            {
+                return sys.Error(AddressSpace.addr_spec.errors.map.throw.?)!void;
+            }
+            return void;
+        }
+        pub fn unmap_void(comptime index: AddressSpace.Index) type {
+            if (AddressSpace.addr_spec.options(index).require_unmap and
+                AddressSpace.addr_spec.errors.unmap.throw != null)
+            {
+                return sys.Error(AddressSpace.addr_spec.errors.unmap.throw.?)!void;
+            }
+            return void;
+        }
+    };
+}
+fn Specs(comptime AddressSpace: type) type {
+    return struct {
+        pub const map_spec = .{
+            .options = .{},
+            .errors = AddressSpace.addr_spec.errors.map,
+            .logging = AddressSpace.addr_spec.logging.map,
+        };
+        pub const remap_spec = .{
+            .errors = AddressSpace.addr_spec.errors.remap,
+            .logging = AddressSpace.addr_spec.logging.remap,
+        };
+        pub const unmap_spec = .{
+            .errors = AddressSpace.addr_spec.errors.unmap,
+            .logging = AddressSpace.addr_spec.logging.unmap,
+        };
     };
 }
 /// Regular:
@@ -597,6 +664,15 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn arena(index: Index) Arena {
             return spec.arena(index);
         }
+        pub fn count(address_space: *const RegularAddressSpace) usize {
+            var index: Index = 0;
+            var ret: usize = 0;
+            while (index != addr_spec.divisions) : (index +%= 1) {
+                ret +%= builtin.int(usize, address_space.impl.get(index));
+            }
+            return ret;
+        }
+        pub usingnamespace Specs(RegularAddressSpace);
         pub usingnamespace RegularTypes(RegularAddressSpace);
         pub usingnamespace GenericAddressSpace(RegularAddressSpace);
     });
@@ -642,6 +718,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub fn arena(comptime index: Index) Arena {
             return spec.arena(index);
         }
+        pub usingnamespace Specs(DiscreteAddressSpace);
         pub usingnamespace DiscreteTypes(DiscreteAddressSpace);
         pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
     });
