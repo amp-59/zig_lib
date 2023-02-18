@@ -30,6 +30,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "readelf", "test/readelf.zig", .{ .build_root = true });
     _ = util.addProjectExecutable(builder, "parsedir", "test/parsedir.zig", .{ .build_mode = .ReleaseFast, .build_root = true });
     _ = util.addProjectExecutable(builder, "pathsplit", "test/pathsplit.zig", .{ .build_root = true });
+    _ = util.addProjectExecutable(builder, "size_per_config", "test/size_per_config.zig", .{ .build_root = true });
     _ = util.addProjectExecutable(builder, "print_all", "test/print_all_decls.zig", .{ .is_large_test = true, .build_root = true });
     // Other test programs:
     _ = util.addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{ .is_large_test = true, .build_root = true });

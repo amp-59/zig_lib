@@ -121,7 +121,7 @@ pub const AllocatorErrors = struct {
     unmap: sys.ErrorPolicy = .{ .abort = sys.munmap_errors },
 };
 pub const ArenaAllocatorSpec = struct {
-    AddressSpace: type = default_address_space_type,
+    AddressSpace: type,
     arena_index: comptime_int,
     options: ArenaAllocatorOptions = .{},
     errors: AllocatorErrors = .{},
@@ -160,7 +160,7 @@ pub const ArenaAllocatorSpec = struct {
     }
 };
 pub const RtArenaAllocatorSpec = struct {
-    AddressSpace: type = builtin.AddressSpace,
+    AddressSpace: type,
     options: ArenaAllocatorOptions = .{},
     errors: AllocatorErrors = .{},
     logging: AllocatorLogging = .{},
@@ -186,7 +186,7 @@ pub const RtArenaAllocatorSpec = struct {
     }
 };
 pub const PageAllocatorSpec = struct {
-    AddressSpace: type = default_address_space_type,
+    AddressSpace: type,
     arena_index: comptime_int,
     options: PageAllocatorOptions = .{},
     errors: AllocatorErrors = .{},
@@ -242,31 +242,6 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
                 }
             }
         }
-        fn mapInit(allocator: *Allocator) sys.Call(Allocator.map_spec.errors.throw, void) {
-            if (Allocator.allocator_spec.options.require_map) {
-                if (Allocator.allocator_spec.options.prefer_remap) {
-                    const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
-                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), s_bytes));
-                    allocator.up_addr +%= s_bytes;
-                }
-                if (Allocator.allocator_spec.options.init_commit) |s_bytes| {
-                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), s_bytes));
-                    allocator.up_addr +%= s_bytes;
-                }
-            }
-        }
-        fn unmapAll(allocator: *Allocator) Allocator.deallocate_void {
-            const x_bytes: u64 = allocator.mapped_byte_count();
-            if (Allocator.allocator_spec.options.count_useful_bytes) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, 0);
-            }
-            if (Allocator.allocator_spec.options.count_allocations) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.count, 0);
-            }
-            if (Allocator.allocator_spec.options.require_unmap) {
-                return allocator.unmap(x_bytes);
-            }
-        }
         pub fn unmap(allocator: *Allocator, s_bytes: u64) Allocator.deallocate_void {
             builtin.assertEqual(u64, s_bytes & 4095, 0);
             if (s_bytes >= 4096) {
@@ -274,17 +249,41 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
                 return special.unmap(Allocator.unmap_spec, allocator.unmapped_byte_address(), s_bytes);
             }
         }
-        pub fn unmapAbove(allocator: *Allocator, s_up_addr: u64) Allocator.deallocate_void {
-            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
-            const t_bytes: u64 = mach.sub64(t_ua_addr, allocator.mapped_byte_address());
-            const x_bytes: u64 = mach.sub64(allocator.mapped_byte_count(), t_bytes);
-            if (Allocator.allocator_spec.options.count_useful_bytes) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
+        fn mapInit(allocator: *Allocator) sys.Call(Allocator.map_spec.errors.throw, void) {
+            if (Allocator.allocator_spec.options.require_map) {
+                if (Allocator.allocator_spec.options.prefer_remap) {
+                    const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
+                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), s_bytes));
+                    allocator.up_addr +%= s_bytes;
+                } else if (Allocator.allocator_spec.options.init_commit) |s_bytes| {
+                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), s_bytes));
+                    allocator.up_addr +%= s_bytes;
+                }
             }
-            if (Allocator.allocator_spec.options.count_allocations) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
-            }
+        }
+        fn unmapAll(allocator: *Allocator) Allocator.deallocate_void {
             if (Allocator.allocator_spec.options.require_unmap) {
+                const x_bytes: u64 = allocator.mapped_byte_count();
+                if (Allocator.allocator_spec.options.count_useful_bytes) {
+                    builtin.assertBelowOrEqual(u64, allocator.metadata.utility, 0);
+                }
+                if (Allocator.allocator_spec.options.count_allocations) {
+                    builtin.assertBelowOrEqual(u64, allocator.metadata.count, 0);
+                }
+                return allocator.unmap(x_bytes);
+            }
+        }
+        pub fn unmapAbove(allocator: *Allocator, s_up_addr: u64) Allocator.deallocate_void {
+            if (Allocator.allocator_spec.options.require_unmap) {
+                const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+                const t_bytes: u64 = mach.sub64(t_ua_addr, allocator.mapped_byte_address());
+                const x_bytes: u64 = mach.sub64(allocator.mapped_byte_count(), t_bytes);
+                if (Allocator.allocator_spec.options.count_useful_bytes) {
+                    builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
+                }
+                if (Allocator.allocator_spec.options.count_allocations) {
+                    builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
+                }
                 return allocator.unmap(x_bytes);
             }
         }
@@ -449,8 +448,6 @@ fn ThreadSpace(comptime spec: PageAllocatorSpec) type {
     const up_addr: u64 = builtin.add(u64, lb_addr, builtin.mul(u64, spec.options.thread_count, spec.options.thread_stack_size));
     return mem.GenericRegularAddressSpace(.{
         .lb_addr = lb_addr,
-        .ab_addr = lb_addr,
-        .xb_addr = up_addr,
         .up_addr = up_addr,
         .divisions = spec.options.thread_count,
         .alignment = spec.options.page_size,
@@ -627,6 +624,11 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             defer Graphics.showWithReference(allocator, @src());
             allocator.ub_addr = state.ub_addr;
         }
+        pub inline fn duplicateIrreversible(allocator: *Allocator, comptime T: type, value: T) Allocator.allocate_payload(*T) {
+            const ret: *T = try meta.wrap(allocator.createIrreversible(T));
+            ret.* = value;
+            return ret;
+        }
         pub fn createIrreversible(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_bytes: u64 = @sizeOf(T);
@@ -680,8 +682,6 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 debug.showAllocateOneStructured(
                     child,
                     @ptrToInt(ptr),
-                    @ptrToInt(ptr) + @sizeOf(child),
-                    null,
                     @src(),
                     @returnAddress(),
                 );
@@ -3283,13 +3283,15 @@ const special = opaque {
     fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
         if (address_space.set(spec.divisions)) {
-            try meta.wrap(map(AddressSpace.map_spec, spec.super().low(), spec.super().capacity()));
+            return map(AddressSpace.map_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
         }
     }
     fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
-        if (address_space.count() == 1 and address_space.unset(spec.divisions)) {
-            try meta.wrap(unmap(AddressSpace.unmap_spec, spec.super().low(), spec.super().capacity()));
+        if (address_space.count() == 0 and
+            address_space.unset(spec.divisions))
+        {
+            return unmap(AddressSpace.unmap_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
         }
     }
     pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.acquire_void {
@@ -3322,6 +3324,9 @@ const special = opaque {
         if (releaseUnset(AddressSpace, address_space, index)) {
             if (spec.logging.release.Release) {
                 debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            }
+            if (spec.options.require_unmap) {
+                try meta.wrap(releaseUnmap(AddressSpace, address_space));
             }
         } else if (spec.errors.release == .throw) {
             if (spec.logging.release.Error) {
@@ -3550,7 +3555,7 @@ const debug = opaque {
         }
         array.writeMany(@typeName(child));
     }
-    fn writeOneType(array: *PrintArray, s_child: type) void {
+    fn writeOneType(array: *PrintArray, comptime s_child: type) void {
         array.writeMany(@typeName(s_child));
         array.writeMany(", ");
     }
