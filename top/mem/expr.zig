@@ -12,36 +12,165 @@ const out = struct {
 const interface = @import("./interface.zig");
 const implementation = @import("./implementation.zig");
 
-pub const Operand = union(OperandTag) {
+const ExprTag = enum(u8) {
+    call,
+    constant,
+    symbol,
+    join,
+    list,
+};
+const Value = extern union {
     call: *const FnCall,
-    constant: usize,
-    symbol: [:0]const u8,
-    any: []const Operand,
+    symbol: [*:0]const u8,
+    any: [*]const Expr,
+    constant: u64,
 
-    const OperandTag = enum(u4) {
-        call,
-        constant,
-        symbol,
-        any,
+    pub const Tagged = union(ExprTag) {
+        call: *const FnCall,
+        symbol: [:0]const u8,
+        join: []const Expr,
+        list: []const Expr,
+        constant: u64,
     };
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        switch (format) {
-            .symbol => |symbol| array.writeMany(symbol),
-            .constant => |constant| array.writeFormat(fmt.ud64(constant)),
-            .call => |call| call.formatWrite(array),
-            .any => |any| for (any) |op| op.formatWrite(array),
+    pub inline fn tagged(value: *const Value) Tagged {
+        const expr: *const Expr = @fieldParentPtr(Expr, "value", value);
+        switch (expr.tag) {
+            .call => return .{ .call = value.call },
+            .constant => return .{ .constant = value.constant },
+            .symbol => return .{ .symbol = value.symbol[0..expr.extra :0] },
+            .join => return .{ .join = value.any[0..expr.extra] },
+            .list => return .{ .list = value.any[0..expr.extra] },
         }
-    }
-    pub fn init(any: anytype) Operand {
-        inline for (@typeInfo(Operand).Union.fields) |field| {
-            if (field.type == @TypeOf(any)) {
-                return @unionInit(Operand, field.name, any);
-            }
-        }
-        @compileError(@typeName(@TypeOf(any)));
     }
 };
+// Unsound
+const UntaggedExpr = struct {
+    pub fn formatWrite(format: Expr, array: anytype) void {
+        switch (format.tag) {
+            .call => array.writeFormat(format.value.call.*),
+            .symbol => array.writeMany(format.value.symbol[0..format.extra]),
+            .constant => array.writeFormat(fmt.ud64(format.extra)),
+            .join => for (format.value.any[0..format.extra]) |op| {
+                op.formatWrite(array);
+            },
+            .list => for (format.value.any[0..format.extra]) |op| {
+                op.formatWrite(array);
+                array.writeMany(tok.end_item);
+            },
+        }
+    }
+    pub fn formatLength(format: Expr) u64 {
+        var len: u64 = 0;
+        switch (format.tag) {
+            .call => len +%= format.value.call.formatLength(),
+            .symbol => len +%= format.extra,
+            .constant => len +%= fmt.ud64(format.value.constant).formatLength(),
+            .join => for (format.value.any[0..format.extra]) |op| {
+                len +%= op.formatLength();
+            },
+            .list => for (format.value.any[0..format.extra]) |op| {
+                len +%= op.formatLength();
+                len +%= tok.end_item.len;
+            },
+        }
+        return len;
+    }
+    pub fn constant(value: u64) Expr {
+        const ret: Expr = .{
+            .tag = .constant,
+            .value = .{ .constant = value },
+            .extra = 0,
+        };
+        return ret;
+    }
+    pub fn call(value: *const FnCall) Expr {
+        const ret: Expr = .{
+            .tag = .call,
+            .value = .{ .call = value },
+            .extra = 0,
+        };
+        return ret;
+    }
+    pub inline fn symbol(value: [:0]const u8) Expr {
+        const ret: Expr = .{
+            .tag = .symbol,
+            .value = .{ .symbol = value.ptr },
+            .extra = @intCast(u32, value.len),
+        };
+        return ret;
+    }
+    pub fn join(value: []const Expr) Expr {
+        const ret: Expr = .{
+            .tag = .join,
+            .value = .{ .any = value.ptr },
+            .extra = @intCast(u32, value.len),
+        };
+        return ret;
+    }
+    pub fn list(value: []const Expr) Expr {
+        const ret: Expr = .{
+            .tag = .list,
+            .value = .{ .any = value.ptr },
+            .extra = @intCast(u32, value.len),
+        };
+        return ret;
+    }
+};
+
+pub const Expr = union(ExprTag) {
+    call: *const FnCall,
+    symbol: [:0]const u8,
+    join: []const Expr,
+    list: []const Expr,
+    constant: u64,
+    pub fn formatWrite(format: Expr, array: anytype) void {
+        switch (format) {
+            .call => array.writeFormat(format.call.*),
+            .symbol => array.writeMany(format.symbol),
+            .constant => array.writeFormat(fmt.ud64(format.constant)),
+            .join => for (format.join) |op| {
+                op.formatWrite(array);
+            },
+            .list => for (format.list) |op| {
+                op.formatWrite(array);
+                array.writeMany(tok.end_item);
+            },
+        }
+    }
+    pub fn formatLength(format: Expr) u64 {
+        var len: u64 = 0;
+        switch (format) {
+            .call => len +%= format.call.formatLength(),
+            .symbol => len +%= format.symbol.len,
+            .constant => len +%= fmt.ud64(format.constant).formatLength(),
+            .join => for (format.join) |op| {
+                len +%= op.formatLength();
+            },
+            .list => for (format.list) |op| {
+                len +%= op.formatLength();
+                len +%= tok.end_item.len;
+            },
+        }
+        return len;
+    }
+    pub fn call(value: *const FnCall) Expr {
+        return .{ .call = value };
+    }
+    pub fn symbol(value: [:0]const u8) Expr {
+        return .{ .symbol = value };
+    }
+    pub fn constant(value: u64) Expr {
+        return .{ .constant = value };
+    }
+    pub fn join(value: []const Expr) Expr {
+        return .{ .join = value };
+    }
+    pub fn list(value: []const Expr) Expr {
+        return .{ .list = value };
+    }
+    pub var debug: bool = false;
+};
+pub usingnamespace Expr;
 
 /// This system allows an implementation or interface function to be called with
 /// arguments substituted by other operands.
@@ -54,41 +183,41 @@ pub const FnCall0 = struct {
 };
 pub const FnCall1 = struct {
     symbol: [:0]const u8,
-    op1: Operand,
+    op1: Expr,
     member: bool = member_call,
     const Format = @This();
 };
 pub const FnCall2 = struct {
     symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
+    op1: Expr,
+    op2: Expr,
     member: bool = member_call,
     const Format = @This();
 };
 pub const FnCall3 = struct {
     symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
-    op3: Operand,
+    op1: Expr,
+    op2: Expr,
+    op3: Expr,
     member: bool = member_call,
     const Format = @This();
 };
 pub const FnCall4 = struct {
     symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
-    op3: Operand,
-    op4: Operand,
+    op1: Expr,
+    op2: Expr,
+    op3: Expr,
+    op4: Expr,
     member: bool = member_call,
     const Format = @This();
 };
 pub const FnCall5 = struct {
     symbol: [:0]const u8,
-    op1: Operand,
-    op2: Operand,
-    op3: Operand,
-    op4: Operand,
-    op5: Operand,
+    op1: Expr,
+    op2: Expr,
+    op3: Expr,
+    op4: Expr,
+    op5: Expr,
     member: bool = member_call,
     const Format = @This();
 };
@@ -106,22 +235,25 @@ pub const FnCallIntr = struct {
     ctn_fn_info: *const interface.Fn,
     member: bool = member_call,
     const Format = @This();
-    pub inline fn formatWrite(format: Format, array: *gen.String) void {
+    pub inline fn formatWrite(format: Format, array: anytype) void {
         format.ctn_fn_info.writeCall(array, format.ctn_detail);
     }
 };
 pub const FnCall = struct {
     symbol: [:0]const u8,
-    ops: []Operand,
+    ops: []Expr,
     member: bool = member_call,
     const Format = @This();
 
-    pub fn op(call: *const FnCall) Operand {
-        return .{ .call = call };
+    pub fn op(call: *const FnCall) Expr {
+        return Expr.call(call);
     }
-    pub fn subst(call: *FnCall, dst: Operand, src: Operand) void {
+    pub fn subst(call: *FnCall, dst: Expr, src: Expr) void {
         for (call.ops) |*ptr| {
-            if (builtin.testEqual(Operand, dst, ptr.*)) ptr.* = src;
+            if (builtin.testEqual(Expr, dst, ptr.*)) {
+                ptr.* = src;
+                break;
+            }
         }
     }
     pub fn formatWrite(format: Format, array: anytype) void {
@@ -153,31 +285,63 @@ pub const FnCall = struct {
             array.writeOne(')');
         }
     }
-    pub fn impl(allocator: *gen.Allocator, impl_detail: *const out.DetailMore, impl_fn_info: *const implementation.Fn) FnCall {
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        if (format.member) {
+            len +%= format.ops[0].formatLength();
+            len +%= 1;
+            len +%= format.symbol.len;
+            len +%= 1;
+            var idx: u64 = 1;
+            while (len != format.ops.len) : (idx +%= 1) {
+                len +%= format.ops[idx].formatLength();
+                len +%= tok.end_small_item.len;
+            }
+            if (len != 1) {
+                len -%= tok.end_small_item.len;
+            }
+            len +%= 1;
+        } else {
+            len +%= format.symbol.len;
+            len +%= 1;
+            var idx: u64 = 0;
+            while (idx != format.ops.len) : (idx +%= 1) {
+                len +%= format.ops[idx].formatLength();
+                len +%= tok.end_small_item.len;
+            }
+            if (idx != 0) {
+                len -%= tok.end_small_item.len;
+            }
+            len +%= 1;
+        }
+        return len;
+    }
+
+    pub fn impl(allocator: anytype, impl_detail: *const out.DetailMore, impl_fn_info: *const implementation.Fn) FnCall {
         const arg_list: gen.ArgList = impl_fn_info.argList(impl_detail, .Argument);
-        const ops: []Operand = allocator.allocateIrreversible(Operand, @max(arg_list.len(), 1));
+        const ops: []Expr = allocator.allocateIrreversible(Expr, @max(arg_list.len(), 1));
         for (arg_list.readAll()) |symbol, i| {
-            ops[i] = .{ .symbol = symbol };
+            ops[i] = Expr.symbol(symbol);
         }
         return .{ .symbol = impl_fn_info.fnName(), .ops = ops[0..arg_list.len()] };
     }
-    pub fn intr(allocator: *gen.Allocator, ctn_detail: *const out.DetailLess, ctn_fn_info: *const interface.Fn) FnCall {
+    pub fn intr(allocator: anytype, ctn_detail: *const out.DetailLess, ctn_fn_info: *const interface.Fn) FnCall {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
-        const ops: []Operand = allocator.allocateIrreversible(Operand, @max(arg_list.len(), 1));
+        const ops: []Expr = allocator.allocateIrreversible(Expr, @max(arg_list.len(), 1));
         for (arg_list.readAll()) |symbol, i| {
-            ops[i] = .{ .symbol = symbol };
+            ops[i] = Expr.symbol(symbol);
         }
         return .{ .symbol = ctn_fn_info.fnName(), .ops = ops };
     }
-    pub fn allocate(allocator: *gen.Allocator, comptime Call: type, call: Call) FnCall {
-        return data(allocator.allocateIrreversible(Operand, @max((@typeInfo(Call).Struct.fields.len - 1), 1)), Call, call);
+    pub fn allocate(allocator: anytype, comptime Call: type, call: Call) FnCall {
+        return data(allocator.allocateIrreversible(Expr, @max((@typeInfo(Call).Struct.fields.len - 1), 1)), Call, call);
     }
-    pub fn data(buf: []Operand, comptime Call: type, call: Call) FnCall {
+    pub fn data(buf: []Expr, comptime Call: type, call: Call) FnCall {
         const fields: []const builtin.Type.StructField = @typeInfo(Call).Struct.fields;
         var ret: FnCall = .{ .symbol = call.symbol, .member = call.member, .ops = buf };
         var len: u64 = 0;
         inline for (fields) |field| {
-            if (field.type == Operand) {
+            if (field.type == Expr) {
                 ret.ops[len] = @field(call, field.name);
                 len +%= 1;
             }
@@ -187,7 +351,7 @@ pub const FnCall = struct {
     }
 };
 pub const ForLoop = struct {
-    op1: Operand,
+    op1: Expr,
     symbol1: [:0]const u8,
     symbol2: [:0]const u8,
     const Format = @This();
@@ -202,7 +366,7 @@ pub const ForLoop = struct {
     }
 };
 pub const FieldAccess = struct {
-    op1: Operand,
+    op1: Expr,
     symbol: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
@@ -214,7 +378,7 @@ pub const FieldAccess = struct {
 pub const ConstDecl = struct {
     var_name: [:0]const u8,
     type_name: [:0]const u8,
-    op1: Operand,
+    op1: Expr,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany(tok.const_keyword);
@@ -229,7 +393,21 @@ pub const ConstDecl = struct {
 pub const VarDecl = struct {
     var_name: [:0]const u8,
     type_name: [:0]const u8,
-    op1: Operand,
+    op1: Expr,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany(tok.var_keyword);
+        array.writeFormat(format.var_name);
+        array.writeMany(tok.colon_operator);
+        array.writeFormat(format.type_name);
+        array.writeMany(tok.equal_operator);
+        array.writeFormat(format.op1);
+        array.writeMany(tok.end_expression);
+    }
+};
+pub const Initializer = struct {
+    type_name: [:0]const u8,
+    op1: Expr,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany(tok.var_keyword);
@@ -242,66 +420,78 @@ pub const VarDecl = struct {
     }
 };
 
-pub inline fn initialize(symbol: [:0]const u8, op1: Operand) [4]Operand {
-    return .{ .{ .symbol = "." }, .{ .symbol = symbol }, .{ .symbol = " = " }, op1 };
+pub inline fn initializeS(symbol: [:0]const u8, op1: Expr) [4]Expr {
+    return .{ Expr.symbol("."), Expr.symbol(symbol), Expr.symbol(" = "), op1 };
 }
-pub inline fn initializer(op1: Operand) [3]Operand {
-    return .{ .{ .symbol = ".{ " }, op1, .{ .symbol = " }" } };
+pub inline fn initializerS(op1: Expr) [3]Expr {
+    return .{ Expr.symbol(".{ "), op1, Expr.symbol(" }") };
 }
-pub inline fn dereference(op1: Operand) [2]Operand {
-    return .{ op1, .{ .symbol = tok.period_asterisk_operator } };
+pub inline fn dereferenceS(op1: Expr) [2]Expr {
+    return .{ op1, Expr.symbol(tok.period_asterisk_operator) };
 }
-pub inline fn assign(op1: Operand, op2: Operand) [3]Operand {
-    return .{ op1, .{ .symbol = tok.equal_operator }, op2 };
+pub inline fn assignS(op1: Expr, op2: Expr) [3]Expr {
+    return .{ op1, Expr.symbol(tok.equal_operator), op2 };
 }
-pub inline fn addEqu(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn initialize(allocator: anytype, symbol: [:0]const u8, op1: Expr) *[4]Expr {
+    return allocator.duplicateIrreversible([4]Expr, .{ Expr.symbol("."), Expr.symbol(symbol), Expr.symbol(" = "), op1 });
+}
+pub inline fn initializer(allocator: anytype, op1: Expr) *[3]Expr {
+    return allocator.duplicateIrreversible([3]Expr, .{ Expr.symbol(".{ "), op1, Expr.symbol(" }") });
+}
+pub inline fn dereference(allocator: anytype, op1: Expr) *[2]Expr {
+    return allocator.duplicateIrreversible([2]Expr, .{ op1, Expr.symbol(tok.period_asterisk_operator) });
+}
+pub inline fn assign(allocator: anytype, op1: Expr, op2: Expr) *[3]Expr {
+    return allocator.duplicateIrreversible([3]Expr, .{ op1, Expr.symbol(tok.equal_operator), op2 });
+}
+pub inline fn addEqu(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.add_equ_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn subEqu(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn subEqu(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.sub_equ_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn add(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn add(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.add_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn alignA(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn alignA(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.sub_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn alignB(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn alignB(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.alignb_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn @"and"(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn @"and"(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.and_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn andn(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn andn(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.and_not_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn cmov(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn cmov(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.cmov_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn mul(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn mul(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.mul_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn @"or"(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn @"or"(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.or_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn shl(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn shl(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shl_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn shr(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn shr(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.shr_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn sub(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn sub(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.sub_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn unpck2x(allocator: *gen.Allocator, op1: Operand, op2: Operand) FnCall {
+pub inline fn unpck2x(allocator: anytype, op1: Expr, op2: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall2, .{ .symbol = tok.unpack_double_fn_name, .op1 = op1, .op2 = op2 });
 }
-pub inline fn unpck1x(allocator: *gen.Allocator, op1: Operand) FnCall {
+pub inline fn unpck1x(allocator: anytype, op1: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall1, .{ .symbol = tok.unpack_single_fn_name, .op1 = op1 });
 }
-pub inline fn subOr(allocator: *gen.Allocator, op1: Operand, op2: Operand, op3: Operand) FnCall {
+pub inline fn subOr(allocator: anytype, op1: Expr, op2: Expr, op3: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall3, .{ .symbol = tok.sub_or_fn_name, .op1 = op1, .op2 = op2, .op3 = op3 });
 }
-pub inline fn shlOr(allocator: *gen.Allocator, op1: Operand, op2: Operand, op3: Operand) FnCall {
+pub inline fn shlOr(allocator: anytype, op1: Expr, op2: Expr, op3: Expr) FnCall {
     return FnCall.allocate(allocator, FnCall3, .{ .symbol = tok.shl_or_fn_name, .op1 = op1, .op2 = op2, .op3 = op3 });
 }
