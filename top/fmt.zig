@@ -286,6 +286,70 @@ pub fn uz64(value: u64) PolynomialFormat(.{ .bits = 64, .radix = 36, .signedness
 pub fn uz128(value: u128) PolynomialFormat(.{ .bits = 128, .radix = 36, .signedness = .unsigned, .width = .min }) {
     return .{ .value = value };
 }
+pub fn ubsize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 2,
+    .signedness = .unsigned,
+    .width = .max,
+}) {
+    return .{ .value = value };
+}
+pub fn uosize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 8,
+    .signedness = .unsigned,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
+pub fn udsize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 10,
+    .signedness = .unsigned,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
+pub fn uxsize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 16,
+    .signedness = .unsigned,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
+pub fn ibsize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 2,
+    .signedness = .signed,
+    .width = .max,
+}) {
+    return .{ .value = value };
+}
+pub fn iosize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 8,
+    .signedness = .signed,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
+pub fn idsize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 10,
+    .signedness = .signed,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
+pub fn ixsize(value: usize) PolynomialFormat(.{
+    .bits = @bitSizeOf(usize),
+    .radix = 16,
+    .signedness = .signed,
+    .width = .min,
+}) {
+    return .{ .value = value };
+}
 pub fn bytes(count: usize) Bytes {
     return Bytes.init(count);
 }
@@ -1491,4 +1555,12 @@ pub const Type = struct {
     pub const Uz32 = @TypeOf(uz32(undefined));
     pub const Uz64 = @TypeOf(uz64(undefined));
     pub const Uz128 = @TypeOf(uz128(undefined));
+    pub const Ubsize = @TypeOf(ubsize(undefined));
+    pub const Uosize = @TypeOf(uosize(undefined));
+    pub const Udsize = @TypeOf(udsize(undefined));
+    pub const Uxsize = @TypeOf(uxsize(undefined));
+    pub const Ibsize = @TypeOf(ibsize(undefined));
+    pub const Iosize = @TypeOf(iosize(undefined));
+    pub const Idsize = @TypeOf(idsize(undefined));
+    pub const Ixsize = @TypeOf(ixsize(undefined));
 };
