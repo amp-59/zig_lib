@@ -1,13 +1,12 @@
 const sys = @import("../sys.zig");
 const mem = @import("../mem.zig");
 const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
-
 const out = struct {
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
 };
+const Array = mem.StaticArray(u8, 1024 * 1024);
 
 /// Containers are grouped by layout, kind, and mode.
 const Container = struct {
@@ -32,7 +31,7 @@ fn getKeys() Keys {
     }
     return keys;
 }
-fn mapToContainers(array: *gen.String) void {
+fn mapToContainers(array: *Array) void {
     const keys: Keys = getKeys();
     array.writeMany("pub const containers: []const []const u16 = &[_][]const u16{\n");
     for (keys.readAll()) |key| {
@@ -57,7 +56,7 @@ fn mapToContainers(array: *gen.String) void {
 
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     mapToContainers(&array);
     sys.call(.exit, .{}, noreturn, .{0});

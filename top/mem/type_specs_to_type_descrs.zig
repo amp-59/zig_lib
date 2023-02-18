@@ -7,7 +7,9 @@ const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
 const out = @import("./zig-out/src/type_specs.zig");
 
-fn mapContainersToParameters(array: *gen.String) void {
+const Array = mem.StaticArray(u8, 1024 * 1024);
+
+fn mapContainersToParameters(array: *Array) void {
     const fmt_spec = .{ .infer_type_names = true, .ignore_formatter_decls = true };
     gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "../../gen.zig" }});
     array.writeMany("pub const type_descrs = ");
@@ -38,7 +40,7 @@ fn mapContainersToParameters(array: *gen.String) void {
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     mapContainersToParameters(&array);
     sys.call(.exit, .{}, noreturn, .{0});

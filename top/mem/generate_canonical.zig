@@ -12,7 +12,7 @@ const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/specifiers.zig");
 };
-
+const Array = mem.StaticArray(u8, 1024 * 1024);
 const CanonicalSpec = struct {
     type_name: []const u8 = "Canonical",
     fields: []const CanonicalFieldSpec,
@@ -66,7 +66,7 @@ const specs_spec: CanonicalFieldSpec = .{
     .dst_type_name = "Specifier",
     .detail = out.DetailMore,
 };
-fn writeFieldType(comptime field: CanonicalFieldSpec, array: *gen.String) void {
+fn writeFieldType(comptime field: CanonicalFieldSpec, array: *Array) void {
     const sample: []const field.detail = if (field.detail == out.Detail) out.impl_details else out.impl_variants;
     const backing_int: type = meta.Child(field.src_type);
     const Uniques = mem.StaticArray(backing_int, 256);
@@ -125,7 +125,7 @@ fn writeFieldType(comptime field: CanonicalFieldSpec, array: *gen.String) void {
     }
     array.writeMany("        }\n" ++ "    }\n" ++ "};\n");
 }
-fn writeCanonicalStruct(array: *gen.String, comptime spec: CanonicalSpec) void {
+fn writeCanonicalStruct(array: *Array, comptime spec: CanonicalSpec) void {
     inline for (spec.fields) |field| writeFieldType(field, array);
     array.writeMany("pub const " ++ spec.type_name ++ " = packed struct {\n");
     array.writeMany("    index: u8,\n");
@@ -146,7 +146,7 @@ fn writeCanonicalStruct(array: *gen.String, comptime spec: CanonicalSpec) void {
 
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     writeCanonicalStruct(&array, .{ .fields = &.{
         layout_spec,

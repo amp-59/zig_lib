@@ -1,5 +1,7 @@
 const fmt = @import("../fmt.zig");
+const meta = @import("../meta.zig");
 const builtin = @import("../builtin.zig");
+const testing = @import("../testing.zig");
 
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
@@ -95,7 +97,7 @@ pub const FnCallImpl = struct {
     impl_fn_info: *const implementation.Fn,
     member: bool = member_call,
     const Format = @This();
-    pub inline fn formatWrite(format: Format, array: *gen.String) void {
+    pub inline fn formatWrite(format: Format, array: anytype) void {
         format.impl_fn_info.writeCall(array, format.impl_variant);
     }
 };

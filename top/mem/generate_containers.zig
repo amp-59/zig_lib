@@ -23,7 +23,6 @@ const interface = @import("./interface.zig");
 const implementation = @import("./implementation.zig");
 
 pub usingnamespace proc.start;
-pub usingnamespace proc.exception;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0x0,
@@ -33,7 +32,6 @@ pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .logging = preset.address_space.logging.silent,
 });
 const Allocator = mem.GenericArenaAllocator(.{
-    .AddressSpace = AddressSpace,
     .arena_index = 0,
     .errors = preset.allocator.errors.noexcept,
     .logging = preset.allocator.logging.silent,

@@ -11,6 +11,9 @@ const out = struct {
     usingnamespace @import("./abstract_spec.zig");
     usingnamespace @import("./zig-out/src/abstract_params.zig");
 };
+
+const Array = mem.StaticArray(u8, 1024 * 1024);
+
 fn addUniqueFieldName(field_names: *mem.StaticArray([]const u8, 16), field_name: []const u8) void {
     for (field_names.readAll()) |unique_field_name| {
         if (builtin.testEqual([]const u8, field_name, unique_field_name)) {
@@ -45,7 +48,7 @@ fn addField(
         return ret;
     }
 }
-fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.StaticArray([]const u8, 16)) void {
+fn writeSpecifications(array: *Array, comptime T: type, field_names: *mem.StaticArray([]const u8, 16)) void {
     comptime var p_struct_fields: []const builtin.Type.StructField = &.{};
     comptime var v_struct_fields: []const builtin.Type.StructField = &.{};
     comptime var s_struct_field_slices: []const []const builtin.Type.StructField = meta.empty;
@@ -153,7 +156,7 @@ fn writeSpecifications(array: *gen.String, comptime T: type, field_names: *mem.S
     array.writeMany(" },");
 }
 
-fn writeStructFromFields(array: *gen.String, comptime struct_fields: []const builtin.Type.StructField) void {
+fn writeStructFromFields(array: *Array, comptime struct_fields: []const builtin.Type.StructField) void {
     array.writeMany("struct { ");
     inline for (struct_fields) |field| {
         array.writeMany(field.name ++ ": " ++
@@ -174,7 +177,7 @@ fn writeStructFromFields(array: *gen.String, comptime struct_fields: []const bui
         array.writeOne('}');
     }
 }
-fn writeSpecifiersStruct(array: *gen.String, field_names: mem.StaticArray([]const u8, 16)) void {
+fn writeSpecifiersStruct(array: *Array, field_names: mem.StaticArray([]const u8, 16)) void {
     array.writeMany("pub const Specifiers = packed struct { ");
     for (field_names.readAll()) |field_name| {
         array.writeMany(field_name);
@@ -184,7 +187,7 @@ fn writeSpecifiersStruct(array: *gen.String, field_names: mem.StaticArray([]cons
     array.writeMany(" };\n");
     gen.writeAuxiliarySourceFile(array, "specifiers.zig");
 }
-pub fn abstractToTypeSpec(array: *gen.String) void {
+pub fn abstractToTypeSpec(array: *Array) void {
     gen.writeImports(array, @src(), &.{
         .{ .name = "gen", .path = "../../gen.zig" },
     });
@@ -200,7 +203,7 @@ pub fn abstractToTypeSpec(array: *gen.String) void {
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     abstractToTypeSpec(&array);
     sys.call(.exit, .{}, noreturn, .{0});

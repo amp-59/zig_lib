@@ -10,6 +10,8 @@ const abstract_spec = @import("./abstract_spec.zig");
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
+const Array = mem.StaticArray(u8, 1024 * 1024);
+
 fn slices(comptime T: type) *[]const T {
     var ptrs: []const T = &.{};
     return &ptrs;
@@ -18,13 +20,13 @@ pub fn typeIndex(comptime types: []const type, comptime T: type) bool {
     for (types) |U| if (U == T) return false;
     return true;
 }
-fn writeAbstractParametersStruct(array: *gen.String, comptime T: type) void {
+fn writeAbstractParametersStruct(array: *Array, comptime T: type) void {
     array.writeMany("    ");
     array.writeFormat(comptime fmt.TypeFormat(.{ .omit_trailing_comma = true }){ .value = T });
     array.writeMany(",\n");
 }
 inline fn writeAbstractParametersInternal(
-    array: *gen.String,
+    array: *Array,
     comptime types: *[]const type,
     comptime T: type,
 ) void {
@@ -40,12 +42,12 @@ inline fn writeAbstractParametersInternal(
         }
     }
 }
-fn writeAbstractParameters(array: *gen.String, comptime types: *[]const type) void {
+fn writeAbstractParameters(array: *Array, comptime types: *[]const type) void {
     array.writeMany("pub const abstract_params = [_]type{\n");
     writeAbstractParametersInternal(array, types, abstract_spec.AbstractSpec);
     array.writeMany("};\n");
 }
-pub fn specToAbstract(array: *gen.String) void {
+pub fn specToAbstract(array: *Array) void {
     const types: *[]const type = comptime slices(type);
     gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "../../gen.zig" }});
     writeAbstractParameters(array, types);
@@ -53,7 +55,7 @@ pub fn specToAbstract(array: *gen.String) void {
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     specToAbstract(&array);
     sys.call(.exit, .{}, noreturn, .{0});

@@ -1,15 +1,14 @@
 const sys = @import("../sys.zig");
 const mem = @import("../mem.zig");
 const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
-
 const out = struct {
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
     usingnamespace @import("./zig-out/src/containers.zig");
 };
 
+const Array = mem.StaticArray(u8, 1024 * 1024);
 const Keys = mem.StaticArray(out.Specifier, 256);
 
 fn writeOneUnique(keys: *Keys, value: out.Specifier) void {
@@ -26,7 +25,7 @@ fn getKeys() Keys {
     }
     return keys;
 }
-fn mapToContainers(array: *gen.String) void {
+fn mapToContainers(array: *Array) void {
     const keys: Keys = getKeys();
     array.writeMany("pub const specifications: []const []const []const u16 = &[_][]const []const u16{\n");
     for (out.containers) |indices| {
@@ -55,7 +54,7 @@ fn mapToContainers(array: *gen.String) void {
 
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     mapToContainers(&array);
     sys.call(.exit, .{}, noreturn, .{0});

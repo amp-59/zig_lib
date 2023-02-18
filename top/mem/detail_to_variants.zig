@@ -12,12 +12,15 @@ const out = struct {
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/specifiers.zig");
 };
-fn writeVariantStructInternal(array: *gen.String, impl_detail: out.Detail, specs: out.Specifiers) void {
+
+const Array = mem.StaticArray(u8, 1024 * 1024);
+
+fn writeVariantStructInternal(array: *Array, impl_detail: out.Detail, specs: out.Specifiers) void {
     array.writeMany("    ");
     array.writeFormat(impl_detail.more(out.DetailMore, specs));
     array.writeMany(",\n");
 }
-fn writeVariantStruct(array: *gen.String, comptime impl_detail: out.Detail) void {
+fn writeVariantStruct(array: *Array, comptime impl_detail: out.Detail) void {
     const type_spec: gen.TypeSpecMap = out.type_specs[impl_detail.index];
     var vars: u16 = 0;
     while (vars <= @truncate(meta.Child(type_spec.vars), ~@as(u64, 0))) : (vars +%= 1) {
@@ -33,7 +36,7 @@ fn writeVariantStruct(array: *gen.String, comptime impl_detail: out.Detail) void
         writeVariantStructInternal(array, impl_detail, specs);
     }
 }
-fn detailToVariants(array: *gen.String) void {
+fn detailToVariants(array: *Array) void {
     gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "../../detail_more.zig" }});
     array.writeMany("pub const impl_variants: []const out.DetailMore = &[_]out.DetailMore{\n");
     inline for (out.impl_details) |impl_detail| {
@@ -44,7 +47,7 @@ fn detailToVariants(array: *gen.String) void {
 }
 pub export fn _start() noreturn {
     @setAlignStack(16);
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     detailToVariants(&array);
     sys.call(.exit, .{}, noreturn, .{0});

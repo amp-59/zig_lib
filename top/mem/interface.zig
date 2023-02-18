@@ -1084,14 +1084,14 @@ pub const Fn = packed struct {
         }
         return array;
     }
-    pub fn writeCall(ctn_fn_info: *const Fn, array: *gen.String, ctn_detail: *const out.DetailLess) void {
+    pub fn writeCall(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const out.DetailLess) void {
         const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         array.writeMany(ctn_fn_info.fnName());
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
         array.writeMany(")");
     }
-    pub fn writeSignature(ctn_fn_info: *const Fn, array: *gen.String, ctn_detail: *const out.DetailLess) void {
+    pub fn writeSignature(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const out.DetailLess) void {
         const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
         array.writeMany("pub fn ");
         array.writeMany(ctn_fn_info.fnName());

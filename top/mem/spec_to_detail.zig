@@ -15,7 +15,9 @@ pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
-fn writeUnspecifiedDetailInternal(array: *gen.String, comptime T: type, impl_detail: *out.Detail) void {
+const Array = mem.StaticArray(u8, 1024 * 1024);
+
+fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: *out.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
@@ -43,12 +45,12 @@ fn writeUnspecifiedDetailInternal(array: *gen.String, comptime T: type, impl_det
         writeDetailStruct(array, impl_detail.*);
     }
 }
-fn writeDetailStruct(array: *gen.String, impl_detail: out.Detail) void {
+fn writeDetailStruct(array: *Array, impl_detail: out.Detail) void {
     array.writeMany("    ");
     array.writeFormat(impl_detail);
     array.writeMany(",\n");
 }
-fn writeUnspecifiedDetails(array: *gen.String) void {
+fn writeUnspecifiedDetails(array: *Array) void {
     var impl_detail: out.Detail = .{};
     gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "../../detail.zig" }});
     array.writeMany("pub const impl_details: []const out.Detail = &[_]out.Detail{");
@@ -56,7 +58,7 @@ fn writeUnspecifiedDetails(array: *gen.String) void {
     array.writeMany("};\n");
 }
 fn specToDetail() void {
-    var array: gen.String = undefined;
+    var array: Array = undefined;
     array.undefineAll();
     writeUnspecifiedDetails(&array);
     gen.writeAuxiliarySourceFile(&array, "impl_details.zig");

@@ -27,11 +27,13 @@ pub const AddressSpace = mem.GenericRegularAddressSpace(.{
         .release = .abort,
     },
 });
+const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
+
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
 fn writeOptionsInternal(
-    array: *gen.String,
+    array: *Array,
     field_name: []const u8,
     usage: gen.Option.Usage,
     field_names: []const []const u8,
@@ -82,7 +84,7 @@ fn writeOptionsInternal(
     }
     return 1;
 }
-fn writeOptions(array: *gen.String, toplevel_impl_group: []const out.DetailMore) void {
+fn writeOptions(array: *Array, toplevel_impl_group: []const out.DetailMore) void {
     array.writeMany("const Options = struct {");
     var write: u1 = 0;
     inline for (out.options) |option| {
@@ -100,16 +102,16 @@ fn writeOptions(array: *gen.String, toplevel_impl_group: []const out.DetailMore)
     }
     array.writeMany("};\n");
 }
-fn generateParameters() void {
+fn generateParameters() !void {
     var address_space: AddressSpace = .{};
-    var allocator: gen.Allocator = gen.Allocator.init(&address_space);
-    var array: gen.String = undefined;
+    var allocator: Allocator = try Allocator.init(&address_space);
+    var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
     gen.writeImports(&array, @src(), &.{});
     gen.copySourceFile(&array, "container-template.zig");
     var ctn_index: u16 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
-        const save: gen.Allocator.Save = allocator.save();
+        const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
         const ctn_group: []const u16 = out.containers[ctn_index];
         array.writeMany("pub const ");
