@@ -6,7 +6,7 @@ const tok = @import("./tok.zig");
 const out = @import("./detail_more.zig");
 
 // zig fmt: off
-pub const key: [19]Fn = .{
+pub const key: [20]Fn = .{
     .allocated_byte_address,
     .aligned_byte_address,
     .unstreamed_byte_address,
@@ -26,6 +26,7 @@ pub const key: [19]Fn = .{
     .seek,
     .tell,
     .construct,
+    .translate,
 };
 // zig fmt: on
 pub inline fn get(comptime tag: Fn) *const Fn {
@@ -51,7 +52,7 @@ pub const Fn = enum(u5) {
     seek = 16,
     tell = 17,
     construct = 18,
-
+    translate = 19,
     pub inline fn fnName(impl_fn_info: *const Fn) [:0]const u8 {
         return @tagName(impl_fn_info.*);
     }
@@ -82,7 +83,7 @@ pub const Fn = enum(u5) {
             else => {
                 return true;
             },
-            .construct => {
+            .construct, .translate => {
                 return !impl_variant.kinds.automatic;
             },
         }
@@ -168,7 +169,7 @@ pub const Fn = enum(u5) {
                     array.writeOne(impl_const_symbol);
                 }
             },
-            .construct => {
+            .construct, .translate => {
                 const source_allocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
                     .Parameter => tok.source_allocated_byte_address_param,
                     .Argument => tok.source_allocated_byte_address_name,
@@ -189,6 +190,9 @@ pub const Fn = enum(u5) {
                     .Parameter => tok.source_double_approximation_counts_param,
                     .Argument => tok.source_double_approximation_counts_name,
                 };
+                if (impl_fn_info.* == .translate) {
+                    array.writeOne(impl_symbol);
+                }
                 if (impl_variant.fields.allocated_byte_address) {
                     array.writeOne(source_allocated_byte_address_symbol);
                 }
@@ -241,16 +245,19 @@ pub const Fn = enum(u5) {
             .construct => {
                 return tok.impl_type_name;
             },
+            .translate => {
+                return tok.void_type_name;
+            },
         }
     }
-    pub fn writeCall(impl_fn_info: *const Fn, array: *gen.String, impl_detail: *const out.DetailMore) void {
+    pub fn writeCall(impl_fn_info: *const Fn, array: anytype, impl_detail: *const out.DetailMore) void {
         const list: gen.ArgList = impl_fn_info.argList(impl_detail, .Argument);
         array.writeMany(impl_fn_info.fnName());
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
         array.writeMany(")");
     }
-    pub fn writeSignature(impl_fn_info: *const Fn, array: *gen.String, impl_detail: *const out.DetailMore) void {
+    pub fn writeSignature(impl_fn_info: *const Fn, array: anytype, impl_detail: *const out.DetailMore) void {
         const list: gen.ArgList = impl_fn_info.argList(impl_detail, .Parameter);
         array.writeMany("pub inline fn ");
         array.writeMany(impl_fn_info.fnName());
