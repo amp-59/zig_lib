@@ -190,29 +190,29 @@ pub inline fn tuple(any: anytype) Tuple(@TypeOf(any)) {
 
 /// Align `count` below to bitSizeOf smallest real word bit count
 pub fn alignBW(comptime count: comptime_int) u16 {
-    return switch (count) {
-        0...7 => 0,
-        8...15 => 8,
-        16...31 => 16,
-        32...63 => 32,
-        64...127 => 64,
-        128...255 => 128,
-        256...511 => 256,
-        else => 512,
-    };
+    switch (count) {
+        0...7 => return 0,
+        8...15 => return 8,
+        16...31 => return 16,
+        32...63 => return 32,
+        64...127 => return 64,
+        128...255 => return 128,
+        256...511 => return 256,
+        else => return 512,
+    }
 }
 /// Align `count` above to bitSizeOf smallest real word bit count
 pub fn alignAW(comptime count: comptime_int) u16 {
-    return switch (count) {
-        0 => 0,
-        1...8 => 8,
-        9...16 => 16,
-        17...32 => 32,
-        33...64 => 64,
-        65...128 => 128,
-        129...256 => 256,
-        else => 512,
-    };
+    switch (count) {
+        0 => return 0,
+        1...8 => return 8,
+        9...16 => return 16,
+        17...32 => return 32,
+        33...64 => return 64,
+        65...128 => return 128,
+        129...256 => return 256,
+        else => return 512,
+    }
 }
 const Extrema = struct { min: comptime_int, max: comptime_int };
 /// Find the maximum and minimum arithmetical values for an integer type.
@@ -236,16 +236,16 @@ pub fn extrema(comptime I: type) Extrema {
 /// comptime integer.
 pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
     if (value > 0) {
-        return switch (value) {
-            0...~@as(u8, 0) => 8,
-            @as(u9, 1) << 8...~@as(u16, 0) => 16,
-            @as(u17, 1) << 16...~@as(u32, 0) => 32,
-            @as(u33, 1) << 32...~@as(u64, 0) => 64,
-            @as(u65, 1) << 64...~@as(u128, 0) => 128,
-            @as(u129, 1) << 128...~@as(u256, 0) => 256,
-            @as(u257, 1) << 256...~@as(u512, 0) => 512,
-            else => @compileLog(value),
-        };
+        switch (value) {
+            0...~@as(u8, 0) => return 8,
+            @as(u9, 1) << 8...~@as(u16, 0) => return 16,
+            @as(u17, 1) << 16...~@as(u32, 0) => return 32,
+            @as(u33, 1) << 32...~@as(u64, 0) => return 64,
+            @as(u65, 1) << 64...~@as(u128, 0) => return 128,
+            @as(u129, 1) << 128...~@as(u256, 0) => return 256,
+            @as(u257, 1) << 256...~@as(u512, 0) => return 512,
+            else => return @compileLog(value),
+        }
     } else {
         const xi8: Extrema = extrema(i8);
         const xi16: Extrema = extrema(i16);
@@ -254,16 +254,16 @@ pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
         const xi128: Extrema = extrema(i128);
         const xi256: Extrema = extrema(i256);
         const xi512: Extrema = extrema(i512);
-        return switch (value) {
-            xi8.min...xi8.max => 8,
-            xi16.min...xi8.min - 1, xi8.max + 1...xi16.max => 16,
-            xi32.min...xi16.min - 1, xi16.max + 1...xi32.max => 32,
-            xi64.min...xi32.min - 1, xi32.max + 1...xi64.max => 64,
-            xi128.min...xi64.min - 1, xi64.max + 1...xi128.max => 128,
-            xi256.min...xi128.min - 1, xi128.max + 1...xi256.max => 128,
-            xi512.min...xi256.min - 1, xi256.max + 1...xi512.max => 128,
-            else => @compileLog(value),
-        };
+        switch (value) {
+            xi8.min...xi8.max => return 8,
+            xi16.min...xi8.min - 1, xi8.max + 1...xi16.max => return 16,
+            xi32.min...xi16.min - 1, xi16.max + 1...xi32.max => return 32,
+            xi64.min...xi32.min - 1, xi32.max + 1...xi64.max => return 64,
+            xi128.min...xi64.min - 1, xi64.max + 1...xi128.max => return 128,
+            xi256.min...xi128.min - 1, xi128.max + 1...xi256.max => return 128,
+            xi512.min...xi256.min - 1, xi256.max + 1...xi512.max => return 128,
+            else => return @compileLog(value),
+        }
     }
 }
 pub fn alignSizeBW(comptime T: type) u16 { // Needs a better name
@@ -406,24 +406,8 @@ pub fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@TypeOf(an
 }
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
-        .Optional => |optional_info| {
-            return optional_info.child;
-        },
-        .Array => |array_info| {
-            return array_info.child;
-        },
-        .Pointer => |pointer_info| {
-            if (pointer_info.size == .Slice or pointer_info.size == .Many) {
-                return pointer_info.child;
-            }
-            switch (@typeInfo(pointer_info.child)) {
-                .Array => |array_info| {
-                    return array_info.child;
-                },
-                else => {
-                    return pointer_info.child;
-                },
-            }
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Struct, .Union });
         },
         .Enum => |enum_info| {
             return enum_info.tag_type;
@@ -442,13 +426,34 @@ pub fn Child(comptime T: type) type {
                 @compileError("expected tagged union");
             }
         },
-        else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Struct, .Union });
+        .Optional => |optional_info| {
+            return optional_info.child;
+        },
+        .Array => |array_info| {
+            return array_info.child;
+        },
+        .Pointer => |pointer_info| {
+            if (pointer_info.size == .Slice or
+                pointer_info.size == .Many)
+            {
+                return pointer_info.child;
+            }
+            switch (@typeInfo(pointer_info.child)) {
+                .Array => |array_info| {
+                    return array_info.child;
+                },
+                else => {
+                    return pointer_info.child;
+                },
+            }
         },
     }
 }
 pub fn Element(comptime T: type) type {
     switch (@typeInfo(T)) {
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+        },
         .Array => |array_info| {
             return array_info.child;
         },
@@ -465,13 +470,13 @@ pub fn Element(comptime T: type) type {
                 },
             }
         },
-        else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
-        },
     }
 }
 pub fn sentinel(comptime T: type) ?Element(T) {
     switch (@typeInfo(T)) {
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+        },
         .Array => |array_info| {
             if (array_info.sentinel) |sentinel_ptr| {
                 return @ptrCast(*const array_info.child, @alignCast(@alignOf(array_info.child), sentinel_ptr)).*;
@@ -482,9 +487,6 @@ pub fn sentinel(comptime T: type) ?Element(T) {
                 const ret: pointer_info.child = @ptrCast(*const pointer_info.child, @alignCast(@alignOf(pointer_info.child), sentinel_ptr)).*;
                 return ret;
             }
-        },
-        else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
         },
     }
 }
@@ -561,6 +563,18 @@ pub fn EnumBitField(comptime E: type) type {
         }
     });
 }
+pub fn TaggedUnion(comptime Union: type) type {
+    var tag_type_fields: []const builtin.Type.EnumField = empty;
+    var value: comptime_int = 0;
+    for (@typeInfo(Union).Union.fields) |field| {
+        tag_type_fields = tag_type_fields ++ [1]builtin.Type.EnumField{.{
+            .name = field.name,
+            .value = value,
+        }};
+        value +%= 1;
+    }
+    return @Type(.{ .Enum = .{ .fields = tag_type_fields } });
+}
 
 pub fn unionFields(comptime Union: type) []const builtin.UnionField {
     return @typeInfo(Union).Union.fields;
@@ -575,12 +589,20 @@ pub fn Field(comptime T: type, comptime field_name: []const u8) type {
     return @TypeOf(@field(@as(T, undefined), field_name));
 }
 pub fn FieldN(comptime T: type, comptime field_index: usize) type {
-    return switch (@typeInfo(T)) {
-        .Struct => |struct_info| struct_info.fields[field_index].type,
-        .Union => |union_info| union_info.fields[field_index].type,
-        .Enum => |enum_info| enum_info.fields[field_index].type,
-        else => |type_info| debug.unexpectedTypeTypesError(T, type_info, decl_types),
-    };
+    switch (@typeInfo(T)) {
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, decl_types);
+        },
+        .Struct => |struct_info| {
+            return struct_info.fields[field_index].type;
+        },
+        .Union => |union_info| {
+            return union_info.fields[field_index].type;
+        },
+        .Enum => |enum_info| {
+            return enum_info.fields[field_index].type;
+        },
+    }
 }
 pub fn fnParams(comptime function: anytype) []const builtin.FnParam {
     return @typeInfo(@TypeOf(function)).Fn.params;
@@ -618,6 +640,9 @@ pub fn GenericReturn(comptime function: anytype) ?type {
 pub fn ReturnErrorSet(comptime any_function: anytype) type {
     const T: type = @TypeOf(any_function);
     switch (@typeInfo(T)) {
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .Struct });
+        },
         .Fn => {
             return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.error_set;
         },
@@ -643,9 +668,6 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
         },
         .ErrorSet => {
             return T;
-        },
-        else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .Struct });
         },
     }
 }
@@ -737,15 +759,13 @@ pub fn ErrorUnion(comptime any_function: anytype) type {
             return union(enum) {
                 err: Error,
                 val: Value,
-
                 const Error: type = error_set_info.error_set;
                 const Value: type = error_set_info.payload;
-
                 fn unwrap(u: @This()) Error!Value {
-                    return switch (u) {
-                        .err => |err| err,
-                        .val => |val| val,
-                    };
+                    switch (u) {
+                        .err => |err| return err,
+                        .val => |val| return val,
+                    }
                 }
             };
         },
@@ -789,34 +809,34 @@ pub fn maxNameLength(comptime T: type) u64 {
 /// Return whether values of this type can be compared for equality.
 pub fn isTriviallyComparable(comptime T: type) bool {
     const type_info: builtin.Type = @typeInfo(T);
-    return switch (type_info) {
-        .Type => true,
-        .Void => true,
-        .Bool => true,
-        .Int => true,
-        .Float => true,
-        .ComptimeFloat => true,
-        .ComptimeInt => true,
-        .Null => true,
-        .ErrorSet => true,
-        .Enum => true,
-        .Opaque => true,
-        .AnyFrame => true,
-        .EnumLiteral => true,
-        .Fn => false,
-        .NoReturn => false,
-        .Array => false,
-        .Struct => false,
-        .ErrorUnion => false,
-        .Union => false,
-        .Frame => false,
-        .Vector => false,
-        .Pointer => |pointer_info| @typeInfo(pointer_info.child) != .Fn and pointer_info.size != .Slice,
-        .Optional => |optional_info| @typeInfo(optional_info.child) == .Pointer and
+    switch (type_info) {
+        .Type => return true,
+        .Void => return true,
+        .Bool => return true,
+        .Int => return true,
+        .Float => return true,
+        .ComptimeFloat => return true,
+        .ComptimeInt => return true,
+        .Null => return true,
+        .ErrorSet => return true,
+        .Enum => return true,
+        .Opaque => return true,
+        .AnyFrame => return true,
+        .EnumLiteral => return true,
+        .Fn => return false,
+        .NoReturn => return false,
+        .Array => return false,
+        .Struct => return false,
+        .ErrorUnion => return false,
+        .Union => return false,
+        .Frame => return false,
+        .Vector => return false,
+        .Pointer => |pointer_info| return @typeInfo(pointer_info.child) != .Fn and pointer_info.size != .Slice,
+        .Optional => |optional_info| return @typeInfo(optional_info.child) == .Pointer and
             @typeInfo(optional_info.child).Pointer.size != .Slice and
             @typeInfo(optional_info.child).Pointer.size != .C,
         .Undefined => unreachable,
-    };
+    }
 }
 fn fieldIdInternalNoOp(comptime T: type, id: u64) u64 {
     const type_info: builtin.Type = @typeInfo(T);
@@ -908,7 +928,7 @@ pub fn UniformData(comptime bits: u16) type {
             return @Type(.{ .Int = .{ .bits = real_bits, .signedness = .unsigned } });
         },
         else => {
-            return [(bits / word_size) + builtin.int(u16, builtin.rem(u16, bits, word_size) != 0)]usize;
+            return [(bits / word_size) + @boolToInt(@rem(bits, word_size) != 0)]usize;
         },
     }
 }
@@ -935,32 +955,32 @@ pub fn genericSlice(comptime transform: anytype, comptime values: anytype) []con
 }
 const debug = opaque {
     fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
-        return switch (any) {
-            .Type => "type",
-            .Void => "void",
-            .Bool => "bool",
-            .NoReturn => "noreturn",
-            .Int => "integer",
-            .Float => "float",
-            .Pointer => "pointer",
-            .Array => "array",
-            .Struct => "struct",
-            .ComptimeFloat => "comptime_float",
-            .ComptimeInt => "comptime_int",
-            .Undefined => "undefined",
-            .Null => "null",
-            .Optional => "optional",
-            .ErrorUnion => "error union",
-            .ErrorSet => "error set",
-            .Enum => "enum",
-            .Union => "union",
-            .Fn => "function",
-            .Opaque => "opaque",
-            .Frame => "frame",
-            .AnyFrame => "anyframe",
-            .Vector => "vector",
-            .EnumLiteral => "(enum literal)",
-        };
+        switch (any) {
+            .Type => return "type",
+            .Void => return "void",
+            .Bool => return "bool",
+            .NoReturn => return "noreturn",
+            .Int => return "integer",
+            .Float => return "float",
+            .Pointer => return "pointer",
+            .Array => return "array",
+            .Struct => return "struct",
+            .ComptimeFloat => return "comptime_float",
+            .ComptimeInt => return "comptime_int",
+            .Undefined => return "undefined",
+            .Null => return "null",
+            .Optional => return "optional",
+            .ErrorUnion => return "error union",
+            .ErrorSet => return "error set",
+            .Enum => return "enum",
+            .Union => return "union",
+            .Fn => return "function",
+            .Opaque => return "opaque",
+            .Frame => return "frame",
+            .AnyFrame => return "anyframe",
+            .Vector => return "vector",
+            .EnumLiteral => return "(enum literal)",
+        }
     }
     fn genericTypeList(comptime kind: builtin.TypeKind, any: anytype) []const u8 {
         var buf: []const u8 = empty;
