@@ -11,17 +11,19 @@ const thread = srg.thread;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
+pub const runtime_assertions: bool = false;
+pub const is_verbose: bool = false;
+pub const is_silent: bool = false;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
     .divisions = 32,
+    .errors = .{
+        .acquire = .ignore,
+        .release = .ignore,
+    },
 });
-
-pub const runtime_assertions: bool = false;
-pub const is_verbose: bool = false;
-pub const is_silent: bool = false;
-
 const map_spec: thread.MapSpec = .{
     .errors = .{},
     .options = .{},
@@ -32,6 +34,7 @@ const thread_spec: proc.CloneSpec = .{
     .return_type = u64,
 };
 const Allocator0 = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
     .arena_index = 0,
     .options = blk: {
         var tmp = preset.allocator.options.small;
@@ -43,6 +46,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
     .errors = preset.allocator.errors.noexcept,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
     .arena_index = 1,
     .options = preset.allocator.options.small,
     .logging = preset.allocator.logging.silent,
@@ -88,19 +92,8 @@ const Results = struct {
     dirs: u64 = 0,
     links: u64 = 0,
     depth: u64 = 0,
-    fn total(results: Results) u64 {
+    inline fn total(results: Results) u64 {
         return results.dirs + results.files + results.links;
-    }
-    fn show(results: Results) void {
-        var array: PrintArray = .{};
-        array.writeAny(preset.reinterpret.fmt, .{
-            "dirs:       ", fmt.udh(results.dirs),         '\n',
-            "files:      ", fmt.udh(results.files),        '\n',
-            "links:      ", fmt.udh(results.links),        '\n',
-            "depth:      ", fmt.udh(results.depth),        '\n',
-            "swaps:      ", fmt.udh(DirStream.disordered), '\n',
-        });
-        file.noexcept.write(2, array.readAll());
     }
 };
 const Filter = meta.EnumBitField(file.Kind);
@@ -177,6 +170,21 @@ const Style = if (Options.permit_switch_arrows) struct {
     const empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) empty_dir_arrow_ws else empty_dir_arrow_bs;
     const last_empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
 };
+fn show(results: *Results) void {
+    var array: PrintArray = .{};
+    array.writeMany("dirs:       ");
+    array.writeFormat(fmt.udh(results.dirs));
+    array.writeMany("\nfiles:      ");
+    array.writeFormat(fmt.udh(results.files));
+    array.writeMany("\nlinks:      ");
+    array.writeFormat(fmt.udh(results.links));
+    array.writeMany("\ndepth:      ");
+    array.writeFormat(fmt.udh(results.depth));
+    array.writeMany("\nswap:       ");
+    array.writeFormat(fmt.udh(DirStream.disordered));
+    array.writeOne('\n');
+    file.noexcept.write(1, array.readAll());
+}
 fn conditionalSkip(entry_name: []const u8) bool {
     if (entry_name[0] == '.') {
         return true;
@@ -297,39 +305,6 @@ fn writeAndWalk(
         }
     }
 }
-fn setType(arg: []const u8) Filter {
-    var mask: Filter = .{ .val = ~@as(@typeInfo(Filter.Tag).Enum.tag_type, 0) };
-    if (mem.testEqualMany(u8, "-f", arg)) {
-        mask.set(.regular);
-    } else if (mem.testEqualMany(u8, "-d", arg)) {
-        mask.set(.directory);
-    } else if (mem.testEqualMany(u8, "-b", arg)) {
-        mask.set(.block_special);
-    } else if (mem.testEqualMany(u8, "-h", arg)) {
-        mask.set(.symbolic_link);
-    } else if (mem.testEqualMany(u8, "-S", arg)) {
-        mask.set(.socket);
-    } else if (mem.testEqualMany(u8, "-p", arg)) {
-        mask.set(.named_pipe);
-    } else if (mem.testEqualMany(u8, "-c", arg)) {
-        mask.set(.character_special);
-    } else if (mem.testEqualMany(u8, "+f", arg)) {
-        mask.unset(.regular);
-    } else if (mem.testEqualMany(u8, "+d", arg)) {
-        mask.unset(.directory);
-    } else if (mem.testEqualMany(u8, "+b", arg)) {
-        mask.unset(.block_special);
-    } else if (mem.testEqualMany(u8, "+h", arg)) {
-        mask.unset(.symbolic_link);
-    } else if (mem.testEqualMany(u8, "+S", arg)) {
-        mask.unset(.socket);
-    } else if (mem.testEqualMany(u8, "+p", arg)) {
-        mask.unset(.named_pipe);
-    } else if (mem.testEqualMany(u8, "+c", arg)) {
-        mask.unset(.character_special);
-    }
-    return mask;
-}
 inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1, offset: u64) u64 {
     const many: []const u8 = array.readManyAt(allocator, offset);
     if (many.len > (n - 1)) {
@@ -354,9 +329,10 @@ noinline fn printAlong(results: *Results, done: *bool, allocator: *Allocator1, a
     while (offset != array.len(allocator.*)) {
         offset += printIfNAvail(1, allocator.*, array.*, offset);
     }
-    results.show();
+    show(results);
     done.* = false;
 }
+
 inline fn getNames(args: *[][*:0]u8) Names {
     var names: Names = .{};
     var i: u64 = 1;
@@ -365,9 +341,11 @@ inline fn getNames(args: *[][*:0]u8) Names {
     }
     return names;
 }
+
 fn convertToInt(options: *Options, arg: []const u8) void {
     options.max_depth = builtin.parse.ud(u8, arg);
 }
+
 pub fn main(args_in: [][*:0]u8) !void {
     var address_space: builtin.AddressSpace = .{};
     var args: [][*:0]u8 = args_in;
@@ -380,9 +358,9 @@ pub fn main(args_in: [][*:0]u8) !void {
     if (names.len() == 0) {
         names.writeOne(".");
     }
-    var allocator_0: Allocator0 = try Allocator0.init(&address_space);
+    var allocator_0: Allocator0 = Allocator0.init(&address_space);
     defer allocator_0.deinit(&address_space);
-    var allocator_1: Allocator1 = try Allocator1.init(&address_space);
+    var allocator_1: Allocator1 = Allocator1.init(&address_space);
     defer allocator_1.deinit(&address_space);
     const stack_addr: u64 = if (Options.print_in_second_thread) try meta.wrap(thread.map(map_spec, 8)) else 0;
     defer thread.unmap(.{ .errors = .{} }, 8);
