@@ -44,7 +44,7 @@ pub const address_space = opaque {
             .map = .{},
             .unmap = .{},
         };
-        pub const silent: mem.AddressSpaceErrors = .{
+        pub const zen: mem.AddressSpaceErrors = .{
             .acquire = .{ .throw = error.UnderSupply },
             .release = .abort,
             .map = .{ .throw = sys.mmap_errors },
@@ -90,6 +90,51 @@ pub const allocator = opaque {
             .count_allocations = false,
             .count_useful_bytes = false,
             .check_parametric = false,
+            .prefer_remap = false,
+        };
+        // TODO: Describe conditions where this is better.
+        pub const fast: mem.ArenaAllocatorOptions = .{
+            .count_branches = false,
+            .count_allocations = true,
+            .count_useful_bytes = true,
+            .check_parametric = false,
+            .require_geometric_growth = true,
+        };
+        pub const debug: mem.ArenaAllocatorOptions = .{
+            .count_branches = true,
+            .count_allocations = true,
+            .count_useful_bytes = true,
+            .check_parametric = true,
+            .trace_state = true,
+            .trace_clients = true,
+        };
+        pub const small_composed: mem.ArenaAllocatorOptions = .{
+            .count_branches = false,
+            .count_allocations = false,
+            .count_useful_bytes = false,
+            .check_parametric = false,
+            .prefer_remap = false,
+            .require_map = false,
+            .require_unmap = false,
+        };
+        pub const fast_composed: mem.ArenaAllocatorOptions = .{
+            .count_branches = false,
+            .count_allocations = true,
+            .count_useful_bytes = true,
+            .check_parametric = false,
+            .require_geometric_growth = true,
+            .require_map = false,
+            .require_unmap = false,
+        };
+        pub const debug_composed: mem.ArenaAllocatorOptions = .{
+            .count_branches = true,
+            .count_allocations = true,
+            .count_useful_bytes = true,
+            .check_parametric = true,
+            .trace_state = true,
+            .trace_clients = true,
+            .require_map = false,
+            .require_unmap = false,
         };
     };
     pub const logging = opaque {
@@ -123,6 +168,11 @@ pub const allocator = opaque {
         };
     };
     pub const errors = opaque {
+        pub const zen: mem.AllocatorErrors = .{
+            .map = .{ .throw = mmap.errors.mem },
+            .remap = .{ .throw = mremap.errors.all },
+            .unmap = .{ .abort = munmap.errors.all },
+        };
         pub const noexcept: mem.AllocatorErrors = .{
             .map = .{},
             .remap = .{},
