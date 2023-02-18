@@ -25,6 +25,7 @@ const T = struct {
 };
 const Allocator0 = mem.GenericArenaAllocator(.{
     .arena_index = 0,
+    .AddressSpace = AddressSpace,
     .options = .{
         .check_parametric = false,
         .unit_alignment = 1,
@@ -39,6 +40,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 4,
+    .AddressSpace = AddressSpace,
     .options = .{
         .check_parametric = false,
         .unit_alignment = 1,
