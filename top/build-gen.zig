@@ -34,6 +34,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .options = preset.allocator.options.small,
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
+    .AddressSpace = AddressSpace,
 });
 const Array = Allocator.StructuredHolder(u8);
 const create_spec: file.CreateSpec = .{
@@ -46,7 +47,7 @@ const create_spec: file.CreateSpec = .{
 };
 const close_spec: file.CloseSpec = .{
     .logging = .{},
-    .errors = null,
+    .errors = .{},
 };
 const ws: [28]u8 = .{' '} ** 28;
 
@@ -1443,7 +1444,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     array.increment(&allocator, 1024 * 1024);
 
     const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/build-template.zig");
-    try mem.acquire(.{}, AddressSpace, &address_space, 1);
+    try mem.acquire(AddressSpace, &address_space, 1);
     const arena_1: mem.Arena = AddressSpace.arena(1);
 
     const lb_addr: u64 = arena_1.lb_addr;
@@ -1483,5 +1484,5 @@ pub fn main(args_in: [][*:0]u8) !void {
     } else {
         try file.write(1, array.readAll(allocator));
     }
-    mem.unmap(.{ .errors = null }, lb_addr, up_addr - lb_addr);
+    mem.unmap(.{ .errors = .{} }, lb_addr, up_addr - lb_addr);
 }
