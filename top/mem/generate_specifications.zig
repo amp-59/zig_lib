@@ -20,10 +20,24 @@ const out = struct {
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
 
-pub const AddressSpace = preset.address_space.regular_128;
 pub usingnamespace proc.start;
 
-fn writeReturnImplementation(array: *gen.String, impl_detail: out.DetailMore) void {
+const Allocator = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .errors = preset.allocator.errors.noexcept,
+    .logging = preset.allocator.logging.silent,
+    .options = preset.allocator.options.small,
+    .AddressSpace = AddressSpace,
+});
+const AddressSpace = mem.GenericRegularAddressSpace(.{
+    .lb_addr = 0,
+    .lb_offset = 0x40000000,
+    .divisions = 8,
+    .errors = .{ .acquire = .abort, .release = .abort },
+});
+const Array = Allocator.StructuredStaticVector(u8, 1024 * 1024);
+
+fn writeReturnImplementation(array: *Array, impl_detail: out.DetailMore) void {
     const endl: bool = mem.testEqualManyBack(u8, " => ", array.readAll());
     array.writeMany("return ");
     impl_detail.writeImplementationName(array);
@@ -67,8 +81,8 @@ fn filterTechnique(
     return .{ f, buf[0..t_len] };
 }
 fn writeDeductionTestBoolean(
-    allocator: *gen.Allocator,
-    array: *gen.String,
+    allocator: *Allocator,
+    array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
@@ -104,8 +118,8 @@ fn writeDeductionTestBoolean(
     }
 }
 fn writeDeductionCompareEnumerationInternal(
-    allocator: *gen.Allocator,
-    array: *gen.String,
+    allocator: *Allocator,
+    array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
@@ -138,13 +152,13 @@ fn writeDeductionCompareEnumerationInternal(
     return null;
 }
 fn writeDeductionCompareEnumeration(
-    allocator: *gen.Allocator,
-    array: *gen.String,
+    allocator: *Allocator,
+    array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
 ) void {
-    const save: gen.Allocator.Save = allocator.save();
+    const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
     array.writeMany("switch (options." ++ options[0].info.field_name ++ ") {\n");
     const rem: ?[]const out.DetailMore =
@@ -153,13 +167,13 @@ fn writeDeductionCompareEnumeration(
     writeDeduction(allocator, array, toplevel_impl_group, rem orelse return, options[1..]);
 }
 fn writeDeductionCompareOptionalEnumeration(
-    allocator: *gen.Allocator,
-    array: *gen.String,
+    allocator: *Allocator,
+    array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
 ) void {
-    const save: gen.Allocator.Save = allocator.save();
+    const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
     array.writeMany("if (options." ++ options[0].info.field_name ++ ") |" ++
         options[0].info.field_name ++ "| {\nswitch (" ++
@@ -170,8 +184,8 @@ fn writeDeductionCompareOptionalEnumeration(
     writeDeduction(allocator, array, toplevel_impl_group, rem orelse return, options[1..]);
 }
 fn writeDeduction(
-    allocator: *gen.Allocator,
-    array: *gen.String,
+    allocator: *Allocator,
+    array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
@@ -200,9 +214,9 @@ fn writeDeduction(
 }
 pub fn generateReferences() !void {
     var address_space: AddressSpace = .{};
-    var allocator: gen.Allocator = try gen.Allocator.init(&address_space);
+    var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: gen.String = undefined;
+    var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
     gen.writeImports(&array, @src(), &.{
         .{ .name = "mach", .path = "../mach.zig" },
@@ -212,7 +226,7 @@ pub fn generateReferences() !void {
     var accm_spec_index: u16 = 0;
     var ctn_index: u16 = 0;
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
-        const save: gen.Allocator.Save = allocator.save();
+        const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
         const ctn_buf: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, out.containers[ctn_index], out.impl_variants);
         const ctn_spec_group: []const []const u16 = out.specifications[ctn_index];
