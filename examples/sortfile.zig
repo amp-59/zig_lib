@@ -16,19 +16,24 @@ const map_spec: file.MapSpec = .{
     .options = .{ .visibility = .shared, .read = true, .write = true },
 };
 const close_spec: file.CloseSpec = .{
-    .errors = null,
+    .errors = .{},
 };
 const unmap_spec: mem.UnmapSpec = .{
-    .errors = null,
+    .errors = .{},
 };
 const open_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = .append },
 };
 fn sortBuf(buf: []u64) void {
-    if (!algo.isSortedAsc(u64, buf)) {
-        algo.shellSortAscTransform(u64, algo.approx, buf);
-        algo.shellSortAscTransform(u64, algo.approxDouble, buf);
-        algo.shellSortAsc(u64, buf);
+    const S = struct {
+        fn asc(x: u64, y: u64) bool {
+            return x > y;
+        }
+    };
+    if (!algo.isSorted(u64, S.asc, buf)) {
+        algo.shellSort(u64, S.asc, algo.approx, buf);
+        algo.shellSort(u64, S.asc, algo.approxDouble, buf);
+        algo.shellSort(u64, S.asc, builtin.identity, buf);
         mem.copy(fbuf_start, mbuf_start, @sizeOf(u64) * buf.len, 8);
     }
 }
@@ -51,7 +56,6 @@ fn showFile(buf: []u64) void {
         }
     }
 }
-
 // TODO: Add an option or command to sort in place, as the previous behaviour
 
 pub fn main(args: [][*:0]u8) !void {
