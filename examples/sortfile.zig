@@ -12,18 +12,11 @@ pub usingnamespace proc.start;
 const fbuf_start: u64 = 0x40000000;
 const mbuf_start: u64 = 0x10000000000;
 
-const map_spec: file.MapSpec = .{
-    .options = .{ .visibility = .shared, .read = true, .write = true },
-};
-const close_spec: file.CloseSpec = .{
-    .errors = .{},
-};
-const unmap_spec: mem.UnmapSpec = .{
-    .errors = .{},
-};
-const open_spec: file.OpenSpec = .{
-    .options = .{ .read = true, .write = .append },
-};
+const map_spec: file.MapSpec = .{ .options = .{ .visibility = .shared, .read = true, .write = true } };
+const close_spec: file.CloseSpec = .{ .errors = .{} };
+const unmap_spec: mem.UnmapSpec = .{ .errors = .{} };
+const open_spec: file.OpenSpec = .{ .options = .{ .read = true, .write = .append } };
+
 fn sortBuf(buf: []u64) void {
     const S = struct {
         fn asc(x: u64, y: u64) bool {
