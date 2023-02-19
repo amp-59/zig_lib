@@ -53,26 +53,26 @@ fn compareSorts() !void {
     const values_1 = @intToPtr([*]T, size)[0..(size / @sizeOf(T))];
     const values_2 = @intToPtr([*]T, size + size)[0..(size / @sizeOf(T))];
 
-    @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
-    {
+    if (false) {
+        @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
         const t_0 = try time.get(.{}, .realtime);
-        algo.insertionSort(T, S.asc, builtin.identity, values_2);
+        algo.insertionSort(T, S.asc, builtin.identity, values_2[0 .. values_2.len / 0x10]);
         const t_1 = try time.get(.{}, .realtime);
-        testing.printN(4096, .{ "insert: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
+        testing.printN(4096, .{ "insert: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
-    @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
     {
+        @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.shellSort(T, S.asc, builtin.identity, values_2);
         const t_1 = try time.get(.{}, .realtime);
-        testing.printN(4096, .{ "shell: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
+        testing.printN(4096, .{ "shell: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
-    @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
     {
+        @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.layeredShellSort(T, S.asc, values_2);
         const t_1 = try time.get(.{}, .realtime);
-        testing.printN(4096, .{ "lshell: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
+        testing.printN(4096, .{ "lshell: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
         var address_space: AddressSpace = .{};
