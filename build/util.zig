@@ -53,20 +53,29 @@ fn defineBuildRoot(builder: *build.Builder, exe: *build.LibExeObjStep) void {
 }
 fn defineRootSourceAboslutePath(builder: *build.Builder, exe: *build.LibExeObjStep) void {
     var root_source_s: [4098]u8 = .{0} ** 4098;
-    {
-        var len: u64 = 0;
-        root_source_s[len] = '"';
-        len += 1;
-        for (builder.build_root) |c, i| root_source_s[i + 1] = c;
-        len += builder.build_root.len;
-        root_source_s[len] = '/';
-        len += 1;
-        for (exe.root_src.?.path) |c, i| root_source_s[i + 1] = c;
-        len += exe.root_src.?.path.len;
-        root_source_s[len + 1] = '"';
-        exe.defineCMacro("root_src_file", root_source_s[0 .. len + 2]);
-        root_source_s[len] = 0;
-    }
+    var len: u64 = 0;
+    root_source_s[len] = '"';
+    len += 1;
+    for (builder.build_root) |c, i| root_source_s[i + 1] = c;
+    len += builder.build_root.len;
+    root_source_s[len] = '/';
+    len += 1;
+    for (exe.root_src.?.path) |c, i| root_source_s[i + 1] = c;
+    len += exe.root_src.?.path.len;
+    root_source_s[len + 1] = '"';
+    exe.defineCMacro("root_src_file", root_source_s[0 .. len + 2]);
+    root_source_s[len] = 0;
+}
+fn defineMacroPath(exe: *build.LibExeObjStep, name: []const u8, pathname: []const u8) void {
+    var quoted_pathname: [4098]u8 = .{0} ** 4098;
+    var len: u64 = 0;
+    quoted_pathname[len] = '"';
+    len +%= 1;
+    for (pathname) |c, i| quoted_pathname[i + 1] = c;
+    len +%= pathname.len;
+    quoted_pathname[len] = '"';
+    quoted_pathname[len + 1] = 0;
+    exe.defineCMacro(name, quoted_pathname[0 .. len + 2]);
 }
 fn defineConfig(exe: *build.LibExeObjStep, name: []const u8, value: bool) void {
     if (value) {
@@ -120,8 +129,8 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     if (args.runtime_assertions) |runtime_assertions| {
         defineConfig(ret, "runtime_assertions", runtime_assertions);
     }
-    if (args.is_tolerant) |is_tolerant| {
-        defineConfig(ret, "is_tolerant", is_tolerant);
+    if (args.is_silent) |is_silent| {
+        defineConfig(ret, "is_silent", is_silent);
     }
     if (args.is_verbose) |is_verbose| {
         defineConfig(ret, "is_verbose", is_verbose);
@@ -129,12 +138,17 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     if (args.is_perf) |is_perf| {
         defineConfig(ret, "is_perf", is_perf);
     }
+
     ret.addModule("zig_lib", Context.srg);
     ret.install();
     ret.link_gc_sections = true;
     ret.link_function_sections = true;
     ret.disable_stack_probing = true;
     ret.code_model = .kernel;
+    defineMacroPath(ret, "zig_exe", builder.zig_exe);
+    defineMacroPath(ret, "build_root", builder.build_root.path.?);
+    defineMacroPath(ret, "cache_dir", builder.cache_root.path.?);
+    defineMacroPath(ret, "global_cache_dir", builder.global_cache_root.path.?);
     make_step.dependOn(&ret.step);
     make_step.dependOn(&ret.install_step.?.step);
     run_step.dependOn(make_step);
