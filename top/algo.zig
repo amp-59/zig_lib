@@ -156,24 +156,27 @@ pub fn approxDouble(k_bytes: u64) u64 {
     const n_bytes_ctz: u64 = ~mach.shrx64(lit.max_bit_u64, n_bytes_cls);
     return mach.sub64(m_bytes, mach.shrx64(n_bytes_ctz, n_bytes_clz) +% 1);
 }
-pub fn insertionSortAsc(comptime T: type, values: []T) void {
+
+/// insert: [524288]u64	 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
+pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
     var i: u64 = 1;
     while (i != values.len) : (i +%= 1) {
         const x: T = values[i];
         var j: u64 = i -% 1;
-        while (j >= 0 and values[j] > x) : (j -%= 1) {
+        while (j >= 0 and comparison(transform(values[j]), transform(x))) : (j -%= 1) {
             values[j +% 1] = values[j];
         }
         values[j +% 1] = x;
     }
 }
-pub fn shellSortAsc(comptime T: type, values: []T) void {
+/// shell: [524288]u64	 = top.time.TimeSpec{ .nsec = 568540594, }
+pub fn shellSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
     var gap: u64 = values.len / 2;
     while (gap != 0) : (gap /= 2) {
         var i: u64 = gap;
         while (i != values.len) : (i +%= 1) {
             var j: u64 = i -% gap;
-            while (j < values.len and values[j] > values[j +% gap]) : (j -%= gap) {
+            while (j < values.len and comparison(transform(values[j]), transform(values[j +% gap]))) : (j -%= gap) {
                 const k: u64 = j +% gap;
                 const values_k: T = values[j];
                 values[j] = values[k];
@@ -182,25 +185,36 @@ pub fn shellSortAsc(comptime T: type, values: []T) void {
         }
     }
 }
-pub fn shellSortAscTransform(comptime T: type, comptime transform: anytype, values: []T) void {
-    var gap: u64 = values.len / 2;
-    while (gap != 0) : (gap /= 2) {
-        var i: u64 = gap;
-        while (i != values.len) : (i +%= 1) {
-            var j: u64 = i -% gap;
-            while (j < values.len and
-                transform(values[j]) > transform(values[j +% gap])) : (j -%= gap)
-            {
-                const k: u64 = j +% gap;
-                const values_k: T = values[j];
-                values[j] = values[k];
-                values[k] = values_k;
-            }
+/// lshell: [524288]u64	 = top.time.TimeSpec{ .nsec = 253526823, }
+pub fn layeredShellSort(comptime T: type, comptime comparison: anytype, values: []T) void {
+    if (isSorted(T, comparison, values)) return;
+    shellSort(T, comparison, approx, values);
+    shellSort(T, comparison, approxDouble, values);
+    shellSort(T, comparison, builtin.identity, values);
+}
+/// radix: [524288]u64	 = top.time.TimeSpec{ .nsec = 86801419, }
+pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
+    var values_1: []T = allocator.allocateIrreversible(T, values_0.len);
+    const save = allocator.save();
+    defer allocator.restore(save);
+    var bit: T = 1;
+    while (bit != 0) : (bit <<= 1) {
+        var len_0: u64 = 0;
+        var len_1: u64 = 0;
+        for (values_0) |value_0| {
+            const j: bool = value_0 & bit == bit;
+            const t: *T = if (j) &values_1[len_1] else &values_0[len_0];
+            len_0 +%= ~@boolToInt(j);
+            len_1 +%= @boolToInt(j);
+            t.* = value_0;
+        }
+        for (values_1[0..len_1]) |value_1| {
+            values_0[len_0] = value_1;
+            len_0 +%= 1;
         }
     }
 }
-
-pub fn isSortedAsc(comptime T: type, values: []T) bool {
+pub fn isSorted(comptime T: type, comptime comparison: anytype, values: []T) bool {
     if (values.len == 0) {
         return true;
     }
@@ -208,16 +222,10 @@ pub fn isSortedAsc(comptime T: type, values: []T) bool {
     var prev: T = values[0];
     while (i != values.len) : (i +%= 1) {
         const next: T = values[i];
-        if (prev > next) {
+        if (comparison(prev, next)) {
             return false;
         }
         prev = next;
     }
     return true;
-}
-pub fn layeredShellSortAsc(comptime T: type, values: []T) void {
-    if (isSortedAsc(T, values)) return;
-    shellSortAscTransform(T, approx, values);
-    shellSortAscTransform(T, approxDouble, values);
-    shellSortAscTransform(T, builtin.identity, values);
 }
