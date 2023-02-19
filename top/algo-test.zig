@@ -5,14 +5,17 @@ const proc = @import("./proc.zig");
 const algo = @import("./algo.zig");
 const file = @import("./file.zig");
 const time = @import("./time.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-pub const runtime_assertions: bool = true;
-const show_best_cases: bool = false;
+pub const is_silent: bool = true;
+pub const runtime_assertions: bool = false;
 
+pub const AddressSpace = preset.address_space.regular_128;
+const show_best_cases: bool = false;
 fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     var len: u64 = 0;
     for (ss) |s| {
@@ -24,29 +27,60 @@ fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
 fn print(buf: []u8, off: u64, ss: []const []const u8) void {
     file.noexcept.write(1, buf[0 .. off + write(buf, off, ss)]);
 }
-fn compareLayeredShellShort() !void {
+const Allocator = mem.GenericArenaAllocator(.{
+    .AddressSpace = preset.address_space.regular_128,
+    .arena_index = 1,
+    .logging = preset.allocator.logging.silent,
+    .errors = preset.allocator.errors.noexcept,
+});
+const S = struct {
+    fn asc(x: anytype, y: anytype) bool {
+        return x > y;
+    }
+    fn desc(x: anytype, y: anytype) bool {
+        return x < y;
+    }
+};
+fn compareSorts() !void {
     const size = 0x400000;
+    const T = u64;
     try mem.map(.{ .options = .{} }, size, size);
     try mem.map(.{ .options = .{} }, size + size, size);
+
     const rnbuf: []u8 = @intToPtr([*]u8, size)[0..size];
     file.readRandom(rnbuf);
-    const values_1 = @intToPtr([*]u64, size)[0..(size / 0x8)];
+
+    const values_1 = @intToPtr([*]T, size)[0..(size / @sizeOf(T))];
+    const values_2 = @intToPtr([*]T, size + size)[0..(size / @sizeOf(T))];
+
     @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
-    const values_2 = @intToPtr([*]u64, size + size)[0..(size / 0x8)];
     {
         const t_0 = try time.get(.{}, .realtime);
-        algo.shellSortAsc(u64, values_1);
+        algo.insertionSort(T, S.asc, builtin.identity, values_2);
         const t_1 = try time.get(.{}, .realtime);
-        testing.printN(4096, .{ fmt.any(time.diff(t_1, t_0)), '\n' });
+        testing.printN(4096, .{ "insert: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
+    @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
     {
         const t_0 = try time.get(.{}, .realtime);
-        algo.layeredShellSortAsc(u64, values_2);
+        algo.shellSort(T, S.asc, builtin.identity, values_2);
         const t_1 = try time.get(.{}, .realtime);
-        testing.printN(4096, .{ fmt.any(time.diff(t_1, t_0)), '\n' });
+        testing.printN(4096, .{ "shell: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
-    for (values_1) |value, index| {
-        builtin.assertEqual(u64, value, values_2[index]);
+    @memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
+    {
+        const t_0 = try time.get(.{}, .realtime);
+        algo.layeredShellSort(T, S.asc, values_2);
+        const t_1 = try time.get(.{}, .realtime);
+        testing.printN(4096, .{ "lshell: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
+    }
+    {
+        var address_space: AddressSpace = .{};
+        var allocator: Allocator = try Allocator.init(&address_space);
+        const t_0 = try time.get(.{}, .realtime);
+        algo.radixSort(&allocator, T, values_1);
+        const t_1 = try time.get(.{}, .realtime);
+        testing.printN(4096, .{ "radix: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
 }
 fn approximationTest() void {
@@ -79,6 +113,6 @@ fn approximationTest() void {
     builtin.assertBelow(u64, total_returned - total_requested, (2 * total_requested) / 100);
 }
 pub fn main() !void {
-    try compareLayeredShellShort();
+    try compareSorts();
     approximationTest();
 }
