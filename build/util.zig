@@ -43,9 +43,9 @@ const Utility = opaque {
 fn defineBuildRoot(builder: *build.Builder, exe: *build.LibExeObjStep) void {
     var build_root_s: [4098]u8 = .{0} ** 4098;
     {
-        const len: u64 = builder.build_root.len;
+        const len: u64 = builder.build_root.path.?.len;
         build_root_s[0] = '"';
-        for (builder.build_root) |c, i| build_root_s[i + 1] = c;
+        for (builder.build_root.path.?) |c, i| build_root_s[i + 1] = c;
         build_root_s[len + 1] = '"';
         exe.defineCMacro("build_root", build_root_s[0 .. len + 2]);
         build_root_s[len] = 0;
@@ -105,7 +105,7 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     ret.single_threaded = false;
     ret.image_base = 0x10000;
     ret.linkage = .static;
-    ret.main_pkg_path = builder.build_root;
+    ret.main_pkg_path = builder.build_root.path;
     ret.bundle_compiler_rt = false;
     ret.strip = (args.strip or
         Context.build_mode == .ReleaseFast or
