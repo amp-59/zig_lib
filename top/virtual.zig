@@ -7,7 +7,7 @@ const builtin = @import("./builtin.zig");
 const word_size: u8 = @bitSizeOf(usize);
 
 pub const ResourceError = error{ UnderSupply, OverSupply };
-pub const ResourceErrorPolicy = meta.InternalError(ResourceError);
+pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 
@@ -199,10 +199,10 @@ pub const Arena = struct {
     }
 };
 pub const AddressSpaceLogging = struct {
-    acquire: builtin.Logging.Full = .{},
-    release: builtin.Logging.Full = .{},
-    map: builtin.Logging.Full = .{},
-    unmap: builtin.Logging.Full = .{},
+    acquire: builtin.Logging.AcquireErrorFault = .{},
+    release: builtin.Logging.ReleaseErrorFault = .{},
+    map: builtin.Logging.AcquireErrorFault = .{},
+    unmap: builtin.Logging.ReleaseErrorFault = .{},
 };
 pub const AddressSpaceErrors = struct {
     acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },
