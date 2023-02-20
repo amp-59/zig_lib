@@ -185,16 +185,33 @@ pub const RtArenaAllocatorSpec = struct {
         return spec.options.require_unmap;
     }
 };
-pub const PageAllocatorSpec = struct {
-    AddressSpace: type,
-    arena_index: comptime_int,
-    options: PageAllocatorOptions = .{},
-    errors: AllocatorErrors = .{},
-    logging: AllocatorLogging = .{},
-};
 fn GenericAllocatorInterface(comptime Allocator: type) type {
     const Graphics = GenericArenaAllocatorGraphics(Allocator);
     return (struct {
+        pub inline fn mapped_byte_address(allocator: *const Allocator) u64 {
+            return allocator.lb_addr;
+        }
+        pub inline fn unallocated_byte_address(allocator: *const Allocator) u64 {
+            return allocator.ub_addr;
+        }
+        pub inline fn unmapped_byte_address(allocator: *const Allocator) u64 {
+            return allocator.up_addr;
+        }
+        pub inline fn unaddressable_byte_address(allocator: *const Allocator) u64 {
+            return allocator.ua_addr;
+        }
+        pub inline fn allocated_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unallocated_byte_address(allocator), mapped_byte_address(allocator));
+        }
+        pub inline fn unallocated_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unmapped_byte_address(allocator), unallocated_byte_address(allocator));
+        }
+        pub inline fn mapped_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unmapped_byte_address(allocator), mapped_byte_address(allocator));
+        }
+        pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
+            return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
+        }
         fn allocate(allocator: *Allocator, s_up_addr: u64) void {
             allocator.ub_addr = s_up_addr;
         }
@@ -217,27 +234,27 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
                     const t_bytes: u64 = builtin.max(u64, allocator.mapped_byte_count(), s_bytes);
                     try meta.wrap(special.resize(
                         Allocator.remap_spec,
-                        allocator.mapped_byte_address(),
-                        allocator.mapped_byte_count(),
-                        allocator.mapped_byte_count() + t_bytes,
+                        mapped_byte_address(allocator),
+                        mapped_byte_count(allocator),
+                        mapped_byte_count(allocator) + t_bytes,
                     ));
                     allocator.up_addr +%= t_bytes;
                 } else {
                     try meta.wrap(special.resize(
                         Allocator.remap_spec,
-                        allocator.mapped_byte_address(),
-                        allocator.mapped_byte_count(),
-                        allocator.mapped_byte_count() + s_bytes,
+                        mapped_byte_address(allocator),
+                        mapped_byte_count(allocator),
+                        mapped_byte_count(allocator) + s_bytes,
                     ));
                     allocator.up_addr +%= s_bytes;
                 }
             } else if (s_bytes >= 4096) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.mapped_byte_count(), s_bytes);
-                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), t_bytes));
+                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), t_bytes));
                     allocator.up_addr +%= t_bytes;
                 } else {
-                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), s_bytes));
+                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
                     allocator.up_addr +%= s_bytes;
                 }
             }
@@ -246,17 +263,17 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             builtin.assertEqual(u64, s_bytes & 4095, 0);
             if (s_bytes >= 4096) {
                 allocator.up_addr -%= s_bytes;
-                return special.unmap(Allocator.unmap_spec, allocator.unmapped_byte_address(), s_bytes);
+                return special.unmap(Allocator.unmap_spec, unmapped_byte_address(allocator), s_bytes);
             }
         }
         fn mapInit(allocator: *Allocator) sys.Call(Allocator.map_spec.errors.throw, void) {
             if (Allocator.allocator_spec.options.require_map) {
                 if (Allocator.allocator_spec.options.prefer_remap) {
                     const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
-                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), s_bytes));
+                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
                     allocator.up_addr +%= s_bytes;
                 } else if (Allocator.allocator_spec.options.init_commit) |s_bytes| {
-                    try meta.wrap(special.map(Allocator.map_spec, allocator.unmapped_byte_address(), s_bytes));
+                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
                     allocator.up_addr +%= s_bytes;
                 }
             }
@@ -276,8 +293,8 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
         pub fn unmapAbove(allocator: *Allocator, s_up_addr: u64) Allocator.deallocate_void {
             if (Allocator.allocator_spec.options.require_unmap) {
                 const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
-                const t_bytes: u64 = mach.sub64(t_ua_addr, allocator.mapped_byte_address());
-                const x_bytes: u64 = mach.sub64(allocator.mapped_byte_count(), t_bytes);
+                const t_bytes: u64 = mach.sub64(t_ua_addr, mapped_byte_address(allocator));
+                const x_bytes: u64 = mach.sub64(mapped_byte_count(allocator), t_bytes);
                 if (Allocator.allocator_spec.options.count_useful_bytes) {
                     builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
                 }
@@ -443,31 +460,6 @@ inline fn ArenaAllocatorReference(comptime spec: anytype) type {
         utility: meta.maybe(spec.options.count_useful_bytes, u64) = 0,
     });
 }
-fn ThreadSpace(comptime spec: PageAllocatorSpec) type {
-    const lb_addr: u64 = spec.AddressSpace.low(spec.arena_index);
-    const up_addr: u64 = builtin.add(u64, lb_addr, builtin.mul(u64, spec.options.thread_count, spec.options.thread_stack_size));
-    return mem.GenericRegularAddressSpace(.{
-        .lb_addr = lb_addr,
-        .up_addr = up_addr,
-        .divisions = spec.options.thread_count,
-        .alignment = spec.options.page_size,
-    });
-}
-fn PageAllocatorMetadata(comptime spec: PageAllocatorSpec) type {
-    return (struct {
-        threads: meta.maybe(spec.options.thread_count != 0, ThreadSpace(spec)) = .{},
-        branches: meta.maybe(spec.options.count_branches, Branches) = .{},
-        count: meta.maybe(spec.options.count_segments, u64) = 0,
-    });
-}
-fn PageAllocatorReference(comptime spec: PageAllocatorSpec) type {
-    return (struct {
-        branches: meta.maybe(spec.options.trace_state, Branches) = .{},
-        ub_addr: meta.maybe(spec.options.trace_state, u64) = 0,
-        up_addr: meta.maybe(spec.options.trace_state, u64) = 0,
-        count: meta.maybe(spec.options.count_segments, u64) = 0,
-    });
-}
 pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
     return (struct {
         comptime lb_addr: u64 = lb_addr,
@@ -484,30 +476,6 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
         const lb_addr: u64 = arena.low();
         const ua_addr: u64 = arena.high();
-        pub inline fn mapped_byte_address(allocator: *const Allocator) u64 {
-            return allocator.lb_addr;
-        }
-        pub inline fn unallocated_byte_address(allocator: *const Allocator) u64 {
-            return allocator.ub_addr;
-        }
-        pub inline fn unmapped_byte_address(allocator: *const Allocator) u64 {
-            return allocator.up_addr;
-        }
-        pub inline fn unaddressable_byte_address(allocator: *const Allocator) u64 {
-            return allocator.ua_addr;
-        }
-        pub inline fn allocated_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unallocated_byte_address(allocator), mapped_byte_address(allocator));
-        }
-        pub inline fn unallocated_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unmapped_byte_address(allocator), unallocated_byte_address(allocator));
-        }
-        pub inline fn mapped_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unmapped_byte_address(allocator), mapped_byte_address(allocator));
-        }
-        pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
-        }
         pub fn init(address_space: *AddressSpace) Allocator.acquire_allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
@@ -525,7 +493,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         }
         pub fn deinit(allocator: *Allocator, address_space: *AddressSpace) Allocator.release_allocator {
             defer Graphics.showWithReference(allocator, @src());
-            try meta.wrap(allocator.unmapAbove(mapped_byte_address(allocator)));
+            try meta.wrap(allocator.unmapAll());
             if (@TypeOf(AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
                 try meta.wrap(special.static.release(AddressSpace, address_space, arena_index));
             } else {
@@ -557,30 +525,6 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         pub const AddressSpace = allocator_spec.AddressSpace;
         pub const allocator_spec: RtArenaAllocatorSpec = spec;
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
-        pub inline fn mapped_byte_address(allocator: *const Allocator) u64 {
-            return allocator.lb_addr;
-        }
-        pub inline fn unallocated_byte_address(allocator: *const Allocator) u64 {
-            return allocator.ub_addr;
-        }
-        pub inline fn unmapped_byte_address(allocator: *const Allocator) u64 {
-            return allocator.up_addr;
-        }
-        pub inline fn unaddressable_byte_address(allocator: *const Allocator) u64 {
-            return allocator.ua_addr;
-        }
-        pub inline fn allocated_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unallocated_byte_address(allocator), mapped_byte_address(allocator));
-        }
-        pub inline fn unallocated_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unmapped_byte_address(allocator), unallocated_byte_address(allocator));
-        }
-        pub inline fn mapped_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unmapped_byte_address(allocator), mapped_byte_address(allocator));
-        }
-        pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
-            return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
-        }
         pub fn init(address_space: *AddressSpace, arena_index: AddressSpace.Index) Allocator.acquire_allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
@@ -4277,221 +4221,6 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
                     @call(.auto, debug.showDeallocateManyUnstructured, .{
                         impl.aligned_byte_address(), impl.unallocated_byte_address(),
                         src,                         @returnAddress(),
-                    });
-                }
-            }
-        }
-        fn showDeallocateHolder(allocator: *const Allocator, comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.deallocate) {
-                if (@hasDecl(impl_type, "child")) {
-                    const sentinel_ptr: ?*const impl_type.child =
-                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
-                    @call(.auto, debug.showDeallocateHolderStructured, .{
-                        impl_type.child,
-                        impl.aligned_byte_address(allocator.*),
-                        impl.unallocated_byte_address(allocator.*),
-                        sentinel_ptr,
-                        src,
-                        @returnAddress(),
-                    });
-                } else {
-                    @call(.auto, debug.showDeallocateHolderUnstructured, .{
-                        impl.aligned_byte_address(allocator.*),
-                        impl.unallocated_byte_address(allocator.*),
-                        src,
-                        @returnAddress(),
-                    });
-                }
-            }
-        }
-    };
-}
-fn GenericPageAllocatorGraphics(comptime Allocator: type) type {
-    return opaque {
-        pub fn show(allocator: *Allocator, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.isSilent()) return;
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
-            var array: debug.PrintArray = undefined;
-            array.undefineAll();
-            array.writeFormat(src_fmt);
-            if (Allocator.allocator_spec.logging.head) {
-                array.writeMany(debug.about_next_s);
-                array.writeFormat(fmt.ux64(allocator.unallocated_byte_address()));
-                array.writeOne('\n');
-            }
-            if (Allocator.allocator_spec.logging.sentinel) {
-                array.writeMany(debug.about_finish_s);
-                array.writeFormat(fmt.ux64(allocator.unmapped_byte_address()));
-                array.writeOne('\n');
-            }
-            if (Allocator.allocator_spec.logging.metadata) {
-                if (Allocator.allocator_spec.options.count_segments) {
-                    array.writeMany(debug.about_count_s);
-                    array.writeFormat(fmt.ud64(allocator.metadata.count));
-                    array.writeOne('\n');
-                }
-            }
-            if (Allocator.allocator_spec.logging.branches and
-                Allocator.allocator_spec.options.count_branches)
-            {
-                Branches.Graphics.showWrite(allocator.metadata.branches, &array);
-            }
-            if (array.len() != src_fmt.formatLength()) {
-                array.writeOne('\n');
-                builtin.debug.logSuccess(array.readAll());
-            }
-        }
-        pub fn showWithReference(allocator: *Allocator, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.isSilent()) return;
-            if (Allocator.allocator_spec.options.trace_state) {
-                const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
-                var array: debug.PrintArray = undefined;
-                array.undefineAll();
-                array.writeFormat(src_fmt);
-                if (Allocator.allocator_spec.logging.head and
-                    allocator.reference.ub_addr != allocator.ub_addr)
-                {
-                    array.writeMany(debug.about_next_s);
-                    array.writeFormat(fmt.uxd(allocator.reference.ub_addr, allocator.ub_addr));
-                    array.writeOne('\n');
-                    allocator.reference.ub_addr = allocator.ub_addr;
-                }
-                if (Allocator.allocator_spec.logging.sentinel and
-                    allocator.reference.up_addr != allocator.up_addr)
-                {
-                    array.writeMany(debug.about_finish_s);
-                    array.writeFormat(fmt.uxd(allocator.reference.up_addr, allocator.up_addr));
-                    array.writeOne('\n');
-                    allocator.reference.up_addr = allocator.up_addr;
-                }
-                if (Allocator.allocator_spec.logging.metadata) {
-                    if (Allocator.allocator_spec.options.count_segments and
-                        allocator.reference.count != allocator.metadata.count)
-                    {
-                        array.writeMany(debug.about_count_s);
-                        array.writeFormat(fmt.udd(allocator.reference.count, allocator.metadata.count));
-                        array.writeOne('\n');
-                        allocator.reference.count = allocator.metadata.count;
-                    }
-                    if (Allocator.allocator_spec.options.check_parametric and
-                        allocator.reference.holder != allocator.metadata.holder)
-                    {
-                        array.writeMany(debug.about_holder_s);
-                        array.writeFormat(fmt.uxd(allocator.reference.holder, allocator.metadata.holder));
-                        array.writeOne('\n');
-                        allocator.reference.holder = allocator.metadata.holder;
-                    }
-                }
-                if (Allocator.allocator_spec.logging.branches and
-                    Allocator.allocator_spec.options.count_branches)
-                {
-                    Branches.Graphics.showWithReferenceWrite(allocator.metadata.branches, &allocator.reference.branches, &array);
-                }
-                if (array.len() != src_fmt.formatLength()) {
-                    array.writeOne('\n');
-                    builtin.debug.logSuccess(array.readAll());
-                }
-            } else {
-                return show(allocator, src);
-            }
-        }
-        fn showAllocateMany(comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.allocate) {
-                if (@hasDecl(impl_type, "child")) {
-                    const sentinel_ptr: ?*const impl_type.child =
-                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
-                    @call(.auto, debug.showAllocateManyStructured, .{
-                        impl_type.child,                 impl.aligned_byte_address(),
-                        impl.unallocated_byte_address(), sentinel_ptr,
-                        src,                             @returnAddress(),
-                    });
-                } else {
-                    @call(.auto, debug.showAllocateManyUnstructured, .{
-                        impl.aligned_byte_address(), impl.unallocated_byte_address(),
-                        src,                         @returnAddress(),
-                    });
-                }
-            }
-        }
-        fn showAllocateHolder(allocator: *const Allocator, comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.allocate) {
-                if (@hasDecl(impl_type, "child")) {
-                    const sentinel_ptr: ?*const impl_type.child =
-                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
-                    @call(.auto, debug.showAllocateHolderStructured, .{
-                        impl_type.child,
-                        impl.aligned_byte_address(allocator.*),
-                        impl.unallocated_byte_address(allocator.*),
-                        sentinel_ptr,
-                        src,
-                        @returnAddress(),
-                    });
-                } else {
-                    @call(.auto, debug.showAllocateHolderUnstructured, .{
-                        impl.aligned_byte_address(allocator.*),
-                        impl.unallocated_byte_address(allocator.*),
-                        src,
-                        @returnAddress(),
-                    });
-                }
-            }
-        }
-        fn showReallocateMany(comptime impl_type: type, s_impl: impl_type, t_impl: impl_type, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.reallocate) {
-                if (@hasDecl(impl_type, "child")) {
-                    const sentinel_ptr: ?*const impl_type.child =
-                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
-                    @call(.auto, debug.showReallocateManyStructured, .{
-                        impl_type.child,               impl_type.child,
-                        s_impl.aligned_byte_address(), s_impl.unallocated_byte_address(),
-                        t_impl.aligned_byte_address(), t_impl.unallocated_byte_address(),
-                        sentinel_ptr,                  sentinel_ptr,
-                        src,                           @returnAddress(),
-                    });
-                } else {
-                    @call(.auto, debug.showReallocateManyUnstructured, .{
-                        s_impl.aligned_byte_address(), s_impl.unallocated_byte_address(),
-                        t_impl.aligned_byte_address(), t_impl.unallocated_byte_address(),
-                        src,                           @returnAddress(),
-                    });
-                }
-            }
-        }
-        fn showReallocateHolder(allocator: *const Allocator, comptime impl_type: type, s_impl: impl_type, t_impl: impl_type, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.reallocate) {
-                if (@hasDecl(impl_type, "child")) {
-                    const sentinel_ptr: ?*const impl_type.child =
-                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
-                    @call(.auto, debug.showReallocateHolderStructured, .{
-                        impl_type.child,                          impl_type.child,
-                        s_impl.aligned_byte_address(allocator.*), s_impl.unallocated_byte_address(allocator.*),
-                        t_impl.aligned_byte_address(allocator.*), t_impl.unallocated_byte_address(allocator.*),
-                        sentinel_ptr,                             sentinel_ptr,
-                        src,                                      @returnAddress(),
-                    });
-                } else {
-                    @call(.auto, debug.showReallocateHolderUnstructured, .{
-                        s_impl.aligned_byte_address(allocator.*), s_impl.unallocated_byte_address(allocator.*),
-                        t_impl.aligned_byte_address(allocator.*), t_impl.unallocated_byte_address(allocator.*),
-                        src,                                      @returnAddress(),
-                    });
-                }
-            }
-        }
-        fn showDeallocateMany(comptime impl_type: type, impl: impl_type, src: builtin.SourceLocation) void {
-            if (Allocator.allocator_spec.logging.deallocate) {
-                if (@hasDecl(impl_type, "child")) {
-                    const sentinel_ptr: ?*const impl_type.child =
-                        if (@hasDecl(impl_type, "sentinel")) impl_type.sentinel else null;
-                    @call(.auto, debug.showDeallocateManyStructured, .{
-                        impl_type.child,                 impl.aligned_byte_address(),
-                        impl.unallocated_byte_address(), sentinel_ptr,
-                        src,                             @returnAddress(),
-                    });
-                } else {
-                    @call(.auto, debug.showDeallocateManyUnstructured, .{
-                        impl.allocated_byte_address(), impl.aligned_byte_address(), impl.unallocated_byte_address(),
-                        src,                           @returnAddress(),
                     });
                 }
             }
