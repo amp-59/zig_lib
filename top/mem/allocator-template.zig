@@ -56,7 +56,7 @@ pub const ArenaAllocatorOptions = struct {
 };
 pub const PageAllocatorOptions = struct {
     /// Lowest mappable number of bytes
-    page_size: usize = 4096,
+    page_size: u64 = 4096,
     /// Count concurrent mappings, return to head if zero.
     count_segments: bool = builtin.is_debug,
     /// Count number of pages reserved.
@@ -76,7 +76,7 @@ pub const PageAllocatorOptions = struct {
     /// Max number of concurrent threads
     thread_count: comptime_int = 16,
     /// Stack size afforded to each thread
-    thread_stack_size: usize = 1024 * 1024 * 16,
+    thread_stack_size: u64 = 1024 * 1024 * 16,
     /// Reports rendered relative to the last report, unchanged quantities
     /// are omitted.
     trace_state: bool = false,
@@ -1160,7 +1160,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logRelease(array.readAll());
     }
-    fn arenaAcquireNotice(index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaAcquireNotice(index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(about_acq_0_s);
@@ -1172,7 +1172,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logAcquire(array.readAll());
     }
-    fn arenaReleaseNotice(index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaReleaseNotice(index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(about_rel_0_s);
@@ -1229,7 +1229,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logError(array.readAll());
     }
-    fn arenaAcquireError(arena_error: anytype, index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaAcquireError(arena_error: anytype, index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(about_acq_1_s);
@@ -1243,7 +1243,7 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logError(array.readAll());
     }
-    fn arenaReleaseError(arena_error: anytype, index: usize, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaReleaseError(arena_error: anytype, index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(about_rel_1_s);
