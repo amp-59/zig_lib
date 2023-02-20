@@ -86,7 +86,7 @@ pub const MapSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.AcquireErrorFault = .{},
     const Specification = @This();
     pub const Options = struct {
         anonymous: bool = true,
@@ -141,7 +141,7 @@ pub const MoveSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     return_type: type = void,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
     const Options = struct { no_unmap: bool = false };
     pub fn flags(comptime spec: Specification) Remap {
@@ -157,20 +157,20 @@ pub const MoveSpec = struct {
 pub const RemapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     return_type: type = void,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
 };
 pub const UnmapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.munmap_errors },
     return_type: type = void,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.ReleaseErrorFault = .{},
     const Specification = @This();
 };
 pub const AdviseSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
     return_type: type = void,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessError = .{},
     const Options = struct {
         usage: ?Usage = null,
         action: ?Action = null,
@@ -348,7 +348,7 @@ pub const FdSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.memfd_create_errors },
     return_type: type = u64,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.AcquireErrorFault = .{},
     const Specification = @This();
     const Options = struct {
         allow_sealing: bool = false,
