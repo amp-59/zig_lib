@@ -850,7 +850,7 @@ pub fn generateContainers() !void {
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
-    var ctn_index: usize = 0;
+    var ctn_index: u64 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);

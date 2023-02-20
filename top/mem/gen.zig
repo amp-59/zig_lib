@@ -102,11 +102,11 @@ pub const Option = struct {
         field_name: []const u8,
         field_field_names: []const []const u8,
     };
-    pub fn len(comptime option: Option) usize {
+    pub fn len(comptime option: Option) u64 {
         return option.info.field_field_names.len;
     }
-    pub fn count(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail) usize {
-        var ret: usize = 0;
+    pub fn count(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail) u64 {
+        var ret: u64 = 0;
         var techs: Techniques = .{};
         inline for (@typeInfo(Techniques).Struct.fields) |field| {
             for (toplevel_impl_group) |impl_variant| {
@@ -139,7 +139,7 @@ pub const Option = struct {
         return ret;
     }
     pub fn usage(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail) Usage {
-        const value: usize = option.count(Detail, toplevel_impl_group);
+        const value: u64 = option.count(Detail, toplevel_impl_group);
         switch (option.kind) {
             .standalone => switch (value) {
                 0 => return .eliminate_boolean_false,
@@ -158,10 +158,10 @@ pub const Option = struct {
             },
         }
     }
-    pub fn fieldName(comptime option: Option, comptime index: usize) []const u8 {
+    pub fn fieldName(comptime option: Option, comptime index: u64) []const u8 {
         return option.info.field_field_names[index];
     }
-    pub fn tagName(comptime option: Option, comptime index: usize) []const u8 {
+    pub fn tagName(comptime option: Option, comptime index: u64) []const u8 {
         return option.fieldName(index)[0 .. option.fieldName(index).len - (option.info.field_name.len + 1)];
     }
 };
@@ -182,7 +182,7 @@ pub const TypeDescr = union(enum) {
     const Reference = struct { []const u8, *const TypeDescr };
     const Enumeration = struct { []const u8, []const Decl };
     const Composition = struct { []const u8, []const Field };
-    const Decl = struct { []const u8, usize };
+    const Decl = struct { []const u8, u64 };
     const Field = struct { []const u8, TypeDescr };
     const Container = union(enum) {
         Enumeration: Enumeration,
@@ -468,8 +468,8 @@ fn GenericStructOfBool(comptime Struct: type) type {
                 array.overwriteManyBack(" }");
             }
         }
-        pub fn countTrue(bit_field: Struct) usize {
-            var ret: usize = 0;
+        pub fn countTrue(bit_field: Struct) u64 {
+            var ret: u64 = 0;
             inline for (@typeInfo(Struct).Struct.fields) |field| {
                 ret +%= @boolToInt(@field(bit_field, field.name));
             }
@@ -501,7 +501,7 @@ fn GenericStructOfEnum(comptime Struct: type) type {
     });
 }
 
-pub fn GenericKeys(comptime Key: type, comptime max_len: usize) type {
+pub fn GenericKeys(comptime Key: type, comptime max_len: u64) type {
     return struct {
         auto: [max_len]Key,
         len: u64,

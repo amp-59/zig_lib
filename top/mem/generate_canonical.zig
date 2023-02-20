@@ -6,7 +6,6 @@ const gen = @import("./gen.zig");
 const out = struct {
     usingnamespace @import("./detail.zig");
     usingnamespace @import("./detail_more.zig");
-
     usingnamespace @import("./zig-out/src/impl_details.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
@@ -87,7 +86,7 @@ fn writeFieldType(comptime field: CanonicalFieldSpec, array: *Array) void {
         uniques.writeOne(@bitCast(backing_int, value));
     }
     array.writeMany("pub const " ++ field.dst_type_name ++ " = enum(u");
-    gen.writeIndex(array, @intCast(u8, @bitSizeOf(usize) - @clz(uniques.len() - 1)));
+    gen.writeIndex(array, @intCast(u8, @bitSizeOf(u64) - @clz(uniques.len() - 1)));
     array.writeMany(") {\n");
     for (uniques.readAll()) |unique, index| {
         const value: field.src_type = @bitCast(field.src_type, unique);
