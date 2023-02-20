@@ -25,16 +25,16 @@ pub const address_space = opaque {
     });
     pub const logging = opaque {
         pub const verbose: mem.AddressSpaceLogging = .{
-            .release = builtin.Logging.verbose,
-            .acquire = builtin.Logging.verbose,
-            .map = builtin.Logging.verbose,
-            .unmap = builtin.Logging.verbose,
+            .release = preset.logging.full.verbose,
+            .acquire = preset.logging.full.verbose,
+            .map = preset.logging.full.verbose,
+            .unmap = preset.logging.full.verbose,
         };
         pub const silent: mem.AddressSpaceLogging = .{
-            .release = builtin.Logging.silent,
-            .acquire = builtin.Logging.silent,
-            .map = builtin.Logging.silent,
-            .unmap = builtin.Logging.silent,
+            .release = preset.logging.full.silent,
+            .acquire = preset.logging.full.silent,
+            .map = preset.logging.full.silent,
+            .unmap = preset.logging.full.silent,
         };
     };
     pub const errors = opaque {
@@ -82,6 +82,120 @@ pub const reinterpret = opaque {
         rs_1.reference.dereference = &rs_0;
         return rs_1;
     }
+};
+pub const logging = opaque {
+    pub const full = opaque {
+        pub const verbose: builtin.Logging.Full = .{
+            .Success = true,
+            .Acquire = true,
+            .Release = true,
+            .Error = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.Full = .{
+            .Success = false,
+            .Acquire = false,
+            .Release = false,
+            .Error = false,
+            .Fault = false,
+        };
+    };
+    pub const success_error = opaque {
+        pub const verbose: builtin.Logging.SuccessError = .{
+            .Success = true,
+            .Error = true,
+        };
+        pub const silent: builtin.Logging.SuccessError = .{
+            .Success = false,
+            .Error = false,
+        };
+    };
+    pub const success_fault = opaque {
+        pub const verbose: builtin.Logging.SuccessFault = .{
+            .Success = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.SuccessFault = .{
+            .Success = false,
+            .Fault = false,
+        };
+    };
+    pub const acquire_error = opaque {
+        pub const verbose: builtin.Logging.AcquireError = .{
+            .Acquire = true,
+            .Error = true,
+        };
+        pub const silent: builtin.Logging.AcquireError = .{
+            .Acquire = false,
+            .Error = false,
+        };
+    };
+    pub const acquire_fault = opaque {
+        pub const verbose: builtin.Loggin.AcquireFaultg = .{
+            .Acquire = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.AcquireFault = .{
+            .Acquire = false,
+            .Fault = false,
+        };
+    };
+    pub const release_error = opaque {
+        pub const verbose: builtin.Logging.ReleaseError = .{
+            .Release = true,
+            .Error = true,
+        };
+        pub const silent: builtin.Logging.ReleaseError = .{
+            .Release = false,
+            .Error = false,
+        };
+    };
+    pub const release_fault = opaque {
+        pub const verbose: builtin.Logging.ReleaseFault = .{
+            .Release = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.ReleaseFault = .{
+            .Release = false,
+            .Fault = false,
+        };
+    };
+    pub const success_error_fault = opaque {
+        pub const verbose: builtin.Logging.SuccessErrorFault = .{
+            .Success = true,
+            .Error = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.SuccessErrorFault = .{
+            .Success = false,
+            .Error = false,
+            .Fault = false,
+        };
+    };
+    pub const acquire_error_fault = opaque {
+        pub const verbose: builtin.Logging.AcquireErrorFault = .{
+            .Acquire = true,
+            .Error = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.AcquireErrorFault = .{
+            .Acquire = false,
+            .Error = false,
+            .Fault = false,
+        };
+    };
+    pub const release_error_fault = opaque {
+        pub const verbose: builtin.Logging.ReleaseErrorFault = .{
+            .Release = true,
+            .Error = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.ReleaseErrorFault = .{
+            .Release = false,
+            .Error = false,
+            .Fault = false,
+        };
+    };
 };
 pub const allocator = opaque {
     pub const options = opaque {
@@ -143,10 +257,10 @@ pub const allocator = opaque {
             .sentinel = true,
             .metadata = true,
             .branches = true,
-            .map = builtin.Logging.verbose,
-            .unmap = builtin.Logging.verbose,
-            .remap = builtin.Logging.verbose,
-            .advise = builtin.Logging.verbose,
+            .map = preset.logging.acquire_error_fault.verbose,
+            .unmap = preset.logging.release_error_fault.verbose,
+            .remap = preset.logging.success_error_fault.verbose,
+            .advise = preset.logging.success_error_fault.verbose,
             .allocate = true,
             .reallocate = true,
             .reinterpret = true,
@@ -157,10 +271,10 @@ pub const allocator = opaque {
             .sentinel = false,
             .metadata = false,
             .branches = false,
-            .map = builtin.Logging.Full.silent,
-            .unmap = builtin.Logging.Full.silent,
-            .remap = builtin.Logging.Full.silent,
-            .advise = builtin.Logging.Full.silent,
+            .map = preset.logging.acquire_error_fault.silent,
+            .unmap = preset.logging.release_error_fault.silent,
+            .remap = preset.logging.success_error_fault.silent,
+            .advise = preset.logging.success_error_fault.silent,
             .allocate = false,
             .reallocate = false,
             .reinterpret = false,
