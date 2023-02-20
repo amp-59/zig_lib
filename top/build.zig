@@ -33,20 +33,20 @@ pub const Builder = struct {
     args: [][*:0]u8,
     vars: [][*:0]u8,
     allocator: *Allocator,
-    targets: ArrayC = .{},
     array: *ArrayU,
+    targets: ArrayC = .{},
     const ArrayC = mem.StaticArray(Target, 64);
     pub const ArrayU = Allocator.UnstructuredHolder(8, 8);
-    pub fn addBuild(builder: *Builder, init: BuildCommand) *BuildCommand {
-        builder.array.writeOne(BuildCommand, init);
+    pub fn addBuild(builder: *Builder, build_cmd: BuildCommand) *BuildCommand {
+        builder.array.writeOne(BuildCommand, build_cmd);
         return builder.array.referOneBack(BuildCommand);
     }
-    pub fn addFormat(builder: *Builder, init: FormatCommand) *FormatCommand {
-        builder.array.writeOne(FormatCommand, init);
+    pub fn addFormat(builder: *Builder, fmt_cmd: FormatCommand) *FormatCommand {
+        builder.array.writeOne(FormatCommand, fmt_cmd);
         return builder.array.referOneBack(FormatCommand);
     }
-    pub fn addRun(builder: *Builder, init: FormatCommand) *RunCommand {
-        builder.array.writeOne(FormatCommand, init);
+    pub fn addRun(builder: *Builder, run_cmd: RunCommand) *RunCommand {
+        builder.array.writeOne(RunCommand, run_cmd);
         return builder.array.referOneBack(FormatCommand);
     }
     pub fn zigExePathMacro(builder: *const Builder) Macro {
@@ -164,6 +164,25 @@ pub const Builder = struct {
         if (0 != try proc.command(.{}, builder.zig_exe, args, builder.vars)) {
             return error.UnexpectedExitStatus;
         }
+    }
+    pub fn init(
+        options: GlobalOptions,
+        allocator: *Allocator,
+        array: *ArrayU,
+        args: [][*:0]u8,
+        vars: [][*:0]u8,
+    ) Builder {
+        return .{
+            .zig_exe = builtin.zig_exe.?,
+            .build_root = builtin.build_root.?,
+            .cache_dir = builtin.cache_dir.?,
+            .global_cache_dir = builtin.global_cache_dir.?,
+            .options = options,
+            .args = args,
+            .vars = vars,
+            .allocator = allocator,
+            .array = array,
+        };
     }
 };
 pub const OutputMode = enum {
