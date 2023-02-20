@@ -10,8 +10,9 @@ const out = struct {
     usingnamespace @import("./detail_more.zig");
 };
 const config = @import("./config.zig");
-const interface = @import("./interface.zig");
-const implementation = @import("./implementation.zig");
+const ctn_fn = @import("./ctn_fn.zig");
+const impl_fn = @import("./impl_fn.zig");
+const alloc_fn = @import("./alloc_fn.zig");
 
 /// `TaggedExpr` and `UntaggedExpr` (should) have the same behaviour, but
 /// `TaggedExpr` is slightly larger at runtime but better in every other way that
@@ -232,7 +233,7 @@ pub const FnCall5 = struct {
 };
 pub const FnCallImpl = struct {
     impl_variant: *const out.DetailMore,
-    impl_fn_info: *const implementation.Fn,
+    impl_fn_info: *const impl_fn.Fn,
     member: bool = member_call,
     const Format = @This();
     pub inline fn formatWrite(format: Format, array: anytype) void {
@@ -241,7 +242,7 @@ pub const FnCallImpl = struct {
 };
 pub const FnCallIntr = struct {
     ctn_detail: *const out.DetailLess,
-    ctn_fn_info: *const interface.Fn,
+    ctn_fn_info: *const ctn_fn.Fn,
     member: bool = member_call,
     const Format = @This();
     pub inline fn formatWrite(format: Format, array: anytype) void {
@@ -335,7 +336,7 @@ pub const FnCall = struct {
         return len;
     }
 
-    pub fn impl(allocator: anytype, impl_detail: *const out.DetailMore, impl_fn_info: *const implementation.Fn) FnCall {
+    pub fn impl(allocator: anytype, impl_detail: *const out.DetailMore, impl_fn_info: *const impl_fn.Fn) FnCall {
         const arg_list: gen.ArgList = impl_fn_info.argList(impl_detail, .Argument);
         const ops: []Expr = allocator.allocateIrreversible(Expr, @max(arg_list.len(), 1));
         for (arg_list.readAll()) |symbol, i| {
@@ -343,7 +344,7 @@ pub const FnCall = struct {
         }
         return .{ .symbol = impl_fn_info.fnName(), .ops = ops[0..arg_list.len()] };
     }
-    pub fn intr(allocator: anytype, ctn_detail: *const out.DetailLess, ctn_fn_info: *const interface.Fn) FnCall {
+    pub fn intr(allocator: anytype, ctn_detail: *const out.DetailLess, ctn_fn_info: *const ctn_fn.Fn) FnCall {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         const ops: []Expr = allocator.allocateIrreversible(Expr, @max(arg_list.len(), 1));
         for (arg_list.readAll()) |symbol, i| {
