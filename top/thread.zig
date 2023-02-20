@@ -41,7 +41,7 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) sys.Call(spec.errors
 pub const MapSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     const Visibility = enum { shared, shared_validate, private };
     const Options = struct {

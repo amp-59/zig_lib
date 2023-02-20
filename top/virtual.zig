@@ -199,10 +199,10 @@ pub const Arena = struct {
     }
 };
 pub const AddressSpaceLogging = struct {
-    acquire: builtin.Logging = .{},
-    release: builtin.Logging = .{},
-    map: builtin.Logging = .{},
-    unmap: builtin.Logging = .{},
+    acquire: builtin.Logging.Full = .{},
+    release: builtin.Logging.Full = .{},
+    map: builtin.Logging.Full = .{},
+    unmap: builtin.Logging.Full = .{},
 };
 pub const AddressSpaceErrors = struct {
     acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },

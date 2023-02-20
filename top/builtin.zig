@@ -193,19 +193,6 @@ pub fn zigErrorAbort(
         }
     }
 }
-/// Return the value part of a function error union return type.
-pub fn ReturnPayload(comptime any_function: anytype) type {
-    const T: type = @TypeOf(any_function);
-    switch (@typeInfo(T)) {
-        .Fn => {
-            return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.payload;
-        },
-        else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{.Fn});
-        },
-    }
-}
-
 pub fn config(
     comptime symbol: []const u8,
     comptime T: type,

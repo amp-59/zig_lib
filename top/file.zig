@@ -211,7 +211,7 @@ pub const TerminalAttributes = extern struct {
 const TerminalAttributesSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
     return_type: type = void,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
 };
 const IOControlSpec = struct {
     const TC = sys.TC;
@@ -354,7 +354,7 @@ pub const MakeDirSpec = struct {
     mode: ModeSpec = ModeSpec.dir_mode,
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     const Options = struct {
         exclusive: bool = true,
@@ -363,7 +363,7 @@ pub const MakeDirSpec = struct {
 pub const RemoveDirSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.rmdir_errors },
     return_type: type = void,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     const special_fn = sys.special.rmdir;
 };
@@ -372,7 +372,7 @@ pub const CreateSpec = struct {
     mode: ModeSpec = ModeSpec.file_mode,
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     const Options = struct {
         exclusive: bool = true,
@@ -415,14 +415,14 @@ pub const CreateSpec = struct {
 pub const UnlinkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.unlink_errors },
     return_type: type = void,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
 };
 pub const PathSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     const Options = struct {
         directory: bool = true,
@@ -447,7 +447,7 @@ pub const OpenSpec = struct {
     options: Options,
     return_type: type = u64,
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     const Options = struct {
         read: bool = true,
@@ -511,13 +511,13 @@ pub const OpenSpec = struct {
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     return_type: type = void,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
 };
 pub const StatSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     return_type: type = void,
     const Specification = @This();
     const Options = struct {
@@ -534,14 +534,14 @@ pub const StatSpec = struct {
 pub const GetWorkingDirectorySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
 };
 pub const ReadLinkSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
@@ -559,7 +559,7 @@ pub const MapSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
     pub const Options = struct {
         anonymous: bool = false,
@@ -613,7 +613,7 @@ pub const MapSpec = struct {
 pub const TruncateSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.truncate_errors },
     return_type: type = void,
-    logging: builtin.Logging = .{},
+    logging: builtin.Logging.Full = .{},
     const Specification = @This();
 };
 pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {

@@ -25,8 +25,8 @@ pub const DirStreamSpec = struct {
         close_when_done: bool = true,
     };
     const Logging = struct {
-        open: builtin.Logging = .{},
-        close: builtin.Logging = .{},
+        open: builtin.Logging.Full = .{},
+        close: builtin.Logging.Full = .{},
     };
 };
 pub const Kind = enum(u8) {
