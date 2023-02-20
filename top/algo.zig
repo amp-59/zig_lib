@@ -156,7 +156,6 @@ pub fn approxDouble(k_bytes: u64) u64 {
     const n_bytes_ctz: u64 = ~mach.shrx64(lit.max_bit_u64, n_bytes_cls);
     return mach.sub64(m_bytes, mach.shrx64(n_bytes_ctz, n_bytes_clz) +% 1);
 }
-
 /// insert: [524288]u64	 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
 pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
     var i: u64 = 1;
@@ -194,9 +193,9 @@ pub fn layeredShellSort(comptime T: type, comptime comparison: anytype, values: 
 }
 /// radix: [524288]u64	 = top.time.TimeSpec{ .nsec = 86801419, }
 pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
-    var values_1: []T = allocator.allocateIrreversible(T, values_0.len);
     const save = allocator.save();
     defer allocator.restore(save);
+    var values_1: []T = allocator.allocateIrreversible(T, values_0.len);
     var bit: T = 1;
     while (bit != 0) : (bit <<= 1) {
         var len_0: u64 = 0;
