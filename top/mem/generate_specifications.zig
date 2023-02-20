@@ -123,7 +123,7 @@ fn writeDeductionCompareEnumerationInternal(
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
     comptime options: []const gen.Option,
-    comptime field_index: usize,
+    comptime field_index: u64,
 ) ?[]const out.DetailMore {
     if (field_index == options[0].info.field_field_names.len and options.len != 1) {
         return impl_group;
@@ -218,23 +218,24 @@ pub fn generateReferences() !void {
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
-    gen.writeImports(&array, @src(), &.{
-        .{ .name = "mach", .path = "../mach.zig" },
-        .{ .name = "algo", .path = "../algo.zig" },
-    });
+
+    gen.writeGenerator(&array, @src());
+    gen.writeImport(&array, "mach", "../mach.zig");
+    gen.writeImport(&array, "algo", "../algo.zig");
+
     gen.copySourceFile(&array, "reference-template.zig");
-    var accm_spec_index: u16 = 0;
-    var ctn_index: u16 = 0;
+    var accm_spec_index: u64 = 0;
+    var ctn_index: u64 = 0;
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
-        const ctn_buf: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, out.containers[ctn_index], out.impl_variants);
-        const ctn_spec_group: []const []const u16 = out.specifications[ctn_index];
-        var spec_index: u16 = 0;
+        const ctn_buf: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, out.Index, out.containers[ctn_index], out.impl_variants);
+        const ctn_spec_group: []const []const out.Index = out.specifications[ctn_index];
+        var spec_index: u64 = 0;
         while (spec_index != ctn_spec_group.len) : (spec_index +%= 1) {
-            const spec_group: []const u16 = ctn_spec_group[spec_index];
+            const spec_group: []const out.Index = ctn_spec_group[spec_index];
             if (spec_group.len != 0) {
-                const leader: out.DetailMore = gen.implLeader(out.DetailMore, spec_group, out.impl_variants);
+                const leader: out.DetailMore = gen.implLeader(out.DetailMore, out.Index, spec_group, out.impl_variants);
                 array.writeMany("pub const Specification");
                 gen.writeIndex(&array, accm_spec_index);
                 array.writeMany(" = struct {\n");
@@ -247,7 +248,7 @@ pub fn generateReferences() !void {
                     writeReturnImplementation(&array, out.impl_variants[spec_group[0]]);
                 } else {
                     array.writeMany(", comptime options: anytype) type {\n");
-                    const toplevel_impl_group: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, spec_group, out.impl_variants);
+                    const toplevel_impl_group: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, out.Index, spec_group, out.impl_variants);
                     writeDeduction(&allocator, &array, ctn_buf, toplevel_impl_group, &out.options);
                 }
                 array.writeMany("}\n};\n");

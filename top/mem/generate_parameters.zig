@@ -2,6 +2,7 @@
 const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const proc = @import("../proc.zig");
+const meta = @import("../meta.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 const testing = @import("../testing.zig");
@@ -112,13 +113,13 @@ fn generateParameters() !void {
     var allocator: Allocator = try Allocator.init(&address_space);
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
-    gen.writeImports(&array, @src(), &.{});
+    gen.writeGenerator(&array, @src());
     gen.copySourceFile(&array, "container-template.zig");
-    var ctn_index: u16 = 0;
+    var ctn_index: u64 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
-        const ctn_group: []const u16 = out.containers[ctn_index];
+        const ctn_group: []const out.Index = out.containers[ctn_index];
         array.writeMany("pub const ");
         out.impl_variants[ctn_group[0]].writeContainerName(&array);
         array.writeMany("Spec = struct {\n");

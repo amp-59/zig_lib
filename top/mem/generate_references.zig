@@ -18,7 +18,7 @@ const out = struct {
     usingnamespace @import("./zig-out/src/canonicals.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
-const implementation = @import("./implementation.zig");
+const implementation = @import("./impl_fn.zig");
 
 pub usingnamespace proc.start;
 
@@ -876,10 +876,10 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, impl_variant: *const 
             tok.word_type_name ++ tok.end_expression);
     }
     if (impl_variant.techs.unit_alignment) {
-        return array.writeMany("pub const unit_alignment: usize = spec.unit_alignment;\n");
+        return array.writeMany("pub const unit_alignment: u64 = spec.unit_alignment;\n");
     }
     if (impl_variant.techs.auto_alignment) {
-        return array.writeMany("pub const auto_alignment: usize = spec.low_alignment;\n");
+        return array.writeMany("pub const auto_alignment: u64 = spec.low_alignment;\n");
     }
 }
 fn writeSimpleRedecl(array: *Array, impl_fn_info: *const Fn, info: *Info) void {
@@ -949,7 +949,7 @@ inline fn writeFields(allocator: *Allocator, array: *Array, impl_variant: *const
     writeComptimeField(array, impl_variant, Fn.writable_byte_count);
     writeComptimeField(array, impl_variant, Fn.aligned_byte_count);
 }
-inline fn writeTypeFunction(allocator: *Allocator, array: *Array, accm_spec_index: u16, impl_variant: *const out.DetailMore) void {
+inline fn writeTypeFunction(allocator: *Allocator, array: *Array, accm_spec_index: u64, impl_variant: *const out.DetailMore) void {
     array.writeMany("fn ");
     impl_variant.writeImplementationName(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ": " ++ tok.generic_spec_type_name);
@@ -968,17 +968,17 @@ pub fn generateReferences() void {
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
-    var accm_spec_index: u16 = 0;
-    var ctn_index: u16 = 0;
+    var accm_spec_index: u64 = 0;
+    var ctn_index: u64 = 0;
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
         const s = allocator.save();
         defer allocator.restore(s);
-        const ctn_group: []const []const u16 = out.specifications[ctn_index];
-        var spec_index: u16 = 0;
+        const ctn_group: []const []const out.Index = out.specifications[ctn_index];
+        var spec_index: u64 = 0;
         while (spec_index != ctn_group.len) : (spec_index +%= 1) {
             defer accm_spec_index +%= 1;
-            const spec_group: []const u16 = ctn_group[spec_index];
-            var impl_index: u16 = 0;
+            const spec_group: []const out.Index = ctn_group[spec_index];
+            var impl_index: u64 = 0;
             while (impl_index != spec_group.len) : (impl_index +%= 1) {
                 if (spec_group.len != 0) {
                     writeTypeFunction(&allocator, &array, accm_spec_index, &out.impl_variants[spec_group[impl_index]]);
