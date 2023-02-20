@@ -5,6 +5,7 @@ pub const Detail = packed struct {
     kinds: gen.Kinds = .{},
     layouts: gen.Layouts = .{},
     modes: gen.Modes = .{},
+    management: gen.Management = .{},
     fields: gen.Fields = .{},
     techs: gen.Techniques = .{},
 
@@ -17,6 +18,8 @@ pub const Detail = packed struct {
         array.writeFormat(detail.layouts);
         array.writeMany(", .modes = ");
         array.writeFormat(detail.modes);
+        array.writeMany(", .management = ");
+        array.writeFormat(detail.management);
         array.writeMany(", .fields = ");
         array.writeFormat(detail.fields);
         array.writeMany(", .techs = ");
@@ -37,6 +40,7 @@ pub const Detail = packed struct {
             .kinds = detail.kinds,
             .layouts = detail.layouts,
             .modes = detail.modes,
+            .management = detail.management,
             .techs = detail.techs,
             .fields = detail.fields,
             .specs = specs,
