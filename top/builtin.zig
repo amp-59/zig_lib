@@ -18,7 +18,7 @@ pub const is_perf: bool         = config("is_perf", bool, is_small or is_fast);
 pub const is_verbose: bool      = config("is_verbose", bool, is_debug);
 pub const is_silent: bool       = config("is_silent", bool, false);
 pub const AddressSpace          = config("AddressSpace", type, info.address_space.generic);
-pub const logging: Logging      = config("logging", Logging, if (is_silent) Logging.silent else Logging.verbose);
+pub const logging: Logging.Full = config("logging", Logging, if (is_silent) Logging.silent else Logging.verbose);
 pub const runtime_assertions: bool  = config("runtime_assertions", bool, is_debug or is_safe);
 pub const comptime_assertions: bool = config("comptime_assertions", bool, is_debug);
 // These are defined by the library builder
@@ -66,41 +66,41 @@ pub const Logging = struct {
         /// Report actions which terminate the program
         Fault: bool = default.Fault,
     };
-    const SuccessError = packed struct {
+    pub const SuccessError = packed struct {
         Success: bool = is_verbose,
         Error: bool = !is_silent,
     };
-    const SuccessFault = packed struct {
+    pub const SuccessFault = packed struct {
         Success: bool = default.Success,
         Fault: bool = default.Fault,
     };
-    const AcquireError = packed struct {
+    pub const AcquireError = packed struct {
         Acquire: bool = default.Acquire,
         Error: bool = default.Error,
     };
-    const AcquireFault = packed struct {
+    pub const AcquireFault = packed struct {
         Acquire: bool = default.Acquire,
         Fault: bool = default.Fault,
     };
-    const ReleaseError = packed struct {
+    pub const ReleaseError = packed struct {
         Release: bool = default.Release,
         Error: bool = default.Error,
     };
-    const ReleaseFault = packed struct {
+    pub const ReleaseFault = packed struct {
         Release: bool = default.Release,
         Fault: bool = default.Fault,
     };
-    const SuccessErrorFault = packed struct {
+    pub const SuccessErrorFault = packed struct {
         Success: bool = default.Success,
         Error: bool = default.Error,
         Fault: bool = default.Fault,
     };
-    const AcquireErrorFault = packed struct {
+    pub const AcquireErrorFault = packed struct {
         Acquire: bool = default.Acquire,
         Error: bool = default.Error,
         Fault: bool = default.Fault,
     };
-    const ReleaseErrorFault = packed struct {
+    pub const ReleaseErrorFault = packed struct {
         Release: bool = is_verbose,
         Error: bool = !is_silent,
         Fault: bool = !is_silent,
@@ -111,20 +111,6 @@ pub const Logging = struct {
         .Release = is_verbose,
         .Error = !is_silent,
         .Fault = !is_silent,
-    };
-    pub const verbose: Logging = .{
-        .Success = true,
-        .Acquire = true,
-        .Release = true,
-        .Error = true,
-        .Fault = true,
-    };
-    pub const silent: Logging = .{
-        .Success = false,
-        .Acquire = false,
-        .Release = false,
-        .Error = false,
-        .Fault = false,
     };
 };
 /// `E` must be an error type.
