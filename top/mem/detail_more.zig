@@ -5,6 +5,7 @@ pub const DetailMore = packed struct {
     index: u8 = undefined,
     kinds: gen.Kinds = .{},
     layouts: gen.Layouts = .{},
+    management: gen.Management = .{},
     modes: gen.Modes = .{},
     fields: gen.Fields = .{},
     techs: gen.Techniques = .{},
@@ -20,6 +21,8 @@ pub const DetailMore = packed struct {
         array.writeFormat(detail.layouts);
         array.writeMany(", .modes = ");
         array.writeFormat(detail.modes);
+        array.writeMany(", .management = ");
+        array.writeFormat(detail.management);
         array.writeMany(", .fields = ");
         array.writeFormat(detail.fields);
         array.writeMany(", .techs = ");
