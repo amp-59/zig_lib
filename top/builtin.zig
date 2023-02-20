@@ -18,7 +18,7 @@ pub const is_perf: bool         = config("is_perf", bool, is_small or is_fast);
 pub const is_verbose: bool      = config("is_verbose", bool, is_debug);
 pub const is_silent: bool       = config("is_silent", bool, false);
 pub const AddressSpace          = config("AddressSpace", type, info.address_space.generic);
-pub const logging: Logging.Full = config("logging", Logging, if (is_silent) Logging.silent else Logging.verbose);
+pub const logging: Logging.Full = config("logging", Logging.Full, .{});
 pub const runtime_assertions: bool  = config("runtime_assertions", bool, is_debug or is_safe);
 pub const comptime_assertions: bool = config("comptime_assertions", bool, is_debug);
 // These are defined by the library builder
@@ -32,7 +32,9 @@ const builtin = opaque {
     pub const SourceLocation = Src();
     pub const Mode = @TypeOf(zig.mode);
     pub const Type = @TypeOf(@typeInfo(void));
+    pub const TypeId = @typeInfo(Type).Union.tag_type.?;
     pub const Endian = @TypeOf(zig.cpu.arch.endian());
+    pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
     pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
 };
 fn Src() type {
@@ -67,8 +69,8 @@ pub const Logging = struct {
         Fault: bool = default.Fault,
     };
     pub const SuccessError = packed struct {
-        Success: bool = is_verbose,
-        Error: bool = !is_silent,
+        Success: bool = default.Success,
+        Error: bool = default.Error,
     };
     pub const SuccessFault = packed struct {
         Success: bool = default.Success,
@@ -101,11 +103,11 @@ pub const Logging = struct {
         Fault: bool = default.Fault,
     };
     pub const ReleaseErrorFault = packed struct {
-        Release: bool = is_verbose,
-        Error: bool = !is_silent,
-        Fault: bool = !is_silent,
+        Release: bool = default.Release,
+        Error: bool = default.Error,
+        Fault: bool = default.Fault,
     };
-    pub const default: Logging = .{
+    pub const default = .{
         .Success = is_verbose,
         .Acquire = is_verbose,
         .Release = is_verbose,
@@ -175,7 +177,7 @@ pub fn zigErrorAbort(
     inline for (values) |value| {
         if (ret == @enumToInt(value)) {
             var buf: [4608]u8 = undefined;
-            builtin.debug.logAbort(&buf, value.errorName());
+            debug.logAbort(&buf, value.errorName());
         }
     }
 }
