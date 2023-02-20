@@ -7,18 +7,18 @@ const default_alignment: Alignment = .{ .optional_derived = null };
 const Automatic = union { automatic: union {
     structured: AutoAlignment(AutomaticStuctured),
 } };
-const Static = union { static: union {
+const Static = StaticInterface(union { static: union {
     structured: NoSuperAlignment(StructuredStatic),
     unstructured: NoSuperAlignment(UnstructuredStatic),
-} };
-const Dynamic = union { dynamic: union {
+} });
+const Dynamic = DynamicInterface(union { dynamic: union {
     structured: NoSuperAlignment(Structured),
     unstructured: NoSuperAlignment(Unstructured),
-} };
-const Parametric = union { parametric: union {
+} });
+const Parametric = ParametricInterface(union { parametric: union {
     structured: NoPackedAlignment(StructuredParametric),
     unstructured: NoPackedAlignment(UnstructuredParametric),
-} };
+} });
 
 pub const AbstractSpec = union {
     automatic_storage: ReadWrite(union {
@@ -193,3 +193,27 @@ const UnstructuredStaticSegment = struct {
     bytes: u64,
     Allocator: BoundAllocator,
 };
+fn DynamicInterface(comptime S: type) type {
+    return Allocatable(Rellocatable(Resizable(Movable(Convertible(S)))));
+}
+fn ParametricInterface(comptime S: type) type {
+    return Allocatable(Resizable(Convertible(S)));
+}
+fn StaticInterface(comptime S: type) type {
+    return Allocatable(Movable(Convertible(S)));
+}
+pub fn Allocatable(comptime S: type) type {
+    return union { allocate: S };
+}
+pub fn Rellocatable(comptime S: type) type {
+    return union { reallocate: S };
+}
+pub fn Resizable(comptime S: type) type {
+    return union { resize: S };
+}
+pub fn Movable(comptime S: type) type {
+    return union { move: S };
+}
+pub fn Convertible(comptime S: type) type {
+    return union { convert: S };
+}
