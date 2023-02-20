@@ -43,7 +43,7 @@ pub inline fn amountReservedToBytes(amt: Amount, comptime impl_type: type) u64 {
 fn writeOneInternal(comptime child: type, next: u64, value: child) void {
     reference.pointerOne(child, next).* = value;
 }
-fn writeCountInternal(comptime child: type, next: u64, comptime write_count: usize, values: [write_count]child) void {
+fn writeCountInternal(comptime child: type, next: u64, comptime write_count: u64, values: [write_count]child) void {
     for (values) |value, i| reference.pointerOne(child, next + i).* = value;
 }
 fn writeManyInternal(comptime child: type, next: u64, values: []const child) void {
