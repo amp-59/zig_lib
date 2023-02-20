@@ -9,8 +9,14 @@ const out = struct {
     usingnamespace @import("./detail_less.zig");
     usingnamespace @import("./detail_more.zig");
 };
+const config = @import("./config.zig");
 const interface = @import("./interface.zig");
 const implementation = @import("./implementation.zig");
+
+/// `TaggedExpr` and `UntaggedExpr` (should) have the same behaviour, but
+/// `TaggedExpr` is slightly larger at runtime but better in every other way that
+/// matters.
+pub const Expr = TaggedExpr;
 
 const ExprTag = enum(u8) {
     call,
@@ -19,32 +25,88 @@ const ExprTag = enum(u8) {
     join,
     list,
 };
-const Value = extern union {
+pub const TaggedExpr = union(ExprTag) {
     call: *const FnCall,
-    symbol: [*:0]const u8,
-    any: [*]const Expr,
+    symbol: [:0]const u8,
+    join: []const Expr,
+    list: []const Expr,
     constant: u64,
-
-    pub const Tagged = union(ExprTag) {
-        call: *const FnCall,
-        symbol: [:0]const u8,
-        join: []const Expr,
-        list: []const Expr,
-        constant: u64,
-    };
-    pub inline fn tagged(value: *const Value) Tagged {
-        const expr: *const Expr = @fieldParentPtr(Expr, "value", value);
-        switch (expr.tag) {
-            .call => return .{ .call = value.call },
-            .constant => return .{ .constant = value.constant },
-            .symbol => return .{ .symbol = value.symbol[0..expr.extra :0] },
-            .join => return .{ .join = value.any[0..expr.extra] },
-            .list => return .{ .list = value.any[0..expr.extra] },
+    pub fn formatWrite(format: Expr, array: anytype) void {
+        switch (format) {
+            .call => array.writeFormat(format.call.*),
+            .symbol => array.writeMany(format.symbol),
+            .constant => array.writeFormat(fmt.ud64(format.constant)),
+            .join => for (format.join) |op| {
+                op.formatWrite(array);
+            },
+            .list => for (format.list) |op| {
+                op.formatWrite(array);
+                array.writeMany(tok.end_item);
+            },
         }
     }
+    pub fn formatLength(format: Expr) u64 {
+        var len: u64 = 0;
+        switch (format) {
+            .call => len +%= format.call.formatLength(),
+            .symbol => len +%= format.symbol.len,
+            .constant => len +%= fmt.ud64(format.constant).formatLength(),
+            .join => for (format.join) |op| {
+                len +%= op.formatLength();
+            },
+            .list => for (format.list) |op| {
+                len +%= op.formatLength();
+                len +%= tok.end_item.len;
+            },
+        }
+        return len;
+    }
+    pub fn call(value: *const FnCall) Expr {
+        return .{ .call = value };
+    }
+    pub fn symbol(value: [:0]const u8) Expr {
+        return .{ .symbol = value };
+    }
+    pub fn constant(value: u64) Expr {
+        return .{ .constant = value };
+    }
+    pub fn join(value: []const Expr) Expr {
+        return .{ .join = value };
+    }
+    pub fn list(value: []const Expr) Expr {
+        return .{ .list = value };
+    }
+    pub var debug: bool = false;
 };
-// Unsound
 const UntaggedExpr = struct {
+    tag: ExprTag,
+    value: Value,
+    extra: u32,
+
+    const Value = extern union {
+        call: *const FnCall,
+        symbol: [*:0]const u8,
+        any: [*]const Expr,
+        constant: u64,
+
+        pub const Tagged = union(ExprTag) {
+            call: *const FnCall,
+            symbol: [:0]const u8,
+            join: []const Expr,
+            list: []const Expr,
+            constant: u64,
+        };
+        pub inline fn tagged(value: *const Value) Tagged {
+            const expr: *const Expr = @fieldParentPtr(Expr, "value", value);
+            switch (expr.tag) {
+                .call => return .{ .call = value.call },
+                .constant => return .{ .constant = value.constant },
+                .symbol => return .{ .symbol = value.symbol[0..expr.extra :0] },
+                .join => return .{ .join = value.any[0..expr.extra] },
+                .list => return .{ .list = value.any[0..expr.extra] },
+            }
+        }
+    };
     pub fn formatWrite(format: Expr, array: anytype) void {
         switch (format.tag) {
             .call => array.writeFormat(format.value.call.*),
@@ -117,59 +179,6 @@ const UntaggedExpr = struct {
     }
 };
 
-pub const Expr = union(ExprTag) {
-    call: *const FnCall,
-    symbol: [:0]const u8,
-    join: []const Expr,
-    list: []const Expr,
-    constant: u64,
-    pub fn formatWrite(format: Expr, array: anytype) void {
-        switch (format) {
-            .call => array.writeFormat(format.call.*),
-            .symbol => array.writeMany(format.symbol),
-            .constant => array.writeFormat(fmt.ud64(format.constant)),
-            .join => for (format.join) |op| {
-                op.formatWrite(array);
-            },
-            .list => for (format.list) |op| {
-                op.formatWrite(array);
-                array.writeMany(tok.end_item);
-            },
-        }
-    }
-    pub fn formatLength(format: Expr) u64 {
-        var len: u64 = 0;
-        switch (format) {
-            .call => len +%= format.call.formatLength(),
-            .symbol => len +%= format.symbol.len,
-            .constant => len +%= fmt.ud64(format.constant).formatLength(),
-            .join => for (format.join) |op| {
-                len +%= op.formatLength();
-            },
-            .list => for (format.list) |op| {
-                len +%= op.formatLength();
-                len +%= tok.end_item.len;
-            },
-        }
-        return len;
-    }
-    pub fn call(value: *const FnCall) Expr {
-        return .{ .call = value };
-    }
-    pub fn symbol(value: [:0]const u8) Expr {
-        return .{ .symbol = value };
-    }
-    pub fn constant(value: u64) Expr {
-        return .{ .constant = value };
-    }
-    pub fn join(value: []const Expr) Expr {
-        return .{ .join = value };
-    }
-    pub fn list(value: []const Expr) Expr {
-        return .{ .list = value };
-    }
-    pub var debug: bool = false;
-};
 pub usingnamespace Expr;
 
 /// This system allows an implementation or interface function to be called with
@@ -252,7 +261,16 @@ pub const FnCall = struct {
         for (call.ops) |*ptr| {
             if (builtin.testEqual(Expr, dst, ptr.*)) {
                 ptr.* = src;
-                break;
+                return;
+            }
+        }
+        if (config.debug_argument_substitution_match_fail) {
+            testing.printN(4096, .{ call.symbol, ":\n" });
+            for (call.ops) |*ptr| {
+                testing.printN(65536, .{
+                    fmt.render(.{ .infer_type_names = true }, src),   " != ",
+                    fmt.render(.{ .infer_type_names = true }, ptr.*), '\n',
+                });
             }
         }
     }
