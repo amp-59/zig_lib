@@ -10,6 +10,7 @@ pub const AddressSpace = preset.address_space.regular_128;
 pub usingnamespace proc.start;
 
 const Allocator = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
     .arena_index = 0,
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
