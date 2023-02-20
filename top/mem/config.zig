@@ -19,3 +19,5 @@ pub const implement_count_as_one: bool = false;
 /// If enabled functions returning slices accept an additional parameter to
 /// define the length of the returned pointer.
 pub const user_defined_length: bool = true;
+
+pub const debug_argument_substitution_match_fail: bool = false;
