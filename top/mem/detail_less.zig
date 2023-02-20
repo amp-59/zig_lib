@@ -6,6 +6,7 @@ pub const DetailLess = packed struct {
     kinds: gen.Kinds = .{},
     layouts: gen.Layouts = .{},
     modes: gen.Modes = .{},
+    management: gen.Management = .{},
 
     pub fn formatWrite(detail: *const DetailLess, array: anytype) void {
         array.writeMany(".{ .index = ");
@@ -24,6 +25,6 @@ pub const DetailLess = packed struct {
         gen.writeFieldOfBool(array, detail.kinds);
     }
     pub fn more(detail: *const DetailLess) *const out.DetailMore {
-        return @ptrCast(*const out.DetailMore, detail);
+        return @ptrCast(*const out.DetailMore, @alignCast(@alignOf(out.DetailMore), detail));
     }
 };
