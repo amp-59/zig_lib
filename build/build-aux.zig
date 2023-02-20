@@ -34,6 +34,7 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "print_all", "test/print_all_decls.zig", .{ .is_large_test = true, .build_root = true });
     // Other test programs:
     _ = util.addProjectExecutable(builder, "impl_test", "top/impl-test.zig", .{ .is_large_test = true, .build_root = true });
+    _ = util.addProjectExecutable(builder, "build_test", "top/build-test.zig", .{ .is_large_test = true, .build_root = true });
     _ = util.addProjectExecutable(builder, "container_test", "top/container-test.zig", .{ .is_large_test = true, .build_root = true });
     // Examples
     _ = util.addProjectExecutable(builder, "readdir", "examples/iterate_dir_entries.zig", small);
@@ -63,6 +64,10 @@ pub fn main(builder: *build.Builder) !void {
         dependOn(variants_to_canonicals, generate_canonical);
         const map_to_containers = util.addProjectExecutable(builder, "map_to_containers", "top/mem/map_to_containers.zig", default);
         dependOn(map_to_containers, variants_to_canonicals);
+        const map_to_kinds = util.addProjectExecutable(builder, "map_to_kinds", "top/mem/map_to_kinds.zig", default);
+        dependOn(map_to_kinds, variants_to_canonicals);
+        const variants_to_interfaces = util.addProjectExecutable(builder, "kinds_to_interfaces", "top/mem/kinds_to_interfaces.zig", default);
+        dependOn(variants_to_interfaces, map_to_kinds);
         const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", default);
         dependOn(map_to_specifications, map_to_containers);
         const generate_specifications = util.addProjectExecutable(builder, "generate_specifications", "top/mem/generate_specifications.zig", default);
@@ -78,9 +83,15 @@ pub fn main(builder: *build.Builder) !void {
         dependOn(generate_parameters, map_to_containers);
         const generate_containers = util.addProjectExecutable(builder, "generate_containers", "top/mem/generate_containers.zig", default);
         dependOn(generate_containers, generate_parameters);
+        const generate_allocators = util.addProjectExecutable(builder, "generate_allocators", "top/mem/generate_allocators.zig", default);
+        dependOn(generate_allocators, map_to_kinds);
+        dependOn(generate_allocators, variants_to_interfaces);
+
+        mem_gen.dependOn(&generate_references.run().step);
         mem_gen.dependOn(&generate_containers.run().step);
+        mem_gen.dependOn(&generate_allocators.run().step);
     }
 }
-fn dependOn(dependant: *build.CompileStep, dependency: *build.CompileStep) void {
+inline fn dependOn(dependant: *build.CompileStep, dependency: *build.CompileStep) void {
     dependant.step.dependOn(&dependency.run().step);
 }
