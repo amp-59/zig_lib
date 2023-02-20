@@ -1,11 +1,14 @@
 //! This stage summarises the abstract specification.
 const mem = @import("../mem.zig");
 const sys = @import("../sys.zig");
+const proc = @import("../proc.zig");
 const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
 
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
+
+pub usingnamespace proc.start;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
@@ -54,15 +57,12 @@ fn writeOptions(array: *Array) void {
     }
     array.writeMany("};\n");
 }
-pub fn specToOptions(array: *Array) void {
-    gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "../../gen.zig" }});
-    writeOptions(array);
-    gen.writeAuxiliarySourceFile(array, "options.zig");
-}
-pub export fn _start() noreturn {
-    @setAlignStack(16);
+pub fn specToOptions() void {
     var array: Array = undefined;
     array.undefineAll();
-    specToOptions(&array);
-    sys.call(.exit, .{}, noreturn, .{0});
+    gen.writeGenerator(&array, @src());
+    gen.writeImport(&array, "gen", "../../gen.zig");
+    writeOptions(&array);
+    gen.writeAuxiliarySourceFile(&array, "options.zig");
 }
+pub const main = specToOptions;
