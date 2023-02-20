@@ -223,7 +223,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             tmp.infer_type_names = false;
             break :blk tmp;
         };
-        fn writeDecl(comptime format: Format, array: anytype, comptime decl: builtin.Declaration) void {
+        fn writeDecl(comptime format: Format, array: anytype, comptime decl: builtin.Type.Declaration) void {
             if (!decl.is_pub) {
                 return;
             }
@@ -240,7 +240,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             decl_format.formatWrite(array);
             array.writeCount(2, "; ".*);
         }
-        fn lengthDecl(comptime format: Format, comptime decl: builtin.Declaration) u64 {
+        fn lengthDecl(comptime format: Format, comptime decl: builtin.Type.Declaration) u64 {
             if (!decl.is_pub) {
                 return 0;
             }
@@ -590,7 +590,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     return struct {
         value: Union,
         const Format: type = @This();
-        const fields: []const builtin.UnionField = @typeInfo(Union).Union.fields;
+        const fields: []const builtin.Type.UnionField = @typeInfo(Union).Union.fields;
         const type_name: []const u8 = typeName(Union, spec);
         // This is the actual tag type
         const tag_type: ?type = @typeInfo(Union).Union.tag_type;

@@ -121,6 +121,7 @@ pub const AllocatorErrors = struct {
     map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     remap: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     unmap: sys.ErrorPolicy = .{ .abort = sys.munmap_errors },
+    madvise: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
 };
 pub const ArenaAllocatorSpec = struct {
     AddressSpace: type,

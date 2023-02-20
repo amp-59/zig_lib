@@ -21,35 +21,33 @@ const invalid_holder_state: u64 = (0b110000110000 << 48);
 
 const move_spec = .{
     .options = .{},
-    .logging = logging,
+    .logging = preset.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.mremap_errors },
 };
 const map_spec = .{
     .options = .{},
-    .logging = logging,
+    .logging = preset.logging.acquire_error_fault.verbose,
     .errors = .{ .abort = sys.mmap_errors },
 };
 const resize_spec = .{
-    .logging = logging,
+    .logging = preset.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.mremap_errors },
 };
 const unmap_spec = .{
-    .logging = logging,
+    .logging = preset.logging.release_error_fault.verbose,
     .errors = .{ .abort = sys.munmap_errors },
 };
 const advice_opts = .{ .property = .{ .dump = true } };
 
 const advise_spec = .{
     .options = advice_opts,
-    .logging = logging,
+    .logging = preset.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.madvise_errors },
 };
 const wr_spec: mem.ReinterpretSpec = .{
     .composite = .{ .format = true },
     .reference = .{ .dereference = &.{} },
 };
-
-const logging = .{ .Acquire = is_verbose, .Release = is_verbose };
 
 fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.unmap(unmap_spec, 0x7000000, 0x3000000 * 2));

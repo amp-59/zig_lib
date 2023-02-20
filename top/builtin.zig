@@ -127,6 +127,7 @@ pub fn InternalError(comptime E: type) type {
         pub const Error = E;
     };
 }
+/// `E` must be an Enum type.
 pub fn ExternalError(comptime E: type) type {
     static.assert(@typeInfo(E) == .Enum);
     static.assert(@hasDecl(E, "errorName"));

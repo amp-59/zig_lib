@@ -25,16 +25,16 @@ pub const address_space = opaque {
     });
     pub const logging = opaque {
         pub const verbose: mem.AddressSpaceLogging = .{
-            .release = preset.logging.full.verbose,
-            .acquire = preset.logging.full.verbose,
-            .map = preset.logging.full.verbose,
-            .unmap = preset.logging.full.verbose,
+            .acquire = preset.logging.acquire_error_fault.verbose,
+            .release = preset.logging.release_error_fault.verbose,
+            .map = preset.logging.acquire_error_fault.verbose,
+            .unmap = preset.logging.release_error_fault.verbose,
         };
         pub const silent: mem.AddressSpaceLogging = .{
-            .release = preset.logging.full.silent,
-            .acquire = preset.logging.full.silent,
-            .map = preset.logging.full.silent,
-            .unmap = preset.logging.full.silent,
+            .acquire = preset.logging.acquire_error_fault.silent,
+            .release = preset.logging.release_error_fault.silent,
+            .map = preset.logging.acquire_error_fault.silent,
+            .unmap = preset.logging.release_error_fault.silent,
         };
     };
     pub const errors = opaque {

@@ -170,7 +170,7 @@ pub const AdviseSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessError = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     const Options = struct {
         usage: ?Usage = null,
         action: ?Action = null,
@@ -593,7 +593,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors.thr
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors.throw, spec.return_type) {
     const mremap_flags: Remap = spec.flags();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
-        if (spec.logging.Acquire) {
+        if (spec.logging.Success) {
             debug.remapNotice(old_addr, old_len, new_addr, null);
         }
     } else |mremap_error| {
@@ -605,7 +605,7 @@ pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64)
 }
 pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors.throw, spec.return_type) {
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
-        if (spec.logging.Acquire) {
+        if (spec.logging.Success) {
             debug.remapNotice(old_addr, old_len, null, new_len);
         }
     } else |mremap_error| {
