@@ -5,6 +5,7 @@ const proc = @import("../proc.zig");
 const meta = @import("../meta.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
+
 const gen = @import("./gen.zig");
 const out = struct {
     usingnamespace @import("./detail.zig");
@@ -23,20 +24,35 @@ fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: 
         inline for (type_info.Union.fields) |field| {
             const tmp = impl_detail.*;
             defer impl_detail.* = tmp;
-            if (@hasField(gen.Kinds, field.name)) {
-                @field(impl_detail.kinds, field.name) = true;
-            }
-            if (@hasField(gen.Layouts, field.name)) {
-                @field(impl_detail.layouts, field.name) = true;
-            }
-            if (@hasField(gen.Modes, field.name)) {
-                @field(impl_detail.modes, field.name) = true;
-            }
-            if (@hasField(gen.Fields, field.name)) {
-                @field(impl_detail.fields, field.name) = true;
-            }
-            if (@hasField(gen.Techniques, field.name)) {
-                @field(impl_detail.techs, field.name) = true;
+            blk: {
+                if (@hasField(gen.Kinds, field.name)) {
+                    @field(impl_detail.kinds, field.name) = true;
+                    break :blk;
+                }
+                if (@hasField(gen.Layouts, field.name)) {
+                    @field(impl_detail.layouts, field.name) = true;
+                    break :blk;
+                }
+                if (@hasField(gen.Modes, field.name)) {
+                    @field(impl_detail.modes, field.name) = true;
+                    break :blk;
+                }
+                if (@hasField(gen.Management, field.name)) {
+                    @field(impl_detail.management, field.name) = true;
+                    break :blk;
+                }
+                if (@hasField(gen.Fields, field.name)) {
+                    @field(impl_detail.fields, field.name) = true;
+                    break :blk;
+                }
+                if (@hasField(gen.Techniques, field.name)) {
+                    @field(impl_detail.techs, field.name) = true;
+                    break :blk;
+                }
+                if (field.name[0] == '_') {
+                    break :blk;
+                }
+                @compileError("unknown attribute: " ++ field.name);
             }
             writeUnspecifiedDetailInternal(array, field.type, impl_detail);
         }
@@ -50,17 +66,15 @@ fn writeDetailStruct(array: *Array, impl_detail: out.Detail) void {
     array.writeFormat(impl_detail);
     array.writeMany(",\n");
 }
-fn writeUnspecifiedDetails(array: *Array) void {
-    var impl_detail: out.Detail = .{};
-    gen.writeImports(array, @src(), &.{.{ .name = "out", .path = "../../detail.zig" }});
-    array.writeMany("pub const impl_details: []const out.Detail = &[_]out.Detail{");
-    writeUnspecifiedDetailInternal(array, out.AbstractSpec, &impl_detail);
-    array.writeMany("};\n");
-}
 fn specToDetail() void {
     var array: Array = undefined;
     array.undefineAll();
-    writeUnspecifiedDetails(&array);
+    var impl_detail: out.Detail = .{};
+    gen.writeGenerator(&array, @src());
+    gen.writeImport(&array, "out", "../../detail.zig");
+    array.writeMany("pub const impl_details: []const out.Detail = &[_]out.Detail{");
+    writeUnspecifiedDetailInternal(&array, out.AbstractSpec, &impl_detail);
+    array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(&array, "impl_details.zig");
 }
 pub const main = specToDetail;
