@@ -13,6 +13,7 @@ pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
     .arena_index = 0,
     .options = .{ .require_filo_free = false },
     .logging = preset.allocator.logging.silent,
