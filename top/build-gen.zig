@@ -1452,9 +1452,9 @@ pub fn main(args_in: [][*:0]u8) !void {
     const up_addr: u64 = mach.alignA64(ub_addr, 4096);
 
     const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
-    var build_src: []u8 = @qualCast([]u8, subTemplate(template_src, "build-struct.zig").?);
-    var types_src: []u8 = @qualCast([]u8, subTemplate(template_src, "build-types.zig").?);
-    var option_fn_src: []u8 = @qualCast([]u8, subTemplate(template_src, "option-functions.zig").?);
+    var build_src: []u8 = @constCast(subTemplate(template_src, "build-struct.zig").?);
+    var types_src: []u8 = @constCast(subTemplate(template_src, "build-types.zig").?);
+    var option_fn_src: []u8 = @constCast(subTemplate(template_src, "option-functions.zig").?);
 
     const build_members_offset: u64 = try guessSourceOffset(build_src, build_members_loc_token, 6080);
     const format_members_offset: u64 = try guessSourceOffset(build_src, format_members_loc_token, 6147);
