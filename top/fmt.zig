@@ -730,7 +730,7 @@ pub const Bytes = struct {
         .radix = 10,
         .width = .{ .fixed = 3 },
     });
-    const fields: []const builtin.EnumField = @typeInfo(Unit).Enum.fields;
+    const fields: []const builtin.Type.EnumField = @typeInfo(Unit).Enum.fields;
     pub const max_len: u64 =
         MajorIntFormat.max_len +%
         MinorIntFormat.max_len +% 3; // Unit

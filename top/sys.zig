@@ -1,5 +1,5 @@
 //! Linux x86_64
-const meta = @import("./meta.zig");
+const builtin = @import("./builtin.zig");
 pub const MAP = opaque {
     pub const FILE: usize = 0x0;
     pub const SHARED: usize = 0x1;
@@ -1402,7 +1402,7 @@ pub const ErrorCode = enum(i9) {
         };
     }
 };
-pub const ErrorPolicy = meta.ExternalError(ErrorCode);
+pub const ErrorPolicy = builtin.ExternalError(ErrorCode);
 pub const Fn = enum(u9) {
     read = 0,
     write = 1,
@@ -2044,12 +2044,12 @@ const syscalls = .{
 };
 pub fn Call(comptime errors: ?[]const ErrorCode, comptime return_type: type) type {
     if (errors) |throw| {
-        return meta.ZigError(ErrorCode, throw, "OpaqueSystemError")!return_type;
+        return builtin.ZigError(ErrorCode, throw, "OpaqueSystemError")!return_type;
     }
     return return_type;
 }
 pub fn Error(comptime errors: []const ErrorCode) type {
-    return meta.ZigError(ErrorCode, errors, "OpaqueSystemError");
+    return builtin.ZigError(ErrorCode, errors, "OpaqueSystemError");
 }
 pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors.throw, return_type) {
     const ret: isize = switch (tag.args()) {
@@ -2064,12 +2064,12 @@ pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type
     };
     if (errors.throw) |throw| {
         if (ret < 0) {
-            return meta.zigErrorThrow(ErrorCode, throw, ret, "OpaqueSystemError");
+            return builtin.zigErrorThrow(ErrorCode, throw, ret, "OpaqueSystemError");
         }
     }
     if (errors.abort) |abort| {
         if (ret < 0) {
-            return meta.zigErrorAbort(ErrorCode, abort, ret);
+            return builtin.zigErrorAbort(ErrorCode, abort, ret);
         }
     }
     if (return_type == void) {

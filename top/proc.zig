@@ -194,7 +194,7 @@ pub const CloneArgs = extern struct {
 pub const WaitSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     return_type: type = u64,
     const Specification = @This();
     const Options = struct {
@@ -234,7 +234,7 @@ pub const WaitIdSpec = struct {
     id_type: IdType,
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     return_type: type = u64,
     const Specification = @This();
     const Options = struct {
@@ -270,7 +270,7 @@ pub const WaitIdSpec = struct {
 };
 pub const ForkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     return_type: type = u64,
     const Specification = @This();
 };
@@ -280,7 +280,7 @@ pub const ExecuteSpec = struct {
     return_type: type = void,
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
@@ -297,7 +297,7 @@ pub const CloneSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.clone_errors },
     return_type: type = isize,
-    logging: builtin.Logging.Full = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
     const Options = struct {
         address_space: bool = true,
         file_system: bool = true,

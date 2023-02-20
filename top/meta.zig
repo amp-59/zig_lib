@@ -604,7 +604,7 @@ pub fn FieldN(comptime T: type, comptime field_index: usize) type {
         },
     }
 }
-pub fn fnParams(comptime function: anytype) []const builtin.FnParam {
+pub fn fnParams(comptime function: anytype) []const builtin.Type.Fn.Param {
     return @typeInfo(@TypeOf(function)).Fn.params;
 }
 pub fn FnParam0(comptime function: anytype) type {
