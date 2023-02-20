@@ -19,8 +19,8 @@ const out = struct {
 };
 const expr = @import("./expr.zig");
 const config = @import("./config.zig");
-const interface = @import("./interface.zig");
-const implementation = @import("./implementation.zig");
+const ctn_fn = @import("./ctn_fn.zig");
+const impl_fn = @import("./impl_fn.zig");
 
 pub usingnamespace proc.start;
 
@@ -46,7 +46,7 @@ pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
 
-const Fn = interface.Fn;
+const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
 
 fn setImplToMember(callable: *expr.FnCall) void {
@@ -77,32 +77,32 @@ fn writeFunctionBodyPrimary(allocator: *Allocator, array: *Array, ctn_detail: *c
         ctn_fn_info.loc == .Behind or
         ctn_fn_info.loc == .Ahead;
     var len_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.len));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.len));
     var avail_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.avail));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.avail));
     _ = avail_fn_call;
     var __len_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__len));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.__len));
     _ = __len_fn_call;
     var __rem_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__rem));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.__rem));
     _ = __rem_fn_call;
     var __at_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__at));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.__at));
     var __ad_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__ad));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.__ad));
     var __back_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__back));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.__back));
     var __behind_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.__behind));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.__behind));
     var aligned_byte_address_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.aligned_byte_address));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.aligned_byte_address));
     setImplToMember(&aligned_byte_address_call);
     var undefined_byte_address_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.undefined_byte_address));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.undefined_byte_address));
     setImplToMember(&undefined_byte_address_call);
     var unstreamed_byte_address_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.unstreamed_byte_address));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.unstreamed_byte_address));
     setImplToMember(&unstreamed_byte_address_call);
     const location_call: *expr.FnCall = switch (ctn_fn_info.loc) {
         .AnyDefined => &__at_fn_call,
@@ -246,34 +246,34 @@ fn writeFunctionBodyPrimary(allocator: *Allocator, array: *Array, ctn_detail: *c
     });
     const write_one_intr_call: expr.FnCallIntr = .{
         .ctn_detail = ctn_detail,
-        .ctn_fn_info = interface.get(.writeOne),
+        .ctn_fn_info = ctn_fn.get(.writeOne),
     };
     const write_count_intr_call: expr.FnCallIntr = .{
         .ctn_detail = ctn_detail,
-        .ctn_fn_info = interface.get(.writeCount),
+        .ctn_fn_info = ctn_fn.get(.writeCount),
     };
     const write_many_intr_call: expr.FnCallIntr = .{
         .ctn_detail = ctn_detail,
-        .ctn_fn_info = interface.get(.writeMany),
+        .ctn_fn_info = ctn_fn.get(.writeMany),
     };
     const write_format_intr_call: expr.FnCallIntr = .{
         .ctn_detail = ctn_detail,
-        .ctn_fn_info = interface.get(.writeFormat),
+        .ctn_fn_info = ctn_fn.get(.writeFormat),
     };
     const write_args_intr_call: expr.FnCallIntr = .{
         .ctn_detail = ctn_detail,
-        .ctn_fn_info = interface.get(.writeArgs),
+        .ctn_fn_info = ctn_fn.get(.writeArgs),
     };
     const write_fields_intr_call: expr.FnCallIntr = .{
         .ctn_detail = ctn_detail,
-        .ctn_fn_info = interface.get(.writeFields),
+        .ctn_fn_info = ctn_fn.get(.writeFields),
     };
     const write_any_intr_call: expr.FnCallIntr = .{
         .ctn_detail = ctn_detail,
-        .ctn_fn_info = interface.get(.writeAny),
+        .ctn_fn_info = ctn_fn.get(.writeAny),
     };
     var increment_fn_call: expr.FnCall =
-        expr.FnCall.intr(allocator, ctn_detail, interface.get(.increment));
+        expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.increment));
 
     switch (ctn_fn_info.tag) {
         .referOneAt,
@@ -525,40 +525,40 @@ fn writeFunctionBodySpecial(allocator: *Allocator, array: *Array, ctn_detail: *c
     const child_size_symbol: [:0]const u8 =
         if (ctn_detail.layouts.structured) tok.child_size_name else tok.call_sizeof_child;
     var writable_byte_count: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.writable_byte_count));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.writable_byte_count));
     setImplToMember(&writable_byte_count);
     var defined_byte_count: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.defined_byte_count));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.defined_byte_count));
     setImplToMember(&defined_byte_count);
     var undefined_byte_count: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.undefined_byte_count));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.undefined_byte_count));
     setImplToMember(&undefined_byte_count);
     var streamed_byte_count: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.streamed_byte_count));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.streamed_byte_count));
     setImplToMember(&streamed_byte_count);
     var unstreamed_byte_count: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.unstreamed_byte_count));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.unstreamed_byte_count));
     setImplToMember(&unstreamed_byte_count);
     var aligned_byte_address_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.aligned_byte_address));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.aligned_byte_address));
     setImplToMember(&aligned_byte_address_call);
     var undefined_byte_address_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.undefined_byte_address));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.undefined_byte_address));
     setImplToMember(&undefined_byte_address_call);
     var unstreamed_byte_address_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.unstreamed_byte_address));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.unstreamed_byte_address));
     setImplToMember(&unstreamed_byte_address_call);
     var define_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.define));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.define));
     setImplToMember(&define_call);
     var undefine_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.undefine));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.undefine));
     setImplToMember(&undefine_call);
     var seek_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.seek));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.seek));
     setImplToMember(&seek_call);
     var tell_call: expr.FnCall =
-        expr.FnCall.impl(allocator, ctn_detail.more(), implementation.get(.tell));
+        expr.FnCall.impl(allocator, ctn_detail.more(), impl_fn.get(.tell));
     setImplToMember(&tell_call);
     const amount_of_type_to_bytes_call: expr.FnCall =
         expr.FnCall.allocate(allocator, expr.FnCall2, .{
@@ -634,7 +634,7 @@ fn writeFunctionBodySpecial(allocator: *Allocator, array: *Array, ctn_detail: *c
         },
         .__len => {
             var len_fn_call: expr.FnCall =
-                expr.FnCall.intr(allocator, ctn_detail, interface.get(.len));
+                expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.len));
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.sub_fn_name,
@@ -645,7 +645,7 @@ fn writeFunctionBodySpecial(allocator: *Allocator, array: *Array, ctn_detail: *c
         },
         .__rem => {
             var avail_fn_call: expr.FnCall =
-                expr.FnCall.intr(allocator, ctn_detail, interface.get(.avail));
+                expr.FnCall.intr(allocator, ctn_detail, ctn_fn.get(.avail));
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.FnCall.data(&data, expr.FnCall2, .{
                 .symbol = tok.sub_fn_name,
@@ -794,12 +794,12 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, ctn_detail: *c
     writeFunctionBodySpecial(allocator, array, ctn_detail, ctn_fn_info);
 }
 fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess) void {
-    for (interface.key) |*ctn_fn_info| {
+    for (ctn_fn.key) |*ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
         }
         ctn_fn_info.writeSignature(array, ctn_detail);
-        array.writeMany(interface.getReturnType(ctn_detail, ctn_fn_info));
+        array.writeMany(ctn_fn_info.getReturnType());
         array.writeMany("{\n");
         writeFunctionBodyGeneric(allocator, array, ctn_detail, ctn_fn_info);
         array.writeMany("}\n");
@@ -850,11 +850,11 @@ pub fn generateContainers() !void {
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
-    var ctn_index: u16 = 0;
+    var ctn_index: usize = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
-        const s = allocator.save();
-        defer allocator.restore(s);
-        const ctn_group: []const u16 = out.containers[ctn_index];
+        const save: Allocator.Save = allocator.save();
+        defer allocator.restore(save);
+        const ctn_group: []const out.Index = out.containers[ctn_index];
         if (ctn_group.len == 0) {
             continue;
         }
