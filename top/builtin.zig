@@ -32,23 +32,8 @@ const builtin = opaque {
     pub const SourceLocation = Src();
     pub const Mode = @TypeOf(zig.mode);
     pub const Type = @TypeOf(@typeInfo(void));
-    pub const Struct = @TypeOf(@typeInfo(struct {}).Struct);
-    pub const Array = @TypeOf(@typeInfo([0]void).Array);
-    pub const Union = @TypeOf(@typeInfo(union {}).Union);
-    pub const Enum = @TypeOf(@typeInfo(enum {}).Enum);
-    pub const Pointer = @TypeOf(@typeInfo(*void).Pointer);
-    pub const Size = @TypeOf(@typeInfo(*void).Pointer.size);
-    pub const Signedness = @TypeOf(@typeInfo(u0).Int.signedness);
-    pub const TypeId = @typeInfo(Type).Union.tag_type.?;
-    pub const StructField = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.fields)).Pointer.child;
-    pub const ContainerLayout = @TypeOf(@typeInfo(struct {}).Struct.layout);
-    pub const Declaration = @typeInfo(@TypeOf(@typeInfo(struct {}).Struct.decls)).Pointer.child;
-    pub const EnumField = @typeInfo(@TypeOf(@typeInfo(enum { e }).Enum.fields)).Pointer.child;
-    pub const UnionField = @typeInfo(@TypeOf(@typeInfo(union {}).Union.fields)).Pointer.child;
-    pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
-    pub const FnParam = @typeInfo(@TypeOf(@typeInfo(fn () noreturn).Fn.params)).Pointer.child;
-    pub const DeclLiteral = @Type(.EnumLiteral);
     pub const Endian = @TypeOf(zig.cpu.arch.endian());
+    pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
 };
 fn Src() type {
     return @TypeOf(@src());
@@ -68,13 +53,65 @@ pub const Exception = error{
     ExactDivisionWithRemainder,
     UnexpectedValue,
 };
-pub const Logging = packed struct {
-    Success: bool = is_verbose,
-    Acquire: bool = is_verbose,
-    Release: bool = is_verbose,
-    Error: bool = !is_silent,
-    Fault: bool = !is_silent,
-
+pub const Logging = struct {
+    pub const Full = packed struct {
+        /// Report successful actions (not all actions are reported)
+        Success: bool = default.Success,
+        /// Report actions which acquire a finite resource
+        Acquire: bool = default.Acquire,
+        /// Report actions which release a finite resource
+        Release: bool = default.Release,
+        /// Report actions which throw an error
+        Error: bool = default.Error,
+        /// Report actions which terminate the program
+        Fault: bool = default.Fault,
+    };
+    const SuccessError = packed struct {
+        Success: bool = is_verbose,
+        Error: bool = !is_silent,
+    };
+    const SuccessFault = packed struct {
+        Success: bool = default.Success,
+        Fault: bool = default.Fault,
+    };
+    const AcquireError = packed struct {
+        Acquire: bool = default.Acquire,
+        Error: bool = default.Error,
+    };
+    const AcquireFault = packed struct {
+        Acquire: bool = default.Acquire,
+        Fault: bool = default.Fault,
+    };
+    const ReleaseError = packed struct {
+        Release: bool = default.Release,
+        Error: bool = default.Error,
+    };
+    const ReleaseFault = packed struct {
+        Release: bool = default.Release,
+        Fault: bool = default.Fault,
+    };
+    const SuccessErrorFault = packed struct {
+        Success: bool = default.Success,
+        Error: bool = default.Error,
+        Fault: bool = default.Fault,
+    };
+    const AcquireErrorFault = packed struct {
+        Acquire: bool = default.Acquire,
+        Error: bool = default.Error,
+        Fault: bool = default.Fault,
+    };
+    const ReleaseErrorFault = packed struct {
+        Release: bool = is_verbose,
+        Error: bool = !is_silent,
+        Fault: bool = !is_silent,
+    };
+    pub const default: Logging = .{
+        .Success = is_verbose,
+        .Acquire = is_verbose,
+        .Release = is_verbose,
+        .Error = !is_silent,
+        .Fault = !is_silent,
+    };
     pub const verbose: Logging = .{
         .Success = true,
         .Acquire = true,
@@ -90,6 +127,85 @@ pub const Logging = packed struct {
         .Fault = false,
     };
 };
+/// `E` must be an error type.
+pub fn InternalError(comptime E: type) type {
+    static.assert(@typeInfo(E) == .ErrorSet);
+    return union(enum) {
+        /// Return this error for any exception
+        throw: E,
+        /// Abort the program for any exception
+        abort,
+        ignore,
+        pub const Error = E;
+    };
+}
+pub fn ExternalError(comptime E: type) type {
+    static.assert(@typeInfo(E) == .Enum);
+    static.assert(@hasDecl(E, "errorName"));
+    return (struct {
+        /// Throw error if unwrapping yields any of these values
+        throw: ?[]const E = null,
+        /// Abort the program if unwrapping yields any of these values
+        abort: ?[]const E = null,
+        pub const Enum = E;
+    });
+}
+pub fn ZigError(comptime Value: type, comptime return_codes: []const Value, comptime catch_all: ?[]const u8) type {
+    var error_set: []const builtin.Type.Error = &.{};
+    for (return_codes) |error_code| {
+        error_set = error_set ++ [1]builtin.Type.Error{.{ .name = error_code.errorName() }};
+    }
+    if (catch_all) |error_name| {
+        error_set = error_set ++ [1]builtin.Type.Error{.{ .name = error_name }};
+    }
+    return @Type(.{ .ErrorSet = error_set });
+}
+/// Attempt to match a return value against a set of error codes--returning the
+/// corresponding zig error on success.
+pub fn zigErrorThrow(
+    comptime Value: type,
+    comptime values: []const Value,
+    ret: isize,
+    comptime catch_all: ?[]const u8,
+) ZigError(Value, values, catch_all) {
+    const Error = ZigError(Value, values, catch_all);
+    inline for (values) |value| {
+        if (ret == @enumToInt(value)) {
+            return @field(Error, value.errorName());
+        }
+    }
+    if (catch_all) |error_name| {
+        return @field(Error, error_name);
+    }
+}
+/// Attempt to match a return value against a set of error codes--aborting the
+/// program on success.
+/// This function is exceptional in this namespace for its use of system calls.
+pub fn zigErrorAbort(
+    comptime Value: type,
+    comptime values: []const Value,
+    ret: isize,
+) void {
+    inline for (values) |value| {
+        if (ret == @enumToInt(value)) {
+            var buf: [4608]u8 = undefined;
+            builtin.debug.logAbort(&buf, value.errorName());
+        }
+    }
+}
+/// Return the value part of a function error union return type.
+pub fn ReturnPayload(comptime any_function: anytype) type {
+    const T: type = @TypeOf(any_function);
+    switch (@typeInfo(T)) {
+        .Fn => {
+            return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.payload;
+        },
+        else => |type_info| {
+            debug.unexpectedTypeTypesError(T, type_info, .{.Fn});
+        },
+    }
+}
+
 pub fn config(
     comptime symbol: []const u8,
     comptime T: type,
@@ -1446,7 +1562,16 @@ pub const parse = opaque {
         }
         return ret;
     }
-    pub fn any(comptime T: type, str: []const u8) !T {
+    pub fn any(comptime T: type, any_str: anytype) !T {
+        const str: []const u8 = blk: {
+            if (@TypeOf(any_str) == [*:0]u8) {
+                var len: u64 = 0;
+                while (any_str[len] != 0) len +%= 1;
+                break :blk any_str[0..len :0];
+            } else {
+                break :blk any_str;
+            }
+        };
         const signed: bool = str[0] == '-';
         if (signed and @typeInfo(T).Int.signedness == .unsigned) {
             return error.InvalidInputParity;
