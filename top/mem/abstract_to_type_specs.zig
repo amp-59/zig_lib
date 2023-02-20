@@ -2,6 +2,7 @@
 const sys = @import("../sys.zig");
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
+const proc = @import("../proc.zig");
 const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
 const preset = @import("../preset.zig");
@@ -11,6 +12,8 @@ const out = struct {
     usingnamespace @import("./abstract_spec.zig");
     usingnamespace @import("./zig-out/src/abstract_params.zig");
 };
+
+pub usingnamespace proc.start;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
@@ -140,71 +143,59 @@ fn writeSpecifications(array: *Array, comptime T: type, field_names: *mem.Static
             }
         }
     }
-    array.writeMany("\n    .{ .params = ");
+    array.writeMany(".{.params=");
     writeStructFromFields(array, p_struct_fields);
-    array.writeMany(", .specs = &[_]type{\n");
+    array.writeMany(",.specs=&[_]type{\n");
     inline for (s_struct_field_slices) |s_struct_fields| {
-        array.writeMany("        ");
         writeStructFromFields(array, s_struct_fields);
         array.writeMany(",\n");
     }
-    array.writeMany("    }, .vars = packed ");
+    array.writeMany("},.vars=packed ");
     inline for (v_struct_fields) |field| {
         addUniqueFieldName(field_names, field.name);
     }
     writeStructFromFields(array, v_struct_fields);
-    array.writeMany(" },");
+    array.writeMany("},");
 }
 
 fn writeStructFromFields(array: *Array, comptime struct_fields: []const builtin.Type.StructField) void {
-    array.writeMany("struct { ");
+    array.writeMany("struct {");
     inline for (struct_fields) |field| {
-        array.writeMany(field.name ++ ": " ++
+        array.writeMany(field.name ++ ":" ++
             comptime gen.simpleTypeName(field.type));
         if (comptime meta.defaultValue(field)) |default_value| {
             if (field.type == bool) {
-                array.writeMany(if (default_value) " = true, " else " = false, ");
+                array.writeMany(if (default_value) "=true," else "=false,");
             } else {
-                array.writeMany(" = null, ");
+                array.writeMany("=null,");
             }
         } else {
-            array.writeMany(", ");
+            array.writeMany(",");
         }
     }
-    if (struct_fields.len != 0) {
-        array.overwriteManyBack(" }");
-    } else {
-        array.writeOne('}');
-    }
+    array.writeOne('}');
 }
 fn writeSpecifiersStruct(array: *Array, field_names: mem.StaticArray([]const u8, 16)) void {
-    array.writeMany("pub const Specifiers = packed struct { ");
+    array.writeMany("pub const Specifiers = packed struct {");
     for (field_names.readAll()) |field_name| {
         array.writeMany(field_name);
-        array.writeMany(": bool = false, ");
+        array.writeMany(":bool=false,");
     }
-    array.undefine(2);
-    array.writeMany(" };\n");
+    array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(array, "specifiers.zig");
 }
-pub fn abstractToTypeSpec(array: *Array) void {
-    gen.writeImports(array, @src(), &.{
-        .{ .name = "gen", .path = "../../gen.zig" },
-    });
+pub fn abstractToTypeSpec() void {
+    var array: Array = .{};
+    gen.writeGenerator(&array, @src());
+    gen.writeImport(&array, "gen", "../../gen.zig");
     var field_names: mem.StaticArray([]const u8, 16) = undefined;
     field_names.undefineAll();
     array.writeMany("pub const type_specs = [_]gen.TypeSpecMap{");
     inline for (out.abstract_params) |param| {
-        writeSpecifications(array, param, &field_names);
+        writeSpecifications(&array, param, &field_names);
     }
     array.writeMany("\n};\n");
-    gen.writeAuxiliarySourceFile(array, "type_specs.zig");
-    writeSpecifiersStruct(array, field_names);
+    gen.writeAuxiliarySourceFile(&array, "type_specs.zig");
+    writeSpecifiersStruct(&array, field_names);
 }
-pub export fn _start() noreturn {
-    @setAlignStack(16);
-    var array: Array = undefined;
-    array.undefineAll();
-    abstractToTypeSpec(&array);
-    sys.call(.exit, .{}, noreturn, .{0});
-}
+pub const main = abstractToTypeSpec;
