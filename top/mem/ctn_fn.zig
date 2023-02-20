@@ -1099,28 +1099,27 @@ pub const Fn = packed struct {
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
         array.writeMany(") ");
     }
-};
-pub fn getReturnType(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) [:0]const u8 {
-    _ = ctn_detail;
-    switch (ctn_fn_info.kind) {
-        .write => return tok.void_type_name,
-        .refer => switch (ctn_fn_info.val) {
-            .One => return tok.child_ptr_type_name,
-            .Count => return tok.child_array_ptr_type_name,
-            .CountWithSentinel => return tok.child_array_ptr_with_sentinel_type_name,
-            .Many => return tok.child_slice_type_name,
-            .ManyWithSentinel => return tok.child_slice_with_sentinel_type_name,
+    pub fn getReturnType(ctn_fn_info: *const Fn) [:0]const u8 {
+        switch (ctn_fn_info.kind) {
+            .write => return tok.void_type_name,
+            .refer => switch (ctn_fn_info.val) {
+                .One => return tok.child_ptr_type_name,
+                .Count => return tok.child_array_ptr_type_name,
+                .CountWithSentinel => return tok.child_array_ptr_with_sentinel_type_name,
+                .Many => return tok.child_slice_type_name,
+                .ManyWithSentinel => return tok.child_slice_with_sentinel_type_name,
+                else => return tok.void_type_name,
+            },
+            .read => switch (ctn_fn_info.val) {
+                .One => return tok.child_type_name,
+                .Count => return tok.child_array_type_name,
+                .CountWithSentinel => return tok.child_array_with_sentinel_type_name,
+                .Many => return tok.child_const_slice_type_name,
+                .ManyWithSentinel => return tok.child_const_slice_with_sentinel_type_name,
+                else => return tok.void_type_name,
+            },
+            .append => return tok.allocator_void_type_name,
             else => return tok.void_type_name,
-        },
-        .read => switch (ctn_fn_info.val) {
-            .One => return tok.child_type_name,
-            .Count => return tok.child_array_type_name,
-            .CountWithSentinel => return tok.child_array_with_sentinel_type_name,
-            .Many => return tok.child_const_slice_type_name,
-            .ManyWithSentinel => return tok.child_const_slice_with_sentinel_type_name,
-            else => return tok.void_type_name,
-        },
-        .append => return tok.allocator_void_type_name,
-        else => return tok.void_type_name,
+        }
     }
-}
+};
