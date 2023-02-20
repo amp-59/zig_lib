@@ -24,13 +24,6 @@ const CanonicalFieldSpec = struct {
     dst_type_name: []const u8,
     detail: type,
 };
-const mode_spec: CanonicalFieldSpec = .{
-    .src_name = "modes",
-    .src_type = gen.Modes,
-    .dst_name = "mode",
-    .dst_type_name = "Mode",
-    .detail = out.Detail,
-};
 const kind_spec: CanonicalFieldSpec = .{
     .src_name = "kinds",
     .src_type = gen.Kinds,
@@ -43,6 +36,20 @@ const layout_spec: CanonicalFieldSpec = .{
     .src_type = gen.Layouts,
     .dst_name = "layout",
     .dst_type_name = "Layout",
+    .detail = out.Detail,
+};
+const mode_spec: CanonicalFieldSpec = .{
+    .src_name = "modes",
+    .src_type = gen.Modes,
+    .dst_name = "mode",
+    .dst_type_name = "Mode",
+    .detail = out.Detail,
+};
+const management_spec: CanonicalFieldSpec = .{
+    .src_name = "management",
+    .src_type = gen.Management,
+    .dst_name = "management",
+    .dst_type_name = "Management",
     .detail = out.Detail,
 };
 const field_spec: CanonicalFieldSpec = .{
@@ -152,6 +159,7 @@ pub export fn _start() noreturn {
         layout_spec,
         kind_spec,
         mode_spec,
+        management_spec,
         field_spec,
         tech_spec,
         specs_spec,
