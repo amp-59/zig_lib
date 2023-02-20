@@ -2,11 +2,13 @@
 const sys = @import("../sys.zig");
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
+const proc = @import("../proc.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
 const abstract_spec = @import("./abstract_spec.zig");
 
+pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
@@ -47,16 +49,12 @@ fn writeAbstractParameters(array: *Array, comptime types: *[]const type) void {
     writeAbstractParametersInternal(array, types, abstract_spec.AbstractSpec);
     array.writeMany("};\n");
 }
-pub fn specToAbstract(array: *Array) void {
+pub fn specToAbstract() void {
     const types: *[]const type = comptime slices(type);
-    gen.writeImports(array, @src(), &.{.{ .name = "gen", .path = "../../gen.zig" }});
-    writeAbstractParameters(array, types);
-    gen.writeAuxiliarySourceFile(array, "abstract_params.zig");
+    var array: Array = .{};
+    gen.writeGenerator(&array, @src());
+    gen.writeImport(&array, "gen", "../../gen.zig");
+    writeAbstractParameters(&array, types);
+    gen.writeAuxiliarySourceFile(&array, "abstract_params.zig");
 }
-pub export fn _start() noreturn {
-    @setAlignStack(16);
-    var array: Array = undefined;
-    array.undefineAll();
-    specToAbstract(&array);
-    sys.call(.exit, .{}, noreturn, .{0});
-}
+pub const main = specToAbstract;
