@@ -650,9 +650,9 @@ fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg
         return true;
     }
     return testEqual(
-        union_info.fields[0].type,
-        @field(arg1, union_info.fields[0].name),
-        @field(arg2, union_info.fields[0].name),
+        []const u8,
+        @ptrCast(*const [@sizeOf(T)]u8, &arg1),
+        @ptrCast(*const [@sizeOf(T)]u8, &arg2),
     );
 }
 fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Optional, arg1: T, arg2: T) bool {
