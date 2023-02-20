@@ -250,7 +250,7 @@ pub fn printN(comptime n: usize, any: anytype) void {
 }
 const Static = struct {
     const Allocator = mem.GenericArenaAllocator(.{
-        .arena_index = 64,
+        .arena_index = 48,
         .errors = preset.allocator.errors.noexcept,
         .AddressSpace = preset.address_space.regular_128,
     });
@@ -282,7 +282,7 @@ pub fn print(any: anytype) void {
     } else {
         array.writeAny(reinterpret_spec, any);
     }
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 pub fn uniqueSet(comptime T: type, set: []const T) void {
     var l_index: usize = 0;
