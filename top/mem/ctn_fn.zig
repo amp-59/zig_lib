@@ -82,16 +82,16 @@ pub const key: [87]Fn = .{
     .{ .tag = .init,                            .kind = .allocate,                                  .err = .Wrap },
     .{ .tag = .grow,                            .kind = .reallocate,                                .err = .Wrap },
     .{ .tag = .deinit,                          .kind = .deallocate,                                .err = .Wrap },
-    .{ .tag = .shrink,                          .kind = .reallocate,                                .err = .Wrap },
-    .{ .tag = .increment,                       .kind = .reallocate,                                .err = .Wrap },
-    .{ .tag = .decrement,                       .kind = .reallocate,                                .err = .Wrap },
-    .{ .tag = .appendOne,                       .kind = .append, .val = .One,       .loc = .Next,   .err = .Wrap },
-    .{ .tag = .appendCount,                     .kind = .append, .val = .Count,     .loc = .Next,   .err = .Wrap },
-    .{ .tag = .appendMany,                      .kind = .append, .val = .Many,      .loc = .Next,   .err = .Wrap },
-    .{ .tag = .appendFields,                    .kind = .append, .val = .Fields,    .loc = .Next,   .err = .Wrap },
-    .{ .tag = .appendArgs,                      .kind = .append, .val = .Args,      .loc = .Next,   .err = .Wrap },
-    .{ .tag = .appendFormat,                    .kind = .append, .val = .Format,    .loc = .Next,   .err = .Wrap },
-    .{ .tag = .appendAny,                       .kind = .append, .val = .Any,       .loc = .Next,   .err = .Wrap },
+    .{ .tag = .shrink,                          .kind = .reallocate,                .loc = .AllUndefined,   .err = .Wrap },
+    .{ .tag = .increment,                       .kind = .reallocate,                .loc = .Next,           .err = .Wrap },
+    .{ .tag = .decrement,                       .kind = .reallocate,                .loc = .Back,           .err = .Wrap },
+    .{ .tag = .appendOne,                       .kind = .append, .val = .One,       .loc = .Next,           .err = .Wrap },
+    .{ .tag = .appendCount,                     .kind = .append, .val = .Count,     .loc = .Next,           .err = .Wrap },
+    .{ .tag = .appendMany,                      .kind = .append, .val = .Many,      .loc = .Next,           .err = .Wrap },
+    .{ .tag = .appendFields,                    .kind = .append, .val = .Fields,    .loc = .Next,           .err = .Wrap },
+    .{ .tag = .appendArgs,                      .kind = .append, .val = .Args,      .loc = .Next,           .err = .Wrap },
+    .{ .tag = .appendFormat,                    .kind = .append, .val = .Format,    .loc = .Next,           .err = .Wrap },
+    .{ .tag = .appendAny,                       .kind = .append, .val = .Any,       .loc = .Next,           .err = .Wrap },
 };
 // zig fmt: on
 pub inline fn get(comptime tag: Fn.Tag) *const Fn {
@@ -109,16 +109,19 @@ pub const Fn = packed struct {
     err: ErrorHandler = .None,
     decl: builtin.CallingConvention = .Unspecified,
     pub const Kind = enum(u4) {
-        read,
-        refer,
-        write,
-        append,
-        get,
-        set,
-        allocate,
-        reallocate,
-        deallocate,
-        transform,
+        // State actions
+        get = 0,
+        set = 1,
+        // Value actions
+        read = 2,
+        refer = 3,
+        write = 4,
+        append = 5,
+        // Interface state actions
+        allocate = 6,
+        reallocate = 7,
+        deallocate = 8,
+        transform = 9,
     };
     const Value = enum(u4) {
         None = 0,
@@ -132,6 +135,7 @@ pub const Fn = packed struct {
         Format = 8,
         Any = 9,
         Location = 10,
+        Offset = 11,
     };
     const ErrorHandler = enum(u2) {
         None = 0,
@@ -937,7 +941,6 @@ pub const Fn = packed struct {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
             },
-
             .static => {},
             .dynamic => {},
             .holder => {},
