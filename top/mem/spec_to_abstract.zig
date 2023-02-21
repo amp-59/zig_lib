@@ -6,38 +6,44 @@ const proc = @import("../proc.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
-const out = @import("./abstract_spec.zig");
+const abstract_spec = @import("./abstract_spec.zig");
+
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
-const fmt_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true };
 
-inline fn writeAbstractParametersInternal(array: *Array, comptime T: type, max_id: *u64) void {
+fn slices(comptime T: type) *[]const T {
+    var ptrs: []const T = &.{};
+    return &ptrs;
+}
+pub fn isUniqueType(comptime types: []const type, comptime T: type) bool {
+    for (types) |U| if (U == T) return false;
+    return true;
+}
+inline fn writeAbstractParametersInternal(array: *Array, comptime types: *[]const type, comptime T: type) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
-            writeAbstractParametersInternal(array, field.type, max_id);
+            writeAbstractParametersInternal(array, types, field.type);
         }
     } else {
-        const this_id: u64 = builtin.typeId(T);
-        if (this_id > max_id.*) {
-            max_id.* = this_id;
+        if (comptime isUniqueType(types.*, T)) {
             array.writeMany("    ");
-            array.writeFormat(comptime fmt.TypeFormat(fmt_spec){ .value = T });
+            array.writeFormat(comptime fmt.TypeFormat(.{ .omit_trailing_comma = true }){ .value = T });
             array.writeMany(",\n");
+            types.* = types.* ++ [1]type{T};
         }
     }
 }
 pub fn specToAbstract() void {
+    const types: *[]const type = comptime slices(type);
     var array: Array = undefined;
     array.undefineAll();
-    var id: u64 = 0;
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "gen", "../../gen.zig");
     array.writeMany("pub const abstract_params = [_]type{\n");
-    writeAbstractParametersInternal(&array, out.AbstractSpec, &id);
+    writeAbstractParametersInternal(&array, types, abstract_spec.AbstractSpec);
     array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(&array, "abstract_params.zig");
 }
