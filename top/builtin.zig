@@ -1443,6 +1443,9 @@ pub const debug = opaque {
     };
 };
 pub const parse = opaque {
+    pub const Error = error{BadParse};
+    pub const error_policy: *InternalError(Error) = createErrorPolicy(parse, .{ .throw = Error.BadParse });
+
     pub fn ub(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
         const sig_fig_list: []const T = comptime sigFigList(T, 2);
@@ -1584,7 +1587,7 @@ pub const parse = opaque {
         };
         const signed: bool = str[0] == '-';
         if (signed and @typeInfo(T).Int.signedness == .unsigned) {
-            return error.InvalidInputParity;
+            return Error.BadParse;
         }
         var idx: u64 = int(u64, signed);
         const zero: bool = str[idx] == '0';
@@ -1618,7 +1621,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 2) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return error.InvalidInputBinary;
+                        return Error.BadParse;
                     },
                 }
             },
@@ -1628,7 +1631,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 8) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return error.InvalidInputOctal;
+                        return Error.BadParse;
                     },
                 }
             },
@@ -1638,7 +1641,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 10) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return error.InvalidInputDecimal;
+                        return Error.BadParse;
                     },
                 }
             },
@@ -1648,7 +1651,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 16) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return error.InvalidInputHexadecimal;
+                        return Error.BadParse;
                     },
                 }
             },
