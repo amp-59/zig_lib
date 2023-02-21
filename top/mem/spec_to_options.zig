@@ -60,7 +60,6 @@ fn writeOptions(array: *Array) void {
 pub fn specToOptions() void {
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "gen", "../../gen.zig");
     writeOptions(&array);
     gen.writeAuxiliarySourceFile(&array, "options.zig");

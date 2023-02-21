@@ -17,12 +17,9 @@ const Keys = gen.GenericKeys(Key, 256);
 const Key = struct { kind: out.Kind };
 
 pub fn mapToKinds() void {
+    const keys: Keys = Keys.init(out.Canonical, out.canonicals);
     var array: Array = undefined;
     array.undefineAll();
-
-    const keys: Keys = Keys.init(out.Canonical, out.canonicals);
-
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "out", "./impl_variants.zig");
     array.writeMany("pub const kinds: []const []const out.Index = &[_][]const out.Index{\n");
     for (keys.auto[0..keys.len]) |key| {

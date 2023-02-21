@@ -5,13 +5,11 @@ const proc = @import("../proc.zig");
 const meta = @import("../meta.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
 const out = struct {
     usingnamespace @import("./detail.zig");
     usingnamespace @import("./abstract_spec.zig");
 };
-
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
@@ -48,7 +46,6 @@ fn setAttribute(impl_detail: *out.Detail, comptime attribute_name: []const u8) v
     }
     @compileError("unknown attribute: " ++ attribute_name);
 }
-
 fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: *out.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
@@ -72,7 +69,6 @@ fn specToDetail() void {
     var array: Array = undefined;
     array.undefineAll();
     var impl_detail: out.Detail = .{};
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "out", "../../detail.zig");
     array.writeMany("pub const impl_details: []const out.Detail = &[_]out.Detail{");
     writeUnspecifiedDetailInternal(&array, out.AbstractSpec, &impl_detail);

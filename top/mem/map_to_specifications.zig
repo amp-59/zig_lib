@@ -16,10 +16,9 @@ const Array = mem.StaticArray(u8, 1024 * 1024);
 const Keys = gen.GenericKeys(struct { spec: out.Specifier }, 256);
 
 fn mapToContainers() void {
+    const keys: Keys = Keys.init(out.Canonical, out.canonicals);
     var array: Array = undefined;
     array.undefineAll();
-    const keys: Keys = Keys.init(out.Canonical, out.canonicals);
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "out", "./impl_variants.zig");
     array.writeMany("pub const specifications: []const []const []const out.Index = &[_][]const []const out.Index{\n");
     for (out.containers) |indices| {

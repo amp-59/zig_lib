@@ -30,8 +30,6 @@ fn variantsToInterface(array: *Array, comptime field_name: []const u8, kind_grou
 fn variantsToInterfaces() void {
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeGenerator(&array, @src());
-
     gen.writeImport(&array, "out", "./impl_variants.zig");
     array.writeMany("pub const interfaces: []const []const []const out.Index = &[_][]const []const out.Index{\n");
     inline for (@typeInfo(gen.Management).Struct.fields) |field| {

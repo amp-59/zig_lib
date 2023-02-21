@@ -1953,8 +1953,8 @@ pub const fmt = opaque {
             return result +% d;
         }
     }
-    pub fn typeTypeName(comptime type_id: builtin.TypeId) []const u8 {
-        return switch (type_id) {
+    pub fn typeTypeName(comptime id: builtin.TypeId) []const u8 {
+        return switch (id) {
             .Type => "type",
             .Void => "void",
             .Bool => "bool",

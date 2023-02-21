@@ -22,7 +22,6 @@ const fmt_spec = .{
 fn mapContainersToParameters() void {
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "gen", "../../gen.zig");
     array.writeMany("pub const type_descrs=");
     array.writeMany(

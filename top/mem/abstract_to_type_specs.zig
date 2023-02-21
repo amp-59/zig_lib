@@ -185,8 +185,8 @@ fn writeSpecifiersStruct(array: *Array, field_names: mem.StaticArray([]const u8,
     gen.writeAuxiliarySourceFile(array, "specifiers.zig");
 }
 pub fn abstractToTypeSpec() void {
-    var array: Array = .{};
-    gen.writeGenerator(&array, @src());
+    var array: Array = undefined;
+    array.undefineAll();
     gen.writeImport(&array, "gen", "../../gen.zig");
     var field_names: mem.StaticArray([]const u8, 16) = undefined;
     field_names.undefineAll();

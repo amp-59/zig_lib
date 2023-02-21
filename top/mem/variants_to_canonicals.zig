@@ -23,7 +23,6 @@ const Array = mem.StaticArray(u8, 1024 * 1024);
 fn variantsToCanonical() void {
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "out", "./canonical.zig");
     array.writeMany("pub const canonicals: []const out.Canonical = &[_]out.Canonical{\n");
     for (out.impl_variants) |variant| {
