@@ -706,8 +706,8 @@ pub fn nullPointer(comptime T: type) *allowzero T {
 pub inline fn identity(any: anytype) @TypeOf(any) {
     return any;
 }
-pub inline fn equ(comptime T: type, ptr: *T, value: T) void {
-    ptr.* = value;
+pub inline fn equ(comptime T: type, dst: *T, src: T) void {
+    dst.* = src;
 }
 fn @"test"(b: bool) bool {
     return b;
