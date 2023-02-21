@@ -53,8 +53,8 @@ fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: 
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
-            const tmp = impl_detail.*;
-            defer impl_detail.* = tmp;
+            const save: out.Detail = impl_detail.*;
+            defer impl_detail.* = save;
             setAttribute(impl_detail, field.name);
             writeUnspecifiedDetailInternal(array, field.type, impl_detail);
         }
