@@ -182,6 +182,26 @@ pub fn zigErrorAbort(
         }
     }
 }
+/// `S` must be a container type.
+pub inline fn setErrorPolicy(
+    comptime S: type,
+    comptime new: InternalError(S.Error),
+) void {
+    static.assert(@hasDecl(S, "error_policy"));
+    S.error_policy.* = new;
+}
+/// `S` must be a container type. This function should be called within `S`, to
+/// declare a pointer with the name `error_policy`.
+pub inline fn createErrorPolicy(
+    comptime S: type,
+    comptime new: InternalError(S.Error),
+) *InternalError(S.Error) {
+    static.assert(@hasDecl(S, "Error"));
+    var value: *InternalError(S.Error) = ptr(InternalError(S.Error));
+    value.* = new;
+    return value;
+}
+
 pub fn config(
     comptime symbol: []const u8,
     comptime T: type,
