@@ -18,52 +18,54 @@ pub const is_silent: bool = true;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
+fn setAttribute(impl_detail: *out.Detail, comptime attribute_name: []const u8) void {
+    if (@hasField(gen.Kinds, attribute_name)) {
+        @field(impl_detail.kinds, attribute_name) = true;
+        return;
+    }
+    if (@hasField(gen.Layouts, attribute_name)) {
+        @field(impl_detail.layouts, attribute_name) = true;
+        return;
+    }
+    if (@hasField(gen.Modes, attribute_name)) {
+        @field(impl_detail.modes, attribute_name) = true;
+        return;
+    }
+    if (@hasField(gen.Management, attribute_name)) {
+        @field(impl_detail.management, attribute_name) = true;
+        return;
+    }
+    if (@hasField(gen.Fields, attribute_name)) {
+        @field(impl_detail.fields, attribute_name) = true;
+        return;
+    }
+    if (@hasField(gen.Techniques, attribute_name)) {
+        @field(impl_detail.techs, attribute_name) = true;
+        return;
+    }
+    if (attribute_name[0] == '_') {
+        return;
+    }
+    @compileError("unknown attribute: " ++ attribute_name);
+}
+
 fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: *out.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
             const tmp = impl_detail.*;
             defer impl_detail.* = tmp;
-            blk: {
-                if (@hasField(gen.Kinds, field.name)) {
-                    @field(impl_detail.kinds, field.name) = true;
-                    break :blk;
-                }
-                if (@hasField(gen.Layouts, field.name)) {
-                    @field(impl_detail.layouts, field.name) = true;
-                    break :blk;
-                }
-                if (@hasField(gen.Modes, field.name)) {
-                    @field(impl_detail.modes, field.name) = true;
-                    break :blk;
-                }
-                if (@hasField(gen.Management, field.name)) {
-                    @field(impl_detail.management, field.name) = true;
-                    break :blk;
-                }
-                if (@hasField(gen.Fields, field.name)) {
-                    @field(impl_detail.fields, field.name) = true;
-                    break :blk;
-                }
-                if (@hasField(gen.Techniques, field.name)) {
-                    @field(impl_detail.techs, field.name) = true;
-                    break :blk;
-                }
-                if (field.name[0] == '_') {
-                    break :blk;
-                }
-                @compileError("unknown attribute: " ++ field.name);
-            }
+            setAttribute(impl_detail, field.name);
             writeUnspecifiedDetailInternal(array, field.type, impl_detail);
         }
     } else if (type_info == .Struct) {
-        impl_detail.index = meta.typeId(T);
-        writeDetailStruct(array, impl_detail.*);
+        impl_detail.index = builtin.typeId(T);
+        writeDetailStruct(array, impl_detail);
     }
 }
-fn writeDetailStruct(array: *Array, impl_detail: out.Detail) void {
+fn writeDetailStruct(array: *Array, impl_detail: *const out.Detail) void {
     array.writeMany("    ");
-    array.writeFormat(impl_detail);
+    array.writeFormat(impl_detail.*);
     array.writeMany(",\n");
 }
 fn specToDetail() void {
