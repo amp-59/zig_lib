@@ -676,6 +676,20 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
         }
     }
 }
+
+fn ptr(comptime T: type) *T {
+    var ret: T = 0;
+    return &ret;
+}
+const type_id: *comptime_int = ptr(comptime_int);
+comptime {
+    type_id.* = 0;
+}
+pub fn typeId(comptime _: type) comptime_int {
+    const ret: comptime_int = type_id.*;
+    type_id.* +%= 1;
+    return ret;
+}
 pub fn diff(comptime T: type, arg1: T, arg2: T) T {
     return subWrap(T, max(T, arg1, arg2), min(T, arg1, arg2));
 }
