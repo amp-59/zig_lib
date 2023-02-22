@@ -270,42 +270,36 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             }
         }
         fn mapInit(allocator: *Allocator) sys.Call(Allocator.map_spec.errors.throw, void) {
-            if (Allocator.allocator_spec.options.require_map) {
-                if (Allocator.allocator_spec.options.prefer_remap) {
-                    const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
-                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
-                    allocator.up_addr +%= s_bytes;
-                } else if (Allocator.allocator_spec.options.init_commit) |s_bytes| {
-                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
-                    allocator.up_addr +%= s_bytes;
-                }
+            if (Allocator.allocator_spec.options.prefer_remap) {
+                const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
+                try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
+                allocator.up_addr +%= s_bytes;
+            } else if (Allocator.allocator_spec.options.init_commit) |s_bytes| {
+                try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
+                allocator.up_addr +%= s_bytes;
             }
         }
         fn unmapAll(allocator: *Allocator) Allocator.deallocate_void {
-            if (Allocator.allocator_spec.options.require_unmap) {
-                const x_bytes: u64 = allocator.mapped_byte_count();
-                if (Allocator.allocator_spec.options.count_useful_bytes) {
-                    builtin.assertBelowOrEqual(u64, allocator.metadata.utility, 0);
-                }
-                if (Allocator.allocator_spec.options.count_allocations) {
-                    builtin.assertBelowOrEqual(u64, allocator.metadata.count, 0);
-                }
-                return allocator.unmap(x_bytes);
+            const x_bytes: u64 = allocator.mapped_byte_count();
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, 0);
             }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.count, 0);
+            }
+            return allocator.unmap(x_bytes);
         }
         pub fn unmapAbove(allocator: *Allocator, s_up_addr: u64) Allocator.deallocate_void {
-            if (Allocator.allocator_spec.options.require_unmap) {
-                const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
-                const t_bytes: u64 = mach.sub64(t_ua_addr, mapped_byte_address(allocator));
-                const x_bytes: u64 = mach.sub64(mapped_byte_count(allocator), t_bytes);
-                if (Allocator.allocator_spec.options.count_useful_bytes) {
-                    builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
-                }
-                if (Allocator.allocator_spec.options.count_allocations) {
-                    builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
-                }
-                return allocator.unmap(x_bytes);
+            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+            const t_bytes: u64 = mach.sub64(t_ua_addr, mapped_byte_address(allocator));
+            const x_bytes: u64 = mach.sub64(mapped_byte_count(allocator), t_bytes);
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
             }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
+            }
+            return allocator.unmap(x_bytes);
         }
         pub fn mapBelow(allocator: *Allocator, s_up_addr: u64) Allocator.allocate_void {
             const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
@@ -475,12 +469,16 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             } else {
                 try meta.wrap(special.acquire(AddressSpace, address_space, arena_index));
             }
-            try meta.wrap(Allocator.mapInit(&allocator));
+            if (Allocator.allocator_spec.options.require_map) {
+                try meta.wrap(Allocator.mapInit(&allocator));
+            }
             return allocator;
         }
         pub fn deinit(allocator: *Allocator, address_space: *AddressSpace) Allocator.release_allocator {
             defer Graphics.showWithReference(allocator, @src());
-            try meta.wrap(allocator.unmapAll());
+            if (Allocator.allocator_spec.options.require_unmap) {
+                try meta.wrap(allocator.unmapAll());
+            }
             if (@TypeOf(AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
                 try meta.wrap(special.static.release(AddressSpace, address_space, arena_index));
             } else {
@@ -529,12 +527,16 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
                 .ua_addr = ua_addr,
             };
             try meta.wrap(special.acquire(AddressSpace, address_space, arena_index));
-            try meta.wrap(Allocator.mapInit(&allocator));
+            if (Allocator.allocator_spec.options.require_map) {
+                try meta.wrap(Allocator.mapInit(&allocator));
+            }
             return allocator;
         }
         pub fn deinit(allocator: *Allocator, address_space: *AddressSpace, arena_index: AddressSpace.Index) Allocator.release_allocator {
             defer Graphics.showWithReference(allocator, @src());
-            try meta.wrap(Allocator.unmapAll(allocator));
+            if (Allocator.allocator_spec.options.require_unmap) {
+                try meta.wrap(Allocator.unmapAll(allocator));
+            }
             try meta.wrap(special.release(AddressSpace, address_space, arena_index));
         }
         pub usingnamespace Types(Allocator);
@@ -1584,7 +1586,9 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
             const s_up_addr: u64 = s_ab_addr + s_bytes;
-            if (s_up_addr > allocator.unmapped_byte_address()) {
+            if (Allocator.allocator_spec.options.require_map and
+                s_up_addr > allocator.unmapped_byte_address())
+            {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
@@ -1598,7 +1602,9 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
             const s_up_addr: u64 = s_ab_addr + s_bytes;
-            if (s_up_addr > allocator.unmapped_byte_address()) {
+            if (Allocator.allocator_spec.options.require_map and
+                s_up_addr > allocator.unmapped_byte_address())
+            {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
@@ -1614,7 +1620,9 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
             const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
             if (allocator.unallocated_byte_address() == s_up_addr) {
-                if (t_up_addr > allocator.unmapped_byte_address()) {
+                if (Allocator.allocator_spec.options.require_map and
+                    t_up_addr > allocator.unmapped_byte_address())
+                {
                     try meta.wrap(allocator.mapBelow(t_up_addr));
                 }
                 allocator.allocate(t_up_addr);
