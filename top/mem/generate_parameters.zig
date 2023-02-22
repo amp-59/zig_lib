@@ -16,8 +16,9 @@ const out = struct {
     usingnamespace @import("./zig-out/src/containers.zig");
 };
 const config = @import("./config.zig");
-
 pub usingnamespace proc.start;
+pub const is_verbose: bool = false;
+pub const is_silent: bool = true;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -34,9 +35,6 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .logging = preset.address_space.logging.silent,
 });
 const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
-
-pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
 
 fn writeOptionsInternal(
     array: *Array,

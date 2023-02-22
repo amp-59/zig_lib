@@ -48,6 +48,8 @@ pub fn main(builder: *build.Builder) !void {
     const mem_gen = builder.step("mem_gen", "generate containers according to specification");
     {
         const default = .{ .build_mode = .ReleaseSmall };
+        _ = util.addProjectExecutable(builder, "expr_test", "top/mem/expr-test.zig", .{});
+
         const spec_to_abstract = util.addProjectExecutable(builder, "spec_to_abstract", "top/mem/spec_to_abstract.zig", default);
         const spec_to_detail = util.addProjectExecutable(builder, "spec_to_detail", "top/mem/spec_to_detail.zig", default);
         const spec_to_options = util.addProjectExecutable(builder, "spec_to_options", "top/mem/spec_to_options.zig", default);
