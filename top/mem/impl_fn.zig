@@ -89,8 +89,8 @@ pub const Fn = enum(u5) {
         }
     }
     pub fn argList(impl_fn_info: *const Fn, impl_variant: *const out.DetailMore, list_kind: gen.ListKind) gen.ArgList {
-        var array: gen.ArgList = undefined;
-        array.undefineAll();
+        var arg_list: gen.ArgList = undefined;
+        arg_list.len = 0;
         const has_static_maximum_length: bool =
             impl_variant.kinds.automatic or
             impl_variant.kinds.static;
@@ -117,44 +117,44 @@ pub const Fn = enum(u5) {
         };
         switch (impl_fn_info.*) {
             .define, .undefine, .seek, .tell => {
-                array.writeOne(impl_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(impl_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .unstreamed_byte_count => {
-                array.writeOne(impl_const_symbol);
+                arg_list.writeOne(impl_const_symbol);
             },
             .undefined_byte_address,
             .unstreamed_byte_address,
             => {
-                array.writeOne(impl_const_symbol);
+                arg_list.writeOne(impl_const_symbol);
             },
             .undefined_byte_count,
             .defined_byte_count,
             .streamed_byte_count,
             => {
-                array.writeOne(impl_const_symbol);
+                arg_list.writeOne(impl_const_symbol);
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(slave_const_symbol);
+                    arg_list.writeOne(slave_const_symbol);
                 }
             },
             .writable_byte_count,
             .aligned_byte_count,
             => {
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(slave_const_symbol);
+                    arg_list.writeOne(slave_const_symbol);
                 } else if (has_dynamic_maximum_length) {
-                    array.writeOne(impl_const_symbol);
+                    arg_list.writeOne(impl_const_symbol);
                 }
             },
             .allocated_byte_count => {
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(slave_const_symbol);
+                    arg_list.writeOne(slave_const_symbol);
                 } else if (has_static_maximum_length) {
                     if (has_active_alignment) {
-                        array.writeOne(impl_const_symbol);
+                        arg_list.writeOne(impl_const_symbol);
                     }
                 } else {
-                    array.writeOne(impl_const_symbol);
+                    arg_list.writeOne(impl_const_symbol);
                 }
             },
             .allocated_byte_address,
@@ -164,9 +164,9 @@ pub const Fn = enum(u5) {
             .alignment,
             => {
                 if (impl_variant.kinds.parametric) {
-                    array.writeOne(slave_const_symbol);
+                    arg_list.writeOne(slave_const_symbol);
                 } else {
-                    array.writeOne(impl_const_symbol);
+                    arg_list.writeOne(impl_const_symbol);
                 }
             },
             .construct, .translate => {
@@ -191,30 +191,34 @@ pub const Fn = enum(u5) {
                     .Argument => tok.source_double_approximation_counts_name,
                 };
                 if (impl_fn_info.* == .translate) {
-                    array.writeOne(impl_symbol);
+                    arg_list.writeOne(impl_symbol);
                 }
                 if (impl_variant.fields.allocated_byte_address) {
-                    array.writeOne(source_allocated_byte_address_symbol);
+                    arg_list.writeOne(source_allocated_byte_address_symbol);
                 }
                 if (impl_variant.fields.undefined_byte_address or
                     impl_variant.fields.unstreamed_byte_address or
                     impl_variant.techs.disjunct_alignment)
                 {
-                    array.writeOne(source_aligned_byte_address_symbol);
+                    arg_list.writeOne(source_aligned_byte_address_symbol);
                 }
                 if (impl_variant.techs.single_packed_approximate_capacity) {
-                    array.writeOne(source_single_approximation_counts_symbol);
+                    arg_list.writeOne(source_single_approximation_counts_symbol);
                 }
                 if (impl_variant.techs.double_packed_approximate_capacity) {
-                    array.writeOne(source_single_approximation_counts_symbol);
-                    array.writeOne(source_double_approximation_counts_symbol);
+                    arg_list.writeOne(source_single_approximation_counts_symbol);
+                    arg_list.writeOne(source_double_approximation_counts_symbol);
                 }
                 if (impl_variant.fields.unallocated_byte_address) {
-                    array.writeOne(source_unallocated_byte_address_symbol);
+                    arg_list.writeOne(source_unallocated_byte_address_symbol);
                 }
             },
         }
-        return array;
+        arg_list.field =
+            arg_list.len == 0 or
+            arg_list.len == 1 and
+            arg_list.args[0].ptr == tok.slave_specifier_name.ptr;
+        return arg_list;
     }
     pub fn returnType(impl_fn_info: *const Fn) [:0]const u8 {
         switch (impl_fn_info.*) {
