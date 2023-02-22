@@ -36,8 +36,8 @@ pub const TaggedExpr = union(ExprTag) {
     constant: u64,
     pub fn formatWrite(format: Expr, array: anytype) void {
         switch (format) {
-            .call => array.writeFormat(makeCall(format.call)),
-            .call_member => array.writeFormat(makeMemberCall(format.member_call)),
+            .call => array.writeFormat(format.call),
+            .call_member => array.writeFormat(format.member_call),
             .symbol => array.writeMany(format.symbol),
             .constant => array.writeFormat(fmt.ud64(format.constant)),
             .join => for (format.join) |op| {
@@ -93,6 +93,7 @@ const UntaggedExpr = struct {
         any: [*]Expr,
         constant: u64,
     };
+
     pub fn formatWrite(format: Expr, array: anytype) void {
         switch (format.tag) {
             .call => formatWriteCall(format, array),
@@ -111,8 +112,8 @@ const UntaggedExpr = struct {
     pub fn formatLength(format: Expr) u64 {
         var len: u64 = 0;
         switch (format.tag) {
-            .call => formatLengthCall(format),
-            .call_member => formatLengthCallMember(format),
+            .call => len +%= formatLengthCall(format),
+            .call_member => len +%= formatLengthCallMember(format),
             .symbol => len +%= format.extra,
             .constant => len +%= fmt.ud64(format.value.constant).formatLength(),
             .join => for (format.value.any[0..format.extra]) |op| {
@@ -168,17 +169,17 @@ const UntaggedExpr = struct {
     pub fn formatWriteCallMember(format: Expr, array: anytype) void {
         const all_exprs: []const Expr = format.assertMore();
         const fn_name: [:0]const u8 = all_exprs[0].assertSymbol();
-        const fn_args: []const Expr = all_exprs[2..];
-        array.writeFormat(all_exprs[1]);
+        const fn_args: []const Expr = all_exprs[1..];
+        fn_args[0].formatWrite(array);
         array.writeOne('.');
         array.writeMany(fn_name);
         array.writeOne('(');
-        var idx: u64 = 0;
+        var idx: u64 = 1;
         while (idx != fn_args.len) : (idx +%= 1) {
-            array.writeFormat(fn_args[idx]);
+            fn_args[idx].formatWrite(array);
             array.writeMany(tok.end_small_item);
         }
-        if (idx != 0) {
+        if (idx != 1) {
             array.undefine(tok.end_small_item.len);
         }
         array.writeOne(')');
@@ -186,16 +187,16 @@ const UntaggedExpr = struct {
     pub fn formatLengthCallMember(format: Expr) u64 {
         const all_exprs: []const Expr = format.assertMore();
         const fn_name: [:0]const u8 = all_exprs[0].assertSymbol();
-        const fn_args: []const Expr = all_exprs[2..];
+        const fn_args: []const Expr = all_exprs[1..];
         var len: u64 = 0;
-        len +%= all_exprs[1].formatLength();
+        len +%= fn_args[0].formatLength();
         len +%= 1;
         len +%= fn_name.len;
         len +%= 1;
-        var idx: u64 = 0;
+        var idx: u64 = 1;
         while (idx != fn_args.len) : (idx +%= 1) {
-            len +%= .writeFormat(fn_args[idx]);
-            len +%= .writeMany(tok.end_small_item);
+            len +%= fn_args[idx].formatLength();
+            len +%= tok.end_small_item.len;
         }
         if (idx != 1) {
             len -%= tok.end_small_item.len;
@@ -361,131 +362,49 @@ pub const FnCall = struct {
     member: bool = member_call,
     const Format = @This();
 
-    pub fn op(call: *const FnCall) Expr {
-        return Expr.call(call);
-    }
-    pub fn subst(call: *FnCall, dst: Expr, src: Expr) void {
-        for (call.exprs) |*ptr| {
-            if (builtin.testEqual(Expr, dst, ptr.*)) {
-                ptr.* = src;
-                return;
-            }
-        }
-        if (config.debug_argument_substitution_match_fail) {
-            testing.printN(4096, .{ call.symbol, ":\n" });
-            for (call.exprs) |*ptr| {
-                testing.printN(65536, .{
-                    fmt.render(.{ .infer_type_names = true }, src),   " != ",
-                    fmt.render(.{ .infer_type_names = true }, ptr.*), '\n',
-                });
-            }
-        }
-    }
-    pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.member) {
-            array.writeFormat(format.exprs[0]);
-            array.writeOne('.');
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-            var len: u64 = 1;
-            while (len != format.exprs.len) : (len +%= 1) {
-                array.writeFormat(format.exprs[len]);
-                array.writeMany(tok.end_small_item);
-            }
-            if (len != 1) {
-                array.undefine(tok.end_small_item.len);
-            }
-            array.writeOne(')');
-        } else {
-            array.writeMany(format.symbol);
-            array.writeOne('(');
-            var len: u64 = 0;
-            while (len != format.exprs.len) : (len +%= 1) {
-                array.writeFormat(format.exprs[len]);
-                array.writeMany(tok.end_small_item);
-            }
-            if (len != 0) {
-                array.undefine(tok.end_small_item.len);
-            }
-            array.writeOne(')');
-        }
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        if (format.member) {
-            len +%= format.exprs[0].formatLength();
-            len +%= 1;
-            len +%= format.symbol.len;
-            len +%= 1;
-            var idx: u64 = 1;
-            while (len != format.exprs.len) : (idx +%= 1) {
-                len +%= format.exprs[idx].formatLength();
-                len +%= tok.end_small_item.len;
-            }
-            if (len != 1) {
-                len -%= tok.end_small_item.len;
-            }
-            len +%= 1;
-        } else {
-            len +%= format.symbol.len;
-            len +%= 1;
-            var idx: u64 = 0;
-            while (idx != format.exprs.len) : (idx +%= 1) {
-                len +%= format.exprs[idx].formatLength();
-                len +%= tok.end_small_item.len;
-            }
-            if (idx != 0) {
-                len -%= tok.end_small_item.len;
-            }
-            len +%= 1;
-        }
-        return len;
-    }
-    pub fn impl(allocator: anytype, impl_detail: *const out.DetailMore, impl_fn_info: *const impl_fn.Fn) Expr {
-        const arg_list: gen.ArgList = impl_fn_info.argList(impl_detail, .Argument);
-        const max: u64 = arg_list.len +% @boolToInt(arg_list.field);
+    fn definedCall(
+        allocator: anytype,
+        comptime Detail: type,
+        comptime Info: type,
+        detail: *const Detail,
+        info: *const Info,
+        caller_name: [:0]const u8,
+    ) Expr {
+        const arg_list: gen.ArgList = info.argList(detail, .Argument);
+        const max: u64 = arg_list.len +% @boolToInt(arg_list.field) + 8;
         const exprs: []Expr = allocator.allocateIrreversible(Expr, max);
         var idx: u64 = 0;
         if (arg_list.field) {
-            exprs[idx] = Expr.symbol(impl_fn_info.fnName());
+            exprs[idx] = Expr.symbol(caller_name);
+            idx +%= 1;
         }
-        for (arg_list.readAll()) |arg| {
-            exprs[idx] = Expr.symbol(arg);
-        }
-        return Expr.call(exprs);
-    }
-    pub fn intr(allocator: anytype, ctn_detail: *const out.DetailLess, ctn_fn_info: *const ctn_fn.Fn) Expr {
-        const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
-        const max: u64 = arg_list.len +% @boolToInt(arg_list.field);
-        const exprs: []Expr = allocator.allocateIrreversible(Expr, max);
-        var idx: u64 = 0;
-        if (arg_list.field) {
-            exprs[idx] = Expr.symbol(ctn_fn_info.fnName());
-        }
+        exprs[idx] = Expr.symbol(info.fnName());
+        idx +%= 1;
         for (arg_list.readAll()) |arg| {
             exprs[idx] = Expr.symbol(arg);
             idx +%= 1;
         }
-        return Expr.call(exprs);
+        return Expr.call(exprs[0..idx]);
+    }
+    pub fn impl(allocator: anytype, impl_detail: *const out.DetailMore, impl_fn_info: *const impl_fn.Fn) Expr {
+        return definedCall(allocator, out.DetailMore, impl_fn.Fn, impl_detail, impl_fn_info, tok.impl_name);
+    }
+    pub fn intr(allocator: anytype, ctn_detail: *const out.DetailLess, ctn_fn_info: *const ctn_fn.Fn) Expr {
+        return definedCall(allocator, out.DetailLess, ctn_fn.Fn, ctn_detail, ctn_fn_info, tok.array_name);
     }
     pub fn allocate(allocator: anytype, comptime Call: type, call: Call) Expr {
         return data(allocator.allocateIrreversible(Expr, @max((@typeInfo(Call).Struct.fields.len - 1), 1)), Call, call);
     }
-    pub fn allocate1(allocator: anytype, comptime Call: type, call: Call) Expr {
-        return data(allocator.allocateIrreversible(Expr, @max((@typeInfo(Call).Struct.fields.len - 1), 1)), Call, call);
-    }
-
-    pub fn data(buf: []Expr, comptime Call: type, call: Call) FnCall {
-        var ret: FnCall = .{ .symbol = call.symbol, .member = call.member, .exprs = buf };
-        var len: u64 = 0;
+    pub fn data(buf: []Expr, comptime Call: type, call: Call) Expr {
+        buf[0] = Expr.symbol(call.symbol);
+        var idx: u64 = 1;
         inline for (@typeInfo(Call).Struct.fields) |field| {
             if (field.type == Expr) {
-                ret.exprs[len] = @field(call, field.name);
-                len +%= 1;
+                buf[idx] = @field(call, field.name);
+                idx +%= 1;
             }
         }
-        ret.exprs = ret.exprs[0..len];
-        return ret;
+        return Expr.call(buf[0..idx]);
     }
 };
 pub const ForLoop = struct {
@@ -511,11 +430,12 @@ pub const ForLoop = struct {
         len +%= 2;
         len +%= format.symbol2.len;
         len +%= 2;
+        return len;
     }
 };
 pub const FieldAccess = struct {
     expr1: Expr,
-    symbol: [:0]const u8,
+    expr2: Expr,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeFormat(format.expr1);
@@ -614,9 +534,13 @@ pub inline fn initializerS(expr1: Expr) [3]Expr {
 pub inline fn dereferenceS(expr1: Expr) [2]Expr {
     return .{ expr1, Expr.symbol(tok.period_asterisk_operator) };
 }
+pub inline fn fieldAccessS(expr1: Expr, expr2: Expr) [3]Expr {
+    return .{ expr1, Expr.symbol(tok.period_operator), expr2 };
+}
 pub inline fn assignS(expr1: Expr, expr2: Expr) [3]Expr {
     return .{ expr1, Expr.symbol(tok.equal_operator), expr2 };
 }
+
 pub inline fn initialize(allocator: anytype, symbol: [:0]const u8, expr1: Expr) *[4]Expr {
     return allocator.duplicateIrreversible([4]Expr, .{ Expr.symbol("."), Expr.symbol(symbol), Expr.symbol(" = "), expr1 });
 }
