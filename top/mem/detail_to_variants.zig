@@ -3,17 +3,14 @@ const mem = @import("../mem.zig");
 const meta = @import("../meta.zig");
 const proc = @import("../proc.zig");
 const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
 const out = struct {
     usingnamespace @import("./detail.zig");
     usingnamespace @import("./detail_more.zig");
-
     usingnamespace @import("./zig-out/src/impl_details.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/specifiers.zig");
 };
-
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
@@ -54,15 +51,9 @@ fn detailToVariants() void {
     array.writeMany("};\n");
     array.writeMany("pub const Index = ");
     switch (vars) {
-        0...255 => {
-            array.writeMany("u8;");
-        },
-        256...65535 => {
-            array.writeMany("u16;");
-        },
-        else => {
-            array.writeMany("u32;");
-        },
+        0...255 => array.writeMany("u8;"),
+        256...65535 => array.writeMany("u16;"),
+        else => array.writeMany("u32;"),
     }
     gen.writeAuxiliarySourceFile(&array, "impl_variants.zig");
 }
