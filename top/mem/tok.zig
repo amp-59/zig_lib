@@ -295,6 +295,9 @@ pub const write_args_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpr
 pub const write_any_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyStructured");
 pub const write_any_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyUnstructured");
 
+const slave_fn_type_decl_spec: [:0]const u8 = "fn (" ++ slave_specifier_const_ptr_type_name ++ ") callconv(.Inline) " ++ word_type_name;
+const static_fn_type_decl_spec: [:0]const u8 = "fn () callconv(.Inline) " ++ word_type_name;
+
 fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
     return fieldAccess(meta_name_space, name);
 }
