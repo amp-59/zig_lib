@@ -17,16 +17,25 @@ const Allocator = mem.GenericArenaAllocator(.{
     .errors = preset.allocator.errors.noexcept,
     .logging = preset.allocator.logging.silent,
 });
+
+const map_spec: mem.MapSpec = .{
+    .errors = .{},
+    .options = .{},
+};
+const unmap_spec: mem.UnmapSpec = .{
+    .errors = .{},
+};
+
 noinline fn main() !void {
     @setAlignStack(16);
 
-    if (true) {
+    if (false) {
         var address_space: AddressSpace = .{};
         var allocator: Allocator = Allocator.init(&address_space);
         allocator.deinit(&address_space);
     } else {
-        mem.map(.{ .options = .{}, .errors = .{} }, 0x40000000, 4096);
-        mem.unmap(.{ .errors = .{} }, 0x40000000, 4096);
+        mem.map(map_spec, 0x40000000, 4096);
+        mem.unmap(unmap_spec, 0x40000000, 4096);
     }
 }
 pub export fn _start() void {
