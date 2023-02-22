@@ -348,7 +348,7 @@ pub const Fn = packed struct {
     }
     pub fn argList(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess, list_kind: gen.ListKind) gen.ArgList { // 8KiB
         var array: gen.ArgList = undefined;
-        array.undefineAll();
+        array.len = 0;
         const array_ptr_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => tok.array_ptr_param,
             .Argument => tok.array_name,
@@ -442,13 +442,15 @@ pub const Fn = packed struct {
         switch (ctn_fn_info.tag) {
             .defineAll,
             .undefineAll,
-            .streamAll,
             .unstreamAll,
             => {
                 array.writeOne(array_ptr_symbol);
                 if (ctn_detail.kinds.parametric) {
                     array.writeOne(allocator_const_ptr_symbol);
                 }
+            },
+            .streamAll => {
+                array.writeOne(array_ptr_symbol);
             },
             .len,
             .index,
@@ -463,9 +465,7 @@ pub const Fn = packed struct {
                 }
             },
             .__at => {
-                if (!ctn_detail.kinds.parametric) {
-                    array.writeOne(array_const_ptr_symbol);
-                }
+                array.writeOne(array_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     array.writeOne(child_type_symbol);
                 }
