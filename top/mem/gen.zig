@@ -1,13 +1,15 @@
-const fmt = @import("../fmt.zig");
-const mem = @import("../mem.zig");
-const meta = @import("../meta.zig");
-const file = @import("../file.zig");
-const preset = @import("../preset.zig");
-const builtin = @import("../builtin.zig");
-const testing = @import("../testing.zig");
-const build_root = @cImport({}).build_root;
+const top = @import("../../zig_lib.zig");
+const fmt = top.fmt;
+const mem = top.mem;
+const meta = top.meta;
+const file = top.file;
+const preset = top.preset;
+const builtin = top.builtin;
+const testing = top.testing;
 
-const tok = @import("./tok.zig");
+pub usingnamespace top;
+
+const build_root = @cImport({}).build_root;
 pub const ListKind = enum { Parameter, Argument };
 
 const create_spec: file.CreateSpec = .{
@@ -28,26 +30,22 @@ const open_append_spec: file.OpenSpec = .{
 const mkdir_spec: file.MakeDirSpec = .{
     .errors = .{},
 };
-
 pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
     static: bool = false,
     parametric: bool = false,
-
     pub usingnamespace GenericStructOfBool(Kinds);
 };
 pub const Layouts = packed struct {
     structured: bool = false,
     unstructured: bool = false,
-
     pub usingnamespace GenericStructOfBool(Layouts);
 };
 pub const Modes = packed struct {
     read_write: bool = false,
     resize: bool = false,
     stream: bool = false,
-
     pub usingnamespace GenericStructOfBool(Modes);
 };
 pub const Fields = packed struct {
@@ -56,7 +54,6 @@ pub const Fields = packed struct {
     undefined_byte_address: bool = false,
     unallocated_byte_address: bool = false,
     unstreamed_byte_address: bool = false,
-
     pub usingnamespace GenericStructOfBool(Fields);
 };
 pub const Management = packed struct {
@@ -65,7 +62,6 @@ pub const Management = packed struct {
     resize: bool = false,
     move: bool = false,
     convert: bool = false,
-
     pub usingnamespace GenericStructOfBool(Management);
 };
 pub const Techniques = packed struct {
@@ -73,13 +69,10 @@ pub const Techniques = packed struct {
     lazy_alignment: bool = false,
     unit_alignment: bool = false,
     disjunct_alignment: bool = false,
-
     single_packed_approximate_capacity: bool = false,
     double_packed_approximate_capacity: bool = false,
-
     arena_relative: bool = false,
     address_space_relative: bool = false,
-
     pub const Options = struct {
         capacity: ?enum {
             single_packed_approximate,
@@ -101,7 +94,6 @@ pub const Techniques = packed struct {
 pub const Option = struct {
     kind: Option.Kind,
     info: Info,
-
     pub const Kind = enum {
         standalone,
         mutually_exclusive_optional,
@@ -194,7 +186,6 @@ pub const TypeDescr = union(enum) {
     type_name: []const u8,
     type_decl: Container,
     type_refer: Reference,
-
     const Reference = struct { []const u8, *const TypeDescr };
     const Enumeration = struct { []const u8, []const Decl };
     const Composition = struct { []const u8, []const Field };
@@ -279,6 +270,7 @@ pub const TypeDescr = union(enum) {
     pub fn init(comptime T: type) TypeDescr {
         const type_info: builtin.Type = @typeInfo(T);
         switch (type_info) {
+            else => return .{ .type_name = @typeName(T) },
             .Struct => |struct_info| {
                 var type_decl: []const Field = &.{};
                 inline for (struct_info.fields) |field| {
@@ -330,9 +322,6 @@ pub const TypeDescr = union(enum) {
                     &init(pointer_info.child),
                 } };
             },
-            else => {
-                return .{ .type_name = @typeName(T) };
-            },
         }
     }
 };
@@ -348,20 +337,18 @@ pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void 
     array.writeMany(pathname);
     array.writeMany("\");\n");
 }
-pub fn writeSourceFile(array: anytype, comptime pathname: [:0]const u8) void {
-    const fd: u64 = file.create(create_spec, if (pathname[0] != '/')
-        build_root ++ "/top/mem/" ++ pathname
-    else
-        pathname);
+pub fn writeSourceFile(array: anytype, comptime name: [:0]const u8) void {
+    const pathname: [:0]const u8 = if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
+    const fd: u64 = file.create(create_spec, pathname);
+    builtin.debug.write(" -> " ++ pathname ++ "\n");
     defer file.close(close_spec, fd);
     file.noexcept.write(fd, array.readAll());
     array.undefineAll();
 }
-pub fn appendSourceFile(array: anytype, comptime pathname: [:0]const u8) void {
-    const fd: u64 = file.open(open_append_spec, if (pathname[0] != '/')
-        build_root ++ "/top/mem/" ++ pathname
-    else
-        pathname);
+pub fn appendSourceFile(array: anytype, comptime name: [:0]const u8) void {
+    const pathname: [:0]const u8 = if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
+    builtin.debug.write(" >> " ++ pathname ++ "\n");
+    const fd: u64 = file.open(open_append_spec, pathname);
     defer file.close(close_spec, fd);
     file.noexcept.write(fd, array.readAll());
     array.undefineAll();
@@ -413,16 +400,15 @@ pub fn specIndex(comptime Detail: type, leader: Detail) u8 {
 }
 pub fn writeComma(array: anytype) void {
     const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
-    const j1: bool = mem.testEqualManyBack(u8, tok.end_small_item, array.readAll());
+    const j1: bool = mem.testEqualManyBack(u8, ", ", array.readAll());
     if (builtin.int2a(bool, !j0, !j1)) {
-        array.writeMany(tok.end_small_item);
+        array.writeMany(", ");
     }
 }
 pub fn writeArgument(array: anytype, argument_name: [:0]const u8) void {
     writeComma(array);
     array.writeMany(argument_name);
 }
-
 pub fn writeFieldOfBool(array: anytype, any: anytype) void {
     inline for (@typeInfo(@TypeOf(any)).Struct.fields) |field| {
         if (@field(any, field.name)) {
@@ -446,20 +432,35 @@ pub fn writeStructOfBool(array: anytype, comptime T: type, value: T) void {
     const Format = GenericStructOfBool(T);
     Format.formatWrite(value, array);
 }
-fn GenericStructOfBool(comptime Struct: type) type {
+pub fn GenericStructOfBool(comptime Struct: type) type {
     return (struct {
         pub fn formatWrite(format: Struct, array: anytype) void {
             if (countTrue(format) == 0) {
                 array.writeMany(".{}");
             } else {
-                array.writeMany(".{ ");
+                array.writeMany(".{");
                 inline for (@typeInfo(Struct).Struct.fields) |field| {
                     if (@field(format, field.name)) {
-                        array.writeMany("." ++ field.name ++ " = true, ");
+                        array.writeMany("." ++ field.name ++ "=true,");
                     }
                 }
-                array.overwriteManyBack(" }");
+                array.undefine(1);
+                array.writeOne('}');
             }
+        }
+        pub fn formatLength(format: Struct) u64 {
+            var len: u64 = 0;
+            if (countTrue(format) == 0) {
+                len +%= 3;
+            } else {
+                len +%= 2;
+                inline for (@typeInfo(Struct).Struct.fields) |field| {
+                    if (@field(format, field.name)) {
+                        len +%= 1 +% field.name.len +% 6;
+                    }
+                }
+            }
+            return len;
         }
         pub fn countTrue(bit_field: Struct) u64 {
             var ret: u64 = 0;
@@ -493,15 +494,12 @@ fn GenericStructOfEnum(comptime Struct: type) type {
         }
     });
 }
-
 pub fn GenericKeys(comptime Key: type, comptime max_len: u64) type {
     return struct {
         auto: [max_len]Key,
         len: u64,
-
         const Keys = @This();
         const type_info: builtin.Type = @typeInfo(Key);
-
         fn writeOneUnique(keys: *Keys, value: Key) void {
             for (keys.auto[0..keys.len]) |unique| {
                 if (builtin.testEqual(Key, value, unique)) return;
