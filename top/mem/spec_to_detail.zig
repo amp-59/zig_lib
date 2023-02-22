@@ -29,8 +29,8 @@ fn setAttribute(impl_detail: *out.Detail, comptime attribute_name: []const u8) v
         @field(impl_detail.modes, attribute_name) = true;
         return;
     }
-    if (@hasField(gen.Management, attribute_name)) {
-        @field(impl_detail.management, attribute_name) = true;
+    if (@hasField(gen.Managers, attribute_name)) {
+        @field(impl_detail.managers, attribute_name) = true;
         return;
     }
     if (@hasField(gen.Fields, attribute_name)) {

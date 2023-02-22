@@ -5,10 +5,8 @@ const proc = @import("../proc.zig");
 const meta = @import("../meta.zig");
 const builtin = @import("../builtin.zig");
 const testing = @import("../testing.zig");
-
 const gen = @import("./gen.zig");
 const out = @import("./zig-out/src/type_specs.zig");
-
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;

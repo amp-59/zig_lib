@@ -19,7 +19,7 @@ const Array = mem.StaticArray(u8, 1024 * 1024);
 fn variantsToInterface(array: *Array, comptime field_name: []const u8, kind_group: []const out.Index) void {
     array.writeMany("&.{ ");
     for (kind_group) |impl_index| {
-        if (@field(out.impl_variants[impl_index].management, field_name)) {
+        if (@field(out.impl_variants[impl_index].managers, field_name)) {
             array.writeFormat(fmt.ud64(impl_index));
             array.writeMany(", ");
         }
@@ -32,7 +32,7 @@ fn variantsToInterfaces() void {
     array.undefineAll();
     gen.writeImport(&array, "out", "./impl_variants.zig");
     array.writeMany("pub const interfaces: []const []const []const out.Index = &[_][]const []const out.Index{\n");
-    inline for (@typeInfo(gen.Management).Struct.fields) |field| {
+    inline for (@typeInfo(gen.Managers).Struct.fields) |field| {
         array.writeMany("&.{\n");
         for (out.kinds) |kind_group| {
             variantsToInterface(&array, field.name, kind_group);

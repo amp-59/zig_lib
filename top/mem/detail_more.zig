@@ -9,7 +9,7 @@ pub const DetailMore = packed struct {
     index: u8 = undefined,
     kinds: gen.Kinds = .{},
     layouts: gen.Layouts = .{},
-    management: gen.Management = .{},
+    managers: gen.Managers = .{},
     modes: gen.Modes = .{},
     fields: gen.Fields = .{},
     techs: gen.Techniques = .{},
@@ -19,7 +19,7 @@ pub const DetailMore = packed struct {
     const kinds_init: [:0]const u8 = ",.kinds=";
     const layouts_init: [:0]const u8 = ",.layouts=";
     const modes_init: [:0]const u8 = ",.modes=";
-    const management_init: [:0]const u8 = ",.management=";
+    const managers_init: [:0]const u8 = ",.managers=";
     const fields_init: [:0]const u8 = ",.fields=";
     const techs_init: [:0]const u8 = ",.techs=";
     const specs_init: [:0]const u8 = ",.specs=";
@@ -34,8 +34,8 @@ pub const DetailMore = packed struct {
         array.writeFormat(detail.layouts);
         array.writeMany(modes_init);
         array.writeFormat(detail.modes);
-        array.writeMany(management_init);
-        array.writeFormat(detail.management);
+        array.writeMany(managers_init);
+        array.writeFormat(detail.managers);
         array.writeMany(fields_init);
         array.writeFormat(detail.fields);
         array.writeMany(techs_init);
@@ -54,8 +54,8 @@ pub const DetailMore = packed struct {
         len +%= detail.layouts.formatLength();
         len +%= modes_init.len;
         len +%= detail.modes.formatLength();
-        len +%= management_init.len;
-        len +%= detail.management.formatLength();
+        len +%= managers_init.len;
+        len +%= detail.managers.formatLength();
         len +%= fields_init.len;
         len +%= detail.fields.formatLength();
         len +%= techs_init.len;
@@ -88,8 +88,8 @@ pub fn kinds(canonical: anytype) gen.Kinds {
 pub fn layouts(canonical: anytype) gen.Layouts {
     return @field(canonical, out.layouts.dst_name).revert(gen.Layouts);
 }
-pub fn management(canonical: anytype) gen.Management {
-    return @field(canonical, out.management.dst_name).revert(gen.Management);
+pub fn managers(canonical: anytype) gen.Managers {
+    return @field(canonical, out.managers.dst_name).revert(gen.Managers);
 }
 pub fn modes(canonical: anytype) gen.Modes {
     return @field(canonical, out.modes.dst_name).revert(gen.Modes);

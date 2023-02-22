@@ -6,7 +6,7 @@ pub const DetailLess = packed struct {
     kinds: gen.Kinds = .{},
     layouts: gen.Layouts = .{},
     modes: gen.Modes = .{},
-    management: gen.Management = .{},
+    managers: gen.Managers = .{},
 
     pub fn formatWrite(detail: *const DetailLess, array: anytype) void {
         array.writeMany(".{ .index = ");
