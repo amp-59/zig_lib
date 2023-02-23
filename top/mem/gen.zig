@@ -77,7 +77,7 @@ pub fn copySourceFile(array: anytype, comptime pathname: [:0]const u8) void {
         build_root ++ "/top/mem/" ++ pathname
     else
         pathname);
-    array.define(file.read(read_spec, fd, array.referAllUndefined(), array.len()));
+    array.define(file.read(read_spec, fd, array.referAllUndefined(), array.avail()));
     defer file.close(close_spec, fd);
 }
 pub fn writeAuxiliarySourceFile(array: anytype, comptime name: [:0]const u8) void {
@@ -119,9 +119,9 @@ pub fn specIndex(comptime Detail: type, leader: Detail) u8 {
 }
 pub fn writeComma(array: anytype) void {
     const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
-    const j1: bool = mem.testEqualManyBack(u8, ", ", array.readAll());
+    const j1: bool = mem.testEqualManyBack(u8, tok.end_small_item, array.readAll());
     if (builtin.int2a(bool, !j0, !j1)) {
-        array.writeMany(", ");
+        array.writeMany(tok.end_small_item);
     }
 }
 pub fn writeArgument(array: anytype, argument_name: [:0]const u8) void {
