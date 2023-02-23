@@ -139,7 +139,6 @@ fn writeSpecifications(array: *Array, comptime T: type, field_names: *mem.Static
                         );
                     },
                 }
-                continue;
             }
         }
     }
