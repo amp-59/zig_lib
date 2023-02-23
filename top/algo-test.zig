@@ -25,7 +25,7 @@ fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     return len;
 }
 fn print(buf: []u8, off: u64, ss: []const []const u8) void {
-    file.noexcept.write(1, buf[0 .. off + write(buf, off, ss)]);
+    file.write(.{ .errors = .{} }, 1, buf[0 .. off + write(buf, off, ss)]);
 }
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = preset.address_space.regular_128,

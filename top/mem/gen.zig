@@ -220,7 +220,7 @@ pub fn copySourceFile(array: anytype, comptime pathname: [:0]const u8) void {
         build_root ++ "/top/mem/" ++ pathname
     else
         pathname);
-    array.define(file.read(read_spec, fd, array.referAllUndefined()));
+    array.define(file.read(read_spec, fd, array.referAllUndefined(), array.len()));
     defer file.close(close_spec, fd);
 }
 pub fn writeAuxiliarySourceFile(array: anytype, comptime name: [:0]const u8) void {

@@ -1,9 +1,10 @@
-const srg = @import("zig_lib");
-const mem = srg.mem;
-const file = srg.file;
-const proc = srg.proc;
-const meta = srg.meta;
-const preset = srg.preset;
+const zig_lib = @import("zig_lib");
+const mem = zig_lib.mem;
+const file = zig_lib.file;
+const proc = zig_lib.proc;
+const meta = zig_lib.meta;
+const preset = zig_lib.preset;
+const builtin = zig_lib.builtin;
 
 pub usingnamespace proc.start;
 

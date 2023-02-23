@@ -1430,7 +1430,7 @@ fn srcArray(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticA
 fn writeFile(allocator: Allocator, array: Array, pathname: [:0]const u8) !void {
     const build_fd: u64 = try file.create(create_spec, pathname);
     defer file.close(close_spec, build_fd);
-    try file.write(build_fd, array.readAll(allocator));
+    try file.write(.{}, build_fd, array.readAll(allocator));
 }
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
@@ -1482,7 +1482,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     if (options.output) |pathname| {
         try writeFile(allocator, array, pathname);
     } else {
-        try file.write(1, array.readAll(allocator));
+        try file.write(.{}, 1, array.readAll(allocator));
     }
     mem.unmap(.{ .errors = .{} }, lb_addr, up_addr - lb_addr);
 }

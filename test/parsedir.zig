@@ -103,7 +103,7 @@ fn fileBuf(allocator: *zig.Allocator.Node, dir_fd: u64, name: [:0]const u8) !zig
     defer file.close(close_spec, fd);
     const st: file.Stat = try file.fstat(stat_spec, fd);
     var file_buf: zig.SourceArray = try zig.SourceArray.init(allocator, st.size);
-    builtin.assertEqual(u64, st.size, try file.read(fd, file_buf.referAllDefined(), st.size));
+    builtin.assertEqual(u64, st.size, try file.read(.{}, fd, file_buf.referAllDefined(), st.size));
     return file_buf;
 }
 

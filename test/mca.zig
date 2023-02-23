@@ -218,30 +218,30 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
             if (j == 0) {
                 name_buf.undefineAll();
                 name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
-                try file.write(fd, name_buf.readAll());
+                try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
                 if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
                     section_text = section_text[0 .. section_text.len - 5];
                 }
-                try file.write(fd, section_text);
+                try file.write(.{}, fd, section_text);
             } else {
                 const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
                 name_buf.undefineAll();
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
                     name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], "\n" });
                 }
-                try file.write(fd, name_buf.readAll());
+                try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
                 if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
                     section_text = section_text[0 .. section_text.len - 5];
                 }
-                try file.write(fd, section_text);
+                try file.write(.{}, fd, section_text);
                 name_buf.undefineAll();
 
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
                     name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n' });
                 }
-                try file.write(fd, name_buf.readAll());
+                try file.write(.{}, fd, name_buf.readAll());
             }
             begin = idx_1;
         }
@@ -250,29 +250,29 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
             name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], '\n' });
         }
-        try file.write(fd, name_buf.readAll());
+        try file.write(.{}, fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[begin..x.body.end];
         if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
             section_text = section_text[0 .. section_text.len - 5];
         }
-        try file.write(fd, section_text);
+        try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
             name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
         }
-        try file.write(fd, name_buf.readAll());
+        try file.write(.{}, fd, name_buf.readAll());
     } else {
         name_buf.undefineAll();
         name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
-        try file.write(fd, name_buf.readAll());
+        try file.write(.{}, fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[x.body.begin..x.body.end];
         if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
             section_text = section_text[0 .. section_text.len - 5];
         }
-        try file.write(fd, section_text);
+        try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
         name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, '\n' });
-        try file.write(fd, name_buf.readAll());
+        try file.write(.{}, fd, name_buf.readAll());
     }
 }
 fn pruneSectionsOuterLoop(allocator_0: *Allocator, file_buf: FixedString, exports: *Exports, next: Exports) anyerror!void {
@@ -309,7 +309,7 @@ fn writeOutputOuterLoop(allocator_0: *Allocator, fd: u64, file_buf: FixedString,
     if (x.jumps) |*jump| jump.deinit(allocator_0);
 }
 fn writeOutput(allocator_0: *Allocator, fd: u64, file_buf: FixedString, exports: *Exports) anyerror!void {
-    try file.write(fd, preamble);
+    try file.write(.{}, fd, preamble);
     exports.goToHead();
     while (exports.next()) |next| {
         try pruneSectionsOuterLoop(allocator_0, file_buf, exports, next);
@@ -331,7 +331,7 @@ fn fileBuf(allocator_0: *Allocator, name: [:0]const u8) !FixedString {
     defer file.close(input_close_spec, fd);
     var st: file.Stat = try file.fstat(.{}, fd);
     try file_buf.increment(allocator_0, st.size + 1);
-    file_buf.impl.define(try file.read(fd, file_buf.referAllUndefined(allocator_0.*), st.size));
+    file_buf.impl.define(try file.read(.{}, fd, file_buf.referAllUndefined(allocator_0.*), st.size));
     file_buf.writeOne('\n');
     return file_buf.dynamic(allocator_0, FixedString);
 }

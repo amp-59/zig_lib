@@ -540,9 +540,9 @@ pub const ReadSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
     logging: builtin.Logging.SuccessError = .{},
 };
-pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8) sys.Call(spec.errors.throw, u64) {
+pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8, read_count: u64) sys.Call(spec.errors.throw, u64) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
-    if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_buf.len }))) |ret| {
+    if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_count }))) |ret| {
         if (spec.logging.Success) {
             debug.readNotice(fd, ret);
         }

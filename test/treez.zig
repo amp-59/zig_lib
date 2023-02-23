@@ -183,7 +183,7 @@ fn show(results: *Results) void {
     array.writeMany("\nswap:       ");
     array.writeFormat(fmt.udh(DirStream.disordered));
     array.writeOne('\n');
-    file.noexcept.write(1, array.readAll());
+    file.write(.{ .errors = .{} }, 1, array.readAll());
 }
 fn conditionalSkip(entry_name: []const u8) bool {
     if (entry_name[0] == '.') {
@@ -309,10 +309,10 @@ inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1
     const many: []const u8 = array.readManyAt(allocator, offset);
     if (many.len > (n - 1)) {
         if (n == 1) {
-            file.noexcept.write(1, many);
+            file.write(.{ .errors = .{} }, 1, many);
             return many.len;
         } else if (many[many.len - 1] == '\n') {
-            file.noexcept.write(1, many);
+            file.write(.{ .errors = .{} }, 1, many);
             return many.len;
         }
     }

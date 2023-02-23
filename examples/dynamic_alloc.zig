@@ -5,6 +5,7 @@ const fmt = zig_lib.fmt;
 const proc = zig_lib.proc;
 const file = zig_lib.file;
 const preset = zig_lib.preset;
+const builtin = zig_lib.builtin;
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub usingnamespace proc.start;

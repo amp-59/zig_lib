@@ -68,24 +68,22 @@ const Options = struct {
     }
 };
 const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch)
-    .{
-        .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
-    }
-else
-    .{
-        .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .action = Options.setOutputHex } },
-        .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .action = Options.setOutputDec } },
-        .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .action = Options.setOutputOct } },
-        .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .action = Options.setOutputBin } },
-    });
+.{
+    .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
+} else .{
+    .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .action = Options.setOutputHex } },
+    .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .action = Options.setOutputDec } },
+    .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .action = Options.setOutputOct } },
+    .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .action = Options.setOutputBin } },
+});
 fn loopInner(options: Options, arg: []const u8) !void {
-    file.noexcept.write(1, switch (options.output) {
+    file.write(.{ .errors = .{} }, 1, switch (options.output) {
         .hex => builtin.fmt.ux64(try builtin.parse.any(u64, arg)).readAll(),
         .dec => builtin.fmt.ud64(try builtin.parse.any(u64, arg)).readAll(),
         .oct => builtin.fmt.uo64(try builtin.parse.any(u64, arg)).readAll(),
         .bin => builtin.fmt.ub64(try builtin.parse.any(u64, arg)).readAll(),
     });
-    file.noexcept.write(1, "\n");
+    file.write(.{ .errors = .{} }, 1, "\n");
 }
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;

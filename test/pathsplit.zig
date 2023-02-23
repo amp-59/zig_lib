@@ -65,7 +65,10 @@ pub fn GenericPathSplit(comptime spec: PathSplitSpec) type {
 }
 
 pub fn main(args: [][*:0]u8) !void {
-    const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0 });
+    const Allocator = mem.GenericArenaAllocator(.{
+        .AddressSpace = AddressSpace,
+        .arena_index = 0,
+    });
     const PathSplit = GenericPathSplit(.{ .Allocator = Allocator });
     var address_space: builtin.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);

@@ -28,7 +28,7 @@ fn recursivePrint(comptime T: type) void {
                         fmt.ux(@bitCast(I, field)),
                         ";\n",
                     });
-                    file.noexcept.write(1, array.readAll());
+                    file.write(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .ComptimeInt => {
                     const int_fmt = blk_0: {
@@ -47,7 +47,7 @@ fn recursivePrint(comptime T: type) void {
                         int_fmt,
                         ";\n",
                     });
-                    file.noexcept.write(1, array.readAll());
+                    file.write(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .Struct, .Array, .Pointer => {
                     array.writeAny(preset.reinterpret.fmt, .{
@@ -57,7 +57,7 @@ fn recursivePrint(comptime T: type) void {
                         comptime fmt.any(field),
                         ";\n",
                     });
-                    file.noexcept.write(1, array.readAll());
+                    file.write(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .Type => {
                     if (comptime meta.isContainer(field)) {

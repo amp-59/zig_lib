@@ -47,7 +47,7 @@ fn fileBuf(allocator: *zig.Allocator.Node, pathname: [:0]const u8) !zig.SourceAr
     defer file.close(input_close_spec, fd);
     const st: file.Stat = try file.fstat(.{}, fd);
     var file_buf: zig.SourceArray = try zig.SourceArray.init(allocator, st.size);
-    builtin.assertEqual(u64, st.size, try file.read(fd, file_buf.referAllDefined(), st.size));
+    builtin.assertEqual(u64, st.size, try file.read(.{}, fd, file_buf.referAllDefined(), st.size));
     return file_buf;
 }
 const StdResults = struct { ast: std.zig.Ast, ts: time.TimeSpec };
