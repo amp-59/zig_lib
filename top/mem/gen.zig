@@ -340,7 +340,6 @@ pub fn GenericKeys(comptime Key: type, comptime max_len: u64) type {
 pub const ArgList = struct {
     args: [16][:0]const u8,
     len: u8,
-    field: bool = false,
     pub fn writeOne(arg_list: *ArgList, symbol: [:0]const u8) void {
         arg_list.args[arg_list.len] = symbol;
         arg_list.len +%= 1;

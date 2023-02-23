@@ -214,10 +214,6 @@ pub const Fn = enum(u5) {
                 }
             },
         }
-        arg_list.field =
-            arg_list.len == 0 or
-            arg_list.len == 1 and
-            arg_list.args[0].ptr == tok.slave_specifier_name.ptr;
         return arg_list;
     }
     pub fn returnType(impl_fn_info: *const Fn) [:0]const u8 {
