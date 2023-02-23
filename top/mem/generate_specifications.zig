@@ -9,6 +9,7 @@ const preset = @import("../preset.zig");
 const testing = @import("../testing.zig");
 const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const out = struct {
     usingnamespace @import("./detail_more.zig");
@@ -57,7 +58,7 @@ fn filterTechnique(
     buf: []out.DetailMore,
     comptime field_name: []const u8,
 ) Filtered {
-    if (!@hasField(gen.Techniques, field_name)) {
+    if (!@hasField(attr.Techniques, field_name)) {
         builtin.debug.logFault(field_name);
     }
     var t_len: u64 = 0;
@@ -85,7 +86,7 @@ fn writeDeductionTestBoolean(
     array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
-    comptime options: []const gen.Option,
+    comptime options: []const attr.Option,
     comptime field_names: []const []const u8,
 ) void {
     if (field_names.len == 0) {
@@ -122,7 +123,7 @@ fn writeDeductionCompareEnumerationInternal(
     array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
-    comptime options: []const gen.Option,
+    comptime options: []const attr.Option,
     comptime field_index: u64,
 ) ?[]const out.DetailMore {
     if (field_index == options[0].info.field_field_names.len and options.len != 1) {
@@ -156,7 +157,7 @@ fn writeDeductionCompareEnumeration(
     array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
-    comptime options: []const gen.Option,
+    comptime options: []const attr.Option,
 ) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
@@ -171,7 +172,7 @@ fn writeDeductionCompareOptionalEnumeration(
     array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
-    comptime options: []const gen.Option,
+    comptime options: []const attr.Option,
 ) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
@@ -188,14 +189,14 @@ fn writeDeduction(
     array: *Array,
     toplevel_impl_group: []const out.DetailMore,
     impl_group: []const out.DetailMore,
-    comptime options: []const gen.Option,
+    comptime options: []const attr.Option,
 ) void {
     if (options.len == 0) {
         if (impl_group.len == 1) {
             return writeReturnImplementation(array, impl_group[0]);
         }
     } else {
-        const tag: gen.Option.Usage = options[0].usage(out.DetailMore, toplevel_impl_group);
+        const tag: attr.Option.Usage = options[0].usage(out.DetailMore, toplevel_impl_group);
         switch (tag) {
             .eliminate_boolean_false,
             .eliminate_boolean_true,
