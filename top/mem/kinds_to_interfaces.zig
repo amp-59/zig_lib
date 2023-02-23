@@ -4,10 +4,12 @@ const fmt = @import("../fmt.zig");
 const meta = @import("../meta.zig");
 const proc = @import("../proc.zig");
 const builtin = @import("../builtin.zig");
+
 const gen = @import("./gen.zig");
+const attr = @import("./attr.zig");
 const out = struct {
     usingnamespace @import("./detail.zig");
-    usingnamespace @import("./detail_more.zig");
+    //usingnamespace @import("./detail_more.zig");
 
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
@@ -32,7 +34,7 @@ fn variantsToInterfaces() void {
     array.undefineAll();
     gen.writeImport(&array, "out", "./impl_variants.zig");
     array.writeMany("pub const interfaces: []const []const []const out.Index = &[_][]const []const out.Index{\n");
-    inline for (@typeInfo(gen.Managers).Struct.fields) |field| {
+    inline for (@typeInfo(attr.Managers).Struct.fields) |field| {
         array.writeMany("&.{\n");
         for (out.kinds) |kind_group| {
             variantsToInterface(&array, field.name, kind_group);

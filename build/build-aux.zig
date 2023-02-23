@@ -68,8 +68,8 @@ pub fn main(builder: *build.Builder) !void {
         dependOn(map_to_containers, variants_to_canonicals);
         const map_to_kinds = util.addProjectExecutable(builder, "map_to_kinds", "top/mem/map_to_kinds.zig", default);
         dependOn(map_to_kinds, variants_to_canonicals);
-        const variants_to_interfaces = util.addProjectExecutable(builder, "kinds_to_interfaces", "top/mem/kinds_to_interfaces.zig", default);
-        dependOn(variants_to_interfaces, map_to_kinds);
+        // const variants_to_interfaces = util.addProjectExecutable(builder, "kinds_to_interfaces", "top/mem/kinds_to_interfaces.zig", default);
+        // dependOn(variants_to_interfaces, map_to_kinds);
         const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", default);
         dependOn(map_to_specifications, map_to_containers);
         const generate_specifications = util.addProjectExecutable(builder, "generate_specifications", "top/mem/generate_specifications.zig", default);
@@ -85,13 +85,13 @@ pub fn main(builder: *build.Builder) !void {
         dependOn(generate_parameters, map_to_containers);
         const generate_containers = util.addProjectExecutable(builder, "generate_containers", "top/mem/generate_containers.zig", default);
         dependOn(generate_containers, generate_parameters);
-        const generate_allocators = util.addProjectExecutable(builder, "generate_allocators", "top/mem/generate_allocators.zig", default);
-        dependOn(generate_allocators, map_to_kinds);
-        dependOn(generate_allocators, variants_to_interfaces);
+        // const generate_allocators = util.addProjectExecutable(builder, "generate_allocators", "top/mem/generate_allocators.zig", default);
+        // dependOn(generate_allocators, map_to_kinds);
+        // dependOn(generate_allocators, variants_to_interfaces);
 
         mem_gen.dependOn(&generate_references.run().step);
         mem_gen.dependOn(&generate_containers.run().step);
-        mem_gen.dependOn(&generate_allocators.run().step);
+        // mem_gen.dependOn(&generate_allocators.run().step);
     }
 }
 inline fn dependOn(dependant: *build.CompileStep, dependency: *build.CompileStep) void {
