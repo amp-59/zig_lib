@@ -5,8 +5,10 @@ const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
+const AddressSpace = builtin.AddressSpace();
+
 pub fn map(comptime spec: MapSpec, arena_index: u8) sys.Call(spec.errors.throw, u64) {
-    const up_addr = builtin.AddressSpace.high(arena_index);
+    const up_addr = AddressSpace.high(arena_index);
     const s_bytes: u64 = 8192;
     const st_addr: u64 = up_addr - s_bytes;
     const mmap_prot: mem.Prot = spec.prot();
@@ -24,7 +26,7 @@ pub fn map(comptime spec: MapSpec, arena_index: u8) sys.Call(spec.errors.throw, 
     return st_addr;
 }
 pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) sys.Call(spec.errors.throw, void) {
-    const up_addr = builtin.AddressSpace.high(arena_index);
+    const up_addr = AddressSpace.high(arena_index);
     const st_addr = mach.alignA64(up_addr - 8192, 4096);
     const len: u64 = up_addr - st_addr;
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ st_addr, up_addr - st_addr }))) {

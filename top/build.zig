@@ -12,7 +12,7 @@ const fmt_spec: mem.ReinterpretSpec = blk: {
 };
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .AddressSpace = builtin.AddressSpace,
+    .AddressSpace = builtin.AddressSpace(),
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
 });

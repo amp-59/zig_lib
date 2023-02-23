@@ -11,7 +11,7 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.exact_8;
 pub const runtime_assertions: bool = true;
-pub const is_verbose: bool = false;
+pub const is_verbose: bool = true;
 
 const Random = file.DeviceRandomBytes(4096);
 const String = Allocator0.StructuredVector(u8);
