@@ -848,7 +848,7 @@ fn writeSimpleRedecl(array: *Array, impl_fn_info: *const Fn, info: *Info) void {
 }
 inline fn writeComptimeField(array: *Array, impl_variant: *const out.DetailMore, impl_fn_info: Fn) void {
     const args_list: gen.ArgList = impl_fn_info.argList(impl_variant, .Parameter);
-    if (args_list.field) {
+    if (args_list.comptimeField()) {
         array.writeMany(tok.comptime_keyword);
         array.writeMany(impl_fn_info.fnName());
         if (impl_variant.kinds.parametric) {
