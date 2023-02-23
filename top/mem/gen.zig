@@ -9,6 +9,8 @@ const testing = top.testing;
 
 pub usingnamespace top;
 
+const tok = @import("./tok.zig");
+
 const build_root = @cImport({}).build_root;
 pub const ListKind = enum { Parameter, Argument };
 
@@ -346,5 +348,13 @@ pub const ArgList = struct {
     }
     pub fn readAll(arg_list: *const ArgList) []const [:0]const u8 {
         return arg_list.args[0..arg_list.len];
+    }
+    pub fn comptimeField(arg_list: ArgList) bool {
+        for (arg_list.readAll()) |arg| {
+            if (arg.ptr == tok.impl_name.ptr) {
+                return false;
+            }
+        }
+        return true;
     }
 };
