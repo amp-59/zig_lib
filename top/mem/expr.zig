@@ -194,27 +194,12 @@ const Init = struct {
     pub fn callMember(exprs: []Expr) Expr {
         return packMore(.call_member, exprs);
     }
-    fn comptimeField(arg_list: gen.ArgList) bool {
-        for (arg_list.readAll()) |arg| {
-            if (arg.ptr == tok.impl_name.ptr) {
-                return false;
-            }
-        }
-        return true;
-    }
-    pub fn impl(allocator: anytype, detail: anytype, impl_fn_info: *const impl_fn.Fn) Expr {
-        const ctn_scope: bool = @TypeOf(detail.*) == out.DetailLess;
-        const impl_detail: *const out.DetailMore = if (ctn_scope) detail.more() else detail;
-        const arg_list: gen.ArgList = impl_fn_info.argList(impl_detail, .Argument);
-        const comptime_field: bool = ctn_scope and comptimeField(arg_list);
-        const exprs: []Expr = allocator.allocateIrreversible(
-            Expr,
-            arg_list.len +% @boolToInt(comptime_field) +% 1,
-        );
+    fn impl0(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: gen.ArgList) Expr {
+        const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 2);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(impl_fn_info.fnName());
         idx +%= 1;
-        if (comptime_field) {
+        if (arg_list.comptimeField()) {
             exprs[idx] = Init.symbol(tok.impl_name);
             idx +%= 1;
         }
@@ -222,18 +207,33 @@ const Init = struct {
             exprs[idx] = Init.symbol(arg);
             idx +%= 1;
         }
-        if (ctn_scope) {
-            return Init.callMember(exprs[0..idx]);
+        return call(exprs[0..idx]);
+    }
+    fn impl1(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: gen.ArgList) Expr {
+        const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 2);
+        var idx: u64 = 0;
+        exprs[idx] = Init.symbol(impl_fn_info.fnName());
+        idx +%= 1;
+        if (arg_list.comptimeField()) {
+            exprs[idx] = Init.symbol(tok.impl_name);
+            idx +%= 1;
+        }
+        for (arg_list.readAll()) |arg| {
+            exprs[idx] = Init.symbol(arg);
+            idx +%= 1;
+        }
+        return callMember(exprs[0..idx]);
+    }
+    pub fn impl(allocator: anytype, detail: anytype, impl_fn_info: *const impl_fn.Fn) Expr {
+        if (@TypeOf(detail.*) == out.DetailMore) {
+            return impl0(allocator, impl_fn_info, impl_fn_info.argList(detail, .Argument));
         } else {
-            return Init.call(exprs[0..idx]);
+            return impl1(allocator, impl_fn_info, impl_fn_info.argList(detail.more(), .Argument));
         }
     }
     pub fn intr(allocator: anytype, ctn_detail: *const out.DetailLess, ctn_fn_info: *const ctn_fn.Fn) Expr {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
-        const exprs: []Expr = allocator.allocateIrreversible(
-            Expr,
-            arg_list.len +% @boolToInt(arg_list.field) +% 1,
-        );
+        const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 1);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(ctn_fn_info.fnName());
         idx +%= 1;

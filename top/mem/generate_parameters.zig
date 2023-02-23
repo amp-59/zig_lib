@@ -8,6 +8,7 @@ const builtin = @import("../builtin.zig");
 const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
+const attr = @import("./attr.zig");
 const out = struct {
     usingnamespace @import("./detail_more.zig");
     usingnamespace @import("./zig-out/src/options.zig");
@@ -39,7 +40,7 @@ const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
 fn writeOptionsInternal(
     array: *Array,
     field_name: []const u8,
-    usage: gen.Option.Usage,
+    usage: attr.Option.Usage,
     field_names: []const []const u8,
 ) u1 {
     switch (usage) {
@@ -92,11 +93,12 @@ fn writeOptions(array: *Array, toplevel_impl_group: []const out.DetailMore) void
     array.writeMany("const Options = struct {");
     var write: u1 = 0;
     inline for (out.options) |option| {
+        var buf: [option.len()][]const u8 = undefined;
         write |= writeOptionsInternal(
             array,
             option.info.field_name,
             option.usage(out.DetailMore, toplevel_impl_group),
-            option.names(out.DetailMore, toplevel_impl_group).readAll(),
+            option.names(out.DetailMore, toplevel_impl_group, &buf),
         );
     }
     if (write == 0) {
