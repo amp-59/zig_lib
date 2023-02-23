@@ -3,7 +3,9 @@ const mem = @import("../mem.zig");
 const sys = @import("../sys.zig");
 const proc = @import("../proc.zig");
 const builtin = @import("../builtin.zig");
+
 const gen = @import("./gen.zig");
+const attr = @import("./attr.zig");
 
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
@@ -12,7 +14,7 @@ pub usingnamespace proc.start;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
-fn fieldOption(comptime field: builtin.Type.StructField) gen.Option {
+fn fieldOption(comptime field: builtin.Type.StructField) attr.Option {
     comptime var field_names: []const []const u8 = &.{};
     const field_type_info: builtin.Type = @typeInfo(field.type);
     if (field_type_info == .Optional) {
@@ -39,9 +41,9 @@ fn fieldOption(comptime field: builtin.Type.StructField) gen.Option {
     }
 }
 fn writeOptions(array: *Array) void {
-    array.writeMany("pub const options = [_]gen.Option{\n");
-    inline for (@typeInfo(gen.Techniques.Options).Struct.fields) |field| {
-        const option: gen.Option = fieldOption(field);
+    array.writeMany("pub const options = [_]attr.Option{\n");
+    inline for (@typeInfo(attr.Techniques.Options).Struct.fields) |field| {
+        const option: attr.Option = fieldOption(field);
         array.writeMany("    .{ .kind = .");
         array.writeMany(@tagName(option.kind));
         array.writeMany(", .info = .{ .field_name = \"");
@@ -60,7 +62,7 @@ fn writeOptions(array: *Array) void {
 pub fn specToOptions() void {
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeImport(&array, "gen", "../../gen.zig");
+    gen.writeImport(&array, "attr", "../../attr.zig");
     writeOptions(&array);
     gen.writeAuxiliarySourceFile(&array, "options.zig");
 }
