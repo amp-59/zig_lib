@@ -1,4 +1,5 @@
 const gen = @import("./gen.zig");
+const attr = @import("./attr.zig");
 const out = struct {
     usingnamespace @import("./canonical.zig");
     usingnamespace @import("./detail_less.zig");
@@ -7,12 +8,12 @@ const out = struct {
 
 pub const DetailMore = packed struct {
     index: u8 = undefined,
-    kinds: gen.Kinds = .{},
-    layouts: gen.Layouts = .{},
-    managers: gen.Managers = .{},
-    modes: gen.Modes = .{},
-    fields: gen.Fields = .{},
-    techs: gen.Techniques = .{},
+    kinds: attr.Kinds = .{},
+    layouts: attr.Layouts = .{},
+    managers: attr.Managers = .{},
+    modes: attr.Modes = .{},
+    fields: attr.Fields = .{},
+    techs: attr.Techniques = .{},
     specs: out.Specifiers = .{},
 
     const index_init: [:0]const u8 = ".index=";
@@ -41,7 +42,7 @@ pub const DetailMore = packed struct {
         array.writeMany(techs_init);
         array.writeFormat(detail.techs);
         array.writeMany(specs_init);
-        gen.GenericStructOfBool(out.Specifiers).formatWrite(detail.specs, array);
+        attr.GenericStructOfBool(out.Specifiers).formatWrite(detail.specs, array);
         array.writeMany("}");
     }
     pub fn formatLength(detail: *const DetailMore) u64 {
@@ -61,7 +62,7 @@ pub const DetailMore = packed struct {
         len +%= techs_init.len;
         len +%= detail.techs.formatLength();
         len +%= specs_init.len;
-        len +%= gen.GenericStructOfBool(out.Specifiers).formatLength(detail.specs);
+        len +%= attr.GenericStructOfBool(out.Specifiers).formatLength(detail.specs);
         len +%= 1;
         return len;
     }
@@ -82,23 +83,23 @@ pub const DetailMore = packed struct {
     }
 };
 
-pub fn kinds(canonical: anytype) gen.Kinds {
-    return @field(canonical, out.kinds.dst_name).revert(gen.Kinds);
+pub fn kinds(canonical: anytype) attr.Kinds {
+    return @field(canonical, out.kinds.dst_name).revert(attr.Kinds);
 }
-pub fn layouts(canonical: anytype) gen.Layouts {
-    return @field(canonical, out.layouts.dst_name).revert(gen.Layouts);
+pub fn layouts(canonical: anytype) attr.Layouts {
+    return @field(canonical, out.layouts.dst_name).revert(attr.Layouts);
 }
-pub fn managers(canonical: anytype) gen.Managers {
-    return @field(canonical, out.managers.dst_name).revert(gen.Managers);
+pub fn managers(canonical: anytype) attr.Managers {
+    return @field(canonical, out.managers.dst_name).revert(attr.Managers);
 }
-pub fn modes(canonical: anytype) gen.Modes {
-    return @field(canonical, out.modes.dst_name).revert(gen.Modes);
+pub fn modes(canonical: anytype) attr.Modes {
+    return @field(canonical, out.modes.dst_name).revert(attr.Modes);
 }
-pub fn fields(canonical: anytype) gen.Fields {
-    return @field(canonical, out.fields.dst_name).revert(gen.Fields);
+pub fn fields(canonical: anytype) attr.Fields {
+    return @field(canonical, out.fields.dst_name).revert(attr.Fields);
 }
-pub fn techs(canonical: anytype) gen.Techniques {
-    return @field(canonical, out.techs.dst_name).revert(gen.Techniques);
+pub fn techs(canonical: anytype) attr.Techniques {
+    return @field(canonical, out.techs.dst_name).revert(attr.Techniques);
 }
 pub fn specs(canonical: anytype) out.Specifiers {
     return @field(canonical, out.specs.dst_name).revert(out.Specifiers);
