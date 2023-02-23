@@ -1074,7 +1074,7 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .arena_index = 32,
                 .errors = .{ .map = null, .unmap = null },
-                .logging = mem.alloc_silent,
+                .logging = preset.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.Holder(u8);
             pub fn show(list: List, address_space: *builtin.AddressSpace) !void {
