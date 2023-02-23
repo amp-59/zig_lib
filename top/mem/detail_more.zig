@@ -28,7 +28,7 @@ pub const DetailMore = packed struct {
     pub fn formatWrite(detail: *const DetailMore, array: anytype) void {
         array.writeMany(".{");
         array.writeMany(index_init);
-        array.writeFormat(gen.fmt.ub8(detail.index));
+        array.writeFormat(gen.fmt.ud8(detail.index));
         array.writeMany(kinds_init);
         array.writeFormat(detail.kinds);
         array.writeMany(layouts_init);
@@ -48,7 +48,7 @@ pub const DetailMore = packed struct {
     pub fn formatLength(detail: *const DetailMore) u64 {
         var len: u64 = 0;
         len +%= 2 +% index_init.len;
-        len +%= gen.fmt.ub8(detail.index).formatLength();
+        len +%= gen.fmt.ud8(detail.index).formatLength();
         len +%= kinds_init.len;
         len +%= detail.kinds.formatLength();
         len +%= layouts_init.len;
