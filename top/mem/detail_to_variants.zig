@@ -18,7 +18,6 @@ pub const is_silent: bool = true;
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
 fn writeVariantStructInternal(array: *Array, impl_detail: out.Detail, specs: out.Specifiers) void {
-    array.writeMany("    ");
     array.writeFormat(impl_detail.more(out.DetailMore, specs));
     array.writeMany(",\n");
 }
