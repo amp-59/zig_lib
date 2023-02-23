@@ -51,11 +51,11 @@ pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void 
     var len: u64 = 0;
     len += arrayOfCharsWrite(buf[len..], arg1);
     len += arrayOfCharsWrite(buf[len..], arg2);
-    file.noexcept.write(2, buf[0..len]);
-    file.noexcept.write(2, arg1);
-    file.noexcept.write(2, "\n");
-    file.noexcept.write(2, arg2);
-    file.noexcept.write(2, "\n");
+    builtin.debug.write(buf[0..len]);
+    builtin.debug.write(arg1);
+    builtin.debug.write("\n");
+    builtin.debug.write(arg2);
+    builtin.debug.write("\n");
 }
 
 // Q: Why not put this in builtin, according to specification?
@@ -228,7 +228,7 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
         array.writeOne('\n');
     }
     array.writeOne('\n');
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
     return array.readAll().len;
 }
 
@@ -246,7 +246,7 @@ pub fn printN(comptime n: usize, any: anytype) void {
     } else {
         array.writeAny(reinterpret_spec, any);
     }
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 const Static = struct {
     const Allocator = mem.GenericArenaAllocator(.{

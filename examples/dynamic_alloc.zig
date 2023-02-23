@@ -30,5 +30,5 @@ pub fn main() !void {
         " using dynamic memory\n",
     });
 
-    file.noexcept.write(2, array.readAll(allocator));
+    builtin.debug.write(array.readAll(allocator));
 }

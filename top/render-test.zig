@@ -135,7 +135,7 @@ fn allocateRunTest(allocator: *Allocator, array: *Array, format: anytype, expect
     if (expected) |value| {
         try testing.expectEqualMany(u8, array.readAll(allocator.*), value);
     } else {
-        file.noexcept.write(2, array.readAll(allocator.*));
+        builtin.debug.write(array.readAll(allocator.*));
     }
     array.undefineAll(allocator.*);
 }
@@ -144,7 +144,7 @@ fn minimalRunTest(_: *Allocator, array: anytype, format: anytype, expected: ?[]c
     if (expected) |value| {
         try testing.expectEqualMany(u8, array.readAll(), value);
     } else {
-        file.noexcept.write(2, array.readAll());
+        builtin.debug.write(array.readAll());
     }
     array.undefineAll();
 }

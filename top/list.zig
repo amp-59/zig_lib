@@ -652,7 +652,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                         });
                     }
                 }
-                file.noexcept.write(2, array.readAll(allocator));
+                builtin.debug.write(array.readAll(allocator));
             }
         };
     });

@@ -125,7 +125,7 @@ fn testArenaIntersection() !void {
     array.writeFormat(fmt.any(x.h));
     array.writeMany("\t -> ");
     array.writeFormat(fmt.ub64(arenaToBits(x.h)));
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn testRegularAddressSpace() !void {
     const AddressSpace = virtual.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
@@ -141,7 +141,7 @@ fn testRegularAddressSpace() !void {
     while (i != AddressSpace.addr_spec.divisions) : (i += 1) {
         try mem.acquire(AddressSpace, &address_space, i);
         try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
-        file.noexcept.write(2, array.readAll());
+        builtin.debug.write(array.readAll());
         array.undefineAll();
     }
 }
@@ -160,16 +160,16 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
         try mem.static.acquire(AddressSpace, &address_space, i);
         try array.appendFormat(&allocator, fmt.any(address_space));
         try array.appendMany(&allocator, "\n");
-        file.noexcept.write(2, array.readAll());
+        builtin.debug.write(array.readAll());
         array.undefineAll();
     }
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
     i = 1;
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
         mem.static.release(AddressSpace, &address_space, i);
         try array.appendFormat(&allocator, fmt.any(address_space));
         try array.appendMany(&allocator, "\n");
-        file.noexcept.write(2, array.readAll());
+        builtin.debug.write(array.readAll());
         array.undefineAll();
     }
 }
@@ -210,11 +210,11 @@ fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSp
     defer array_2.deinit(&allocator_2);
     try array_2.appendFormat(&allocator_2, fmt.render(render_spec, sub_space));
     try array_2.appendMany(&allocator_2, "\n");
-    file.noexcept.write(2, array_0.readAll());
+    builtin.debug.write(array_0.readAll());
     array_0.undefineAll();
-    file.noexcept.write(2, array_1.readAll());
+    builtin.debug.write(array_1.readAll());
     array_1.undefineAll();
-    file.noexcept.write(2, array_2.readAll());
+    builtin.debug.write(array_2.readAll());
     array_2.undefineAll();
 }
 fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec) !void {
@@ -249,11 +249,11 @@ fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAdd
     defer array_2.deinit(&allocator_2);
     try array_2.appendFormat(&allocator_2, fmt.render(render_spec, sub_space));
     try array_2.appendMany(&allocator_2, "\n");
-    file.noexcept.write(2, array_0.readAll(allocator_0));
+    builtin.debug.write(array_0.readAll(allocator_0));
     array_0.undefineAll(allocator_0);
-    file.noexcept.write(2, array_1.readAll(allocator_1));
+    builtin.debug.write(array_1.readAll(allocator_1));
     array_1.undefineAll(allocator_1);
-    file.noexcept.write(2, array_2.readAll(allocator_2));
+    builtin.debug.write(array_2.readAll(allocator_2));
     array_2.undefineAll(allocator_2);
 }
 pub fn main() !void {

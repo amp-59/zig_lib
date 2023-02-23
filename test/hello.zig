@@ -17,23 +17,23 @@ fn NTuple(comptime n: usize) type {
 pub export fn _start() void {
     @setAlignStack(16);
     if (false) {
-        file.noexcept.write(2, hello_world);
+        builtin.debug.write(hello_world);
     }
     if (false) {
         const x: []const u8 = (comptime mem.view("Hello, world!\n")).readAll();
-        file.noexcept.write(2, x);
+        builtin.debug.write(x);
     }
     if (false) {
         var array: mem.StaticString(4096) = undefined;
         array.impl.ub_word = 0;
         array.writeAny(mem.follow_wr_spec, .{ "Hello", ",", " World", "!", "\n" });
-        file.noexcept.write(2, array.readAll());
+        builtin.debug.write(array.readAll());
     }
     if (false) {
         var array: mem.StaticString(4096) = .{};
         array.undefineAll();
         array.writeMany("Hello, world!\n");
-        file.noexcept.write(2, array.readAll());
+        builtin.debug.write(array.readAll());
     }
     if (true) {
         const S = struct {
@@ -43,7 +43,7 @@ pub export fn _start() void {
         var s: S = .{};
         var z: S = .{};
         inline for (hello_world) |c, i| s.auto[i] = c;
-        file.noexcept.write(2, z.auto[0..hello_world.len]);
+        builtin.debug.write(z.auto[0..hello_world.len]);
     }
     sys.call(.exit, .{}, noreturn, .{0});
 }

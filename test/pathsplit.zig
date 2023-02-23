@@ -74,6 +74,6 @@ pub fn main(args: [][*:0]u8) !void {
         defer path_split.deinit(&allocator);
         var array: mem.StaticString(1024 * 512) = .{};
         array.writeAny(preset.reinterpret.fmt, fmt.any(path_split));
-        file.noexcept.write(2, array.readAll());
+        builtin.debug.write(array.readAll());
     }
 }

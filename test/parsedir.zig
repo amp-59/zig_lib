@@ -223,7 +223,7 @@ fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
         }
         nanos += root.ts.nsec;
         if (print_times) {
-            file.noexcept.write(2, print_array.readAll());
+            builtin.debug.write(print_array.readAll());
         }
         print_array.undefineAll();
     }
@@ -233,7 +233,7 @@ fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
         .{ fmt.ud(Test.sample), '/', fmt.ud(Test.sample_size) },
         lit.position.restore,
     });
-    file.noexcept.write(2, print_array.readAll());
+    builtin.debug.write(print_array.readAll());
     return nanos;
 }
 
@@ -265,7 +265,7 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !voi
             ": ",             fmt.udh(sum.? / Test.sample_size),
             '\n',
         });
-        file.noexcept.write(2, print_array.readAll());
+        builtin.debug.write(print_array.readAll());
     }
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {

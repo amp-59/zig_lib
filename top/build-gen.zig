@@ -487,11 +487,11 @@ fn subTemplate(src: [:0]const u8, comptime sub_name: [:0]const u8) ?[]const u8 {
             const ret: []const u8 = src[after + start_s.len .. after + before];
             return ret;
         } else {
-            file.noexcept.write(2, "missing: " ++ finish_s ++ "\n");
+            builtin.debug.write("missing: " ++ finish_s ++ "\n");
             return null;
         }
     } else {
-        file.noexcept.write(2, "missing: " ++ start_s ++ "\n");
+        builtin.debug.write("missing: " ++ start_s ++ "\n");
         return null;
     }
 }

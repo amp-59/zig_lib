@@ -392,7 +392,7 @@ pub fn main(args_in: [][*:0]u8) !void {
             done = true;
             mem.monitor(bool, &done);
         } else {
-            file.noexcept.write(2, array.readAll(allocator_1));
+            builtin.debug.write(array.readAll(allocator_1));
             results.show();
         }
     }

@@ -66,11 +66,11 @@ fn recursivePrint(comptime T: type) void {
                             fmt.IdentifierFormat{ .value = decl.name },
                             " = " ++ comptime builtin.fmt.typeDeclSpecifier(@typeInfo(field)) ++ " {\n",
                         });
-                        file.noexcept.write(2, array.readAll());
+                        builtin.debug.write(array.readAll());
                         array.undefineAll();
                         recursivePrint(field);
                         array.writeMany("};\n");
-                        file.noexcept.write(2, array.readAll());
+                        builtin.debug.write(array.readAll());
                     }
                 },
                 else => {},

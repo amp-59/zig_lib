@@ -63,7 +63,7 @@ fn showHeader(elf_header: exe.Header) void {
     var array: PrintArray = .{};
     array.writeFormat(fmt.any(elf_header));
     array.writeOne('\n');
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn showDynamicSymbolEntry(defined_name: [:0]const u8, st_entry: exe.Elf64_Sym) void {
     var array: PrintArray = .{};
@@ -72,7 +72,7 @@ fn showDynamicSymbolEntry(defined_name: [:0]const u8, st_entry: exe.Elf64_Sym) v
     array.writeMany("\", ");
     array.writeFormat(fmt.any(st_entry));
     array.writeOne('\n');
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn showProgramHeader(header_index: u64, p_header: exe.Elf64_Phdr) void {
     var array: PrintArray = .{};
@@ -80,7 +80,7 @@ fn showProgramHeader(header_index: u64, p_header: exe.Elf64_Phdr) void {
     array.writeMany(":\t");
     array.writeFormat(fmt.any(p_header));
     array.writeOne('\n');
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn showSectionHeader(header_index: u64, s_header: exe.Elf64_Shdr) void {
     var array: PrintArray = .{};
@@ -88,13 +88,13 @@ fn showSectionHeader(header_index: u64, s_header: exe.Elf64_Shdr) void {
     array.writeMany(":\t");
     array.writeFormat(fmt.any(s_header));
     array.writeOne('\n');
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn showDynamicSectionEntry(d_header: exe.Elf64_Dyn) void {
     var array: PrintArray = .{};
     array.writeFormat(fmt.any(d_header));
     array.writeOne('\n');
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn showLibraryUpToDate(src_path: [:0]const u8, so_path: [:0]const u8, src_stat: file.Stat, so_stat: file.Stat) void {
     const src_dt: time.DateTime = time.DateTime.init(src_stat.ctime.sec);
@@ -108,7 +108,7 @@ fn showLibraryUpToDate(src_path: [:0]const u8, so_path: [:0]const u8, src_stat: 
     array.writeMany(" @ ");
     array.writeFormat(fmt.dt(src_dt));
     array.writeMany("\n");
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn read(ref: *Many8I, fd: u64) !u64 {
     return sys.read(fd, ref.next(), ref.available());
@@ -415,7 +415,7 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8, vars
             else => {},
         }
     }
-    file.noexcept.write(2, result_array.readAll());
+    builtin.debug.write(result_array.readAll());
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
     var address_space: builtin.AddressSpace = .{};

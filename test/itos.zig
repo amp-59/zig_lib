@@ -27,7 +27,7 @@ fn noSuchOption(opt_arg: []const u8) void {
         opt_arg,
         "'\n-o, --output=     x,d,o,b\n",
     });
-    file.noexcept.write(2, print_array.readAll());
+    builtin.debug.write(print_array.readAll());
 }
 const Options = struct {
     output: Radix = .hex,

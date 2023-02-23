@@ -126,7 +126,7 @@ fn testEquivalentIntToStringFormat() !void {
 fn testBinarySize() void {
     var array: PrintArray = .{};
     array.writeFormat(fmt.ux64(@ptrToInt(&array)));
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 
 pub fn main() !void {

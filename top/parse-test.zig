@@ -40,7 +40,7 @@ const targets: [8][:0]const u8 = .{
 fn debug(any: anytype) void {
     var array: mem.StaticString(16384) = .{};
     array.writeAny(preset.reinterpret.fmt, any);
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn fileBuf(allocator: *zig.Allocator.Node, pathname: [:0]const u8) !zig.SourceArray {
     const fd: u64 = file.open(input_open_spec, pathname);
@@ -230,8 +230,8 @@ pub fn main(args: [][*:0]u8) !void {
                         const loc: abstract.SyntaxTree.Location = ast.tokenLocation(0, ast.firstToken(index));
                         var array: PrintArray = .{};
                         array.writeAny(preset.reinterpret.fmt, .{ '\n', arg, ": line: ", fmt.ud(loc.line), ", column: ", fmt.ud(loc.column), '\n' });
-                        file.noexcept.write(2, array.readAll());
-                        file.noexcept.write(2, ast.getNodeSource(index));
+                        builtin.debug.write(array.readAll());
+                        builtin.debug.write(ast.getNodeSource(index));
                     }
                 }
             }

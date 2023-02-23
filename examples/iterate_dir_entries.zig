@@ -37,8 +37,8 @@ pub fn main(args: [][*:0]u8) !void {
         var index: u64 = 1;
         while (list.at(index)) |entry| : (index +%= 1) {
             // Write directory entry name to stderr
-            file.noexcept.write(2, entry.name());
-            file.noexcept.write(2, "\n");
+            builtin.debug.write(entry.name());
+            builtin.debug.write("\n");
         }
     }
 }

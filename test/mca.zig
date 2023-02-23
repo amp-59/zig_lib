@@ -140,19 +140,19 @@ const exports_mem_spec: mem.MemorySpec = .{ .allocated = .{
     .initial_count = 16,
 } };
 fn printFound(name: []const u8) void {
-    file.noexcept.write(2, "found: ");
-    file.noexcept.write(2, name);
-    file.noexcept.write(2, "\n");
+    builtin.debug.write("found: ");
+    builtin.debug.write(name);
+    builtin.debug.write("\n");
 }
 fn printPruned(name: []const u8) void {
-    file.noexcept.write(2, "pruned: ");
-    file.noexcept.write(2, name);
-    file.noexcept.write(2, "\n");
+    builtin.debug.write("pruned: ");
+    builtin.debug.write(name);
+    builtin.debug.write("\n");
 }
 fn printPassed(name: []const u8) void {
-    file.noexcept.write(2, "passed: ");
-    file.noexcept.write(2, name);
-    file.noexcept.write(2, "\n");
+    builtin.debug.write("passed: ");
+    builtin.debug.write(name);
+    builtin.debug.write("\n");
 }
 fn parseInput(allocator_0: *Allocator, file_buf: FixedString) anyerror!Exports {
     var exports: Exports = try Exports.init(allocator_0);

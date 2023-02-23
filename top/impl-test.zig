@@ -90,7 +90,7 @@ fn announceAnalysis(comptime impl_type: type) void {
         array.writeMany(comptime fmt.typeName(impl_type));
         array.writeMany(aligns_s ++ lit.fx.none ++ "\n");
     }
-    file.noexcept.write(2, array.readAll());
+    builtin.debug.write(array.readAll());
 }
 fn getBetween(comptime T: type, lower: ?u64, upper: ?u64) u64 {
     const zero: T = 0;
@@ -307,7 +307,7 @@ const RWDValues = extern struct {
                 array.writeMany("unequal bytes offset ");
                 array.writeFormat(fmt.ud(byte_offset));
                 array.writeMany("\n");
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
                 builtin.assertEqual(u8, s_memory[byte_offset], t_memory[byte_offset]);
             }
         }
@@ -319,7 +319,7 @@ const RWDValues = extern struct {
             array.writeFormat(src_fmt);
             _ = values;
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -330,7 +330,7 @@ const RWDValues = extern struct {
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showTwo(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -341,7 +341,7 @@ const RWDValues = extern struct {
             s_values.offsets.showTwo(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
@@ -352,7 +352,7 @@ const RWDValues = extern struct {
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
     };
@@ -423,7 +423,7 @@ const RWPPDValues = extern struct {
             array.writeFormat(src_fmt);
             _ = values;
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -434,7 +434,7 @@ const RWPPDValues = extern struct {
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showTwo(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -445,7 +445,7 @@ const RWPPDValues = extern struct {
             s_values.offsets.showTwo(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
@@ -456,7 +456,7 @@ const RWPPDValues = extern struct {
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
     };
@@ -488,7 +488,7 @@ pub const RWPPXValues = extern struct {
             values.addresses.show();
             values.offsets.show();
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -499,7 +499,7 @@ pub const RWPPXValues = extern struct {
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
@@ -510,7 +510,7 @@ pub const RWPPXValues = extern struct {
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                file.noexcept.write(2, array.readAll());
+                builtin.debug.write(array.readAll());
             }
         }
     };

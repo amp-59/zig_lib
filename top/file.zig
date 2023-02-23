@@ -155,7 +155,6 @@ pub const FileStatus = extern struct {
         }
         return st.mode.check(.other_execute);
     }
-    const S = sys.S;
 };
 pub const Stat = FileStatus;
 pub const FileStatusExtra = extern struct {
@@ -933,14 +932,6 @@ pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.Call(spe
         return truncate_error;
     }
 }
-pub const noexcept = opaque {
-    pub fn write(fd: u64, buf: []const u8) void {
-        sys.call(.write, .{}, void, .{ fd, @ptrToInt(buf.ptr), buf.len });
-    }
-    pub fn read(fd: u64, buf: []u8) u64 {
-        return sys.call(.read, .{}, u64, .{ fd, @ptrToInt(buf.ptr), buf.len });
-    }
-};
 pub fn readRandom(buf: []u8) void {
     sys.call(.getrandom, .{}, void, .{ @ptrToInt(buf.ptr), buf.len, if (builtin.is_perf)
         sys.GRND.INSECURE
