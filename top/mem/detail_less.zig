@@ -1,12 +1,14 @@
 const gen = @import("./gen.zig");
+const attr = @import("./attr.zig");
+
 const out = @import("./detail_more.zig");
 
 pub const DetailLess = packed struct {
     index: u8 = undefined,
-    kinds: gen.Kinds = .{},
-    layouts: gen.Layouts = .{},
-    modes: gen.Modes = .{},
-    managers: gen.Managers = .{},
+    kinds: attr.Kinds = .{},
+    layouts: attr.Layouts = .{},
+    modes: attr.Modes = .{},
+    managers: attr.Managers = .{},
 
     pub fn formatWrite(detail: *const DetailLess, array: anytype) void {
         array.writeMany(".{ .index = ");
