@@ -97,7 +97,7 @@ pub fn appendAuxiliarySourceFile(array: anytype, comptime name: [:0]const u8) vo
 pub fn writeIndex(array: anytype, index: anytype) void {
     array.writeMany(builtin.fmt.dec(@TypeOf(index), index).readAll());
 }
-pub fn writeField(array: anytype, name: []const u8, type_descr: TypeDescr) void {
+pub fn writeField(array: anytype, name: []const u8, type_descr: fmt.TypeDescrFormat) void {
     array.writeMany(name);
     array.writeMany(": ");
     array.writeFormat(type_descr);
