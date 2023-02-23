@@ -922,7 +922,7 @@ pub fn intCast(comptime T: type, value: anytype) T {
     if (@bitSizeOf(T) > @bitSizeOf(U)) {
         return value;
     }
-    if (value > ~@as(T, 0)) {
+    if (runtime_assertions and value > ~@as(T, 0)) {
         debug.intCastTruncatedBitsFault(T, U, value);
     }
     return @truncate(T, value);
