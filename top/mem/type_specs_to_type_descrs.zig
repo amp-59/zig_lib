@@ -24,23 +24,23 @@ fn mapContainersToParameters() void {
     array.writeMany("pub const type_descrs=");
     array.writeMany(
         \\&[_]struct {
-        \\    params: gen.TypeDescr,
-        \\    specs: []const gen.TypeDescr,
-        \\    vars: gen.TypeDescr,
+        \\    params: gen.fmt.TypeDescrFormat,
+        \\    specs: []const gen.fmt.TypeDescrFormat,
+        \\    vars: gen.fmt.TypeDescrFormat,
         \\}{ 
     );
     inline for (out.type_specs) |type_spec| {
         array.writeMany(".{.params=");
-        array.writeFormat(fmt.render(fmt_spec, comptime gen.TypeDescr.init(type_spec.params)));
+        array.writeFormat(fmt.render(fmt_spec, comptime fmt.TypeDescrFormat.init(type_spec.params)));
         array.writeMany(",\n");
         array.writeMany(".specs=&.{\n");
         inline for (type_spec.specs) |spec| {
-            array.writeFormat(fmt.render(fmt_spec, comptime gen.TypeDescr.init(spec)));
+            array.writeFormat(fmt.render(fmt_spec, comptime fmt.TypeDescrFormat.init(spec)));
             array.writeMany(",\n");
         }
         array.writeMany("},\n");
         array.writeMany(".vars=");
-        array.writeFormat(fmt.render(fmt_spec, comptime gen.TypeDescr.init(type_spec.vars)));
+        array.writeFormat(fmt.render(fmt_spec, comptime fmt.TypeDescrFormat.init(type_spec.vars)));
         array.writeMany("},\n");
     }
     array.overwriteManyBack("};");

@@ -1348,3 +1348,146 @@ pub fn FormatFormat(comptime Struct: type) type {
         }
     };
 }
+pub const TypeDescrFormat = union(enum) {
+    type_name: []const u8,
+    type_decl: Container,
+    type_refer: Reference,
+    const Reference = struct { []const u8, *const TypeDescrFormat };
+    const Enumeration = struct { []const u8, []const Decl };
+    const Composition = struct { []const u8, []const Field };
+    const Decl = struct { []const u8, u64 };
+    const Field = struct { []const u8, TypeDescrFormat };
+    const Container = union(enum) {
+        Enumeration: Enumeration,
+        Composition: Composition,
+    };
+    pub fn formatWrite(type_descr: TypeDescrFormat, array: anytype) void {
+        switch (type_descr) {
+            .type_name => |type_name| array.writeMany(type_name),
+            .type_refer => |type_refer| {
+                array.writeMany(type_refer[0]);
+                type_refer[1].formatWrite(array);
+            },
+            .type_decl => |type_decl| {
+                switch (type_decl) {
+                    .Composition => |struct_defn| {
+                        array.writeMany(struct_defn[0]);
+                        array.writeMany(" { ");
+                        for (struct_defn[1]) |field| {
+                            array.writeMany(field[0]);
+                            array.writeMany(": ");
+                            field[1].formatWrite(array);
+                            array.writeMany(", ");
+                        }
+                        array.writeMany("}");
+                    },
+                    .Enumeration => |enum_defn| {
+                        array.writeMany(enum_defn[0]);
+                        array.writeMany(" { ");
+                        for (enum_defn[1]) |field| {
+                            array.writeMany(field[0]);
+                            array.writeMany(" = ");
+                            array.writeFormat(fmt.ud64(field[1]));
+                            array.writeMany(", ");
+                        }
+                        array.writeMany("}");
+                    },
+                }
+            },
+        }
+    }
+    pub fn formatLength(type_descr: TypeDescrFormat) u64 {
+        var len: u64 = 0;
+        switch (type_descr) {
+            .type_name => |type_name| len +%= type_name.len,
+            .type_refer => |type_refer| {
+                len +%= type_refer[0].len;
+                len +%= type_refer[1].formatLength();
+            },
+            .type_decl => |type_decl| {
+                switch (type_decl) {
+                    .Composition => |struct_defn| {
+                        len +%= struct_defn[0].len;
+                        len +%= 3;
+                        for (struct_defn[1]) |field| {
+                            len +%= field[0].len;
+                            len +%= 2;
+                            len +%= field[1].formatLength();
+                            len +%= 2;
+                        }
+                        len +%= 1;
+                    },
+                    .Enumeration => |enum_defn| {
+                        len +%= enum_defn[0].len;
+                        len +%= 3;
+                        for (enum_defn[1]) |field| {
+                            len +%= field[0].len;
+                            len +%= 3;
+                            len +%= fmt.ud64(field[1]).formatLength();
+                            len +%= 2;
+                        }
+                        len +%= 1;
+                    },
+                }
+            },
+        }
+        return len;
+    }
+    pub fn init(comptime T: type) TypeDescrFormat {
+        const type_info: builtin.Type = @typeInfo(T);
+        switch (type_info) {
+            else => return .{ .type_name = @typeName(T) },
+            .Struct => |struct_info| {
+                var type_decl: []const Field = &.{};
+                inline for (struct_info.fields) |field| {
+                    type_decl = type_decl ++ [1]Field{.{
+                        field.name,
+                        init(field.type),
+                    }};
+                }
+                return .{ .type_decl = .{ .Composition = .{
+                    builtin.fmt.typeDeclSpecifier(type_info),
+                    type_decl,
+                } } };
+            },
+            .Union => |union_info| {
+                var type_decl: []const Field = &.{};
+                inline for (union_info.fields) |field| {
+                    type_decl = type_decl ++ [1]Field{.{
+                        field.name,
+                        init(field.type),
+                    }};
+                }
+                return .{ .type_decl = .{ .Composition = .{
+                    builtin.fmt.typeDeclSpecifier(type_info),
+                    type_decl,
+                } } };
+            },
+            .Enum => |enum_info| {
+                var type_decl: []const Decl = &.{};
+                inline for (enum_info.fields) |field| {
+                    type_decl = type_decl ++ [1]Decl{.{
+                        field.name,
+                        field.value,
+                    }};
+                }
+                return .{ .type_decl = .{ .Enum = .{
+                    builtin.fmt.typeDeclSpecifier(type_info),
+                    type_decl,
+                } } };
+            },
+            .Optional => |optional_info| {
+                return .{ .type_refer = .{
+                    builtin.fmt.typeDeclSpecifier(type_info),
+                    &init(optional_info.child),
+                } };
+            },
+            .Pointer => |pointer_info| {
+                return .{ .type_refer = .{
+                    builtin.fmt.typeDeclSpecifier(type_info),
+                    &init(pointer_info.child),
+                } };
+            },
+        }
+    }
+};
