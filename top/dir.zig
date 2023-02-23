@@ -8,26 +8,26 @@ const builtin = @import("./builtin.zig");
 pub const DirStreamSpec = struct {
     Allocator: type,
     initial_size: u64 = 1024,
-    errors: Errors = .{},
-    options: Options = .{},
-    logging: Logging = .{},
-
+    errors: DirStreamErrors = .{},
+    options: DirStreamOptions = .{},
+    logging: DirStreamLogging = .{},
     const Specification = @This();
-
-    const Errors = struct {
-        getdents: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
-        open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-    };
-    const Options = struct {
-        init_read_all: bool = true,
-        shrink_after_read: bool = true,
-        make_list: bool = true,
-        close_when_done: bool = true,
-    };
-    const Logging = struct {
-        open: builtin.Logging.AcquireErrorFault = .{},
-        close: builtin.Logging.ReleaseErrorFault = .{},
-    };
+};
+pub const DirStreamErrors = struct {
+    getdents: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
+    open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+    close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
+};
+pub const DirStreamOptions = struct {
+    init_read_all: bool = true,
+    shrink_after_read: bool = true,
+    make_list: bool = true,
+    close_when_done: bool = true,
+};
+pub const DirStreamLogging = struct {
+    open: builtin.Logging.AcquireErrorFault = .{},
+    close: builtin.Logging.ReleaseErrorFault = .{},
+    getdents: builtin.Logging.SuccessErrorFault = .{},
 };
 pub const Kind = enum(u8) {
     regular = sys.S.IFREG >> 12,
@@ -51,17 +51,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         });
         pub const Allocator = dir_spec.Allocator;
         pub const ListView = mem.GenericLinkedListView(.{ .child = Entry, .low_alignment = 8 });
-        pub const Iterator = struct {
-            count: u64 = 0,
-            blk: Block,
-            pub fn list(itr: Iterator) ListView {
-                return .{
-                    .links = .{ .major = itr.blk.aligned_byte_address(), .minor = itr.blk.aligned_byte_address() + 48 },
-                    .count = itr.count,
-                    .index = 0,
-                };
-            }
-        };
+
         pub const Entry = opaque {
             pub fn possess(dirent: *const Entry, dir: *DirStream) void {
                 @intToPtr(*const Block, @ptrToInt(dirent) + 0).* = dir.blk;
@@ -79,7 +69,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             pub fn name(dirent: *const Entry) [:0]const u8 {
                 return @intToPtr([*:0]u8, @ptrToInt(dirent) + 11)[0..dirent.len() :0];
             }
-
             pub fn isDirectory(dirent: *const Entry) bool {
                 return dirent.kind == .directory;
             }
@@ -106,7 +95,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             const name_offset: u8 = @offsetOf(file.DirectoryEntry, "array");
             const reclen_offset: u8 = @offsetOf(file.DirectoryEntry, "reclen");
             const offset_offset: u8 = @offsetOf(file.DirectoryEntry, "offset");
-
             // Often the dot and dot-dot directory entries will not be the first
             // and second entries, and the addresses of the head and sentinel
             // nodes of our mangled list must be known--otherwise we would have
@@ -202,7 +190,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
                 return s_lb_addr + @intToPtr(*u16, s_lb_addr + reclen_offset).*;
             }
         };
-
         pub const dir_spec: DirStreamSpec = spec;
         const dir_open_spec: file.OpenSpec = .{
             .options = .{
@@ -217,9 +204,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             .logging = dir_spec.logging.close,
         };
         pub var disordered: u64 = 0;
-        pub fn entry(dir: *DirStream) *file.DirectoryEntry {
-            return @intToPtr(*file.DirectoryEntry, dir.blk.aligned_byte_address());
-        }
+
         pub fn list(dir: *DirStream) ListView {
             return .{
                 .links = .{
@@ -233,7 +218,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         fn clear(s_lb_addr: u64, s_bytes: u64) void {
             mem.set(s_lb_addr, @as(u8, 0), s_bytes);
         }
-        fn read(dir: *const DirStream) !u64 {
+        fn getDirectoryEntries(dir: *const DirStream) sys.Call(spec.errors.getdents.throw, u64) {
             return sys.call(.getdents64, spec.errors.getdents, u64, .{
                 dir.fd,
                 dir.blk.undefined_byte_address(),
@@ -252,10 +237,10 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             allocator.resizeManyBelow(Block, &dir.blk, .{ .bytes = t_bytes });
         }
         fn readAll(dir: *DirStream, allocator: *Allocator) !void {
-            dir.blk.define(try dir.read());
+            dir.blk.define(try dir.getDirectoryEntries());
             while (dir.blk.undefined_byte_count() < 528) {
                 try dir.grow(allocator);
-                dir.blk.define(try dir.read());
+                dir.blk.define(try dir.getDirectoryEntries());
             }
             if (dir_spec.options.shrink_after_read) {
                 try dir.shrink(allocator);
@@ -294,14 +279,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
                 file.close(dir_close_spec, dir.fd);
                 dir.fd = 0;
             }
-        }
-        /// Close directory file.
-        pub fn close(dir: *DirStream) Iterator {
-            if (dir.fd != 0) {
-                file.close(dir_close_spec, dir.fd);
-                dir.fd = 0;
-            }
-            return .{ .count = dir.count, .blk = dir.blk };
         }
     });
 }
