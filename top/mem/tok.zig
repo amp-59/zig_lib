@@ -377,5 +377,5 @@ pub const equal_operator: [:0]const u8 = " = ";
 pub const period_asterisk_operator: [:0]const u8 = ".*";
 
 pub const end_expression: [:0]const u8 = ";\n";
-pub const end_item: [:0]const u8 = ",\n";
+pub const end_list_item: [:0]const u8 = ",\n";
 pub const end_small_item: [:0]const u8 = ", ";
