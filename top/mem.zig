@@ -1128,6 +1128,28 @@ pub const AbstractSpec = union(enum) {
         });
     }
 };
+
+fn lhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
+    const lb_addr: u64 = @ptrToInt(lu_values.ptr);
+    const ab_addr: u64 = @ptrToInt(ax_values.ptr);
+    const lhs_len: u64 = @divExact(ab_addr - lb_addr, @sizeOf(T));
+    return lu_values[0..lhs_len];
+}
+fn rhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
+    const up_addr: u64 = mach.mulAdd64(@ptrToInt(lu_values.ptr), @sizeOf(T), lu_values.len);
+    const xb_addr: u64 = mach.mulAdd64(@ptrToInt(ax_values.ptr), @sizeOf(U), ax_values.len);
+    const rhs_len: u64 = @divExact(up_addr - xb_addr, @sizeOf(T));
+    return lu_values[0..rhs_len];
+}
+fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
+    const lb_addr: u64 = @ptrToInt(values.ptr);
+    const up_addr: u64 = mach.mulAdd64(lb_addr, @sizeOf(T), values.len);
+    const ab_addr: u64 = mach.alignA64(lb_addr, @alignOf(U));
+    const xb_addr: u64 = mach.alignB64(up_addr, @alignOf(U));
+    const aligned_bytes: u64 = mach.sub64(xb_addr, ab_addr);
+    const mid_len: u64 = mach.div64(aligned_bytes, @sizeOf(U));
+    return @intToPtr([*]const U, ab_addr)[0..mid_len];
+}
 // These should be in builtin.zig, but cannot adhere to the test-error-fault
 // standard yet--that is, their assert* and expect* counterparts cannot be added
 // to builtin--so they are here temporarily as utility functions.
@@ -1141,10 +1163,10 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     if (l_values.ptr == r_values.ptr) {
         return true;
     }
-    var idx: usize = 0;
+    var idx: u64 = 0;
     while (idx != l_values.len) {
         if (!builtin.testEqual(T, l_values[idx], r_values[idx])) return false;
-        idx += 1;
+        idx +%= 1;
     }
     return true;
 }
@@ -1173,7 +1195,7 @@ pub fn testEqualManyBack(comptime T: type, suffix_values: []const T, values: []c
     return testEqualMany(T, suffix_values, values[values.len - suffix_values.len ..]);
 }
 pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
-    var idx: usize = 0;
+    var idx: u64 = 0;
     while (idx != values.len) {
         if (values[idx] == value) return idx;
         idx += 1;
@@ -1181,7 +1203,7 @@ pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 
     return null;
 }
 pub fn indexOfLastEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
-    var idx: usize = values.len;
+    var idx: u64 = values.len;
     while (idx != 0) {
         idx -= 1;
         if (values[idx] == value) return idx;
@@ -1363,18 +1385,6 @@ pub fn readAfterLastEqualOneOrElseWithSentinel(
     values: [:sentinel]const T,
 ) [:sentinel]const T {
     return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
-}
-// XXX: The following two `trim*` functions were taken from the standard to get the
-// XXX: parser running. Revisit later for optimisation and renaming.
-pub fn trimLeft(comptime T: type, values_to_strip: []const T, values: []const T) []const T {
-    var begin: usize = 0;
-    while (begin < values.len and mem.indexOfFirstEqualOne(T, values_to_strip, values[begin]) != null) : (begin += 1) {}
-    return values[begin..];
-}
-pub fn trimRight(comptime T: type, values_to_strip: []const T, values: []const T) []const T {
-    var end: usize = values.len;
-    while (end > 0 and mem.indexOfFirstEqualOne(T, values[end - 1], values_to_strip) != null) : (end -= 1) {}
-    return values[0..end];
 }
 pub fn propagateSearch(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
     const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
