@@ -232,7 +232,7 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     return array.readAll().len;
 }
 
-const reinterpret_spec: mem.ReinterpretSpec = builtin.config("reinterpret_spec", mem.ReinterpretSpec, blk: {
+const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, blk: {
     var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
     tmp.integral = .{ .format = .dec };
     break :blk tmp;

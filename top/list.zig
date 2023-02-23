@@ -579,13 +579,15 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             }
         }
         pub const Graphics = struct {
+            const AddressSpace = builtin.AddressSpace();
             const IOAllocator = mem.GenericArenaAllocator(.{
-                .arena_index = 32,
-                .errors = .{ .map = null, .unmap = null },
+                .AddressSpace = AddressSpace,
+                .arena_index = AddressSpace.addr_spec.count() - 1,
+                .errors = preset.allocator.errors.noexcept,
                 .logging = preset.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.StructuredHolder(u8);
-            pub fn show(list: List, address_space: *builtin.AddressSpace) !void {
+            pub fn show(list: List, address_space: *AddressSpace) !void {
                 var allocator: IOAllocator = try IOAllocator.init(address_space);
                 defer allocator.deinit(address_space);
                 var array: IOPrintArray = IOPrintArray.init(&allocator);
@@ -593,7 +595,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                    array.appendAny(preset.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major.aligned_byte_address()),
                         "+",        fmt.ud64(tmp.links.major.alignment()),
@@ -605,7 +607,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.major.alignment()),
@@ -621,7 +623,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                         tmp.index += 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.prev().?.alignment()),
@@ -638,7 +640,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                         tmp.links = links;
                         tmp.index += 1;
                     } else {
-                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        array.appendAny(preset.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",         fmt.ud64(tmp.links.prev().?.alignment()),
@@ -1071,13 +1073,15 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
             return ret;
         }
         pub const Graphics = struct {
+            const AddressSpace = builtin.AddressSpace();
             const IOAllocator = mem.GenericArenaAllocator(.{
-                .arena_index = 32,
-                .errors = .{ .map = null, .unmap = null },
+                .AddressSpace = AddressSpace,
+                .arena_index = AddressSpace.addr_spec.count() - 1,
+                .errors = preset.allocator.errors.noexcept,
                 .logging = preset.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.Holder(u8);
-            pub fn show(list: List, address_space: *builtin.AddressSpace) !void {
+            pub fn show(list: List, address_space: *AddressSpace) !void {
                 var allocator: IOAllocator = try IOAllocator.init(address_space);
                 defer allocator.deinit(address_space);
                 var array: IOPrintArray = IOPrintArray.init(&allocator);

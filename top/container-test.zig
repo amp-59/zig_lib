@@ -25,7 +25,7 @@ fn testDynamicAppend(comptime spec: mem.ReinterpretSpec, allocator: *Allocator, 
     try testing.expectEqualMany(dst_type, array.readAll(), expected);
 }
 fn unfairAndUnreasonableTestCases() !void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     {
         const S = struct {
@@ -164,7 +164,7 @@ fn unfairAndUnreasonableTestCases() !void {
 pub fn main() !void {
     var b: bool = true;
     if (b) return;
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var random: file.DeviceRandomBytes(1024 * 1024) = .{};
     inline for (.{ u16, u32, u64 }) |child| {
         { // StructuredAutomaticView

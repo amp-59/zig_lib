@@ -295,7 +295,7 @@ const opt_map: []const Options.Map = meta.slice(Options.Map, .{ // zig fmt: off
     .{ .field_name = "jit_mode",       .long = "--no-fixed",               .assign = .{ .boolean = false } },
 }); // zig fmt: on
 
-pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
+pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
     if (return) {}
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opt_map);
@@ -418,6 +418,6 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8, vars
     builtin.debug.write(result_array.readAll());
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) anyerror!void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     try threadMain(&address_space, args, vars);
 }

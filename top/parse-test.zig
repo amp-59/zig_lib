@@ -163,7 +163,7 @@ pub fn main(args: [][*:0]u8) !void {
     const show_time: bool = true;
     const show_nodes_count: bool = true;
 
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     if (args.len > 1) {
         const t0: time.TimeSpec = try time.get(.{}, .realtime);
         for (args[1..]) |arg| {

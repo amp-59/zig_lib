@@ -7,29 +7,30 @@ pub const Offset = u32;
 
 pub const Allocator = struct {
     const preset_errors: mem.AllocatorErrors = .{};
+    const AddressSpace = builtin.AddressSpace();
     pub const Node = mem.GenericArenaAllocator(.{
-        .AddressSpace = builtin.AddressSpace,
+        .AddressSpace = AddressSpace,
         .arena_index = 0,
         .options = preset.allocator.options.small,
         .logging = preset.allocator.logging.silent,
         .errors = preset.allocator.errors.uniform,
     });
     pub const Error = mem.GenericArenaAllocator(.{
-        .AddressSpace = builtin.AddressSpace,
+        .AddressSpace = AddressSpace,
         .arena_index = 1,
         .options = preset.allocator.options.small,
         .logging = preset.allocator.logging.silent,
         .errors = preset.allocator.errors.uniform,
     });
     pub const Extra = mem.GenericArenaAllocator(.{
-        .AddressSpace = builtin.AddressSpace,
+        .AddressSpace = AddressSpace,
         .arena_index = 2,
         .options = preset.allocator.options.small,
         .logging = preset.allocator.logging.silent,
         .errors = preset.allocator.errors.uniform,
     });
     pub const State = mem.GenericArenaAllocator(.{
-        .AddressSpace = builtin.AddressSpace,
+        .AddressSpace = AddressSpace,
         .arena_index = 3,
         .options = preset.allocator.options.small,
         .logging = preset.allocator.logging.silent,

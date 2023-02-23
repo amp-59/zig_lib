@@ -70,7 +70,7 @@ pub fn main(args: [][*:0]u8) !void {
         .arena_index = 0,
     });
     const PathSplit = GenericPathSplit(.{ .Allocator = Allocator });
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     for (args) |arg| {
         var path_split: PathSplit = try PathSplit.init(&allocator, meta.manyToSlice(arg));

@@ -149,7 +149,7 @@ fn minimalRunTest(_: *Allocator, array: anytype, format: anytype, expected: ?[]c
     array.undefineAll();
 }
 fn testSpecificCases() !void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: builtin.AddressSpace() = .{};
     var allocator: Allocator = if (use_alloc) try Allocator.init(&address_space) else undefined;
     defer if (use_alloc) allocator.deinit(&address_space);
     var dst: [16384]u8 = undefined;

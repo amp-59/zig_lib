@@ -65,7 +65,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
 });
 
-const test_subject_name: []const u8 = builtin.config("test_subject", []const u8, "lib");
+const test_subject_name: []const u8 = builtin.define("test_subject", []const u8, "lib");
 const test_standard: bool = mem.testEqualMany(u8, "std", test_subject_name);
 const print_times: bool = false;
 
@@ -176,7 +176,7 @@ const Test = struct {
     const sample_size: u64 = 10;
     var sample: u64 = 0;
 };
-fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
+fn parseAndWalk(address_space: *AddressSpace, arg: [:0]const u8) !u64 {
     var gpa = if (test_standard) std.heap.GeneralPurposeAllocator(.{}){};
     var allocator_0: Allocator0 = try Allocator0.init(address_space);
     var allocator_1: Allocator1 = try Allocator1.init(address_space);
@@ -237,7 +237,7 @@ fn parseAndWalk(address_space: *builtin.AddressSpace, arg: [:0]const u8) !u64 {
     return nanos;
 }
 
-pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !void {
+pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
     if (builtin.is_debug) {
         return;
     }
@@ -269,6 +269,6 @@ pub fn threadMain(address_space: *builtin.AddressSpace, args_in: [][*:0]u8) !voi
     }
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     try threadMain(&address_space, args);
 }

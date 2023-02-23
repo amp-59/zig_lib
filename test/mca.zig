@@ -359,7 +359,7 @@ const opt_map: []const Options.Map = meta.slice(Options.Map, .{
 pub fn main(args_in: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opt_map);
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var allocator_0: Allocator = try Allocator.init(&address_space);
     defer allocator_0.deinit(&address_space);
     for (args) |arg| {

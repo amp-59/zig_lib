@@ -4,7 +4,7 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
-const word_size: u8 = @bitSizeOf(usize);
+const word_size: u8 = @bitSizeOf(u64);
 
 pub const ResourceError = error{ UnderSupply, OverSupply };
 pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
@@ -18,7 +18,7 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
     const Data: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(Data);
     return (extern struct {
-        bits: Data = if (data_info == .Array) [1]usize{0} ** data_info.Array.len else 0,
+        bits: Data = if (data_info == .Array) [1]u64{0} ** data_info.Array.len else 0,
         pub const BitSet: type = @This();
         const Word: type = if (data_info == .Array) data_info.Array.child else Data;
         const Index: type = meta.LeastRealBitSize(bits);
@@ -319,13 +319,13 @@ pub const DiscreteMultiArena = struct {
         }
         return map_list;
     }
-    pub fn capacityAll(comptime multi_arena: MultiArena) usize {
+    pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
         return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
     }
-    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) usize {
+    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) u64 {
         return multi_arena.list[index].capacity();
     }
-    pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
+    pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
         var index: Index(multi_arena) = 0;
         while (index != multi_arena.list.len) : (index += 1) {
             if (addr >= multi_arena.list[index].low() and
@@ -342,10 +342,10 @@ pub const DiscreteMultiArena = struct {
     pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
         return multi_arena.list.len;
     }
-    pub fn low(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) usize {
+    pub fn low(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) u64 {
         return multi_arena.list[index].low();
     }
-    pub fn high(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) usize {
+    pub fn high(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) u64 {
         return multi_arena.list[index].high();
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
@@ -439,20 +439,20 @@ pub const RegularMultiArena = struct {
     pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
         return multi_arena.divisions;
     }
-    pub fn capacityAll(comptime multi_arena: MultiArena) usize {
+    pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
         return mach.alignA64(multi_arena.up_addr - multi_arena.lb_addr, multi_arena.alignment);
     }
-    pub fn capacityEach(comptime multi_arena: MultiArena) usize {
+    pub fn capacityEach(comptime multi_arena: MultiArena) u64 {
         return @divExact(capacityAll(multi_arena), multi_arena.divisions);
     }
-    pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
+    pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
         return @intCast(Index(multi_arena), (addr - multi_arena.lb_addr) / capacityEach(multi_arena));
     }
-    pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) usize {
+    pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
         const offset: u64 = capacityEach(multi_arena) * index;
         return @max(multi_arena.lb_addr + multi_arena.lb_offset, multi_arena.lb_addr + offset);
     }
-    pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) usize {
+    pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
         const offset: u64 = capacityEach(multi_arena) * (index + 1);
         return @min(multi_arena.up_addr - multi_arena.up_offset, multi_arena.lb_addr + offset);
     }
@@ -476,7 +476,7 @@ pub const RegularMultiArena = struct {
 };
 pub fn isRegular(comptime multi_arena: anytype, comptime map_list: []const ArenaReference) bool {
     var safety: ?bool = null;
-    var addr: ?usize = null;
+    var addr: ?u64 = null;
     for (map_list) |item| {
         if (safety) |prev| {
             if (item.options) |options| {
@@ -655,20 +655,20 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
             return spec.options.thread_safe and address_space.impl.atomicSet(index);
         }
-        pub fn low(index: Index) usize {
+        pub fn low(index: Index) u64 {
             return spec.low(index);
         }
-        pub fn high(index: Index) usize {
+        pub fn high(index: Index) u64 {
             return spec.high(index);
         }
         pub fn arena(index: Index) Arena {
             return spec.arena(index);
         }
-        pub fn count(address_space: *const RegularAddressSpace) usize {
+        pub fn count(address_space: *const RegularAddressSpace) u64 {
             var index: Index = 0;
-            var ret: usize = 0;
+            var ret: u64 = 0;
             while (index != addr_spec.divisions) : (index +%= 1) {
-                ret +%= builtin.int(usize, address_space.impl.get(index));
+                ret +%= builtin.int(u64, address_space.impl.get(index));
             }
             return ret;
         }
@@ -709,14 +709,22 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
             builtin.static.assert(spec.list[index].options.thread_safe);
             return address_space.impl.atomicSet(index);
         }
-        pub fn low(comptime index: Index) usize {
+        pub fn low(comptime index: Index) u64 {
             return spec.low(index);
         }
-        pub fn high(comptime index: Index) usize {
+        pub fn high(comptime index: Index) u64 {
             return spec.high(index);
         }
         pub fn arena(comptime index: Index) Arena {
             return spec.arena(index);
+        }
+        pub fn count(address_space: *const DiscreteAddressSpace) u64 {
+            var index: Index = 0;
+            var ret: u64 = 0;
+            while (index != spec.list.len) : (index +%= 1) {
+                ret +%= builtin.int(u64, address_space.impl.get(index));
+            }
+            return ret;
         }
         pub usingnamespace Specs(DiscreteAddressSpace);
         pub usingnamespace DiscreteTypes(DiscreteAddressSpace);
@@ -826,34 +834,6 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 return len;
             }
         };
-        comptime {
-            if (false and builtin.runtime_assertions) {
-                if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
-                    var prev: usize = 0;
-                    for (AddressSpace.addr_spec.list) |item| {
-                        builtin.static.assertAboveOrEqual(usize, item.high(), item.low());
-                        builtin.static.assertAboveOrEqual(usize, item.high(), prev);
-                        prev = item.high();
-                    }
-                } else {
-                    builtin.static.assertAboveOrEqual(
-                        usize,
-                        AddressSpace.addr_spec.ab_addr,
-                        AddressSpace.addr_spec.lb_addr,
-                    );
-                    builtin.static.assertAboveOrEqual(
-                        usize,
-                        AddressSpace.addr_spec.xb_addr,
-                        AddressSpace.addr_spec.ab_addr,
-                    );
-                    builtin.static.assertAboveOrEqual(
-                        usize,
-                        AddressSpace.addr_spec.up_addr,
-                        AddressSpace.addr_spec.xb_addr,
-                    );
-                }
-            }
-        }
     };
 }
 pub fn generic(comptime any: anytype) meta.Generic {

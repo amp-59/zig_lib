@@ -1,51 +1,13 @@
-pub const zig = @import("builtin");
-pub const root = @import("root");
+pub const config = @import("./config.zig");
 
-pub usingnamespace builtin;
+pub usingnamespace config;
 pub usingnamespace @import("./static/memcpy.zig");
 pub usingnamespace @import("./static/memset.zig");
 pub usingnamespace @import("./static/zig_probe_stack.zig");
 
-// zig fmt: off
-pub const native_endian         = zig.cpu.arch.endian();
-pub const is_little: bool       = native_endian == .Little;
-pub const is_big: bool          = native_endian == .Big;
-pub const is_safe: bool         = config("is_safe", bool, zig.mode == .ReleaseSafe);
-pub const is_small: bool        = config("is_small", bool, zig.mode == .ReleaseSmall);
-pub const is_fast: bool         = config("is_fast", bool, zig.mode == .ReleaseFast);
-pub const is_debug: bool        = config("is_debug", bool, zig.mode == .Debug);
-pub const is_perf: bool         = config("is_perf", bool, is_small or is_fast);
-pub const is_verbose: bool      = config("is_verbose", bool, is_debug);
-pub const is_silent: bool       = config("is_silent", bool, false);
-pub const AddressSpace          = config("AddressSpace", type, info.address_space.generic);
-pub const logging: Logging.Full = config("logging", Logging.Full, .{});
-pub const runtime_assertions: bool  = config("runtime_assertions", bool, is_debug or is_safe);
-pub const comptime_assertions: bool = config("comptime_assertions", bool, is_debug);
-// These are defined by the library builder
-pub const zig_exe: ?[:0]const u8            = config("zig_exe", ?[:0]const u8, null);
-pub const build_root: ?[:0]const u8         = config("build_root", ?[:0]const u8, null);
-pub const cache_dir: ?[:0]const u8          = config("cache_dir", ?[:0]const u8, null);
-pub const global_cache_dir: ?[:0]const u8   = config("global_cache_dir", ?[:0]const u8, null);
-pub const root_src_file: ?[:0]const u8      = config("root_src_file", ?[:0]const u8, null);
-// zig fmt: on
-const builtin = opaque {
-    pub const SourceLocation = Src();
-    pub const Mode = @TypeOf(zig.mode);
-    pub const Type = @TypeOf(@typeInfo(void));
-    pub const TypeId = @typeInfo(Type).Union.tag_type.?;
-    pub const Endian = @TypeOf(zig.cpu.arch.endian());
-    pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
-    pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
-};
-fn Src() type {
-    return @TypeOf(@src());
-}
-fn Overflow(comptime T: type) type {
-    return struct { T, u1 };
-}
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
-    return build_root.? ++ "/" ++ relative;
+    return @This().build_root.? ++ "/" ++ relative;
 }
 pub const Exception = error{
     SubCausedOverflow,
@@ -54,66 +16,6 @@ pub const Exception = error{
     LeftShiftCausedOverflow,
     ExactDivisionWithRemainder,
     UnexpectedValue,
-};
-pub const Logging = struct {
-    pub const Full = packed struct {
-        /// Report successful actions (not all actions are reported)
-        Success: bool = default.Success,
-        /// Report actions which acquire a finite resource
-        Acquire: bool = default.Acquire,
-        /// Report actions which release a finite resource
-        Release: bool = default.Release,
-        /// Report actions which throw an error
-        Error: bool = default.Error,
-        /// Report actions which terminate the program
-        Fault: bool = default.Fault,
-    };
-    pub const SuccessError = packed struct {
-        Success: bool = default.Success,
-        Error: bool = default.Error,
-    };
-    pub const SuccessFault = packed struct {
-        Success: bool = default.Success,
-        Fault: bool = default.Fault,
-    };
-    pub const AcquireError = packed struct {
-        Acquire: bool = default.Acquire,
-        Error: bool = default.Error,
-    };
-    pub const AcquireFault = packed struct {
-        Acquire: bool = default.Acquire,
-        Fault: bool = default.Fault,
-    };
-    pub const ReleaseError = packed struct {
-        Release: bool = default.Release,
-        Error: bool = default.Error,
-    };
-    pub const ReleaseFault = packed struct {
-        Release: bool = default.Release,
-        Fault: bool = default.Fault,
-    };
-    pub const SuccessErrorFault = packed struct {
-        Success: bool = default.Success,
-        Error: bool = default.Error,
-        Fault: bool = default.Fault,
-    };
-    pub const AcquireErrorFault = packed struct {
-        Acquire: bool = default.Acquire,
-        Error: bool = default.Error,
-        Fault: bool = default.Fault,
-    };
-    pub const ReleaseErrorFault = packed struct {
-        Release: bool = default.Release,
-        Error: bool = default.Error,
-        Fault: bool = default.Fault,
-    };
-    pub const default = .{
-        .Success = is_verbose,
-        .Acquire = is_verbose,
-        .Release = is_verbose,
-        .Error = !is_silent,
-        .Fault = !is_silent,
-    };
 };
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
@@ -140,12 +42,12 @@ pub fn ExternalError(comptime E: type) type {
     });
 }
 pub fn ZigError(comptime Value: type, comptime return_codes: []const Value, comptime catch_all: ?[]const u8) type {
-    var error_set: []const builtin.Type.Error = &.{};
+    var error_set: []const Type.Error = &.{};
     for (return_codes) |error_code| {
-        error_set = error_set ++ [1]builtin.Type.Error{.{ .name = error_code.errorName() }};
+        error_set = error_set ++ [1]Type.Error{.{ .name = error_code.errorName() }};
     }
     if (catch_all) |error_name| {
-        error_set = error_set ++ [1]builtin.Type.Error{.{ .name = error_name }};
+        error_set = error_set ++ [1]Type.Error{.{ .name = error_name }};
     }
     return @Type(.{ .ErrorSet = error_set });
 }
@@ -200,48 +102,6 @@ pub inline fn createErrorPolicy(
     var value: *InternalError(S.Error) = ptr(InternalError(S.Error));
     value.* = new;
     return value;
-}
-
-pub fn config(
-    comptime symbol: []const u8,
-    comptime T: type,
-    comptime default: anytype,
-) T {
-    if (@hasDecl(root, symbol)) {
-        return @field(root, symbol);
-    }
-    if (@hasDecl(@cImport({}), symbol)) {
-        const command = @field(@cImport({}), symbol);
-        if (T == bool) {
-            return @bitCast(T, @as(u1, command));
-        }
-        return command;
-    }
-    if (@typeInfo(@TypeOf(default)) == .Fn and
-        @TypeOf(default) != T)
-    {
-        return @call(.auto, default, .{});
-    }
-    return default;
-}
-pub fn configExtra(
-    comptime symbol: []const u8,
-    comptime T: type,
-    comptime default: anytype,
-    comptime args: anytype,
-) T {
-    if (@hasDecl(root, symbol)) {
-        return @field(root, symbol);
-    } else if (@hasDecl(@cImport({}), symbol)) {
-        const command = @field(@cImport({}), symbol);
-        if (T == bool) {
-            return @bitCast(T, @as(u1, command));
-        }
-        return command;
-    } else if (@typeInfo(@TypeOf(default)) == .Fn) {
-        return @call(.auto, default, args);
-    }
-    return default;
 }
 pub fn BitCount(comptime T: type) type {
     if (@sizeOf(T) == 0) {
@@ -334,7 +194,7 @@ fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-    if (runtime_assertions and result[1] != 0) {
+    if (config.runtime_assertions and result[1] != 0) {
         debug.addCausedOverflowFault(T, arg1, arg2);
     }
     return result[0];
@@ -344,7 +204,7 @@ fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-    if (runtime_assertions and result[1] != 0) {
+    if (config.runtime_assertions and result[1] != 0) {
         debug.subCausedOverflowFault(T, arg1, arg2);
     }
     return result[0];
@@ -354,7 +214,7 @@ fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-    if (runtime_assertions and result[1] != 0) {
+    if (config.runtime_assertions and result[1] != 0) {
         debug.mulCausedOverflowFault(T, arg1, arg2);
     }
     return result[0];
@@ -365,7 +225,7 @@ fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
 fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
     const remainder: T = normalSubReturn(T, arg1, (result * arg2));
-    if (runtime_assertions and remainder != 0) {
+    if (config.runtime_assertions and remainder != 0) {
         debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder);
     }
     return result;
@@ -714,7 +574,7 @@ fn @"test"(b: bool) bool {
 }
 
 // Currently, only the following non-trivial comparisons are supported:
-fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
+fn testEqualArray(comptime T: type, comptime array_info: Type.Array, arg1: T, arg2: T) bool {
     var i: usize = 0;
     while (i != array_info.len) : (i += 1) {
         if (!testEqual(array_info.child, arg1[i], arg2[i])) {
@@ -723,7 +583,7 @@ fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg
     }
     return true;
 }
-fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
+fn testEqualSlice(comptime T: type, comptime pointer_info: Type.Pointer, arg1: T, arg2: T) bool {
     if (arg1.len != arg2.len) {
         return false;
     }
@@ -738,13 +598,13 @@ fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer,
     }
     return true;
 }
-fn testEqualPointer(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
+fn testEqualPointer(comptime T: type, comptime pointer_info: Type.Pointer, arg1: T, arg2: T) bool {
     if (@typeInfo(pointer_info.child) != .Fn) {
         return arg1 == arg2;
     }
     return false;
 }
-fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, arg1: T, arg2: T) bool {
+fn testEqualStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T, arg2: T) bool {
     inline for (struct_info.fields) |field| {
         if (!testEqual(
             field.type,
@@ -756,7 +616,7 @@ fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, 
     }
     return true;
 }
-fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
+fn testEqualUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
     if (union_info.tag_type) |tag_type| {
         inline for (union_info.fields) |field| {
             const tag: tag_type = @field(tag_type, field.name);
@@ -781,7 +641,7 @@ fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg
         @ptrCast(*const [@sizeOf(T)]u8, &arg2),
     );
 }
-fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Optional, arg1: T, arg2: T) bool {
+fn testEqualOptional(comptime T: type, comptime optional_info: Type.Optional, arg1: T, arg2: T) bool {
     if (@typeInfo(optional_info.child) == .Pointer and
         @typeInfo(optional_info.child).Pointer.size != .Slice and
         @typeInfo(optional_info.child).Pointer.size != .C)
@@ -791,7 +651,7 @@ fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Opti
     return false;
 }
 pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
-    const type_info: builtin.Type = @typeInfo(T);
+    const type_info: Type = @typeInfo(T);
     switch (type_info) {
         .Array => |array_info| {
             return testEqualArray(T, array_info, arg1, arg2);
@@ -845,37 +705,37 @@ pub fn assert(b: bool) void {
     }
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
-    if (runtime_assertions and arg1 >= arg2) {
+    if (config.runtime_assertions and arg1 >= arg2) {
         debug.comparisonFailedFault(T, " < ", arg1, arg2);
     }
 }
 pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (runtime_assertions and arg1 > arg2) {
+    if (config.runtime_assertions and arg1 > arg2) {
         debug.comparisonFailedFault(T, " <= ", arg1, arg2);
     }
 }
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (runtime_assertions and !testEqual(T, arg1, arg2)) {
+    if (config.runtime_assertions and !testEqual(T, arg1, arg2)) {
         debug.comparisonFailedFault(T, " == ", arg1, arg2);
     }
 }
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (runtime_assertions and testEqual(T, arg1, arg2)) {
+    if (config.runtime_assertions and testEqual(T, arg1, arg2)) {
         debug.comparisonFailedFault(T, " != ", arg1, arg2);
     }
 }
 pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (runtime_assertions and arg1 < arg2) {
+    if (config.runtime_assertions and arg1 < arg2) {
         debug.comparisonFailedFault(T, " >= ", arg1, arg2);
     }
 }
 pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
-    if (runtime_assertions and arg1 <= arg2) {
+    if (config.runtime_assertions and arg1 <= arg2) {
         debug.comparisonFailedFault(T, " > ", arg1, arg2);
     }
 }
 const FaultExtra = struct {
-    src: builtin.SourceLocation,
+    src: SourceLocation,
     about: ?[]const u8 = null,
 };
 pub fn expect(b: bool) Exception!void {
@@ -884,32 +744,32 @@ pub fn expect(b: bool) Exception!void {
     }
 }
 pub fn expectBelow(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (runtime_assertions and arg1 >= arg2) {
+    if (config.runtime_assertions and arg1 >= arg2) {
         return debug.comparisonFailedException(T, " < ", arg1, arg2);
     }
 }
 pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (runtime_assertions and arg1 > arg2) {
+    if (config.runtime_assertions and arg1 > arg2) {
         return debug.comparisonFailedException(T, " <= ", arg1, arg2);
     }
 }
 pub fn expectEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (runtime_assertions and !testEqual(T, arg1, arg2)) {
+    if (config.runtime_assertions and !testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedException(T, " == ", arg1, arg2);
     }
 }
 pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (runtime_assertions and testEqual(T, arg1, arg2)) {
+    if (config.runtime_assertions and testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedException(T, " != ", arg1, arg2);
     }
 }
 pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (runtime_assertions and arg1 < arg2) {
+    if (config.runtime_assertions and arg1 < arg2) {
         return debug.comparisonFailedException(T, " >= ", arg1, arg2);
     }
 }
 pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (runtime_assertions and arg1 <= arg2) {
+    if (config.runtime_assertions and arg1 <= arg2) {
         return debug.comparisonFailedException(T, " > ", arg1, arg2);
     }
 }
@@ -922,7 +782,7 @@ pub fn intCast(comptime T: type, value: anytype) T {
     if (@bitSizeOf(T) > @bitSizeOf(U)) {
         return value;
     }
-    if (runtime_assertions and value > ~@as(T, 0)) {
+    if (config.runtime_assertions and value > ~@as(T, 0)) {
         debug.intCastTruncatedBitsFault(T, U, value);
     }
     return @truncate(T, value);
@@ -940,42 +800,42 @@ pub const static = opaque {
     }
     fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingAddReturn(T, arg1.*, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (config.comptime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalAddReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (config.comptime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalSubAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingSubReturn(T, arg1.*, arg2);
-        if (comptime_assertions and arg1.* < arg2) {
+        if (config.comptime_assertions and arg1.* < arg2) {
             debug.static.subCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalSubReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (config.comptime_assertions and result[1] != 0) {
             debug.static.subCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalMulAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingMulReturn(T, arg1.*, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (config.comptime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalMulReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (config.comptime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1, arg2);
         }
         return result[0];
@@ -983,7 +843,7 @@ pub const static = opaque {
     fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: T = arg1.* / arg2;
         const remainder: T = static.normalSubReturn(T, arg1.*, (result * arg2));
-        if (comptime_assertions and remainder != 0) {
+        if (config.comptime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1.*, arg2, result, remainder);
         }
         arg1.* = result;
@@ -991,7 +851,7 @@ pub const static = opaque {
     fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: T = arg1 / arg2;
         const remainder: T = static.normalSubReturn(T, arg1, (result * arg2));
-        if (comptime_assertions and remainder != 0) {
+        if (config.comptime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
         }
         return result;
@@ -1021,32 +881,32 @@ pub const static = opaque {
         static.exactDivisionAssign(T, arg1, arg2);
     }
     pub fn assertBelow(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 >= arg2) {
+        if (config.comptime_assertions and arg1 >= arg2) {
             debug.static.comparisonFailed(T, " < ", arg1, arg2);
         }
     }
     pub fn assertBelowOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 > arg2) {
+        if (config.comptime_assertions and arg1 > arg2) {
             debug.static.comparisonFailed(T, " <= ", arg1, arg2);
         }
     }
     pub fn assertEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 != arg2) {
+        if (config.comptime_assertions and arg1 != arg2) {
             debug.static.comparisonFailed(T, " == ", arg1, arg2);
         }
     }
     pub fn assertNotEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 == arg2) {
+        if (config.comptime_assertions and arg1 == arg2) {
             debug.static.comparisonFailed(T, " != ", arg1, arg2);
         }
     }
     pub fn assertAboveOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 < arg2) {
+        if (config.comptime_assertions and arg1 < arg2) {
             debug.static.comparisonFailed(T, " >= ", arg1, arg2);
         }
     }
     pub fn assertAbove(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 <= arg2) {
+        if (config.comptime_assertions and arg1 <= arg2) {
             debug.static.comparisonFailed(T, " > ", arg1, arg2);
         }
     }
@@ -1307,19 +1167,19 @@ pub const debug = opaque {
         write(buf);
     }
     pub inline fn logSuccess(buf: []const u8) void {
-        if (logging.Success) write(buf);
+        if (config.logging.Success) write(buf);
     }
     pub inline fn logAcquire(buf: []const u8) void {
-        if (logging.Acquire) write(buf);
+        if (config.logging.Acquire) write(buf);
     }
     pub inline fn logRelease(buf: []const u8) void {
-        if (logging.Release) write(buf);
+        if (config.logging.Release) write(buf);
     }
     pub inline fn logError(buf: []const u8) void {
-        if (logging.Error) write(buf);
+        if (config.logging.Error) write(buf);
     }
     pub inline fn logFault(buf: []const u8) noreturn {
-        if (logging.Fault) write(buf);
+        if (config.logging.Fault) write(buf);
         abort();
     }
     pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
@@ -1334,19 +1194,19 @@ pub const debug = opaque {
         write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
-        if (logging.Success) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging.Success) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
-        if (logging.Acquire) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging.Acquire) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
-        if (logging.Release) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging.Release) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
-        if (logging.Error) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging.Error) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logFaultAIO(buf: []u8, slices: []const []const u8) noreturn {
-        if (logging.Fault) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging.Fault) write(buf[0..writeMulti(buf, slices)]);
         abort();
     }
 
@@ -1953,7 +1813,7 @@ pub const fmt = opaque {
             return result +% d;
         }
     }
-    pub fn typeTypeName(comptime id: builtin.TypeId) []const u8 {
+    pub fn typeTypeName(comptime id: TypeId) []const u8 {
         return switch (id) {
             .Type => "type",
             .Void => "void",
@@ -1981,7 +1841,7 @@ pub const fmt = opaque {
             .EnumLiteral => "enum literal",
         };
     }
-    pub fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
+    pub fn typeDeclSpecifier(comptime type_info: Type) []const u8 {
         return switch (type_info) {
             .Array, .Pointer, .Optional => {
                 const type_name: []const u8 = @typeName(@Type(type_info));
@@ -2116,36 +1976,16 @@ pub const Version = struct {
         };
     }
 };
-pub const info = struct {
-    const title_s: []const u8 = "\r\t\x1b[96;1mnote\x1b[0;1m: ";
-    const point_s: []const u8 = "\r\t    : ";
-    const space_s: []const u8 = "\r\t       ";
-    pub const path = opaque {
-        pub inline fn buildRoot() noreturn {
-            @compileError(
-                "program requires build root:\n" ++
-                    title_s ++ "add '-Dbuild_root=<project_build_root>' to compile flags\n",
-            );
-        }
-    };
-    pub const address_space = opaque {
-        pub inline fn generic() noreturn {
-            @compileError(
-                "toplevel address space required:\n" ++
-                    title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.regular_128;' in program root\n" ++
-                    title_s ++ "address spaces are required by high level features with managed memory",
-            );
-        }
-        pub inline fn defaultValue(comptime Struct: type) noreturn {
-            @compileError(
-                if (!@hasField(Struct, "AddressSpace"))
-                    "expected field 'AddressSpace' in '" ++ @typeName(Struct) ++ "'"
-                else
-                    "toplevel address space required by default field value:\n" ++
-                        title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.regular_128;' in program root\n" ++
-                        point_s ++ "initialize field 'AddressSpace' in '" ++ @typeName(Struct) ++ "' explicitly\n" ++
-                        title_s ++ "address spaces are required by high level features with managed memory",
-            );
-        }
-    };
-};
+pub const SourceLocation = Src();
+pub const Mode = @TypeOf(@This().mode);
+pub const Type = @TypeOf(@typeInfo(void));
+pub const TypeId = @typeInfo(Type).Union.tag_type.?;
+pub const Endian = @TypeOf(@This().cpu.arch.endian());
+pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
+pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
+fn Src() type {
+    return @TypeOf(@src());
+}
+fn Overflow(comptime T: type) type {
+    return struct { T, u1 };
+}

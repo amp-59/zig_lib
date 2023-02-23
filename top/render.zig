@@ -6,7 +6,7 @@ const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 
 pub const RenderSpec = struct {
-    radix: u16 = render_radix,
+    radix: u16 = 10,
     radix_field_name_suffixes: ?[]const RadixFieldName = null,
 
     string_literal: ?bool = true,
@@ -29,14 +29,12 @@ pub const RenderSpec = struct {
     ignore_container_decls: bool = false,
 
     const RadixFieldName = struct {
-        radix: u16 = render_radix,
+        radix: u16 = 10,
         prefix: ?[]const u8 = null,
         suffix: ?[]const u8 = null,
     };
     const default: RenderSpec = .{};
 };
-
-const render_radix: u16 = builtin.config("render_radix", u16, 10);
 
 pub inline fn any(value: anytype) AnyFormat(RenderSpec.default, @TypeOf(value)) {
     return .{ .value = value };

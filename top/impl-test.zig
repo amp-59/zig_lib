@@ -1146,7 +1146,7 @@ fn analyseParametricReferences(allocator: *Allocator0, structure: StructureSet) 
     }
 }
 pub fn main() !void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var repeat: u64 = 0;
     var allocator: Allocator0 = try Allocator0.init(&address_space);
     try allocator.map(65536);

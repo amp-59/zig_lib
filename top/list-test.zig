@@ -80,7 +80,7 @@ fn contrivedInternal(allocator: *Allocator0, list: *LinkedList) !void {
     try list.delete(null);
 }
 fn contrived() !void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var allocator: Allocator0 = try Allocator0.init(&address_space);
     defer allocator.deinit(&address_space);
     var list: LinkedList = try LinkedList.init(&allocator);
@@ -107,7 +107,7 @@ pub fn main() !void {
     const Count: type = meta.LeastBitSize(big_num);
     const Big: type = meta.LeastBitSize(big_num / 4);
     const undefined_s: [256]u8 = ("a" ** 256).*;
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var random: Random = .{};
     var allocator_0: Allocator0 = try Allocator0.init(&address_space);
     defer {
