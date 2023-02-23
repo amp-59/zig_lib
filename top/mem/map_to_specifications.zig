@@ -24,14 +24,19 @@ fn mapToContainers() void {
     for (out.containers) |indices| {
         array.writeMany("&.{");
         for (keys.auto[0..keys.len]) |key| {
-            array.writeMany("&.{");
-            for (indices) |index| {
-                if (out.canonicals[index].spec == key.spec) {
-                    array.writeFormat(fmt.ud64(index));
-                    array.writeMany(",");
+            if (indices.len == 0) {
+                array.writeMany("&.{},");
+            } else {
+                array.writeMany("&.{");
+                for (indices) |index| {
+                    if (out.canonicals[index].spec == key.spec) {
+                        array.writeFormat(fmt.ud64(index));
+                        array.writeMany(",");
+                    }
                 }
+                array.undefine(builtin.int(u1, array.readOneBack() != '{'));
+                array.writeMany("},");
             }
-            array.writeMany("},");
         }
         array.writeMany("},");
     }
