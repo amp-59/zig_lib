@@ -13,7 +13,7 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
+pub const is_silent: bool = false;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
@@ -351,7 +351,7 @@ fn convertToInt(options: *Options, arg: []const u8) void {
 }
 
 pub fn main(args_in: [][*:0]u8) !void {
-    var address_space: builtin.AddressSpace = .{};
+    var address_space: AddressSpace = .{};
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
     var done: bool = undefined;
