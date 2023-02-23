@@ -268,85 +268,6 @@ pub const ModeSpec = struct {
         }
         return mode_bitfield;
     }
-    fn describeBriefly(comptime perms: Perms) []const u8 {
-        var descr: []const u8 = meta.empty;
-        if (perms.read) {
-            descr = descr ++ "r";
-        } else {
-            descr = descr ++ "-";
-        }
-        if (perms.write) {
-            descr = descr ++ "w";
-        } else {
-            descr = descr ++ "-";
-        }
-        if (perms.execute) {
-            descr = descr ++ "x";
-        } else {
-            descr = descr ++ "-";
-        }
-        return descr;
-    }
-    fn describe(comptime mode_spec: ModeSpec) []const u8 {
-        if (builtin.is_small) {
-            var descr: []const u8 = meta.empty;
-            descr = descr ++ describeBriefly(mode_spec.owner);
-            descr = descr ++ describeBriefly(mode_spec.group);
-            descr = descr ++ describeBriefly(mode_spec.other);
-            return descr;
-        } else {
-            var owner: ?[]const u8 = null;
-            if (mode_spec.owner.read) {
-                owner = "owner: read";
-            }
-            if (mode_spec.owner.write) {
-                owner = if (owner) |owner_s| owner_s ++ "+write" else "owner: write";
-            }
-            if (mode_spec.owner.execute) {
-                owner = if (owner) |owner_s| owner_s ++ "+execute" else "owner: execute";
-            }
-            var group: ?[]const u8 = null;
-            if (mode_spec.group.read) {
-                group = "group: read";
-            }
-            if (mode_spec.group.write) {
-                group = if (group) |group_s| group_s ++ "+write" else "group: write";
-            }
-            if (mode_spec.group.execute) {
-                group = if (group) |group_s| group_s ++ "+execute, " else "group: execute";
-            }
-            var other: ?[]const u8 = null;
-            if (mode_spec.other.read) {
-                other = "other read";
-            }
-            if (mode_spec.other.write) {
-                other = if (other) |other_s| other_s ++ "+write" else "other: write";
-            }
-            if (mode_spec.other.execute) {
-                other = if (other) |other_s| other_s ++ "+execute" else "other: execute";
-            }
-            if (owner) |owner_s| {
-                if (group) |group_s| {
-                    if (other) |other_s| {
-                        return owner_s ++ ", " ++ group_s ++ ", " ++ other_s;
-                    }
-                    return owner_s ++ ", " ++ group_s;
-                } else if (other) |other_s| {
-                    return owner_s ++ ", " ++ other_s;
-                }
-                return owner_s;
-            }
-            if (group) |group_s| {
-                if (other) |other_s| {
-                    return group_s ++ ", " ++ other_s;
-                }
-                return group_s;
-            }
-            if (other) |other_s| {
-                return other_s;
-            }
-        }
-    }
 };
 pub const MakeDirSpec = struct {
     options: Options = .{},
@@ -615,23 +536,36 @@ pub const TruncateSpec = struct {
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
 };
-pub fn read(fd: u64, read_buf: []u8, count: u64) !u64 {
+pub const ReadSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
+pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8) sys.Call(spec.errors.throw, u64) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
-    if (sys.call(.read, .{ .throw = sys.read_errors }, u64, .{ fd, read_buf_addr, count })) |ret| {
+    if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_buf.len }))) |ret| {
+        if (spec.logging.Success) {
+            debug.readNotice(fd, ret);
+        }
         return ret;
     } else |read_error| {
-        if (builtin.logging.Error) {
+        if (spec.logging.Error) {
             debug.readError(read_error, fd);
         }
         return read_error;
     }
 }
-pub fn write(fd: u64, write_buf: []const u8) !void {
+pub const WriteSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
+pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const u8) sys.Call(spec.errors.throw, void) {
     const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
-    if (sys.call(.write, .{ .throw = sys.write_errors }, u64, .{ fd, write_buf_addr, write_buf.len })) |ret| {
-        builtin.assertEqual(u64, write_buf.len, ret);
+    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len }))) |ret| {
+        if (spec.logging.Success) {
+            debug.writeNotice(fd, ret);
+        }
     } else |write_error| {
-        if (builtin.logging.Error) {
+        if (spec.logging.Error) {
             debug.writeError(write_error, fd);
         }
         return write_error;
@@ -729,12 +663,12 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) sys.Call(spec.e
     const mode: Mode = spec.mode.mode();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, mode.val }))) |fd| {
         if (spec.logging.Acquire) {
-            debug.createNotice(pathname, fd, spec.mode.describe());
+            debug.createNotice(pathname, fd, debug.describeMode(spec.mode));
         }
         return fd;
     } else |open_error| {
         if (spec.logging.Error) {
-            debug.createError(open_error, pathname, spec.mode.describe());
+            debug.createError(open_error, pathname, debug.describeMode(spec.mode));
         }
         return open_error;
     }
@@ -756,7 +690,7 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) sys.Call(spec
     const mode: Mode = spec.mode.mode();
     if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, mode.val }))) {
         if (spec.logging.Success) {
-            debug.makeDirNotice(pathname, spec.mode.describe());
+            debug.makeDirNotice(pathname, debug.describeMode(spec.mode));
         }
     } else |mkdir_error| {
         if (spec.logging.Error) {
@@ -770,11 +704,11 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sy
     const mode: Mode = spec.mode.mode();
     if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, mode.val }))) {
         if (spec.logging.Success) {
-            debug.makeDirAtNotice(dir_fd, name, spec.mode.describe());
+            debug.makeDirAtNotice(dir_fd, name, debug.describeMode(spec.mode));
         }
     } else |mkdir_error| {
         if (spec.logging.Error) {
-            debug.makeDirAtError(mkdir_error, dir_fd, name, spec.mode.describe());
+            debug.makeDirAtError(mkdir_error, dir_fd, name, debug.describeMode(spec.mode));
         }
         return mkdir_error;
     }
@@ -1073,6 +1007,22 @@ const debug = opaque {
     const about_truncate_0_s: []const u8 = "truncate:       ";
     const about_truncate_1_s: []const u8 = "truncate-error: ";
 
+    fn readNotice(fd: u64, len: u64) void {
+        var buf: [16 + 32 + 512]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
+            about_write_1_s,                 "fd=",
+            builtin.fmt.ud64(fd).readAll(),  ", ",
+            builtin.fmt.ud64(len).readAll(), ", bytes\n",
+        });
+    }
+    fn writeNotice(fd: u64, len: u64) void {
+        var buf: [16 + 32 + 512]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
+            about_write_1_s,                 "fd=",
+            builtin.fmt.ud64(fd).readAll(),  ", ",
+            builtin.fmt.ud64(len).readAll(), ", bytes\n",
+        });
+    }
     fn openNotice(pathname: [:0]const u8, fd: u64) void {
         var buf: [4096 + 32]u8 = undefined;
         builtin.debug.logAcquireAIO(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
@@ -1199,5 +1149,83 @@ const debug = opaque {
     fn ftruncateError(truncate_error: anytype, fd: u64, offset: u64) void {
         var buf: [16 + 64 + 512]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", offset=", builtin.fmt.ud64(offset).readAll(), ", (", @errorName(truncate_error), ")\n" });
+    }
+
+    fn describePermsBriefly(comptime perms: Perms) []const u8 {
+        var descr: []const u8 = meta.empty;
+        if (perms.read) {
+            descr = descr ++ "r";
+        } else {
+            descr = descr ++ "-";
+        }
+        if (perms.write) {
+            descr = descr ++ "w";
+        } else {
+            descr = descr ++ "-";
+        }
+        if (perms.execute) {
+            descr = descr ++ "x";
+        } else {
+            descr = descr ++ "-";
+        }
+        return descr;
+    }
+    fn describeMode(comptime mode_spec: ModeSpec) []const u8 {
+        if (builtin.is_small) {
+            return describePermsBriefly(mode_spec.owner) ++
+                describePermsBriefly(mode_spec.group) ++
+                describePermsBriefly(mode_spec.other);
+        } else {
+            var owner: ?[]const u8 = null;
+            if (mode_spec.owner.read) {
+                owner = "owner: read";
+            }
+            if (mode_spec.owner.write) {
+                owner = if (owner) |owner_s| owner_s ++ "+write" else "owner: write";
+            }
+            if (mode_spec.owner.execute) {
+                owner = if (owner) |owner_s| owner_s ++ "+execute" else "owner: execute";
+            }
+            var group: ?[]const u8 = null;
+            if (mode_spec.group.read) {
+                group = "group: read";
+            }
+            if (mode_spec.group.write) {
+                group = if (group) |group_s| group_s ++ "+write" else "group: write";
+            }
+            if (mode_spec.group.execute) {
+                group = if (group) |group_s| group_s ++ "+execute, " else "group: execute";
+            }
+            var other: ?[]const u8 = null;
+            if (mode_spec.other.read) {
+                other = "other read";
+            }
+            if (mode_spec.other.write) {
+                other = if (other) |other_s| other_s ++ "+write" else "other: write";
+            }
+            if (mode_spec.other.execute) {
+                other = if (other) |other_s| other_s ++ "+execute" else "other: execute";
+            }
+            if (owner) |owner_s| {
+                if (group) |group_s| {
+                    if (other) |other_s| {
+                        return owner_s ++ ", " ++ group_s ++ ", " ++ other_s;
+                    }
+                    return owner_s ++ ", " ++ group_s;
+                } else if (other) |other_s| {
+                    return owner_s ++ ", " ++ other_s;
+                }
+                return owner_s;
+            }
+            if (group) |group_s| {
+                if (other) |other_s| {
+                    return group_s ++ ", " ++ other_s;
+                }
+                return group_s;
+            }
+            if (other) |other_s| {
+                return other_s;
+            }
+        }
     }
 };
