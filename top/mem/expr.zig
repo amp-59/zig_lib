@@ -191,9 +191,6 @@ const Init = struct {
     pub fn call(exprs: []Expr) Expr {
         return packMore(.call, exprs);
     }
-    pub fn callMember(exprs: []Expr) Expr {
-        return packMore(.call_member, exprs);
-    }
     fn impl0(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: gen.ArgList) Expr {
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 2);
         var idx: u64 = 0;
@@ -207,7 +204,7 @@ const Init = struct {
             exprs[idx] = Init.symbol(arg);
             idx +%= 1;
         }
-        return call(exprs[0..idx]);
+        return packMore(.call, exprs[0..idx]);
     }
     fn impl1(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: gen.ArgList) Expr {
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 2);
@@ -222,7 +219,7 @@ const Init = struct {
             exprs[idx] = Init.symbol(arg);
             idx +%= 1;
         }
-        return callMember(exprs[0..idx]);
+        return packMore(.call_member, exprs[0..idx]);
     }
     pub fn impl(allocator: anytype, detail: anytype, impl_fn_info: *const impl_fn.Fn) Expr {
         if (@TypeOf(detail.*) == out.DetailMore) {
@@ -241,7 +238,7 @@ const Init = struct {
             exprs[idx] = Init.symbol(arg);
             idx +%= 1;
         }
-        return Init.call(exprs[0..idx]);
+        return packMore(.call, exprs[0..idx]);
     }
 };
 pub usingnamespace Init;
@@ -399,10 +396,10 @@ pub inline fn pointerCountWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, ex
 }
 
 pub inline fn initializeS(symbol: [:0]const u8, expr1: Expr) [4]Expr {
-    return .{ Init.symbol("."), Init.symbol(symbol), Init.symbol(" = "), expr1 };
+    return .{ Init.symbol(tok.period_operator), Init.symbol(symbol), Init.symbol(tok.equal_operator), expr1 };
 }
 pub inline fn initializerS(expr1: Expr) [3]Expr {
-    return .{ Init.symbol(".{ "), expr1, Init.symbol(" }") };
+    return .{ Init.symbol(tok.period_open_brace_operator), expr1, Init.symbol(tok.close_brace_operator) };
 }
 pub inline fn dereferenceS(expr1: Expr) [2]Expr {
     return .{ expr1, Init.symbol(tok.period_asterisk_operator) };
@@ -414,10 +411,10 @@ pub inline fn assignS(expr1: Expr, expr2: Expr) [3]Expr {
     return .{ expr1, Init.symbol(tok.equal_operator), expr2 };
 }
 pub inline fn initialize(allocator: anytype, symbol: [:0]const u8, expr1: Expr) *[4]Expr {
-    return allocator.duplicateIrreversible([4]Expr, .{ Init.symbol("."), Init.symbol(symbol), Init.symbol(" = "), expr1 });
+    return allocator.duplicateIrreversible([4]Expr, .{ Init.symbol(tok.period_operator), Init.symbol(symbol), Init.symbol(tok.equal_operator), expr1 });
 }
 pub inline fn initializer(allocator: anytype, expr1: Expr) *[3]Expr {
-    return allocator.duplicateIrreversible([3]Expr, .{ Init.symbol(".{ "), expr1, Init.symbol(" }") });
+    return allocator.duplicateIrreversible([3]Expr, .{ Init.symbol(tok.period_open_brace_operator), expr1, Init.symbol(tok.close_brace_operator) });
 }
 pub inline fn dereference(allocator: anytype, expr1: Expr) *[2]Expr {
     return allocator.duplicateIrreversible([2]Expr, .{ expr1, Init.symbol(tok.period_asterisk_operator) });
