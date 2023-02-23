@@ -63,11 +63,11 @@ pub const Fields = packed struct {
     pub usingnamespace GenericStructOfBool(Fields);
 };
 pub const Managers = packed struct {
-    allocate: bool = false,
-    reallocate: bool = false,
-    resize: bool = false,
-    move: bool = false,
-    convert: bool = false,
+    allocatable: bool = false,
+    reallocatable: bool = false,
+    resizable: bool = false,
+    movable: bool = false,
+    convertible: bool = false,
     pub usingnamespace GenericStructOfBool(Managers);
 };
 pub const Techniques = packed struct {
@@ -97,6 +97,19 @@ pub const Techniques = packed struct {
     };
     pub usingnamespace GenericStructOfBool(Techniques);
 };
+comptime {
+    const attribute_types: [6]type = .{ Modes, Kinds, Layouts, Fields, Managers, Techniques };
+    inline for (attribute_types) |l_struct_of_bool, index| {
+        inline for (@typeInfo(l_struct_of_bool).Struct.fields) |field| {
+            inline for (attribute_types[index + 1 ..]) |r_struct_of_bool| {
+                if (@hasField(r_struct_of_bool, field.name)) {
+                    @compileError(@typeName(l_struct_of_bool) ++ ", " ++
+                        @typeName(r_struct_of_bool) ++ " share non-unique attribute name: " ++ field.name);
+                }
+            }
+        }
+    }
+}
 pub const Option = struct {
     kind: Option.Kind,
     info: Info,
