@@ -295,19 +295,19 @@ pub fn writeStructOfEnum(array: anytype, comptime T: type, value: T) void {
 fn GenericStructOfEnum(comptime Struct: type) type {
     return (struct {
         pub fn formatWrite(format: Struct, array: anytype) void {
-            array.writeMany(".{ ");
+            array.writeMany(".{");
             inline for (@typeInfo(Struct).Struct.fields) |field| {
                 if (field.type == u8) {
-                    array.writeMany("." ++ field.name ++ " = ");
+                    array.writeMany("." ++ field.name ++ "=");
                     writeIndex(array, @field(format, field.name));
                     array.writeMany(", ");
                 } else {
-                    array.writeMany("." ++ field.name ++ " = .");
+                    array.writeMany("." ++ field.name ++ "=.");
                     array.writeMany(@tagName(@field(format, field.name)));
-                    array.writeMany(", ");
+                    array.writeMany(",");
                 }
             }
-            array.overwriteManyBack(" }");
+            array.overwriteManyBack("}");
         }
     });
 }
