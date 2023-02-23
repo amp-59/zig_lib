@@ -2,6 +2,7 @@ const config = @import("./config.zig");
 
 // Basic
 pub const word_type_name: [:0]const u8 = @typeName(config.word_size_type);
+pub const counts_type_name: [:0]const u8 = "u16";
 pub const type_type_name: [:0]const u8 = "type";
 pub const generic_type_name: [:0]const u8 = "anytype";
 
@@ -230,10 +231,10 @@ pub const source_undefined_byte_address_param: [:0]const u8 = paramDecl(source_u
 pub const target_undefined_byte_address_param: [:0]const u8 = paramDecl(target_undefined_byte_address_name, word_type_name);
 pub const source_unallocated_byte_address_param: [:0]const u8 = paramDecl(source_unallocated_byte_address_name, word_type_name);
 pub const target_unallocated_byte_address_param: [:0]const u8 = paramDecl(target_unallocated_byte_address_name, word_type_name);
-pub const source_single_approximation_counts_param: [:0]const u8 = paramDecl(source_single_approximation_counts_name, word_type_name);
-pub const source_double_approximation_counts_param: [:0]const u8 = paramDecl(source_double_approximation_counts_name, word_type_name);
-pub const target_single_approximation_counts_param: [:0]const u8 = paramDecl(target_single_approximation_counts_name, word_type_name);
-pub const target_double_approximation_counts_param: [:0]const u8 = paramDecl(target_double_approximation_counts_name, word_type_name);
+pub const source_single_approximation_counts_param: [:0]const u8 = paramDecl(source_single_approximation_counts_name, counts_type_name);
+pub const source_double_approximation_counts_param: [:0]const u8 = paramDecl(source_double_approximation_counts_name, counts_type_name);
+pub const target_single_approximation_counts_param: [:0]const u8 = paramDecl(target_single_approximation_counts_name, counts_type_name);
+pub const target_double_approximation_counts_param: [:0]const u8 = paramDecl(target_double_approximation_counts_name, counts_type_name);
 
 // Functions
 pub const wrap_fn_name: [:0]const u8 = metaFnName("wrap");
@@ -295,8 +296,25 @@ pub const write_args_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpr
 pub const write_any_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyStructured");
 pub const write_any_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyUnstructured");
 
-const slave_fn_type_decl_spec: [:0]const u8 = "fn (" ++ slave_specifier_const_ptr_type_name ++ ") callconv(.Inline) " ++ word_type_name;
-const static_fn_type_decl_spec: [:0]const u8 = "fn () callconv(.Inline) " ++ word_type_name;
+pub const slave_fn_type_decl_spec: [:0]const u8 = "fn(" ++ slave_specifier_const_ptr_type_name ++ ")callconv(.Inline)" ++ word_type_name;
+pub const static_fn_type_decl_spec: [:0]const u8 = "fn()callconv(.Inline)" ++ word_type_name;
+
+pub const comptime_keyword: [:0]const u8 = "comptime ";
+pub const const_keyword: [:0]const u8 = "const ";
+pub const return_keyword: [:0]const u8 = "return ";
+pub const var_keyword: [:0]const u8 = "var ";
+
+pub const colon_operator: [:0]const u8 = ":";
+pub const period_operator: [:0]const u8 = ".";
+pub const equal_operator: [:0]const u8 = "=";
+pub const period_asterisk_operator: [:0]const u8 = ".*";
+pub const period_open_brace_operator: [:0]const u8 = ".{";
+pub const open_brace_operator: [:0]const u8 = "{";
+pub const close_brace_operator: [:0]const u8 = "}";
+
+pub const end_expression: [:0]const u8 = ";\n";
+pub const end_list_item: [:0]const u8 = ",\n";
+pub const end_small_item: [:0]const u8 = ",";
 
 fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
     return fieldAccess(meta_name_space, name);
@@ -357,7 +375,7 @@ fn comptimeParamDecl(comptime symbol: [:0]const u8, type_name: [:0]const u8) [:0
     return comptime_keyword ++ symbol ++ colon_operator ++ type_name;
 }
 fn callOffsetOf(comptime type_name: [:0]const u8, comptime field_name: [:0]const u8) [:0]const u8 {
-    return "@offsetOf(" ++ type_name ++ ", \"" ++ field_name ++ "\")";
+    return "@offsetOf(" ++ type_name ++ ",\"" ++ field_name ++ "\")";
 }
 fn callPtrToInt(comptime symbol_ptr: [:0]const u8) [:0]const u8 {
     return "@ptrToInt(" ++ symbol_ptr ++ ")";
@@ -365,17 +383,3 @@ fn callPtrToInt(comptime symbol_ptr: [:0]const u8) [:0]const u8 {
 fn callSizeOf(comptime type_name: [:0]const u8) [:0]const u8 {
     return "@sizeOf(" ++ type_name ++ ")";
 }
-
-pub const comptime_keyword: [:0]const u8 = "comptime ";
-pub const const_keyword: [:0]const u8 = "const ";
-pub const return_keyword: [:0]const u8 = "return ";
-pub const var_keyword: [:0]const u8 = "var ";
-
-pub const colon_operator: [:0]const u8 = ": ";
-pub const period_operator: [:0]const u8 = ".";
-pub const equal_operator: [:0]const u8 = " = ";
-pub const period_asterisk_operator: [:0]const u8 = ".*";
-
-pub const end_expression: [:0]const u8 = ";\n";
-pub const end_list_item: [:0]const u8 = ",\n";
-pub const end_small_item: [:0]const u8 = ", ";
