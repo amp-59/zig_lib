@@ -194,7 +194,7 @@ const UnstructuredStaticSegment = struct {
     Allocator: BoundAllocator,
 };
 fn DynamicInterface(comptime S: type) type {
-    return Allocatable(Rellocatable(Resizable(Movable(Convertible(S)))));
+    return Allocatable(Reallocatable(Resizable(Movable(Convertible(S)))));
 }
 fn ParametricInterface(comptime S: type) type {
     return Allocatable(Resizable(Convertible(S)));
@@ -203,17 +203,17 @@ fn StaticInterface(comptime S: type) type {
     return Allocatable(Movable(Convertible(S)));
 }
 pub fn Allocatable(comptime S: type) type {
-    return union { allocate: S };
+    return union { allocatable: S };
 }
-pub fn Rellocatable(comptime S: type) type {
-    return union { reallocate: S };
+pub fn Reallocatable(comptime S: type) type {
+    return union { reallocatable: S };
 }
 pub fn Resizable(comptime S: type) type {
-    return union { resize: S };
+    return union { resizable: S };
 }
 pub fn Movable(comptime S: type) type {
-    return union { move: S };
+    return union { movable: S };
 }
 pub fn Convertible(comptime S: type) type {
-    return union { convert: S };
+    return union { convertible: S };
 }
