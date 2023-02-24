@@ -91,10 +91,10 @@ pub const Expr = struct {
         var idx: u64 = 0;
         while (idx != fn_args.len) : (idx +%= 1) {
             array.writeFormat(fn_args[idx]);
-            array.writeMany(tok.end_small_item);
+            array.writeMany(tok.end_small_list_item);
         }
         if (idx != 0) {
-            array.undefine(tok.end_small_item.len);
+            array.undefine(tok.end_small_list_item.len);
         }
         array.writeOne(')');
     }
@@ -108,10 +108,10 @@ pub const Expr = struct {
         var idx: u64 = 0;
         while (idx != fn_args.len) : (idx +%= 1) {
             len +%= fn_args[idx].formatLength();
-            len +%= tok.end_small_item.len;
+            len +%= tok.end_small_list_item.len;
         }
         if (idx != 0) {
-            len -%= tok.end_small_item.len;
+            len -%= tok.end_small_list_item.len;
         }
         len +%= 1;
         return len;
@@ -127,10 +127,10 @@ pub const Expr = struct {
         var idx: u64 = 1;
         while (idx != fn_args.len) : (idx +%= 1) {
             fn_args[idx].formatWrite(array);
-            array.writeMany(tok.end_small_item);
+            array.writeMany(tok.end_small_list_item);
         }
         if (idx != 1) {
-            array.undefine(tok.end_small_item.len);
+            array.undefine(tok.end_small_list_item.len);
         }
         array.writeOne(')');
     }
@@ -146,10 +146,10 @@ pub const Expr = struct {
         var idx: u64 = 1;
         while (idx != fn_args.len) : (idx +%= 1) {
             len +%= fn_args[idx].formatLength();
-            len +%= tok.end_small_item.len;
+            len +%= tok.end_small_list_item.len;
         }
         if (idx != 1) {
-            len -%= tok.end_small_item.len;
+            len -%= tok.end_small_list_item.len;
         }
         len +%= 1;
         return len;
