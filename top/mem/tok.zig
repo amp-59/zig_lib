@@ -314,7 +314,7 @@ pub const close_brace_operator: [:0]const u8 = "}";
 
 pub const end_expression: [:0]const u8 = ";\n";
 pub const end_list_item: [:0]const u8 = ",\n";
-pub const end_small_item: [:0]const u8 = ",";
+pub const end_small_list_item: [:0]const u8 = ",";
 
 fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
     return fieldAccess(meta_name_space, name);
