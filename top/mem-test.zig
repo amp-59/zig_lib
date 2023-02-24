@@ -37,10 +37,13 @@ const unmap_spec = .{
     .logging = preset.logging.release_error_fault.verbose,
     .errors = .{ .abort = sys.munmap_errors },
 };
-const advice_opts = .{ .property = .{ .dump = true } };
-
 const advise_spec = .{
-    .options = advice_opts,
+    .options = .{ .property = .{ .dump = true } },
+    .logging = preset.logging.success_error_fault.verbose,
+    .errors = .{ .abort = sys.madvise_errors },
+};
+const protect_spec = .{
+    .options = .{ .none = true },
     .logging = preset.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.madvise_errors },
 };
@@ -56,6 +59,7 @@ fn testLowSystemMemoryOperations() !void {
     var len: u64 = end - addr;
     try meta.wrap(mem.map(map_spec, addr, len));
     try meta.wrap(mem.move(move_spec, addr, len, addr + len));
+    try meta.wrap(mem.protect(protect_spec, addr, len));
     addr += len;
     try meta.wrap(mem.resize(resize_spec, addr, len, len * 2));
     len *= 2;
