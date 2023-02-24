@@ -52,6 +52,14 @@ const wr_spec: mem.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
 };
 
+fn testProtect() void {
+    var addr: u64 = 0x7000000;
+    const end: u64 = 0x10000000;
+    var len: u64 = end - addr;
+    try meta.wrap(mem.map(map_spec, addr, len));
+    try meta.wrap(mem.protect(protect_spec, addr, 4096));
+    try meta.wrap(mem.unmap(unmap_spec, addr, len));
+}
 fn testLowSystemMemoryOperations() !void {
     try meta.wrap(mem.unmap(unmap_spec, 0x7000000, 0x3000000 * 2));
     var addr: u64 = 0x7000000;
@@ -59,7 +67,7 @@ fn testLowSystemMemoryOperations() !void {
     var len: u64 = end - addr;
     try meta.wrap(mem.map(map_spec, addr, len));
     try meta.wrap(mem.move(move_spec, addr, len, addr + len));
-    try meta.wrap(mem.protect(protect_spec, addr, len));
+    try meta.wrap(mem.protect(protect_spec, addr + len, len));
     addr += len;
     try meta.wrap(mem.resize(resize_spec, addr, len, len * 2));
     len *= 2;
@@ -71,8 +79,10 @@ fn testMapGenericOverhead() !void {
     var len: u64 = 0x3000000;
     var end: u64 = addr + len;
     try meta.wrap(mem.map(.{ .options = .{ .populate = true } }, addr, len));
+    try meta.wrap(mem.unmap(unmap_spec, addr, len));
     addr = end;
     try meta.wrap(mem.map(.{ .options = .{ .populate = false, .visibility = .shared } }, end, len));
+    try meta.wrap(mem.unmap(unmap_spec, addr, len));
 }
 fn testRtAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
@@ -283,6 +293,7 @@ pub fn testNoImpact() !void {
 }
 pub fn main() !void {
     try meta.wrap(testMapGenericOverhead());
+    try meta.wrap(testProtect());
     try meta.wrap(testLowSystemMemoryOperations());
     try meta.wrap(testAutomaticImplementation());
     try meta.wrap(testAllocatedImplementation());
