@@ -52,7 +52,7 @@ pub fn writeGenerator(array: anytype, src: builtin.SourceLocation) void {
 pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void {
     array.writeMany("const ");
     array.writeMany(name);
-    array.writeMany(" = @import(\"");
+    array.writeMany("=@import(\"");
     array.writeMany(pathname);
     array.writeMany("\");\n");
 }
@@ -99,7 +99,7 @@ pub fn writeIndex(array: anytype, index: anytype) void {
 }
 pub fn writeField(array: anytype, name: []const u8, type_descr: fmt.TypeDescrFormat) void {
     array.writeMany(name);
-    array.writeMany(": ");
+    array.writeMany(":");
     array.writeFormat(type_descr);
     array.writeMany(",\n");
 }
@@ -119,9 +119,9 @@ pub fn specIndex(comptime Detail: type, leader: Detail) u8 {
 }
 pub fn writeComma(array: anytype) void {
     const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
-    const j1: bool = mem.testEqualManyBack(u8, tok.end_small_item, array.readAll());
+    const j1: bool = mem.testEqualManyBack(u8, tok.end_small_list_item, array.readAll());
     if (builtin.int2a(bool, !j0, !j1)) {
-        array.writeMany(tok.end_small_item);
+        array.writeMany(tok.end_small_list_item);
     }
 }
 pub fn writeArgument(array: anytype, argument_name: [:0]const u8) void {
@@ -137,11 +137,11 @@ pub fn writeFieldOfBool(array: anytype, any: anytype) void {
 }
 pub fn simpleTypeName(comptime T: type) []const u8 {
     if (@typeInfo(T) == .Struct) {
-        var type_name: []const u8 = "struct { ";
+        var type_name: []const u8 = "struct{";
         for (@typeInfo(T).Struct.fields) |field_field| {
-            type_name = type_name ++ field_field.name ++ ": " ++ @typeName(field_field.type) ++ ", ";
+            type_name = type_name ++ field_field.name ++ ":" ++ @typeName(field_field.type) ++ ",";
         }
-        type_name = type_name[0 .. type_name.len - 2] ++ " }";
+        type_name = type_name[0 .. type_name.len - 2] ++ "}";
         return type_name;
     } else {
         return @typeName(T);
@@ -154,19 +154,19 @@ pub fn writeStructOfEnum(array: anytype, comptime T: type, value: T) void {
 fn GenericStructOfEnum(comptime Struct: type) type {
     return (struct {
         pub fn formatWrite(format: Struct, array: anytype) void {
-            array.writeMany(".{");
+            array.writeMany(tok.period_open_brace_operator);
             inline for (@typeInfo(Struct).Struct.fields) |field| {
                 if (field.type == u8) {
                     array.writeMany("." ++ field.name ++ "=");
                     writeIndex(array, @field(format, field.name));
-                    array.writeMany(", ");
+                    array.writeMany(tok.end_small_list_item);
                 } else {
                     array.writeMany("." ++ field.name ++ "=.");
                     array.writeMany(@tagName(@field(format, field.name)));
-                    array.writeMany(",");
+                    array.writeMany(tok.end_small_list_item);
                 }
             }
-            array.overwriteManyBack("}");
+            array.overwriteManyBack(tok.close_brace_operator);
         }
     });
 }
