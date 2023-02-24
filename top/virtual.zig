@@ -17,43 +17,49 @@ pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 pub fn DiscreteBitSet(comptime bits: u16) type {
     const Data: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(Data);
-    return (extern struct {
-        bits: Data = if (data_info == .Array) [1]u64{0} ** data_info.Array.len else 0,
+    const Array = extern struct {
+        bits: Data = [1]u64{0} ** data_info.Array.len,
         pub const BitSet: type = @This();
-        const Word: type = if (data_info == .Array) data_info.Array.child else Data;
+        const Word: type = data_info.Array.child;
         const Index: type = meta.LeastRealBitSize(bits);
         pub fn get(bit_set: BitSet, index: Index) bool {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
-            if (data_info == .Array) {
-                return bit_set.bits[index / word_size] & bit_mask != 0;
-            } else {
-                return bit_set.bits & bit_mask != 0;
-            }
+            return bit_set.bits[index / word_size] & bit_mask != 0;
         }
         pub fn indexToShiftAmount(index: Index) u8 {
-            if (data_info == .Array) {
-                return builtin.sub(u8, word_size -% 1, builtin.rem(u8, index, word_size));
-            } else {
-                return builtin.sub(u8, data_info.Int.bits -% 1, index);
-            }
+            return builtin.sub(u8, word_size -% 1, builtin.rem(u8, index, word_size));
         }
         pub fn set(bit_set: *BitSet, index: Index) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
-            if (data_info == .Array) {
-                bit_set.bits[index / word_size] |= bit_mask;
-            } else {
-                bit_set.bits |= bit_mask;
-            }
+            bit_set.bits[index / word_size] |= bit_mask;
         }
         pub fn unset(bit_set: *BitSet, index: Index) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
-            if (data_info == .Array) {
-                bit_set.bits[index / word_size] &= ~bit_mask;
-            } else {
-                bit_set.bits &= ~bit_mask;
-            }
+            bit_set.bits[index / word_size] &= ~bit_mask;
         }
-    });
+    };
+    const Int = extern struct {
+        bits: Data = 0,
+        pub const BitSet: type = @This();
+        const Word: type = Data;
+        const Index: type = meta.LeastRealBitSize(bits);
+        pub fn get(bit_set: BitSet, index: Index) bool {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            return bit_set.bits & bit_mask != 0;
+        }
+        pub fn indexToShiftAmount(index: Index) u8 {
+            return builtin.sub(u8, data_info.Int.bits -% 1, index);
+        }
+        pub fn set(bit_set: *BitSet, index: Index) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            bit_set.bits |= bit_mask;
+        }
+        pub fn unset(bit_set: *BitSet, index: Index) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            bit_set.bits &= ~bit_mask;
+        }
+    };
+    return if (data_info == .Array) Array else Int;
 }
 pub fn ThreadSafeSet(comptime divisions: u16) type {
     return (extern struct {
@@ -359,7 +365,7 @@ pub const RegularMultiArena = struct {
     label: ?[]const u8 = null,
 
     lb_addr: u64 = 0,
-    up_addr: u64 = 1 << 48,
+    up_addr: u64 = 1 << 47,
     lb_offset: u64 = 0,
     up_offset: u64 = 0,
 
@@ -687,7 +693,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
 ///     * Constructing the bit set fields can be expensive at compile time.
 pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type {
     return (extern struct {
-        impl: DiscreteAddressSpaceSpec.Implementation(spec) align(8) = defaultValue(spec),
+        impl: DiscreteAddressSpaceSpec.Implementation(spec) = defaultValue(spec),
         pub const DiscreteAddressSpace = @This();
         pub const Index: type = DiscreteAddressSpaceSpec.Index(spec);
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
@@ -702,12 +708,10 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
             return ret;
         }
         pub fn atomicUnset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
-            builtin.static.assert(spec.list[index].options.thread_safe);
-            return address_space.impl.atomicUnset(index);
+            return spec.list[index].options.thread_safe and address_space.impl.atomicUnset(index);
         }
         pub fn atomicSet(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
-            builtin.static.assert(spec.list[index].options.thread_safe);
-            return address_space.impl.atomicSet(index);
+            return spec.list[index].options.thread_safe and address_space.impl.atomicSet(index);
         }
         pub fn low(comptime index: Index) u64 {
             return spec.low(index);
@@ -731,7 +735,82 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
     });
 }
-
+const ElementaryAddressSpaceSpec = struct {
+    lb_addr: u64 = 0x40000000,
+    up_addr: u64 = 0x800000000000,
+    errors: AddressSpaceErrors,
+    logging: AddressSpaceLogging,
+    options: ArenaOptions,
+};
+/// Elementary:
+///     *
+pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) type {
+    return struct {
+        impl: bool = false,
+        comptime high: fn () u64 = high,
+        comptime low: fn () u64 = low,
+        pub const ElementaryAddressSpace = @This();
+        pub const addr_spec: ElementaryAddressSpaceSpec = spec;
+        pub fn get(address_space: *ElementaryAddressSpace) bool {
+            return address_space.impl;
+        }
+        pub fn unset(address_space: *ElementaryAddressSpace) bool {
+            const ret: bool = address_space.impl;
+            if (ret) {
+                address_space.impl = false;
+            }
+            return ret;
+        }
+        pub fn set(address_space: *ElementaryAddressSpace) bool {
+            const ret: bool = address_space.impl;
+            if (!ret) {
+                address_space.impl = true;
+            }
+            return !ret;
+        }
+        pub fn atomicSet(address_space: *ElementaryAddressSpace) bool {
+            return spec.options.thread_safe and asm volatile (
+                \\mov           $0,     %al
+                \\mov           $255,   %dl
+                \\lock cmpxchg  %dl,    %[ptr]
+                \\sete          %[ret]
+                : [ret] "=r" (-> bool),
+                : [ptr] "p" (&address_space.impl),
+                : "rax", "rdx", "memory"
+            );
+        }
+        pub fn atomicUnset(address_space: *ElementaryAddressSpace) bool {
+            return spec.options.thread_safe and asm volatile (
+                \\mov           $255,   %al
+                \\mov           $0,     %dl
+                \\lock cmpxchg  %dl,    %[ptr]
+                \\sete          %[ret]
+                : [ret] "=r" (-> bool),
+                : [ptr] "p" (&address_space.impl),
+                : "rax", "rdx", "memory"
+            );
+        }
+        fn low() u64 {
+            return spec.lb_addr;
+        }
+        fn high() u64 {
+            return spec.up_addr;
+        }
+        pub fn arena() Arena {
+            return .{
+                .lb_addr = spec.lb_addr,
+                .up_addr = spec.up_addr,
+                .options = spec.options,
+            };
+        }
+        pub fn count(address_space: *const ElementaryAddressSpace) u8 {
+            return builtin.int(u8, address_space.impl);
+        }
+        pub usingnamespace Specs(ElementaryAddressSpace);
+        pub usingnamespace RegularTypes(ElementaryAddressSpace);
+        pub usingnamespace GenericAddressSpace(ElementaryAddressSpace);
+    };
+}
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
