@@ -166,6 +166,43 @@ pub const UnmapSpec = struct {
     logging: builtin.Logging.ReleaseErrorFault = .{},
     const Specification = @This();
 };
+pub const ProtectSpec = struct {
+    options: Options,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mprotect_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessErrorFault = .{},
+    const Specification = @This();
+    pub const Options = struct {
+        none: bool = false,
+        read: bool = false,
+        write: bool = false,
+        exec: bool = false,
+        grows_up: bool = false,
+        grows_down: bool = false,
+    };
+    pub fn prot(comptime spec: Specification) Prot {
+        var prot_bitfield: Prot = .{ .val = 0 };
+        if (spec.options.read) {
+            prot_bitfield.set(.read);
+        }
+        if (spec.options.write) {
+            prot_bitfield.set(.write);
+        }
+        if (spec.options.exec) {
+            prot_bitfield.set(.exec);
+        }
+        if (spec.options.none) {
+            prot_bitfield.set(.none);
+        }
+        if (spec.options.grows_down) {
+            prot_bitfield.set(.grows_down);
+        }
+        if (spec.options.grows_up) {
+            prot_bitfield.set(.grows_up);
+        }
+        return prot_bitfield;
+    }
+};
 pub const AdviseSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
@@ -627,6 +664,19 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors
         return unmap_error;
     }
 }
+pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    const mmap_prot: Prot = spec.prot();
+    if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val }))) {
+        if (spec.logging.Success) {
+            debug.protectNotice(addr, len, "<description>");
+        }
+    } else |protect_error| {
+        if (spec.logging.Error) {
+            debug.protectError(protect_error, addr, len, "<description>");
+        }
+        return protect_error;
+    }
+}
 pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
     const advice: Advice = spec.advice();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
@@ -675,6 +725,8 @@ pub const debug = opaque {
     const about_resize_1_s: []const u8 = "resize-error:   ";
     const about_advice_0_s: []const u8 = "advice:         ";
     const about_advice_1_s: []const u8 = "advice-error:   ";
+    const about_protect_0_s: []const u8 = "protect:         ";
+    const about_protect_1_s: []const u8 = "protect-error:   ";
     pub fn mapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAcquireAIO(&buf, &[_][]const u8{
@@ -691,6 +743,16 @@ pub const debug = opaque {
             "..",            builtin.fmt.ux64(addr +% len).readAll(),
             ", ",            builtin.fmt.ud64(len).readAll(),
             " bytes\n",
+        });
+    }
+    fn protectNotice(addr: u64, len: u64, description_s: []const u8) void {
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
+            about_protect_0_s, builtin.fmt.ux64(addr).readAll(),
+            "..",              builtin.fmt.ux64(addr +% len).readAll(),
+            ", ",              builtin.fmt.ud64(len).readAll(),
+            " bytes, ",        description_s,
+            "\n",
         });
     }
     fn adviseNotice(addr: u64, len: u64, description_s: []const u8) void {
@@ -768,14 +830,25 @@ pub const debug = opaque {
             ")\n",
         });
     }
-    fn adviseError(madvise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
+    fn protectError(protect_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
+            about_protect_1_s, builtin.fmt.ux64(addr).readAll(),
+            "..",              builtin.fmt.ux64(addr +% len).readAll(),
+            ", ",              builtin.fmt.ud64(len).readAll(),
+            " bytes, ",        description_s,
+            ", (",             @errorName(protect_error),
+            ")\n",
+        });
+    }
+    fn adviseError(advise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{
             about_advice_1_s, builtin.fmt.ux64(addr).readAll(),
             "..",             builtin.fmt.ux64(addr +% len).readAll(),
             ", ",             builtin.fmt.ud64(len).readAll(),
             " bytes, ",       description_s,
-            ", (",            @errorName(madvise_error),
+            ", (",            @errorName(advise_error),
             ")\n",
         });
     }
@@ -806,7 +879,6 @@ pub const debug = opaque {
             ")\n",
         });
     }
-
     fn arenaAcquireError(arena_error: anytype, index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         @setCold(true);
         var buf: [4096 + 512]u8 = undefined;
