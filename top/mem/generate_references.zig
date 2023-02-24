@@ -871,23 +871,23 @@ inline fn writeFields(allocator: *Allocator, array: *Array, impl_variant: *const
         } else {
             array.writeMany(tok.automatic_storage_field);
         }
-        array.writeMany(tok.end_small_item);
+        array.writeMany(tok.end_small_list_item);
     }
     if (impl_variant.fields.allocated_byte_address) {
         array.writeMany(tok.allocated_byte_address_word_field);
-        array.writeMany(tok.end_small_item);
+        array.writeMany(tok.end_small_list_item);
     }
     if (impl_variant.fields.unstreamed_byte_address) {
         array.writeMany(tok.unstreamed_byte_address_word_field);
-        array.writeMany(tok.end_small_item);
+        array.writeMany(tok.end_small_list_item);
     }
     if (impl_variant.fields.undefined_byte_address) {
         array.writeMany(tok.undefined_byte_address_word_field);
-        array.writeMany(tok.end_small_item);
+        array.writeMany(tok.end_small_list_item);
     }
     if (impl_variant.fields.unallocated_byte_address) {
         array.writeMany(tok.unallocated_byte_address_word_field);
-        array.writeMany(tok.end_small_item);
+        array.writeMany(tok.end_small_list_item);
     }
     writeComptimeField(array, impl_variant, Fn.unwritable_byte_address);
     writeComptimeField(array, impl_variant, Fn.allocated_byte_count);
