@@ -1777,6 +1777,7 @@ pub const Fn = enum(u9) {
             .munmap => 2,
             .mremap => 5,
             .madvise => 3,
+            .mprotect => 3,
             .memfd_create => 2,
             .stat => 2,
             .fstat => 2,
@@ -1867,6 +1868,8 @@ pub const ioctl_errors: []const ErrorCode = &[_]ErrorCode{
 pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
 };
+pub const mprotect_errors: []const ErrorCode = &[_]ErrorCode{ .ACCES, .INVAL, .NOMEM };
+
 pub const mkdir_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
     .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
