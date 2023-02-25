@@ -203,7 +203,32 @@ const Init = struct {
         impl_name: [:0]const u8 = tok.impl_name,
         impl_type_name: [:0]const u8 = tok.impl_type_name,
         impl_const_param: [:0]const u8 = tok.impl_const_param,
+        fn determine(impl_fn_info: *const impl_fn.Fn) Tokens {
+            switch (impl_fn_info.*) {
+                .construct => {
+                    return .{
+                        .impl_name = tok.source_impl_name,
+                        .impl_type_name = tok.source_impl_type_name,
+                    };
+                },
+                .reconstruct,
+                .translate,
+                => {
+                    return .{
+                        .impl_name = tok.target_impl_name,
+                        .impl_type_name = tok.target_impl_type_name,
+                    };
+                },
+                else => {
+                    return .{
+                        .impl_name = tok.impl_name,
+                        .impl_type_name = tok.impl_type_name,
+                    };
+                },
+            }
+        }
     };
+
     pub fn impl1(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: *const gen.ArgList, tokens: Tokens) Expr {
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 3);
         var idx: u64 = 0;
@@ -225,11 +250,11 @@ const Init = struct {
         }
         return packMore(.call_member, exprs[0..idx]);
     }
-    pub fn impl(allocator: anytype, detail: anytype, impl_fn_info: *const impl_fn.Fn, tokens: Tokens) Expr {
+    pub fn impl(allocator: anytype, detail: anytype, impl_fn_info: *const impl_fn.Fn) Expr {
         if (@TypeOf(detail.*) == out.DetailMore) {
             return impl0(allocator, impl_fn_info, &impl_fn_info.argList(detail, .Argument));
         } else {
-            return impl1(allocator, impl_fn_info, &impl_fn_info.argList(detail.more(), .Argument), tokens);
+            return impl1(allocator, impl_fn_info, &impl_fn_info.argList(detail.more(), .Argument), Tokens.determine(impl_fn_info));
         }
     }
     pub fn intr(allocator: anytype, ctn_detail: *const out.DetailLess, ctn_fn_info: *const ctn_fn.Fn) Expr {
