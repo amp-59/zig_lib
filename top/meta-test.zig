@@ -63,8 +63,8 @@ fn memoryTests() !void {
     comptime var u: U = &t;
     builtin.assertEqual(type, meta.Element(T), E);
     builtin.assertEqual(type, meta.Element(*T), E);
-    for (meta.arrayPointerToSlice(&t)) |e, i| builtin.assertEqual(E, e, u[i]);
-    for (meta.sliceToArrayPointer(u)) |e, i| builtin.assertEqual(E, e, t[i]);
+    for (meta.arrayPointerToSlice(&t), 0..) |e, i| builtin.assertEqual(E, e, u[i]);
+    for (meta.sliceToArrayPointer(u), 0..) |e, i| builtin.assertEqual(E, e, t[i]);
     const m: [:0]Element = meta.manyToSlice(u.ptr);
     builtin.assertEqual(u64, 4, m.len);
 }
