@@ -278,13 +278,13 @@ pub const ForLoop = struct {
     symbol2: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany("for (");
+        array.writeMany("for(");
         array.writeFormat(format.expr1);
-        array.writeMany(") |");
+        array.writeMany(",0..)|");
         array.writeMany(format.symbol1);
-        array.writeMany(", ");
+        array.writeMany(",");
         array.writeMany(format.symbol2);
-        array.writeMany("| ");
+        array.writeMany("|");
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -405,6 +405,7 @@ pub inline fn fnCall4(fn_name: [:0]const u8, expr1: Expr, expr2: Expr, expr3: Ex
 pub inline fn fnCall5(fn_name: [:0]const u8, expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr, expr5: Expr) [5]Expr {
     return .{ Init.symbol(fn_name), expr1, expr2, expr3, expr4, expr5 };
 }
+
 pub inline fn pointerOne(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.pointer_one_fn_name, expr1, expr2);
 }
@@ -418,22 +419,57 @@ pub inline fn pointerManyWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, exp
     return fnCall4(tok.pointer_many_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
 }
 pub inline fn pointerCount(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
-    return fnCall3(tok.pointer_count_fn_name, expr1, expr2, expr3);
+    return fnCall3(tok.reference_namespace, tok.pointer_count_fn_name, expr1, expr2, expr3);
 }
 pub inline fn pointerCountWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr) [5]Expr {
     return fnCall4(tok.pointer_count_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
 }
-
-pub inline fn initializeS(symbol: [:0]const u8, expr1: Expr) [4]Expr {
+pub inline fn interfacePointerOne(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.intr_pointer_one_fn_name, expr1, expr2);
+}
+pub inline fn interfacePointerOpaque(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.intr_pointer_opaque_fn_name, expr1, expr2);
+}
+pub inline fn interfacePointerMany(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
+    return fnCall3(tok.intr_pointer_many_fn_name, expr1, expr2, expr3);
+}
+pub inline fn interfacePointerManyWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr) [5]Expr {
+    return fnCall4(tok.intr_pointer_many_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
+}
+pub inline fn interfacePointerCount(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
+    return fnCall3(tok.intr_pointer_count_fn_name, expr1, expr2, expr3);
+}
+pub inline fn interfacePointerCountWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr) [5]Expr {
+    return fnCall4(tok.intr_pointer_count_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
+}
+pub inline fn amountOfTypeToBytes(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.amount_of_type_to_bytes_fn_name, expr1, expr2);
+}
+pub inline fn amountOfLengthToBytes(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.amount_of_length_to_bytes_fn_name, expr1, expr2);
+}
+pub inline fn amountToCountOfType(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.amount_to_count_of_type_name, expr1, expr2);
+}
+pub inline fn amountToCountOfLength(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.amount_to_count_of_length_fn_name, expr1, expr2);
+}
+pub inline fn amountReservedToCount(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.amount_reserved_to_count_fn_name, expr1, expr2);
+}
+pub inline fn amountReservedToBytes(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.amount_reserved_to_bytes_fn_name, expr1, expr2);
+}
+pub inline fn initialize(symbol: [:0]const u8, expr1: Expr) [4]Expr {
     return .{ Init.symbol(tok.period_operator), Init.symbol(symbol), Init.symbol(tok.equal_operator), expr1 };
 }
-pub inline fn initializerS(expr1: Expr) [3]Expr {
+pub inline fn initializer(expr1: Expr) [3]Expr {
     return .{ Init.symbol(tok.period_open_brace_operator), expr1, Init.symbol(tok.close_brace_operator) };
 }
-pub inline fn dereferenceS(expr1: Expr) [2]Expr {
+pub inline fn dereference(expr1: Expr) [2]Expr {
     return .{ expr1, Init.symbol(tok.period_asterisk_operator) };
 }
-pub inline fn fieldAccessS(expr1: Expr, expr2: Expr) [3]Expr {
+pub inline fn fieldAccess(expr1: Expr, expr2: Expr) [3]Expr {
     return .{ expr1, Init.symbol(tok.period_operator), expr2 };
 }
 pub inline fn assign(expr1: Expr, expr2: Expr) [3]Expr {
@@ -452,15 +488,6 @@ pub inline fn varDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) 
         Init.symbol(tok.colon_operator), Init.symbol(type_name),
         Init.symbol(tok.equal_operator), value,
     };
-}
-pub inline fn initialize(symbol: [:0]const u8, expr1: Expr) [4]Expr {
-    return .{ Init.symbol(tok.period_operator), Init.symbol(symbol), Init.symbol(tok.equal_operator), expr1 };
-}
-pub inline fn initializer(expr1: Expr) [3]Expr {
-    return .{ Init.symbol(tok.period_open_brace_operator), expr1, Init.symbol(tok.close_brace_operator) };
-}
-pub inline fn dereference(expr1: Expr) [2]Expr {
-    return .{ expr1, Init.symbol(tok.period_asterisk_operator) };
 }
 pub inline fn addEqu(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.add_equ_fn_name, expr1, expr2);
