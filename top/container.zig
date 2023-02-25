@@ -44,10 +44,10 @@ fn writeOneInternal(comptime child: type, next: u64, value: child) void {
     reference.pointerOne(child, next).* = value;
 }
 fn writeCountInternal(comptime child: type, next: u64, comptime write_count: usize, values: [write_count]child) void {
-    for (values) |value, i| reference.pointerOne(child, next + i).* = value;
+    for (values, 0..) |value, i| reference.pointerOne(child, next + i).* = value;
 }
 fn writeManyInternal(comptime child: type, next: u64, values: []const child) void {
-    for (values) |value, i| reference.pointerOne(child, next + i).* = value;
+    for (values, 0..) |value, i| reference.pointerOne(child, next + i).* = value;
 }
 pub const Parameters0 = struct {
     child: type,
@@ -488,14 +488,14 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -662,14 +662,14 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -1015,14 +1015,14 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -1198,14 +1198,14 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -1548,14 +1548,14 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * write_count);
         }
         pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), amountToCountOfType(offset, child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * values.len);
         }
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -1730,14 +1730,14 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * write_count);
         }
         pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), amountToCountOfType(offset, child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * values.len);
         }
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -2026,14 +2026,14 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -2384,14 +2384,14 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -2769,14 +2769,14 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * write_count);
         }
         pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), amountToCountOfType(offset, child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * values.len);
         }
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -3125,14 +3125,14 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * write_count);
         }
         pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), amountToCountOfType(offset, child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * values.len);
         }
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -3512,14 +3512,14 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -3735,14 +3735,14 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * write_count);
         }
         pub fn referManyUndefined(array: *const Array, offset: u64) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), offset);
         }
         pub fn writeMany(array: *Array, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(child_size * values.len);
         }
         pub fn writeFields(array: *Array, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -4034,14 +4034,14 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * write_count);
         }
         pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), amountToCountOfType(offset, child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * values.len);
         }
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {
@@ -4256,14 +4256,14 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return reference.pointerCount(child, array.impl.undefined_byte_address(), read_count);
         }
         pub fn writeCount(array: *Array, comptime child: type, comptime write_count: u64, values: [write_count]child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * write_count);
         }
         pub fn referManyUndefined(array: *const Array, comptime child: type, offset: Amount) []child {
             return reference.pointerMany(child, array.impl.undefined_byte_address(), amountToCountOfType(offset, child));
         }
         pub fn writeMany(array: *Array, comptime child: type, values: []const child) void {
-            for (values) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
+            for (values, 0..) |value, i| reference.pointerOne(child, array.impl.undefined_byte_address() +% i).* = value;
             array.impl.define(@sizeOf(child) * values.len);
         }
         pub fn writeFields(array: *Array, comptime child: type, comptime write_spec: ReinterpretSpec, fields: anytype) void {

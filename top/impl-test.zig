@@ -471,7 +471,7 @@ pub const RWPPXValues = extern struct {
         builtin.assertEqual(u64, s_values.capacity, t_values.capacity);
         const s_memory: []u8 = @intToPtr([*]u8, s_values.start)[0..s_values.capacity];
         const t_memory: []u8 = @intToPtr([*]u8, t_values.start)[0..t_values.capacity];
-        for (s_memory) |value, index| {
+        for (s_memory, 0..) |value, index| {
             builtin.assertEqual(u8, value, t_memory[index]);
         }
     }

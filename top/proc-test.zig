@@ -22,7 +22,7 @@ fn makeArgs(buf: [:0]u8, any: anytype) [any.len + 2][*:0]u8 {
     var off: u64 = 0;
     var len: u64 = 0;
     inline for (.{""} ++ any) |arg| {
-        for (arg) |c, i| buf[off + i] = c;
+        for (arg, 0..) |c, i| buf[off + i] = c;
         buf[off +% arg.len] = 0;
         ptrs[len] = buf[off .. off + arg.len :0];
         off +%= arg.len +% 1;

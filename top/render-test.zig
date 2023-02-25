@@ -90,13 +90,13 @@ const MinimalRenderArray = struct {
         return @intToPtr(*u8, array.finish);
     }
     pub fn writeCount(array: *MinimalRenderArray, comptime count: usize, values: [count]u8) void {
-        for (values) |value, index| {
+        for (values, 0..) |value, index| {
             @intToPtr(*u8, array.finish + index).* = value;
         }
         array.finish += count;
     }
     pub fn writeMany(array: *MinimalRenderArray, values: []const u8) void {
-        for (values) |value, index| {
+        for (values, 0..) |value, index| {
             @intToPtr(*u8, array.finish + index).* = value;
         }
         array.finish += values.len;
@@ -107,7 +107,7 @@ const MinimalRenderArray = struct {
     }
     pub fn overwriteCountBack(array: MinimalRenderArray, comptime count: usize, values: [count]u8) void {
         const next: u64 = array.finish - count;
-        for (values) |value, index| @intToPtr(*u8, next + index).* = value;
+        for (values, 0..) |value, index| @intToPtr(*u8, next + index).* = value;
     }
     pub fn readAll(array: MinimalRenderArray) []const u8 {
         return @intToPtr([*]const u8, array.start)[0..array.len()];

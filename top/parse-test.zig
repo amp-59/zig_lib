@@ -97,7 +97,7 @@ fn mainBoth() !void {
         }
         const std_res: StdResults = try timeStd(target);
         const lib_res: LibResults = try timeLib(target, &allocator_n, &allocator_e, &allocator_x, &allocator_s);
-        for (lib_res.ast.nodes.readAll()) |node, i| {
+        for (lib_res.ast.nodes.readAll(), 0..) |node, i| {
             const lib_tag: []const u8 = @tagName(node.tag);
             const std_tag: []const u8 = @tagName(std_res.ast.nodes.items(.tag)[i]);
             const std_main: u32 = std_res.ast.nodes.items(.main_token)[i];

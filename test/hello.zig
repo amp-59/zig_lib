@@ -42,7 +42,7 @@ pub export fn _start() void {
         };
         var s: S = .{};
         var z: S = .{};
-        inline for (hello_world) |c, i| s.auto[i] = c;
+        inline for (hello_world, 0..) |c, i| s.auto[i] = c;
         builtin.debug.write(z.auto[0..hello_world.len]);
     }
     sys.call(.exit, .{}, noreturn, .{0});

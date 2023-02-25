@@ -41,7 +41,7 @@ fn commandNotFoundException(builder: *const build.Builder, arg: [:0]const u8) !v
 fn showAllCommands(builder: *const build.Builder) void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlways("commands:\n");
-    for (builder.targets.readAll()) |target, index| {
+    for (builder.targets.readAll(), 0..) |target, index| {
         const cmd_name: []const u8 = target.build_cmd.name orelse builtin.fmt.ud64(index).readAll();
         builtin.debug.logAlwaysAIO(&buf, &.{ "    ", @tagName(target.build_cmd.kind), "\t", cmd_name, "\t", target.root, "\n" });
     }

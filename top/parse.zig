@@ -3656,7 +3656,7 @@ pub fn isValidId(values: []const u8) bool {
     if (mem.testEqualMany(u8, "_", values)) {
         return false;
     }
-    for (values) |c, i| {
+    for (values, 0..) |c, i| {
         switch (c) {
             '_', 'a'...'z', 'A'...'Z' => {},
             '0'...'9' => if (i == 0) {

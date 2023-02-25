@@ -124,7 +124,7 @@ fn appendIO(allocator_1: *SecondaryAllocator, ref: *Many8I, fd: u64) !void {
 }
 fn getLineOffsets(allocator_1: *SecondaryAllocator, many_8: Many8) !Many64 {
     var holder_64: Holder64 = Holder64.init(allocator_1);
-    for (many_8.readAll()) |c, i| {
+    for (many_8.readAll(), 0..) |c, i| {
         if (c == '\n') {
             try holder_64.appendOne(allocator_1, i);
         }

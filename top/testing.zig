@@ -23,22 +23,22 @@ fn arrayOfCharsLength(s: []const u8) u64 {
 }
 fn arrayOfCharsWrite(buf: []u8, s: []const u8) u64 {
     var len: u64 = 0;
-    for ("{ ") |c, i| buf[len + i] = c;
+    for ("{ ", 0..) |c, i| buf[len + i] = c;
     len += 2;
-    for (s) |c, i| {
+    for (s, 0..) |c, i| {
         if (c == 0) {
-            for ("0x0") |b, j| buf[len + j] = b;
+            for ("0x0", 0..) |b, j| buf[len + j] = b;
             len += 3;
         } else {
-            for ([_]u8{ '\'', c, '\'' }) |b, j| buf[len + j] = b;
+            for ([_]u8{ '\'', c, '\'' }, 0..) |b, j| buf[len + j] = b;
             len += 3;
         }
         if (i != s.len - 1) {
-            for (", ") |b, j| buf[len + j] = b;
+            for (", ", 0..) |b, j| buf[len + j] = b;
             len += 2;
         }
     }
-    for (" }\n") |c, i| buf[len + i] = c;
+    for (" }\n", 0..) |c, i| buf[len + i] = c;
     return len + 3;
 }
 pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void {

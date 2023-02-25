@@ -30,7 +30,7 @@ fn writeFieldType(comptime field: out.CanonicalFieldSpec, array: *Array) void {
     array.writeMany("pub const " ++ field.dst_type_name ++ "=enum(u");
     gen.writeIndex(array, @intCast(u8, @bitSizeOf(u64) - @clz(uniques.len() - 1)));
     array.writeMany("){\n");
-    for (uniques.readAll()) |unique, index| {
+    for (uniques.readAll(), 0..) |unique, index| {
         const value: field.src_type = @bitCast(field.src_type, unique);
         const save: u64 = array.len();
         inline for (@typeInfo(field.src_type).Struct.fields) |field_field| {

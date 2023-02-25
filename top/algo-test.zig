@@ -19,7 +19,7 @@ const show_best_cases: bool = false;
 fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     var len: u64 = 0;
     for (ss) |s| {
-        for (s) |c, i| buf[off + len + i] = c;
+        for (s, 0..) |c, i| buf[off + len + i] = c;
         len += s.len;
     }
     return len;

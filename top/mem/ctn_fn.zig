@@ -433,7 +433,7 @@ pub const Fn = packed struct {
         const offset_symbol: [:0]const u8 = blk: {
             if (ctn_detail.layouts.unstructured) {
                 break :blk switch (list_kind) {
-                    .Parameter => tok.offset_amount_param,
+                    .Parameter => tok.amount_param,
                     .Argument => tok.offset_name,
                 };
             } else {

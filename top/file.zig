@@ -923,12 +923,12 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
         }
         pub fn readCount(random: *Random, comptime T: type, comptime count: u64) [count]T {
             var ret: [count]T = undefined;
-            for (ret) |*value| value.* = random.readOne(T);
+            for (&ret) |*value| value.* = random.readOne(T);
             return ret;
         }
         pub fn readCountConditionally(random: *Random, comptime T: type, comptime count: u64) [count]T {
             var ret: [count]T = undefined;
-            for (ret) |*value| value.* = random.readOneConditionally(T);
+            for (&ret) |*value| value.* = random.readOneConditionally(T);
             return ret;
         }
     };

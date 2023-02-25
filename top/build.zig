@@ -1458,7 +1458,7 @@ fn countArgs(array: anytype) u64 {
 }
 fn makeArgs(array: anytype, args: anytype) u64 {
     var idx: u64 = 0;
-    for (array.readAll()) |c, i| {
+    for (array.readAll(), 0..) |c, i| {
         if (c == 0) {
             args.writeOne(array.referManyWithSentinelAt(0, idx).ptr);
             idx = i + 1;

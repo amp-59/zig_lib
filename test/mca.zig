@@ -214,7 +214,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
     var name_buf: ExportName = .{};
     if (x.jumps) |jumps| {
         var begin: u64 = x.body.begin;
-        for (jumps.readAll()) |idx_1, j| {
+        for (jumps.readAll(), 0..) |idx_1, j| {
             if (j == 0) {
                 name_buf.undefineAll();
                 name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });

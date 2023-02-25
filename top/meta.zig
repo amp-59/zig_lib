@@ -166,7 +166,7 @@ pub inline fn Tuple(comptime T: type) type {
 }
 pub inline fn Args(comptime Fn: type) type {
     var fields: []const builtin.Type.StructField = empty;
-    inline for (@typeInfo(Fn).Fn.params) |arg, i| {
+    inline for (@typeInfo(Fn).Fn.params, 0..) |arg, i| {
         fields = concat(builtin.Type.StructField, fields, structField(arg.type.?, builtin.fmt.ci(i), null));
     }
     return @Type(tupleInfo(fields));

@@ -27,7 +27,7 @@ pub fn mapToKinds() void {
         array.writeMany(@tagName(key.kind));
         array.writeMany("\n        ");
         var row_len: u64 = 0;
-        for (out.canonicals) |canonical, index| {
+        for (out.canonicals, 0..) |canonical, index| {
             if (key.kind == canonical.kind) {
                 array.writeFormat(fmt.ud64(index));
                 if (row_len == 16) {

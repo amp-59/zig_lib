@@ -245,7 +245,7 @@ pub const DiscreteMultiArena = struct {
     pub fn Metadata(comptime multi_arena: MultiArena) type {
         var mapping_directory: [multi_arena.list.len]Index(multi_arena) = undefined;
         var bit_index: u16 = 0;
-        for (multi_arena.list) |super_arena, index| {
+        for (multi_arena.list, 0..) |super_arena, index| {
             if (super_arena.options.require_map) {
                 mapping_directory[index] = bit_index;
                 bit_index +%= 1;
@@ -259,7 +259,7 @@ pub const DiscreteMultiArena = struct {
         var fields: []const builtin.Type.StructField = meta.empty;
         var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;
         var arena_index: Index(multi_arena) = 0;
-        for (multi_arena.list) |super_arena, index| {
+        for (multi_arena.list, 0..) |super_arena, index| {
             if (thread_safe_state and !super_arena.options.thread_safe) {
                 const T: type = ThreadSafeSet(arena_index +% 1);
                 fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
@@ -935,7 +935,7 @@ fn GenericSubSpace(comptime ss: []const meta.Generic, comptime any: anytype) typ
                 if (label.len != any.len) {
                     continue;
                 }
-                for (label) |c, i| {
+                for (label, 0..) |c, i| {
                     if (c != any[i]) continue;
                 }
                 return meta.typeCast(s).instantiate();

@@ -112,7 +112,7 @@ pub const SyntaxTree = struct {
             .line_end = ast.source.len(),
         };
         const token_start: zig.Index = ast.tokenStart(token_index);
-        for (ast.source.readManyAt(start_offset)) |c, i| {
+        for (ast.source.readManyAt(start_offset), 0..) |c, i| {
             if (i + start_offset == token_start) {
                 loc.line_end = i + start_offset;
                 while (loc.line_end < ast.source.len() and ast.source.readOneAt(loc.line_end) != '\n') {
@@ -146,7 +146,7 @@ pub const SyntaxTree = struct {
     }
     pub fn extraData(ast: SyntaxTree, index: usize, comptime T: type) T {
         var result: T = undefined;
-        inline for (meta.resolve(@typeInfo(T)).fields) |field, i| {
+        inline for (meta.resolve(@typeInfo(T)).fields, 0..) |field, i| {
             builtin.static.assert(field.type == zig.Index);
             @field(result, field.name) = ast.extraDataAt(index + i);
         }
@@ -2063,7 +2063,7 @@ pub const SyntaxTree = struct {
         if (ast.tokenTag(info.asm_token + 1) == .keyword_volatile) {
             result.volatile_token = info.asm_token + 1;
         }
-        const outputs_end: usize = for (info.items) |item, i| {
+        const outputs_end: usize = for (info.items, 0..) |item, i| {
             switch (ast.nodeTag(item)) {
                 .asm_output => continue,
                 else => break i,

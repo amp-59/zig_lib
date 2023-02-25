@@ -99,7 +99,7 @@ pub const Techniques = packed struct {
 };
 comptime {
     const attribute_types: [6]type = .{ Modes, Kinds, Layouts, Fields, Managers, Techniques };
-    inline for (attribute_types) |l_struct_of_bool, index| {
+    inline for (attribute_types, 0..) |l_struct_of_bool, index| {
         inline for (@typeInfo(l_struct_of_bool).Struct.fields) |field| {
             inline for (attribute_types[index + 1 ..]) |r_struct_of_bool| {
                 if (@hasField(r_struct_of_bool, field.name)) {

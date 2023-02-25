@@ -1087,7 +1087,7 @@ const debug = opaque {
             if (len +% arg_len >= buf.len - 37) {
                 break;
             }
-            for (args[i][0..arg_len]) |c, j| buf[len +% j] = c;
+            for (args[i][0..arg_len], 0..) |c, j| buf[len +% j] = c;
             len += arg_len;
             buf[len] = ' ';
             len += 1;
@@ -1192,7 +1192,7 @@ const debug = opaque {
             if (len +% arg_len >= max_len - 37) {
                 break;
             }
-            for (args[i][0..arg_len]) |c, j| buf[len +% j] = c;
+            for (args[i][0..arg_len], 0..) |c, j| buf[len +% j] = c;
             len += arg_len;
             buf[len] = ' ';
             len += 1;

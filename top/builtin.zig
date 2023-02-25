@@ -1152,13 +1152,13 @@ pub const debug = opaque {
     // At the time of writing, this function benefits from inlining but
     // writeMulti does not.
     pub inline fn writeMany(buf: []u8, s: []const u8) u64 {
-        for (s) |c, i| buf[i] = c;
+        for (s, 0..) |c, i| buf[i] = c;
         return s.len;
     }
     pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
         var len: u64 = 0;
         for (ss) |s| {
-            for (s) |c, i| buf[len +% i] = c;
+            for (s, 0..) |c, i| buf[len +% i] = c;
             len +%= s.len;
         }
         return len;
@@ -1246,7 +1246,7 @@ pub const debug = opaque {
                     itos(T, result).readAll(),    "r",
                     itos(T, remainder).readAll(), "\n",
                 }) |s| {
-                    for (s) |c, i| msg[len +% i] = c;
+                    for (s, 0..) |c, i| msg[len +% i] = c;
                     len +%= s.len;
                 }
                 @compileError(msg[0..len]);
@@ -1271,7 +1271,7 @@ pub const debug = opaque {
                     itos(T, result).readAll(),    "+",
                     itos(T, remainder).readAll(), "\n",
                 }) |s| {
-                    for (s) |c, i| msg[len +% i] = c;
+                    for (s, 0..) |c, i| msg[len +% i] = c;
                     len +%= s.len;
                 }
                 @compileError(msg[0..len]);

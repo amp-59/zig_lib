@@ -21,7 +21,7 @@ fn mapToContainers() void {
     var keys: Keys = Keys.init(out.Canonical, out.canonicals);
     for (keys.auto[0..keys.len]) |key| {
         array.writeMany("    &.{ ");
-        for (out.canonicals) |canonical, index| {
+        for (out.canonicals, 0..) |canonical, index| {
             if (builtin.testEqual(Container, key, .{
                 .layout = canonical.layout,
                 .kind = canonical.kind,

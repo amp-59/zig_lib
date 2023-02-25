@@ -34,7 +34,7 @@ const Utility = opaque {
             return false;
         }
         const del: u64 = seq.len - end.len;
-        for (end) |v, i| {
+        for (end, 0..) |v, i| {
             if (seq[i + del] != v) return false;
         }
         return true;
@@ -45,7 +45,7 @@ fn defineBuildRoot(builder: *build.Builder, exe: *build.LibExeObjStep) void {
     {
         const len: u64 = builder.build_root.path.?.len;
         build_root_s[0] = '"';
-        for (builder.build_root.path.?) |c, i| build_root_s[i + 1] = c;
+        for (builder.build_root.path.?, 0..) |c, i| build_root_s[i + 1] = c;
         build_root_s[len + 1] = '"';
         exe.defineCMacro("build_root", build_root_s[0 .. len + 2]);
         build_root_s[len] = 0;
@@ -56,11 +56,11 @@ fn defineRootSourceAboslutePath(builder: *build.Builder, exe: *build.LibExeObjSt
     var len: u64 = 0;
     root_source_s[len] = '"';
     len += 1;
-    for (builder.build_root) |c, i| root_source_s[i + 1] = c;
+    for (builder.build_root, 0..) |c, i| root_source_s[i + 1] = c;
     len += builder.build_root.len;
     root_source_s[len] = '/';
     len += 1;
-    for (exe.root_src.?.path) |c, i| root_source_s[i + 1] = c;
+    for (exe.root_src.?.path, 0..) |c, i| root_source_s[i + 1] = c;
     len += exe.root_src.?.path.len;
     root_source_s[len + 1] = '"';
     exe.defineCMacro("root_src_file", root_source_s[0 .. len + 2]);
@@ -71,7 +71,7 @@ fn defineMacroPath(exe: *build.LibExeObjStep, name: []const u8, pathname: []cons
     var len: u64 = 0;
     quoted_pathname[len] = '"';
     len +%= 1;
-    for (pathname) |c, i| quoted_pathname[i + 1] = c;
+    for (pathname, 0..) |c, i| quoted_pathname[i + 1] = c;
     len +%= pathname.len;
     quoted_pathname[len] = '"';
     quoted_pathname[len + 1] = 0;

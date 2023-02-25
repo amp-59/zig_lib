@@ -769,7 +769,7 @@ pub const Bytes = struct {
         return len;
     }
     pub fn init(value: u64) Bytes {
-        inline for (fields) |field, i| {
+        inline for (fields, 0..) |field, i| {
             const integer: mem.Bytes = mem.Bytes.Unit.to(value, @field(mem.Bytes.Unit, field.name));
             if (integer.count != 0) {
                 const remainder: mem.Bytes = blk: {
@@ -956,7 +956,7 @@ pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
             const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
             const lower_s_count: u64 = lower_s.len();
             const upper_s_count: u64 = upper_s.len();
-            for (lower_s.readAll()) |v, i| {
+            for (lower_s.readAll(), 0..) |v, i| {
                 if (v != upper_s.readOneAt(i)) {
                     return (upper_s_count -% lower_s_count) +% i +% 1 +% (lower_s_count -% i) +% 2 +% (upper_s_count -% i) +% 1;
                 }
@@ -1355,7 +1355,7 @@ fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const 
     if (ret.len < decl_name.len) {
         return type_name;
     }
-    for (ret[ret.len -% decl_name.len ..]) |c, i| {
+    for (ret[ret.len -% decl_name.len ..], 0..) |c, i| {
         if (c != decl_name[i]) {
             return type_name;
         }
