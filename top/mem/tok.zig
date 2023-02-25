@@ -7,10 +7,11 @@ pub const type_type_name: [:0]const u8 = "type";
 pub const generic_type_name: [:0]const u8 = "anytype";
 
 // Namespace
-pub const builtin_name_space: [:0]const u8 = "builtin";
-pub const reference_name_space: [:0]const u8 = "reference";
-pub const mach_name_space: [:0]const u8 = "mach";
-pub const meta_name_space: [:0]const u8 = "meta";
+pub const builtin_namespace: [:0]const u8 = "builtin";
+pub const reference_namespace: [:0]const u8 = "reference";
+pub const container_namespace: [:0]const u8 = "container";
+pub const mach_namespace: [:0]const u8 = "mach";
+pub const meta_namespace: [:0]const u8 = "meta";
 
 // Implementation
 pub const impl_name: [:0]const u8 = "impl";
@@ -105,10 +106,9 @@ pub const dynamic_impl_type_name: [:0]const u8 = fieldAccess(dynamic_type_name, 
 pub const reinterpret_spec_name: [:0]const u8 = "write_spec";
 pub const reinterpret_spec_type_name: [:0]const u8 = "ReinterpretSpec";
 pub const reinterpret_spec_param: [:0]const u8 = comptimeParamDecl(reinterpret_spec_name, reinterpret_spec_type_name);
+
 pub const offset_name: [:0]const u8 = "offset";
 pub const count_name: [:0]const u8 = "count";
-pub const count_param: [:0]const u8 = paramDecl(count_name, word_type_name);
-pub const static_count_param: [:0]const u8 = comptimeParamDecl(count_name, word_type_name);
 pub const amount_name: [:0]const u8 = "amount";
 pub const init_count_name: [:0]const u8 = "init_count";
 pub const init_amount_name: [:0]const u8 = "init_amount";
@@ -116,14 +116,17 @@ pub const init_offset_name: [:0]const u8 = "init_offset";
 pub const new_count_name: [:0]const u8 = "new_count";
 pub const new_amount_name: [:0]const u8 = "new_amount";
 pub const new_offset_name: [:0]const u8 = "new_offset";
-pub const offset_param: [:0]const u8 = paramDecl(offset_name, word_type_name);
+pub const amount_type_name: [:0]const u8 = "Amount";
+pub const count_param: [:0]const u8 = paramDecl(count_name, word_type_name);
+pub const static_count_param: [:0]const u8 = comptimeParamDecl(count_name, word_type_name);
+pub const offset_word_param: [:0]const u8 = paramDecl(offset_name, word_type_name);
+pub const offset_amount_param: [:0]const u8 = paramDecl(offset_name, amount_type_name);
 pub const init_count_param: [:0]const u8 = paramDecl(init_count_name, word_type_name);
 pub const init_amount_param: [:0]const u8 = paramDecl(init_amount_name, amount_type_name);
 pub const init_offset_param: [:0]const u8 = paramDecl(init_offset_name, word_type_name);
 pub const new_count_param: [:0]const u8 = paramDecl(new_count_name, word_type_name);
 pub const new_amount_param: [:0]const u8 = paramDecl(new_amount_name, amount_type_name);
 pub const new_offset_param: [:0]const u8 = paramDecl(new_offset_name, word_type_name);
-pub const amount_type_name: [:0]const u8 = "Amount";
 pub const write_count_param: [:0]const u8 = comptimeParamDecl(count_name, word_type_name);
 pub const read_count_param: [:0]const u8 = comptimeParamDecl(count_name, word_type_name);
 pub const read_many_param: [:0]const u8 = paramDecl(count_name, word_type_name);
@@ -164,7 +167,7 @@ pub const target_impl_ptre_name: [:0]const u8 = "t_impl_ptr";
 pub const input_amount_name: [:0]const u8 = "n_amt";
 pub const source_amount_name: [:0]const u8 = "s_amt";
 pub const option_amount_name: [:0]const u8 = "o_amt";
-pub const offset_amount_name: [:0]const u8 = "x_amt";
+pub const extra_amount_name: [:0]const u8 = "x_amt";
 pub const target_amount_name: [:0]const u8 = "t_amt";
 pub const input_bytes_name: [:0]const u8 = "n_bytes";
 pub const source_bytes_name: [:0]const u8 = "s_bytes";
@@ -202,10 +205,10 @@ pub const target_impl_param: [:0]const u8 = paramDecl(target_impl_name, word_typ
 pub const source_impl_ptr_param: [:0]const u8 = paramDecl(source_impl_ptr_name, word_type_name);
 pub const target_impl_ptre_param: [:0]const u8 = paramDecl(target_impl_ptre_name, word_type_name);
 pub const input_amount_param: [:0]const u8 = paramDecl(input_amount_name, word_type_name);
-pub const source_amount_param: [:0]const u8 = paramDecl(source_amount_name, word_type_name);
-pub const option_amount_param: [:0]const u8 = paramDecl(option_amount_name, word_type_name);
-pub const offset_amount_param: [:0]const u8 = paramDecl(offset_amount_name, word_type_name);
-pub const target_amount_param: [:0]const u8 = paramDecl(target_amount_name, word_type_name);
+pub const source_amount_param: [:0]const u8 = paramDecl(source_amount_name, amount_type_name);
+pub const option_amount_param: [:0]const u8 = paramDecl(option_amount_name, amount_type_name);
+pub const extra_amount_param: [:0]const u8 = paramDecl(extra_amount_name, amount_type_name);
+pub const target_amount_param: [:0]const u8 = paramDecl(target_amount_name, amount_type_name);
 pub const input_bytes_param: [:0]const u8 = paramDecl(input_bytes_name, word_type_name);
 pub const source_bytes_param: [:0]const u8 = paramDecl(source_bytes_name, word_type_name);
 pub const option_bytes_param: [:0]const u8 = paramDecl(option_bytes_name, word_type_name);
@@ -278,12 +281,12 @@ pub const pointer_many_fn_name: [:0]const u8 = "pointerMany";
 pub const pointer_many_with_sentinel_fn_name: [:0]const u8 = "pointerManyWithSentinel";
 pub const pointer_count_fn_name: [:0]const u8 = "pointerCount";
 pub const pointer_count_with_sentinel_fn_name: [:0]const u8 = "pointerCountWithSentinel";
-pub const intr_pointer_opaque_fn_name: [:0]const u8 = fieldAccess(reference_name_space, pointer_opaque_fn_name);
-pub const intr_pointer_one_fn_name: [:0]const u8 = fieldAccess(reference_name_space, pointer_one_fn_name);
-pub const intr_pointer_many_fn_name: [:0]const u8 = fieldAccess(reference_name_space, pointer_many_fn_name);
-pub const intr_pointer_many_with_sentinel_fn_name: [:0]const u8 = fieldAccess(reference_name_space, pointer_many_with_sentinel_fn_name);
-pub const intr_pointer_count_fn_name: [:0]const u8 = fieldAccess(reference_name_space, pointer_count_fn_name);
-pub const intr_pointer_count_with_sentinel_fn_name: [:0]const u8 = fieldAccess(reference_name_space, pointer_count_with_sentinel_fn_name);
+pub const intr_pointer_opaque_fn_name: [:0]const u8 = fieldAccess(reference_namespace, pointer_opaque_fn_name);
+pub const intr_pointer_one_fn_name: [:0]const u8 = fieldAccess(reference_namespace, pointer_one_fn_name);
+pub const intr_pointer_many_fn_name: [:0]const u8 = fieldAccess(reference_namespace, pointer_many_fn_name);
+pub const intr_pointer_many_with_sentinel_fn_name: [:0]const u8 = fieldAccess(reference_namespace, pointer_many_with_sentinel_fn_name);
+pub const intr_pointer_count_fn_name: [:0]const u8 = fieldAccess(reference_namespace, pointer_count_fn_name);
+pub const intr_pointer_count_with_sentinel_fn_name: [:0]const u8 = fieldAccess(reference_namespace, pointer_count_with_sentinel_fn_name);
 pub const length_format_fn_name: [:0]const u8 = fieldAccess("reinterpret", "lengthFormat");
 pub const length_args_fn_name: [:0]const u8 = fieldAccess("reinterpret", "lengthArgs");
 pub const length_fields_fn_name: [:0]const u8 = fieldAccess("reinterpret", "lengthFields");
@@ -317,10 +320,16 @@ pub const end_list_item: [:0]const u8 = ",\n";
 pub const end_small_list_item: [:0]const u8 = ",";
 
 fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
-    return fieldAccess(meta_name_space, name);
+    return fieldAccess(meta_namespace, name);
 }
 fn machFnName(comptime name: [:0]const u8) [:0]const u8 {
-    return fieldAccess(mach_name_space, name ++ word_type_name[1..]);
+    return fieldAccess(mach_namespace, name ++ word_type_name[1..]);
+}
+fn referenceFnName(comptime name: [:0]const u8) [:0]const u8 {
+    return fieldAccess(reference_namespace, name);
+}
+fn containerFnName(comptime name: [:0]const u8) [:0]const u8 {
+    return fieldAccess(container_namespace, name);
 }
 fn arrayType(
     comptime type_name: [:0]const u8,
