@@ -1105,8 +1105,9 @@ pub const Fn = packed struct {
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
         array.writeMany(") ");
+        array.writeMany(list.ret);
     }
-    pub fn getReturnType(ctn_fn_info: *const Fn) [:0]const u8 {
+    pub fn returnType(ctn_fn_info: *const Fn) [:0]const u8 {
         switch (ctn_fn_info.kind) {
             .write => return tok.void_type_name,
             .refer => switch (ctn_fn_info.val) {
