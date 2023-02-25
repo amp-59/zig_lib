@@ -95,6 +95,30 @@ pub fn main() !void {
         }
     }
     {
+        const dynamic_example: out.DetailMore = .{
+            .index = 3,
+            .kinds = .{ .dynamic = true },
+            .layouts = .{ .structured = true },
+            .managers = .{ .allocatable = true, .convertible = true, .movable = true },
+            .modes = .{ .read_write = true, .resize = true },
+            .fields = .{ .undefined_byte_address = true },
+            .techs = .{ .disjunct_alignment = true },
+        };
+        const impl_detail: *const out.DetailMore = &dynamic_example;
+        {
+            defer array.undefineAll();
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.construct));
+            array.writeFormat(call);
+            try testing.expectEqualMany(u8, array.readAll(), tok.source_impl_type_name ++ ".construct(" ++ tok.source_aligned_byte_address_name ++ ")");
+        }
+        {
+            defer array.undefineAll();
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.reconstruct));
+            array.writeFormat(call);
+            try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".reconstruct(" ++ tok.target_aligned_byte_address_name ++ ")");
+        }
+    }
+    {
         const parametric_example: out.DetailMore = .{
             .index = 3,
             .kinds = .{ .static = true },
