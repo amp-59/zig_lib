@@ -1,8 +1,7 @@
-const fmt = @import("./fmt.zig");
-const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
+const mem = @import("./mem.zig");
+const fmt = @import("./fmt.zig");
 const mach = @import("./mach.zig");
-const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
@@ -123,36 +122,55 @@ pub const AllocatorErrors = struct {
 };
 pub const ArenaAllocatorSpec = struct {
     AddressSpace: type,
-    arena_index: comptime_int,
+    arena_index: comptime_int = undefined,
     options: ArenaAllocatorOptions = .{},
     errors: AllocatorErrors = .{},
     logging: AllocatorLogging = .{},
-    /// If true, the allocator is responsible for reserving memory and the
-    /// address space is not.
+    fn arena(comptime spec: ArenaAllocatorSpec) mem.Arena {
+        if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec or
+            @TypeOf(spec.AddressSpace.addr_spec) == mem.RegularAddressSpaceSpec)
+        {
+            return spec.AddressSpace.arena(spec.arena_index);
+        }
+        if (@TypeOf(spec.AddressSpace.addr_spec) == mem.ElementaryAddressSpaceSpec) {
+            return spec.AddressSpace.arena();
+        }
+        @compileError("invalid address space for this allocator");
+    }
+    // If true, the allocator is responsible for reserving memory and the
+    // address space is not.
     fn isMapper(comptime spec: ArenaAllocatorSpec) bool {
         const allocator_is_mapper: bool = spec.options.require_map;
         const address_space_is_mapper: bool = blk: {
-            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
-                break :blk spec.AddressSpace.addr_spec.options(spec.arena_index).require_map;
-            } else {
+            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.RegularAddressSpaceSpec or
+                @TypeOf(spec.AddressSpace.addr_spec) == mem.ElementaryAddressSpaceSpec)
+            {
                 break :blk spec.AddressSpace.addr_spec.options.require_map;
             }
+            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
+                break :blk spec.AddressSpace.addr_spec.options(spec.arena_index).require_map;
+            }
+            @compileError("invalid address space for this allocator");
         };
         if (allocator_is_mapper and address_space_is_mapper) {
             unreachable;
         }
         return spec.options.require_map;
     }
-    /// If true, the allocator is responsible for unreserving memory and the
-    /// address space is not.
+    // If true, the allocator is responsible for unreserving memory and the
+    // address space is not.
     fn isUnmapper(comptime spec: ArenaAllocatorSpec) bool {
         const allocator_is_unmapper: bool = spec.options.require_unmap;
         const address_space_is_unmapper: bool = blk: {
+            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.RegularAddressSpaceSpec or
+                @TypeOf(spec.AddressSpace.addr_spec) == mem.ElementaryAddressSpaceSpec)
+            {
+                break :blk spec.AddressSpace.addr_spec.options.require_map;
+            }
             if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
                 break :blk spec.AddressSpace.addr_spec.options(spec.arena_index).require_map;
-            } else {
-                break :blk spec.AddressSpace.addr_spec.options.require_unmap;
             }
+            @compileError("invalid address space for this allocator");
         };
         if (allocator_is_unmapper and address_space_is_unmapper) {
             unreachable;
@@ -466,9 +484,9 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         const Allocator = @This();
         pub const AddressSpace = allocator_spec.AddressSpace;
         pub const allocator_spec: ArenaAllocatorSpec = spec;
-        pub const arena_index: AddressSpace.Index = allocator_spec.arena_index;
-        pub const arena: mem.Arena = allocator_spec.AddressSpace.arena(arena_index);
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
+        pub const arena_index: u64 = allocator_spec.arena_index;
+        const arena: mem.Arena = spec.arena();
         const lb_addr: u64 = arena.low();
         const ua_addr: u64 = arena.high();
         pub fn init(address_space: *AddressSpace) Allocator.acquire_allocator {
@@ -478,10 +496,17 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 .ub_addr = lb_addr,
                 .up_addr = lb_addr,
             };
-            if (@TypeOf(AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
-                try meta.wrap(special.static.acquire(AddressSpace, address_space, arena_index));
-            } else {
-                try meta.wrap(special.acquire(AddressSpace, address_space, arena_index));
+            switch (@TypeOf(AddressSpace.addr_spec)) {
+                mem.DiscreteAddressSpaceSpec => {
+                    try meta.wrap(special.static.acquire(AddressSpace, address_space, spec.arena_index));
+                },
+                mem.RegularAddressSpaceSpec => {
+                    try meta.wrap(special.acquire(AddressSpace, address_space, spec.arena_index));
+                },
+                mem.ElementaryAddressSpaceSpec => {
+                    try meta.wrap(special.elementary.acquire(AddressSpace, address_space));
+                },
+                else => @compileError("invalid address space for this allocator"),
             }
             if (Allocator.allocator_spec.options.require_map) {
                 try meta.wrap(Allocator.mapInit(&allocator));
@@ -493,10 +518,17 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             if (Allocator.allocator_spec.options.require_unmap) {
                 try meta.wrap(allocator.unmapAll());
             }
-            if (@TypeOf(AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
-                try meta.wrap(special.static.release(AddressSpace, address_space, arena_index));
-            } else {
-                try meta.wrap(special.release(AddressSpace, address_space, arena_index));
+            switch (@TypeOf(AddressSpace.addr_spec)) {
+                mem.DiscreteAddressSpaceSpec => {
+                    try meta.wrap(special.static.release(AddressSpace, address_space, spec.arena_index));
+                },
+                mem.RegularAddressSpaceSpec => {
+                    try meta.wrap(special.release(AddressSpace, address_space, spec.arena_index));
+                },
+                mem.ElementaryAddressSpaceSpec => {
+                    try meta.wrap(special.elementary.release(AddressSpace, address_space));
+                },
+                else => @compileError("invalid address space for this allocator"),
             }
         }
         pub usingnamespace Types(Allocator);
@@ -3378,6 +3410,62 @@ const special = opaque {
                 }
                 return spec.errors.release.throw;
             } else if (spec.errors.release == .abort) {
+                if (spec.logging.release.Fault) {
+                    builtin.debug.logFault(debug.about_rel_2_s);
+                }
+                sys.call(.exit, .{}, noreturn, .{2});
+            }
+        }
+    };
+    pub const elementary = opaque {
+        fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace) bool {
+            if (comptime AddressSpace.addr_spec.options.thread_safe) {
+                return address_space.atomicSet();
+            } else {
+                return address_space.set();
+            }
+        }
+        fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace) bool {
+            if (comptime AddressSpace.addr_spec.options.thread_safe) {
+                return address_space.atomicUnset();
+            } else {
+                return address_space.unset();
+            }
+        }
+        pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
+            const spec = AddressSpace.addr_spec;
+            const lb_addr: u64 = address_space.low();
+            const up_addr: u64 = address_space.high();
+            if (elementary.acquireSet(AddressSpace, address_space)) {
+                if (spec.logging.acquire.Acquire) {
+                    debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
+                }
+            } else if (comptime spec.errors.acquire == .throw) {
+                if (spec.logging.acquire.Error) {
+                    debug.arenaAcquireError(spec.errors.acquire.throw, null, lb_addr, up_addr, spec.label);
+                }
+                return spec.errors.acquire.throw;
+            } else if (comptime spec.errors.acquire == .abort) {
+                if (spec.logging.acquire.Fault) {
+                    builtin.debug.logFault(debug.about_acq_2_s);
+                }
+                sys.call(.exit, .{}, noreturn, .{2});
+            }
+        }
+        pub fn release(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
+            const spec = AddressSpace.addr_spec;
+            const lb_addr: u64 = address_space.low();
+            const up_addr: u64 = address_space.high();
+            if (elementary.releaseUnset(AddressSpace, address_space)) {
+                if (spec.logging.release.Release) {
+                    debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
+                }
+            } else if (comptime spec.errors.release == .throw) {
+                if (spec.logging.release.Error) {
+                    debug.arenaReleaseError(spec.errors.throw, null, lb_addr, up_addr, spec.label);
+                }
+                return spec.errors.release.throw;
+            } else if (comptime spec.errors.release == .abort) {
                 if (spec.logging.release.Fault) {
                     builtin.debug.logFault(debug.about_rel_2_s);
                 }
