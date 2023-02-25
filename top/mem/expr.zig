@@ -453,14 +453,14 @@ pub inline fn varDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) 
         Init.symbol(tok.equal_operator), value,
     };
 }
-pub inline fn initialize(allocator: anytype, symbol: [:0]const u8, expr1: Expr) *[4]Expr {
-    return allocator.duplicateIrreversible([4]Expr, .{ Init.symbol(tok.period_operator), Init.symbol(symbol), Init.symbol(tok.equal_operator), expr1 });
+pub inline fn initialize(symbol: [:0]const u8, expr1: Expr) [4]Expr {
+    return .{ Init.symbol(tok.period_operator), Init.symbol(symbol), Init.symbol(tok.equal_operator), expr1 };
 }
-pub inline fn initializer(allocator: anytype, expr1: Expr) *[3]Expr {
-    return allocator.duplicateIrreversible([3]Expr, .{ Init.symbol(tok.period_open_brace_operator), expr1, Init.symbol(tok.close_brace_operator) });
+pub inline fn initializer(expr1: Expr) [3]Expr {
+    return .{ Init.symbol(tok.period_open_brace_operator), expr1, Init.symbol(tok.close_brace_operator) };
 }
-pub inline fn dereference(allocator: anytype, expr1: Expr) *[2]Expr {
-    return allocator.duplicateIrreversible([2]Expr, .{ expr1, Init.symbol(tok.period_asterisk_operator) });
+pub inline fn dereference(expr1: Expr) [2]Expr {
+    return .{ expr1, Init.symbol(tok.period_asterisk_operator) };
 }
 pub inline fn addEqu(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.add_equ_fn_name, expr1, expr2);
