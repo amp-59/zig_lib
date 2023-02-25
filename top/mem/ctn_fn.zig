@@ -347,13 +347,17 @@ pub const Fn = packed struct {
         return true;
     }
     pub fn argList(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess, list_kind: gen.ListKind) gen.ArgList { // 8KiB
-        var array: gen.ArgList = undefined;
-        array.len = 0;
-        const array_ptr_symbol: [:0]const u8 = switch (list_kind) {
+        var arg_list: gen.ArgList = .{
+            .args = undefined,
+            .len = 0,
+            .kind = list_kind,
+            .ret = ctn_fn_info.returnType(),
+        };
+        const arg_list_ptr_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => tok.array_ptr_param,
             .Argument => tok.array_name,
         };
-        const array_const_ptr_symbol: [:0]const u8 = switch (list_kind) {
+        const arg_list_const_ptr_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => tok.array_const_ptr_param,
             .Argument => tok.array_name,
         };
@@ -444,648 +448,648 @@ pub const Fn = packed struct {
             .undefineAll,
             .unstreamAll,
             => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .streamAll => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
             },
             .len,
             .index,
             .avail,
             => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .__at => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .__len,
             .__rem,
             => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .__ad,
             .__back,
             .__behind,
             => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .readAll,
             .referAllDefined,
             => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .readAllWithSentinel,
             .referAllDefinedWithSentinel,
             => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .unstream => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(amount_symbol);
+                arg_list.writeOne(amount_symbol);
             },
             .stream => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(amount_symbol);
+                arg_list.writeOne(amount_symbol);
             },
             .undefine => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(amount_symbol);
+                arg_list.writeOne(amount_symbol);
             },
             .define => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(amount_symbol);
+                arg_list.writeOne(amount_symbol);
             },
             .readOneBehind => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
             },
             .readCountBehind => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
+                arg_list.writeOne(static_count_symbol);
             },
             .readCountWithSentinelBehind => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .readManyBehind => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
             },
             .readManyWithSentinelBehind => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .readOneAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .readCountAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .readCountWithSentinelAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(sentinel_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(sentinel_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .readManyAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .readManyWithSentinelAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
-                array.writeOne(sentinel_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(sentinel_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .readOneAhead => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
             },
             .readCountAhead => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
+                arg_list.writeOne(static_count_symbol);
             },
             .readCountWithSentinelAhead => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .readManyAhead => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
             },
             .readManyWithSentinelAhead => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .readOneBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
             },
             .readCountBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
+                arg_list.writeOne(static_count_symbol);
             },
             .readCountWithSentinelBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .readManyBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
             },
             .readManyWithSentinelBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .overwriteOneAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
 
-                array.writeOne(value_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(value_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .overwriteCountAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(count_values_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(count_values_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .overwriteManyAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(many_values_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(many_values_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .overwriteOneBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(value_symbol);
+                arg_list.writeOne(value_symbol);
             },
             .overwriteCountBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(count_values_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(count_values_symbol);
             },
             .overwriteManyBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(many_values_symbol);
+                arg_list.writeOne(many_values_symbol);
             },
             .referCountWithSentinelBehind => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .referManyWithSentinelBehind => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(sentinel_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(sentinel_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .referOneAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .referCountAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .referCountWithSentinelAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(sentinel_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(sentinel_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .referManyAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .referManyWithSentinelAt => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(sentinel_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(sentinel_symbol);
+                arg_list.writeOne(offset_symbol);
             },
             .referOneBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
             },
             .referCountBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
+                arg_list.writeOne(static_count_symbol);
             },
             .referManyBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
             },
             .referCountWithSentinelBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .referManyWithSentinelBack => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .referAllUndefined => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .referAllUndefinedWithSentinel => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                array.writeOne(sentinel_symbol);
+                arg_list.writeOne(sentinel_symbol);
             },
             .referOneUndefined => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .referCountUndefined => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(static_count_symbol);
+                arg_list.writeOne(static_count_symbol);
             },
             .referManyUndefined => {
-                array.writeOne(array_const_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
-                    array.writeOne(allocator_const_ptr_symbol);
+                    arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .static => {},
             .dynamic => {},
             .holder => {},
             .init => {
-                array.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
                 if (ctn_detail.kinds.dynamic) {
-                    array.writeOne(count_symbol);
+                    arg_list.writeOne(count_symbol);
                 }
             },
             .grow, .shrink => {
-                array.writeOne(array_ptr_symbol);
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(count_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(count_symbol);
             },
             .deinit => {
-                array.writeOne(array_ptr_symbol);
-                array.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
             },
             .increment,
             .decrement,
             => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(offset_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(offset_symbol);
             },
 
             .writeOne => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(value_symbol);
+                arg_list.writeOne(value_symbol);
             },
             .appendOne => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(value_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(value_symbol);
             },
             .writeCount => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(static_count_symbol);
-                array.writeOne(count_values_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(count_values_symbol);
             },
             .appendCount => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(static_count_symbol);
-                array.writeOne(count_values_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(static_count_symbol);
+                arg_list.writeOne(count_values_symbol);
             },
             .writeMany => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(many_values_symbol);
+                arg_list.writeOne(many_values_symbol);
             },
             .appendMany => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(many_values_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(many_values_symbol);
             },
             .writeFormat => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(format_symbol);
+                arg_list.writeOne(format_symbol);
             },
             .appendFormat => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(format_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(format_symbol);
             },
             .writeFields => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(reinterpret_spec_symbol);
-                array.writeOne(fields_symbol);
+                arg_list.writeOne(reinterpret_spec_symbol);
+                arg_list.writeOne(fields_symbol);
             },
             .appendFields => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(reinterpret_spec_symbol);
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(fields_symbol);
+                arg_list.writeOne(reinterpret_spec_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(fields_symbol);
             },
             .writeArgs => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(reinterpret_spec_symbol);
-                array.writeOne(args_symbol);
+                arg_list.writeOne(reinterpret_spec_symbol);
+                arg_list.writeOne(args_symbol);
             },
             .appendArgs => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(reinterpret_spec_symbol);
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(args_symbol);
+                arg_list.writeOne(reinterpret_spec_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(args_symbol);
             },
             .writeAny => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(reinterpret_spec_symbol);
-                array.writeOne(any_symbol);
+                arg_list.writeOne(reinterpret_spec_symbol);
+                arg_list.writeOne(any_symbol);
             },
             .appendAny => {
-                array.writeOne(array_ptr_symbol);
+                arg_list.writeOne(arg_list_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
-                    array.writeOne(child_type_symbol);
+                    arg_list.writeOne(child_type_symbol);
                 }
-                array.writeOne(reinterpret_spec_symbol);
-                array.writeOne(allocator_ptr_symbol);
-                array.writeOne(any_symbol);
+                arg_list.writeOne(reinterpret_spec_symbol);
+                arg_list.writeOne(allocator_ptr_symbol);
+                arg_list.writeOne(any_symbol);
             },
         }
-        return array;
+        return arg_list;
     }
     pub fn writeCall(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const out.DetailLess) void {
         const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
