@@ -16,7 +16,6 @@ pub const AddressSpace = mem.GenericElementaryAddressSpace(.{
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     //.arena_index = 0,
-    .arena_index = null,
     .errors = preset.allocator.errors.noexcept,
     .logging = preset.allocator.logging.silent,
 });
