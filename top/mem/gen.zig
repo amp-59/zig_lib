@@ -199,6 +199,8 @@ pub fn GenericKeys(comptime Key: type, comptime max_len: u64) type {
 pub const ArgList = struct {
     args: [16][:0]const u8,
     len: u8,
+    kind: ListKind,
+    ret: [:0]const u8,
     pub fn writeOne(arg_list: *ArgList, symbol: [:0]const u8) void {
         arg_list.args[arg_list.len] = symbol;
         arg_list.len +%= 1;
@@ -207,10 +209,30 @@ pub const ArgList = struct {
         return arg_list.args[0..arg_list.len];
     }
     pub fn comptimeField(arg_list: ArgList) bool {
-        for (arg_list.readAll()) |arg| {
-            if (arg.ptr == tok.impl_name.ptr) {
-                return false;
-            }
+        switch (arg_list.kind) {
+            .Parameter => {
+                if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
+                    return false;
+                }
+                for (arg_list.readAll()) |arg| {
+                    if (arg.ptr == tok.impl_const_param.ptr) {
+                        return false;
+                    }
+                    if (arg.ptr == tok.impl_param.ptr) {
+                        return false;
+                    }
+                }
+            },
+            .Argument => {
+                if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
+                    return false;
+                }
+                for (arg_list.readAll()) |arg| {
+                    if (arg.ptr == tok.impl_name.ptr) {
+                        return false;
+                    }
+                }
+            },
         }
         return true;
     }
