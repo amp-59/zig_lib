@@ -735,7 +735,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
     });
 }
-const ElementaryAddressSpaceSpec = struct {
+pub const ElementaryAddressSpaceSpec = struct {
     lb_addr: u64 = 0x40000000,
     up_addr: u64 = 0x800000000000,
     errors: AddressSpaceErrors,
