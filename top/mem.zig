@@ -665,8 +665,8 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors
     }
 }
 pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
-    const mmap_prot: Prot = spec.prot();
-    if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val }))) {
+    const prot: Prot = spec.prot();
+    if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, prot.val }))) {
         if (spec.logging.Success) {
             debug.protectNotice(addr, len, "<description>");
         }
