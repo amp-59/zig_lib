@@ -149,8 +149,18 @@ pub const Builder = struct {
         if (args.build_mode) |build_mode| {
             ret.build_cmd.O = build_mode;
         }
-        if (args.packages) |packages| {
-            ret.build_cmd.packages = packages;
+
+        if (args.modules) |modules| {
+            const Static = struct {
+                var deps: [modules.len][]const u8 = undefined;
+                var len: u64 = 0;
+            };
+            for (modules) |module| {
+                Static.deps[Static.len] = module.name;
+                Static.len +%= 1;
+            }
+            ret.build_cmd.modules = modules;
+            ret.build_cmd.dependencies = Static.deps[0..Static.len];
         }
         if (builder.options.build_mode) |build_mode| {
             ret.build_cmd.O = build_mode;
@@ -263,7 +273,8 @@ pub const BuildCommand = struct {
     stack: ?u64 = null,
     image_base: ?u64 = null,
     macros: ?[]const Macro = null,
-    packages: ?[]const Pkg = null,
+    modules: ?[]const Module = null,
+    dependencies: ?[]const []const u8 = null,
     cflags: ?struct { flags: []const []const u8 } = null,
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null,
     test_filter: ?[]const u8 = null,
@@ -781,8 +792,13 @@ pub const Target = struct {
         if (cmd.macros) |how| {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
         }
-        if (cmd.packages) |how| {
+        if (cmd.modules) |how| {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+        }
+        if (cmd.dependencies) |how| {
+            len +%= 7;
+            len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
+            len +%= 1;
         }
         if (cmd.cflags) |how| {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
@@ -1285,8 +1301,13 @@ pub const Target = struct {
         if (cmd.macros) |how| {
             array.writeAny(fmt_spec, how);
         }
-        if (cmd.packages) |how| {
+        if (cmd.modules) |how| {
             array.writeAny(fmt_spec, how);
+        }
+        if (cmd.dependencies) |how| {
+            array.writeMany("--deps\x00");
+            array.writeAny(fmt_spec, how);
+            array.writeOne('\x00');
         }
         if (cmd.cflags) |how| {
             array.writeAny(fmt_spec, how);
@@ -1479,36 +1500,40 @@ pub const Dependency = struct {
         build: ?*BuildCommand,
     };
 };
-pub const Pkg = struct {
+pub const Module = struct {
     name: []const u8,
     path: []const u8,
     deps: ?[]const @This() = null,
-    pub fn formatWrite(pkg: Pkg, array: anytype) void {
-        array.writeMany("--pkg-begin\x00");
-        array.writeMany(pkg.name);
-        array.writeOne(0);
-        array.writeMany(pkg.path);
-        array.writeOne(0);
-        if (pkg.deps) |deps| {
+    pub fn formatWrite(mod: Module, array: anytype) void {
+        array.writeMany("--mod\x00");
+        array.writeMany(mod.name);
+        array.writeOne(':');
+        if (mod.deps) |deps| {
             for (deps) |dep| {
-                array.writeOne(0);
-                dep.formatWrite(array);
+                array.writeMany(dep.name);
+                array.writeOne(',');
+            }
+            if (deps.len != 0) {
+                array.undefine(1);
             }
         }
-        array.writeMany("--pkg-end\x00");
+        array.writeOne(':');
+        array.writeMany(mod.path);
+        array.writeOne(0);
     }
-    pub fn formatLength(pkg: Pkg) u64 {
+    pub fn formatLength(mod: Module) u64 {
         var len: u64 = 0;
-        len +%= 12;
-        len +%= pkg.name.len +% 1;
-        len +%= pkg.path.len +% 1;
-        if (pkg.deps) |deps| {
+        len +%= 6;
+        len +%= mod.name.len;
+        len +%= 1;
+        if (mod.deps) |deps| {
             for (deps) |dep| {
+                len +%= dep.name.len;
                 len +%= 1;
-                len +%= dep.formatLength();
             }
         }
-        len +%= 10;
+        len +%= mod.path.len;
+        len +%= 1;
         return len;
     }
 };
@@ -1662,7 +1687,7 @@ fn Args(comptime name: [:0]const u8) type {
         define_build_working_directory: bool = true,
         is_large_test: bool = false,
         strip: bool = true,
-        packages: ?[]const Pkg = null,
+        modules: ?[]const Module = null,
         macros: ?[]const Macro = null,
         fn setMacro(
             comptime args: @This(),
