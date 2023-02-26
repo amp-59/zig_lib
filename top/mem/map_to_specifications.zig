@@ -23,7 +23,7 @@ fn mapToContainers() void {
     array.writeMany("pub const specifications: []const []const []const out.Index = &[_][]const []const out.Index{\n");
     for (out.containers) |indices| {
         array.writeMany("&.{");
-        for (keys.auto[0..keys.len]) |key| {
+        for (keys.values[0..keys.len]) |key| {
             if (indices.len == 0) {
                 array.writeMany("&.{},");
             } else {
