@@ -34,7 +34,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     const pid: u64 = try proc.fork(.{});
     if (pid == 0) {
         const build_args = .{
-            .packages = &.{.{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" }},
+            .modules = &.{.{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" }},
             .build_mode = .ReleaseSmall,
         };
         var address_space: AddressSpace = .{};
