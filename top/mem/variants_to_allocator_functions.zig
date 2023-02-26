@@ -77,7 +77,7 @@ fn specToAllocatorFunctions() void {
             if (unique_arg_lists.len() != 0) {
                 array.writeMany(m_field.name ++ k_field.name ++ ": \n");
                 for (unique_arg_lists.readAll()) |*arg_list| {
-                    array.writeFormat(expr.impl1(&allocator, impl_fn_info, arg_list));
+                    array.writeFormat(expr.impl1(&allocator, impl_fn_info, arg_list, .{}));
                     array.writeMany("\n");
                 }
             }
