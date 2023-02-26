@@ -558,68 +558,17 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&write_any));
             return array.writeMany(tok.end_expression);
         },
-        else => {}, //functionBodyUndefinedNotice(ctn_detail, ctn_fn_info),
-    }
-}
-fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const out.DetailLess, impl_fn_info: *const impl_fn.Fn) [3]Expr {
-    return expr.fieldAccessS(
-        expr.symbol(tok.array_name),
-        expr.impl(allocator, ctn_detail, impl_fn_info),
-    );
-}
-fn writeFunctionBodySpecial(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
-    const child_size_symbol: [:0]const u8 =
-        if (ctn_detail.layouts.structured) tok.child_size_name else tok.call_sizeof_child;
-    var define_call: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.define));
-    var undefine_call: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefine));
-    var seek_call: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.seek));
-    var tell_call: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.tell));
-    var writable_byte_count: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.writable_byte_count));
-    var defined_byte_count: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.defined_byte_count));
-    var undefined_byte_count: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefined_byte_count));
-    var streamed_byte_count: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.streamed_byte_count));
-    var unstreamed_byte_count: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_count));
-    var aligned_byte_address_call: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.aligned_byte_address));
-    var undefined_byte_address_call: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefined_byte_address));
-    var unstreamed_byte_address_call: [3]Expr =
-        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_address));
-    var mul_op_offset_child_size: [3]Expr =
-        expr.mul(expr.symbol(tok.offset_name), expr.symbol(child_size_symbol));
-    var mul_op_count_child_size: [3]Expr =
-        expr.mul(expr.symbol(tok.count_name), expr.symbol(child_size_symbol));
-    var amount_of_type_to_bytes: [3]Expr = expr.fnCall2(
-        tok.amount_of_type_to_bytes_fn_name,
-        expr.symbol(tok.amount_name),
-        expr.symbol(tok.child_type_name),
-    );
-    var amount: [3]Expr = if (ctn_detail.layouts.structured) mul_op_count_child_size else amount_of_type_to_bytes;
-    const defined_byte_count_call: Expr = expr.join(&defined_byte_count);
-    const writable_byte_count_call: Expr = expr.join(&writable_byte_count);
-    _ = writable_byte_count_call;
-    switch (ctn_fn_info.tag) {
+        // count of defined of type
         .len => {
             var div_count_size: [3]Expr = expr.divT(
-                if (ctn_detail.modes.resize)
-                    defined_byte_count_call
-                else
-                    defined_byte_count_call,
+                readable_byte_count_call,
                 expr.symbol(child_size_symbol),
             );
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
+        // count of streamed of type
         .index => {
             var div_count_size: [3]Expr = expr.divT(
                 expr.join(&streamed_byte_count),
