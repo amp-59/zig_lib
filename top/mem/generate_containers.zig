@@ -96,53 +96,49 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         expr.symbol(tok.child_type_name),
         undefined,
     );
-    _ = aligned_byte_address_call;
-    var undefined_byte_address_call: [3]Expr = expr.fieldAccessS(
-        expr.symbol(tok.array_name),
-        expr.impl(allocator, ctn_detail, impl_fn.get(.undefined_byte_address)),
+    var pointer_many: [4]Expr = expr.interfacePointerMany(
+        expr.symbol(tok.child_type_name),
+        undefined,
+        undefined,
     );
-    var unstreamed_byte_address_call: [3]Expr = expr.fieldAccessS(
-        expr.symbol(tok.array_name),
-        expr.impl(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_address)),
+    var pointer_many_with_sentinel: [5]Expr = expr.interfacePointerCountWithSentinel(
+        expr.symbol(tok.child_type_name),
+        undefined,
+        undefined,
+        expr.symbol(tok.sentinel_name),
     );
-    _ = unstreamed_byte_address_call;
-    const offset_name_symbol: Expr = expr.symbol(tok.offset_name);
-    var increment_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.increment));
-    var len_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
-    _ = len_fn_call;
-    var avail_fn_cal: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.avail));
-    _ = avail_fn_cal;
-    var __len_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.__len));
-    _ = __len_fn_call;
-    var __rem_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.__rem));
-    _ = __rem_fn_call;
-    var __at_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
-    _ = __at_fn_call;
-    var __ad_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.__ad));
-    _ = __ad_fn_call;
-    var __back_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.__back));
-    _ = __back_fn_call;
-    var __behind_fn_call: Expr =
-        expr.intr(allocator, ctn_detail, ctn_fn.get(.__behind));
-    _ = __behind_fn_call;
-
-    const location_op = expr.symbol(tok.loop_index_name);
-    const length_op = expr.symbol(tok.offset_name);
-
-    var pointer_one: [3]Expr = expr.pointerOne(expr.symbol(tok.child_type_name), location_op);
-    var pointer_many: [4]Expr = expr.pointerMany(expr.symbol(tok.child_type_name), location_op, length_op);
-    _ = pointer_many;
-    var pointer_count: [4]Expr = expr.pointerCount(expr.symbol(tok.child_type_name), location_op, length_op);
-    var pointer_count_with_sentinel: [5]Expr = expr.pointerCountWithSentinel(expr.symbol(tok.child_type_name), location_op, length_op, expr.symbol(tok.sentinel_name));
-    _ = pointer_count_with_sentinel;
+    var pointer_count: [4]Expr = expr.interfacePointerCount(
+        expr.symbol(tok.child_type_name),
+        undefined,
+        undefined,
+    );
+    var pointer_count_with_sentinel: [5]Expr = expr.interfacePointerCountWithSentinel(
+        expr.symbol(tok.child_type_name),
+        undefined,
+        undefined,
+        expr.symbol(tok.sentinel_name),
+    );
+    var amount_of_type_to_bytes: [3]Expr = expr.amountOfTypeToBytes(
+        expr.symbol(tok.offset_name),
+        expr.symbol(tok.child_type_name),
+    );
+    var mul_offset_child_size: [3]Expr = if (ctn_detail.layouts.structured)
+        expr.mul(expr.symbol(tok.offset_name), expr.symbol(child_size_symbol))
+    else
+        amount_of_type_to_bytes;
+    var mul_count_child_size: [3]Expr = expr.mul(
+        expr.symbol(tok.count_name),
+        expr.symbol(child_size_symbol),
+    );
+    const pointer_one_loc: *Expr = &pointer_one[2];
+    const pointer_many_loc: *Expr = &pointer_many[2];
+    const pointer_many_len: *Expr = &pointer_many[3];
+    const pointer_many_with_sentinel_loc: *Expr = &pointer_many_with_sentinel[2];
+    const pointer_many_with_sentinel_len: *Expr = &pointer_many_with_sentinel[3];
+    const pointer_count_loc: *Expr = &pointer_count[2];
+    const pointer_count_len: *Expr = &pointer_count[3];
+    const pointer_count_with_sentinel_loc: *Expr = &pointer_count_with_sentinel[2];
+    const pointer_count_with_sentinel_len: *Expr = &pointer_count_with_sentinel[3];
 
     switch (ctn_fn_info.tag) {
         .referOneAt => {},
