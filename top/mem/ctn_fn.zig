@@ -4,18 +4,18 @@ const tok = @import("./tok.zig");
 const out = @import("./detail_less.zig");
 const config = @import("./config.zig");
 // zig fmt: off
-pub const key: [87]Fn = .{
+pub const key: [88]Fn = .{
     .{ .tag = .defineAll,                       .kind = .set,                                       .loc = .AllDefined },
     .{ .tag = .undefineAll,                     .kind = .set,                                       .loc = .AllDefined },
     .{ .tag = .streamAll,                       .kind = .set,                                       .loc = .AllDefined },
     .{ .tag = .unstreamAll,                     .kind = .set,                                       .loc = .AllDefined },
     .{ .tag = .index,                           .kind = .get,                                       .loc = .AllDefined },
     .{ .tag = .len,                             .kind = .get,                                       .loc = .AllDefined },
-    .{ .tag = .avail,                           .kind = .get,                                       .loc = .AllDefined },
+    .{ .tag = .avail,                           .kind = .get,                                       .loc = .AllUndefined },
     .{ .tag = .__at,                            .kind = .get,                                       .loc = .AllDefined },
     .{ .tag = .__ad,                            .kind = .get,                                       .loc = .AllDefined },
     .{ .tag = .__len,                           .kind = .get,                                       .loc = .AllDefined },
-    .{ .tag = .__rem,                           .kind = .get,                                       .loc = .AllUndefined },
+    .{ .tag = .__avail,                         .kind = .get,                                       .loc = .AllUndefined },
     .{ .tag = .readAll,                         .kind = .read,      .val = .Many,                   .loc = .AllDefined },
     .{ .tag = .referAllDefined,                 .kind = .refer,     .val = .Many,                   .loc = .AllDefined },
     .{ .tag = .readAllWithSentinel,             .kind = .read,      .val = .ManyWithSentinel,       .loc = .AllDefined },
@@ -42,6 +42,7 @@ pub const key: [87]Fn = .{
     .{ .tag = .overwriteManyAt,                 .kind = .write,     .val = .Many,                   .loc = .AnyDefined },
     .{ .tag = .readManyWithSentinelAt,          .kind = .read,      .val = .ManyWithSentinel,       .loc = .AnyDefined },
     .{ .tag = .referManyWithSentinelAt,         .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AnyDefined },
+    .{ .tag = .ahead,                           .kind = .set,                                       .loc = .Ahead },
     .{ .tag = .stream,                          .kind = .set,                                       .loc = .Ahead },
     .{ .tag = .readOneAhead,                    .kind = .read,      .val = .One,                    .loc = .Ahead },
     .{ .tag = .readCountAhead,                  .kind = .read,      .val = .Count,                  .loc = .Ahead },
@@ -171,7 +172,7 @@ pub const Fn = packed struct {
         __at,
         __ad,
         __len,
-        __rem,
+        __avail,
         readAll,
         referAllDefined,
         readAllWithSentinel,
@@ -198,6 +199,7 @@ pub const Fn = packed struct {
         overwriteManyAt,
         readManyWithSentinelAt,
         referManyWithSentinelAt,
+        ahead,
         stream,
         readOneAhead,
         readCountAhead,
@@ -254,30 +256,11 @@ pub const Fn = packed struct {
     }
     pub fn hasCapability(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess) bool {
         switch (ctn_fn_info.tag) {
-            .defineAll => {},
-            .undefineAll => {},
-            .streamAll => {},
-            .unstreamAll => {},
-            .index => {},
-            .len => {},
-            .avail => {},
             .__at => {},
-            .__ad => {},
             .__len => {},
-            .__rem => {},
             .readAll => {},
-            .referAllDefined => {},
             .readAllWithSentinel => {},
-            .referAllDefinedWithSentinel => {},
-            .__behind => {},
-            .unstream => {},
-            .readOneBehind => {},
-            .readCountBehind => {},
-            .readCountWithSentinelBehind => {},
-            .referCountWithSentinelBehind => {},
-            .readManyBehind => {},
-            .readManyWithSentinelBehind => {},
-            .referManyWithSentinelBehind => {},
+
             .readOneAt => {},
             .referOneAt => {},
             .overwriteOneAt => {},
@@ -291,35 +274,65 @@ pub const Fn = packed struct {
             .overwriteManyAt => {},
             .readManyWithSentinelAt => {},
             .referManyWithSentinelAt => {},
-            .stream => {},
-            .readOneAhead => {},
-            .readCountAhead => {},
-            .readCountWithSentinelAhead => {},
-            .readManyAhead => {},
-            .readManyWithSentinelAhead => {},
-            .__back => {},
-            .undefine => {},
-            .readOneBack => {},
-            .referOneBack => {},
-            .overwriteOneBack => {},
-            .readCountBack => {},
-            .referCountBack => {},
-            .overwriteCountBack => {},
-            .readCountWithSentinelBack => {},
-            .referCountWithSentinelBack => {},
-            .readManyBack => {},
-            .referManyBack => {},
-            .overwriteManyBack => {},
-            .readManyWithSentinelBack => {},
-            .referManyWithSentinelBack => {},
-            .referAllUndefined => {},
-            .referAllUndefinedWithSentinel => {},
-            .define => {},
-            .referOneUndefined => {},
-            .writeOne => {},
-            .referCountUndefined => {},
-            .writeCount => {},
-            .referManyUndefined => {},
+
+            .len => {},
+
+            .stream,
+            .unstream,
+            .streamAll,
+            .unstreamAll,
+            .index,
+            .__behind,
+            .readOneBehind,
+            .readCountBehind,
+            .readCountWithSentinelBehind,
+            .referCountWithSentinelBehind,
+            .readManyBehind,
+            .readManyWithSentinelBehind,
+            .referManyWithSentinelBehind,
+            .ahead,
+            .readOneAhead,
+            .readCountAhead,
+            .readCountWithSentinelAhead,
+            .readManyAhead,
+            .readManyWithSentinelAhead,
+            => {
+                return ctn_detail.modes.stream;
+            },
+            .__ad,
+            .__back,
+            .__avail,
+            .defineAll,
+            .undefineAll,
+            .avail,
+            .undefine,
+            .readOneBack,
+            .referOneBack,
+            .overwriteOneBack,
+            .readCountBack,
+            .referCountBack,
+            .overwriteCountBack,
+            .readCountWithSentinelBack,
+            .referCountWithSentinelBack,
+            .readManyBack,
+            .referManyBack,
+            .overwriteManyBack,
+            .readManyWithSentinelBack,
+            .referManyWithSentinelBack,
+            .referAllDefined,
+            .referAllDefinedWithSentinel,
+            .referAllUndefined,
+            .referAllUndefinedWithSentinel,
+            .define,
+            .referOneUndefined,
+            .writeOne,
+            .referCountUndefined,
+            .writeCount,
+            .referManyUndefined,
+            => {
+                return ctn_detail.modes.resize;
+            },
+
             .writeMany => {},
             .writeFields => {},
             .writeArgs => {},
@@ -433,12 +446,12 @@ pub const Fn = packed struct {
         const offset_symbol: [:0]const u8 = blk: {
             if (ctn_detail.layouts.unstructured) {
                 break :blk switch (list_kind) {
-                    .Parameter => tok.amount_param,
+                    .Parameter => tok.offset_amount_param,
                     .Argument => tok.offset_name,
                 };
             } else {
                 break :blk switch (list_kind) {
-                    .Parameter => tok.offset_param,
+                    .Parameter => tok.offset_word_param,
                     .Argument => tok.offset_name,
                 };
             }
@@ -468,6 +481,12 @@ pub const Fn = packed struct {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
+            .ahead => {
+                arg_list.writeOne(arg_list_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    arg_list.writeOne(child_type_symbol);
+                }
+            },
             .__at => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
@@ -479,7 +498,7 @@ pub const Fn = packed struct {
                 arg_list.writeOne(offset_symbol);
             },
             .__len,
-            .__rem,
+            .__avail,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
@@ -577,18 +596,14 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (config.user_defined_length) {
-                    arg_list.writeOne(count_symbol);
-                }
+                arg_list.writeOne(count_symbol);
             },
             .readManyWithSentinelBehind => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (config.user_defined_length) {
-                    arg_list.writeOne(count_symbol);
-                }
+                arg_list.writeOne(count_symbol);
                 arg_list.writeOne(sentinel_symbol);
             },
             .readOneAt => {
@@ -717,9 +732,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (config.user_defined_length) {
-                    arg_list.writeOne(count_symbol);
-                }
+                arg_list.writeOne(count_symbol);
             },
             .readManyWithSentinelBack => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
@@ -801,8 +814,8 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
+                arg_list.writeOne(count_symbol);
                 arg_list.writeOne(sentinel_symbol);
-                arg_list.writeOne(offset_symbol);
             },
             .referOneAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
@@ -879,9 +892,7 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (config.user_defined_length) {
-                    arg_list.writeOne(count_symbol);
-                }
+                arg_list.writeOne(count_symbol);
             },
             .referCountWithSentinelBack => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
@@ -994,7 +1005,6 @@ pub const Fn = packed struct {
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                arg_list.writeOne(allocator_ptr_symbol);
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(count_values_symbol);
             },
@@ -1127,7 +1137,7 @@ pub const Fn = packed struct {
                 else => return tok.void_type_name,
             },
             .append => return tok.allocator_void_type_name,
-            else => return tok.void_type_name,
+            else => return tok.word_type_name,
         }
     }
 };
