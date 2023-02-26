@@ -141,34 +141,193 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
     const pointer_count_with_sentinel_len: *Expr = &pointer_count_with_sentinel[3];
 
     switch (ctn_fn_info.tag) {
-        .referOneAt => {},
-        .referOneUndefined => {},
-        .referOneBack => {},
-        .referManyAt => {},
-        .referManyUndefined => {},
-        .referManyBack => {},
-        .referManyWithSentinelAt => {},
-        .referManyWithSentinelBehind => {},
-        .referManyWithSentinelBack => {},
-        .referCountAt => {},
-        .referCountUndefined => {},
-        .referCountBack => {},
-        .referCountWithSentinelAt => {},
-        .referCountWithSentinelBehind => {},
-        .referCountWithSentinelBack => {},
-        .readOneAt => {},
-        .readOneBack => {},
+        .readAll, .referAllDefined => {
+            pointer_many_loc.* = expr.join(&aligned_byte_address);
+            pointer_many_len.* = len_fn_call;
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many));
+            return array.writeMany(tok.end_expression);
+        },
+        .readAllWithSentinel, .referAllDefinedWithSentinel => {
+            pointer_many_with_sentinel_loc.* = expr.join(&aligned_byte_address);
+            pointer_many_with_sentinel_len.* = len_fn_call;
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many_with_sentinel));
+            return array.writeMany(tok.end_expression);
+        },
+        .readOneBehind => {
+            pointer_one_loc.* = __behind_call;
+            expr.subst(__behind_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = if (ctn_detail.layouts.structured)
+                    expr.symbol(child_size_symbol)
+                else
+                    expr.symbol(tok.const_amount_1),
+            });
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_one));
+            return array.writeMany(tok.end_expression);
+        },
+        .readCountBehind => {
+            pointer_count_loc.* = __behind_call;
+            pointer_count_len.* = __avail_call;
+            expr.subst(__behind_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            expr.subst(__avail_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_count));
+            return array.writeMany(tok.end_expression);
+        },
+        .readCountWithSentinelBehind => {
+            pointer_count_with_sentinel_loc.* = __behind_call;
+            pointer_count_with_sentinel_len.* = __avail_call;
+            expr.subst(__behind_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            expr.subst(__avail_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_count_with_sentinel));
+            return array.writeMany(tok.end_expression);
+        },
+        .referCountWithSentinelBehind => {
+            pointer_count_with_sentinel_loc.* = __behind_call;
+            pointer_count_with_sentinel_len.* = __avail_call;
+            expr.subst(__behind_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            expr.subst(__avail_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_count_with_sentinel));
+            return array.writeMany(tok.end_expression);
+        },
+        .readManyBehind => {
+            pointer_many_loc.* = __behind_call;
+            pointer_many_len.* = __avail_call;
+            expr.subst(__behind_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            expr.subst(__avail_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many));
+            return array.writeMany(tok.end_expression);
+        },
+        .readManyWithSentinelBehind, .referManyWithSentinelBehind => {
+            pointer_many_with_sentinel_loc.* = __behind_call;
+            pointer_many_with_sentinel_len.* = __avail_call;
+            expr.subst(__behind_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            expr.subst(__avail_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = expr.symbol(tok.count_name),
+            });
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many_with_sentinel));
+            return array.writeMany(tok.end_expression);
+        },
+        .readOneAt => {
+            pointer_one_loc.* = __at_call;
+            var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.join(&pointer_one_deref));
+            return array.writeMany(tok.end_expression);
+        },
+        .referOneAt => {
+            pointer_one_loc.* = __at_call;
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_one));
+            return array.writeMany(tok.end_expression);
+        },
+        .overwriteOneAt => {
+            pointer_one_loc.* = __at_call;
+            var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
+            var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+                expr.join(&pointer_one_deref),
+                expr.symbol(tok.value_name),
+            );
+            array.writeFormat(expr.join(&pointer_one_deref_assign_value));
+            return array.writeMany(tok.end_expression);
+        },
+        .readCountAt => {
+            pointer_count_loc.* = __at_call;
+            pointer_count_len.* = expr.symbol(tok.count_name);
+            var pointer_count_deref: [2]Expr = expr.dereference(expr.call(&pointer_count));
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.join(&pointer_count_deref));
+            return array.writeMany(tok.end_expression);
+        },
+        .referCountAt => {
+            pointer_count_loc.* = __at_call;
+            pointer_count_len.* = expr.symbol(tok.count_name);
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_count));
+            return array.writeMany(tok.end_expression);
+        },
+        .overwriteCountAt => {
+            pointer_count_loc.* = __at_call;
+            pointer_count_len.* = expr.symbol(tok.count_name);
+            var pointer_count_deref: [2]Expr = expr.dereference(expr.call(&pointer_count));
+            var pointer_count_deref_assign_values: [3]Expr = expr.assign(
+                expr.join(&pointer_count_deref),
+                expr.symbol(tok.count_values_name),
+            );
+            array.writeFormat(expr.join(&pointer_count_deref_assign_values));
+            return array.writeMany(tok.end_expression);
+        },
+        .readCountWithSentinelAt => {
+            array.writeMany(tok.return_keyword);
+            return array.writeMany(tok.end_expression);
+        },
+        .referCountWithSentinelAt => {
+            array.writeMany(tok.return_keyword);
+            return array.writeMany(tok.end_expression);
+        },
         .readManyAt => {},
-        .readManyBack => {},
+        .referManyAt => {},
+        .overwriteManyAt => {},
         .readManyWithSentinelAt => {},
-        .readManyWithSentinelBehind => {},
+        .referManyWithSentinelAt => {},
+        .readOneAhead => {},
+        .readCountAhead => {},
+        .readCountWithSentinelAhead => {},
+        .readManyAhead => {},
         .readManyWithSentinelAhead => {},
-        .readManyWithSentinelBack => {},
-        .readCountAt => {},
+        .readOneBack => {},
+        .referOneBack => {},
+        .overwriteOneBack => {},
         .readCountBack => {},
-        .readCountWithSentinelAt => {},
-        .readCountWithSentinelBehind => {},
+        .referCountBack => {},
+        .overwriteCountBack => {},
         .readCountWithSentinelBack => {},
+        .referCountWithSentinelBack => {},
+        .readManyBack => {},
+        .referManyBack => {},
+        .overwriteManyBack => {},
+        .readManyWithSentinelBack => {},
+        .referManyWithSentinelBack => {},
+        .referAllUndefined => {},
+        .referAllUndefinedWithSentinel => {},
+        .referOneUndefined => {},
+        .referCountUndefined => {},
+        .referManyUndefined => {},
         .appendOne => {
             const write_one_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeOne));
             array.writeFormat(increment_fn_call);
