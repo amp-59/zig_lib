@@ -183,8 +183,8 @@ pub const RtArenaAllocatorSpec = struct {
     options: ArenaAllocatorOptions = .{},
     errors: AllocatorErrors = .{},
     logging: AllocatorLogging = .{},
-    /// If true, the allocator is responsible for reserving memory and the
-    /// address space is not.
+    // If true, the allocator is responsible for reserving memory and the
+    // address space is not.
     fn isMapper(comptime spec: RtArenaAllocatorSpec) bool {
         const allocator_is_mapper: bool = spec.options.require_map;
         const address_space_is_mapper: bool = spec.AddressSpace.addr_spec.options.require_map;
@@ -193,8 +193,8 @@ pub const RtArenaAllocatorSpec = struct {
         }
         return spec.options.require_map;
     }
-    /// If true, the allocator is responsible for unreserving memory and the
-    /// address space is not.
+    // If true, the allocator is responsible for unreserving memory and the
+    // address space is not.
     fn isUnmapper(comptime spec: RtArenaAllocatorSpec) bool {
         const allocator_is_unmapper: bool = spec.options.require_unmap;
         const address_space_is_unmapper: bool = spec.AddressSpace.addr_spec.options.require_unmap;
@@ -657,8 +657,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 showReallocate(T, buf, buf[0..count]);
                 return buf.ptr[0..count];
             }
-            const ret: []T = allocateIrreversible(T, count);
-            mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len);
+            const ret: []T = allocator.allocateIrreversible(T, count);
+            mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len, @alignOf(T));
             showReallocate(T, buf, ret);
             return ret;
         }
