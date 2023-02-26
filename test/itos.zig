@@ -67,8 +67,7 @@ const Options = struct {
         }
     }
 };
-const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch)
-.{
+const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch) .{
     .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
 } else .{
     .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .action = Options.setOutputHex } },
