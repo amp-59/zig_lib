@@ -784,25 +784,22 @@ fn functionBodyUndefinedNotice(ctn_detail: *const out.DetailLess, ctn_fn_info: *
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
-fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
-    if (ctn_fn_info.kind == .read or ctn_fn_info.kind == .refer or
-        ctn_fn_info.kind == .write or ctn_fn_info.kind == .append)
-    {
-        writeFunctionBodyPrimary(allocator, array, ctn_detail, ctn_fn_info);
-    } else {
-        writeFunctionBodySpecial(allocator, array, ctn_detail, ctn_fn_info);
-    }
-}
 fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess) void {
-    for (ctn_fn.key) |*ctn_fn_info| {
+    for (&ctn_fn.key) |*ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
         }
+        const len_0: u64 = array.len();
         ctn_fn_info.writeSignature(array, ctn_detail);
-        array.writeMany(ctn_fn_info.getReturnType());
         array.writeMany("{\n");
-        writeFunctionBodyGeneric(allocator, array, ctn_detail, ctn_fn_info);
-        array.writeMany("}\n");
+        const len_1: u64 = array.len();
+        writeFunctionBody(allocator, array, ctn_detail, ctn_fn_info);
+        const len_2: u64 = array.len();
+        if (len_1 == len_2) {
+            array.undefine(len_1 - len_0);
+        } else {
+            array.writeMany("}\n");
+        }
     }
 }
 
@@ -813,7 +810,7 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const ou
     const const_decl: *expr.ConstDecl = allocator.duplicateIrreversible(expr.ConstDecl, .{
         .val_name = tok.array_type_name,
         .type_name = tok.type_type_name,
-        .expr1 = expr.symbol("@This()"),
+        .expr1 = expr.symbol(tok.call_this),
     });
     array.writeFormat(const_decl.*);
     if (ctn_detail.layouts.structured) {
