@@ -21,6 +21,7 @@ const expr = @import("./expr.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
+const alloc_fn = @import("./alloc_fn.zig");
 
 pub usingnamespace proc.start;
 
