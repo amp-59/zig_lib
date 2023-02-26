@@ -353,9 +353,13 @@ pub const BuildCommandOptions = opaque {
         .arg_type = []const types.Macro,
         .arg_type_name = "[]const Macro",
     };
-    pub const packages: OptionSpec = .{
-        .arg_type = []const types.Pkg,
-        .arg_type_name = "[]const Pkg",
+    pub const modules: OptionSpec = .{
+        .arg_type = []const types.Module,
+        .arg_type_name = "[]const Module",
+    };
+    pub const dependencies: OptionSpec = .{
+        .string = "--deps",
+        .arg_type = []const []const u8,
     };
     pub const cflags: OptionSpec = .{
         .arg_type = types.CFlags,
