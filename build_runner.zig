@@ -9,7 +9,7 @@ const preset = srg.preset;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
-pub const is_verbose: bool = false;
+pub const is_verbose: bool = true;
 pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
 pub const AddressSpace = mem.GenericRegularAddressSpace(multi_arena);
