@@ -338,7 +338,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         .appendCount => {
             const write_count_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeCount));
             expr.subst(increment_fn_call.args(), .{
-                .dst = offset_name_symbol,
+                .dst = expr.symbol(tok.offset_name),
                 .src = expr.symbol(tok.count_name),
             });
             array.writeFormat(increment_fn_call);
@@ -349,7 +349,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         .appendMany => {
             const write_many_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeMany));
             expr.subst(increment_fn_call.args(), .{
-                .dst = offset_name_symbol,
+                .dst = expr.symbol(tok.offset_name),
                 .src = expr.symbol(tok.many_values_len),
             });
             array.writeFormat(increment_fn_call);
@@ -365,7 +365,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
                 expr.symbol(tok.format_name),
             );
             expr.subst(increment_fn_call.args(), .{
-                .dst = offset_name_symbol,
+                .dst = expr.symbol(tok.offset_name),
                 .src = expr.call(&length_format),
             });
             array.writeFormat(increment_fn_call);
@@ -382,7 +382,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
                 expr.symbol(tok.args_name),
             );
             expr.subst(increment_fn_call.args(), .{
-                .dst = offset_name_symbol,
+                .dst = expr.symbol(tok.offset_name),
                 .src = expr.call(&length_args),
             });
             array.writeFormat(increment_fn_call);
@@ -399,7 +399,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
                 expr.symbol(tok.fields_name),
             );
             expr.subst(increment_fn_call.args(), .{
-                .dst = offset_name_symbol,
+                .dst = expr.symbol(tok.offset_name),
                 .src = expr.call(&length_fields),
             });
             array.writeFormat(increment_fn_call);
@@ -416,7 +416,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
                 expr.symbol(tok.any_name),
             );
             expr.subst(increment_fn_call.args(), .{
-                .dst = offset_name_symbol,
+                .dst = expr.symbol(tok.offset_name),
                 .src = expr.call(&length_any),
             });
             array.writeFormat(increment_fn_call);
@@ -426,18 +426,19 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         },
         .writeOne => {
             if (config.implement_write_inline) {
-                array.writeFormat(expr.join(&expr.assignS(
-                    expr.join(&expr.dereferenceS(
-                        expr.call(&pointer_one),
-                    )),
+                var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
+                pointer_one_loc.* = expr.join(&undefined_byte_address);
+                var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+                    expr.join(&pointer_one_deref),
                     expr.symbol(tok.value_name),
-                )));
+                );
+                array.writeFormat(expr.join(&pointer_one_deref_assign_value));
                 return array.writeMany(tok.end_expression);
             } else {
                 var write_one: [4]Expr = expr.fnCall3(
                     tok.write_one_impl_fn_name,
                     expr.symbol(tok.child_type_name),
-                    location_op,
+                    expr.join(&undefined_byte_address),
                     expr.symbol(tok.value_name),
                 );
                 array.writeFormat(expr.call(&write_one));
@@ -446,40 +447,29 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         },
         .writeCount => {
             if (config.implement_write_inline) {
-                if (config.implement_count_as_one) {
-                    expr.call(&pointer_count).subst(
-                        expr.symbol(tok.child_type_name),
-                        expr.symbol(tok.child_array_ptr_type_name),
-                    );
-                    array.writeFormat(expr.join(&expr.assignS(
-                        expr.join(&expr.dereferenceS(expr.call(&pointer_count))),
-                        expr.symbol(tok.value_name),
-                    )));
-                    return array.writeMany(tok.end_expression);
-                } else {
-                    array.writeFormat(expr.ForLoop{
-                        .expr1 = expr.symbol(tok.count_values_name),
-                        .symbol1 = tok.value_name,
-                        .symbol2 = tok.loop_index_name,
-                    });
-                    const assign_ops: [3]Expr = expr.assignS(
-                        expr.join(&expr.dereferenceS(
-                            expr.call(&expr.add(
-                                expr.call(&undefined_byte_address_call),
-                                expr.symbol(tok.loop_index_name),
-                            )),
-                        )),
-                        expr.symbol(tok.value_name),
-                    );
-                    array.writeFormat(expr.join(&assign_ops));
-                    return array.writeMany(tok.end_expression);
-                }
+                var add_undefined_byte_address_loop_index: [3]Expr = expr.add(
+                    expr.join(&undefined_byte_address),
+                    expr.symbol(tok.loop_index_name),
+                );
+                pointer_one_loc.* = expr.call(&add_undefined_byte_address_loop_index);
+                var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
+                var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+                    expr.join(&pointer_one_deref),
+                    expr.symbol(tok.value_name),
+                );
+                array.writeFormat(expr.ForLoop{
+                    .expr1 = expr.symbol(tok.count_values_name),
+                    .symbol1 = tok.value_name,
+                    .symbol2 = tok.loop_index_name,
+                });
+                array.writeFormat(expr.join(&pointer_one_deref_assign_value));
+                return array.writeMany(tok.end_expression);
             } else {
                 var write_count: [5]Expr = expr.fnCall4(
                     tok.write_count_impl_fn_name,
                     expr.symbol(tok.child_type_name),
                     expr.symbol(tok.count_name),
-                    location_op,
+                    expr.join(&undefined_byte_address),
                     expr.symbol(tok.count_values_name),
                 );
                 array.writeFormat(expr.call(&write_count));
@@ -487,26 +477,34 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             }
         },
         .writeMany => {
-            array.writeFormat(expr.ForLoop{
-                .expr1 = expr.symbol(tok.many_values_name),
-                .symbol1 = tok.value_name,
-                .symbol2 = tok.loop_index_name,
-            });
-            var add_undefined_byte_address_loop_index: [3]Expr = expr.add(
-                expr.join(&undefined_byte_address_call),
-                expr.symbol(tok.loop_index_name),
-            );
-            expr.subst(&pointer_count, .{
-                .dst = location_op,
-                .src = expr.call(&add_undefined_byte_address_loop_index),
-            });
-            var pointer_count_deref: [2]Expr = expr.dereferenceS(expr.call(&pointer_count));
-            var pointer_count_deref_assign_value: [3]Expr = expr.assignS(
-                expr.join(&pointer_count_deref),
-                expr.symbol(tok.value_name),
-            );
-            array.writeFormat(expr.join(&pointer_count_deref_assign_value));
-            return array.writeMany(tok.end_expression);
+            if (config.implement_write_inline) {
+                var add_undefined_byte_address_loop_index: [3]Expr = expr.add(
+                    expr.join(&undefined_byte_address),
+                    expr.symbol(tok.loop_index_name),
+                );
+                pointer_one_loc.* = expr.call(&add_undefined_byte_address_loop_index);
+                var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
+                var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+                    expr.join(&pointer_one_deref),
+                    expr.symbol(tok.value_name),
+                );
+                array.writeFormat(expr.ForLoop{
+                    .expr1 = expr.symbol(tok.many_values_name),
+                    .symbol1 = tok.value_name,
+                    .symbol2 = tok.loop_index_name,
+                });
+                array.writeFormat(expr.join(&pointer_one_deref_assign_value));
+                return array.writeMany(tok.end_expression);
+            } else {
+                var write_many: [4]Expr = expr.fnCall3(
+                    tok.write_many_impl_fn_name,
+                    expr.symbol(tok.child_type_name),
+                    expr.join(&undefined_byte_address),
+                    expr.symbol(tok.many_values_name),
+                );
+                array.writeFormat(expr.call(&write_many));
+                return array.writeMany(tok.end_expression);
+            }
         },
         .writeFormat => {
             var write_format: [4]Expr = expr.fnCall3(
