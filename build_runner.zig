@@ -9,60 +9,76 @@ const preset = srg.preset;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
+
 pub const is_verbose: bool = true;
 pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
-pub const AddressSpace = mem.GenericRegularAddressSpace(multi_arena);
-
-const Options = build.GlobalOptions;
-const multi_arena: mem.RegularMultiArena = .{
+pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
     .divisions = 64,
-    .logging = preset.address_space.logging.verbose,
-};
-const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
-    .{ .field_name = "build_mode", .long = "-Drelease-fast", .assign = .{ .any = &(.ReleaseFast) }, .descr = "speed++" },
-    .{ .field_name = "build_mode", .long = "-Drelease-small", .assign = .{ .any = &(.ReleaseSmall) }, .descr = "size--" },
-    .{ .field_name = "build_mode", .long = "-Drelease-safe", .assign = .{ .any = &(.ReleaseSafe) }, .descr = "safety++" },
-    .{ .field_name = "build_mode", .long = "-Ddebug", .assign = .{ .any = &(.Debug) }, .descr = "crashing++ " },
-    .{ .field_name = "strip", .long = "-fstrip", .assign = Options.yes, .descr = "do not emit debug symbols" },
-    .{ .field_name = "strip", .long = "-fno-strip", .assign = Options.no, .descr = "emit debug symbols" },
-    .{ .field_name = "verbose", .long = "--verbose", .assign = Options.yes, .descr = "show compile commands when executing" },
-    .{ .field_name = "verbose", .long = "--silent", .assign = Options.no, .descr = "do not show compile commands when executing" },
+    .logging = preset.address_space.logging.silent,
 });
-fn commandNotFoundException(builder: *const build.Builder, arg: [:0]const u8) !void {
+const Options = build.GlobalOptions;
+
+fn commandNotFoundException(builder: *build.Builder, arg: [:0]const u8) !void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlwaysAIO(&buf, &.{ "command not found: ", arg, "\n" });
     builtin.debug.logAlways(comptime Options.Map.helpMessage(opts_map));
     showAllCommands(builder);
     return error.CommandNotFound;
 }
-fn showAllCommands(builder: *const build.Builder) void {
-    var buf: [128 + 4096 + 512]u8 = undefined;
-    builtin.debug.logAlways("commands:\n");
-    for (builder.targets.readAll(), 0..) |target, index| {
-        const cmd_name: []const u8 = target.build_cmd.name orelse builtin.fmt.ud64(index).readAll();
-        builtin.debug.logAlwaysAIO(&buf, &.{ "    ", @tagName(target.build_cmd.kind), "\t", cmd_name, "\t", target.root, "\n" });
+fn showAllCommands(builder: *build.Builder) void {
+    var buf: [1024 * 1024]u8 = undefined;
+    var len: u64 = 0;
+    var groups: build.GroupList = builder.groups.itr();
+    while (groups.next()) |group_node| : (groups.node = group_node) {
+        var targets: build.TargetList = groups.node.this.targets.itr();
+        while (targets.next()) |node| : (targets.node = node) {
+            len +%= builtin.debug.writeMulti(buf[len..], &.{
+                "    ", @tagName(targets.node.this.build_cmd.kind),
+                "\t",   targets.node.this.build_cmd.name orelse builtin.fmt.ud64(targets.pos).readAll(),
+                "\t",   targets.node.this.root,
+                "\n",
+            });
+        }
     }
+    builtin.debug.logAlways(buf[0..len]);
 }
-fn setAllCommands(builder: *const build.Builder, cmd_mode: meta.Field(build.BuildCommand, "kind")) void {
-    for (builder.targets.referAllDefined()) |*target| {
-        target.build_cmd.kind = cmd_mode;
-    }
-}
-fn execAllCommands(builder: *const build.Builder) !void {
-    for (builder.targets.referAllDefined()) |*target| {
-        try target.build();
-    }
-}
+
+const build_fn: fn (*build.Allocator, *build.Builder) anyerror!void = root.build;
+
+const release_fast_s: [:0]const u8 = "prioritise low runtime";
+const release_small_s: [:0]const u8 = "prioritise small executable size";
+const release_safe_s: [:0]const u8 = "prioritise correctness";
+const debug_s: [:0]const u8 = "prioritise comptime performance";
+const strip_s: [:0]const u8 = "do not emit debug symbols";
+const no_strip_s: [:0]const u8 = "emit debug symbols";
+const verbose_s: [:0]const u8 = "show compile commands when executing";
+const silent_s: [:0]const u8 = "do not show compile commands when executing";
+const run_cmd_s: [:0]const u8 = "run commands for subsequent targets";
+const build_cmd_s: [:0]const u8 = "build commands for subsequent targets";
+const fmt_cmd_s: [:0]const u8 = "fmt commands for subsequent targets";
+
+// zig fmt: off
+const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
+    .{ .field_name = "build_mode",  .long = "--fast",       .assign = .{ .any = &(.ReleaseFast) },  .descr = release_fast_s },
+    .{ .field_name = "build_mode",  .long = "--small",      .assign = .{ .any = &(.ReleaseSmall) }, .descr = release_small_s },
+    .{ .field_name = "build_mode",  .long = "--safe",       .assign = .{ .any = &(.ReleaseSafe) },  .descr = release_safe_s },
+    .{ .field_name = "build_mode",  .long = "--debug",      .assign = .{ .any = &(.Debug) },        .descr = debug_s },
+    .{ .field_name = "strip",       .long = "-fstrip",      .assign = .{ .boolean = true },         .descr = strip_s },
+    .{ .field_name = "strip",       .long = "-fno-strip",   .assign = .{ .boolean = false },        .descr = no_strip_s },
+    .{ .field_name = "verbose",     .long = "--verbose",    .assign = .{ .boolean = true },         .descr = verbose_s },
+    .{ .field_name = "verbose",     .long = "--silent",     .assign = .{ .boolean = false },        .descr = silent_s },
+    .{ .field_name = "cmd",         .long = "--run",        .assign = .{ .any = &(.run) },          .descr = run_cmd_s },
+    .{ .field_name = "cmd",         .long = "--build",      .assign = .{ .any = &(.build) },        .descr = build_cmd_s },
+    .{ .field_name = "cmd",         .long = "--fmt",        .assign = .{ .any = &(.fmt) },          .descr = fmt_cmd_s },
+});
+// zig fmt: on
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var allocator: build.Allocator = try build.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: build.Builder.ArrayU = build.Builder.ArrayU.init(&allocator);
-    array.increment(void, &allocator, .{ .bytes = 1024 * 1024 * 16 });
-    defer array.deinit(&allocator);
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
     if (args.len < 5) {
@@ -77,67 +93,34 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     const cache_dir: [:0]const u8 = meta.manyToSlice(args[3]);
     const global_cache_dir: [:0]const u8 = meta.manyToSlice(args[4]);
     args = args[5..];
-    var builder: build.Builder = .{
+    const paths: build.Builder.Paths = .{
         .zig_exe = zig_exe,
         .build_root = build_root,
         .cache_dir = cache_dir,
         .global_cache_dir = global_cache_dir,
-        .options = options,
-        .args = args,
-        .vars = vars,
-        .allocator = &allocator,
-        .array = &array,
     };
-    try root.build(&builder);
+    var builder: build.Builder = build.Builder.init(&allocator, paths, options, args, vars);
+    _ = builder.addGroup(&allocator, "all");
+    try build_fn(&allocator, &builder);
     var index: u64 = 0;
-    while (index != args.len) {
-        const name: [:0]const u8 = meta.manyToSlice(args[index]);
-        if (mem.testEqualMany(u8, name, "lib")) {
-            setAllCommands(&builder, .lib);
-            proc.shift(&args, index);
-            continue;
-        }
-        if (mem.testEqualMany(u8, name, "obj")) {
-            setAllCommands(&builder, .lib);
-            proc.shift(&args, index);
-            continue;
-        }
-        if (mem.testEqualMany(u8, name, "exe")) {
-            setAllCommands(&builder, .exe);
-            proc.shift(&args, index);
-            continue;
-        }
-        if (mem.testEqualMany(u8, name, "run")) {
-            setAllCommands(&builder, .run);
-            proc.shift(&args, index);
-            continue;
-        }
-        if (mem.testEqualMany(u8, name, "show")) {
-            showAllCommands(&builder);
-            return;
-        }
-        if (mem.testEqualMany(u8, name, "all")) {
-            try execAllCommands(&builder);
-            proc.shift(&args, index);
-            continue;
-        }
-        index +%= 1;
-    }
-    index = 0;
-    while (index != args.len) {
-        const name: [:0]const u8 = meta.manyToSlice(args[index]);
+    while (index != args_in.len) {
+        const name: [:0]const u8 = meta.manyToSlice(args_in[index]);
         if (mem.testEqualMany(u8, name, "--")) {
             break;
         }
-        for (builder.targets.referAllDefined()) |*target| {
-            const cmd_name: []const u8 = target.build_cmd.name orelse continue;
-            if (mem.testEqualMany(u8, name, cmd_name)) {
-                builder.args = builder.args[index..];
-                try target.build();
-                break;
+        var groups: build.GroupList = builder.groups.itr();
+        while (groups.next()) |group_node| : (groups.node = group_node) {
+            const match_all: bool = mem.testEqualMany(u8, name, groups.node.this.name);
+            var targets: build.TargetList = groups.node.this.targets.itr();
+            while (targets.next()) |target_node| : (targets.node = target_node) {
+                if (match_all or mem.testEqualMany(u8, name, targets.node.this.build_cmd.name orelse continue)) {
+                    switch (options.cmd) {
+                        .fmt => try targets.node.this.format(),
+                        .run => try targets.node.this.run(),
+                        .build => try targets.node.this.build(),
+                    }
+                }
             }
-        } else {
-            return commandNotFoundException(&builder, name);
         }
         index +%= 1;
     }
