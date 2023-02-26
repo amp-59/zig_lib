@@ -909,7 +909,7 @@ pub fn GenericOptions(comptime Options: type) type {
                     .Enum => tagCast(optional_info.child, any),
                     else => anyCast(optional_info.child, any),
                 },
-                .Enum => tagCast(any),
+                .Enum => tagCast(child, any),
                 else => anyCast(child, any),
             };
         }
