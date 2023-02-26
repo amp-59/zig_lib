@@ -19,28 +19,6 @@ pub inline fn shrx64(value: u64, shift_amt: u64) u64 {
 pub inline fn shrx32(value: u32, shift_amt: u32) u32 {
     return shrx(u32, value, shift_amt);
 }
-inline fn shlx(comptime T: type, value: T, shift_amt: T) T {
-    return asm ("shlx" ++ switch (T) {
-            u32 => "l",
-            u64 => "q",
-            else => @compileError("invalid operand type for this instruction"),
-        } ++ " %[shift_amt], %[value], %[ret]"
-        : [ret] "=r" (-> T),
-        : [value] "r" (value),
-          [shift_amt] "r" (shift_amt),
-    );
-}
-inline fn shrx(comptime T: type, value: T, shift_amt: T) T {
-    return asm ("shrx" ++ switch (T) {
-            u32 => "l",
-            u64 => "q",
-            else => @compileError("invalid operand type for this instruction"),
-        } ++ " %[shift_amt], %[value], %[ret]"
-        : [ret] "=r" (-> T),
-        : [value] "r" (value),
-          [shift_amt] "r" (shift_amt),
-    );
-}
 // The following operations are distinct from similarly named in builtin by
 // truncating instead of casting. This matches the machine behaviour more
 // closely. There is no need to forward these to a generic function to ask meta
@@ -450,4 +428,43 @@ pub inline fn mask8L(value: u64) u8 {
 }
 pub inline fn mask8H(value: u64) u8 {
     return @truncate(u8, value >> 8);
+}
+inline fn shlx(comptime T: type, value: T, shift_amt: T) T {
+    return asm ("shlx" ++ switch (T) {
+            u32 => "l",
+            u64 => "q",
+            else => @compileError("invalid operand type for this instruction"),
+        } ++ " %[shift_amt], %[value], %[ret]"
+        : [ret] "=r" (-> T),
+        : [value] "r" (value),
+          [shift_amt] "r" (shift_amt),
+    );
+}
+inline fn shrx(comptime T: type, value: T, shift_amt: T) T {
+    return asm ("shrx" ++ switch (T) {
+            u32 => "l",
+            u64 => "q",
+            else => @compileError("invalid operand type for this instruction"),
+        } ++ " %[shift_amt], %[value], %[ret]"
+        : [ret] "=r" (-> T),
+        : [value] "r" (value),
+          [shift_amt] "r" (shift_amt),
+    );
+}
+/// Placeholder for translation. This is one of a set of functions which
+/// should be written in optimised assembly, to be used by the builder.
+export fn testEqualMany8(l_values: [*]const u8, l_len: u64, r_values: [*]const u8, r_len: u64) bool {
+    if (l_len != r_len) {
+        return false;
+    }
+    if (l_values == r_values) {
+        return true;
+    }
+    var index: u64 = 0;
+    while (index != l_len) : (index +%= 1) {
+        if (l_values[index] != r_values[index]) {
+            return false;
+        }
+    }
+    return true;
 }
