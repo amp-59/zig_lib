@@ -48,7 +48,7 @@ pub fn main(builder: *build.Builder) !void {
     const mem_gen = builder.step("mem_gen", "generate containers according to specification");
     {
         const default = .{ .build_mode = .ReleaseSmall };
-        _ = util.addProjectExecutable(builder, "expr_test", "top/mem/expr-test.zig", .{});
+        const expr_test = util.addProjectExecutable(builder, "expr_test", "top/mem/expr-test.zig", .{});
 
         const spec_to_abstract = util.addProjectExecutable(builder, "spec_to_abstract", "top/mem/spec_to_abstract.zig", default);
         const spec_to_detail = util.addProjectExecutable(builder, "spec_to_detail", "top/mem/spec_to_detail.zig", default);
@@ -68,6 +68,9 @@ pub fn main(builder: *build.Builder) !void {
         dependOn(map_to_containers, variants_to_canonicals);
         const map_to_kinds = util.addProjectExecutable(builder, "map_to_kinds", "top/mem/map_to_kinds.zig", default);
         dependOn(map_to_kinds, variants_to_canonicals);
+        const variants_to_allocator_functions = util.addProjectExecutable(builder, "variants_to_allocator_functions", "top/mem/variants_to_allocator_functions.zig", default);
+        dependOn(variants_to_allocator_functions, detail_to_variants);
+        dependOn(variants_to_allocator_functions, expr_test);
         // const variants_to_interfaces = util.addProjectExecutable(builder, "kinds_to_interfaces", "top/mem/kinds_to_interfaces.zig", default);
         // dependOn(variants_to_interfaces, map_to_kinds);
         const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", default);
