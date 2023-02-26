@@ -38,7 +38,7 @@ const general_macros: []const build.Macro = &.{
 };
 const parsedir_std_macros: []const build.Macro = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "std" } }};
 const parsedir_lib_macros: []const build.Macro = general_macros ++ [1]build.Macro{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
-const zig_lib: []const build.Pkg = &.{
+const zig_lib: []const build.Module = &.{
     .{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" },
 };
 
@@ -60,7 +60,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     const target: *build.Target = builder.addExecutable("builtin_test", "top/builtin-test.zig", .{
         .build_mode = .ReleaseFast,
         .macros = general_macros,
-        .packages = zig_lib,
+        .modules = zig_lib,
     });
     try target.build();
 }
