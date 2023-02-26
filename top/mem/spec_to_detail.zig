@@ -47,7 +47,7 @@ fn setAttribute(impl_detail: *out.Detail, comptime attribute_name: []const u8) v
     }
     @compileError("unknown attribute: " ++ attribute_name);
 }
-fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: *out.Detail) void {
+inline fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: *out.Detail) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
