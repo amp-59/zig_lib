@@ -545,7 +545,7 @@ const type_id: *comptime_int = ptr(comptime_int);
 comptime {
     type_id.* = 0;
 }
-pub fn typeId(comptime _: type) comptime_int {
+pub inline fn typeId(comptime _: type) comptime_int {
     const ret: comptime_int = type_id.*;
     type_id.* +%= 1;
     return ret;
