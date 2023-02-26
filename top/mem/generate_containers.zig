@@ -578,6 +578,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
+        // count of undefined of type
         .avail => {
             var div_count_size: [3]Expr = expr.divT(
                 expr.join(&undefined_byte_count),
@@ -587,66 +588,78 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
+        // count of unstreamed of type
+        .ahead => {
+            var sub_undefined_unstreamed = expr.sub(
+                expr.join(&undefined_byte_address),
+                expr.join(&unstreamed_byte_address),
+            );
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&sub_undefined_unstreamed));
+            return array.writeMany(tok.end_expression);
+        },
+        // aligned address offset above amount of type
         .__at => {
             array.writeMany(tok.return_keyword);
             var add_aligned_offset: [3]Expr = expr.add(
-                expr.join(&aligned_byte_address_call),
-                expr.call(&mul_op_offset_child_size),
+                expr.join(&aligned_byte_address),
+                expr.call(&mul_offset_child_size),
             );
             array.writeFormat(expr.call(&add_aligned_offset));
             return array.writeMany(tok.end_expression);
         },
+        // undefined address offset above amount of type
         .__ad => {
             array.writeMany(tok.return_keyword);
             var add_undefined_offset: [3]Expr = expr.add(
-                expr.join(&undefined_byte_address_call),
-                expr.call(&mul_op_offset_child_size),
+                expr.join(&undefined_byte_address),
+                expr.call(&mul_offset_child_size),
             );
             array.writeFormat(expr.call(&add_undefined_offset));
             return array.writeMany(tok.end_expression);
         },
+        // count of defined of type subtract amount of type
         .__len => {
-            var len_fn_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
-            var sub_len_offset: [3]Expr = expr.sub(
-                len_fn_call,
-                expr.symbol(tok.offset_name),
-            );
+            var sub_len_offset: [3]Expr = expr.sub(len_fn_call, expr.call(&mul_offset_child_size));
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&sub_len_offset));
             return array.writeMany(tok.end_expression);
         },
-        .__rem => {
-            var avail_fn_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.avail));
+        // count of undefined of type  subtract amount of type
+        .__avail => {
             array.writeMany(tok.return_keyword);
-            var sub_avail_offset: [3]Expr = expr.sub(
-                avail_fn_call,
-                expr.symbol(tok.offset_name),
-            );
+            var sub_avail_offset: [3]Expr = expr.sub(avail_fn_call, expr.symbol(tok.offset_name));
             array.writeFormat(expr.call(&sub_avail_offset));
             return array.writeMany(tok.end_expression);
         },
+        // undefined address offset below amount of type
         .__back => {
             array.writeMany(tok.return_keyword);
             var sub_undefined_offset: [3]Expr = expr.sub(
-                expr.join(&undefined_byte_address_call),
-                expr.call(&mul_op_offset_child_size),
+                expr.join(&undefined_byte_address),
+                expr.call(&mul_offset_child_size),
             );
             array.writeFormat(expr.call(&sub_undefined_offset));
             return array.writeMany(tok.end_expression);
         },
+        // unstreamed address subtract amount of type
         .__behind => {
             var sub_unstreamed_offset: [3]Expr = expr.sub(
-                expr.join(&unstreamed_byte_address_call),
-                expr.call(&mul_op_offset_child_size),
+                expr.join(&unstreamed_byte_address),
+                expr.call(&mul_offset_child_size),
             );
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&sub_unstreamed_offset));
             return array.writeMany(tok.end_expression);
         },
         .define => {
+            amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(define_call[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&amount),
+                .src = expr.call(&if (ctn_detail.layouts.structured)
+                    mul_count_child_size
+                else
+                    amount_of_type_to_bytes),
             });
             array.writeFormat(expr.join(&define_call));
             return array.writeMany(tok.end_expression);
@@ -660,9 +673,13 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             return array.writeMany(tok.end_expression);
         },
         .undefine => {
+            amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(undefine_call[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&amount),
+                .src = expr.call(&if (ctn_detail.layouts.structured)
+                    mul_count_child_size
+                else
+                    amount_of_type_to_bytes),
             });
             array.writeFormat(expr.join(&undefine_call));
             return array.writeMany(tok.end_expression);
@@ -676,9 +693,13 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             return array.writeMany(tok.end_expression);
         },
         .stream => {
+            amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(seek_call[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&amount),
+                .src = expr.call(&if (ctn_detail.layouts.structured)
+                    mul_count_child_size
+                else
+                    amount_of_type_to_bytes),
             });
             array.writeFormat(expr.join(&seek_call));
             return array.writeMany(tok.end_expression);
@@ -692,9 +713,13 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             return array.writeMany(tok.end_expression);
         },
         .unstream => {
+            amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(tell_call[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&amount),
+                .src = expr.call(&if (ctn_detail.layouts.structured)
+                    mul_count_child_size
+                else
+                    amount_of_type_to_bytes),
             });
             array.writeFormat(expr.join(&tell_call));
             return array.writeMany(tok.end_expression);
@@ -707,21 +732,48 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.join(&tell_call));
             return array.writeMany(tok.end_expression);
         },
-
-        .init => {},
-        .deinit => {},
-        .grow => {},
-        .shrink => {},
-        .increment => {},
-        .decrement => {},
+        .init => {
+            // alloc_fn.get(.allocate);
+        },
+        .deinit => {
+            // alloc_fn.get(.deallocate);
+        },
+        // set writable count of type above defined
+        //.realloc => {
+        //    alloc_fn.get(.reallocate);
+        //},
+        // set writable count of type above current
+        .grow => {
+            // alloc_fn.get(.resizeAbove);
+        },
+        // set writable count of type below current
+        .shrink => {
+            // alloc_fn.get(.resizeBelow);
+        },
+        // require at least this many count of type undefined
+        // (grow if less than this undefined)
+        .increment => {
+            // alloc_fn.get(.resizeDeficit);
+        },
+        // require at most this many count of type undefined
+        // (shrink if more than this undefined)
+        .decrement => {
+            // alloc_fn.get(.resizeSurplus);
+        },
 
         .holder => {},
         .static => {},
         .dynamic => {},
-
-        else => {}, // functionBodyUndefinedNotice(ctn_detail, ctn_fn_info),
     }
 }
+fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const out.DetailLess, impl_fn_info: *const impl_fn.Fn) [3]Expr {
+    // Using array_impl in expr.impl would be better.
+    return expr.fieldAccess(
+        expr.symbol(tok.array_name),
+        expr.impl(allocator, ctn_detail, impl_fn_info),
+    );
+}
+
 fn functionBodyUndefinedNotice(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
