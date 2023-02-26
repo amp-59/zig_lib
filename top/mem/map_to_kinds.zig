@@ -23,23 +23,14 @@ pub fn mapToKinds() void {
     gen.writeImport(&array, "out", "./impl_variants.zig");
     array.writeMany("pub const kinds: []const []const out.Index = &[_][]const out.Index{\n");
     for (keys.values[0..keys.len]) |key| {
-        array.writeMany("    &.{ // ");
-        array.writeMany(@tagName(key.kind));
-        array.writeMany("\n        ");
-        var row_len: u64 = 0;
+        array.writeMany("&.{");
         for (out.canonicals, 0..) |canonical, index| {
             if (key.kind == canonical.kind) {
                 array.writeFormat(fmt.ud64(index));
-                if (row_len == 16) {
-                    array.writeMany(",\n        ");
-                    row_len = 0;
-                } else {
-                    array.writeMany(", ");
-                    row_len +%= 1;
-                }
+                array.writeMany(",");
             }
         }
-        array.overwriteManyBack("\n    }");
+        array.overwriteManyBack("}");
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
