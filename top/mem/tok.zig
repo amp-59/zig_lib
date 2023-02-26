@@ -302,6 +302,8 @@ pub const write_any_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpre
 pub const slave_fn_type_decl_spec: [:0]const u8 = "fn(" ++ slave_specifier_const_ptr_type_name ++ ")callconv(.Inline)" ++ word_type_name;
 pub const static_fn_type_decl_spec: [:0]const u8 = "fn()callconv(.Inline)" ++ word_type_name;
 
+pub const call_this: [:0]const u8 = "@This()";
+
 pub const comptime_keyword: [:0]const u8 = "comptime ";
 pub const const_keyword: [:0]const u8 = "const ";
 pub const return_keyword: [:0]const u8 = "return ";
@@ -318,6 +320,11 @@ pub const close_brace_operator: [:0]const u8 = "}";
 pub const end_expression: [:0]const u8 = ";\n";
 pub const end_list_item: [:0]const u8 = ",\n";
 pub const end_small_list_item: [:0]const u8 = ",";
+
+pub const const_bytes_0: [:0]const u8 = amountBytes("0");
+pub const const_bytes_1: [:0]const u8 = amountBytes("1");
+pub const const_amount_0: [:0]const u8 = amountCount("0");
+pub const const_amount_1: [:0]const u8 = amountCount("1");
 
 fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
     return fieldAccess(meta_namespace, name);
@@ -368,6 +375,12 @@ fn fieldAccess(comptime symbol: [:0]const u8, field_name: [:0]const u8) [:0]cons
 fn callSimple(comptime symbol: [:0]const u8) [:0]const u8 {
     return symbol ++ "()";
 }
+fn amountCount(comptime symbol: [:0]const u8) [:0]const u8 {
+    return ".{.count=" ++ symbol ++ "}";
+}
+fn amountBytes(comptime symbol: [:0]const u8) [:0]const u8 {
+    return ".{.bytes=" ++ symbol ++ "}";
+}
 fn addressOf(comptime symbol: [:0]const u8) [:0]const u8 {
     return "&" ++ symbol;
 }
@@ -391,4 +404,15 @@ fn callPtrToInt(comptime symbol_ptr: [:0]const u8) [:0]const u8 {
 }
 fn callSizeOf(comptime type_name: [:0]const u8) [:0]const u8 {
     return "@sizeOf(" ++ type_name ++ ")";
+}
+pub fn symbolName(symbol: [:0]const u8) ?[]const u8 {
+    inline for (@typeInfo(@This()).Struct.decls) |decl| {
+        const value = @field(@This(), decl.name);
+        if (@TypeOf(value) == [:0]const u8) {
+            if (decl.is_pub and symbol.ptr == value.ptr) {
+                return decl.name;
+            }
+        }
+    }
+    return null;
 }
