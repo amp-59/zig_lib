@@ -10,35 +10,35 @@ const preset = srg.preset;
 const build = srg.build;
 const builtin = srg.builtin;
 
-const packages = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
+const modules = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
 
 const minor_test_args = .{
     .runtime_assertions = true,
     .is_verbose = true,
-    .packages = packages,
+    .modules = modules,
 };
 const algo_test_args = .{
     .runtime_assertions = true,
     .is_verbose = true,
     .build_mode = .ReleaseSmall,
-    .packages = packages,
+    .modules = modules,
 };
 const fmt_test_args = .{
     .runtime_assertions = true,
     .is_verbose = true,
-    .packages = packages,
+    .modules = modules,
 };
 const fast_test_args = .{
     .runtime_assertions = false,
     .is_verbose = false,
     .build_mode = .ReleaseFast,
-    .packages = packages,
+    .modules = modules,
 };
 const small_test_args = .{
     .runtime_assertions = false,
     .is_verbose = false,
     .build_mode = .ReleaseSmall,
-    .packages = packages,
+    .modules = modules,
 };
 const lib_parser_args = .{
     .runtime_assertions = false,
@@ -46,7 +46,7 @@ const lib_parser_args = .{
     .is_silent = true,
     .build_mode = .ReleaseFast,
     .macros = parsedir_lib_macros,
-    .packages = packages,
+    .modules = modules,
 };
 const std_parser_args = .{
     .runtime_assertions = false,
@@ -54,7 +54,7 @@ const std_parser_args = .{
     .is_silent = true,
     .build_mode = .ReleaseFast,
     .macros = parsedir_std_macros,
-    .packages = packages,
+    .modules = modules,
 };
 const parsedir_std_macros: []const build.Macro = meta.slice(build.Macro, .{.{
     .name = "test_subject",
