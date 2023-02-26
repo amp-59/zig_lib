@@ -7,8 +7,8 @@ pub const DetailLess = packed struct {
     index: u8 = undefined,
     kinds: attr.Kinds = .{},
     layouts: attr.Layouts = .{},
-    modes: attr.Modes = .{},
     managers: attr.Managers = .{},
+    modes: attr.Modes = .{},
 
     pub fn formatWrite(detail: *const DetailLess, array: anytype) void {
         array.writeMany(".{ .index = ");
