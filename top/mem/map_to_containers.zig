@@ -19,8 +19,8 @@ fn mapToContainers() void {
     array.undefineAll();
     array.writeMany("pub const containers: []const []const u8 = &[_][]const u8{\n");
     var keys: Keys = Keys.init(out.Canonical, out.canonicals);
-    for (keys.auto[0..keys.len]) |key| {
-        array.writeMany("    &.{ ");
+    for (keys.values[0..keys.len]) |key| {
+        array.writeMany("&.{");
         for (out.canonicals, 0..) |canonical, index| {
             if (builtin.testEqual(Container, key, .{
                 .layout = canonical.layout,
@@ -28,10 +28,10 @@ fn mapToContainers() void {
                 .mode = canonical.mode,
             })) {
                 array.writeFormat(fmt.ud64(index));
-                array.writeMany(", ");
+                array.writeMany(",");
             }
         }
-        array.overwriteManyBack(" }");
+        array.overwriteManyBack("}");
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
