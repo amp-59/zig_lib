@@ -46,10 +46,55 @@ const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
 const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
 
-fn writeFunctionBodyPrimary(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
-    var aligned_byte_address_call: [3]Expr = expr.fieldAccessS(
-        expr.symbol(tok.array_name),
-        expr.impl(allocator, ctn_detail, impl_fn.get(.aligned_byte_address)),
+fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+    if (Expr.debug.show_expressions) {
+        Expr.debug.showFunction(ctn_fn_info.tag);
+    }
+    var define_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.define));
+    var undefine_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefine));
+    var seek_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.seek));
+    var tell_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.tell));
+    var writable_byte_count: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.writable_byte_count));
+    var defined_byte_count: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.defined_byte_count));
+    var undefined_byte_count: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefined_byte_count));
+    var streamed_byte_count: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.streamed_byte_count));
+    var unstreamed_byte_count: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_count));
+    var aligned_byte_address: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.aligned_byte_address));
+    var undefined_byte_address: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefined_byte_address));
+    var unstreamed_byte_address: [3]Expr =
+        makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_address));
+    const child_size_symbol: [:0]const u8 = if (ctn_detail.layouts.structured)
+        tok.child_size_name
+    else
+        tok.call_sizeof_child;
+    const defined_byte_count_call: Expr = expr.join(&defined_byte_count);
+    const writable_byte_count_call: Expr = expr.join(&writable_byte_count);
+    const readable_byte_count_call: Expr = if (ctn_detail.modes.resize)
+        defined_byte_count_call
+    else
+        writable_byte_count_call;
+    var increment_fn_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.increment));
+    var len_fn_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
+    var avail_fn_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.avail));
+    var __len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__len));
+    _ = __len_call;
+    var __avail_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__avail));
+    var __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
+    var __ad_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__ad));
+    _ = __ad_call;
+    var __back_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__back));
+    _ = __back_call;
+    var __behind_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__behind));
+    var pointer_one: [3]Expr = expr.interfacePointerOne(
+        expr.symbol(tok.child_type_name),
+        undefined,
     );
     _ = aligned_byte_address_call;
     var undefined_byte_address_call: [3]Expr = expr.fieldAccessS(
