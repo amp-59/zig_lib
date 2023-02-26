@@ -22,7 +22,7 @@ pub fn mapToKinds() void {
     array.undefineAll();
     gen.writeImport(&array, "out", "./impl_variants.zig");
     array.writeMany("pub const kinds: []const []const out.Index = &[_][]const out.Index{\n");
-    for (keys.auto[0..keys.len]) |key| {
+    for (keys.values[0..keys.len]) |key| {
         array.writeMany("    &.{ // ");
         array.writeMany(@tagName(key.kind));
         array.writeMany("\n        ");
