@@ -1718,8 +1718,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 showReallocate(T, buf, buf[0..count]);
                 return buf.ptr[0..count];
             }
-            const ret: []T = allocateIrreversible(T, count);
-            mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len);
+            const ret: []T = allocator.allocateIrreversible(T, count);
+            mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len, @alignOf(T));
             showReallocate(T, buf, ret);
             return ret;
         }
