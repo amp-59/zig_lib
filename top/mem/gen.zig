@@ -172,19 +172,19 @@ fn GenericStructOfEnum(comptime Struct: type) type {
 }
 pub fn GenericKeys(comptime Key: type, comptime max_len: u64) type {
     return struct {
-        auto: [max_len]Key,
+        values: [max_len]Key,
         len: u64,
         const Keys = @This();
         const type_info: builtin.Type = @typeInfo(Key);
         fn writeOneUnique(keys: *Keys, value: Key) void {
-            for (keys.auto[0..keys.len]) |unique| {
+            for (keys.values[0..keys.len]) |unique| {
                 if (builtin.testEqual(Key, value, unique)) return;
             }
-            keys.auto[keys.len] = value;
+            keys.values[keys.len] = value;
             keys.len +%= 1;
         }
         pub fn init(comptime Record: type, records: []const Record) Keys {
-            var keys: Keys = undefined;
+            var keys: Keys = .{ .values = undefined, .len = 0 };
             for (records) |record| {
                 var key: Key = undefined;
                 inline for (type_info.Struct.fields) |key_field| {
