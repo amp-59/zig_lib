@@ -18,7 +18,7 @@ const out = struct {
     usingnamespace @import("./zig-out/src/canonicals.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
-const implementation = @import("./impl_fn.zig");
+const impl_fn = @import("./impl_fn.zig");
 
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
@@ -39,19 +39,19 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .logging = preset.address_space.logging.silent,
 });
 const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
-const Fn = implementation.Fn;
+const Fn = impl_fn.Fn;
 const Expr = expr.Expr;
 
-const allocated_byte_address_fn_info: *const Fn = implementation.get(.allocated_byte_address);
-const aligned_byte_address_fn_info: *const Fn = implementation.get(.aligned_byte_address);
-const unstreamed_byte_address_fn_info: *const Fn = implementation.get(.unstreamed_byte_address);
-const undefined_byte_address_fn_info: *const Fn = implementation.get(.undefined_byte_address);
-const unwritable_byte_address_fn_info: *const Fn = implementation.get(.unwritable_byte_address);
-const unallocated_byte_address_fn_info: *const Fn = implementation.get(.unallocated_byte_address);
-const allocated_byte_count_fn_info: *const Fn = implementation.get(.allocated_byte_count);
-const aligned_byte_count_fn_info: *const Fn = implementation.get(.aligned_byte_count);
-const writable_byte_count_fn_info: *const Fn = implementation.get(.writable_byte_count);
-const alignment_fn_info: *const Fn = implementation.get(.alignment);
+const allocated_byte_address_fn_info: *const Fn = impl_fn.get(.allocated_byte_address);
+const aligned_byte_address_fn_info: *const Fn = impl_fn.get(.aligned_byte_address);
+const unstreamed_byte_address_fn_info: *const Fn = impl_fn.get(.unstreamed_byte_address);
+const undefined_byte_address_fn_info: *const Fn = impl_fn.get(.undefined_byte_address);
+const unwritable_byte_address_fn_info: *const Fn = impl_fn.get(.unwritable_byte_address);
+const unallocated_byte_address_fn_info: *const Fn = impl_fn.get(.unallocated_byte_address);
+const allocated_byte_count_fn_info: *const Fn = impl_fn.get(.allocated_byte_count);
+const aligned_byte_count_fn_info: *const Fn = impl_fn.get(.aligned_byte_count);
+const writable_byte_count_fn_info: *const Fn = impl_fn.get(.writable_byte_count);
+const alignment_fn_info: *const Fn = impl_fn.get(.alignment);
 
 fn dupe(allocator: *Allocator, value: anytype) Allocator.allocate_payload(*@TypeOf(value)) {
     return allocator.duplicateIrreversible(@TypeOf(value), value);
@@ -68,46 +68,31 @@ inline fn constructInitializer(allocator: *Allocator, impl_variant: *const out.D
         if (impl_fn_info.* == .construct) {
             break :blk tok.source_aligned_byte_address_name;
         }
-        if (impl_fn_info.* == .translate) {
-            break :blk tok.target_aligned_byte_address_name;
-        }
-        unreachable;
+        break :blk tok.target_aligned_byte_address_name;
     };
     const source_allocated_byte_address_name: [:0]const u8 = blk: {
         if (impl_fn_info.* == .construct) {
             break :blk tok.source_allocated_byte_address_name;
         }
-        if (impl_fn_info.* == .translate) {
-            break :blk tok.target_allocated_byte_address_name;
-        }
-        unreachable;
+        break :blk tok.target_allocated_byte_address_name;
     };
     const source_single_approximation_counts_name: [:0]const u8 = blk: {
         if (impl_fn_info.* == .construct) {
             break :blk tok.source_single_approximation_counts_name;
         }
-        if (impl_fn_info.* == .translate) {
-            break :blk tok.target_single_approximation_counts_name;
-        }
-        unreachable;
+        break :blk tok.target_single_approximation_counts_name;
     };
     const source_double_approximation_counts_name: [:0]const u8 = blk: {
         if (impl_fn_info.* == .construct) {
             break :blk tok.source_double_approximation_counts_name;
         }
-        if (impl_fn_info.* == .translate) {
-            break :blk tok.target_double_approximation_counts_name;
-        }
-        unreachable;
+        break :blk tok.target_double_approximation_counts_name;
     };
     const source_unallocated_byte_address_name: [:0]const u8 = blk: {
         if (impl_fn_info.* == .construct) {
             break :blk tok.source_unallocated_byte_address_name;
         }
-        if (impl_fn_info.* == .translate) {
-            break :blk tok.target_unallocated_byte_address_name;
-        }
-        unreachable;
+        break :blk tok.target_unallocated_byte_address_name;
     };
     var buf: []Expr = allocator.allocateIrreversible(Expr, 8);
     var len: u64 = 0;
@@ -127,16 +112,14 @@ inline fn constructInitializer(allocator: *Allocator, impl_variant: *const out.D
                         expr.constant(16),
                         expr.symbol(source_single_approximation_counts_name),
                     ));
-                    const init_lb_word: *[4]Expr = expr.initialize(
-                        allocator,
+                    const init_lb_word: *[4]Expr = dupe(allocator, expr.initialize(
                         tok.allocated_byte_address_word_field_name,
                         expr.call(shl_or_sub_or_16_lb_c),
-                    );
+                    ));
                     buf[len] = expr.join(init_lb_word);
                     len +%= 1;
                 } else {
-                    const shl_or_lb_c_48_sub_or: *[3]Expr = dupe(allocator, expr.shlOr(
-                        allocator,
+                    const shl_or_lb_c_48_sub_or: *[4]Expr = dupe(allocator, expr.shlOr(
                         expr.symbol(source_single_approximation_counts_name),
                         expr.constant(48),
                         expr.call(sub_or_ab_lb_ab),
@@ -155,16 +138,14 @@ inline fn constructInitializer(allocator: *Allocator, impl_variant: *const out.D
                         expr.constant(16),
                         expr.symbol(source_single_approximation_counts_name),
                     ));
-                    const init_lb_word: *[4]Expr = expr.initialize(
-                        allocator,
+                    const init_lb_word: *[4]Expr = dupe(allocator, expr.initialize(
                         tok.allocated_byte_address_word_field_name,
                         expr.call(shl_or_ab_16_lb_c),
-                    );
+                    ));
                     buf[len] = expr.join(init_lb_word);
                     len +%= 1;
                 } else {
-                    const shl_or_lb_c_48_ab: *[3]Expr = dupe(allocator, expr.shlOr(
-                        allocator,
+                    const shl_or_lb_c_48_ab: *[4]Expr = dupe(allocator, expr.shlOr(
                         expr.symbol(source_single_approximation_counts_name),
                         expr.constant(48),
                         expr.symbol(source_allocated_byte_address_name),
@@ -179,91 +160,83 @@ inline fn constructInitializer(allocator: *Allocator, impl_variant: *const out.D
             }
         } else {
             if (impl_variant.techs.disjunct_alignment) {
-                const init_lb_word: *[4]Expr = expr.initialize(
-                    allocator,
+                const init_lb_word: *[4]Expr = dupe(allocator, expr.initialize(
                     tok.allocated_byte_address_word_field_name,
                     expr.call(sub_or_ab_lb_ab),
-                );
+                ));
                 buf[len] = expr.join(init_lb_word);
                 len +%= 1;
             } else {
-                const init_lb_word: *[4]Expr = expr.initialize(
-                    allocator,
+                const init_lb_word: *[4]Expr = dupe(allocator, expr.initialize(
                     tok.allocated_byte_address_word_field_name,
                     expr.symbol(source_allocated_byte_address_name),
-                );
+                ));
                 buf[len] = expr.join(init_lb_word);
                 len +%= 1;
             }
         }
     }
     if (impl_variant.fields.unstreamed_byte_address) {
-        const init_ss_word: *[4]Expr = expr.initialize(
-            allocator,
+        const init_ss_word: *[4]Expr = dupe(allocator, expr.initialize(
             tok.unstreamed_byte_address_word_field_name,
             expr.symbol(source_aligned_byte_address_name),
-        );
+        ));
         buf[len] = expr.join(init_ss_word);
         len +%= 1;
     }
     if (impl_variant.fields.undefined_byte_address) {
         if (impl_variant.techs.double_packed_approximate_capacity) {
             if (config.packed_capacity_low) {
-                var shl_or_ab_16_ub_c: [4]Expr = expr.shlOr(
+                const shl_or_ab_16_ub_c: *[4]Expr = dupe(allocator, expr.shlOr(
                     expr.symbol(source_aligned_byte_address_name),
                     expr.constant(16),
                     expr.symbol(source_double_approximation_counts_name),
-                );
-                const init_ub_word: *[4]Expr = expr.initialize(
-                    allocator,
+                ));
+                const init_ub_word: *[4]Expr = dupe(allocator, expr.initialize(
                     tok.undefined_byte_address_word_field_name,
-                    expr.call(&shl_or_ab_16_ub_c),
-                );
+                    expr.call(shl_or_ab_16_ub_c),
+                ));
                 buf[len] = expr.join(init_ub_word);
                 len +%= 1;
             } else {
-                const shl_or_ub_c_48_ab: [4]Expr = expr.shlOr(
+                const shl_or_ub_c_48_ab: *[4]Expr = dupe(allocator, expr.shlOr(
                     expr.symbol(source_double_approximation_counts_name),
                     expr.constant(48),
                     expr.symbol(source_aligned_byte_address_name),
-                );
-                const init_ub_word: *[4]Expr = expr.initialize(
+                ));
+                const init_ub_word: *[4]Expr = dupe(allocator, expr.initialize(
                     tok.undefined_byte_address_word_field_name,
-                    expr.call(&shl_or_ub_c_48_ab),
-                );
+                    expr.call(shl_or_ub_c_48_ab),
+                ));
                 buf[len] = expr.join(init_ub_word);
                 len +%= 1;
             }
         } else {
-            const init_ub_word: *[4]Expr = expr.initialize(
-                allocator,
+            const init_ub_word: *[4]Expr = dupe(allocator, expr.initialize(
                 tok.undefined_byte_address_word_field_name,
                 expr.symbol(source_aligned_byte_address_name),
-            );
+            ));
             buf[len] = expr.join(init_ub_word);
             len +%= 1;
         }
     }
     if (impl_variant.fields.unallocated_byte_address) {
-        const init_up_word: *[4]Expr = expr.initialize(
-            allocator,
+        const init_up_word: *[4]Expr = dupe(allocator, expr.initialize(
             tok.unallocated_byte_address_word_field_name,
             expr.symbol(source_unallocated_byte_address_name),
-        );
+        ));
         buf[len] = expr.join(init_up_word);
         len +%= 1;
     }
     if (len == 0) {
-        const init_lb_word: *[4]Expr = expr.initialize(
-            allocator,
+        const init_lb_word: *[4]Expr = dupe(allocator, expr.initialize(
             tok.unallocated_byte_address_word_field_name,
             expr.constant(0),
-        );
+        ));
         buf[len] = expr.join(init_lb_word);
         len +%= 1;
     }
-    //testing.printN(4096, .{ fmt.render(render_spec, buf[0..len]), '\n' });
-    return expr.initializer(allocator, expr.list(buf[0..len]));
+    return dupe(allocator, expr.initializer(expr.list(buf[0..len])));
 }
 
 const render_spec = .{
@@ -273,22 +246,14 @@ const render_spec = .{
 };
 
 fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn, info: *Info) void {
-    const allocated_byte_address_call: Expr =
-        expr.impl(allocator, impl_variant, allocated_byte_address_fn_info);
-    const aligned_byte_address_call: Expr =
-        expr.impl(allocator, impl_variant, aligned_byte_address_fn_info);
-    const unstreamed_byte_address_call: Expr =
-        expr.impl(allocator, impl_variant, unstreamed_byte_address_fn_info);
-    const undefined_byte_address_call: Expr =
-        expr.impl(allocator, impl_variant, undefined_byte_address_fn_info);
-    const unwritable_byte_address_call: Expr =
-        expr.impl(allocator, impl_variant, unwritable_byte_address_fn_info);
-    const unallocated_byte_address_call: Expr =
-        expr.impl(allocator, impl_variant, unallocated_byte_address_fn_info);
-    const allocated_byte_count_call: Expr =
-        expr.impl(allocator, impl_variant, allocated_byte_count_fn_info);
-    const aligned_byte_count_call: Expr =
-        expr.impl(allocator, impl_variant, aligned_byte_count_fn_info);
+    const allocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, allocated_byte_address_fn_info);
+    const aligned_byte_address_call: Expr = expr.impl(allocator, impl_variant, aligned_byte_address_fn_info);
+    const unstreamed_byte_address_call: Expr = expr.impl(allocator, impl_variant, unstreamed_byte_address_fn_info);
+    const undefined_byte_address_call: Expr = expr.impl(allocator, impl_variant, undefined_byte_address_fn_info);
+    const unwritable_byte_address_call: Expr = expr.impl(allocator, impl_variant, unwritable_byte_address_fn_info);
+    const unallocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, unallocated_byte_address_fn_info);
+    const allocated_byte_count_call: Expr = expr.impl(allocator, impl_variant, allocated_byte_count_fn_info);
+    const aligned_byte_count_call: Expr = expr.impl(allocator, impl_variant, aligned_byte_count_fn_info);
     const alignment_call: Expr = expr.impl(allocator, impl_variant, alignment_fn_info);
     const has_static_maximum_length: bool =
         impl_variant.kinds.automatic or
@@ -320,9 +285,9 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         undefined_byte_address_call,
     );
     var pointer_opaque_call_sentinel_deref_stx: [2]Expr =
-        expr.dereferenceS(expr.call(&pointer_opaque_call_sentinel));
+        expr.dereference(expr.call(&pointer_opaque_call_sentinel));
     var pointer_one_call_undefined_deref_stx: [2]Expr =
-        expr.dereferenceS(expr.call(&pointer_one_call_undefined));
+        expr.dereference(expr.call(&pointer_one_call_undefined));
 
     switch (impl_fn_info.*) {
         .allocated_byte_address => {
@@ -379,14 +344,15 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                         array.writeFormat(expr.call(&sub_shr_sub));
                         return array.writeMany(tok.end_expression);
                     }
-                    const or_call_1_65535_48: [3]Expr = expr.@"or"(
+                    var or_call_1_65535_48: [3]Expr = expr.@"or"(
                         expr.call(&sub_1),
                         expr.call(&shl_65535_48),
                     );
-                    array.writeFormat(expr.call(&expr.andn(
+                    var andn_allocated_or: [3]Expr = expr.andn(
                         expr.symbol(tok.allocated_byte_address_word_access),
                         expr.call(&or_call_1_65535_48),
-                    )));
+                    );
+                    array.writeFormat(expr.call(&andn_allocated_or));
                     return array.writeMany(tok.end_expression);
                 }
                 var andn_allocated_sub: [3]Expr = expr.andn(
@@ -434,7 +400,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 }
                 var andn_undefined_shl: [3]Expr = expr.andn(
                     expr.symbol(tok.undefined_byte_address_word_access),
-                    shl_65535_48,
+                    expr.call(&shl_65535_48),
                 );
                 array.writeFormat(expr.call(&andn_undefined_shl));
                 return array.writeMany(tok.end_expression);
@@ -719,7 +685,6 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                     return array.writeMany(tok.end_expression);
                 } else {
                     var and_allocated_sub_1: [3]Expr = expr.@"and"(
-                        allocator,
                         expr.symbol(tok.allocated_byte_address_word_access),
                         expr.call(&sub_1),
                     );
@@ -743,7 +708,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             array.writeFormat(expr.call(&add_equ_undefined_offset));
             if (impl_variant.specs.sentinel) {
                 array.writeMany(tok.end_expression);
-                var assign_pointer_one_sentinel: [3]Expr = expr.assignS(
+                var assign_pointer_one_sentinel: [3]Expr = expr.assign(
                     expr.join(&pointer_one_call_undefined_deref_stx),
                     expr.join(&pointer_opaque_call_sentinel_deref_stx),
                 );
@@ -759,7 +724,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             array.writeFormat(expr.call(&sub_equ_undefined_offset));
             if (impl_variant.specs.sentinel) {
                 array.writeMany(tok.end_expression);
-                var assign_pointer_one_sentinel: [3]Expr = expr.assignS(
+                var assign_pointer_one_sentinel: [3]Expr = expr.assign(
                     expr.join(&pointer_one_call_undefined_deref_stx),
                     expr.join(&pointer_opaque_call_sentinel_deref_stx),
                 );
@@ -788,31 +753,63 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             array.writeFormat(expr.join(constructInitializer(allocator, impl_variant, impl_fn_info)));
             return array.writeMany(tok.end_expression);
         },
-        .translate => {
-            const construct_init: *[3]Expr = constructInitializer(allocator, impl_variant, impl_fn_info);
-            const impl_symbol_expr: Expr = expr.symbol(tok.impl_name);
-            const impl_deref_stx: *[2]Expr = expr.dereference(allocator, impl_symbol_expr);
-            var assign_impl_deref_construct_init: [3]Expr = expr.assignS(
-                expr.join(impl_deref_stx),
-                expr.join(construct_init),
+        .reconstruct, .translate => {
+            expr.subst(aligned_byte_address_call.args(), .{
+                .dst = expr.symbol(tok.impl_name),
+                .src = expr.symbol(tok.source_impl_name),
+            });
+            expr.subst(aligned_byte_count_call.args(), .{
+                .dst = expr.symbol(tok.impl_name),
+                .src = expr.symbol(tok.source_impl_name),
+            });
+            const target_aligned_byte_address_call: Expr =
+                expr.impl(allocator, impl_variant, impl_fn.get(.aligned_byte_address));
+
+            var impl_deref_stx: [2]Expr = expr.dereference(expr.symbol(tok.impl_name));
+            var s_impl_decl: [6]Expr = expr.constDecl(
+                tok.source_impl_name,
+                tok.impl_type_name,
+                expr.join(&impl_deref_stx),
             );
-            array.writeFormat(expr.join(&assign_impl_deref_construct_init));
+            var t_impl_decl: [6]Expr = expr.constDecl(
+                tok.target_impl_name,
+                tok.impl_type_name,
+                expr.join(constructInitializer(allocator, impl_variant, impl_fn_info)),
+            );
+            var assign_impl_t_impl: [3]Expr = expr.assign(
+                expr.join(&impl_deref_stx),
+                expr.symbol(tok.target_impl_name),
+            );
+            var copy: [5]Expr = expr.fnCall4(
+                "copy",
+                aligned_byte_address_call,
+                aligned_byte_count_call,
+                target_aligned_byte_address_call,
+                expr.symbol("spec.alignment"),
+            );
+            array.writeFormat(expr.join(&s_impl_decl));
+            array.writeMany(tok.end_expression);
+            array.writeFormat(expr.join(&t_impl_decl));
+            array.writeMany(tok.end_expression);
+            array.writeFormat(expr.join(&assign_impl_t_impl));
+            array.writeMany(tok.end_expression);
+            array.writeFormat(expr.call(&copy));
             return array.writeMany(tok.end_expression);
         },
     }
 }
 
 fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const out.DetailMore) void {
-    for (implementation.key) |*impl_fn_info| {
+    for (impl_fn.key) |impl_fn_info| {
         if (!impl_fn_info.hasCapability(impl_variant)) {
             continue;
         }
         var info: Info = .{ .start = array.len() };
         impl_fn_info.writeSignature(array, impl_variant);
         array.writeMany("{\n");
-        writeFunctionBodyGeneric(allocator, array, impl_variant, impl_fn_info, &info);
+        writeFunctionBodyGeneric(allocator, array, impl_variant, &impl_fn_info, &info);
         array.writeMany("}\n");
-        writeSimpleRedecl(array, impl_fn_info, &info);
+        writeSimpleRedecl(array, &impl_fn_info, &info);
     }
 }
 fn writeDeclarations(allocator: *Allocator, array: *Array, impl_variant: *const out.DetailMore) void {
@@ -913,6 +910,7 @@ pub fn generateReferences() void {
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
+
     var accm_spec_index: u64 = 0;
     var ctn_index: u64 = 0;
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
