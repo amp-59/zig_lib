@@ -172,6 +172,7 @@ fn writeStructFromFields(array: *Array, comptime struct_fields: []const builtin.
             array.writeMany(",");
         }
     }
+    array.undefine(builtin.int(u1, array.readOneBack() == ','));
     array.writeOne('}');
 }
 fn writeSpecifiersStruct(array: *Array, field_names: mem.StaticArray([]const u8, 16)) void {
