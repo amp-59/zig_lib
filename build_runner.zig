@@ -1,5 +1,14 @@
 const root = @import("@build");
-const srg = root.srg;
+const build_fn: fn (*build.Allocator, *build.Builder) anyerror!void = root.buildMain;
+
+const srg = blk: {
+    if (@hasDecl(root, "srg")) {
+        break :blk root.srg;
+    }
+    if (@hasDecl(root, "zig_lib")) {
+        break :blk root.zig_lib;
+    }
+};
 const mem = srg.mem;
 const sys = srg.sys;
 const mach = srg.mach;
@@ -11,9 +20,10 @@ const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
-pub const is_verbose: bool = false;
-pub const is_silent: bool = false;
-pub const runtime_assertions: bool = false;
+pub const is_verbose: bool = if (@hasDecl(root, "is_verbose")) root.is_verbose else false;
+pub const is_silent: bool = if (@hasDecl(root, "is_silent")) root.is_verbose else false;
+pub const runtime_assertions: bool = if (@hasDecl(root, "is_silent")) root.is_verbose else false;
+
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
@@ -47,8 +57,6 @@ fn showAllCommands(builder: *build.Builder) void {
     }
     builtin.debug.logAlways(buf[0..len]);
 }
-
-const build_fn: fn (*build.Allocator, *build.Builder) anyerror!void = root.build;
 
 const release_fast_s: [:0]const u8 = "prioritise low runtime";
 const release_small_s: [:0]const u8 = "prioritise small executable size";
