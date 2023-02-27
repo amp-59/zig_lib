@@ -21,10 +21,8 @@ pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
 pub const StaticString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const StaticPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
-
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
-
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
@@ -38,7 +36,6 @@ pub const Builder = struct {
     groups: GroupList,
     args: [][*:0]u8,
     vars: [][*:0]u8,
-
     pub const Paths = struct {
         zig_exe: [:0]const u8,
         build_root: [:0]const u8,
@@ -53,7 +50,6 @@ pub const Builder = struct {
             };
         }
     };
-
     pub fn zigExePathMacro(builder: *const Builder) Macro {
         const value: Macro.Value = .{ .path = zigExePath(builder) };
         return .{ .name = "zig_exe", .value = value };
@@ -172,6 +168,9 @@ fn join(
                 .strip = true,
                 .formatted_panics = false,
                 .emit_bin = .{ .yes = builder.path("zig-out/bin/" ++ name) },
+                .modules = spec.mods,
+                .dependencies = spec.deps,
+                .mode = builder.options.mode orelse spec.mode,
             });
         }
         if (spec.run) {
@@ -184,7 +183,6 @@ fn join(
             ret.addFormat(allocator, .{ .ast_check = true });
         }
     }
-    ret.build_cmd.mode = spec.mode;
     return ret;
 }
 pub const OutputMode = enum {
@@ -211,13 +209,11 @@ pub const RunCommand = struct {
         @ptrCast(*u64, &run_cmd.args[run_cmd.args_len]).* = 0;
     }
 };
-
 pub const GroupList = GenericList(Group);
 pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-
     pub inline fn addTarget(
         group: *Group,
         comptime spec: TargetSpec,
@@ -239,10 +235,8 @@ pub const Target = struct {
     fmt_flag: bool = true,
     deps: DependencyList,
     builder: *Builder,
-
     /// Specify command for target
     pub const Tag = enum { fmt, build, run };
-
     const DependencyList = GenericList(Dependency);
     /// All dependencies are build dependencies
     pub const Dependency = struct {
@@ -273,7 +267,6 @@ pub const Target = struct {
     pub fn dependOn(target: *Target, allocator: *Allocator, dependency: *Dependency) void {
         target.deps.create(allocator, .{ .target = dependency, .tag = .fmt });
     }
-
     fn buildLength(target: Target) u64 {
         const cmd: *const BuildCommand = target.build_cmd;
         var len: u64 = 4;
@@ -611,7 +604,6 @@ pub fn GenericList(comptime T: type) type {
         pos: u64 = 0,
         const List = @This();
         const Node = struct { prev: *Node, this: *T, next: *Node };
-
         fn create(list: *List, allocator: *Allocator, value: T) *T {
             list.tail();
             const ret: *T = allocator.duplicateIrreversible(T, value);
@@ -674,47 +666,6 @@ pub fn GenericList(comptime T: type) type {
         }
         fn init(allocator: *Allocator) List {
             return .{ .node = allocator.createIrreversible(Node) };
-        }
-    };
-}
-fn Args(comptime name: [:0]const u8) type {
-    return struct {
-        make_step_name: [:0]const u8 = name,
-        make_step_desc: [:0]const u8 = "Build " ++ name,
-        run_step_name: [:0]const u8 = "run-" ++ name,
-        run_step_desc: [:0]const u8 = "...",
-        emit_bin_path: ?[:0]const u8 = "zig-out/bin/" ++ name,
-        emit_asm_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".s",
-        emit_analysis_path: ?[:0]const u8 = "zig-out/bin/" ++ name ++ ".analysis",
-        build_mode: ?@TypeOf(builtin.zig.mode) = null,
-        build_working_directory: bool = false,
-        is_test: ?bool = null,
-        is_support: ?bool = null,
-        runtime_assertions: ?bool = null,
-        is_perf: ?bool = null,
-        is_verbose: ?bool = null,
-        is_silent: ?bool = null,
-        is_tolerant: ?bool = null,
-        define_build_root: bool = true,
-        define_build_working_directory: bool = true,
-        is_large_test: bool = false,
-        strip: bool = true,
-        modules: ?[]const Module = null,
-        macros: ?[]const Macro = null,
-        fn setMacro(
-            comptime args: @This(),
-            comptime macros: []const Macro,
-            comptime field_name: [:0]const u8,
-        ) []const Macro {
-            comptime {
-                if (@field(args, field_name)) |field| {
-                    return meta.concat(Macro, macros, .{
-                        .name = field_name,
-                        .value = .{ .constant = if (field) 1 else 0 },
-                    });
-                }
-                return macros;
-            }
         }
     };
 }
