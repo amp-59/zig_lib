@@ -63,11 +63,13 @@ const Names = mem.StructuredAutomaticVector([:0]const u8, null, 128, 8, .{});
 
 const PrintArray = mem.StaticString(4096);
 const Options = struct {
-    all: bool = true,
+    hide: bool = false,
     follow: bool = false,
     wide: bool = false,
     max_depth: ?u8 = null,
+
     pub const Map = proc.GenericOptions(Options);
+
     const plain_print: bool = false;
     const print_in_second_thread: bool = true;
     const always_show_hidden: bool = true;
@@ -84,11 +86,11 @@ const Options = struct {
     const int = .{ .convert = convertToInt };
 };
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{ // zig fmt: off
-    .{ .field_name = "all",        .short = "-a", .long = "--all",         .assign = Options.yes, .descr = Options.about_all_s },
-    .{ .field_name = "follow",     .short = "-L", .long = "--follow",      .assign = Options.yes, .descr = Options.about_follow_s },
-    .{ .field_name = "follow",     .short = "+L", .long = "--no-follow",   .assign = Options.no,  .descr = Options.about_no_follow_s },
-    .{ .field_name = "wide",       .short = "-w", .long = "--wide",        .assign = Options.yes, .descr = Options.about_wide_s },
-    .{ .field_name = "max_depth",  .short = "-d", .long = "--max-depth",   .assign = Options.int, .descr = Options.about_max_depth_s },
+    .{ .field_name = "hide",       .long = "--hide",                        .assign = Options.yes, .descr = Options.about_all_s },
+    .{ .field_name = "follow",     .short = "-L", .long = "--follow",       .assign = Options.yes, .descr = Options.about_follow_s },
+    .{ .field_name = "follow",     .short = "+L", .long = "--no-follow",    .assign = Options.no,  .descr = Options.about_no_follow_s },
+    .{ .field_name = "wide",       .short = "-w", .long = "--wide",         .assign = Options.yes, .descr = Options.about_wide_s },
+    .{ .field_name = "max_depth",  .short = "-d", .long = "--max-depth",    .assign = Options.int, .descr = Options.about_max_depth_s },
 }); // zig fmt: on
 
 const Results = struct {
@@ -237,7 +239,7 @@ fn writeAndWalk(
         }
         defer if (!Options.plain_print) alts_buf.undefine(indent.len);
         const base_name: [:0]const u8 = entry.name();
-        if (!options.all and conditionalSkip(base_name)) {
+        if (options.hide and conditionalSkip(base_name)) {
             continue;
         }
         switch (entry.kind()) {
