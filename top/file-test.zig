@@ -59,6 +59,20 @@ fn testFileOperationsRound1() !void {
     try meta.wrap(file.close(close_spec, fd));
     try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test"));
 }
+pub fn testSocketOpenAndClose() !void {
+    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp);
+    const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp);
+    const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp);
+    const ipv6_tcp_fd: u64 = try file.socket(.{}, .ipv6, .tcp);
+    const ipv4_udp_fd: u64 = try file.socket(.{}, .ipv4, .udp);
+    const ipv4_tcp_fd: u64 = try file.socket(.{}, .ipv4, .tcp);
+    try file.close(.{}, ipv4_tcp_fd);
+    try file.close(.{}, ipv4_udp_fd);
+    try file.close(.{}, ipv6_tcp_fd);
+    try file.close(.{}, ipv6_udp_fd);
+    try file.close(.{}, unix_udp_fd);
+    try file.close(.{}, unix_tcp_fd);
+}
 fn testFileOperationsRound2() !void {
     var buf: [4096]u8 = undefined;
     _ = try meta.wrap(file.getCwd(getcwd_spec, &buf));
@@ -84,5 +98,6 @@ fn testPathOperations() !void {
 pub fn main() !void {
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
+    try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testPathOperations());
 }
