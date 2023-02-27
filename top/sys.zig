@@ -1783,6 +1783,7 @@ pub const Fn = enum(u9) {
             .read => 3,
             .write => 3,
             .open => 3,
+            .socket => 3,
             .openat => 3,
             .close => 1,
             .ioctl => 3,
@@ -1880,7 +1881,7 @@ pub const ioctl_errors: []const ErrorCode = &[_]ErrorCode{
     .NOTTY, .BADF, .FAULT, .INVAL,
 };
 pub const socket_errors: []const ErrorCode = &[_]ErrorCode{
-    .ACCES, .AFNOSUPPORT, .INVAL, .INVAL,          .MFILE,
+    .ACCES, .AFNOSUPPORT, .INVAL, .MFILE,
     .NFILE, .NOBUFS,      .NOMEM, .PROTONOSUPPORT,
 };
 pub const bind_errors: []const ErrorCode = &[_]ErrorCode{
