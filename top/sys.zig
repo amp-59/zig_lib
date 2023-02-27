@@ -1128,6 +1128,20 @@ pub const SO = opaque {
     pub const RCVTIMEO: u64 = 0x14;
     pub const SNDTIMEO: u64 = 0x15;
 };
+pub const AF = opaque {
+    pub const UNIX: u64 = 0x1;
+    pub const INET: u64 = 0x2;
+    pub const INET6: u64 = 0xa;
+};
+pub const SOCK = opaque {
+    pub const STREAM: u64 = 0x1;
+    pub const DGRAM: u64 = 0x2;
+    pub const NONBLOCK: u64 = 0x800;
+    pub const CLOEXEC: u64 = 0x80000;
+};
+pub const INADDR = opaque {
+    pub const ANY: u64 = 0x0;
+};
 pub const ErrorCode = enum(i9) {
     PERM = -1, // Operation not permitted
     NOENT = -2, // No such file or directory
@@ -1868,6 +1882,21 @@ pub const ioctl_errors: []const ErrorCode = &[_]ErrorCode{
 pub const socket_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AFNOSUPPORT, .INVAL, .INVAL,          .MFILE,
     .NFILE, .NOBUFS,      .NOMEM, .PROTONOSUPPORT,
+};
+pub const bind_errors: []const ErrorCode = &[_]ErrorCode{
+    .ADDRINUSE,   .ADDRNOTAVAIL, .AFNOSUPPORT, .ALREADY,   .BADF,
+    .INPROGRESS,  .INVAL,        .NOBUFS,      .OPNOTSUPP, .ACCES,
+    .DESTADDRREQ, .ISDIR,        .IO,          .LOOP,      .NAMETOOLONG,
+    .NOENT,       .NOTDIR,       .ROFS,        .ISCONN,
+};
+pub const listen_errors: []const ErrorCode = &[_]ErrorCode{
+    .BADF,  .DESTADDRREQ, .INVAL, .NOTSOCK, .OPNOTSUPP,
+    .ACCES, .NOBUFS,
+};
+pub const accept_errors: []const ErrorCode = &[_]ErrorCode{
+    .AGAIN, .WOULDBLOCK, .BADF,      .CONNABORTED, .FAULT,
+    .INTR,  .INVAL,      .MFILE,     .NFILE,       .NOBUFS,
+    .NOMEM, .NOTSOCK,    .OPNOTSUPP, .PERM,        .PROTO,
 };
 pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
