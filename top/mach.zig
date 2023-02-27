@@ -453,15 +453,15 @@ inline fn shrx(comptime T: type, value: T, shift_amt: T) T {
 }
 /// Placeholder for translation. This is one of a set of functions which
 /// should be written in optimised assembly, to be used by the builder.
-export fn testEqualMany8(l_values: [*]const u8, l_len: u64, r_values: [*]const u8, r_len: u64) bool {
-    if (l_len != r_len) {
+pub noinline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
+    if (l_values.len != r_values.len) {
         return false;
     }
-    if (l_values == r_values) {
+    if (l_values.ptr == r_values.ptr) {
         return true;
     }
     var index: u64 = 0;
-    while (index != l_len) : (index +%= 1) {
+    while (index != l_values.len) : (index +%= 1) {
         if (l_values[index] != r_values[index]) {
             return false;
         }
