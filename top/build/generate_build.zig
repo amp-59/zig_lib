@@ -1,12 +1,12 @@
-const mem = @import("./mem.zig");
-const sys = @import("./sys.zig");
-const fmt = @import("./fmt.zig");
-const proc = @import("./proc.zig");
-const mach = @import("./mach.zig");
-const file = @import("./file.zig");
-const meta = @import("./meta.zig");
-const preset = @import("./preset.zig");
-const builtin = @import("./builtin.zig");
+const mem = @import("../mem.zig");
+const sys = @import("../sys.zig");
+const fmt = @import("../fmt.zig");
+const proc = @import("../proc.zig");
+const mach = @import("../mach.zig");
+const file = @import("../file.zig");
+const meta = @import("../meta.zig");
+const preset = @import("../preset.zig");
+const builtin = @import("../builtin.zig");
 const types = @import("./build-template.zig");
 
 pub usingnamespace proc.start;
@@ -15,13 +15,9 @@ pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = true;
 pub const runtime_assertions: bool = false;
-
-const Variant = enum(u1) { length, write };
-
 const use_function_type: bool = false;
 const prefer_inline: bool = true;
 const write_fn_name: bool = false;
-
 const initial_indent: u64 = if (use_function_type) 2 else 1;
 const alloc_options = .{
     .count_allocations = false,
@@ -37,6 +33,8 @@ const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
 });
 const Array = Allocator.StructuredHolder(u8);
+const Variant = enum(u1) { length, write };
+
 const create_spec: file.CreateSpec = .{
     .options = .{
         .write = .truncate,
@@ -50,7 +48,6 @@ const close_spec: file.CloseSpec = .{
     .errors = .{},
 };
 const ws: [28]u8 = .{' '} ** 28;
-
 const kill_spaces: u64 = (initial_indent + 1) * 4;
 const build_members_loc_token: []const u8 = "__compile_command: void,";
 const format_members_loc_token: []const u8 = "__format_command: void,";
@@ -180,7 +177,7 @@ pub const BuildCommandOptions = opaque {
         .string = "--name",
         .arg_type = []const u8,
     };
-    pub const O: OptionSpec = .{
+    pub const mode: OptionSpec = .{
         .string = "-O",
         .arg_type = @TypeOf(@import("builtin").mode),
         .arg_type_name = "@TypeOf(builtin.zig.mode)",
@@ -498,6 +495,13 @@ fn subTemplate(src: [:0]const u8, comptime sub_name: [:0]const u8) ?[]const u8 {
         builtin.debug.write("missing: " ++ start_s ++ "\n");
         return null;
     }
+}
+pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void {
+    array.writeMany("const ");
+    array.writeMany(name);
+    array.writeMany(" = @import(\"");
+    array.writeMany(pathname);
+    array.writeMany("\");\n");
 }
 pub fn writeIndent(array: *Array, width: u64, values: []const u8) void {
     try array.increment(values.len * 6);
@@ -1447,7 +1451,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     defer array.deinit(&allocator);
     array.increment(&allocator, 1024 * 1024);
 
-    const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/build-template.zig");
+    const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/build/build-template.zig");
     try mem.acquire(AddressSpace, &address_space, 1);
     const arena_1: mem.Arena = AddressSpace.arena(1);
 
@@ -1467,6 +1471,14 @@ pub fn main(args_in: [][*:0]u8) !void {
     const format_len_fn_body_offset: u64 = try guessSourceOffset(build_src, format_len_fn_body_loc_token, 8049);
     const format_write_fn_body_offset: u64 = try guessSourceOffset(build_src, format_write_fn_body_loc_token, 8328);
 
+    writeImport(&array, "sys", "./sys.zig");
+    writeImport(&array, "mem", "./mem.zig");
+    writeImport(&array, "file", "./file.zig");
+    writeImport(&array, "meta", "./meta.zig");
+    writeImport(&array, "proc", "./proc.zig");
+    writeImport(&array, "preset", "./preset.zig");
+    writeImport(&array, "builtin", "./builtin.zig");
+
     array.writeMany(build_src[0 .. build_members_offset - (initial_indent * 4)]);
     writeStructMembers(BuildCommandOptions, &array);
     array.writeMany(build_src[build_members_offset + build_members_loc_token.len + 1 .. format_members_offset - (initial_indent * 4)]);
@@ -1482,7 +1494,6 @@ pub fn main(args_in: [][*:0]u8) !void {
     array.writeMany(build_src[format_write_fn_body_offset + format_write_fn_body_loc_token.len + 1 ..]);
     array.writeMany(types_src);
     if (!prefer_inline) array.writeMany(option_fn_src);
-
     if (options.output) |pathname| {
         try writeFile(allocator, array, pathname);
     } else {
