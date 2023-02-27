@@ -34,15 +34,20 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     const pid: u64 = try proc.fork(.{});
     if (pid == 0) {
         const build_args = .{
-            .modules = &.{.{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" }},
-            .build_mode = .ReleaseSmall,
+            .mods = &.{.{ .name = "zig_lib", .path = builtin.build_root.? ++ "/zig_lib.zig" }},
+            .deps = &.{"zig_lib"},
+            .mode = .ReleaseSmall,
         };
         var address_space: AddressSpace = .{};
         var allocator: build.Allocator = try build.Allocator.init(&address_space);
-        var array: build.Builder.ArrayU = build.Builder.ArrayU.init(&allocator);
-        var builder: build.Builder = build.Builder.init(.{}, &allocator, &array, args, vars);
+        var builder: build.Builder = build.Builder.init(&allocator, .{
+            .zig_exe = builtin.zig_exe.?,
+            .build_root = builtin.build_root.?,
+            .cache_dir = builtin.cache_dir.?,
+            .global_cache_dir = builtin.global_cache_dir.?,
+        }, .{}, args, vars);
 
-        const target: *build.Target = builder.addExecutable("exit_with_code", builtin.build_root.? ++ "/test/exit_with_code.zig", build_args);
+        const target: *build.Target = builder.addTarget(build_args, &allocator, "exit_with_code", builtin.build_root.? ++ "/test/exit_with_code.zig");
         try target.build();
 
         var args_buf: [4096:0]u8 = undefined;
