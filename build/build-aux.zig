@@ -42,59 +42,51 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "sortfile", "examples/sortfile.zig", .{ .build_mode = .ReleaseFast });
     _ = util.addProjectExecutable(builder, "allocators", "examples/allocators.zig", .{ .build_mode = .ReleaseSmall });
     // Generators:
-    _ = util.addProjectExecutable(builder, "build_gen", "top/build-gen.zig", .{ .build_mode = .ReleaseSmall });
+    _ = util.addProjectExecutable(builder, "generate_build", "top/build/generate_build.zig", .{ .build_mode = .ReleaseSmall });
 
     // Memory implementation:
     const mem_gen = builder.step("mem_gen", "generate containers according to specification");
     {
         const default = .{ .build_mode = .ReleaseSmall };
-        const expr_test = util.addProjectExecutable(builder, "expr_test", "top/mem/expr-test.zig", .{});
-
-        const spec_to_abstract = util.addProjectExecutable(builder, "spec_to_abstract", "top/mem/spec_to_abstract.zig", default);
-        const spec_to_detail = util.addProjectExecutable(builder, "spec_to_detail", "top/mem/spec_to_detail.zig", default);
-        const spec_to_options = util.addProjectExecutable(builder, "spec_to_options", "top/mem/spec_to_options.zig", default);
-        const abstract_to_type_spec = util.addProjectExecutable(builder, "abstract_to_type_specs", "top/mem/abstract_to_type_specs.zig", default);
-        dependOn(abstract_to_type_spec, spec_to_abstract);
-        const type_specs_to_type_descrs = util.addProjectExecutable(builder, "type_specs_to_type_descrs", "top/mem/type_specs_to_type_descrs.zig", default);
-        dependOn(type_specs_to_type_descrs, abstract_to_type_spec);
-        const detail_to_variants = util.addProjectExecutable(builder, "detail_to_variants", "top/mem/detail_to_variants.zig", default);
-        dependOn(detail_to_variants, abstract_to_type_spec);
-        dependOn(detail_to_variants, spec_to_detail);
-        const generate_canonical = util.addProjectExecutable(builder, "generate_canonical", "top/mem/generate_canonical.zig", default);
-        const variants_to_canonicals = util.addProjectExecutable(builder, "variants_to_canonicals", "top/mem/variants_to_canonicals.zig", default);
-        dependOn(variants_to_canonicals, detail_to_variants);
-        dependOn(variants_to_canonicals, generate_canonical);
-        const map_to_containers = util.addProjectExecutable(builder, "map_to_containers", "top/mem/map_to_containers.zig", default);
-        dependOn(map_to_containers, variants_to_canonicals);
-        const map_to_kinds = util.addProjectExecutable(builder, "map_to_kinds", "top/mem/map_to_kinds.zig", default);
-        dependOn(map_to_kinds, variants_to_canonicals);
-        const variants_to_allocator_functions = util.addProjectExecutable(builder, "variants_to_allocator_functions", "top/mem/variants_to_allocator_functions.zig", default);
-        dependOn(variants_to_allocator_functions, detail_to_variants);
-        dependOn(variants_to_allocator_functions, expr_test);
-        // const variants_to_interfaces = util.addProjectExecutable(builder, "kinds_to_interfaces", "top/mem/kinds_to_interfaces.zig", default);
-        // dependOn(variants_to_interfaces, map_to_kinds);
-        const map_to_specifications = util.addProjectExecutable(builder, "map_to_specifications", "top/mem/map_to_specifications.zig", default);
-        dependOn(map_to_specifications, map_to_containers);
+        const expr_test = util.addProjectExecutable(builder, "expr_test", "top/mem/expr-test.zig", default);
+        const abstract_params = util.addProjectExecutable(builder, "mg_abstract_params", "top/mem/abstract_params-aux.zig", default);
+        const impl_detail = util.addProjectExecutable(builder, "mg_impl_detail", "top/mem/impl_detail-aux.zig", default);
+        const options = util.addProjectExecutable(builder, "mg_options", "top/mem/options-aux.zig", default);
+        const type_specs = util.addProjectExecutable(builder, "mg_type_specs", "top/mem/type_specs-aux.zig", default);
+        const type_descr = util.addProjectExecutable(builder, "mg_type_descr", "top/mem/type_descr-aux.zig", default);
+        const impl_variants = util.addProjectExecutable(builder, "mg_impl_variants", "top/mem/impl_variants-aux.zig", default);
+        const canonical = util.addProjectExecutable(builder, "mg_canonical", "top/mem/canonical-aux.zig", default);
+        const canonicals = util.addProjectExecutable(builder, "mg_canonicals", "top/mem/canonicals-aux.zig", default);
+        const containers = util.addProjectExecutable(builder, "mg_containers", "top/mem/containers-aux.zig", default);
+        const kinds = util.addProjectExecutable(builder, "mg_kinds", "top/mem/kinds-aux.zig", default);
+        const specifications = util.addProjectExecutable(builder, "mg_specifications", "top/mem/specifications-aux.zig", default);
+        const generate_functions = util.addProjectExecutable(builder, "generate_functions", "top/mem/generate_functions.zig", default);
         const generate_specifications = util.addProjectExecutable(builder, "generate_specifications", "top/mem/generate_specifications.zig", default);
-        dependOn(generate_specifications, spec_to_options);
-        dependOn(generate_specifications, type_specs_to_type_descrs);
-        dependOn(generate_specifications, map_to_specifications);
         const generate_references = util.addProjectExecutable(builder, "generate_references", "top/mem/generate_references.zig", default);
-        dependOn(generate_references, map_to_containers);
-        dependOn(generate_references, generate_specifications);
         const generate_parameters = util.addProjectExecutable(builder, "generate_parameters", "top/mem/generate_parameters.zig", default);
-        dependOn(generate_parameters, spec_to_options);
-        dependOn(generate_parameters, type_specs_to_type_descrs);
-        dependOn(generate_parameters, map_to_containers);
         const generate_containers = util.addProjectExecutable(builder, "generate_containers", "top/mem/generate_containers.zig", default);
+        dependOn(type_specs, abstract_params);
+        dependOn(type_descr, type_specs);
+        dependOn(impl_variants, type_specs);
+        dependOn(impl_variants, impl_detail);
+        dependOn(canonicals, impl_variants);
+        dependOn(canonicals, canonical);
+        dependOn(containers, canonicals);
+        dependOn(kinds, canonicals);
+        dependOn(generate_functions, impl_variants);
+        dependOn(generate_functions, expr_test);
+        dependOn(specifications, containers);
+        dependOn(generate_specifications, options);
+        dependOn(generate_specifications, type_descr);
+        dependOn(generate_specifications, specifications);
+        dependOn(generate_references, containers);
+        dependOn(generate_references, generate_specifications);
+        dependOn(generate_parameters, options);
+        dependOn(generate_parameters, type_descr);
+        dependOn(generate_parameters, containers);
         dependOn(generate_containers, generate_parameters);
-        // const generate_allocators = util.addProjectExecutable(builder, "generate_allocators", "top/mem/generate_allocators.zig", default);
-        // dependOn(generate_allocators, map_to_kinds);
-        // dependOn(generate_allocators, variants_to_interfaces);
-
         mem_gen.dependOn(&generate_references.run().step);
         mem_gen.dependOn(&generate_containers.run().step);
-        // mem_gen.dependOn(&generate_allocators.run().step);
     }
 }
 inline fn dependOn(dependant: *build.CompileStep, dependency: *build.CompileStep) void {
