@@ -2,6 +2,7 @@ const root = @import("@build");
 const srg = root.srg;
 const mem = srg.mem;
 const sys = srg.sys;
+const mach = srg.mach;
 const proc = srg.proc;
 const meta = srg.meta;
 const build = srg.build;
@@ -10,8 +11,8 @@ const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
-pub const is_verbose: bool = true;
-pub const is_silent: bool = true;
+pub const is_verbose: bool = false;
+pub const is_silent: bool = false;
 pub const runtime_assertions: bool = false;
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
@@ -33,8 +34,9 @@ fn showAllCommands(builder: *build.Builder) void {
     var len: u64 = 0;
     var groups: build.GroupList = builder.groups.itr();
     while (groups.next()) |group_node| : (groups.node = group_node) {
+        len +%= builtin.debug.writeMulti(buf[len..], &.{ groups.node.this.name, ":\n" });
         var targets: build.TargetList = groups.node.this.targets.itr();
-        while (targets.next()) |node| : (targets.node = node) {
+        while (targets.next()) |target_node| : (targets.node = target_node) {
             len +%= builtin.debug.writeMulti(buf[len..], &.{
                 "    ", @tagName(targets.node.this.build_cmd.kind),
                 "\t",   targets.node.this.build_cmd.name orelse builtin.fmt.ud64(targets.pos).readAll(),
@@ -62,17 +64,17 @@ const fmt_cmd_s: [:0]const u8 = "fmt commands for subsequent targets";
 
 // zig fmt: off
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
-    .{ .field_name = "build_mode",  .long = "--fast",       .assign = .{ .any = &(.ReleaseFast) },  .descr = release_fast_s },
-    .{ .field_name = "build_mode",  .long = "--small",      .assign = .{ .any = &(.ReleaseSmall) }, .descr = release_small_s },
-    .{ .field_name = "build_mode",  .long = "--safe",       .assign = .{ .any = &(.ReleaseSafe) },  .descr = release_safe_s },
-    .{ .field_name = "build_mode",  .long = "--debug",      .assign = .{ .any = &(.Debug) },        .descr = debug_s },
-    .{ .field_name = "strip",       .long = "-fstrip",      .assign = .{ .boolean = true },         .descr = strip_s },
-    .{ .field_name = "strip",       .long = "-fno-strip",   .assign = .{ .boolean = false },        .descr = no_strip_s },
-    .{ .field_name = "verbose",     .long = "--verbose",    .assign = .{ .boolean = true },         .descr = verbose_s },
-    .{ .field_name = "verbose",     .long = "--silent",     .assign = .{ .boolean = false },        .descr = silent_s },
-    .{ .field_name = "cmd",         .long = "--run",        .assign = .{ .any = &(.run) },          .descr = run_cmd_s },
-    .{ .field_name = "cmd",         .long = "--build",      .assign = .{ .any = &(.build) },        .descr = build_cmd_s },
-    .{ .field_name = "cmd",         .long = "--fmt",        .assign = .{ .any = &(.fmt) },          .descr = fmt_cmd_s },
+    .{ .field_name = "mode",    .long = "--fast",       .assign = .{ .any = &(.ReleaseFast) },  .descr = release_fast_s },
+    .{ .field_name = "mode",    .long = "--small",      .assign = .{ .any = &(.ReleaseSmall) }, .descr = release_small_s },
+    .{ .field_name = "mode",    .long = "--safe",       .assign = .{ .any = &(.ReleaseSafe) },  .descr = release_safe_s },
+    .{ .field_name = "mode",    .long = "--debug",      .assign = .{ .any = &(.Debug) },        .descr = debug_s },
+    //.{ .field_name = "strip",       .long = "-fstrip",      .assign = .{ .boolean = true },         .descr = strip_s },
+    //.{ .field_name = "strip",       .long = "-fno-strip",   .assign = .{ .boolean = false },        .descr = no_strip_s },
+    //.{ .field_name = "verbose",     .long = "--verbose",    .assign = .{ .boolean = true },         .descr = verbose_s },
+    //.{ .field_name = "verbose",     .long = "--silent",     .assign = .{ .boolean = false },        .descr = silent_s },
+    .{ .field_name = "cmd",     .long = "--run",        .assign = .{ .any = &(.run) },          .descr = run_cmd_s },
+    .{ .field_name = "cmd",     .long = "--build",      .assign = .{ .any = &(.build) },        .descr = build_cmd_s },
+    .{ .field_name = "cmd",     .long = "--fmt",        .assign = .{ .any = &(.fmt) },          .descr = fmt_cmd_s },
 });
 // zig fmt: on
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
@@ -103,25 +105,43 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     _ = builder.addGroup(&allocator, "all");
     try build_fn(&allocator, &builder);
     var index: u64 = 0;
-    while (index != args_in.len) {
-        const name: [:0]const u8 = meta.manyToSlice(args_in[index]);
-        if (mem.testEqualMany(u8, name, "--")) {
+    while (index != args.len) {
+        const name: [:0]const u8 = meta.manyToSlice(args[index]);
+        if (mach.testEqualMany8(name, "--")) {
             break;
         }
         var groups: build.GroupList = builder.groups.itr();
-        while (groups.next()) |group_node| : (groups.node = group_node) {
-            const match_all: bool = mem.testEqualMany(u8, name, groups.node.this.name);
-            var targets: build.TargetList = groups.node.this.targets.itr();
-            while (targets.next()) |target_node| : (targets.node = target_node) {
-                if (match_all or mem.testEqualMany(u8, name, targets.node.this.build_cmd.name orelse continue)) {
-                    switch (options.cmd) {
-                        .fmt => try targets.node.this.format(),
-                        .run => try targets.node.this.run(),
-                        .build => try targets.node.this.build(),
+        group: while (groups.next()) |group_node| : (groups.node = group_node) {
+            if (mach.testEqualMany8(name, groups.node.this.name)) {
+                try invokeTargetGroup(&allocator, &builder, groups);
+                break :group;
+            } else {
+                var targets: build.TargetList = groups.node.this.targets.itr();
+                while (targets.next()) |target_node| : (targets.node = target_node) {
+                    if (mach.testEqualMany8(name, targets.node.this.build_cmd.name orelse continue)) {
+                        try invokeTarget(&allocator, &builder, targets.node.this);
+                        break :group;
                     }
                 }
             }
+        } else {
+            return commandNotFoundException(&builder, name);
         }
         index +%= 1;
+    }
+}
+fn invokeTargetGroup(allocator: *build.Allocator, builder: *build.Builder, groups: build.GroupList) !void {
+    var targets: build.TargetList = groups.node.this.targets.itr();
+    while (targets.next()) |target_node| : (targets.node = target_node) {
+        try invokeTarget(allocator, builder, targets.node.this);
+    }
+}
+fn invokeTarget(allocator: *build.Allocator, builder: *build.Builder, target: *build.Target) !void {
+    const save: build.Allocator.Save = allocator.save();
+    defer allocator.restore(save);
+    switch (builder.options.cmd) {
+        .fmt => try target.format(),
+        .run => try target.run(),
+        .build => try target.build(),
     }
 }
