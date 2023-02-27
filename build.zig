@@ -1,5 +1,5 @@
 const _ = struct {
-    pub const build = if (false) @import("build/build-aux.zig").main else main;
+    pub const build = if (false) @import("build/build-aux.zig").main else buildMain;
 };
 pub usingnamespace @"_";
 
@@ -34,7 +34,7 @@ const fast_spec: build.TargetSpec =     .{ .mode = .ReleaseFast,    .mods = modu
 const parser_spec_a: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = lib_parser_macros };
 const parser_spec_b: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = std_parser_macros };
 
-pub fn main(allocator: *build.Allocator, builder: *build.Builder) !void {
+pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     // Top test programs
     const builtin_test: *build.Target   = builder.addTarget(debug_spec, allocator,  "builtin_test", "top/builtin-test.zig");
     const meta_test: *build.Target      = builder.addTarget(debug_spec, allocator,  "meta_test",    "top/meta-test.zig");
