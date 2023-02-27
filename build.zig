@@ -11,50 +11,57 @@ const build = srg.build;
 const builtin = srg.builtin;
 
 const modules = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
+const deps = &.{"zig_lib"};
 
-const minor_test_args = .{
+const minor_test_spec: build.TargetSpec = .{
     .runtime_assertions = true,
     .is_verbose = true,
     .modules = modules,
+    .deps = deps,
 };
-const algo_test_args = .{
+const algo_test_spec: build.TargetSpec = .{
     .runtime_assertions = true,
     .is_verbose = true,
     .build_mode = .ReleaseSmall,
     .modules = modules,
+    .deps = deps,
 };
-const fmt_test_args = .{
+const fmt_test_spec: build.TargetSpec = .{
     .runtime_assertions = true,
     .is_verbose = true,
     .modules = modules,
+    .deps = deps,
 };
-const fast_test_args = .{
+const fast_test_spec: build.TargetSpec = .{
     .runtime_assertions = false,
     .is_verbose = false,
     .build_mode = .ReleaseFast,
     .modules = modules,
+    .deps = deps,
 };
-const small_test_args = .{
+const small_test_spec: build.TargetSpec = .{
     .runtime_assertions = false,
     .is_verbose = false,
     .build_mode = .ReleaseSmall,
     .modules = modules,
+    .deps = deps,
 };
-const lib_parser_args = .{
-    .runtime_assertions = false,
-    .is_verbose = false,
-    .is_silent = true,
-    .build_mode = .ReleaseFast,
+const small_spec: build.TargetSpec = .{
+    .mode = .ReleaseSmall,
+    .mods = modules,
+    .deps = deps,
+};
+const lib_parser_spec: build.TargetSpec = .{
+    .mode = .ReleaseFast,
     .macros = parsedir_lib_macros,
     .modules = modules,
+    .deps = deps,
 };
-const std_parser_args = .{
-    .runtime_assertions = false,
-    .is_verbose = false,
-    .is_silent = true,
+const std_parser_spec: build.TargetSpec = .{
     .build_mode = .ReleaseFast,
     .macros = parsedir_std_macros,
     .modules = modules,
+    .deps = deps,
 };
 const parsedir_std_macros: []const build.Macro = meta.slice(build.Macro, .{.{
     .name = "test_subject",
@@ -81,6 +88,7 @@ pub fn main(allocator: *build.Allocator, builder: *build.Builder) !void {
     const thread_test: *build.Target    = builder.addTarget(.{}, allocator, "thread_test",    "top/thread-test.zig");
     const virtual_test: *build.Target   = builder.addTarget(.{}, allocator, "virtual_test",   "top/virtual-test.zig");
     const build_test: *build.Target     = builder.addTarget(.{}, allocator, "build_test",     "top/build-test.zig");
+
     // More complete test programs:
     const mca: *build.Target            = builder.addTarget(.{}, allocator, "mca",            "test/mca.zig");
     const treez: *build.Target          = builder.addTarget(.{}, allocator, "treez",          "test/treez.zig");
@@ -101,25 +109,27 @@ pub fn main(allocator: *build.Allocator, builder: *build.Builder) !void {
     const address_space: *build.Target      = builder.addTarget(.{}, allocator, "address_space",  "examples/custom_address_space.zig");
 
     // Memory implementation generator
-    const memgen: *build.Group                      = builder.addGroup(allocator, "memgen");
+    const mg: *build.Group                          = builder.addGroup(allocator, "memgen");
+    const mg_aux: *build.Group                      = builder.addGroup(allocator, "memgen_auxiliary");
     {
-    const expr_test: *build.Target                  = memgen.addTarget(.{}, allocator, "expr_test",                 "top/mem/expr-test.zig");
-    const abstract_params: *build.Target            = memgen.addTarget(.{}, allocator, "abstract_params.zig",       "top/mem/abstract_params-aux.zig");
-    const impl_detail: *build.Target                = memgen.addTarget(.{}, allocator, "impl_detail.zig",           "top/mem/spec_to_detail.zig");
-    const options: *build.Target                    = memgen.addTarget(.{}, allocator, "mg_options",                "top/mem/options-aux.zig");
-    const type_specs: *build.Target                 = memgen.addTarget(.{}, allocator, "mg_type_specs",             "top/mem/type_specs-aux.zig");
-    const type_descr: *build.Target                 = memgen.addTarget(.{}, allocator, "mg_type_descrs",            "top/mem/type_descrs-aux.zig");
-    const impl_variants: *build.Target              = memgen.addTarget(.{}, allocator, "mg_impl_variants",          "top/mem/impl_variants-aux.zig");
-    const canonical: *build.Target                  = memgen.addTarget(.{}, allocator, "mg_canonical",              "top/mem/canonical-aux.zig");
-    const canonicals: *build.Target                 = memgen.addTarget(.{}, allocator, "mg_canonicals",             "top/mem/canonicals-aux.zig");
-    const containers: *build.Target                 = memgen.addTarget(.{}, allocator, "mg_containers",             "top/mem/containers-aux.zig");
-    const kinds: *build.Target                      = memgen.addTarget(.{}, allocator, "mg_kinds",                  "top/mem/kinds-aux.zig");
-    const generate_functions: *build.Target         = memgen.addTarget(.{}, allocator, "generate_functions",        "top/mem/variants_to_functions.zig");
-    const specifications: *build.Target             = memgen.addTarget(.{}, allocator, "mg_specifications",         "top/mem/specifications-aux.zig");
-    const generate_specifications: *build.Target    = memgen.addTarget(.{}, allocator, "generate_specifications",   "top/mem/generate_specifications.zig");
-    const generate_references: *build.Target        = memgen.addTarget(.{}, allocator, "generate_references",       "top/mem/generate_references.zig");
-    const generate_parameters: *build.Target        = memgen.addTarget(.{}, allocator, "generate_parameters",       "top/mem/generate_parameters.zig");
-    const generate_containers: *build.Target        = memgen.addTarget(.{}, allocator, "generate_containers",       "top/mem/generate_containers.zig");
+    // const expr_test: *build.Target                  = mg_aux.addTarget(small_spec, allocator, "expr_test",                 "top/mem/expr-test.zig");
+    const abstract_params: *build.Target            = mg_aux.addTarget(small_spec, allocator, "mg_abstract_params",        "top/mem/abstract_params-aux.zig");
+    const impl_detail: *build.Target                = mg_aux.addTarget(small_spec, allocator, "mg_impl_detail",            "top/mem/impl_detail-aux.zig");
+    const options: *build.Target                    = mg_aux.addTarget(small_spec, allocator, "mg_options",                "top/mem/options-aux.zig");
+    const type_specs: *build.Target                 = mg_aux.addTarget(small_spec, allocator, "mg_type_specs",             "top/mem/type_specs-aux.zig");
+    const type_descr: *build.Target                 = mg_aux.addTarget(small_spec, allocator, "mg_type_descr",             "top/mem/type_descr-aux.zig");
+    const impl_variants: *build.Target              = mg_aux.addTarget(small_spec, allocator, "mg_impl_variants",          "top/mem/impl_variants-aux.zig");
+    const canonical: *build.Target                  = mg_aux.addTarget(small_spec, allocator, "mg_canonical",              "top/mem/canonical-aux.zig");
+    const canonicals: *build.Target                 = mg_aux.addTarget(small_spec, allocator, "mg_canonicals",             "top/mem/canonicals-aux.zig");
+    const containers: *build.Target                 = mg_aux.addTarget(small_spec, allocator, "mg_containers",             "top/mem/containers-aux.zig");
+    const kinds: *build.Target                      = mg_aux.addTarget(small_spec, allocator, "mg_kinds",                  "top/mem/kinds-aux.zig");
+    const specifications: *build.Target             = mg_aux.addTarget(small_spec, allocator, "mg_specifications",         "top/mem/specifications-aux.zig");
+
+    // const generate_functions: *build.Target         = mg.addTarget(small_spec, allocator, "generate_functions",        "top/mem/generate_functions.zig");
+    const generate_specifications: *build.Target    = mg.addTarget(small_spec, allocator, "generate_specifications",   "top/mem/generate_specifications.zig");
+    const generate_references: *build.Target        = mg.addTarget(small_spec, allocator, "generate_references",       "top/mem/generate_references.zig");
+    const generate_parameters: *build.Target        = mg.addTarget(small_spec, allocator, "generate_parameters",       "top/mem/generate_parameters.zig");
+    const generate_containers: *build.Target        = mg.addTarget(small_spec, allocator, "generate_containers",       "top/mem/generate_containers.zig");
 
     type_specs.dependOnRun(allocator, abstract_params);
     type_descr.dependOnRun(allocator, type_specs);
@@ -129,8 +139,8 @@ pub fn main(allocator: *build.Allocator, builder: *build.Builder) !void {
     canonicals.dependOnRun(allocator, canonical);
     containers.dependOnRun(allocator, canonicals);
     kinds.dependOnRun(allocator, canonicals);
-    generate_functions.dependOnRun(allocator, impl_variants);
-    generate_functions.dependOnRun(allocator, expr_test);
+    // generate_functions.dependOnRun(allocator, impl_variants);
+    // generate_functions.dependOnRun(allocator, expr_test);
     specifications.dependOnRun(allocator, containers);
     generate_specifications.dependOnRun(allocator, options);
     generate_specifications.dependOnRun(allocator, type_descr);
@@ -141,7 +151,6 @@ pub fn main(allocator: *build.Allocator, builder: *build.Builder) !void {
     generate_parameters.dependOnRun(allocator, type_descr);
     generate_parameters.dependOnRun(allocator, containers);
     generate_containers.dependOnRun(allocator, generate_parameters);
-
     }
 
     // zig fmt: on
