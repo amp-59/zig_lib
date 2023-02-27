@@ -1977,7 +1977,7 @@ pub const Version = struct {
     }
 };
 pub const SourceLocation = Src();
-pub const Mode = @TypeOf(@This().mode);
+pub const Mode = @TypeOf(config.zig.mode);
 pub const Type = @TypeOf(@typeInfo(void));
 pub const TypeId = @typeInfo(Type).Union.tag_type.?;
 pub const Endian = @TypeOf(@This().cpu.arch.endian());
