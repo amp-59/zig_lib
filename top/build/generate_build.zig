@@ -73,7 +73,7 @@ pub const FormatCommandOptions = opaque {
         .string = "--color",
         .arg_type = enum { auto, off, on },
     };
-    pub const stdin: OptionSpec = .{ .string = "--sdtin" };
+    pub const stdin: OptionSpec = .{ .string = "--stdin" };
     pub const check: OptionSpec = .{ .string = "--check" };
     pub const ast_check: OptionSpec = .{ .string = "--ast-check" };
     pub const exclude: OptionSpec = .{
