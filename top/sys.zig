@@ -1865,6 +1865,10 @@ pub const dup_errors: []const ErrorCode = &[_]ErrorCode{
 pub const ioctl_errors: []const ErrorCode = &[_]ErrorCode{
     .NOTTY, .BADF, .FAULT, .INVAL,
 };
+pub const socket_errors: []const ErrorCode = &[_]ErrorCode{
+    .ACCES, .AFNOSUPPORT, .INVAL, .INVAL,          .MFILE,
+    .NFILE, .NOBUFS,      .NOMEM, .PROTONOSUPPORT,
+};
 pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
 };
