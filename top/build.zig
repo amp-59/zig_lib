@@ -25,25 +25,12 @@ pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
 
 pub const GlobalOptions = struct {
-    build_mode: ?@TypeOf(builtin.zig.mode) = null,
+    mode: ?builtin.Mode = null,
     strip: bool = true,
     verbose: bool = false,
     cmd: Target.Tag = .build,
     pub const Map = proc.GenericOptions(GlobalOptions);
-    pub fn setReleaseFast(options: *GlobalOptions) void {
-        options.build_mode = .ReleaseFast;
-    }
-    pub fn setReleaseSmall(options: *GlobalOptions) void {
-        options.build_mode = .ReleaseSmall;
-    }
-    pub fn setReleaseSafe(options: *GlobalOptions) void {
-        options.build_mode = .ReleaseSafe;
-    }
-    pub fn setDebug(options: *GlobalOptions) void {
-        options.build_mode = .Debug;
-    }
 };
-
 pub const Builder = struct {
     paths: Paths,
     options: GlobalOptions,
@@ -148,11 +135,14 @@ pub const Builder = struct {
         return ret;
     }
 };
-const TargetSpec = struct {
+pub const TargetSpec = struct {
     build: bool = true,
     run: bool = true,
     fmt: bool = false,
-    options: ?GlobalOptions = null,
+    mode: builtin.Mode = .Debug,
+    deps: []const []const u8 = &.{},
+    mods: []const Module = &.{},
+    macros: []const Macro = &.{},
 };
 fn join(
     comptime spec: TargetSpec,
@@ -193,6 +183,7 @@ fn join(
             ret.addFormat(allocator, .{ .ast_check = true });
         }
     }
+    ret.build_cmd.mode = spec.mode;
     return ret;
 }
 pub const OutputMode = enum {
@@ -225,7 +216,7 @@ pub const BuildCommand = struct {
     omit_frame_pointer: ?bool = null,
     exec_model: ?[]const u8 = null,
     name: ?[]const u8 = null,
-    O: ?@TypeOf(builtin.zig.mode) = null,
+    mode: ?@TypeOf(builtin.zig.mode) = null,
     main_pkg_path: ?[]const u8 = null,
     pic: ?bool = null,
     pie: ?bool = null,
@@ -576,7 +567,7 @@ pub const Target = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
         }
-        if (cmd.O) |how| {
+        if (cmd.mode) |how| {
             len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
             len +%= 1;
@@ -1085,7 +1076,7 @@ pub const Target = struct {
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
         }
-        if (cmd.O) |how| {
+        if (cmd.mode) |how| {
             array.writeMany("-O\x00");
             array.writeAny(fmt_spec, how);
             array.writeOne('\x00');
@@ -1563,14 +1554,14 @@ fn makeArgs(array: anytype, args: anytype) u64 {
 pub const Module = struct {
     name: []const u8,
     path: []const u8,
-    deps: ?[]const @This() = null,
+    deps: ?[]const []const u8 = null,
     pub fn formatWrite(mod: Module, array: anytype) void {
         array.writeMany("--mod\x00");
         array.writeMany(mod.name);
         array.writeOne(':');
         if (mod.deps) |deps| {
-            for (deps) |dep| {
-                array.writeMany(dep.name);
+            for (deps) |dep_name| {
+                array.writeMany(dep_name);
                 array.writeOne(',');
             }
             if (deps.len != 0) {
@@ -1587,8 +1578,8 @@ pub const Module = struct {
         len +%= mod.name.len;
         len +%= 1;
         if (mod.deps) |deps| {
-            for (deps) |dep| {
-                len +%= dep.name.len;
+            for (deps) |dep_name| {
+                len +%= dep_name.len;
                 len +%= 1;
             }
         }
