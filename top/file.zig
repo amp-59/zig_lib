@@ -4,18 +4,14 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
-
 const _dir = @import("./dir.zig");
-
 pub usingnamespace _dir;
-
 const dmode_owner: Perms = .{ .read = true, .write = true, .execute = true };
 const dmode_group: Perms = .{ .read = true, .write = false, .execute = true };
 const dmode_other: Perms = .{ .read = false, .write = false, .execute = false };
 const fmode_owner: Perms = .{ .read = true, .write = true, .execute = false };
 const fmode_group: Perms = .{ .read = true, .write = false, .execute = false };
 const fmode_other: Perms = .{ .read = false, .write = false, .execute = false };
-
 pub const Open = meta.EnumBitField(enum(u64) {
     no_cache = OPEN.DIRECT,
     no_atime = OPEN.NOATIME,
@@ -106,17 +102,48 @@ const Term = opaque {
         const SPEC = sys.TC.V;
     });
 };
+pub const Domain = enum(u64) {
+    unix = AF.UNIX,
+    ipv4 = AF.INET,
+    ipv6 = AF.INET6,
+    const AF = sys.AF;
+};
+pub const Connection = enum(u64) {
+    tcp = SOCK.STREAM,
+    udp = SOCK.DGRAM,
+    const SOCK = sys.SOCK;
+};
+pub const Socket = meta.EnumBitField(enum(u64) {
+    non_block = SOCK.NONBLOCK,
+    close_on_exec = SOCK.CLOEXEC,
+    pub const Address = extern struct {
+        family: u16,
+        data: [14]u8,
+    };
+    pub const AddressIPv4 = extern struct {
+        family: u16,
+        port: u16,
+        addr: extern struct { addr: u32 },
+        @"0": [8]u8,
+    };
+    pub const AddressIPv6 = extern struct {
+        family: u16,
+        port: u16,
+        flow_info: u32,
+        addr: extern struct { addr: [8]u16 },
+        scope_id: u32,
+    };
+    const SOCK = sys.SOCK;
+});
 pub const FileStatus = extern struct {
     dev: u64,
     ino: u64,
     nlink: u64,
     mode: Mode,
     @"0": [2]u8,
-
     uid: u32,
     gid: u32,
     @"1": [4]u8,
-
     rdev: u64,
     size: u64,
     blksize: u64,
@@ -124,7 +151,6 @@ pub const FileStatus = extern struct {
     atime: time.TimeSpec = .{},
     mtime: time.TimeSpec = .{},
     ctime: time.TimeSpec = .{},
-
     pub fn isDirectory(st: FileStatus) bool {
         return st.mode.check(.directory);
     }
@@ -166,7 +192,6 @@ pub const FileStatusExtra = extern struct {
     gid: u32,
     mode: u16,
     @"0": [2]u8,
-
     ino: u64,
     size: u64,
     blocks: u64,
@@ -194,35 +219,15 @@ pub const TerminalAttributes = extern struct {
     output: Term.Output,
     control: Term.Control,
     local: Term.Local,
-
     line: u8,
     special: [32]u8,
-
     in_speed: u32,
     out_speed: u32,
-
     pub fn character(termios: *const TerminalAttributes, tag: Term.Special.Tag) u8 {
         return termios.special[@enumToInt(tag)];
     }
 };
-
-// Getting terminal attributes is classed as a resource acquisition.
-const TerminalAttributesSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
-    return_type: type = void,
-    logging: builtin.Logging.Full = .{},
-};
-const IOControlSpec = struct {
-    const TC = sys.TC;
-    const TIOC = sys.TIOC;
-};
-// Soon.
-fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
-fn getTerminalAttributes() void {}
-fn setTerminalAttributes() void {}
-
 const Perms = struct { read: bool, write: bool, execute: bool };
-
 pub const ModeSpec = struct {
     owner: Perms,
     group: Perms,
@@ -269,99 +274,13 @@ pub const ModeSpec = struct {
         return mode_bitfield;
     }
 };
-pub const MakeDirSpec = struct {
-    options: Options = .{},
-    mode: ModeSpec = ModeSpec.dir_mode,
-    errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
-    return_type: type = void,
-    logging: builtin.Logging.SuccessErrorFault = .{},
-    const Specification = @This();
-    const Options = struct {
-        exclusive: bool = true,
-    };
+pub const ReadSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
+    logging: builtin.Logging.SuccessError = .{},
 };
-pub const RemoveDirSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.rmdir_errors },
-    return_type: type = void,
-    logging: builtin.Logging.SuccessErrorFault = .{},
-    const Specification = @This();
-    const special_fn = sys.special.rmdir;
-};
-pub const CreateSpec = struct {
-    options: Options = .{},
-    mode: ModeSpec = ModeSpec.file_mode,
-    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-    return_type: type = u64,
-    logging: builtin.Logging.AcquireErrorFault = .{},
-    const Specification = @This();
-    const Options = struct {
-        exclusive: bool = true,
-        temporary: bool = false,
-        close_on_exec: bool = true,
-        write: ?OpenSpec.Write = .truncate,
-        read: bool = false,
-    };
-    fn flags(comptime spec: CreateSpec) Open {
-        var flags_bitfield: Open = .{ .tag = .create };
-        if (spec.options.exclusive) {
-            flags_bitfield.set(.exclusive);
-        }
-        if (spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        if (spec.options.temporary) {
-            flags_bitfield.set(.temporary);
-        }
-        if (spec.options.write) |w| {
-            if (spec.options.read) {
-                flags_bitfield.set(.read_write);
-            } else {
-                flags_bitfield.set(.write_only);
-            }
-            switch (w) {
-                .append => {
-                    flags_bitfield.set(.append);
-                },
-                .truncate => {
-                    flags_bitfield.set(.truncate);
-                },
-            }
-        } else if (spec.options.read) {
-            flags_bitfield.set(.read_only);
-        }
-        return flags_bitfield;
-    }
-};
-pub const UnlinkSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.unlink_errors },
-    return_type: type = void,
-    logging: builtin.Logging.SuccessErrorFault = .{},
-    const Specification = @This();
-};
-pub const PathSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-    return_type: type = u64,
-    logging: builtin.Logging.AcquireErrorFault = .{},
-    const Specification = @This();
-    const Options = struct {
-        directory: bool = true,
-        no_follow: bool = true,
-        close_on_exec: bool = true,
-    };
-    pub fn flags(comptime spec: PathSpec) Open {
-        var flags_bitfield: Open = .{ .tag = .path };
-        if (spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        if (spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        if (spec.options.directory) {
-            flags_bitfield.set(.directory);
-        }
-        return flags_bitfield;
-    }
+pub const WriteSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
+    logging: builtin.Logging.SuccessError = .{},
 };
 pub const OpenSpec = struct {
     options: Options,
@@ -428,11 +347,107 @@ pub const OpenSpec = struct {
         return flags_bitfield;
     }
 };
-pub const CloseSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
-    return_type: type = void,
-    logging: builtin.Logging.ReleaseErrorFault = .{},
+pub const SocketSpec = struct {
+    options: Options = .{},
+    errors: sys.ErrorPolicy = .{ .throw = sys.socket_errors },
+    logging: builtin.Logging.AcquireErrorFault = .{},
+    return_type: type = u64,
     const Specification = @This();
+    const Options = struct {
+        non_block: bool = true,
+        close_on_exec: bool = true,
+    };
+    fn flags(comptime spec: SocketSpec) Socket {
+        var flags_bitfield: Socket = .{ .val = 0 };
+        if (spec.options.non_block) {
+            flags_bitfield.set(.non_block);
+        }
+        if (spec.options.close_on_exec) {
+            flags_bitfield.set(.close_on_exec);
+        }
+        return flags_bitfield;
+    }
+};
+pub const MakeDirSpec = struct {
+    options: Options = .{},
+    mode: ModeSpec = ModeSpec.dir_mode,
+    errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessErrorFault = .{},
+    const Specification = @This();
+    const Options = struct {
+        exclusive: bool = true,
+    };
+};
+pub const CreateSpec = struct {
+    options: Options = .{},
+    mode: ModeSpec = ModeSpec.file_mode,
+    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+    return_type: type = u64,
+    logging: builtin.Logging.AcquireErrorFault = .{},
+    const Specification = @This();
+    const Options = struct {
+        exclusive: bool = true,
+        temporary: bool = false,
+        close_on_exec: bool = true,
+        write: ?OpenSpec.Write = .truncate,
+        read: bool = false,
+    };
+    fn flags(comptime spec: CreateSpec) Open {
+        var flags_bitfield: Open = .{ .tag = .create };
+        if (spec.options.exclusive) {
+            flags_bitfield.set(.exclusive);
+        }
+        if (spec.options.close_on_exec) {
+            flags_bitfield.set(.close_on_exec);
+        }
+        if (spec.options.temporary) {
+            flags_bitfield.set(.temporary);
+        }
+        if (spec.options.write) |w| {
+            if (spec.options.read) {
+                flags_bitfield.set(.read_write);
+            } else {
+                flags_bitfield.set(.write_only);
+            }
+            switch (w) {
+                .append => {
+                    flags_bitfield.set(.append);
+                },
+                .truncate => {
+                    flags_bitfield.set(.truncate);
+                },
+            }
+        } else if (spec.options.read) {
+            flags_bitfield.set(.read_only);
+        }
+        return flags_bitfield;
+    }
+};
+pub const PathSpec = struct {
+    options: Options = .{},
+    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+    return_type: type = u64,
+    logging: builtin.Logging.AcquireErrorFault = .{},
+    const Specification = @This();
+    const Options = struct {
+        directory: bool = true,
+        no_follow: bool = true,
+        close_on_exec: bool = true,
+    };
+    pub fn flags(comptime spec: PathSpec) Open {
+        var flags_bitfield: Open = .{ .tag = .path };
+        if (spec.options.no_follow) {
+            flags_bitfield.set(.no_follow);
+        }
+        if (spec.options.close_on_exec) {
+            flags_bitfield.set(.close_on_exec);
+        }
+        if (spec.options.directory) {
+            flags_bitfield.set(.directory);
+        }
+        return flags_bitfield;
+    }
 };
 pub const StatSpec = struct {
     options: Options = .{},
@@ -474,7 +489,6 @@ pub const ReadLinkSpec = struct {
         return flags_bitfield;
     }
 };
-// TODO: Define default options suited to mapping files.
 pub const MapSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
@@ -530,15 +544,30 @@ pub const MapSpec = struct {
         return prot_bitfield;
     }
 };
+pub const CloseSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
+    return_type: type = void,
+    logging: builtin.Logging.ReleaseErrorFault = .{},
+    const Specification = @This();
+};
+pub const UnlinkSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.unlink_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessErrorFault = .{},
+    const Specification = @This();
+};
+pub const RemoveDirSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.rmdir_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessErrorFault = .{},
+    const Specification = @This();
+    const special_fn = sys.special.rmdir;
+};
 pub const TruncateSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.truncate_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
-};
-pub const ReadSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-    logging: builtin.Logging.SuccessError = .{},
 };
 pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8, read_count: u64) sys.Call(spec.errors.throw, u64) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
@@ -554,10 +583,6 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8, read_count: u64) s
         return read_error;
     }
 }
-pub const WriteSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
-    logging: builtin.Logging.SuccessError = .{},
-};
 pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const u8) sys.Call(spec.errors.throw, void) {
     const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
     if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len }))) |ret| {
@@ -599,6 +624,20 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call
             debug.openAtError(open_error, dir_fd, name);
         }
         return open_error;
+    }
+}
+pub fn socket(comptime spec: SocketSpec, domain: Domain, connection: Connection) sys.Call(spec.errors.throw, spec.return_type) {
+    const flags: Socket = spec.flags();
+    if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{ @enumToInt(domain), flags.val | @enumToInt(connection), 0 }))) |fd| {
+        if (spec.logging.Acquire) {
+            debug.socketNotice(fd, domain, connection);
+        }
+        return fd;
+    } else |socket_error| {
+        if (spec.logging.Error) {
+            debug.socketError(socket_error, domain, connection);
+        }
+        return socket_error;
     }
 }
 fn pathnameLimit(pathname: []const u8) u64 {
@@ -866,6 +905,21 @@ pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.Call(spe
         return truncate_error;
     }
 }
+// Getting terminal attributes is classed as a resource acquisition.
+const TerminalAttributesSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
+    return_type: type = void,
+    logging: builtin.Logging.Full = .{},
+};
+const IOControlSpec = struct {
+    const TC = sys.TC;
+    const TIOC = sys.TIOC;
+};
+// Soon.
+fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
+fn getTerminalAttributes() void {}
+fn setTerminalAttributes() void {}
+
 pub fn readRandom(buf: []u8) void {
     sys.call(.getrandom, .{}, void, .{ @ptrToInt(buf.ptr), buf.len, if (builtin.is_perf)
         sys.GRND.INSECURE
@@ -933,7 +987,6 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
         }
     };
 }
-
 pub fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 {
     const path_spec: PathSpec = .{ .options = .{ .directory = false } };
     const stat_spec: StatSpec = .{ .options = .{ .no_follow = false } };
@@ -977,7 +1030,6 @@ pub fn home(vars: [][*:0]u8) ![:0]const u8 {
     }
     return error.NoHomeInEnvironment;
 }
-
 const debug = opaque {
     const about_open_0_s: []const u8 = "open:           ";
     const about_open_1_s: []const u8 = "open-error:     ";
@@ -1001,6 +1053,8 @@ const debug = opaque {
     const about_openat_1_s: []const u8 = "openat-error:   ";
     const about_unlink_0_s: []const u8 = "unlink:         ";
     const about_unlink_1_s: []const u8 = "unlink-error:   ";
+    const about_socket_0: [:0]const u8 = "socket:         ";
+    const about_socket_1: [:0]const u8 = "socket-error:   ";
     const about_fstatat_1_s: []const u8 = "fstatat-error:  ";
     const about_fexecve_1_s: []const u8 = "fexecve-error:  ";
     const about_readlink_1_s: []const u8 = "readlink-error: ";
@@ -1036,6 +1090,10 @@ const debug = opaque {
         var buf: [16 + 32 + 4096]u8 = undefined;
         builtin.debug.logAcquireAIO(&buf, &[_][]const u8{ about_openat_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
+    fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logAcquireAIO(&buf, &[_][]const u8{ about_socket_0, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
+    }
     fn makeDirNotice(pathname: [:0]const u8, comptime descr: []const u8) void {
         const max_len: u64 = 16 + 4096 + 2 + descr.len + 1;
         var buf: [max_len]u8 = undefined;
@@ -1046,21 +1104,9 @@ const debug = opaque {
         var buf: [16 + 32 + 4096 + descr.len]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_mkdir_0_s, "dir_fd=", dir_fd_s, ", ", name, ", ", descr, "\n" });
     }
-    fn closeNotice(fd: u64) void {
-        var buf: [16 + 32 + 4096]u8 = undefined;
-        builtin.debug.logReleaseAIO(&buf, &[_][]const u8{ about_close_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), "\n" });
-    }
     fn getCwdNotice(pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 8]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_getcwd_0_s, pathname, "\n" });
-    }
-    fn unlinkNotice(pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 8]u8 = undefined;
-        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_unlink_0_s, pathname, "\n" });
-    }
-    fn removeDirNotice(pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 1]u8 = undefined;
-        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
     }
     fn truncateNotice(pathname: [:0]const u8, offset: u64) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
@@ -1073,6 +1119,18 @@ const debug = opaque {
             builtin.fmt.ud64(fd).readAll(),     ", offset=",
             builtin.fmt.ud64(offset).readAll(), "\n",
         });
+    }
+    fn closeNotice(fd: u64) void {
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        builtin.debug.logReleaseAIO(&buf, &[_][]const u8{ about_close_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), "\n" });
+    }
+    fn unlinkNotice(pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 8]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_unlink_0_s, pathname, "\n" });
+    }
+    fn removeDirNotice(pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 1]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
     }
     fn readError(read_error: anytype, fd: u64) void {
         var buf: [16 + 32 + 512]u8 = undefined;
@@ -1095,6 +1153,10 @@ const debug = opaque {
         var buf: [4096 + 512 + summary.len]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_create_1_s, pathname, ", ", summary, " (", @errorName(open_error), ")\n" });
     }
+    fn socketError(socket_error: anytype, dom: Domain, conn: Connection) void {
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_socket_1, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
+    }
     fn makeDirError(mkdir_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_mkdir_1_s, pathname, " (", @errorName(mkdir_error), ")\n" });
@@ -1103,18 +1165,6 @@ const debug = opaque {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512 + descr.len]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_mkdir_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(mkdir_error), ")\n" });
-    }
-    fn closeError(close_error: anytype, fd: u64) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_close_1_s, builtin.fmt.ud64(fd).readAll(), " (", @errorName(close_error), ")\n" });
-    }
-    fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
-    }
-    fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
     }
     fn getCwdError(getcwd_error: anytype) void {
         var buf: [16 + 4096 + 8]u8 = undefined;
@@ -1150,7 +1200,18 @@ const debug = opaque {
         var buf: [16 + 64 + 512]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", offset=", builtin.fmt.ud64(offset).readAll(), ", (", @errorName(truncate_error), ")\n" });
     }
-
+    fn closeError(close_error: anytype, fd: u64) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_close_1_s, builtin.fmt.ud64(fd).readAll(), " (", @errorName(close_error), ")\n" });
+    }
+    fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
+    }
+    fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
+    }
     fn describePermsBriefly(comptime perms: Perms) []const u8 {
         var descr: []const u8 = meta.empty;
         if (perms.read) {
