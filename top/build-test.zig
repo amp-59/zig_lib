@@ -34,7 +34,7 @@ const minor_test_args = .{
 const algo_test_args = .{
     .runtime_assertions = true,
     .is_verbose = true,
-    .build_mode = .ReleaseSmall,
+    ._mode = .ReleaseSmall,
     .modules = modules,
 };
 const fmt_test_args = .{
@@ -45,20 +45,20 @@ const fmt_test_args = .{
 const fast_test_args = .{
     .runtime_assertions = false,
     .is_verbose = false,
-    .build_mode = .ReleaseFast,
+    .mode = .ReleaseFast,
     .modules = modules,
 };
 const small_test_args = .{
     .runtime_assertions = false,
     .is_verbose = false,
-    .build_mode = .ReleaseSmall,
+    .mode = .ReleaseSmall,
     .modules = modules,
 };
 const lib_parser_args = .{
     .runtime_assertions = false,
     .is_verbose = false,
     .is_silent = true,
-    .build_mode = .ReleaseFast,
+    .mode = .ReleaseFast,
     .macros = parsedir_lib_macros,
     .modules = modules,
 };
@@ -66,7 +66,7 @@ const std_parser_args = .{
     .runtime_assertions = false,
     .is_verbose = false,
     .is_silent = true,
-    .build_mode = .ReleaseFast,
+    .mode = .ReleaseFast,
     .macros = parsedir_std_macros,
     .modules = modules,
 };
@@ -104,10 +104,10 @@ const fmt_cmd_s: [:0]const u8 = "fmt commands for subsequent targets";
 
 // zig fmt: off
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{
-    .{ .field_name = "build_mode",  .long = "--fast",       .assign = .{ .any = &(.ReleaseFast) },  .descr = release_fast_s },
-    .{ .field_name = "build_mode",  .long = "--small",      .assign = .{ .any = &(.ReleaseSmall) }, .descr = release_small_s },
-    .{ .field_name = "build_mode",  .long = "--safe",       .assign = .{ .any = &(.ReleaseSafe) },  .descr = release_safe_s },
-    .{ .field_name = "build_mode",  .long = "--debug",      .assign = .{ .any = &(.Debug) },        .descr = debug_s },
+    .{ .field_name = "mode",  .long = "--fast",       .assign = .{ .any = &(.ReleaseFast) },  .descr = release_fast_s },
+    .{ .field_name = "mode",  .long = "--small",      .assign = .{ .any = &(.ReleaseSmall) }, .descr = release_small_s },
+    .{ .field_name = "mode",  .long = "--safe",       .assign = .{ .any = &(.ReleaseSafe) },  .descr = release_safe_s },
+    .{ .field_name = "mode",  .long = "--debug",      .assign = .{ .any = &(.Debug) },        .descr = debug_s },
     .{ .field_name = "strip",       .long = "-fstrip",      .assign = .{ .boolean = true },         .descr = strip_s },
     .{ .field_name = "strip",       .long = "-fno-strip",   .assign = .{ .boolean = false },        .descr = no_strip_s },
     .{ .field_name = "verbose",     .long = "--verbose",    .assign = .{ .boolean = true },         .descr = verbose_s },
