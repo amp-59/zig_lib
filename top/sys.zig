@@ -1895,9 +1895,9 @@ pub const listen_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .NOBUFS,
 };
 pub const accept_errors: []const ErrorCode = &[_]ErrorCode{
-    .AGAIN, .WOULDBLOCK, .BADF,      .CONNABORTED, .FAULT,
-    .INTR,  .INVAL,      .MFILE,     .NFILE,       .NOBUFS,
-    .NOMEM, .NOTSOCK,    .OPNOTSUPP, .PERM,        .PROTO,
+    .AGAIN, .AGAIN,   .BADF,      .CONNABORTED, .FAULT,
+    .INTR,  .INVAL,   .MFILE,     .NFILE,       .NOBUFS,
+    .NOMEM, .NOTSOCK, .OPNOTSUPP, .PERM,        .PROTO,
 };
 pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
