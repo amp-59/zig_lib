@@ -2,6 +2,7 @@ const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
+const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
@@ -372,6 +373,7 @@ pub const Target = struct {
         target.give(.build);
     }
     pub fn addRun(target: *Target, allocator: *Allocator, run_cmd: RunCommand) void {
+        mach.assert(target.have(.build), "tried to add run command without build command");
         target.run_cmd = allocator.duplicateIrreversible(RunCommand, run_cmd);
         target.run_cmd.array.writeFormat(target.build_cmd.emit_bin.?.yes.?);
         target.run_cmd.array.writeOne(0);

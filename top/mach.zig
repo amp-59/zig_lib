@@ -451,20 +451,62 @@ inline fn shrx(comptime T: type, value: T, shift_amt: T) T {
           [shift_amt] "r" (shift_amt),
     );
 }
-/// Placeholder for translation. This is one of a set of functions which
-/// should be written in optimised assembly, to be used by the builder.
-pub noinline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
-    if (l_values.len != r_values.len) {
-        return false;
-    }
-    if (l_values.ptr == r_values.ptr) {
-        return true;
-    }
-    var index: u64 = 0;
-    while (index != l_values.len) : (index +%= 1) {
-        if (l_values[index] != r_values[index]) {
-            return false;
-        }
-    }
-    return true;
+pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
+    return asmTestEqualMany8(
+        l_values.ptr,
+        l_values.len,
+        r_values.ptr,
+        r_values.len,
+    );
+}
+extern fn asmTestEqualMany8(l_values: [*]const u8, l_len: u64, r_values: [*]const u8, r_len: u64) callconv(.C) bool;
+comptime {
+    asm (".intel_syntax noprefix");
+    asm (
+        \\asmTestEqualMany8:
+        \\  cmp     rsi, rcx
+        \\  jne     .asmTestEqualMany8_2
+        \\  mov     al, 1
+        \\  cmp     rdi, rdx
+        \\  je      .asmTestEqualMany8_1
+        \\  test    rsi, rsi
+        \\  je      .asmTestEqualMany8_1
+        \\  dec     rsi
+        \\  xor     ecx, ecx
+        \\.asmTestEqualMany8_0:
+        \\  movzx   eax, byte ptr [rdi + rcx]
+        \\  cmp     al,  byte ptr [rdx + rcx]
+        \\  sete    al
+        \\  jne    .asmTestEqualMany8_1
+        \\  lea     r8,  [rcx + 1]
+        \\  cmp     rsi, rcx
+        \\  mov     rcx, r8
+        \\  jne    .asmTestEqualMany8_0
+        \\.asmTestEqualMany8_1:
+        \\  ret
+        \\.asmTestEqualMany8_2:
+        \\  xor    eax,  eax
+        \\  ret
+    );
+}
+pub inline fn assert(b: bool, comptime msg: [:0]const u8) void {
+    const full: [:0]const u8 = "fault:          " ++ msg ++ "\n";
+    asmAssert(b, full.ptr, full.len);
+}
+extern fn asmAssert(b: bool, buf_ptr: [*]const u8, buf_len: u64) callconv(.C) void;
+comptime {
+    asm (".intel_syntax noprefix");
+    asm (
+        \\asmAssert:
+        \\  test edi, edi
+        \\  jne .asmAssert_0
+        \\  mov eax, 1
+        \\  mov edi, 2
+        \\  syscall
+        \\  mov eax, 60
+        \\  mov edi, 2
+        \\  syscall
+        \\.asmAssert_0:
+        \\  ret
+    );
 }
