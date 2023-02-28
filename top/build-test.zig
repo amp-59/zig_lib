@@ -17,13 +17,6 @@ pub usingnamespace proc.exception;
 pub const AddressSpace = preset.address_space.regular_128;
 pub const runtime_assertions: bool = false;
 
-const Allocator = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
-    .AddressSpace = AddressSpace,
-});
-
 const modules = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
 
 const minor_test_args = .{
@@ -122,7 +115,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var args: [][*:0]u8 = args_in;
     var options: Options = proc.getOpts(Options, &args, opts_map);
-    var allocator: Allocator = try Allocator.init(&address_space);
+    var allocator: build.Allocator = try build.Allocator.init(&address_space);
     var builder: build.Builder = build.Builder.init(&allocator, build.Builder.Paths.define(), .{}, args_in, vars);
     _ = builder.addGroup(&allocator, "all");
     do_build(&allocator, &builder);
