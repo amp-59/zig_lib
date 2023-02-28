@@ -20,8 +20,8 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 
 pub const is_verbose: bool = if (@hasDecl(root, "is_verbose")) root.is_verbose else false;
-pub const is_silent: bool = if (@hasDecl(root, "is_silent")) root.is_verbose else false;
-pub const runtime_assertions: bool = if (@hasDecl(root, "runtime_assertions")) root.is_verbose else false;
+pub const is_silent: bool = if (@hasDecl(root, "is_silent")) root.is_silent else false;
+pub const runtime_assertions: bool = if (@hasDecl(root, "runtime_assertions")) root.runtime_assertions else false;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
@@ -47,9 +47,7 @@ fn maxWidths(builder: *build.Builder) [2]u64 {
     root_max_width += alignment;
     return .{ name_max_width & ~(alignment - 1), root_max_width & ~(alignment - 1) };
 }
-fn showHelpAndCommands(builder: *build.Builder, arg: [:0]const u8) void {
-    var buf: [128 + 4096 + 512]u8 = undefined;
-    builtin.debug.logAlwaysAIO(&buf, &.{ "command not found: ", arg, "\n" });
+fn showHelpAndCommands(builder: *build.Builder) void {
     builtin.debug.logAlways(comptime Options.Map.helpMessage(opts_map));
     showAllCommands(builder);
 }
@@ -135,6 +133,9 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         if (mem.testEqualMany(u8, name, "--")) {
             break;
         }
+        if (mem.testEqualMany(u8, name, "show")) {
+            return showHelpAndCommands(&builder);
+        }
         var groups: build.GroupList = builder.groups.itr();
         group: while (groups.next()) |group_node| : (groups.node = group_node) {
             if (mem.testEqualMany(u8, name, groups.node.this.name)) {
@@ -150,7 +151,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
                 }
             }
         } else {
-            showHelpAndCommands(&builder, name);
+            showHelpAndCommands(&builder);
             return error.CommandNotFound;
         }
         index +%= 1;
