@@ -11,7 +11,6 @@ const srg = blk: {
 };
 const mem = srg.mem;
 const sys = srg.sys;
-const mach = srg.mach;
 const proc = srg.proc;
 const meta = srg.meta;
 const build = srg.build;
@@ -22,7 +21,7 @@ pub usingnamespace proc.start;
 
 pub const is_verbose: bool = if (@hasDecl(root, "is_verbose")) root.is_verbose else false;
 pub const is_silent: bool = if (@hasDecl(root, "is_silent")) root.is_verbose else false;
-pub const runtime_assertions: bool = if (@hasDecl(root, "is_silent")) root.is_verbose else false;
+pub const runtime_assertions: bool = if (@hasDecl(root, "runtime_assertions")) root.is_verbose else false;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
@@ -32,25 +31,42 @@ pub const AddressSpace = mem.GenericRegularAddressSpace(.{
 });
 const Options = build.GlobalOptions;
 
-fn commandNotFoundException(builder: *build.Builder, arg: [:0]const u8) !void {
+fn maxWidths(builder: *build.Builder) [2]u64 {
+    const alignment: u64 = 8;
+    var name_max_width: u64 = 0;
+    var root_max_width: u64 = 0;
+    var groups: build.GroupList = builder.groups.itr();
+    while (groups.next()) |group_node| : (groups.node = group_node) {
+        var targets: build.TargetList = groups.node.this.targets.itr();
+        while (targets.next()) |target_node| : (targets.node = target_node) {
+            name_max_width = @max(name_max_width, (targets.node.this.name.len));
+            root_max_width = @max(root_max_width, (targets.node.this.root.len));
+        }
+    }
+    name_max_width += alignment;
+    root_max_width += alignment;
+    return .{ name_max_width & ~(alignment - 1), root_max_width & ~(alignment - 1) };
+}
+fn showHelpAndCommands(builder: *build.Builder, arg: [:0]const u8) void {
     var buf: [128 + 4096 + 512]u8 = undefined;
     builtin.debug.logAlwaysAIO(&buf, &.{ "command not found: ", arg, "\n" });
     builtin.debug.logAlways(comptime Options.Map.helpMessage(opts_map));
     showAllCommands(builder);
-    return error.CommandNotFound;
 }
 fn showAllCommands(builder: *build.Builder) void {
     var buf: [1024 * 1024]u8 = undefined;
     var len: u64 = 0;
     var groups: build.GroupList = builder.groups.itr();
+    const max_widths: [2]u64 = maxWidths(builder);
+    var spaces: [256]u8 = [1]u8{' '} ** 256;
     while (groups.next()) |group_node| : (groups.node = group_node) {
         len +%= builtin.debug.writeMulti(buf[len..], &.{ groups.node.this.name, ":\n" });
         var targets: build.TargetList = groups.node.this.targets.itr();
         while (targets.next()) |target_node| : (targets.node = target_node) {
+            len +%= builtin.debug.writeMany(buf[len..], "    ");
             len +%= builtin.debug.writeMulti(buf[len..], &.{
-                "    ", @tagName(targets.node.this.build_cmd.kind),
-                "\t",   targets.node.this.build_cmd.name orelse builtin.fmt.ud64(targets.pos).readAll(),
-                "\t",   targets.node.this.root,
+                targets.node.this.name, spaces[0 .. max_widths[0] - targets.node.this.name.len],
+                targets.node.this.root, spaces[0 .. max_widths[1] - targets.node.this.root.len],
                 "\n",
             });
         }
@@ -85,6 +101,7 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "cmd",     .long = "--fmt",        .assign = .{ .any = &(.fmt) },          .descr = fmt_cmd_s },
 });
 // zig fmt: on
+
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var allocator: build.Allocator = try build.Allocator.init(&address_space);
@@ -115,25 +132,26 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var index: u64 = 0;
     while (index != args.len) {
         const name: [:0]const u8 = meta.manyToSlice(args[index]);
-        if (mach.testEqualMany8(name, "--")) {
+        if (mem.testEqualMany(u8, name, "--")) {
             break;
         }
         var groups: build.GroupList = builder.groups.itr();
         group: while (groups.next()) |group_node| : (groups.node = group_node) {
-            if (mach.testEqualMany8(name, groups.node.this.name)) {
+            if (mem.testEqualMany(u8, name, groups.node.this.name)) {
                 try invokeTargetGroup(&allocator, &builder, groups);
                 break :group;
             } else {
                 var targets: build.TargetList = groups.node.this.targets.itr();
                 while (targets.next()) |target_node| : (targets.node = target_node) {
-                    if (mach.testEqualMany8(name, targets.node.this.build_cmd.name orelse continue)) {
+                    if (mem.testEqualMany(u8, name, targets.node.this.name)) {
                         try invokeTarget(&allocator, &builder, targets.node.this);
                         break :group;
                     }
                 }
             }
         } else {
-            return commandNotFoundException(&builder, name);
+            showHelpAndCommands(&builder, name);
+            return error.CommandNotFound;
         }
         index +%= 1;
     }
