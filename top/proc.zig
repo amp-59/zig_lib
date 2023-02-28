@@ -946,23 +946,24 @@ pub fn GenericOptions(comptime Options: type) type {
             }
         }
         pub fn helpMessage(comptime opt_map: []const Option) []const u8 {
+            const alignment: u64 = 4;
             var buf: []const u8 = "option flags:\n";
-            var max_width: comptime_int = 0;
+            var max_width: u64 = 0;
             for (opt_map) |option| {
                 var width: u64 = 0;
                 if (option.short) |short_switch| {
-                    width += 1 +% short_switch.len;
+                    width +%= 1 +% short_switch.len;
                 }
                 if (option.long) |long_switch| {
-                    width += 2 +% long_switch.len;
+                    width +%= 2 +% long_switch.len;
                 }
                 if (option.assign == .argument) {
-                    width += 3 +% option.assign.argument.len;
+                    width +%= 3 +% option.assign.argument.len;
                 }
                 max_width = @max(width, max_width);
             }
-            max_width += 7;
-            max_width &= -8;
+            max_width +%= alignment;
+            max_width &= ~(alignment -% 1);
             for (opt_map) |option| {
                 buf = buf ++ " " ** 4;
                 if (option.short) |short_switch| {
@@ -971,7 +972,7 @@ pub fn GenericOptions(comptime Options: type) type {
                         tmp = tmp ++ ", " ++ long_switch;
                     }
                     if (option.descr) |descr| {
-                        tmp = tmp ++ " " ** (4 +% (max_width - tmp.len)) ++ descr;
+                        tmp = tmp ++ " " ** ((4 +% max_width) -% tmp.len) ++ descr;
                     }
                     if (option.assign == .argument) {
                         tmp = tmp ++ " <" ++ option.assign.argument ++ ">";
@@ -980,7 +981,7 @@ pub fn GenericOptions(comptime Options: type) type {
                 } else {
                     var tmp: []const u8 = option.long.?;
                     if (option.descr) |descr| {
-                        tmp = tmp ++ " " ** (4 +% (max_width - tmp.len)) ++ descr;
+                        tmp = tmp ++ " " ** ((4 +% max_width) -% tmp.len) ++ descr;
                     }
                     buf = buf ++ tmp ++ "\n";
                 }
