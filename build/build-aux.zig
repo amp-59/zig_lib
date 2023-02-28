@@ -2,10 +2,8 @@ const std = @import("std");
 const build = std.build;
 
 const util = @import("./util.zig");
-
 const small = .{ .build_mode = .ReleaseSmall };
 
-// PROGRAM FILES ///////////////////////////////////////////////////////////////
 pub fn main(builder: *build.Builder) !void {
     util.Context.init(builder);
     // Minor test programs:
@@ -43,51 +41,6 @@ pub fn main(builder: *build.Builder) !void {
     _ = util.addProjectExecutable(builder, "allocators", "examples/allocators.zig", .{ .build_mode = .ReleaseSmall });
     // Generators:
     _ = util.addProjectExecutable(builder, "generate_build", "top/build/generate_build.zig", .{ .build_mode = .ReleaseSmall });
-
-    // Memory implementation:
-    const mem_gen = builder.step("mem_gen", "generate containers according to specification");
-    {
-        const default = .{ .build_mode = .ReleaseSmall };
-        const expr_test = util.addProjectExecutable(builder, "expr_test", "top/mem/expr-test.zig", default);
-        const abstract_params = util.addProjectExecutable(builder, "mg_abstract_params", "top/mem/abstract_params-aux.zig", default);
-        const impl_detail = util.addProjectExecutable(builder, "mg_impl_detail", "top/mem/impl_detail-aux.zig", default);
-        const options = util.addProjectExecutable(builder, "mg_options", "top/mem/options-aux.zig", default);
-        const type_specs = util.addProjectExecutable(builder, "mg_type_specs", "top/mem/type_specs-aux.zig", default);
-        const type_descr = util.addProjectExecutable(builder, "mg_type_descr", "top/mem/type_descr-aux.zig", default);
-        const impl_variants = util.addProjectExecutable(builder, "mg_impl_variants", "top/mem/impl_variants-aux.zig", default);
-        const canonical = util.addProjectExecutable(builder, "mg_canonical", "top/mem/canonical-aux.zig", default);
-        const canonicals = util.addProjectExecutable(builder, "mg_canonicals", "top/mem/canonicals-aux.zig", default);
-        const containers = util.addProjectExecutable(builder, "mg_containers", "top/mem/containers-aux.zig", default);
-        const kinds = util.addProjectExecutable(builder, "mg_kinds", "top/mem/kinds-aux.zig", default);
-        const specifications = util.addProjectExecutable(builder, "mg_specifications", "top/mem/specifications-aux.zig", default);
-        const generate_functions = util.addProjectExecutable(builder, "generate_functions", "top/mem/generate_functions.zig", default);
-        const generate_specifications = util.addProjectExecutable(builder, "generate_specifications", "top/mem/generate_specifications.zig", default);
-        const generate_references = util.addProjectExecutable(builder, "generate_references", "top/mem/generate_references.zig", default);
-        const generate_parameters = util.addProjectExecutable(builder, "generate_parameters", "top/mem/generate_parameters.zig", default);
-        const generate_containers = util.addProjectExecutable(builder, "generate_containers", "top/mem/generate_containers.zig", default);
-        dependOn(type_specs, abstract_params);
-        dependOn(type_descr, type_specs);
-        dependOn(impl_variants, type_specs);
-        dependOn(impl_variants, impl_detail);
-        dependOn(canonicals, impl_variants);
-        dependOn(canonicals, canonical);
-        dependOn(containers, canonicals);
-        dependOn(kinds, canonicals);
-        dependOn(generate_functions, impl_variants);
-        dependOn(generate_functions, expr_test);
-        dependOn(specifications, containers);
-        dependOn(generate_specifications, options);
-        dependOn(generate_specifications, type_descr);
-        dependOn(generate_specifications, specifications);
-        dependOn(generate_references, containers);
-        dependOn(generate_references, generate_specifications);
-        dependOn(generate_parameters, options);
-        dependOn(generate_parameters, type_descr);
-        dependOn(generate_parameters, containers);
-        dependOn(generate_containers, generate_parameters);
-        mem_gen.dependOn(&generate_references.run().step);
-        mem_gen.dependOn(&generate_containers.run().step);
-    }
 }
 inline fn dependOn(dependant: *build.CompileStep, dependency: *build.CompileStep) void {
     dependant.step.dependOn(&dependency.run().step);

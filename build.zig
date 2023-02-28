@@ -5,7 +5,7 @@ pub usingnamespace @"_";
 
 pub const is_verbose: bool = false;
 pub const is_silent: bool = false;
-pub const runtime_assertions: bool = true;
+pub const runtime_assertions: bool = false;
 
 pub const srg = @import("./zig_lib.zig");
 const mem = srg.mem;
