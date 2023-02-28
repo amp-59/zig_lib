@@ -133,6 +133,6 @@ fn generateParameters() !void {
         }
         writeOptions(&array, buf);
     }
-    gen.writeSourceFile(&array, "container.zig");
+    gen.writeSourceFile(&array, "containers.zig");
 }
 pub const main = generateParameters;
