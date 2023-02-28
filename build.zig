@@ -65,8 +65,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const dynamic: *build.Target            = builder.addTarget(small_spec, allocator,  "dynamic",          "examples/dynamic_alloc.zig");
     const address_space: *build.Target      = builder.addTarget(small_spec, allocator,  "address_space",    "examples/custom_address_space.zig");
     // Build system generator:
-    const bg: *build.Group                  = builder.addGroup(allocator,           "buildgen");
-    const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,   "generate_build", "top/build/generate_build.zig");
+    const bg: *build.Group                  = builder.addGroup(allocator,               "buildgen");
+    const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,       "generate_build", "top/build/generate_build.zig");
     // Memory implementation generator:
     const mg_aux: *build.Group              = builder.addGroup(allocator,               "memgen_auxiliary");
     const mg_abstract_params: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_abstract_params",       "top/mem/abstract_params-aux.zig");
@@ -87,7 +87,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
     const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_containers",      "top/mem/containers.zig");
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_references",      "top/mem/references.zig");
-
     // Auxiliary dependencies:
     mg_type_specs.dependOnRun(allocator,        mg_abstract_params);
     mg_type_descr.dependOnRun(allocator,        mg_type_specs);
@@ -110,6 +109,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     // Primary dependencies:
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
+
 
     // zig fmt: on
 
