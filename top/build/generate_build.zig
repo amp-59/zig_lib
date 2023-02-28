@@ -1496,6 +1496,7 @@ pub fn main() !void {
     writeImport(&array, "mem", "./mem.zig");
     writeImport(&array, "file", "./file.zig");
     writeImport(&array, "meta", "./meta.zig");
+    writeImport(&array, "mach", "./mach.zig");
     writeImport(&array, "proc", "./proc.zig");
     writeImport(&array, "preset", "./preset.zig");
     writeImport(&array, "builtin", "./builtin.zig");
