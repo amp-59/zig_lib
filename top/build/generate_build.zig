@@ -1369,6 +1369,7 @@ pub fn writeFunctionBody(comptime Namespace: type, array: *Array, variant: Varia
         }
     }
 }
+
 pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
     const width: u64 = (initial_indent * 4);
     inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
@@ -1413,7 +1414,33 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                 }
             },
             else => {
-                unhandledSpecification(what_field, opt_spec);
+                if (opt_spec.arg_type_name) |type_name| {
+                    if (!@hasDecl(types, type_name)) {
+                        array.writeMany(type_name);
+                    } else {
+                        const import_type: type = @field(types, type_name);
+                        switch (@typeInfo(field_type)) {
+                            .Enum, .Struct, .Union => {
+                                formatCompositeLiteral(array, field_type, .{
+                                    .import_type = import_type,
+                                    .type_name = type_name,
+                                });
+                            },
+                            else => {
+                                array.writeMany(type_name);
+                            },
+                        }
+                    }
+                } else {
+                    switch (@typeInfo(field_type)) {
+                        .Enum, .Struct, .Union => {
+                            formatCompositeLiteral(array, field_type, null);
+                        },
+                        else => {
+                            array.writeMany(@typeName(field_type));
+                        },
+                    }
+                }
             },
         }
         array.writeMany(",\n");
@@ -1425,9 +1452,6 @@ const Options = struct {
     const about_output_s: []const u8 = "write to output to pathname";
     const pathname = .{ .argument = "pathname" };
 };
-const opt_map: []const Options.Map = meta.slice(Options.Map, .{ // zig fmt: off
-    .{ .field_name = "output",          .short = "-o", .long = "--output",  .assign = Options.pathname, .descr = Options.about_output_s },
-}); // zig fmt: on
 fn srcArray(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticArray(count) {
     var ret: mem.StaticArray(count) = .{};
     const fd: u64 = try file.open(open_spec, builtin.absolutePath(pathname));
@@ -1440,10 +1464,7 @@ fn writeFile(allocator: Allocator, array: Array, pathname: [:0]const u8) !void {
     defer file.close(close_spec, build_fd);
     try file.write(.{}, build_fd, array.readAll(allocator));
 }
-pub fn main(args_in: [][*:0]u8) !void {
-    var args: [][*:0]u8 = args_in;
-    const options: Options = proc.getOpts(Options, &args, opt_map);
-
+pub fn main() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
@@ -1494,10 +1515,8 @@ pub fn main(args_in: [][*:0]u8) !void {
     array.writeMany(build_src[format_write_fn_body_offset + format_write_fn_body_loc_token.len + 1 ..]);
     array.writeMany(types_src);
     if (!prefer_inline) array.writeMany(option_fn_src);
-    if (options.output) |pathname| {
-        try writeFile(allocator, array, pathname);
-    } else {
-        try file.write(.{}, 1, array.readAll(allocator));
-    }
+
+    try writeFile(allocator, array, builtin.build_root.? ++ "/top/build.zig");
+
     mem.unmap(.{ .errors = .{} }, lb_addr, up_addr - lb_addr);
 }
