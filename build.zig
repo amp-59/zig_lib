@@ -3,6 +3,10 @@ const _ = struct {
 };
 pub usingnamespace @"_";
 
+pub const is_verbose: bool = false;
+pub const is_silent: bool = false;
+pub const runtime_assertions: bool = true;
+
 pub const srg = @import("./zig_lib.zig");
 const mem = srg.mem;
 const meta = srg.meta;
@@ -38,13 +42,13 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const builtin_test: *build.Target   = builder.addTarget(debug_spec, allocator,  "builtin_test", "top/builtin-test.zig");
     const meta_test: *build.Target      = builder.addTarget(debug_spec, allocator,  "meta_test",    "top/meta-test.zig");
     const mem_test: *build.Target       = builder.addTarget(debug_spec, allocator,  "mem_test",     "top/mem-test.zig");
-    const algo_test: *build.Target      = builder.addTarget(debug_spec, allocator,  "algo_test",    "top/algo-test.zig");
+    const algo_test: *build.Target      = builder.addTarget(fast_spec,  allocator,  "algo_test",    "top/algo-test.zig");
     const file_test: *build.Target      = builder.addTarget(debug_spec, allocator,  "file_test",    "top/file-test.zig");
-    const list_test: *build.Target      = builder.addTarget(debug_spec, allocator,  "list_test",    "top/list-test.zig");
+    const list_test: *build.Target      = builder.addTarget(fast_spec,  allocator,  "list_test",    "top/list-test.zig");
     const fmt_test: *build.Target       = builder.addTarget(debug_spec, allocator,  "fmt_test",     "top/fmt-test.zig");
-    const render_test: *build.Target    = builder.addTarget(debug_spec, allocator,  "render_test",  "top/render-test.zig");
+    const render_test: *build.Target    = builder.addTarget(small_spec, allocator,  "render_test",  "top/render-test.zig");
     const thread_test: *build.Target    = builder.addTarget(debug_spec, allocator,  "thread_test",  "top/thread-test.zig");
-    const virtual_test: *build.Target   = builder.addTarget(debug_spec, allocator,  "virtual_test", "top/virtual-test.zig");
+    const virtual_test: *build.Target   = builder.addTarget(small_spec, allocator,  "virtual_test", "top/virtual-test.zig");
     const build_test: *build.Target     = builder.addTarget(debug_spec, allocator,  "build_test",   "top/build-test.zig");
     // More complete test programs:
     const mca: *build.Target            = builder.addTarget(fast_spec,  allocator,  "mca",      "test/mca.zig");
@@ -53,7 +57,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const cat: *build.Target            = builder.addTarget(small_spec, allocator,  "cat",      "test/cat.zig");
     const hello: *build.Target          = builder.addTarget(small_spec, allocator,  "hello",    "test/hello.zig");
     const readelf: *build.Target        = builder.addTarget(small_spec, allocator,  "readelf",  "test/readelf.zig");
-    const parsedir: *build.Target       = builder.addTarget(small_spec, allocator,  "parsedir", "test/parsedir.zig");
+    const parsedir: *build.Target       = builder.addTarget(fast_spec,  allocator,  "parsedir", "test/parsedir.zig");
     // Other test programs:
     const impl_test: *build.Target          = builder.addTarget(debug_spec, allocator,  "impl_test",      "top/impl-test.zig");
     const container_test: *build.Target     = builder.addTarget(debug_spec, allocator,  "container_test", "top/container-test.zig");
@@ -110,9 +114,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
 
-
     // zig fmt: on
-
     for ([_]*build.Target{
         builtin_test, meta_test,    mem_test,   algo_test,
         file_test,    list_test,    fmt_test,   render_test,

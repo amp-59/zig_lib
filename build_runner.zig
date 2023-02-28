@@ -12,6 +12,7 @@ const srg = blk: {
 const mem = srg.mem;
 const sys = srg.sys;
 const proc = srg.proc;
+const mach = srg.mach;
 const meta = srg.meta;
 const build = srg.build;
 const preset = srg.preset;
@@ -31,7 +32,7 @@ pub const AddressSpace = mem.GenericRegularAddressSpace(.{
 });
 const Options = build.GlobalOptions;
 
-fn maxWidths(builder: *build.Builder) [2]u64 {
+fn maxWidths(builder: *build.Builder) extern struct { u64, u64 } {
     const alignment: u64 = 8;
     var name_max_width: u64 = 0;
     var root_max_width: u64 = 0;
@@ -130,21 +131,21 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var index: u64 = 0;
     while (index != args.len) {
         const name: [:0]const u8 = meta.manyToSlice(args[index]);
-        if (mem.testEqualMany(u8, name, "--")) {
+        if (mach.testEqualMany8(name, "--")) {
             break;
         }
-        if (mem.testEqualMany(u8, name, "show")) {
+        if (mach.testEqualMany8(name, "show")) {
             return showHelpAndCommands(&builder);
         }
         var groups: build.GroupList = builder.groups.itr();
         group: while (groups.next()) |group_node| : (groups.node = group_node) {
-            if (mem.testEqualMany(u8, name, groups.node.this.name)) {
+            if (mach.testEqualMany8(name, groups.node.this.name)) {
                 try invokeTargetGroup(&allocator, &builder, groups);
                 break :group;
             } else {
                 var targets: build.TargetList = groups.node.this.targets.itr();
                 while (targets.next()) |target_node| : (targets.node = target_node) {
-                    if (mem.testEqualMany(u8, name, targets.node.this.name)) {
+                    if (mach.testEqualMany8(name, targets.node.this.name)) {
                         try invokeTarget(&allocator, &builder, targets.node.this);
                         break :group;
                     }
