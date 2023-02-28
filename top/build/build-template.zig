@@ -14,8 +14,9 @@ const fmt_spec: mem.ReinterpretSpec = blk: {
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = builtin.AddressSpace(),
-    .logging = preset.allocator.logging.silent,
+    .logging = preset.allocator.logging.verbose,
     .errors = preset.allocator.errors.noexcept,
+    .options = preset.allocator.options.fast,
 });
 pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
@@ -150,6 +151,7 @@ fn join(
     comptime pathname: ?[:0]const u8,
 ) *Target {
     const ret: *Target = targets.create(allocator, .{
+        .name = name,
         .root = pathname orelse "",
         .builder = builder,
         .deps = Target.DependencyList.init(allocator),
@@ -180,7 +182,7 @@ fn join(
             });
         }
         if (spec.fmt) {
-            ret.addFormat(allocator, .{ .ast_check = true });
+            ret.addFormat(allocator, .{});
         }
     }
     return ret;
@@ -226,6 +228,7 @@ pub const Group = struct {
 };
 pub const TargetList = GenericList(Target);
 pub const Target = struct {
+    name: [:0]const u8,
     root: [:0]const u8,
     build_cmd: *BuildCommand = undefined,
     build_flag: bool = true,
@@ -328,9 +331,10 @@ pub const Target = struct {
         return countArgs(array);
     }
     pub fn buildA(target: *Target, allocator: *Allocator) !void {
-        if (target.build_flag) return;
-        try target.maybeInvokeDependencies();
         try target.format();
+        if (target.build_flag) return;
+        target.build_flag = true;
+        try target.maybeInvokeDependencies();
         var array: String = try meta.wrap(String.init(allocator, target.buildLength()));
         defer array.deinit(allocator);
         var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
@@ -338,23 +342,23 @@ pub const Target = struct {
         builtin.assertBelowOrEqual(u64, array.len(), max_len);
         builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.buildLength());
-        target.build_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
     pub fn build(target: *Target) !void {
-        if (target.build_flag) return;
-        try target.maybeInvokeDependencies();
         try target.format();
+        if (target.build_flag) return;
+        target.build_flag = true;
+        try target.maybeInvokeDependencies();
         var array: StaticString = .{};
         var args: StaticPointers = .{};
         builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
         builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.buildLength());
-        target.build_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
     pub fn formatA(target: *Target, allocator: *Allocator) !void {
         if (target.fmt_flag) return;
+        target.fmt_flag = true;
         try target.maybeInvokeDependencies();
         var array: String = try meta.wrap(String.init(allocator, target.formatLength()));
         defer array.deinit(allocator);
@@ -363,22 +367,22 @@ pub const Target = struct {
         builtin.assertBelowOrEqual(u64, array.len(), max_len);
         builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.buildLength());
-        target.fmt_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
     pub fn format(target: *Target) !void {
         if (target.fmt_flag) return;
+        target.fmt_flag = true;
         try target.maybeInvokeDependencies();
         var array: StaticString = .{};
         var args: StaticPointers = .{};
         builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
         builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
         builtin.assertEqual(u64, array.len(), target.formatLength());
-        target.fmt_flag = true;
         return target.builder.exec(args.referAllDefined());
     }
     pub fn runA(target: *Target, allocator: *Allocator) !void {
         if (target.run_flag) return;
+        target.run_flag = true;
         try target.buildA(allocator);
         if (target.build_cmd.emit_bin) |emit_bin| {
             if (emit_bin == .yes) {
@@ -400,6 +404,7 @@ pub const Target = struct {
     }
     pub fn run(target: *Target) !void {
         if (target.run_flag) return;
+        target.run_flag = true;
         try target.build();
         if (target.build_cmd.emit_bin) |emit_bin| {
             if (emit_bin == .yes) {
