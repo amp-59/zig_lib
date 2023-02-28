@@ -50,10 +50,10 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
     if (Expr.debug.show_expressions) {
         Expr.debug.showFunction(ctn_fn_info.tag);
     }
-    var define_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.define));
-    var undefine_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefine));
-    var seek_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.seek));
-    var tell_call: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.tell));
+    var define: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.define));
+    var undefine: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefine));
+    var seek: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.seek));
+    var tell: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.tell));
     var writable_byte_count: [3]Expr =
         makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.writable_byte_count));
     var defined_byte_count: [3]Expr =
@@ -654,82 +654,82 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         },
         .define => {
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
-            expr.subst(define_call[2].args(), .{
+            expr.subst(define[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.call(&if (ctn_detail.layouts.structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
             });
-            array.writeFormat(expr.join(&define_call));
+            array.writeFormat(expr.join(&define));
             return array.writeMany(tok.end_expression);
         },
         .defineAll => {
-            expr.subst(define_call[2].args(), .{
+            expr.subst(define[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.join(&undefined_byte_count),
             });
-            array.writeFormat(expr.join(&define_call));
+            array.writeFormat(expr.join(&define));
             return array.writeMany(tok.end_expression);
         },
         .undefine => {
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
-            expr.subst(undefine_call[2].args(), .{
+            expr.subst(undefine[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.call(&if (ctn_detail.layouts.structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
             });
-            array.writeFormat(expr.join(&undefine_call));
+            array.writeFormat(expr.join(&undefine));
             return array.writeMany(tok.end_expression);
         },
         .undefineAll => {
-            expr.subst(undefine_call[2].args(), .{
+            expr.subst(undefine[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.join(&defined_byte_count),
             });
-            array.writeFormat(expr.join(&undefine_call));
+            array.writeFormat(expr.join(&undefine));
             return array.writeMany(tok.end_expression);
         },
         .stream => {
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
-            expr.subst(seek_call[2].args(), .{
+            expr.subst(seek[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.call(&if (ctn_detail.layouts.structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
             });
-            array.writeFormat(expr.join(&seek_call));
+            array.writeFormat(expr.join(&seek));
             return array.writeMany(tok.end_expression);
         },
         .streamAll => {
-            expr.subst(seek_call[2].args(), .{
+            expr.subst(seek[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.join(&unstreamed_byte_count),
             });
-            array.writeFormat(expr.join(&seek_call));
+            array.writeFormat(expr.join(&seek));
             return array.writeMany(tok.end_expression);
         },
         .unstream => {
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
-            expr.subst(tell_call[2].args(), .{
+            expr.subst(tell[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.call(&if (ctn_detail.layouts.structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
             });
-            array.writeFormat(expr.join(&tell_call));
+            array.writeFormat(expr.join(&tell));
             return array.writeMany(tok.end_expression);
         },
         .unstreamAll => {
-            expr.subst(tell_call[2].args(), .{
+            expr.subst(tell[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
                 .src = expr.join(&streamed_byte_count),
             });
-            array.writeFormat(expr.join(&tell_call));
+            array.writeFormat(expr.join(&tell));
             return array.writeMany(tok.end_expression);
         },
         .init => {
@@ -880,7 +880,7 @@ pub fn generateContainers() !void {
         }
         writeTypeFunction(&allocator, &array, out.impl_variants[ctn_group[0]].less());
     }
-    gen.appendSourceFile(&array, "container.zig");
+    gen.appendSourceFile(&array, "containers.zig");
 }
 
 pub const main = generateContainers;
