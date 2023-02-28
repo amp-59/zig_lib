@@ -19,8 +19,8 @@ pub const Allocator = mem.GenericArenaAllocator(.{
 });
 pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
-pub const StaticString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
-pub const StaticPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
+pub const ArgsString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
+pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
 pub const GlobalOptions = struct {
@@ -93,7 +93,7 @@ pub const Builder = struct {
         comptime spec: TargetSpec,
         allocator: *Allocator,
         comptime name: [:0]const u8,
-        comptime pathname: ?[:0]const u8,
+        comptime pathname: [:0]const u8,
     ) *Target {
         return join(spec, allocator, builder, &builder.groups.node.this.targets, name, pathname);
     }
@@ -112,6 +112,11 @@ pub const Builder = struct {
     }
     fn exec(builder: Builder, args: [][*:0]u8) !void {
         if (0 != try proc.command(.{}, builder.paths.zig_exe, args, builder.vars)) {
+            return error.UnexpectedExitStatus;
+        }
+    }
+    fn system(builder: Builder, args: [][*:0]u8) !void {
+        if (0 != try proc.command(.{}, meta.manyToSlice(args[0]), args, builder.vars)) {
             return error.UnexpectedExitStatus;
         }
     }
@@ -147,43 +152,42 @@ fn join(
     builder: *Builder,
     targets: *TargetList,
     comptime name: [:0]const u8,
-    comptime pathname: ?[:0]const u8,
+    comptime pathname: [:0]const u8,
 ) *Target {
+    const bin_path: Path = builder.path("zig-out/bin/" ++ name);
+    const optimize_mode: builtin.Mode = builder.options.mode orelse spec.mode;
+
     const ret: *Target = targets.create(allocator, .{
         .name = name,
-        .root = pathname orelse "",
+        .root = pathname,
         .builder = builder,
         .deps = Target.DependencyList.init(allocator),
     });
-    if (pathname != null) {
-        if (spec.build) {
-            ret.addBuild(allocator, .{
-                .main_pkg_path = builder.paths.build_root,
-                .name = name,
-                .kind = .exe,
-                .omit_frame_pointer = false,
-                .single_threaded = true,
-                .static = true,
-                .enable_cache = true,
-                .compiler_rt = false,
-                .strip = true,
-                .formatted_panics = false,
-                .emit_bin = .{ .yes = builder.path("zig-out/bin/" ++ name) },
-                .modules = spec.mods,
-                .dependencies = spec.deps,
-                .mode = builder.options.mode orelse spec.mode,
-            });
-        }
-        if (spec.run) {
-            ret.addRun(allocator, .{
-                .args = allocator.allocateIrreversible([*:0]u8, max_args),
-                .args_len = 0,
-            });
-        }
-        if (spec.fmt) {
-            ret.addFormat(allocator, .{});
-        }
+    if (spec.build) {
+        ret.addBuild(allocator, .{
+            .main_pkg_path = builder.paths.build_root,
+            .emit_bin = .{ .yes = bin_path },
+            .name = name,
+            .kind = .exe,
+            .omit_frame_pointer = false,
+            .single_threaded = true,
+            .static = true,
+            .enable_cache = true,
+            .compiler_rt = false,
+            .strip = true,
+            .formatted_panics = false,
+            .modules = spec.mods,
+            .dependencies = spec.deps,
+            .mode = optimize_mode,
+        });
     }
+    if (spec.run) {
+        ret.addRun(allocator, .{});
+    }
+    if (spec.fmt) {
+        ret.addFormat(allocator, .{});
+    }
+
     return ret;
 }
 pub const OutputMode = enum {
@@ -283,14 +287,16 @@ pub const FormatCommand = struct {
     exclude: ?[]const u8 = null,
 };
 pub const RunCommand = struct {
-    args: [][*:0]u8,
-    args_len: u64,
-    pub fn addRunArgument(run_cmd: *RunCommand, allocator: *Allocator, arg: [:0]const u8) void {
-        const buf: []u8 = allocator.allocateIrreversible(u8, arg.len + 1);
-        @memcpy(buf.ptr, arg.ptr, arg.len + 1);
-        run_cmd.args[run_cmd.args_len] = buf[0..arg.len :0].ptr;
-        run_cmd.args_len +%= 1;
-        @ptrCast(*u64, &run_cmd.args[run_cmd.args_len]).* = 0;
+    array: ArgsString = undefined,
+    pub fn addRunArgument(run_cmd: *RunCommand, any: anytype) void {
+        if (@typeInfo(@TypeOf(any)) == .Struct) {
+            run_cmd.array.writeFormat(preset.reinterpret.fmt, any);
+        } else {
+            run_cmd.array.writeMany(any);
+        }
+        if (run_cmd.array.readOneBack() != 0) {
+            run_cmd.array.writeOne(0);
+        }
     }
 };
 pub const GroupList = GenericList(Group);
@@ -303,7 +309,7 @@ pub const Group = struct {
         comptime spec: TargetSpec,
         allocator: *Allocator,
         comptime name: [:0]const u8,
-        comptime pathname: ?[:0]const u8,
+        comptime pathname: [:0]const u8,
     ) *Target {
         return join(spec, allocator, group.builder, &group.targets, name, pathname);
     }
@@ -313,32 +319,63 @@ pub const Target = struct {
     name: [:0]const u8,
     root: [:0]const u8,
     build_cmd: *BuildCommand = undefined,
-    build_flag: bool = true,
     fmt_cmd: *FormatCommand = undefined,
-    run_flag: bool = true,
     run_cmd: *RunCommand = undefined,
-    fmt_flag: bool = true,
     deps: DependencyList,
     builder: *Builder,
+    flags: u8 = 0,
     /// Specify command for target
-    pub const Tag = enum { fmt, build, run };
+    pub const Tag = enum {
+        fmt,
+        build,
+        run,
+        fn have(comptime tag: Tag) u8 {
+            const shift_amt: u8 = @enumToInt(tag);
+            return 1 << (2 * shift_amt);
+        }
+        fn done(comptime tag: Tag) u8 {
+            const shift_amt: u8 = @enumToInt(tag);
+            return 1 << (2 * shift_amt + 1);
+        }
+    };
+    inline fn give(target: *Target, comptime tag: Tag) void {
+        target.flags |= comptime Tag.have(tag);
+    }
+    inline fn take(target: *Target, comptime tag: Tag) void {
+        target.flags &= ~comptime Tag.have(tag);
+    }
+    inline fn have(target: *Target, comptime tag: Tag) bool {
+        return (target.flags & comptime Tag.have(tag)) != 0;
+    }
+    inline fn do(target: *Target, comptime tag: Tag) void {
+        target.flags |= comptime Tag.done(tag);
+    }
+    inline fn undo(target: *Target, comptime tag: Tag) void {
+        target.flags |= comptime Tag.done(tag);
+    }
+    inline fn done(target: *Target, comptime tag: Tag) bool {
+        return (target.flags & comptime Tag.done(tag)) != 0;
+    }
+
     const DependencyList = GenericList(Dependency);
     /// All dependencies are build dependencies
     pub const Dependency = struct {
         tag: Tag,
         target: *Target,
     };
+    pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
+        target.fmt_cmd = allocator.duplicateIrreversible(FormatCommand, fmt_cmd);
+        target.give(.fmt);
+    }
     pub fn addBuild(target: *Target, allocator: *Allocator, build_cmd: BuildCommand) void {
         target.build_cmd = allocator.duplicateIrreversible(BuildCommand, build_cmd);
-        target.build_flag = false;
+        target.give(.build);
     }
     pub fn addRun(target: *Target, allocator: *Allocator, run_cmd: RunCommand) void {
         target.run_cmd = allocator.duplicateIrreversible(RunCommand, run_cmd);
-        target.run_flag = false;
-    }
-    pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
-        target.fmt_cmd = allocator.duplicateIrreversible(FormatCommand, fmt_cmd);
-        target.fmt_flag = false;
+        target.run_cmd.array.writeFormat(target.build_cmd.emit_bin.?.yes.?);
+        target.run_cmd.array.writeOne(0);
+        target.give(.run);
     }
     pub fn dependOnBuild(target: *Target, allocator: *Allocator, dependency: *Target) void {
         return target.deps.save(allocator, .{ .target = dependency, .tag = .build });
@@ -1364,7 +1401,8 @@ pub const Target = struct {
             array.writeOne('\x00');
         }
         array.writeFormat(target.builder.sourceRootPath(target.root));
-        array.writeOne('\x00');
+        array.writeMany("\x00\x00");
+        array.undefine(1);
         return countArgs(array);
     }
     fn formatLength(target: Target) u64 {
@@ -1417,7 +1455,8 @@ pub const Target = struct {
             array.writeOne('\x00');
         }
         array.writeFormat(target.builder.sourceRootPath(target.root));
-        array.writeOne('\x00');
+        array.writeMany("\x00\x00");
+        array.undefine(1);
         return countArgs(array);
     }
     pub fn buildA(target: *Target, allocator: *Allocator) !void {
@@ -1426,8 +1465,8 @@ pub const Target = struct {
         target.build_flag = true;
         try target.maybeInvokeDependencies();
         var array: String = try meta.wrap(String.init(allocator, target.buildLength()));
-        defer array.deinit(allocator);
         var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
+        defer array.deinit(allocator);
         defer args.deinit(allocator);
         builtin.assertBelowOrEqual(u64, array.len(), max_len);
         builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
@@ -1436,84 +1475,70 @@ pub const Target = struct {
     }
     pub fn build(target: *Target) !void {
         try target.format();
-        if (target.build_flag) return;
-        target.build_flag = true;
-        try target.maybeInvokeDependencies();
-        var array: StaticString = .{};
-        var args: StaticPointers = .{};
-        builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
-        builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-        builtin.assertEqual(u64, array.len(), target.buildLength());
-        return target.builder.exec(args.referAllDefined());
+        if (target.done(.build)) return;
+        if (target.have(.build)) {
+            target.do(.build);
+            try target.maybeInvokeDependencies();
+            var array: ArgsString = undefined;
+            var args: ArgsPointers = undefined;
+            array.undefineAll();
+            args.undefineAll();
+            builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
+            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+            builtin.assertEqual(u64, array.len(), target.buildLength());
+            return target.builder.exec(args.referAllDefined());
+        }
     }
     pub fn formatA(target: *Target, allocator: *Allocator) !void {
-        if (target.fmt_flag) return;
-        target.fmt_flag = true;
-        try target.maybeInvokeDependencies();
-        var array: String = try meta.wrap(String.init(allocator, target.formatLength()));
-        defer array.deinit(allocator);
-        var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
-        defer args.deinit(allocator);
-        builtin.assertBelowOrEqual(u64, array.len(), max_len);
-        builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
-        builtin.assertEqual(u64, array.len(), target.buildLength());
-        return target.builder.exec(args.referAllDefined());
+        if (target.done(.format)) return;
+        if (target.have(.format)) {
+            target.do(.format);
+            try target.maybeInvokeDependencies();
+            var array: String = try meta.wrap(String.init(allocator, target.formatLength()));
+            var args: Pointers = try meta.wrap(Pointers.init(allocator, target.buildWrite(&array)));
+            defer array.deinit(allocator);
+            defer args.deinit(allocator);
+            builtin.assertBelowOrEqual(u64, array.len(), max_len);
+            builtin.assertBelowOrEqual(u64, makeArgs(array, &args), max_args);
+            builtin.assertEqual(u64, array.len(), target.buildLength());
+            return target.builder.exec(args.referAllDefined());
+        }
     }
     pub fn format(target: *Target) !void {
-        if (target.fmt_flag) return;
-        target.fmt_flag = true;
-        try target.maybeInvokeDependencies();
-        var array: StaticString = .{};
-        var args: StaticPointers = .{};
-        builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
-        builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-        builtin.assertEqual(u64, array.len(), target.formatLength());
-        return target.builder.exec(args.referAllDefined());
+        if (target.done(.fmt)) return;
+        if (target.have(.fmt)) {
+            target.do(.fmt);
+            try target.maybeInvokeDependencies();
+            var array: ArgsString = undefined;
+            var args: ArgsPointers = undefined;
+            array.undefineAll();
+            args.undefineAll();
+            builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
+            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+            builtin.assertEqual(u64, array.len(), target.formatLength());
+            return target.builder.exec(args.referAllDefined());
+        }
     }
     pub fn runA(target: *Target, allocator: *Allocator) !void {
-        if (target.run_flag) return;
-        target.run_flag = true;
-        try target.buildA(allocator);
-        if (target.build_cmd.emit_bin) |emit_bin| {
-            if (emit_bin == .yes) {
-                if (emit_bin.yes) |emit_bin_path| {
-                    var array: mem.StaticString(4096) = undefined;
-                    array.undefineAll();
-                    array.writeFormat(emit_bin_path);
-                    if (0 != try proc.command(
-                        .{},
-                        array.readAllWithSentinel(0),
-                        target.run_cmd.args.readAll(),
-                        target.run_cmd.vars.readAll(),
-                    )) {
-                        return error.UnexpectedExitStatus;
-                    }
-                }
-            }
+        if (target.done(.run)) return;
+        if (target.have(.run) and target.have(.build)) {
+            target.do(.run);
+            try target.buildA(allocator);
+            var args: ArgsPointers = undefined;
+            args.undefineAll();
+            builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
+            try target.builder.system(args.referAllDefined());
         }
     }
     pub fn run(target: *Target) !void {
-        if (target.run_flag) return;
-        target.run_flag = true;
-        try target.build();
-        if (target.build_cmd.emit_bin) |emit_bin| {
-            if (emit_bin == .yes) {
-                if (emit_bin.yes) |emit_bin_path| {
-                    var array: mem.StaticString(4096) = undefined;
-                    array.undefineAll();
-                    array.writeFormat(emit_bin_path);
-                    array.writeOne(0);
-                    array.undefine(1);
-                    if (0 != try proc.command(
-                        .{},
-                        array.readAllWithSentinel(0),
-                        target.run_cmd.args[0..target.run_cmd.args_len],
-                        target.builder.vars,
-                    )) {
-                        return error.UnexpectedExitStatus;
-                    }
-                }
-            }
+        if (target.done(.run)) return;
+        if (target.have(.run) and target.have(.build)) {
+            target.do(.run);
+            try target.build();
+            var args: ArgsPointers = undefined;
+            args.undefineAll();
+            builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
+            try target.builder.system(args.referAllDefined());
         }
     }
     fn maybeInvokeDependencies(target: *Target) anyerror!void {
