@@ -257,6 +257,6 @@ pub fn generateReferences() !void {
             accm_spec_index +%= 1;
         }
     }
-    gen.writeSourceFile(&array, "reference.zig");
+    gen.writeSourceFile(&array, "references.zig");
 }
 pub const main = generateReferences;
