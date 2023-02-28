@@ -461,8 +461,8 @@ pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
 }
 extern fn asmTestEqualMany8(l_values: [*]const u8, l_len: u64, r_values: [*]const u8, r_len: u64) callconv(.C) bool;
 comptime {
-    asm (".intel_syntax noprefix");
     asm (
+        \\.intel_syntax noprefix
         \\asmTestEqualMany8:
         \\  cmp     rsi, rcx
         \\  jne     .asmTestEqualMany8_2
@@ -495,8 +495,8 @@ pub inline fn assert(b: bool, comptime msg: [:0]const u8) void {
 }
 extern fn asmAssert(b: bool, buf_ptr: [*]const u8, buf_len: u64) callconv(.C) void;
 comptime {
-    asm (".intel_syntax noprefix");
     asm (
+        \\.intel_syntax noprefix
         \\asmAssert:
         \\  test edi, edi
         \\  jne .asmAssert_0
