@@ -929,6 +929,6 @@ pub fn generateReferences() void {
             }
         }
     }
-    gen.appendSourceFile(&array, "reference.zig");
+    gen.appendSourceFile(&array, "references.zig");
 }
 pub const main = generateReferences;
