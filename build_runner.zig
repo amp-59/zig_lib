@@ -21,7 +21,7 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 
 pub const is_verbose: bool = if (@hasDecl(root, "is_verbose")) root.is_verbose else false;
-pub const is_silent: bool = if (@hasDecl(root, "is_silent")) root.is_silent else false;
+pub const is_silent: bool = if (@hasDecl(root, "is_silent")) root.is_silent else true;
 pub const runtime_assertions: bool = if (@hasDecl(root, "runtime_assertions")) root.runtime_assertions else false;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
@@ -36,9 +36,9 @@ fn maxWidths(builder: *build.Builder) extern struct { u64, u64 } {
     const alignment: u64 = 8;
     var name_max_width: u64 = 0;
     var root_max_width: u64 = 0;
-    var groups: build.GroupList = builder.groups.itr();
+    var groups: build.GroupList = builder.groups;
     while (groups.next()) |group_node| : (groups.node = group_node) {
-        var targets: build.TargetList = groups.node.this.targets.itr();
+        var targets: build.TargetList = groups.node.this.targets;
         while (targets.next()) |target_node| : (targets.node = target_node) {
             name_max_width = @max(name_max_width, (targets.node.this.name.len));
             root_max_width = @max(root_max_width, (targets.node.this.root.len));
@@ -48,19 +48,15 @@ fn maxWidths(builder: *build.Builder) extern struct { u64, u64 } {
     root_max_width += alignment;
     return .{ name_max_width & ~(alignment - 1), root_max_width & ~(alignment - 1) };
 }
-fn showHelpAndCommands(builder: *build.Builder) void {
-    builtin.debug.logAlways(comptime Options.Map.helpMessage(opts_map));
-    showAllCommands(builder);
-}
 fn showAllCommands(builder: *build.Builder) void {
     var buf: [1024 * 1024]u8 = undefined;
     var len: u64 = 0;
-    var groups: build.GroupList = builder.groups.itr();
+    var groups: build.GroupList = builder.groups;
     const max_widths: [2]u64 = maxWidths(builder);
     var spaces: [256]u8 = [1]u8{' '} ** 256;
     while (groups.next()) |group_node| : (groups.node = group_node) {
         len +%= builtin.debug.writeMulti(buf[len..], &.{ groups.node.this.name, ":\n" });
-        var targets: build.TargetList = groups.node.this.targets.itr();
+        var targets: build.TargetList = groups.node.this.targets;
         while (targets.next()) |target_node| : (targets.node = target_node) {
             len +%= builtin.debug.writeMany(buf[len..], "    ");
             len +%= builtin.debug.writeMulti(buf[len..], &.{
@@ -71,6 +67,16 @@ fn showAllCommands(builder: *build.Builder) void {
         }
     }
     builtin.debug.logAlways(buf[0..len]);
+}
+fn showHelpAndCommands(builder: *build.Builder) void {
+    builtin.debug.logAlways(comptime Options.Map.helpMessage(opts_map));
+    showAllCommands(builder);
+}
+fn rewind(builder: *build.Builder) void {
+    var groups: build.GroupList = builder.groups.itr();
+    while (groups.next()) |group_node| : (groups.node = group_node) {
+        groups.node.this.targets.head();
+    }
 }
 
 const release_fast_s: [:0]const u8 = "prioritise low runtime";
@@ -128,22 +134,23 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var builder: build.Builder = build.Builder.init(&allocator, paths, options, args, vars);
     _ = builder.addGroup(&allocator, "all");
     try build_fn(&allocator, &builder);
+    rewind(&builder);
     var index: u64 = 0;
     while (index != args.len) {
         const name: [:0]const u8 = meta.manyToSlice(args[index]);
-        if (mach.testEqualMany8(name, "--")) {
-            break;
-        }
         if (mach.testEqualMany8(name, "show")) {
             return showHelpAndCommands(&builder);
         }
-        var groups: build.GroupList = builder.groups.itr();
+        if (mach.testEqualMany8(name, "--")) {
+            break;
+        }
+        var groups: build.GroupList = builder.groups;
         group: while (groups.next()) |group_node| : (groups.node = group_node) {
             if (mach.testEqualMany8(name, groups.node.this.name)) {
                 try invokeTargetGroup(&allocator, &builder, groups);
                 break :group;
             } else {
-                var targets: build.TargetList = groups.node.this.targets.itr();
+                var targets: build.TargetList = groups.node.this.targets;
                 while (targets.next()) |target_node| : (targets.node = target_node) {
                     if (mach.testEqualMany8(name, targets.node.this.name)) {
                         try invokeTarget(&allocator, &builder, targets.node.this);
