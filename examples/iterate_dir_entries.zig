@@ -11,7 +11,14 @@ pub usingnamespace proc.start;
 pub const AddressSpace = preset.address_space.exact_8;
 
 pub const runtime_assertions: bool = false;
-pub const is_verbose: bool = false;
+
+pub const logging_override = .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = false,
+};
 
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
