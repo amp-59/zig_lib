@@ -9,7 +9,13 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const is_verbose: bool = true;
+pub const logging_default: builtin.Logging.Default = .{
+    .Success = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Fault = true,
+};
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 

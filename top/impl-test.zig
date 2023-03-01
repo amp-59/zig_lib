@@ -13,9 +13,20 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.exact_8;
 pub const runtime_assertions: bool = true;
-pub const is_verbose: bool = true;
-pub const is_silent: bool = true;
-pub const is_perf: bool = false;
+pub const logging_default: builtin.Logging.Default = .{
+    .Success = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Fault = true,
+};
+pub const logging_override: builtin.Logging.Override = .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = false,
+};
 
 const Allocator0 = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,

@@ -8,7 +8,13 @@ const gen = @import("./gen.zig");
 const attr = @import("./attr.zig");
 
 pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
+pub const logging_override: builtin.Logging.Override = .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = false,
+};
 
 pub usingnamespace proc.start;
 

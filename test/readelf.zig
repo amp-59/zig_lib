@@ -15,7 +15,13 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
 
-pub const is_verbose: bool = true;
+pub const logging_default: builtin.Logging.Default = .{
+    .Success = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Fault = true,
+};
 pub const AddressSpace = preset.address_space.regular_128;
 
 const PrimaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 24 });

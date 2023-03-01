@@ -84,15 +84,31 @@ pub const reinterpret = opaque {
     }
 };
 pub const logging = opaque {
-    pub const full = opaque {
-        pub const verbose: builtin.Logging.Full = .{
+    pub const default = opaque {
+        pub const verbose: builtin.Logging.Default = .{
             .Success = true,
             .Acquire = true,
             .Release = true,
             .Error = true,
             .Fault = true,
         };
-        pub const silent: builtin.Logging.Full = .{
+        pub const silent: builtin.Logging.Default = .{
+            .Success = false,
+            .Acquire = false,
+            .Release = false,
+            .Error = false,
+            .Fault = false,
+        };
+    };
+    pub const override = opaque {
+        pub const verbose: builtin.Logging.Default = .{
+            .Success = true,
+            .Acquire = true,
+            .Release = true,
+            .Error = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.Default = .{
             .Success = false,
             .Acquire = false,
             .Release = false,

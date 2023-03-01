@@ -365,7 +365,7 @@ pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_
     if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
         unreachable;
     } else |execve_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             debug.executeError(execve_error, pathname, args);
         }
         return execve_error;
@@ -378,7 +378,7 @@ pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, var
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
         unreachable;
     } else |execve_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             debug.executeError(execve_error, args[0], args);
         }
         return execve_error;
@@ -392,7 +392,7 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
         unreachable;
     } else |execve_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             debug.executeError(execve_error, name, args);
         }
         return execve_error;
@@ -429,7 +429,7 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys
     if (meta.wrap(sys.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             debug.waitError(wait_error);
         }
         return wait_error;
@@ -441,7 +441,7 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(sp
     if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             debug.waitError(wait_error);
         }
         return wait_error;
@@ -451,7 +451,7 @@ pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors.throw, spec.return_typ
     if (meta.wrap(sys.call(.fork, spec.errors, spec.return_type, .{}))) |pid| {
         return pid;
     } else |fork_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             debug.forkError(fork_error);
         }
         return fork_error;
@@ -467,13 +467,13 @@ pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.ar
         if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
             unreachable;
         } else |execve_error| {
-            if (spec.logging.Error) {
+            if (spec.logging.override().Error) {
                 debug.executeError(execve_error, pathname, args);
             }
             return execve_error;
         }
     }
-    if (spec.logging.Success) {
+    if (spec.logging.override().Success) {
         debug.executeNotice(pathname, args);
     }
     builtin.assertEqual(u64, pid, try waitPid(.{}, .{ .pid = pid }, &status));
@@ -490,13 +490,13 @@ pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, ar
         if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
             unreachable;
         } else |execve_error| {
-            if (spec.logging.Error) {
+            if (spec.logging.override().Error) {
                 debug.executeError(execve_error, name, args);
             }
             return execve_error;
         }
     }
-    if (spec.logging.Success) {
+    if (spec.logging.override().Success) {
         debug.executeNotice(name, args);
     }
     builtin.assertEqual(u64, pid, try waitPid(.{}, .{ .pid = pid }, &status));

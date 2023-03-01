@@ -1,7 +1,8 @@
 const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
-const reference = @import("./reference.zig");
+const reference = @import("../reference.zig");
+// start-document container-template.zig
 pub const Amount = union(enum) { bytes: u64, count: u64 };
 pub inline fn amountToCountOfType(amt: Amount, comptime child: type) u64 {
     return switch (amt) {
@@ -514,7 +515,7 @@ pub const reinterpret = opaque {
         if (!@hasDecl(Format, "formatWrite")) {
             @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
-        if (builtin.runtime_assertions and builtin.is_perf) {
+        if (builtin.runtime_assertions and (builtin.is_fast or builtin.is_small)) {
             const s_len: u64 = format.formatLength();
             const len_0: u64 = memory.impl.undefined_byte_address();
             format.formatWrite(memory);
@@ -686,7 +687,7 @@ pub const reinterpret = opaque {
             @compileError("invalid destination type for format write: " ++ @typeName(child));
         }
         if (@hasDecl(Format, "max_len")) {
-            if (builtin.is_perf) return Format.max_len;
+            if (builtin.is_fast or builtin.is_small) return Format.max_len;
         }
         if (@hasDecl(Format, "readAll") and
             @hasDecl(Format, "len"))
@@ -776,3 +777,4 @@ fn GenericParameters(comptime Parameters: type) type {
         }
     };
 }
+// finish-document container-template.zig

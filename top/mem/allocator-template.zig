@@ -82,10 +82,10 @@ pub const PageAllocatorOptions = struct {
 };
 pub const AllocatorLogging = packed struct {
     /// Report updates to allocator state
-    head: bool = default,
-    sentinel: bool = default,
-    metadata: bool = default,
-    branches: bool = default,
+    head: bool = builtin.logging_general.Success,
+    sentinel: bool = builtin.logging_general.Success,
+    metadata: bool = builtin.logging_general.Success,
+    branches: bool = builtin.logging_general.Success,
     /// Report `mmap` Acquire and Release.
     map: builtin.Logging.AcquireErrorFault = .{},
     /// Report `munmap` Release and Error.
@@ -95,17 +95,16 @@ pub const AllocatorLogging = packed struct {
     /// Report `madvise` Success and Error.
     advise: builtin.Logging.SuccessErrorFault = .{},
     /// Report when a reference is created.
-    allocate: bool = default,
+    allocate: bool = builtin.logging_general.Acquire,
     /// Report when a reference is modified (move/resize).
-    reallocate: bool = default,
+    reallocate: bool = builtin.logging_general.Success,
     /// Report when a reference is converted to another kind of reference.
-    reinterpret: bool = default,
+    reinterpret: bool = builtin.logging_general.Success,
     /// Report when a reference is destroyed.
-    deallocate: bool = default,
-    const default: bool = builtin.is_verbose;
+    deallocate: bool = builtin.logging_general.Release,
     inline fn isSilent(comptime logging: AllocatorLogging) bool {
         comptime {
-            return builtin.is_silent or 0 == meta.leastBitCast(logging);
+            return 0 == meta.leastBitCast(logging);
         }
     }
 };
@@ -707,11 +706,11 @@ const special = opaque {
         const mmap_prot: mem.Prot = spec.prot();
         const mmap_flags: mem.Map = spec.flags();
         if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
-            if (spec.logging.Acquire and !builtin.is_silent) {
+            if (spec.logging.override().Acquire) {
                 debug.mapNotice(addr, len);
             }
         } else |map_error| {
-            if (spec.logging.Error and !builtin.is_silent) {
+            if (spec.logging.override().Error) {
                 debug.mapError(map_error, addr, len);
             }
             return map_error;
@@ -720,11 +719,11 @@ const special = opaque {
     fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors.throw, spec.return_type) {
         const mremap_flags: mem.Remap = spec.flags();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
-            if (spec.logging.Success and !builtin.is_silent) {
+            if (spec.logging.override().Success) {
                 debug.moveNotice(old_addr, old_len, new_addr);
             }
         } else |mremap_error| {
-            if (spec.logging.Error and !builtin.is_silent) {
+            if (spec.logging.override().Error) {
                 debug.moveError(mremap_error, old_addr, old_len, new_addr);
             }
             return mremap_error;
@@ -732,11 +731,11 @@ const special = opaque {
     }
     fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors.throw, spec.return_type) {
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
-            if (spec.logging.Success and !builtin.is_silent) {
+            if (spec.logging.override().Success) {
                 debug.resizeNotice(old_addr, old_len, new_len);
             }
         } else |mremap_error| {
-            if (spec.logging.Error and !builtin.is_silent) {
+            if (spec.logging.override().Error) {
                 debug.resizeError(mremap_error, old_addr, old_len, new_len);
             }
             return mremap_error;
@@ -744,11 +743,11 @@ const special = opaque {
     }
     fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
         if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
-            if (spec.logging.Release and !builtin.is_silent) {
+            if (spec.logging.override().Release) {
                 debug.unmapNotice(addr, len);
             }
         } else |unmap_error| {
-            if (spec.logging.Error and !builtin.is_silent) {
+            if (spec.logging.override().Error) {
                 debug.unmapError(unmap_error, addr, len);
             }
             return unmap_error;
@@ -1605,7 +1604,7 @@ const debug = opaque {
         builtin.debug.logSuccess(array.readAll());
     }
     fn showFiloDeallocateViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (builtin.is_perf) builtin.debug.logFault(about_filo_error_s ++ "bad deallocate");
+        if (builtin.is_fast or builtin.is_small) builtin.debug.logFault(about_filo_error_s ++ "bad deallocate");
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
@@ -1618,7 +1617,7 @@ const debug = opaque {
         builtin.debug.logFault(array.readAll());
     }
     fn showFiloResizeViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (builtin.is_perf) builtin.debug.logFault(about_filo_error_s ++ "bad resize");
+        if (builtin.is_fast or builtin.is_small) builtin.debug.logFault(about_filo_error_s ++ "bad resize");
         const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;

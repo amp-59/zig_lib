@@ -16,7 +16,13 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub const runtime_assertions: bool = true;
-pub const is_silent: bool = true;
+pub const logging_override: builtin.Logging.Override = .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = false,
+};
 pub const is_verbose: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{

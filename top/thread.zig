@@ -14,11 +14,11 @@ pub fn map(comptime spec: MapSpec, arena_index: u8) sys.Call(spec.errors.throw, 
     const mmap_prot: mem.Prot = spec.prot();
     const mmap_flags: mem.Map = spec.flags();
     if (meta.wrap(sys.call(.mmap, spec.errors, void, .{ st_addr, s_bytes, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
-        if (spec.logging.Acquire) {
+        if (spec.logging.override().Acquire) {
             mem.debug.mapNotice(st_addr, s_bytes);
         }
     } else |map_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             mem.debug.mapError(map_error, st_addr, s_bytes);
         }
         return map_error;
@@ -30,11 +30,11 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) sys.Call(spec.errors
     const st_addr = mach.alignA64(up_addr - 8192, 4096);
     const len: u64 = up_addr - st_addr;
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ st_addr, up_addr - st_addr }))) {
-        if (spec.logging.Release) {
+        if (spec.logging.override().Release) {
             mem.debug.unmapNotice(st_addr, len);
         }
     } else |unmap_error| {
-        if (spec.logging.Error) {
+        if (spec.logging.override().Error) {
             mem.debug.unmapError(unmap_error, st_addr, len);
         }
         return unmap_error;

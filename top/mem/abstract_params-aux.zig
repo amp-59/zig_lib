@@ -10,7 +10,13 @@ const abstract_spec = @import("./abstract_spec.zig");
 
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
-pub const is_silent: bool = true;
+pub const logging_override: builtin.Logging.Override = .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = false,
+};
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 

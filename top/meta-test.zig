@@ -4,7 +4,13 @@ const proc = @import("./proc.zig");
 
 pub usingnamespace proc.start;
 
-pub const is_verbose: bool = true;
+pub const logging_default: builtin.Logging.Default = .{
+    .Success = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Fault = true,
+};
 pub const runtime_assertions: bool = true;
 
 fn basicTests() !void {

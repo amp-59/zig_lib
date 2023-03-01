@@ -11,7 +11,6 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.exact_8;
 pub const runtime_assertions: bool = true;
-pub const is_verbose: bool = true;
 
 const Random = file.DeviceRandomBytes(4096);
 const String = Allocator0.StructuredVector(u8);
@@ -166,7 +165,7 @@ pub fn main() !void {
             list.retire(t_begin);
         }
         try testAllMovement(list);
-        if (builtin.is_verbose) {
+        if (builtin.logging_general.Success) {
             try LinkedList.Graphics.show(list, &address_space);
         }
         list.deinit(&allocator_0);
