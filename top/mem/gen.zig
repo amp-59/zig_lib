@@ -36,6 +36,7 @@ const read_spec: file.ReadSpec = .{
     .errors = .{},
 };
 const write_spec: file.WriteSpec = .{
+    .logging = .{},
     .errors = .{},
 };
 
@@ -59,14 +60,12 @@ pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void 
 pub fn writeSourceFile(array: anytype, comptime name: [:0]const u8) void {
     const pathname: [:0]const u8 = if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
     const fd: u64 = file.create(create_spec, pathname);
-    builtin.debug.write(" -> " ++ pathname ++ "\n");
     defer file.close(close_spec, fd);
     file.write(write_spec, fd, array.readAll());
     array.undefineAll();
 }
 pub fn appendSourceFile(array: anytype, comptime name: [:0]const u8) void {
     const pathname: [:0]const u8 = if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
-    builtin.debug.write(" >> " ++ pathname ++ "\n");
     const fd: u64 = file.open(open_append_spec, pathname);
     defer file.close(close_spec, fd);
     file.write(write_spec, fd, array.readAll());
