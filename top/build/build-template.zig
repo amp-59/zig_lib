@@ -1,9 +1,11 @@
 const sys = @import("../sys.zig");
 const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
 const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
 const proc = @import("../proc.zig");
+const time = @import("../time.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 // start-document build-struct.zig
@@ -126,15 +128,21 @@ pub const Builder = struct {
         builder.groups.head();
         return ret;
     }
-    fn exec(builder: Builder, args: [][*:0]u8) !void {
+    fn exec(builder: Builder, args: [][*:0]u8) !time.TimeSpec {
+        const start: time.TimeSpec = try time.get(.{}, .realtime);
         if (0 != try proc.command(.{}, builder.paths.zig_exe, args, builder.vars)) {
             return error.UnexpectedExitStatus;
         }
+        const finish: time.TimeSpec = try time.get(.{}, .realtime);
+        return time.diff(finish, start);
     }
-    fn system(builder: Builder, args: [][*:0]u8) !void {
+    fn system(builder: Builder, args: [][*:0]u8) !time.TimeSpec {
+        const start: time.TimeSpec = try time.get(.{}, .realtime);
         if (0 != try proc.command(.{}, meta.manyToSlice(args[0]), args, builder.vars)) {
             return error.UnexpectedExitStatus;
         }
+        const finish: time.TimeSpec = try time.get(.{}, .realtime);
+        return time.diff(finish, start);
     }
     pub fn init(
         allocator: *Allocator,
@@ -168,13 +176,13 @@ fn join(
     targets: *TargetList,
     name: [:0]const u8,
     pathname: [:0]const u8,
-    fmt: bool,
-    build: bool,
-    run: bool,
+    spec_fmt: bool,
+    spec_build: bool,
+    spec_run: bool,
     mode: builtin.Mode,
-    deps: []const []const u8,
-    mods: []const Module,
-    macros: []const Macro,
+    spec_deps: []const []const u8,
+    spec_mods: []const Module,
+    spec_macros: []const Macro,
     bin_path: [:0]const u8,
 ) *Target {
     const ret: *Target = targets.create(allocator, .{
@@ -183,8 +191,8 @@ fn join(
         .builder = builder,
         .deps = Target.DependencyList.init(allocator),
     });
-    if (fmt) ret.addFormat(allocator, .{});
-    if (build) ret.addBuild(allocator, .{
+    if (spec_fmt) ret.addFormat(allocator, .{});
+    if (spec_build) ret.addBuild(allocator, .{
         .main_pkg_path = builder.paths.build_root,
         .emit_bin = .{ .yes = builder.path(bin_path) },
         .name = name,
@@ -196,12 +204,12 @@ fn join(
         .compiler_rt = false,
         .strip = true,
         .formatted_panics = false,
-        .modules = mods,
-        .dependencies = deps,
+        .modules = spec_mods,
+        .dependencies = spec_deps,
         .mode = mode,
-        .macros = macros,
+        .macros = spec_macros,
     });
-    if (run) ret.addRun(allocator, .{});
+    if (spec_run) ret.addRun(allocator, .{});
     return ret;
 }
 pub const OutputMode = enum {
@@ -410,7 +418,7 @@ pub const Target = struct {
             builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.buildLength());
-            return target.builder.exec(args.referAllDefined());
+            debug.buildNotice(target.name, target.build_cmd.emit_bin.?.yes.?, try target.builder.exec(args.referAllDefined()));
         }
     }
     pub fn format(target: *Target) !void {
@@ -425,7 +433,8 @@ pub const Target = struct {
             builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.formatLength());
-            return target.builder.exec(args.referAllDefined());
+            const format_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
+            debug.formatNotice(target.name, format_time);
         }
     }
     pub fn run(target: *Target) !void {
@@ -436,7 +445,8 @@ pub const Target = struct {
             var args: ArgsPointers = undefined;
             args.undefineAll();
             builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
-            try target.builder.system(args.referAllDefined());
+            const run_time: time.TimeSpec = try target.builder.system(args.referAllDefined());
+            debug.runNotice(target.name, run_time);
         }
     }
     fn maybeInvokeDependencies(target: *Target) anyerror!void {
@@ -449,22 +459,64 @@ pub const Target = struct {
             }
         }
     }
+    const debug = struct {
+        const about_run_s: [:0]const u8 = "run:            ";
+        const about_build_s: [:0]const u8 = "build:          ";
+        const about_format_s: [:0]const u8 = "format:         ";
+        fn buildNotice(name: [:0]const u8, bin_path: Path, durat: time.TimeSpec) void {
+            var array: mem.StaticString(4096) = undefined;
+            array.undefineAll();
+            array.writeFormat(bin_path);
+            array.writeOne(0);
+            array.undefine(1);
+            const stat: file.Stat = (file.stat(.{}, array.readAllWithSentinel(0)) catch return);
+            array.undefineAll();
+            array.writeMany(about_build_s);
+            array.writeMany(name);
+            array.writeMany(", ");
+            array.writeFormat(fmt.bytes(stat.size));
+            array.writeMany(", ");
+            array.writeFormat(fmt.ud64(durat.sec));
+            array.writeMany(".");
+            array.writeFormat(fmt.nsec(durat.nsec));
+            array.writeMany("s\n");
+            builtin.debug.write(array.readAll());
+        }
+        fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec) void {
+            var array: mem.StaticString(4096) = undefined;
+            array.undefineAll();
+            array.writeMany(about);
+            array.writeMany(name);
+            array.writeMany(", ");
+            array.writeFormat(fmt.ud64(durat.sec));
+            array.writeMany(".");
+            array.writeFormat(fmt.nsec(durat.nsec));
+            array.writeMany("s\n");
+            builtin.debug.write(array.readAll());
+        }
+        inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec) void {
+            simpleTimedNotice(about_run_s, name, durat);
+        }
+        inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
+            simpleTimedNotice(about_format_s, name, durat);
+        }
+    };
 };
 fn countArgs(array: anytype) u64 {
     var count: u64 = 0;
     for (array.readAll()) |value| {
         if (value == 0) {
-            count += 1;
+            count +%= 1;
         }
     }
-    return count + 1;
+    return count +% 1;
 }
 fn makeArgs(array: anytype, args: anytype) u64 {
     var idx: u64 = 0;
     for (array.readAll(), 0..) |c, i| {
         if (c == 0) {
             args.writeOne(array.referManyWithSentinelAt(0, idx).ptr);
-            idx = i + 1;
+            idx = i +% 1;
         }
     }
     if (args.len() != 0) {
@@ -621,16 +673,16 @@ pub const Path = struct {
 };
 pub fn GenericList(comptime T: type) type {
     return struct {
+        left: *Node,
         node: *Node,
         len: u64 = 0,
         pos: u64 = 0,
         const List = @This();
-        const Node = struct { prev: *Node, this: *T, next: *Node };
+        const Node = struct { this: *T, next: *Node };
         fn create(list: *List, allocator: *Allocator, value: T) *T {
             list.tail();
             const ret: *T = allocator.duplicateIrreversible(T, value);
             const node: *Node = allocator.createIrreversible(Node);
-            node.prev = list.node;
             list.node.next = node;
             list.node.this = ret;
             list.node = node;
@@ -642,7 +694,6 @@ pub fn GenericList(comptime T: type) type {
             list.tail();
             const saved: *T = allocator.duplicateIrreversible(T, value);
             const node: *Node = allocator.createIrreversible(Node);
-            node.prev = list.node;
             list.node.next = node;
             list.node.this = saved;
             list.node = node;
@@ -663,12 +714,6 @@ pub fn GenericList(comptime T: type) type {
             ret.head();
             return ret;
         }
-        pub fn prev(list: *List) ?*Node {
-            if (list.pos == 0) {
-                return null;
-            }
-            return list.node.prev;
-        }
         pub fn next(list: *List) ?*Node {
             if (list.pos == list.len) {
                 list.head();
@@ -676,10 +721,9 @@ pub fn GenericList(comptime T: type) type {
             }
             return list.node.next;
         }
-        pub fn head(list: *List) void {
-            while (list.pos != 0) : (list.pos -= 1) {
-                list.node = list.node.prev;
-            }
+        pub inline fn head(list: *List) void {
+            list.node = list.left;
+            list.pos = 0;
         }
         pub fn tail(list: *List) void {
             while (list.pos != list.len) : (list.pos += 1) {
@@ -687,7 +731,8 @@ pub fn GenericList(comptime T: type) type {
             }
         }
         fn init(allocator: *Allocator) List {
-            return .{ .node = allocator.createIrreversible(Node) };
+            const node: *Node = allocator.createIrreversible(Node);
+            return .{ .left = node, .node = node };
         }
     };
 }
