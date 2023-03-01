@@ -1,5 +1,10 @@
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const fmt = gen.fmt;
+const meta = gen.meta;
+const algo = gen.algo;
+const builtin = gen.builtin;
+const testing = gen.testing;
+
 const tok = @import("./tok.zig");
 const out = @import("./detail_less.zig");
 const config = @import("./config.zig");
@@ -121,8 +126,8 @@ pub const Fn = packed struct {
         // Interface state actions
         allocate = 6,
         reallocate = 7,
-        deallocate = 8,
-        transform = 9,
+        transform = 8,
+        deallocate = 9,
     };
     const Value = enum(u4) {
         None = 0,
@@ -160,6 +165,31 @@ pub const Fn = packed struct {
         AnyUndefined = 6,
         // All positions with undefined value
         AllUndefined = 7,
+    };
+    pub const Untagged = packed struct {
+        kind: Kind,
+        val: Value = .None,
+        loc: Location = .AllDefined,
+        err: ErrorHandler = .None,
+
+        pub fn init(ctn_fn_info: *const Fn) Untagged {
+            return .{
+                .kind = ctn_fn_info.kind,
+                .val = ctn_fn_info.val,
+                .loc = ctn_fn_info.loc,
+                .err = ctn_fn_info.err,
+            };
+        }
+        fn printSortedByUntaggedPart(allocator: anytype) void {
+            var sorted: [88]u32 = undefined;
+            for (&key, 0..) |*x, i| {
+                sorted[i] = meta.leastBitCast(Fn.Untagged.init(x));
+            }
+            algo.radixSort(allocator, u32, &sorted);
+            for (sorted) |x| {
+                testing.print(.{ fmt.any(@bitCast(Fn.Untagged, @truncate(meta.Child(Fn.Untagged), x))), '\n' });
+            }
+        }
     };
     pub const Tag = enum {
         defineAll,
@@ -256,26 +286,27 @@ pub const Fn = packed struct {
     }
     pub fn hasCapability(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess) bool {
         switch (ctn_fn_info.tag) {
-            .__at => {},
-            .__len => {},
-            .readAll => {},
-            .readAllWithSentinel => {},
-
-            .readOneAt => {},
-            .referOneAt => {},
-            .overwriteOneAt => {},
-            .readCountAt => {},
-            .referCountAt => {},
-            .overwriteCountAt => {},
-            .readCountWithSentinelAt => {},
-            .referCountWithSentinelAt => {},
-            .readManyAt => {},
-            .referManyAt => {},
-            .overwriteManyAt => {},
-            .readManyWithSentinelAt => {},
-            .referManyWithSentinelAt => {},
-
-            .len => {},
+            .__at,
+            .__len,
+            .readAll,
+            .readAllWithSentinel,
+            .referAllDefined,
+            .referAllDefinedWithSentinel,
+            .readOneAt,
+            .referOneAt,
+            .overwriteOneAt,
+            .readCountAt,
+            .referCountAt,
+            .overwriteCountAt,
+            .readCountWithSentinelAt,
+            .referCountWithSentinelAt,
+            .readManyAt,
+            .referManyAt,
+            .overwriteManyAt,
+            .readManyWithSentinelAt,
+            .referManyWithSentinelAt,
+            .len,
+            => return true,
 
             .stream,
             .unstream,
@@ -296,9 +327,8 @@ pub const Fn = packed struct {
             .readCountWithSentinelAhead,
             .readManyAhead,
             .readManyWithSentinelAhead,
-            => {
-                return ctn_detail.modes.stream;
-            },
+            => return ctn_detail.modes.stream,
+
             .__ad,
             .__back,
             .__avail,
@@ -319,8 +349,6 @@ pub const Fn = packed struct {
             .overwriteManyBack,
             .readManyWithSentinelBack,
             .referManyWithSentinelBack,
-            .referAllDefined,
-            .referAllDefinedWithSentinel,
             .referAllUndefined,
             .referAllUndefinedWithSentinel,
             .define,
@@ -329,9 +357,7 @@ pub const Fn = packed struct {
             .referCountUndefined,
             .writeCount,
             .referManyUndefined,
-            => {
-                return ctn_detail.modes.resize;
-            },
+            => return ctn_detail.modes.resize,
 
             .writeMany => {},
             .writeFields => {},
