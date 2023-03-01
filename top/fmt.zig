@@ -427,6 +427,15 @@ pub fn dt(value: time.DateTime) DateTimeFormat(time.DateTime) {
 pub fn pdt(value: time.PackedDateTime) DateTimeFormat(time.PackedDateTime) {
     return .{ .value = value };
 }
+pub fn nsec(value: u64) PolynomialFormat(.{
+    .bits = 64,
+    .signedness = .unsigned,
+    .radix = 10,
+    .width = .{ .fixed = 9 },
+    .range = .{ .min = 0, .max = 999999999 },
+}) {
+    return .{ .value = value };
+}
 
 fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.Signedness, comptime radix: u16) ChangedIntFormatSpec {
     const old_fmt_spec: PolynomialFormatSpec = .{
