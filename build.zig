@@ -1,10 +1,15 @@
 const _ = struct {
-    pub const build = if (true) @import("build/build-aux.zig").main else buildMain;
+    pub const build = if (false) @import("build/build-aux.zig").main else buildMain;
 };
 pub usingnamespace @"_";
 
-pub const is_verbose: bool = false;
-pub const is_silent: bool = false;
+pub const logging_override: builtin.Logging.Override = .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = true,
+};
 pub const runtime_assertions: bool = false;
 
 pub const srg = @import("./zig_lib.zig");
@@ -58,6 +63,10 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const hello: *build.Target          = builder.addTarget(small_spec, allocator,  "hello",    "test/hello.zig");
     const readelf: *build.Target        = builder.addTarget(small_spec, allocator,  "readelf",  "test/readelf.zig");
     const parsedir: *build.Target       = builder.addTarget(fast_spec,  allocator,  "parsedir", "test/parsedir.zig");
+
+    const pathsplit: *build.Target       = builder.addTarget(fast_spec,  allocator,  "pathsplit", "./test/pathsplit.zig");
+    const declprint: *build.Target       = builder.addTarget(fast_spec,  allocator,  "declprint", "./test/print_all_decls.zig");
+
     // Other test programs:
     const impl_test: *build.Target          = builder.addTarget(debug_spec, allocator,  "impl_test",      "top/impl-test.zig");
     const container_test: *build.Target     = builder.addTarget(debug_spec, allocator,  "container_test", "top/container-test.zig");
@@ -120,7 +129,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
         file_test,    list_test,    fmt_test,   render_test,
         thread_test,  virtual_test, build_test,
     }) |_| {}
-    for (.{ mca, treez, itos, cat, hello, readelf, parsedir }) |_| {}
+    for (.{ mca, treez, itos, cat, hello, readelf, parsedir, pathsplit, declprint }) |_| {}
     for (.{ impl_test, container_test, parse_test, lib_parser_test, std_parser_test }) |_| {}
     for (.{ readdir, dynamic, address_space }) |_| {}
     for (.{generate_build}) |_| {}

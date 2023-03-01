@@ -10,7 +10,13 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
-pub const is_verbose: bool = true;
+pub const logging_default: builtin.Logging.Default = .{
+    .Success = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Fault = true,
+};
 
 pub const PathSplitSpec = struct {
     Allocator: type,
