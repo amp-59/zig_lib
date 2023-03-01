@@ -4,16 +4,32 @@ pub const root = @import("root");
 pub const native_endian = zig.cpu.arch.endian();
 pub const is_little: bool = native_endian == .Little;
 pub const is_big: bool = native_endian == .Big;
-pub const is_safe: bool = define("is_safe", bool, zig.mode == .ReleaseSafe);
-pub const is_small: bool = define("is_small", bool, zig.mode == .ReleaseSmall);
-pub const is_fast: bool = define("is_fast", bool, zig.mode == .ReleaseFast);
-pub const is_debug: bool = define("is_debug", bool, zig.mode == .Debug);
-pub const is_perf: bool = define("is_perf", bool, is_small or is_fast);
-pub const is_verbose: bool = define("is_verbose", bool, is_debug);
-pub const is_silent: bool = define("is_silent", bool, false);
-pub const logging: Logging.Full = define("logging", Logging.Full, .{});
+
+pub const is_safe: bool = zig.mode == .ReleaseSafe;
+pub const is_small: bool = zig.mode == .ReleaseSmall;
+pub const is_fast: bool = zig.mode == .ReleaseFast;
+pub const is_debug: bool = zig.mode == .Debug;
+
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
+
+pub const logging_default: Logging.Default = define(
+    "logging_default",
+    Logging.Default,
+    .{ .Success = is_debug, .Acquire = is_debug, .Release = is_debug, .Error = true, .Fault = true },
+);
+pub const logging_override: Logging.Override = define(
+    "logging_override",
+    Logging.Override,
+    .{ .Success = null, .Acquire = null, .Release = null, .Error = null, .Fault = null },
+);
+pub const logging_general: Logging.Default = .{
+    .Success = logging_override.Success orelse logging_default.Success,
+    .Acquire = logging_override.Acquire orelse logging_default.Acquire,
+    .Release = logging_override.Release orelse logging_default.Release,
+    .Error = logging_override.Error orelse logging_default.Error,
+    .Fault = logging_override.Fault orelse logging_default.Fault,
+};
 
 // These are defined by the library builder
 pub const zig_exe: ?[:0]const u8 = define("zig_exe", ?[:0]const u8, null);
@@ -32,65 +48,126 @@ pub fn AddressSpace() type {
             debug.title_s ++ "address spaces are required by high level features with managed memory",
     );
 }
-
 pub const Logging = struct {
-    pub const Full = packed struct {
-        /// Report successful actions (not all actions are reported)
-        Success: bool = default.Success,
+    pub const Default = packed struct {
+        /// Report major successful actions
+        Success: bool,
         /// Report actions which acquire a finite resource
-        Acquire: bool = default.Acquire,
+        Acquire: bool,
         /// Report actions which release a finite resource
-        Release: bool = default.Release,
+        Release: bool,
         /// Report actions which throw an error
-        Error: bool = default.Error,
+        Error: bool,
         /// Report actions which terminate the program
-        Fault: bool = default.Fault,
+        Fault: bool,
+    };
+    pub const Override = struct {
+        /// Report major successful actions
+        Success: ?bool,
+        /// Report actions which acquire a finite resource
+        Acquire: ?bool,
+        /// Report actions which release a finite resource
+        Release: ?bool,
+        /// Report actions which throw an error
+        Error: ?bool,
+        /// Report actions which terminate the program
+        Fault: ?bool,
     };
     pub const SuccessError = packed struct {
-        Success: bool = default.Success,
-        Error: bool = default.Error,
+        Success: bool = logging_default.Success,
+        Error: bool = logging_default.Error,
+        pub fn override(logging: SuccessError) SuccessError {
+            return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
     };
     pub const SuccessFault = packed struct {
-        Success: bool = default.Success,
-        Fault: bool = default.Fault,
+        Success: bool = logging_default.Success,
+        Fault: bool = logging_default.Fault,
+        pub fn override(logging: SuccessFault) SuccessFault {
+            return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
     };
     pub const AcquireError = packed struct {
-        Acquire: bool = default.Acquire,
-        Error: bool = default.Error,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        pub fn override(logging: AcquireError) AcquireError {
+            return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
     };
     pub const AcquireFault = packed struct {
-        Acquire: bool = default.Acquire,
-        Fault: bool = default.Fault,
+        Acquire: bool = logging_default.Acquire,
+        Fault: bool = logging_default.Fault,
+        pub fn override(logging: AcquireFault) AcquireFault {
+            return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
     };
     pub const ReleaseError = packed struct {
-        Release: bool = default.Release,
-        Error: bool = default.Error,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(logging: ReleaseError) ReleaseError {
+            return .{
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
     };
     pub const ReleaseFault = packed struct {
-        Release: bool = default.Release,
-        Fault: bool = default.Fault,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(logging: ReleaseFault) ReleaseFault {
+            return .{
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
     };
     pub const SuccessErrorFault = packed struct {
-        Success: bool = default.Success,
-        Error: bool = default.Error,
-        Fault: bool = default.Fault,
+        Success: bool = logging_default.Success,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(logging: SuccessErrorFault) SuccessErrorFault {
+            return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
     };
     pub const AcquireErrorFault = packed struct {
-        Acquire: bool = default.Acquire,
-        Error: bool = default.Error,
-        Fault: bool = default.Fault,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(logging: AcquireErrorFault) AcquireErrorFault {
+            return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
     };
     pub const ReleaseErrorFault = packed struct {
-        Release: bool = default.Release,
-        Error: bool = default.Error,
-        Fault: bool = default.Fault,
-    };
-    pub const default = .{
-        .Success = is_verbose,
-        .Acquire = is_verbose,
-        .Release = is_verbose,
-        .Error = !is_silent,
-        .Fault = !is_silent,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(logging: ReleaseErrorFault) ReleaseErrorFault {
+            return .{
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
     };
 };
 
