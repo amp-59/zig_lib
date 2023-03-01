@@ -510,3 +510,12 @@ comptime {
         \\  ret
     );
 }
+pub fn memset(dest: [*]u8, value: u8, count: u64) void {
+    asm volatile ("rep stosb"
+        :
+        : [_] "{rdi}" (dest),
+          [_] "{al}" (value),
+          [_] "{rcx}" (count),
+        : "rax", "rdi", "rcx", "memory"
+    );
+}
