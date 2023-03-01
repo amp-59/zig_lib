@@ -921,7 +921,7 @@ fn getTerminalAttributes() void {}
 fn setTerminalAttributes() void {}
 
 pub fn readRandom(buf: []u8) void {
-    sys.call(.getrandom, .{}, void, .{ @ptrToInt(buf.ptr), buf.len, if (builtin.is_perf)
+    sys.call(.getrandom, .{}, void, .{ @ptrToInt(buf.ptr), buf.len, if (builtin.is_fast)
         sys.GRND.INSECURE
     else
         sys.GRND.RANDOM });
@@ -930,7 +930,7 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
         data: mem.StaticString(bytes) = .{},
         const Random = @This();
-        const dev: u64 = if (builtin.is_perf)
+        const dev: u64 = if (builtin.is_fast)
             sys.GRND.INSECURE
         else
             sys.GRND.RANDOM;
