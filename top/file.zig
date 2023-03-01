@@ -1062,19 +1062,19 @@ const debug = opaque {
     const about_truncate_1_s: []const u8 = "truncate-error: ";
 
     fn readNotice(fd: u64, len: u64) void {
-        var buf: [16 + 32 + 512]u8 = undefined;
+        var buf: [16 + 32]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
             about_write_1_s,                 "fd=",
-            builtin.fmt.ud64(fd).readAll(),  ", ",
-            builtin.fmt.ud64(len).readAll(), ", bytes\n",
+            builtin.fmt.ud64(fd).readAll(),  " +",
+            builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
     }
     fn writeNotice(fd: u64, len: u64) void {
-        var buf: [16 + 32 + 512]u8 = undefined;
+        var buf: [16 + 32]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
             about_write_1_s,                 "fd=",
-            builtin.fmt.ud64(fd).readAll(),  ", ",
-            builtin.fmt.ud64(len).readAll(), ", bytes\n",
+            builtin.fmt.ud64(fd).readAll(),  ", +",
+            builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
     }
     fn openNotice(pathname: [:0]const u8, fd: u64) void {
