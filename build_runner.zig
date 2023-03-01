@@ -1,6 +1,5 @@
 const root = @import("@build");
 const build_fn: fn (*build.Allocator, *build.Builder) anyerror!void = root.buildMain;
-
 const srg = blk: {
     if (@hasDecl(root, "srg")) {
         break :blk root.srg;
@@ -137,9 +136,9 @@ fn invokeTarget(allocator: *build.Allocator, builder: *build.Builder, target: *b
     const save: build.Allocator.Save = allocator.save();
     defer allocator.restore(save);
     switch (builder.options.cmd) {
-        .fmt => try target.format(),
-        .run => try target.run(),
-        .build => try target.build(),
+        .fmt => return target.format(),
+        .run => return target.run(),
+        .build => return target.build(),
     }
 }
 inline fn maxWidths(builder: *build.Builder) extern struct { u64, u64 } {
