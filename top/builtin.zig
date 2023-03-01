@@ -1167,19 +1167,19 @@ pub const debug = opaque {
         write(buf);
     }
     pub inline fn logSuccess(buf: []const u8) void {
-        if (config.logging.Success) write(buf);
+        if (config.logging_general.Success) write(buf);
     }
     pub inline fn logAcquire(buf: []const u8) void {
-        if (config.logging.Acquire) write(buf);
+        if (config.logging_general.Acquire) write(buf);
     }
     pub inline fn logRelease(buf: []const u8) void {
-        if (config.logging.Release) write(buf);
+        if (config.logging_general.Release) write(buf);
     }
     pub inline fn logError(buf: []const u8) void {
-        if (config.logging.Error) write(buf);
+        if (config.logging_general.Error) write(buf);
     }
     pub inline fn logFault(buf: []const u8) noreturn {
-        if (config.logging.Fault) write(buf);
+        if (config.logging_general.Fault) write(buf);
         abort();
     }
     pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
@@ -1194,19 +1194,19 @@ pub const debug = opaque {
         write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging.Success) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging_general.Success) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging.Acquire) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging_general.Acquire) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging.Release) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging_general.Release) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging.Error) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging_general.Error) write(buf[0..writeMulti(buf, slices)]);
     }
     pub inline fn logFaultAIO(buf: []u8, slices: []const []const u8) noreturn {
-        if (config.logging.Fault) write(buf[0..writeMulti(buf, slices)]);
+        if (config.logging_general.Fault) write(buf[0..writeMulti(buf, slices)]);
         abort();
     }
 
