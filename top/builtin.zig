@@ -1763,6 +1763,7 @@ pub const fmt = opaque {
     pub fn ixsize(value: isize) StaticString(isize, 16) {
         return hex(isize, value);
     }
+
     fn Absolute(comptime Int: type) type {
         return @Type(.{ .Int = .{
             .bits = @max(@bitSizeOf(Int), 8),

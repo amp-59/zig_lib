@@ -1,6 +1,7 @@
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
+const algo = @import("../algo.zig");
 const proc = @import("../proc.zig");
 const meta = @import("../meta.zig");
 const preset = @import("../preset.zig");
@@ -168,14 +169,11 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&pointer_one));
             return array.writeMany(tok.end_expression);
         },
+        // return an array of type with a given length ending at unstreamed
         .readCountBehind => {
             pointer_count_loc.* = __behind_call;
-            pointer_count_len.* = __avail_call;
+            pointer_count_len.* = expr.symbol(tok.count_name);
             expr.subst(__behind_call.args(), .{
-                .dst = expr.symbol(tok.offset_name),
-                .src = expr.symbol(tok.count_name),
-            });
-            expr.subst(__avail_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
                 .src = expr.symbol(tok.count_name),
             });
@@ -185,12 +183,8 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         },
         .readCountWithSentinelBehind => {
             pointer_count_with_sentinel_loc.* = __behind_call;
-            pointer_count_with_sentinel_len.* = __avail_call;
+            pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             expr.subst(__behind_call.args(), .{
-                .dst = expr.symbol(tok.offset_name),
-                .src = expr.symbol(tok.count_name),
-            });
-            expr.subst(__avail_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
                 .src = expr.symbol(tok.count_name),
             });
@@ -200,12 +194,8 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         },
         .referCountWithSentinelBehind => {
             pointer_count_with_sentinel_loc.* = __behind_call;
-            pointer_count_with_sentinel_len.* = __avail_call;
+            pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             expr.subst(__behind_call.args(), .{
-                .dst = expr.symbol(tok.offset_name),
-                .src = expr.symbol(tok.count_name),
-            });
-            expr.subst(__avail_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
                 .src = expr.symbol(tok.count_name),
             });
@@ -213,14 +203,11 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
+        // returns
         .readManyBehind => {
             pointer_many_loc.* = __behind_call;
-            pointer_many_len.* = __avail_call;
+            pointer_many_len.* = expr.symbol(tok.count_name);
             expr.subst(__behind_call.args(), .{
-                .dst = expr.symbol(tok.offset_name),
-                .src = expr.symbol(tok.count_name),
-            });
-            expr.subst(__avail_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
                 .src = expr.symbol(tok.count_name),
             });
@@ -558,7 +545,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&write_any));
             return array.writeMany(tok.end_expression);
         },
-        // count of defined of type
+        // return count of defined of type
         .len => {
             var div_count_size: [3]Expr = expr.divT(
                 readable_byte_count_call,
@@ -568,7 +555,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
-        // count of streamed of type
+        // return count of streamed of type
         .index => {
             var div_count_size: [3]Expr = expr.divT(
                 expr.join(&streamed_byte_count),
@@ -578,7 +565,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
-        // count of undefined of type
+        // return count of undefined of type
         .avail => {
             var div_count_size: [3]Expr = expr.divT(
                 expr.join(&undefined_byte_count),
@@ -588,7 +575,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
-        // count of unstreamed of type
+        // return count of unstreamed of type
         .ahead => {
             var sub_undefined_unstreamed = expr.sub(
                 expr.join(&undefined_byte_address),
@@ -598,7 +585,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&sub_undefined_unstreamed));
             return array.writeMany(tok.end_expression);
         },
-        // aligned address offset above amount of type
+        // return aligned address offset above amount of type
         .__at => {
             array.writeMany(tok.return_keyword);
             var add_aligned_offset: [3]Expr = expr.add(
@@ -608,7 +595,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&add_aligned_offset));
             return array.writeMany(tok.end_expression);
         },
-        // undefined address offset above amount of type
+        // return undefined address offset above amount of type
         .__ad => {
             array.writeMany(tok.return_keyword);
             var add_undefined_offset: [3]Expr = expr.add(
@@ -618,21 +605,21 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&add_undefined_offset));
             return array.writeMany(tok.end_expression);
         },
-        // count of defined of type subtract amount of type
+        // return count of defined of type subtract amount of type
         .__len => {
             var sub_len_offset: [3]Expr = expr.sub(len_fn_call, expr.call(&mul_offset_child_size));
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&sub_len_offset));
             return array.writeMany(tok.end_expression);
         },
-        // count of undefined of type  subtract amount of type
+        // return count of undefined of type  subtract amount of type
         .__avail => {
             array.writeMany(tok.return_keyword);
             var sub_avail_offset: [3]Expr = expr.sub(avail_fn_call, expr.symbol(tok.offset_name));
             array.writeFormat(expr.call(&sub_avail_offset));
             return array.writeMany(tok.end_expression);
         },
-        // undefined address offset below amount of type
+        // return undefined address offset below amount of type
         .__back => {
             array.writeMany(tok.return_keyword);
             var sub_undefined_offset: [3]Expr = expr.sub(
@@ -642,7 +629,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&sub_undefined_offset));
             return array.writeMany(tok.end_expression);
         },
-        // unstreamed address subtract amount of type
+        // return unstreamed address subtract amount of type
         .__behind => {
             var sub_unstreamed_offset: [3]Expr = expr.sub(
                 expr.join(&unstreamed_byte_address),
@@ -868,6 +855,7 @@ pub fn generateContainers() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
+
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
     var ctn_index: u64 = 0;
