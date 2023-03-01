@@ -417,7 +417,7 @@ const RWPPDValues = extern struct {
         return values.mem.amountToCountOfLength(amount, values.factor);
     }
     fn requestBytes(values: Values) u64 {
-        return values.mem.amountToBytesOfLength(amount, values.factor);
+        return values.mem.amountOfLengthToBytes(amount, values.factor);
     }
     fn requiredCount(values: Values) u64 {
         const s_amt: mem.Amount = .{ .bytes = values.capacity };
@@ -425,7 +425,7 @@ const RWPPDValues = extern struct {
     }
     fn requiredBytes(values: Values) u64 {
         const s_amt: mem.Amount = .{ .bytes = values.capacity };
-        return mem.amountToBytesOfLength(s_amt, values.factor);
+        return mem.amountOfLengthToBytes(s_amt, values.factor);
     }
     const Graphics = struct {
         fn show(values: Values, src: builtin.SourceLocation) void {
@@ -885,7 +885,7 @@ pub fn RWPPXTestPair(comptime impl_type: type) type {
         }
         fn testDefineOperation(pair: *Pair, allocator: Allocator0) Values {
             const amt: mem.Amount = .{ .count = @max(random.readOne(u8), 1) };
-            pair.impl.define(mem.amountToBytesOfLength(amt, factor));
+            pair.impl.define(mem.amountOfLengthToBytes(amt, factor));
             pair.values.assertConsistent();
             return modify(pair, allocator, @src());
         }
