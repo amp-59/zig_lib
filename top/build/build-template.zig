@@ -271,6 +271,7 @@ pub const TargetList = GenericList(Target);
 pub const Target = struct {
     name: [:0]const u8,
     root: [:0]const u8,
+    descr: ?[:0]const u8 = null,
     build_cmd: *BuildCommand = undefined,
     fmt_cmd: *FormatCommand = undefined,
     run_cmd: *RunCommand = undefined,

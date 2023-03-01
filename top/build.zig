@@ -353,6 +353,7 @@ pub const TargetList = GenericList(Target);
 pub const Target = struct {
     name: [:0]const u8,
     root: [:0]const u8,
+    descr: ?[:0]const u8 = null,
     build_cmd: *BuildCommand = undefined,
     fmt_cmd: *FormatCommand = undefined,
     run_cmd: *RunCommand = undefined,
@@ -1551,11 +1552,8 @@ pub const Target = struct {
     }
     const debug = struct {
         const about_run_s: [:0]const u8 = "run:            ";
-        const about_size_s: [:0]const u8 = "size:           ";
-        const about_time_s: [:0]const u8 = "time:           ";
         const about_build_s: [:0]const u8 = "build:          ";
         const about_format_s: [:0]const u8 = "format:         ";
-
         fn buildNotice(name: [:0]const u8, bin_path: Path, durat: time.TimeSpec) void {
             var array: mem.StaticString(4096) = undefined;
             array.undefineAll();
@@ -1575,10 +1573,10 @@ pub const Target = struct {
             array.writeMany("s\n");
             builtin.debug.write(array.readAll());
         }
-        fn runNotice(name: [:0]const u8, durat: time.TimeSpec) void {
+        fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec) void {
             var array: mem.StaticString(4096) = undefined;
             array.undefineAll();
-            array.writeMany(about_run_s);
+            array.writeMany(about);
             array.writeMany(name);
             array.writeMany(", ");
             array.writeFormat(fmt.ud64(durat.sec));
@@ -1587,17 +1585,11 @@ pub const Target = struct {
             array.writeMany("s\n");
             builtin.debug.write(array.readAll());
         }
-        fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
-            var array: mem.StaticString(4096) = undefined;
-            array.undefineAll();
-            array.writeMany(about_format_s);
-            array.writeMany(name);
-            array.writeMany(", ");
-            array.writeFormat(fmt.ud64(durat.sec));
-            array.writeMany(".");
-            array.writeFormat(fmt.nsec(durat.nsec));
-            array.writeMany("s\n");
-            builtin.debug.write(array.readAll());
+        inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec) void {
+            simpleTimedNotice(about_run_s, name, durat);
+        }
+        inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
+            simpleTimedNotice(about_format_s, name, durat);
         }
     };
 };
