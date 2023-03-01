@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu -o pipefail
 hash zig;
 readonly error="error:";
 readonly blank="      ";
@@ -24,7 +25,7 @@ if test -L "$zig_build_runner"; then
             if test -f "$zl_zig_build"; then
                 sed -i 's/pub const build = if (false)/pub const build = if (true)/' "$zl_zig_build";
             fi;
-            echo "build runner: std"
+            echo "std"
         else
             echo $error "would move back original zig build runner, but original file is missing"
             return 2;
@@ -36,17 +37,17 @@ if test -L "$zig_build_runner"; then
         echo $blank "'$zl_build_runner'";
         return 2;
     fi;
-elif /usr/bin/test -f "$zig_build_runner"; then
-    if ! /usr/bin/mv -i "$zig_build_runner" "$zig_build_runner_bkp"; then
+elif test -f "$zig_build_runner"; then
+    if ! mv -i "$zig_build_runner" "$zig_build_runner_bkp"; then
         return 2;
     fi;
-    if ! /usr/bin/ln -s "$zl_build_runner" "$zig_build_runner"; then
+    if ! ln -s "$zl_build_runner" "$zig_build_runner"; then
         return 2;
     fi;
-    if /usr/bin/test -f "$zl_zig_build"; then
-        /usr/bin/sed -i 's/pub const build = if (true)/pub const build = if (false)/' "$zl_zig_build";
+    if test -f "$zl_zig_build"; then
+        sed -i 's/pub const build = if (true)/pub const build = if (false)/' "$zl_zig_build";
     fi;
-    echo "build runner: zl"
+    echo "zl"
 else
     echo $error "'$zig_build_runner': no such file or directory; did nothing"
 fi;
