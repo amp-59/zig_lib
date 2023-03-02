@@ -483,14 +483,14 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 .up_addr = lb_addr,
             };
             switch (@TypeOf(AddressSpace.addr_spec)) {
-                mem.DiscreteAddressSpaceSpec => {
-                    try meta.wrap(special.static.acquire(AddressSpace, address_space, spec.arena_index));
-                },
                 mem.RegularAddressSpaceSpec => {
                     try meta.wrap(special.acquire(AddressSpace, address_space, spec.arena_index));
                 },
+                mem.DiscreteAddressSpaceSpec => {
+                    try meta.wrap(special.acquireStatic(AddressSpace, address_space, spec.arena_index));
+                },
                 mem.ElementaryAddressSpaceSpec => {
-                    try meta.wrap(special.elementary.acquire(AddressSpace, address_space));
+                    try meta.wrap(special.acquireElementary(AddressSpace, address_space));
                 },
                 else => @compileError("invalid address space for this allocator"),
             }
@@ -505,14 +505,14 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 try meta.wrap(allocator.unmapAll());
             }
             switch (@TypeOf(AddressSpace.addr_spec)) {
-                mem.DiscreteAddressSpaceSpec => {
-                    try meta.wrap(special.static.release(AddressSpace, address_space, spec.arena_index));
-                },
                 mem.RegularAddressSpaceSpec => {
                     try meta.wrap(special.release(AddressSpace, address_space, spec.arena_index));
                 },
+                mem.DiscreteAddressSpaceSpec => {
+                    try meta.wrap(special.releaseStatic(AddressSpace, address_space, spec.arena_index));
+                },
                 mem.ElementaryAddressSpaceSpec => {
-                    try meta.wrap(special.elementary.release(AddressSpace, address_space));
+                    try meta.wrap(special.releaseElementary(AddressSpace, address_space));
                 },
                 else => @compileError("invalid address space for this allocator"),
             }
