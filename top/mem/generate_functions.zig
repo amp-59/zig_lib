@@ -30,7 +30,7 @@ const Allocator = mem.GenericArenaAllocator(.{
 });
 const Array = Allocator.StructuredVector(u8);
 
-noinline fn writeField(array: *Array, impl_variant: out.DetailMore) void {
+noinline fn writeField(array: *Array, impl_variant: detail.More) void {
     impl_variant.writeImplementationName(array);
     array.writeMany(",\n");
 }
