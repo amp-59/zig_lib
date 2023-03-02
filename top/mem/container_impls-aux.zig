@@ -1,28 +1,26 @@
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const mach = @import("../mach.zig");
-const algo = @import("../algo.zig");
-const proc = @import("../proc.zig");
-const meta = @import("../meta.zig");
-const preset = @import("../preset.zig");
-const builtin = @import("../builtin.zig");
-const testing = @import("../testing.zig");
-
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const fmt = gen.fmt;
+const mach = gen.mach;
+const algo = gen.algo;
+const proc = gen.proc;
+const meta = gen.meta;
+const preset = gen.preset;
+const builtin = gen.builtin;
+const testing = gen.testing;
 const tok = @import("./tok.zig");
+const expr = @import("./expr.zig");
+const detail = @import("./detail.zig");
+const config = @import("./config.zig");
+const ctn_fn = @import("./ctn_fn.zig");
+const impl_fn = @import("./impl_fn.zig");
+const alloc_fn = @import("./alloc_fn.zig");
 const out = struct {
-    usingnamespace @import("./detail_more.zig");
-    usingnamespace @import("./detail_less.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/containers.zig");
 };
-const expr = @import("./expr.zig");
-const config = @import("./config.zig");
-const ctn_fn = @import("./ctn_fn.zig");
-const impl_fn = @import("./impl_fn.zig");
-const alloc_fn = @import("./alloc_fn.zig");
 
 pub usingnamespace proc.start;
 
@@ -53,7 +51,7 @@ const Array = Allocator.StructuredVector(u8);
 const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
 
-fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less, ctn_fn_info: *const Fn) void {
     if (Expr.debug.show_expressions) {
         Expr.debug.showFunction(ctn_fn_info.tag);
     }
@@ -779,7 +777,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         .dynamic => {},
     }
 }
-fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const out.DetailLess, impl_fn_info: *const impl_fn.Fn) [3]Expr {
+fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const detail.Less, impl_fn_info: *const impl_fn.Fn) [3]Expr {
     // Using array_impl in expr.impl would be better.
     return expr.fieldAccess(
         expr.symbol(tok.array_name),
@@ -787,7 +785,7 @@ fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const out.DetailLess
     );
 }
 
-fn functionBodyUndefinedNotice(ctn_detail: *const out.DetailLess, ctn_fn_info: *const Fn) void {
+fn functionBodyUndefinedNotice(ctn_detail: *const detail.Less, ctn_fn_info: *const Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     array.writeMany("function body undefined: ");
@@ -797,7 +795,7 @@ fn functionBodyUndefinedNotice(ctn_detail: *const out.DetailLess, ctn_fn_info: *
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
-fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess) void {
+fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     for (&ctn_fn.key) |*ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
@@ -816,7 +814,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const out.D
     }
 }
 
-fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess) void {
+fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
 
@@ -862,7 +860,7 @@ inline fn writeFields(array: *Array) void {
     array.writeMany(tok.impl_field);
     array.writeMany(tok.end_list_item);
 }
-inline fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const out.DetailLess) void {
+inline fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     array.writeMany("pub fn ");
     ctn_detail.writeContainerName(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ": anytype) type {\nreturn (struct {\n");
