@@ -1505,6 +1505,7 @@ pub const Target = struct {
         if (target.done(.build)) return;
         if (target.have(.build)) {
             target.do(.build);
+            process_depth +%= 1;
             try target.maybeInvokeDependencies();
             var array: ArgsString = undefined;
             var args: ArgsPointers = undefined;
@@ -1513,7 +1514,11 @@ pub const Target = struct {
             builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.buildLength());
-            debug.buildNotice(target.name, target.build_cmd.emit_bin.?.yes.?, try target.builder.exec(args.referAllDefined()));
+            const build_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
+            process_depth -%= 1;
+            if (process_depth == 0) {
+                debug.buildNotice(target.name, target.build_cmd.emit_bin.?.yes.?, build_time);
+            }
         }
     }
     pub fn format(target: *Target) !void {
@@ -1529,7 +1534,9 @@ pub const Target = struct {
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.formatLength());
             const format_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            debug.formatNotice(target.name, format_time);
+            if (process_depth == 0) {
+                debug.formatNotice(target.name, format_time);
+            }
         }
     }
     pub fn run(target: *Target) !void {
@@ -1541,19 +1548,19 @@ pub const Target = struct {
             args.undefineAll();
             builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
             const run_time: time.TimeSpec = try target.builder.system(args.referAllDefined());
-            debug.runNotice(target.name, run_time);
+            if (process_depth == 0) {
+                debug.runNotice(target.name, run_time);
+            }
         }
     }
     fn maybeInvokeDependencies(target: *Target) anyerror!void {
         target.deps.head();
         while (target.deps.next()) |node| : (target.deps.node = node) {
-            process_depth +%= 1;
             switch (target.deps.node.this.tag) {
                 .build => try target.deps.node.this.target.build(),
                 .run => try target.deps.node.this.target.run(),
                 .fmt => try target.deps.node.this.target.format(),
             }
-            process_depth -%= 1;
         }
     }
     const debug = struct {
