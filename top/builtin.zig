@@ -1981,7 +1981,7 @@ pub const SourceLocation = Src();
 pub const Mode = @TypeOf(config.zig.mode);
 pub const Type = @TypeOf(@typeInfo(void));
 pub const TypeId = @typeInfo(Type).Union.tag_type.?;
-pub const Endian = @TypeOf(@This().cpu.arch.endian());
+pub const Endian = @TypeOf(config.zig.cpu.arch.endian());
 pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
 pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
 fn Src() type {
