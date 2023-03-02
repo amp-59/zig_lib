@@ -20,14 +20,13 @@ pub const Allocator = mem.GenericArenaAllocator(.{
     .errors = preset.allocator.errors.noexcept,
     .options = preset.allocator.options.fast,
 });
-pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
-pub const Pointers = Allocator.StructuredVector([*:0]u8);
-pub const PathString = mem.StaticString(u8, 4096);
 pub const ArgsString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
+
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
 pub const max_relevant_depth: u64 = builtin.define("max_relevant_depth", u64, 0);
+
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
@@ -1621,6 +1620,7 @@ pub const Target = struct {
             array.writeFormat(fmt.ud64(durat.sec));
             array.writeMany(".");
             array.writeFormat(fmt.nsec(durat.nsec));
+            array.undefine(6);
             array.writeMany("s\n");
             builtin.debug.write(array.readAll());
         }
@@ -1633,6 +1633,7 @@ pub const Target = struct {
             array.writeFormat(fmt.ud64(durat.sec));
             array.writeMany(".");
             array.writeFormat(fmt.nsec(durat.nsec));
+            array.undefine(6);
             array.writeMany("s\n");
             builtin.debug.write(array.readAll());
         }
