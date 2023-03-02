@@ -64,8 +64,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const impl_test: *build.Target          = builder.addTarget(debug_spec, allocator,  "impl_test",      "top/impl-test.zig");
     const container_test: *build.Target     = builder.addTarget(debug_spec, allocator,  "container_test", "top/container-test.zig");
     const parse_test: *build.Target         = builder.addTarget(debug_spec, allocator,  "parse_test",     "top/parse-test.zig");
-    const lib_parser_test: *build.Target    = builder.addTarget(fast_spec, allocator,   "lib_parser",     "test/parsedir.zig");
-    const std_parser_test: *build.Target    = builder.addTarget(fast_spec, allocator,   "std_parser",     "test/parsedir.zig");
+    const lib_parser_test: *build.Target    = builder.addTarget(parser_spec_a, allocator,   "lib_parser",     "test/parsedir.zig");
+    const std_parser_test: *build.Target    = builder.addTarget(parser_spec_b, allocator,   "std_parser",     "test/parsedir.zig");
     // Examples:
     const readdir: *build.Target            = builder.addTarget(small_spec, allocator,  "readdir",          "examples/iterate_dir_entries.zig");
     const dynamic: *build.Target            = builder.addTarget(small_spec, allocator,  "dynamic",          "examples/dynamic_alloc.zig");
