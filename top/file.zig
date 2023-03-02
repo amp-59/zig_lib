@@ -1111,7 +1111,7 @@ const debug = opaque {
     fn readNotice(fd: u64, len: u64) void {
         var buf: [16 + 32]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
-            about_write_1_s,                 "fd=",
+            about_write_0_s,                 "fd=",
             builtin.fmt.ud64(fd).readAll(),  " +",
             builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
@@ -1119,7 +1119,7 @@ const debug = opaque {
     fn writeNotice(fd: u64, len: u64) void {
         var buf: [16 + 32]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
-            about_write_1_s,                 "fd=",
+            about_write_0_s,                 "fd=",
             builtin.fmt.ud64(fd).readAll(),  ", +",
             builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
