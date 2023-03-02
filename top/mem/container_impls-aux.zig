@@ -91,7 +91,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
     var len_fn_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
     var avail_fn_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.avail));
     var __len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__len));
-    _ = __len_call;
     var __avail_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__avail));
     _ = __avail_call;
     var __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
@@ -299,7 +298,17 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
-        .readManyAt => {},
+        .readManyAt => {
+            pointer_many_loc.* = __at_call;
+            if (config.user_defined_length) {
+                pointer_many_len.* = expr.symbol(tok.count_name);
+            } else {
+                pointer_many_len.* = __len_call;
+            }
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many));
+            return array.writeMany(tok.end_expression);
+        },
         .referManyAt => {},
         .overwriteManyAt => {},
         .readManyWithSentinelAt => {},
