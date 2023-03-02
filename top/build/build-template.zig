@@ -23,6 +23,7 @@ pub const Allocator = mem.GenericArenaAllocator(.{
 });
 pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
+pub const PathString = mem.StaticString(u8, 4096);
 pub const ArgsString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
