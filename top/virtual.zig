@@ -736,6 +736,8 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
     });
 }
 pub const ElementaryAddressSpaceSpec = struct {
+    label: ?[]const u8 = null,
+
     lb_addr: u64 = 0x40000000,
     up_addr: u64 = 0x800000000000,
     errors: AddressSpaceErrors,
@@ -743,7 +745,6 @@ pub const ElementaryAddressSpaceSpec = struct {
     options: ArenaOptions,
 };
 /// Elementary:
-///     *
 pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) type {
     return struct {
         impl: bool = false,

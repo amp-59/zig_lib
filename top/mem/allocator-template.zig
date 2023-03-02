@@ -874,7 +874,7 @@ const special = opaque {
         const lb_addr: u64 = address_space.low();
         const up_addr: u64 = address_space.high();
         const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
-        if (helper.acquireSet(AddressSpace, address_space)) {
+        if (helper.acquireElementarySet(AddressSpace, address_space)) {
             if (logging.Acquire) {
                 debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
             }
@@ -939,7 +939,7 @@ const special = opaque {
         const spec = AddressSpace.addr_spec;
         const lb_addr: u64 = address_space.low();
         const up_addr: u64 = address_space.high();
-        if (helper.releaseUnset(AddressSpace, address_space)) {
+        if (helper.releaseElementaryUnset(AddressSpace, address_space)) {
             if (spec.logging.release.Release) {
                 debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
             }
@@ -1254,25 +1254,29 @@ const debug = opaque {
         array.writeMany("\n");
         builtin.debug.logRelease(array.readAll());
     }
-    fn arenaAcquireNotice(index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaAcquireNotice(index_opt: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(about_acq_0_s);
         array.writeMany(label orelse "arena");
         array.writeMany("-");
-        array.writeFormat(fmt.ud64(index));
+        if (index_opt) |index| {
+            array.writeFormat(fmt.ud64(index));
+        }
         array.writeMany(", ");
         writeAddressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany("\n");
         builtin.debug.logAcquire(array.readAll());
     }
-    fn arenaReleaseNotice(index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaReleaseNotice(index_opt: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
         array.writeMany(about_rel_0_s);
         array.writeMany(label orelse "arena");
         array.writeMany("-");
-        array.writeFormat(fmt.ud64(index));
+        if (index_opt) |index| {
+            array.writeFormat(fmt.ud64(index));
+        }
         array.writeMany(", ");
         writeAddressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany("\n");

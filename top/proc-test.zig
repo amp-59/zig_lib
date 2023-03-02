@@ -40,7 +40,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
         };
         var address_space: AddressSpace = .{};
         var allocator: build.Allocator = try build.Allocator.init(&address_space);
-        var builder: build.Builder = build.Builder.init(&allocator, .{
+        var builder: build.Builder = try build.Builder.init(&allocator, .{
             .zig_exe = builtin.zig_exe.?,
             .build_root = builtin.build_root.?,
             .cache_dir = builtin.cache_dir.?,
