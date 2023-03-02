@@ -6,7 +6,7 @@ const builtin = gen.builtin;
 const testing = gen.testing;
 
 const tok = @import("./tok.zig");
-const out = @import("./detail_less.zig");
+const detail = @import("./detail.zig");
 const config = @import("./config.zig");
 // zig fmt: off
 pub const key: [88]Fn = .{
@@ -284,7 +284,7 @@ pub const Fn = packed struct {
     pub inline fn fnName(ctn_fn_info: *const Fn) [:0]const u8 {
         return @tagName(ctn_fn_info.tag);
     }
-    pub fn hasCapability(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess) bool {
+    pub fn hasCapability(ctn_fn_info: *const Fn, ctn_detail: *const detail.Less) bool {
         switch (ctn_fn_info.tag) {
             .__at,
             .__len,
@@ -385,7 +385,7 @@ pub const Fn = packed struct {
         }
         return true;
     }
-    pub fn argList(ctn_fn_info: *const Fn, ctn_detail: *const out.DetailLess, list_kind: gen.ListKind) gen.ArgList { // 8KiB
+    pub fn argList(ctn_fn_info: *const Fn, ctn_detail: *const detail.Less, list_kind: gen.ListKind) gen.ArgList { // 8KiB
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
@@ -1103,14 +1103,14 @@ pub const Fn = packed struct {
         }
         return arg_list;
     }
-    pub fn writeCall(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const out.DetailLess) void {
+    pub fn writeCall(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const detail.Less) void {
         const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         array.writeMany(ctn_fn_info.fnName());
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
         array.writeMany(")");
     }
-    pub fn writeSignature(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const out.DetailLess) void {
+    pub fn writeSignature(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const detail.Less) void {
         const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
         array.writeMany("pub fn ");
         array.writeMany(ctn_fn_info.fnName());
