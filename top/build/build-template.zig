@@ -41,6 +41,8 @@ pub const Builder = struct {
     groups: GroupList,
     args: [][*:0]u8,
     vars: [][*:0]u8,
+    dir_fd: u64,
+    depth: u64 = 0,
     pub const Paths = struct {
         zig_exe: [:0]const u8,
         build_root: [:0]const u8,
@@ -151,15 +153,19 @@ pub const Builder = struct {
         options: GlobalOptions,
         args: [][*:0]u8,
         vars: [][*:0]u8,
-    ) Builder {
+    ) !Builder {
         var ret: Builder = .{
             .paths = paths,
             .options = options,
             .args = args,
             .vars = vars,
             .groups = GroupList.init(allocator),
+            .dir_fd = try file.path(.{}, paths.build_root),
         };
         return ret;
+    }
+    fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
+        return file.fstatAt(.{}, builder.dir_fd, name) catch null;
     }
 };
 pub const TargetSpec = struct {
@@ -416,19 +422,22 @@ pub const Target = struct {
         if (target.done(.build)) return;
         if (target.have(.build)) {
             target.do(.build);
-            process_depth +%= 1;
+            target.builder.depth +%= 1;
             try target.maybeInvokeDependencies();
             var array: ArgsString = undefined;
             var args: ArgsPointers = undefined;
             array.undefineAll();
             args.undefineAll();
+            const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
+            const old_size: u64 = if (target.builder.stat(bin_path)) |st| st.size else 0;
             builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.buildLength());
             const build_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            process_depth -%= 1;
-            if (process_depth == 0) {
-                debug.buildNotice(target.name, target.build_cmd.emit_bin.?.yes.?, build_time);
+            const new_size: u64 = if (target.builder.stat(bin_path)) |st| st.size else 0;
+            target.builder.depth -%= 1;
+            if (target.builder.depth == 0) {
+                debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
             }
         }
     }
@@ -445,7 +454,7 @@ pub const Target = struct {
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.formatLength());
             const format_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            if (process_depth == 0) {
+            if (target.builder.depth == 0) {
                 debug.formatNotice(target.name, format_time);
             }
         }
@@ -459,7 +468,7 @@ pub const Target = struct {
             args.undefineAll();
             builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
             const run_time: time.TimeSpec = try target.builder.system(args.referAllDefined());
-            if (process_depth == 0) {
+            if (target.builder.depth == 0) {
                 debug.runNotice(target.name, run_time);
             }
         }
