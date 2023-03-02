@@ -41,11 +41,7 @@ const Many64 = SecondaryAllocator.StructuredVector(u64);
 const Many64I = @typeInfo(Many64).Struct.fields[0].type;
 
 const build_dynamic: bool = false;
-const show_elf_header: bool = is_verbose;
-const show_section_header: bool = is_verbose;
-const show_dynamic_section_entries: bool = is_verbose;
-const show_program_header: bool = is_verbose;
-const show_up_to_date: bool = is_verbose;
+const is_verbose: bool = true;
 
 var random: Random = .{};
 
@@ -150,7 +146,7 @@ fn compile(vars: [][*:0]u8, src_path: [:0]const u8, so_path: [:0]const u8) !void
     if (file.stat(.{}, so_path)) |so_stat| {
         if (so_stat.mtime.sec < src_stat.mtime.sec) {
             _ = try exe_order.compile(vars);
-        } else if (show_up_to_date) {
+        } else if (is_verbose) {
             showLibraryUpToDate(src_path, so_path, src_stat, so_stat);
         }
     } else |stat_err| {
@@ -170,7 +166,7 @@ fn getProgramOffset(header_array: anytype, elf_header: exe.Header) !u64 {
     defer header_array.unstreamAll();
     var phdr_itr: PhdrIterator = PhdrIterator.init(elf_header, header_array);
     while (phdr_itr.next()) |phdr| {
-        if (show_program_header) {
+        if (is_verbose) {
             showProgramHeader(phdr_itr.index, phdr);
         }
         if (phdr.p_flags.check(.X)) {
@@ -187,7 +183,7 @@ fn getSectionAddress(header_array: anytype, fn_name: [:0]const u8, elf_header: e
     var header_index: u64 = 0;
     var dynsym_size: u64 = 0;
     while (shdr_itr.next()) |shdr| {
-        if (show_section_header) {
+        if (is_verbose) {
             showSectionHeader(header_index, shdr);
         }
         if (shdr.sh_type == .DYNSYM) {
@@ -202,7 +198,7 @@ fn getSectionAddress(header_array: anytype, fn_name: [:0]const u8, elf_header: e
             var strtab_addr: u64 = 0;
             while (dynamic_index != dynamic.len) : (dynamic_index += 1) {
                 var d_entry: exe.Elf64_Dyn = dynamic[dynamic_index];
-                if (show_dynamic_section_entries) {
+                if (is_verbose) {
                     showDynamicSectionEntry(d_entry);
                 }
                 if (d_entry.d_tag == .SYMTAB) {
@@ -260,7 +256,7 @@ fn getSectionAddress(header_array: anytype, fn_name: [:0]const u8, elf_header: e
 }
 fn mload(header_array: anytype, fn_name: [:0]const u8, comptime T: type) !T {
     const elf_header: exe.Header = try exe.Header.parse(header_array);
-    if (show_elf_header) {
+    if (is_verbose) {
         showHeader(elf_header);
     }
     const offset: u64 = try getProgramOffset(header_array, elf_header);
