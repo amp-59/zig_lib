@@ -22,6 +22,7 @@ pub const Allocator = mem.GenericArenaAllocator(.{
 });
 pub const String = Allocator.StructuredVectorLowAligned(u8, 8);
 pub const Pointers = Allocator.StructuredVector([*:0]u8);
+pub const PathString = mem.StaticString(u8, 4096);
 pub const ArgsString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
@@ -39,6 +40,8 @@ pub const Builder = struct {
     groups: GroupList,
     args: [][*:0]u8,
     vars: [][*:0]u8,
+    dir_fd: u64,
+    depth: u64 = 0,
     pub const Paths = struct {
         zig_exe: [:0]const u8,
         build_root: [:0]const u8,
@@ -149,15 +152,19 @@ pub const Builder = struct {
         options: GlobalOptions,
         args: [][*:0]u8,
         vars: [][*:0]u8,
-    ) Builder {
+    ) !Builder {
         var ret: Builder = .{
             .paths = paths,
             .options = options,
             .args = args,
             .vars = vars,
             .groups = GroupList.init(allocator),
+            .dir_fd = try file.path(.{}, paths.build_root),
         };
         return ret;
+    }
+    fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
+        return file.fstatAt(.{}, builder.dir_fd, name) catch null;
     }
 };
 pub const TargetSpec = struct {
@@ -394,14 +401,38 @@ pub const Target = struct {
     inline fn done(target: *Target, comptime tag: Tag) bool {
         return (target.flags & comptime Tag.done(tag)) != 0;
     }
-
+    inline fn assertHave(target: *Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
+        mach.assert(target.have(tag), src.fn_name ++ ": missing " ++ @tagName(tag));
+    }
+    inline fn assertDone(target: *Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
+        mach.assert(target.have(tag), src.fn_name ++ ": outstanding " ++ @tagName(tag));
+    }
     const DependencyList = GenericList(Dependency);
     /// All dependencies are build dependencies
     pub const Dependency = struct {
         tag: Tag,
         target: *Target,
     };
-    var process_depth: u8 = 0;
+    fn getAsmPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_asm.?.yes.?;
+    }
+    fn getBinPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_bin.?.yes.?;
+    }
+    fn getAnalysisPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_analysis.?.yes.?;
+    }
+    fn getLlvmIrPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_llvm_ir.?.yes.?;
+    }
+    fn getLlvmBcPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_llvm_bc.?.yes.?;
+    }
 
     pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
         target.fmt_cmd = allocator.duplicateIrreversible(FormatCommand, fmt_cmd);
@@ -1505,19 +1536,22 @@ pub const Target = struct {
         if (target.done(.build)) return;
         if (target.have(.build)) {
             target.do(.build);
-            process_depth +%= 1;
+            target.builder.depth +%= 1;
             try target.maybeInvokeDependencies();
             var array: ArgsString = undefined;
             var args: ArgsPointers = undefined;
             array.undefineAll();
             args.undefineAll();
+            const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
+            const old_size: u64 = if (target.builder.stat(bin_path)) |st| st.size else 0;
             builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.buildLength());
             const build_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            process_depth -%= 1;
-            if (process_depth == 0) {
-                debug.buildNotice(target.name, target.build_cmd.emit_bin.?.yes.?, build_time);
+            const new_size: u64 = if (target.builder.stat(bin_path)) |st| st.size else 0;
+            target.builder.depth -%= 1;
+            if (target.builder.depth == 0) {
+                debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
             }
         }
     }
@@ -1534,7 +1568,7 @@ pub const Target = struct {
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.formatLength());
             const format_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            if (process_depth == 0) {
+            if (target.builder.depth == 0) {
                 debug.formatNotice(target.name, format_time);
             }
         }
@@ -1548,7 +1582,7 @@ pub const Target = struct {
             args.undefineAll();
             builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
             const run_time: time.TimeSpec = try target.builder.system(args.referAllDefined());
-            if (process_depth == 0) {
+            if (target.builder.depth == 0) {
                 debug.runNotice(target.name, run_time);
             }
         }
@@ -1567,18 +1601,21 @@ pub const Target = struct {
         const about_run_s: [:0]const u8 = "run:            ";
         const about_build_s: [:0]const u8 = "build:          ";
         const about_format_s: [:0]const u8 = "format:         ";
-        fn buildNotice(name: [:0]const u8, bin_path: Path, durat: time.TimeSpec) void {
+        const ChangedSize = fmt.ChangedBytesFormat(.{
+            .dec_style = "\x1b[92m-",
+            .inc_style = "\x1b[91m+",
+        });
+        fn buildNotice(name: [:0]const u8, bin_path: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
             var array: mem.StaticString(4096) = undefined;
             array.undefineAll();
-            array.writeFormat(bin_path);
+            array.writeMany(bin_path);
             array.writeOne(0);
             array.undefine(1);
-            const stat: file.Stat = (file.stat(.{}, array.readAllWithSentinel(0)) catch return);
             array.undefineAll();
             array.writeMany(about_build_s);
             array.writeMany(name);
             array.writeMany(", ");
-            array.writeFormat(fmt.bytes(stat.size));
+            array.writeFormat(ChangedSize.init(old_size, new_size));
             array.writeMany(", ");
             array.writeFormat(fmt.ud64(durat.sec));
             array.writeMany(".");
