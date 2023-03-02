@@ -616,12 +616,13 @@ pub const static = opaque {
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
     const mmap_prot: Prot = spec.prot();
     const mmap_flags: Map = spec.flags();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             debug.mapNotice(addr, len);
         }
     } else |map_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.mapError(map_error, addr, len);
         }
         return map_error;
@@ -629,36 +630,39 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors.thr
 }
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors.throw, spec.return_type) {
     const mremap_flags: Remap = spec.flags();
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.remapNotice(old_addr, old_len, new_addr, null);
         }
     } else |mremap_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.remapError(mremap_error, old_addr, old_len, new_addr, null);
         }
         return mremap_error;
     }
 }
 pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.remapNotice(old_addr, old_len, null, new_len);
         }
     } else |mremap_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.remapError(mremap_error, old_addr, old_len, null, new_len);
         }
         return mremap_error;
     }
 }
 pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    const logging: builtin.Logging.ReleaseErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
-        if (spec.logging.override().Release) {
+        if (logging.Release) {
             debug.unmapNotice(addr, len);
         }
     } else |unmap_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.unmapError(unmap_error, addr, len);
         }
         return unmap_error;
@@ -666,12 +670,13 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors
 }
 pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
     const prot: Prot = spec.prot();
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, prot.val }))) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.protectNotice(addr, len, "<description>");
         }
     } else |protect_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.protectError(protect_error, addr, len, "<description>");
         }
         return protect_error;
@@ -679,12 +684,13 @@ pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.er
 }
 pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
     const advice: Advice = spec.advice();
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.adviseNotice(addr, len, spec.describe());
         }
     } else |madvise_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.adviseError(madvise_error, addr, len, spec.describe());
         }
         return madvise_error;
@@ -693,13 +699,14 @@ pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.erro
 pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: mem.Fd = spec.flags();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             mem.debug.memFdNotice(name, mem_fd);
         }
         return mem_fd;
     } else |memfd_create_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             mem.debug.memFdError(memfd_create_error, name);
         }
         return memfd_create_error;
