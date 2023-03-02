@@ -319,14 +319,38 @@ pub const Target = struct {
     inline fn done(target: *Target, comptime tag: Tag) bool {
         return (target.flags & comptime Tag.done(tag)) != 0;
     }
-
+    inline fn assertHave(target: *Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
+        mach.assert(target.have(tag), src.fn_name ++ ": missing " ++ @tagName(tag));
+    }
+    inline fn assertDone(target: *Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
+        mach.assert(target.have(tag), src.fn_name ++ ": outstanding " ++ @tagName(tag));
+    }
     const DependencyList = GenericList(Dependency);
     /// All dependencies are build dependencies
     pub const Dependency = struct {
         tag: Tag,
         target: *Target,
     };
-    var process_depth: u8 = 0;
+    fn getAsmPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_asm.?.yes.?;
+    }
+    fn getBinPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_bin.?.yes.?;
+    }
+    fn getAnalysisPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_analysis.?.yes.?;
+    }
+    fn getLlvmIrPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_llvm_ir.?.yes.?;
+    }
+    fn getLlvmBcPath(target: *const Target) Path {
+        target.assertHave(.build, @src());
+        return target.build_cmd.emit_llvm_bc.?.yes.?;
+    }
 
     pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
         target.fmt_cmd = allocator.duplicateIrreversible(FormatCommand, fmt_cmd);
