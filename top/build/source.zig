@@ -1,6 +1,6 @@
-const mach = @import("./mach.zig");
-const build = @import("./build.zig");
-const builtin = @import("./builtin.zig");
+const mach = @import("../mach.zig");
+const build = @import("../build.zig");
+const builtin = @import("../builtin.zig");
 
 fn rewind(builder: *build.Builder) callconv(.C) void {
     var groups: build.GroupList = builder.groups.itr();
