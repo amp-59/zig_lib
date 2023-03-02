@@ -511,18 +511,21 @@ pub const Target = struct {
         const about_run_s: [:0]const u8 = "run:            ";
         const about_build_s: [:0]const u8 = "build:          ";
         const about_format_s: [:0]const u8 = "format:         ";
-        fn buildNotice(name: [:0]const u8, bin_path: Path, durat: time.TimeSpec) void {
+        const ChangedSize = fmt.ChangedBytesFormat(.{
+            .dec_style = "\x1b[92m-",
+            .inc_style = "\x1b[91m+",
+        });
+        fn buildNotice(name: [:0]const u8, bin_path: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
             var array: mem.StaticString(4096) = undefined;
             array.undefineAll();
-            array.writeFormat(bin_path);
+            array.writeMany(bin_path);
             array.writeOne(0);
             array.undefine(1);
-            const stat: file.Stat = (file.stat(.{}, array.readAllWithSentinel(0)) catch return);
             array.undefineAll();
             array.writeMany(about_build_s);
             array.writeMany(name);
             array.writeMany(", ");
-            array.writeFormat(fmt.bytes(stat.size));
+            array.writeFormat(ChangedSize.init(old_size, new_size));
             array.writeMany(", ");
             array.writeFormat(fmt.ud64(durat.sec));
             array.writeMany(".");
