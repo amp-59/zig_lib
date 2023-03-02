@@ -298,7 +298,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
-        .readManyAt => {
+        .readManyAt, .referManyAt => {
             pointer_many_loc.* = __at_call;
             if (config.user_defined_length) {
                 pointer_many_len.* = expr.symbol(tok.count_name);
@@ -309,15 +309,22 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             array.writeFormat(expr.call(&pointer_many));
             return array.writeMany(tok.end_expression);
         },
-        .referManyAt => {},
         .overwriteManyAt => {},
-        .readManyWithSentinelAt => {},
-        .referManyWithSentinelAt => {},
+        .readManyWithSentinelAt, .referManyWithSentinelAt => {
+            pointer_many_with_sentinel_loc.* = __at_call;
+            if (config.user_defined_length) {
+                pointer_many_with_sentinel_len.* = expr.symbol(tok.count_name);
+            } else {
+                pointer_many_with_sentinel_len.* = __len_call;
+            }
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many_with_sentinel));
+            return array.writeMany(tok.end_expression);
+        },
         .readOneAhead => {},
         .readCountAhead => {},
         .readCountWithSentinelAhead => {},
-        .readManyAhead => {},
-        .readManyWithSentinelAhead => {},
+        .readManyAhead, .readManyWithSentinelAhead => {},
         .readOneBack => {},
         .referOneBack => {},
         .overwriteOneBack => {},
@@ -326,11 +333,9 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         .overwriteCountBack => {},
         .readCountWithSentinelBack => {},
         .referCountWithSentinelBack => {},
-        .readManyBack => {},
-        .referManyBack => {},
+        .readManyBack, .referManyBack => {},
         .overwriteManyBack => {},
-        .readManyWithSentinelBack => {},
-        .referManyWithSentinelBack => {},
+        .readManyWithSentinelBack, .referManyWithSentinelBack => {},
         .referAllUndefined => {},
         .referAllUndefinedWithSentinel => {},
         .referOneUndefined => {},
