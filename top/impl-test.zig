@@ -27,6 +27,7 @@ pub const logging_override: builtin.Logging.Override = .{
     .Error = false,
     .Fault = false,
 };
+pub const is_verbose: bool = true;
 
 const Allocator0 = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
