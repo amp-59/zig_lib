@@ -1,14 +1,13 @@
 //! This stage summarises the abstract specification.
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const proc = @import("../proc.zig");
-const meta = @import("../meta.zig");
-const preset = @import("../preset.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const proc = gen.proc;
+const builtin = gen.builtin;
+
 const attr = @import("./attr.zig");
+const detail = @import("./detail.zig");
+
 const out = struct {
-    usingnamespace @import("./detail.zig");
     usingnamespace @import("./abstract_spec.zig");
 };
 pub usingnamespace proc.start;
@@ -23,7 +22,7 @@ pub const logging_override: builtin.Logging.Override = .{
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
-fn setAttribute(impl_detail: *out.Detail, comptime attribute_name: []const u8) void {
+fn setAttribute(impl_detail: *detail.Base, comptime attribute_name: []const u8) void {
     if (@hasField(attr.Kinds, attribute_name)) {
         @field(impl_detail.kinds, attribute_name) = true;
         return;
@@ -53,11 +52,11 @@ fn setAttribute(impl_detail: *out.Detail, comptime attribute_name: []const u8) v
     }
     @compileError("unknown attribute: " ++ attribute_name);
 }
-inline fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: *out.Detail) void {
+inline fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_detail: *detail.Base) void {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Union) {
         inline for (type_info.Union.fields) |field| {
-            const save: out.Detail = impl_detail.*;
+            const save: detail.Base = impl_detail.*;
             defer impl_detail.* = save;
             setAttribute(impl_detail, field.name);
             writeUnspecifiedDetailInternal(array, field.type, impl_detail);
@@ -67,7 +66,7 @@ inline fn writeUnspecifiedDetailInternal(array: *Array, comptime T: type, impl_d
         writeDetailStruct(array, impl_detail);
     }
 }
-fn writeDetailStruct(array: *Array, impl_detail: *const out.Detail) void {
+fn writeDetailStruct(array: *Array, impl_detail: *const detail.Base) void {
     array.writeMany("    ");
     array.writeFormat(impl_detail.*);
     array.writeMany(",\n");
@@ -75,9 +74,9 @@ fn writeDetailStruct(array: *Array, impl_detail: *const out.Detail) void {
 fn specToDetail() void {
     var array: Array = undefined;
     array.undefineAll();
-    var impl_detail: out.Detail = .{};
-    gen.writeImport(&array, "out", "../../detail.zig");
-    array.writeMany("pub const impl_details: []const out.Detail = &[_]out.Detail{");
+    var impl_detail: detail.Base = .{};
+    gen.writeImport(&array, "detail", "../../detail.zig");
+    array.writeMany("pub const impl_details: []const detail.Base = &[_]detail.Base{");
     writeUnspecifiedDetailInternal(&array, out.AbstractSpec, &impl_detail);
     array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(&array, "impl_details.zig");
