@@ -1,11 +1,13 @@
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const meta = @import("../meta.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const sys = gen.sys;
+const proc = gen.proc;
+const meta = gen.meta;
+
+const detail = @import("./detail.zig");
+const canonical = @import("./canonical.zig");
+
 const out = struct {
-    usingnamespace @import("./canonical.zig");
-    usingnamespace @import("./detail.zig");
     usingnamespace @import("./zig-out/src/specifiers.zig");
     usingnamespace @import("./zig-out/src/impl_details.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
@@ -14,14 +16,14 @@ const out = struct {
 };
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
-fn writeFieldType(comptime field: out.CanonicalFieldSpec, array: *Array) void {
-    const sample: []const field.detail = if (field.detail == out.Detail) out.impl_details else out.impl_variants;
+fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) void {
+    const sample: []const field.detail = if (field.detail == detail.Base) out.impl_details else out.impl_variants;
     const backing_int: type = meta.Child(field.src_type);
     const Uniques = mem.StaticArray(backing_int, 256);
     var uniques: Uniques = undefined;
     uniques.undefineAll();
-    lo: for (sample) |detail| {
-        const value: field.src_type = @field(detail, field.src_name);
+    lo: for (sample) |impl_detail| {
+        const value: field.src_type = @field(impl_detail, field.src_name);
         for (uniques.readAll()) |unique_value| {
             if (@bitCast(backing_int, value) == unique_value) continue :lo;
         }
@@ -94,7 +96,7 @@ fn writeFieldType(comptime field: out.CanonicalFieldSpec, array: *Array) void {
     }
     array.writeMany("}\n}\n};\n");
 }
-fn writeCanonicalStruct(array: *Array, comptime spec: out.CanonicalSpec) void {
+fn writeCanonicalStruct(array: *Array, comptime spec: canonical.CanonicalSpec) void {
     inline for (spec.fields) |field| writeFieldType(field, array);
     array.writeMany("pub const " ++ spec.type_name ++ "=packed struct{\n");
     array.writeMany("index:u8,\n");
@@ -111,18 +113,16 @@ fn writeCanonicalStruct(array: *Array, comptime spec: out.CanonicalSpec) void {
     gen.writeAuxiliarySourceFile(array, "canonical.zig");
 }
 
-pub export fn _start() noreturn {
-    @setAlignStack(16);
+pub fn main() void {
     var array: Array = undefined;
     array.undefineAll();
     writeCanonicalStruct(&array, .{ .fields = &.{
-        out.layouts,
-        out.kinds,
-        out.modes,
-        out.managers,
-        out.fields,
-        out.techs,
-        out.specs,
+        canonical.layouts,
+        canonical.kinds,
+        canonical.modes,
+        canonical.managers,
+        canonical.fields,
+        canonical.techs,
+        canonical.specs,
     } });
-    sys.call(.exit, .{}, noreturn, .{0});
 }
