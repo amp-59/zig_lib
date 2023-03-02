@@ -74,11 +74,11 @@ pub fn main() !void {
 
     comptime var thread_index: u8 = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try mem.static.acquire(ThreadSpace, &thread_space, thread_index);
+        try mem.acquireStatic(ThreadSpace, &thread_space, thread_index);
     }
     thread_index = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        mem.static.release(ThreadSpace, &thread_space, thread_index);
+        mem.releaseStatic(ThreadSpace, &thread_space, thread_index);
     }
 
     var array: PrintArray = .{};
