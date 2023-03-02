@@ -1731,11 +1731,14 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
             const ret: []T = allocator.allocateIrreversible(T, count);
             mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len, @alignOf(T));
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility +%= t_aligned_bytes -% s_aligned_bytes;
+            }
             showReallocate(T, buf, ret);
             return ret;
         }
         inline fn showCreate(comptime child: type, ptr: *child) void {
-            if (Allocator.allocator_spec.logging.allocate and !builtin.is_silent) {
+            if (Allocator.allocator_spec.logging.allocate) {
                 debug.showAllocateOneStructured(
                     child,
                     @ptrToInt(ptr),
@@ -1745,7 +1748,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
         }
         inline fn showAllocate(comptime child: type, buf: []child) void {
-            if (Allocator.allocator_spec.logging.allocate and !builtin.is_silent) {
+            if (Allocator.allocator_spec.logging.allocate) {
                 debug.showAllocateManyStructured(
                     child,
                     @ptrToInt(buf.ptr),
@@ -1757,7 +1760,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
         }
         inline fn showReallocate(comptime child: type, s_buf: []child, t_buf: []child) void {
-            if (Allocator.allocator_spec.logging.reallocate and !builtin.is_silent) {
+            if (Allocator.allocator_spec.logging.reallocate) {
                 debug.showReallocateManyStructured(
                     child,
                     child,
