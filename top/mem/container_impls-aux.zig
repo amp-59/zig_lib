@@ -49,7 +49,7 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .divisions = 128,
     .logging = preset.address_space.logging.silent,
 });
-const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
+const Array = Allocator.StructuredVector(u8);
 const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
 
@@ -93,6 +93,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
     var __len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__len));
     _ = __len_call;
     var __avail_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__avail));
+    _ = __avail_call;
     var __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
     var __ad_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__ad));
     _ = __ad_call;
@@ -223,12 +224,8 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         },
         .readManyWithSentinelBehind, .referManyWithSentinelBehind => {
             pointer_many_with_sentinel_loc.* = __behind_call;
-            pointer_many_with_sentinel_len.* = __avail_call;
+            pointer_many_with_sentinel_len.* = expr.symbol(tok.count_name);
             expr.subst(__behind_call.args(), .{
-                .dst = expr.symbol(tok.offset_name),
-                .src = expr.symbol(tok.count_name),
-            });
-            expr.subst(__avail_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
                 .src = expr.symbol(tok.count_name),
             });
@@ -286,11 +283,18 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
             return array.writeMany(tok.end_expression);
         },
         .readCountWithSentinelAt => {
+            pointer_count_with_sentinel_loc.* = __at_call;
+            pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
+            var pointer_count_with_sentinel_deref: [2]Expr = expr.dereference(expr.call(&pointer_count_with_sentinel));
             array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.join(&pointer_count_with_sentinel_deref));
             return array.writeMany(tok.end_expression);
         },
         .referCountWithSentinelAt => {
+            pointer_count_with_sentinel_loc.* = __at_call;
+            pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_count_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
         .readManyAt => {},
@@ -862,7 +866,7 @@ pub fn generateContainers() !void {
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
-    var array: Array = Array.init(&allocator, 1);
+    var array: Array = Array.init(&allocator, 1024 * 4096);
     array.undefineAll();
     var ctn_index: u64 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
