@@ -116,12 +116,10 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     var options: Options = proc.getOpts(Options, &args, opts_map);
     var allocator: build.Allocator = try build.Allocator.init(&address_space);
-    var builder: build.Builder = build.Builder.init(&allocator, build.Builder.Paths.define(), .{}, args_in, vars);
+    var builder: build.Builder = try build.Builder.init(&allocator, build.Builder.Paths.define(), .{}, args_in, vars);
     _ = builder.addGroup(&allocator, "all");
     do_build(&allocator, &builder);
-
     var index: u64 = 0;
-
     while (index != args_in.len) {
         const name: [:0]const u8 = meta.manyToSlice(args_in[index]);
         if (mem.testEqualMany(u8, name, "--")) {
