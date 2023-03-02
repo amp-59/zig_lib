@@ -9,7 +9,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_default: builtin.Logging.Default = .{
+pub const logging_override: builtin.Logging.Override = .{
     .Success = true,
     .Acquire = true,
     .Release = true,
@@ -87,6 +87,12 @@ fn testFileOperationsRound2() !void {
     builtin.assert(st.isDirectory());
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test"));
+    const path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
+    try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test"))));
+    const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
+    try meta.wrap(file.close(close_spec, path_reg_fd));
+    try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
+    try meta.wrap(file.close(close_spec, path_dir_fd));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test"));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.close(close_spec, dir_fd));
