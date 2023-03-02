@@ -148,6 +148,8 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
     const pointer_count_with_sentinel_loc: *Expr = &pointer_count_with_sentinel[2];
     const pointer_count_with_sentinel_len: *Expr = &pointer_count_with_sentinel[3];
 
+    if (ctn_fn_info.kind == .append) return;
+
     switch (ctn_fn_info.tag) {
         .readAll, .referAllDefined => {
             pointer_many_loc.* = expr.join(&aligned_byte_address);
@@ -587,12 +589,12 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         },
         // return count of unstreamed of type
         .ahead => {
-            var sub_undefined_unstreamed = expr.sub(
-                expr.join(&undefined_byte_address),
-                expr.join(&unstreamed_byte_address),
+            var div_count_size: [3]Expr = expr.divT(
+                expr.join(&unstreamed_byte_count),
+                expr.symbol(child_size_symbol),
             );
             array.writeMany(tok.return_keyword);
-            array.writeFormat(expr.call(&sub_undefined_unstreamed));
+            array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
         // return aligned address offset above amount of type
@@ -835,14 +837,10 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const ou
         };
         array.writeFormat(const_decl.*);
     }
-    var spec_deduce: [2]Expr = expr.fnCall1(
-        "spec.deduce",
-        expr.symbol("params.options"),
-    );
     const_decl.* = expr.ConstDecl{
         .val_name = tok.impl_type_name,
         .type_name = tok.type_type_name,
-        .expr1 = expr.call(&spec_deduce),
+        .expr1 = expr.symbol("spec.Implementation()"),
     };
     array.writeFormat(const_decl.*);
 }
