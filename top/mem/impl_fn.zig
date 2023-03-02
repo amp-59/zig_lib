@@ -82,14 +82,14 @@ pub const Fn = enum(u5) {
             .alignment => {
                 return !is_always_aligned;
             },
-            else => {
-                return true;
-            },
             .translate, .reconstruct => {
                 return !impl_variant.kinds.automatic and !impl_variant.kinds.parametric;
             },
             .construct => {
                 return !impl_variant.kinds.automatic;
+            },
+            else => {
+                return true;
             },
         }
     }
