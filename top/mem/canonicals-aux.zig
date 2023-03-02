@@ -7,7 +7,6 @@ const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
 const out = struct {
     usingnamespace @import("./detail.zig");
-    usingnamespace @import("./detail_more.zig");
 
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
