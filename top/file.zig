@@ -617,7 +617,7 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.error
 pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = spec.flags();
-    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val }))) |fd| {
         if (logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
@@ -824,7 +824,7 @@ pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.Call(spec.e
 pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
-    if (meta.wrap(sys.call(.unlinkat, spec.errors, spec.return_type, .{dir_fd, name_buf_addr, 0}))) {
+    if (meta.wrap(sys.call(.unlinkat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, 0 }))) {
         if (logging.Success) {
             debug.unlinkAtNotice(dir_fd, name);
         }
@@ -883,12 +883,17 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Cal
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
     const flags: Open = spec.flags();
-    meta.wrap(sys.call(.newfstatat, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val })) catch |stat_error| {
-        if (builtin.override().Error) {
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    if (meta.wrap(sys.call(.newfstatat, spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }))) {
+        if (logging.Success) {
+            // debug.fstatNotice(fd, &st);
+        }
+    } else |stat_error| {
+        if (logging.Error) {
             debug.fstatAtError(stat_error, dir_fd, name);
         }
         return stat_error;
-    };
+    }
     return st;
 }
 /// Returns a pointer to the end of the file. In terms of library containers:
