@@ -276,11 +276,11 @@ pub const ModeSpec = struct {
 };
 pub const ReadSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-    logging: builtin.Logging.SuccessError = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
 };
 pub const WriteSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
-    logging: builtin.Logging.SuccessError = .{},
+    logging: builtin.Logging.SuccessErrorFault = .{},
 };
 pub const OpenSpec = struct {
     options: Options,
