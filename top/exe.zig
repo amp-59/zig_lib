@@ -475,7 +475,7 @@ pub const Header = struct {
             return error.InvalidElfMagic;
         }
         if (hdr32.e_ident[EI.VERSION] != 1) {
-            if (builtin.logging.Error) {
+            if (builtin.logging_general.Error) {
                 debug.badVersionError(hdr32);
             }
             return error.InvalidElfVersion;
@@ -484,7 +484,7 @@ pub const Header = struct {
             ELFDATA2LSB => .Little,
             ELFDATA2MSB => .Big,
             else => {
-                if (builtin.logging.Error) {
+                if (builtin.logging_general.Error) {
                     debug.badEndianError(hdr32);
                 }
                 return error.InvalidElfEndian;
