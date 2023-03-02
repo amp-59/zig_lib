@@ -360,6 +360,8 @@ pub const Target = struct {
     deps: DependencyList,
     builder: *Builder,
     flags: u8 = 0,
+
+    pub const Process = enum { explicit, dependency };
     /// Specify command for target
     pub const Tag = enum {
         fmt,
@@ -399,6 +401,8 @@ pub const Target = struct {
         tag: Tag,
         target: *Target,
     };
+    var process_depth: u8 = 0;
+
     pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
         target.fmt_cmd = allocator.duplicateIrreversible(FormatCommand, fmt_cmd);
         target.give(.fmt);
@@ -1543,11 +1547,13 @@ pub const Target = struct {
     fn maybeInvokeDependencies(target: *Target) anyerror!void {
         target.deps.head();
         while (target.deps.next()) |node| : (target.deps.node = node) {
+            process_depth +%= 1;
             switch (target.deps.node.this.tag) {
                 .build => try target.deps.node.this.target.build(),
                 .run => try target.deps.node.this.target.run(),
                 .fmt => try target.deps.node.this.target.format(),
             }
+            process_depth -%= 1;
         }
     }
     const debug = struct {
