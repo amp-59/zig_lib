@@ -1097,6 +1097,8 @@ const debug = opaque {
     const about_socket_1: [:0]const u8 = "socket-error:   ";
     const about_fstatat_1_s: []const u8 = "fstatat-error:  ";
     const about_fexecve_1_s: []const u8 = "fexecve-error:  ";
+    const about_unlinkat_0_s: []const u8 = "unlinkat:       ";
+    const about_unlinkat_1_s: []const u8 = "unlinkat-error: ";
     const about_readlink_1_s: []const u8 = "readlink-error: ";
     const about_truncate_0_s: []const u8 = "truncate:       ";
     const about_truncate_1_s: []const u8 = "truncate-error: ";
@@ -1168,10 +1170,17 @@ const debug = opaque {
         var buf: [16 + 4096 + 8]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_unlink_0_s, pathname, "\n" });
     }
+    fn unlinkAtNotice(dir_fd: u64, name: [:0]const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_unlinkat_0_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
+    }
     fn removeDirNotice(pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 1]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
     }
+    fn fstatNotice(_: u64, _: *FileStatus) void {}
+    fn statNotice(_: [:0]const u8, _: *FileStatus) void {}
     fn readError(read_error: anytype, fd: u64) void {
         var buf: [16 + 32 + 512]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_read_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), " (", @errorName(read_error), ")\n" });
@@ -1247,6 +1256,11 @@ const debug = opaque {
     fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
+    }
+    fn unlinkAtError(unlinkat_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096 + 512]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_unlinkat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(unlinkat_error), ")\n" });
     }
     fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
