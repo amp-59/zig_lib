@@ -5,6 +5,7 @@ pub usingnamespace @"_";
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
+pub const max_relevant_depth: u64 = 256;
 
 pub const srg = @import("./zig_lib.zig");
 const mem = srg.mem;

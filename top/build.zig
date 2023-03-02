@@ -27,6 +27,7 @@ pub const ArgsString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
+pub const max_relevant_depth: u64 = builtin.define("max_relevant_depth", u64, 0);
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
@@ -1550,7 +1551,7 @@ pub const Target = struct {
             const build_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
             const new_size: u64 = if (target.builder.stat(bin_path)) |st| st.size else 0;
             target.builder.depth -%= 1;
-            if (target.builder.depth == 0) {
+            if (target.builder.depth <= max_relevant_depth) {
                 debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
             }
         }
@@ -1568,7 +1569,7 @@ pub const Target = struct {
             builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
             builtin.assertEqual(u64, array.len(), target.formatLength());
             const format_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            if (target.builder.depth == 0) {
+            if (target.builder.depth <= max_relevant_depth) {
                 debug.formatNotice(target.name, format_time);
             }
         }
@@ -1582,7 +1583,7 @@ pub const Target = struct {
             args.undefineAll();
             builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
             const run_time: time.TimeSpec = try target.builder.system(args.referAllDefined());
-            if (target.builder.depth == 0) {
+            if (target.builder.depth <= max_relevant_depth) {
                 debug.runNotice(target.name, run_time);
             }
         }

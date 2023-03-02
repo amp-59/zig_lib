@@ -34,6 +34,7 @@ pub const logging_default: builtin.Logging.Default = if (@hasDecl(root, "logging
     .Fault = true,
 };
 pub const runtime_assertions: bool = if (@hasDecl(root, "runtime_assertions")) root.runtime_assertions else false;
+pub const max_relevant_depth: u64 = if (@hasDecl(root, "max_relevant_depth")) root.max_relevant_depth else 0;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,

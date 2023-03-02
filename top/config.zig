@@ -4,12 +4,10 @@ pub const root = @import("root");
 pub const native_endian = zig.cpu.arch.endian();
 pub const is_little: bool = native_endian == .Little;
 pub const is_big: bool = native_endian == .Big;
-
 pub const is_safe: bool = zig.mode == .ReleaseSafe;
 pub const is_small: bool = zig.mode == .ReleaseSmall;
 pub const is_fast: bool = zig.mode == .ReleaseFast;
 pub const is_debug: bool = zig.mode == .Debug;
-
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
 
