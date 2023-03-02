@@ -19,8 +19,20 @@ const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
-pub const is_verbose: bool = if (@hasDecl(root, "is_verbose")) root.is_verbose else false;
-pub const is_silent: bool = if (@hasDecl(root, "is_silent")) root.is_silent else true;
+pub const logging_override: builtin.Logging.Override = if (@hasDecl(root, "logging_override")) root.logging_override else .{
+    .Success = .null,
+    .Acquire = .null,
+    .Release = .null,
+    .Error = .null,
+    .Fault = .null,
+};
+pub const logging_default: builtin.Logging.Default = if (@hasDecl(root, "logging_default")) root.logging_default else .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = true,
+    .Fault = true,
+};
 pub const runtime_assertions: bool = if (@hasDecl(root, "runtime_assertions")) root.runtime_assertions else false;
 
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
@@ -92,7 +104,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .cache_dir = cache_dir,
         .global_cache_dir = global_cache_dir,
     };
-    var builder: build.Builder = build.Builder.init(&allocator, paths, options, args, vars);
+    var builder: build.Builder = try build.Builder.init(&allocator, paths, options, args, vars);
     _ = builder.addGroup(&allocator, "all");
     try build_fn(&allocator, &builder);
     rewind(&builder);
