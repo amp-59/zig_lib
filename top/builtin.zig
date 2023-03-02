@@ -9,6 +9,19 @@ pub usingnamespace @import("./static/zig_probe_stack.zig");
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
     return @This().build_root.? ++ "/" ++ relative;
 }
+pub fn zigExe() [:0]const u8 {
+    return config.zig_exe.?;
+}
+pub fn buildRoot() [:0]const u8 {
+    return config.build_root.?;
+}
+pub fn cacheDir() [:0]const u8 {
+    return config.cache_dir.?;
+}
+pub fn globalCacheDir() [:0]const u8 {
+    return config.global_cache_dir.?;
+}
+
 pub const Exception = error{
     SubCausedOverflow,
     AddCausedOverflow,
