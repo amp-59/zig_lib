@@ -19,8 +19,8 @@ fn mapToContainers() void {
     const keys: Keys = Keys.init(out.Canonical, out.canonicals);
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeImport(&array, "out", "./impl_variants.zig");
-    array.writeMany("pub const specifications: []const []const []const out.Index = &[_][]const []const out.Index{\n");
+    array.writeMany("const Index=" ++ @typeName(out.Index) ++ ";\n");
+    array.writeMany("pub const specifications: []const[]const[]const Index = &[_][]const[]const Index{\n");
     for (out.containers) |indices| {
         array.writeMany("&.{");
         for (keys.values[0..keys.len]) |key| {
