@@ -157,7 +157,7 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
     comptime var i: u8 = 1;
     try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
-        try mem.static.acquire(AddressSpace, &address_space, i);
+        try mem.acquireStatic(AddressSpace, &address_space, i);
         try array.appendFormat(&allocator, fmt.any(address_space));
         try array.appendMany(&allocator, "\n");
         builtin.debug.write(array.readAll());
@@ -166,7 +166,7 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
     builtin.debug.write(array.readAll());
     i = 1;
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
-        mem.static.release(AddressSpace, &address_space, i);
+        mem.releaseStatic(AddressSpace, &address_space, i);
         try array.appendFormat(&allocator, fmt.any(address_space));
         try array.appendMany(&allocator, "\n");
         builtin.debug.write(array.readAll());
