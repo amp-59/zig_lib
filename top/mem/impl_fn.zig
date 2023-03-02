@@ -85,7 +85,10 @@ pub const Fn = enum(u5) {
             else => {
                 return true;
             },
-            .construct, .translate => {
+            .translate, .reconstruct => {
+                return !impl_variant.kinds.automatic and !impl_variant.kinds.parametric;
+            },
+            .construct => {
                 return !impl_variant.kinds.automatic;
             },
         }
