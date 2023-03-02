@@ -1,18 +1,14 @@
 //! This stage generates reference impls
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const meta = @import("../meta.zig");
-const mach = @import("../mach.zig");
-const proc = @import("../proc.zig");
-const file = @import("../file.zig");
-const preset = @import("../preset.zig");
-const testing = @import("../testing.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const proc = gen.proc;
+const preset = gen.preset;
+const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
+const detail = @import("./detail.zig");
+
 const out = struct {
-    usingnamespace @import("./detail_more.zig");
     usingnamespace @import("./zig-out/src/options.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/type_descrs.zig");
@@ -38,7 +34,7 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
 });
 const Array = Allocator.StructuredStaticVector(u8, 1024 * 1024);
 
-fn writeReturnImplementation(array: *Array, impl_detail: out.DetailMore) void {
+fn writeReturnImplementation(array: *Array, impl_detail: detail.More) void {
     const endl: bool = mem.testEqualManyBack(u8, " => ", array.readAll());
     array.writeMany("return ");
     impl_detail.writeImplementationName(array);
@@ -50,12 +46,12 @@ fn writeReturnImplementation(array: *Array, impl_detail: out.DetailMore) void {
     }
 }
 const Filtered = struct {
-    []const out.DetailMore,
-    []const out.DetailMore,
+    []const detail.More,
+    []const detail.More,
 };
 fn filterTechnique(
-    impl_groups: []const out.DetailMore,
-    buf: []out.DetailMore,
+    impl_groups: []const detail.More,
+    buf: []detail.More,
     comptime field_name: []const u8,
 ) Filtered {
     if (!@hasField(attr.Techniques, field_name)) {
@@ -72,10 +68,10 @@ fn filterTechnique(
             buf[f_idx] = impl_variant;
         }
     }
-    const f: []out.DetailMore = buf[f_idx..];
+    const f: []detail.More = buf[f_idx..];
     f_idx = 0;
     while (f_idx != f.len) : (f_idx +%= 1) {
-        const a: out.DetailMore = f[f_idx];
+        const a: detail.More = f[f_idx];
         f[f_idx] = f[f.len -% (1 +% f_idx)];
         f[f.len -% (1 +% f_idx)] = a;
     }
@@ -84,8 +80,8 @@ fn filterTechnique(
 fn writeDeductionTestBoolean(
     allocator: *Allocator,
     array: *Array,
-    toplevel_impl_group: []const out.DetailMore,
-    impl_group: []const out.DetailMore,
+    toplevel_impl_group: []const detail.More,
+    impl_group: []const detail.More,
     comptime options: []const attr.Option,
     comptime field_names: []const []const u8,
 ) void {
@@ -96,7 +92,7 @@ fn writeDeductionTestBoolean(
             return writeDeduction(allocator, array, toplevel_impl_group, impl_group, options[1..]);
         }
     }
-    var buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, impl_group.len);
+    var buf: []detail.More = allocator.allocateIrreversible(detail.More, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, field_names[0]);
     if (filtered[1].len != 0) {
         array.writeMany("if (options." ++ field_names[0] ++ ") {\n");
@@ -121,11 +117,11 @@ fn writeDeductionTestBoolean(
 fn writeDeductionCompareEnumerationInternal(
     allocator: *Allocator,
     array: *Array,
-    toplevel_impl_group: []const out.DetailMore,
-    impl_group: []const out.DetailMore,
+    toplevel_impl_group: []const detail.More,
+    impl_group: []const detail.More,
     comptime options: []const attr.Option,
     comptime field_index: u64,
-) ?[]const out.DetailMore {
+) ?[]const detail.More {
     if (field_index == options[0].info.field_field_names.len and options.len != 1) {
         return impl_group;
     }
@@ -135,7 +131,7 @@ fn writeDeductionCompareEnumerationInternal(
         }
         return null;
     }
-    var buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, impl_group.len);
+    var buf: []detail.More = allocator.allocateIrreversible(detail.More, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, options[0].info.field_field_names[field_index]);
     if (filtered[1].len != 0) {
         array.writeMany("." ++ comptime options[0].tagName(field_index) ++ " => ");
@@ -155,14 +151,14 @@ fn writeDeductionCompareEnumerationInternal(
 fn writeDeductionCompareEnumeration(
     allocator: *Allocator,
     array: *Array,
-    toplevel_impl_group: []const out.DetailMore,
-    impl_group: []const out.DetailMore,
+    toplevel_impl_group: []const detail.More,
+    impl_group: []const detail.More,
     comptime options: []const attr.Option,
 ) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
     array.writeMany("switch (options." ++ options[0].info.field_name ++ ") {\n");
-    const rem: ?[]const out.DetailMore =
+    const rem: ?[]const detail.More =
         writeDeductionCompareEnumerationInternal(allocator, array, toplevel_impl_group, impl_group, options, 0);
     array.writeMany("}\n");
     writeDeduction(allocator, array, toplevel_impl_group, rem orelse return, options[1..]);
@@ -170,8 +166,8 @@ fn writeDeductionCompareEnumeration(
 fn writeDeductionCompareOptionalEnumeration(
     allocator: *Allocator,
     array: *Array,
-    toplevel_impl_group: []const out.DetailMore,
-    impl_group: []const out.DetailMore,
+    toplevel_impl_group: []const detail.More,
+    impl_group: []const detail.More,
     comptime options: []const attr.Option,
 ) void {
     const save: Allocator.Save = allocator.save();
@@ -179,7 +175,7 @@ fn writeDeductionCompareOptionalEnumeration(
     array.writeMany("if (options." ++ options[0].info.field_name ++ ") |" ++
         options[0].info.field_name ++ "| {\nswitch (" ++
         options[0].info.field_name ++ ") {\n");
-    const rem: ?[]const out.DetailMore =
+    const rem: ?[]const detail.More =
         writeDeductionCompareEnumerationInternal(allocator, array, toplevel_impl_group, impl_group, options, 0);
     array.writeMany("}\n}\n");
     writeDeduction(allocator, array, toplevel_impl_group, rem orelse return, options[1..]);
@@ -187,8 +183,8 @@ fn writeDeductionCompareOptionalEnumeration(
 fn writeDeduction(
     allocator: *Allocator,
     array: *Array,
-    toplevel_impl_group: []const out.DetailMore,
-    impl_group: []const out.DetailMore,
+    toplevel_impl_group: []const detail.More,
+    impl_group: []const detail.More,
     comptime options: []const attr.Option,
 ) void {
     if (options.len == 0) {
@@ -196,7 +192,7 @@ fn writeDeduction(
             return writeReturnImplementation(array, impl_group[0]);
         }
     } else {
-        const tag: attr.Option.Usage = options[0].usage(out.DetailMore, toplevel_impl_group);
+        const tag: attr.Option.Usage = options[0].usage(detail.More, toplevel_impl_group);
         switch (tag) {
             .eliminate_boolean_false,
             .eliminate_boolean_true,
@@ -230,17 +226,17 @@ pub fn generateReferences() !void {
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
-        const ctn_buf: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, out.Index, out.containers[ctn_index], out.impl_variants);
+        const ctn_buf: []const detail.More = gen.groupImplementations(&allocator, detail.More, out.Index, out.containers[ctn_index], out.impl_variants);
         const ctn_spec_group: []const []const out.Index = out.specifications[ctn_index];
         var spec_index: u64 = 0;
         while (spec_index != ctn_spec_group.len) : (spec_index +%= 1) {
             const spec_group: []const out.Index = ctn_spec_group[spec_index];
             if (spec_group.len != 0) {
-                const leader: out.DetailMore = gen.implLeader(out.DetailMore, out.Index, spec_group, out.impl_variants);
+                const leader: detail.More = gen.implLeader(detail.More, out.Index, spec_group, out.impl_variants);
                 array.writeMany("pub const Specification");
                 gen.writeIndex(&array, accm_spec_index);
                 array.writeMany(" = struct {\n");
-                for (out.type_descrs[leader.index].specs[gen.specIndex(out.DetailMore, leader)].type_decl.Composition[1]) |field| {
+                for (out.type_descrs[leader.index].specs[gen.specIndex(detail.More, leader)].type_decl.Composition[1]) |field| {
                     gen.writeField(&array, field[0], field[1]);
                 }
                 array.writeMany("const Specification = @This();\npub fn Implementation(comptime spec: Specification");
@@ -249,7 +245,7 @@ pub fn generateReferences() !void {
                     writeReturnImplementation(&array, out.impl_variants[spec_group[0]]);
                 } else {
                     array.writeMany(", comptime options: anytype) type {\n");
-                    const toplevel_impl_group: []const out.DetailMore = gen.groupImplementations(&allocator, out.DetailMore, out.Index, spec_group, out.impl_variants);
+                    const toplevel_impl_group: []const detail.More = gen.groupImplementations(&allocator, detail.More, out.Index, spec_group, out.impl_variants);
                     writeDeduction(&allocator, &array, ctn_buf, toplevel_impl_group, &out.options);
                 }
                 array.writeMany("}\n};\n");

@@ -1,27 +1,21 @@
 //! This stage generates reference impls
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const meta = @import("../meta.zig");
-const mach = @import("../mach.zig");
-const proc = @import("../proc.zig");
-const preset = @import("../preset.zig");
-const testing = @import("../testing.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const proc = gen.proc;
+const preset = gen.preset;
+const builtin = gen.builtin;
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const config = @import("./config.zig");
+const detail = @import("./detail.zig");
+const impl_fn = @import("./impl_fn.zig");
 const out = struct {
-    usingnamespace @import("./detail_more.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
-const impl_fn = @import("./impl_fn.zig");
-
 pub usingnamespace proc.start;
-pub const is_verbose: bool = false;
 pub const logging_override: builtin.Logging.Override = .{
     .Success = false,
     .Acquire = false,
@@ -29,7 +23,6 @@ pub const logging_override: builtin.Logging.Override = .{
     .Error = false,
     .Fault = false,
 };
-
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .errors = preset.allocator.errors.noexcept,
@@ -69,7 +62,7 @@ const Info = struct {
         info.alias = impl_fn_info;
     }
 };
-inline fn constructInitializer(allocator: *Allocator, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn) *[3]Expr {
+inline fn constructInitializer(allocator: *Allocator, impl_variant: *const detail.More, impl_fn_info: *const Fn) *[3]Expr {
     const source_aligned_byte_address_name: [:0]const u8 = blk: {
         if (impl_fn_info.* == .construct) {
             break :blk tok.source_aligned_byte_address_name;
@@ -251,7 +244,7 @@ const render_spec = .{
     .address_view = true,
 };
 
-fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const out.DetailMore, impl_fn_info: *const Fn, info: *Info) void {
+fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const detail.More, impl_fn_info: *const Fn, info: *Info) void {
     const allocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, allocated_byte_address_fn_info);
     const aligned_byte_address_call: Expr = expr.impl(allocator, impl_variant, aligned_byte_address_fn_info);
     const unstreamed_byte_address_call: Expr = expr.impl(allocator, impl_variant, unstreamed_byte_address_fn_info);
@@ -805,7 +798,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
     }
 }
 
-fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const out.DetailMore) void {
+fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const detail.More) void {
     for (impl_fn.key) |impl_fn_info| {
         if (!impl_fn_info.hasCapability(impl_variant)) {
             continue;
@@ -818,7 +811,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const out
         writeSimpleRedecl(array, &impl_fn_info, &info);
     }
 }
-fn writeDeclarations(allocator: *Allocator, array: *Array, impl_variant: *const out.DetailMore) void {
+fn writeDeclarations(allocator: *Allocator, array: *Array, impl_variant: *const detail.More) void {
     _ = allocator;
     array.writeMany("const " ++ tok.impl_type_name ++ " = @This();\n");
     if (impl_variant.kinds.automatic or
@@ -849,7 +842,7 @@ fn writeSimpleRedecl(array: *Array, impl_fn_info: *const Fn, info: *Info) void {
         info.alias = null;
     }
 }
-inline fn writeComptimeField(array: *Array, impl_variant: *const out.DetailMore, impl_fn_info: Fn) void {
+inline fn writeComptimeField(array: *Array, impl_variant: *const detail.More, impl_fn_info: Fn) void {
     const args_list: gen.ArgList = impl_fn_info.argList(impl_variant, .Parameter);
     if (args_list.comptimeField()) {
         array.writeMany(tok.comptime_keyword);
@@ -863,7 +856,7 @@ inline fn writeComptimeField(array: *Array, impl_variant: *const out.DetailMore,
         array.writeMany(tok.end_list_item);
     }
 }
-inline fn writeFields(allocator: *Allocator, array: *Array, impl_variant: *const out.DetailMore) void {
+inline fn writeFields(allocator: *Allocator, array: *Array, impl_variant: *const detail.More) void {
     _ = allocator;
     writeComptimeField(array, impl_variant, Fn.allocated_byte_address);
     writeComptimeField(array, impl_variant, Fn.aligned_byte_address);
@@ -897,7 +890,7 @@ inline fn writeFields(allocator: *Allocator, array: *Array, impl_variant: *const
     writeComptimeField(array, impl_variant, Fn.writable_byte_count);
     writeComptimeField(array, impl_variant, Fn.aligned_byte_count);
 }
-inline fn writeTypeFunction(allocator: *Allocator, array: *Array, accm_spec_index: u64, impl_variant: *const out.DetailMore) void {
+inline fn writeTypeFunction(allocator: *Allocator, array: *Array, accm_spec_index: u64, impl_variant: *const detail.More) void {
     array.writeMany("fn ");
     impl_variant.writeImplementationName(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ": " ++ tok.generic_spec_type_name);

@@ -1,22 +1,22 @@
 //! Group variants by container to generate parameter variants.
-const fmt = @import("../fmt.zig");
-const mem = @import("../mem.zig");
-const proc = @import("../proc.zig");
-const meta = @import("../meta.zig");
-const preset = @import("../preset.zig");
-const builtin = @import("../builtin.zig");
-const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
+const fmt = gen.fmt;
+const mem = gen.mem;
+const proc = gen.proc;
+const meta = gen.meta;
+const preset = gen.preset;
+const builtin = gen.builtin;
+const testing = gen.testing;
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
+const detail = @import("./detail.zig");
+const config = @import("./config.zig");
 const out = struct {
-    usingnamespace @import("./detail_more.zig");
     usingnamespace @import("./zig-out/src/options.zig");
     usingnamespace @import("./zig-out/src/type_descrs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/containers.zig");
 };
-const config = @import("./config.zig");
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const logging_override: builtin.Logging.Override = .{
@@ -95,7 +95,7 @@ fn writeOptionsInternal(
     }
     return 1;
 }
-fn writeOptions(array: *Array, toplevel_impl_group: []const out.DetailMore) void {
+fn writeOptions(array: *Array, toplevel_impl_group: []const detail.More) void {
     array.writeMany("const Options = struct {");
     var write: u1 = 0;
     inline for (out.options) |option| {
@@ -103,8 +103,8 @@ fn writeOptions(array: *Array, toplevel_impl_group: []const out.DetailMore) void
         write |= writeOptionsInternal(
             array,
             option.info.field_name,
-            option.usage(out.DetailMore, toplevel_impl_group),
-            option.names(out.DetailMore, toplevel_impl_group, &buf),
+            option.usage(detail.More, toplevel_impl_group),
+            option.names(detail.More, toplevel_impl_group, &buf),
         );
     }
     if (write == 0) {
@@ -132,7 +132,7 @@ fn generateParameters() !void {
         for (out.type_descrs[out.impl_variants[ctn_group[0]].index].params.type_decl.Composition[1]) |field| {
             gen.writeField(&array, field[0], field[1]);
         }
-        const buf: []out.DetailMore = allocator.allocateIrreversible(out.DetailMore, ctn_group.len);
+        const buf: []detail.More = allocator.allocateIrreversible(detail.More, ctn_group.len);
         var impl_index: u16 = 0;
         while (impl_index != ctn_group.len) : (impl_index +%= 1) {
             buf[impl_index] = out.impl_variants[ctn_group[impl_index]];
