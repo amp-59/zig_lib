@@ -101,14 +101,14 @@ pub const logging = opaque {
         };
     };
     pub const override = opaque {
-        pub const verbose: builtin.Logging.Default = .{
+        pub const verbose: builtin.Logging.Override = .{
             .Success = true,
             .Acquire = true,
             .Release = true,
             .Error = true,
             .Fault = true,
         };
-        pub const silent: builtin.Logging.Default = .{
+        pub const silent: builtin.Logging.Override = .{
             .Success = false,
             .Acquire = false,
             .Release = false,
