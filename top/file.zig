@@ -571,13 +571,14 @@ pub const TruncateSpec = struct {
 };
 pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8, read_count: u64) sys.Call(spec.errors.throw, u64) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_count }))) |ret| {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.readNotice(fd, ret);
         }
         return ret;
     } else |read_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.readError(read_error, fd);
         }
         return read_error;
@@ -585,12 +586,13 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8, read_count: u64) s
 }
 pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const u8) sys.Call(spec.errors.throw, void) {
     const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len }))) |ret| {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.writeNotice(fd, ret);
         }
     } else |write_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.writeError(write_error, fd);
         }
         return write_error;
@@ -599,13 +601,14 @@ pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const u8) sys.Call(
 pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             debug.openNotice(pathname, fd);
         }
         return fd;
     } else |open_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.openError(open_error, pathname);
         }
         return open_error;
@@ -614,13 +617,14 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.error
 pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = spec.flags();
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val }))) |fd| {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
         }
         return fd;
     } else |open_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.openAtError(open_error, dir_fd, name);
         }
         return open_error;
@@ -628,13 +632,14 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call
 }
 pub fn socket(comptime spec: SocketSpec, domain: Domain, connection: Connection) sys.Call(spec.errors.throw, spec.return_type) {
     const flags: Socket = spec.flags();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{ @enumToInt(domain), flags.val | @enumToInt(connection), 0 }))) |fd| {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             debug.socketNotice(fd, domain, connection);
         }
         return fd;
     } else |socket_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.socketError(socket_error, domain, connection);
         }
         return socket_error;
@@ -670,13 +675,15 @@ pub fn basename(pathname: []const u8) []const u8 {
 pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             debug.openNotice(pathname, fd);
         }
         return fd;
     } else |open_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Fault) {}
+        if (logging.Error) {
             debug.openError(open_error, pathname);
         }
         return open_error;
@@ -684,13 +691,14 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.error
 }
 pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, spec.pathFlags() }))) |fd| {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
         }
         return fd;
     } else |open_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.openAtError(open_error, dir_fd, name);
         }
         return open_error;
@@ -700,25 +708,27 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) sys.Call(spec.e
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = spec.flags();
     const mode: Mode = spec.mode.mode();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, mode.val }))) |fd| {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             debug.createNotice(pathname, fd, debug.describeMode(spec.mode));
         }
         return fd;
     } else |open_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.createError(open_error, pathname, debug.describeMode(spec.mode));
         }
         return open_error;
     }
 }
 pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    const logging: builtin.Logging.ReleaseErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.close, spec.errors, spec.return_type, .{fd}))) {
-        if (spec.logging.override().Release) {
+        if (logging.Release) {
             debug.closeNotice(fd);
         }
     } else |close_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.closeError(close_error, fd);
         }
         return close_error;
@@ -727,12 +737,13 @@ pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors.throw, spec
 pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const mode: Mode = spec.mode.mode();
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, mode.val }))) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.makeDirNotice(pathname, debug.describeMode(spec.mode));
         }
     } else |mkdir_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.makeDirError(mkdir_error, pathname);
         }
         return mkdir_error;
@@ -741,12 +752,13 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) sys.Call(spec
 pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const mode: Mode = spec.mode.mode();
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, mode.val }))) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.makeDirAtNotice(dir_fd, name, debug.describeMode(spec.mode));
         }
     } else |mkdir_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.makeDirAtError(mkdir_error, dir_fd, name, debug.describeMode(spec.mode));
         }
         return mkdir_error;
@@ -754,15 +766,16 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sy
 }
 pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.Call(spec.errors.throw, [:0]const u8) {
     const buf_addr: u64 = @ptrToInt(buf.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.getcwd, spec.errors, spec.return_type, .{ buf_addr, buf.len }))) |len| {
         buf[len] = 0;
         const ret: [:0]const u8 = buf[0..len :0];
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.getCwdNotice(ret);
         }
         return ret;
     } else |getcwd_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.getCwdError(getcwd_error);
         }
         return getcwd_error;
@@ -771,10 +784,11 @@ pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.Call(spec.e
 pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.Call(spec.errors.throw, [:0]const u8) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const buf_addr: u64 = @ptrToInt(buf.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.readlink, spec.errors, spec.return_type, .{ pathname_buf_addr, buf_addr, buf.len }))) |len| {
         return buf[0..len :0];
     } else |readlink_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.readLinkError(readlink_error, pathname);
         }
         return readlink_error;
@@ -783,10 +797,11 @@ pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) 
 pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, buf: []u8) sys.Call(spec.errors.throw, [:0]const u8) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const buf_addr: u64 = @ptrToInt(buf.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.readlinkat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, buf_addr, buf.len }))) |len| {
         return buf[0..len :0];
     } else |readlink_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.readLinkAtError(readlink_error, dir_fd, name);
         }
         return readlink_error;
@@ -794,25 +809,41 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
 }
 pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.unlink, spec.errors, spec.return_type, .{pathname_buf_addr}))) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.unlinkNotice(pathname);
         }
     } else |unlink_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.unlinkError(unlink_error, pathname);
+        }
+        return unlink_error;
+    }
+}
+pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    if (meta.wrap(sys.call(.unlinkat, spec.errors, spec.return_type, .{dir_fd, name_buf_addr, 0}))) {
+        if (logging.Success) {
+            debug.unlinkAtNotice(dir_fd, name);
+        }
+    } else |unlink_error| {
+        if (logging.Error) {
+            debug.unlinkAtError(unlink_error, dir_fd, name);
         }
         return unlink_error;
     }
 }
 pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (sys.call(.rmdir, spec.errors, spec.return_type, .{pathname_buf_addr})) {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.removeDirNotice(pathname);
         }
     } else |rmdir_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.removeDirError(rmdir_error, pathname);
         }
         return rmdir_error;
@@ -822,8 +853,9 @@ pub fn stat(comptime spec: StatSpec, pathname: [:0]const u8) sys.Call(spec.error
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     meta.wrap(sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr })) catch |stat_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.statError(stat_error, pathname);
         }
         return stat_error;
@@ -833,12 +865,17 @@ pub fn stat(comptime spec: StatSpec, pathname: [:0]const u8) sys.Call(spec.error
 pub fn fstat(comptime spec: StatSpec, fd: u64) sys.Call(spec.errors.throw, Stat) {
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
-    meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr })) catch |stat_error| {
-        if (spec.logging.override().Error) {
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    if (meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr }))) {
+        if (logging.Success) {
+            debug.fstatNotice(fd, &st);
+        }
+    } else |stat_error| {
+        if (logging.Error) {
             debug.fstatError(stat_error, fd);
         }
         return stat_error;
-    };
+    }
     return st;
 }
 pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors.throw, Stat) {
@@ -865,41 +902,44 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Cal
 pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors.throw, u64) {
     const flags: mem.Map = spec.flags();
     const prot: mem.Prot = spec.prot();
+    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     const st: Stat = fstat(.{ .errors = .{ .abort = &.{sys.ErrorCode.OPAQUE} } }, fd);
     const len: u64 = mach.alignA64(st.size, 4096);
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             mem.debug.mapNotice(addr, len);
         }
         return addr + st.size;
     } else |map_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             mem.debug.mapError(map_error, addr, len);
         }
         return map_error;
     }
 }
 pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ pathname, offset }))) |ret| {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.truncateNotice(pathname, offset);
         }
         return ret;
     } else |truncate_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.ftruncateError(truncate_error, pathname, offset);
         }
         return truncate_error;
     }
 }
 pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.Call(spec.errors.throw, spec.return_type) {
+    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.ftruncate, spec.errors, spec.return_type, .{ fd, offset }))) |ret| {
-        if (spec.logging.override().Success) {
+        if (logging.Success) {
             debug.ftruncateNotice(fd, offset);
         }
         return ret;
     } else |truncate_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.ftruncateError(truncate_error, fd, offset);
         }
         return truncate_error;
