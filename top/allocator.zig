@@ -496,14 +496,14 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 .up_addr = lb_addr,
             };
             switch (@TypeOf(AddressSpace.addr_spec)) {
-                mem.DiscreteAddressSpaceSpec => {
-                    try meta.wrap(special.static.acquire(AddressSpace, address_space, spec.arena_index));
-                },
                 mem.RegularAddressSpaceSpec => {
                     try meta.wrap(special.acquire(AddressSpace, address_space, spec.arena_index));
                 },
+                mem.DiscreteAddressSpaceSpec => {
+                    try meta.wrap(special.acquireStatic(AddressSpace, address_space, spec.arena_index));
+                },
                 mem.ElementaryAddressSpaceSpec => {
-                    try meta.wrap(special.elementary.acquire(AddressSpace, address_space));
+                    try meta.wrap(special.acquireElementary(AddressSpace, address_space));
                 },
                 else => @compileError("invalid address space for this allocator"),
             }
@@ -518,14 +518,14 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 try meta.wrap(allocator.unmapAll());
             }
             switch (@TypeOf(AddressSpace.addr_spec)) {
-                mem.DiscreteAddressSpaceSpec => {
-                    try meta.wrap(special.static.release(AddressSpace, address_space, spec.arena_index));
-                },
                 mem.RegularAddressSpaceSpec => {
                     try meta.wrap(special.release(AddressSpace, address_space, spec.arena_index));
                 },
+                mem.DiscreteAddressSpaceSpec => {
+                    try meta.wrap(special.releaseStatic(AddressSpace, address_space, spec.arena_index));
+                },
                 mem.ElementaryAddressSpaceSpec => {
-                    try meta.wrap(special.elementary.release(AddressSpace, address_space));
+                    try meta.wrap(special.releaseElementary(AddressSpace, address_space));
                 },
                 else => @compileError("invalid address space for this allocator"),
             }
@@ -609,10 +609,10 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         pub fn createIrreversible(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
             defer Graphics.showWithReference(allocator, @src());
-            const s_bytes: u64 = @sizeOf(T);
+            const s_aligned_bytes: u64 = @sizeOf(T);
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
-            const s_up_addr: u64 = s_ab_addr + s_bytes;
+            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and
                 s_up_addr > allocator.unmapped_byte_address())
             {
@@ -620,15 +620,21 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
             allocator.allocate(s_up_addr);
             const ret: *T = @intToPtr(*T, s_ab_addr);
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count +%= 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility +%= s_aligned_bytes;
+            }
             showCreate(T, ret);
             return ret;
         }
         pub fn allocateIrreversible(allocator: *Allocator, comptime T: type, count: u64) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
-            const s_bytes: u64 = @sizeOf(T) * count;
+            const s_aligned_bytes: u64 = @sizeOf(T) *% count;
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
-            const s_up_addr: u64 = s_ab_addr + s_bytes;
+            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and
                 s_up_addr > allocator.unmapped_byte_address())
             {
@@ -636,16 +642,19 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
             allocator.allocate(s_up_addr);
             const ret: []T = @intToPtr([*]T, s_ab_addr)[0..count];
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility +%= s_aligned_bytes;
+            }
             showAllocate(T, ret);
             return ret;
         }
         pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = @ptrToInt(buf.ptr);
-            const s_aligned_bytes: u64 = @sizeOf(T) * buf.len;
-            const t_aligned_bytes: u64 = @sizeOf(T) * count;
-            const s_up_addr: u64 = s_ab_addr + s_aligned_bytes;
-            const t_up_addr: u64 = s_ab_addr + t_aligned_bytes;
+            const s_aligned_bytes: u64 = @sizeOf(T) *% buf.len;
+            const t_aligned_bytes: u64 = @sizeOf(T) *% count;
+            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
+            const t_up_addr: u64 = s_ab_addr +% t_aligned_bytes;
             if (allocator.unallocated_byte_address() == s_up_addr) {
                 if (Allocator.allocator_spec.options.require_map and
                     t_up_addr > allocator.unmapped_byte_address())
@@ -658,11 +667,14 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
             const ret: []T = allocator.allocateIrreversible(T, count);
             mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len, @alignOf(T));
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility +%= t_aligned_bytes -% s_aligned_bytes;
+            }
             showReallocate(T, buf, ret);
             return ret;
         }
         inline fn showCreate(comptime child: type, ptr: *child) void {
-            if (Allocator.allocator_spec.logging.allocate and !builtin.is_silent) {
+            if (Allocator.allocator_spec.logging.allocate) {
                 debug.showAllocateOneStructured(
                     child,
                     @ptrToInt(ptr),
@@ -672,7 +684,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
         }
         inline fn showAllocate(comptime child: type, buf: []child) void {
-            if (Allocator.allocator_spec.logging.allocate and !builtin.is_silent) {
+            if (Allocator.allocator_spec.logging.allocate) {
                 debug.showAllocateManyStructured(
                     child,
                     @ptrToInt(buf.ptr),
@@ -684,7 +696,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
         }
         inline fn showReallocate(comptime child: type, s_buf: []child, t_buf: []child) void {
-            if (Allocator.allocator_spec.logging.reallocate and !builtin.is_silent) {
+            if (Allocator.allocator_spec.logging.reallocate) {
                 debug.showReallocateManyStructured(
                     child,
                     child,
@@ -3286,52 +3298,125 @@ const special = opaque {
             return madvise_error;
         }
     }
-    fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
-        if (AddressSpace.addr_spec.options.thread_safe) {
-            return address_space.atomicSet(index);
-        } else {
-            return address_space.set(index);
+    const helper = opaque {
+        fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
+            const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
+            if (address_space.set(spec.divisions)) {
+                return map(AddressSpace.map_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
+            }
         }
-    }
-    fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
-        if (AddressSpace.addr_spec.options.thread_safe) {
-            return address_space.atomicUnset(index);
-        } else {
-            return address_space.unset(index);
+        fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
+            const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
+            if (address_space.count() == 0 and
+                address_space.unset(spec.divisions))
+            {
+                return unmap(AddressSpace.unmap_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
+            }
         }
-    }
-    fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
-        const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
-        if (address_space.set(spec.divisions)) {
-            return map(AddressSpace.map_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
+        fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
+            if (AddressSpace.addr_spec.options.thread_safe) {
+                return address_space.atomicSet(index);
+            } else {
+                return address_space.set(index);
+            }
         }
-    }
-    fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
-        const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
-        if (address_space.count() == 0 and
-            address_space.unset(spec.divisions))
-        {
-            return unmap(AddressSpace.unmap_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
+        fn acquireStaticSet(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
+            if (comptime AddressSpace.arena(index).options.thread_safe) {
+                return address_space.atomicSet(index);
+            } else {
+                return address_space.set(index);
+            }
         }
-    }
+        fn acquireElementarySet(comptime AddressSpace: type, address_space: *AddressSpace) bool {
+            if (comptime AddressSpace.addr_spec.options.thread_safe) {
+                return address_space.atomicSet();
+            } else {
+                return address_space.set();
+            }
+        }
+        fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
+            if (AddressSpace.addr_spec.options.thread_safe) {
+                return address_space.atomicUnset(index);
+            } else {
+                return address_space.unset(index);
+            }
+        }
+        fn releaseStaticUnset(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
+            if (comptime AddressSpace.arena(index).options.thread_safe) {
+                return address_space.atomicUnset(index);
+            } else {
+                return address_space.unset(index);
+            }
+        }
+        fn releaseElementaryUnset(comptime AddressSpace: type, address_space: *AddressSpace) bool {
+            if (comptime AddressSpace.addr_spec.options.thread_safe) {
+                return address_space.atomicUnset();
+            } else {
+                return address_space.unset();
+            }
+        }
+    };
     pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.acquire_void {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        if (acquireSet(AddressSpace, address_space, index)) {
+        const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+        if (helper.acquireSet(AddressSpace, address_space, index)) {
             if (spec.options.require_map) {
-                try meta.wrap(acquireMap(AddressSpace, address_space));
+                try meta.wrap(helper.acquireMap(AddressSpace, address_space));
             }
-            if (spec.logging.acquire.Acquire) {
+            if (logging.Acquire) {
                 debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
             }
         } else if (spec.errors.acquire == .throw) {
-            if (spec.logging.acquire.Error) {
+            if (logging.Error) {
                 debug.arenaAcquireError(spec.errors.acquire.throw, index, lb_addr, up_addr, spec.label);
             }
             return spec.errors.acquire.throw;
         } else if (spec.errors.acquire == .abort) {
-            if (spec.logging.acquire.Fault) {
+            if (logging.Fault) {
+                builtin.debug.logFault(debug.about_acq_2_s);
+            }
+            sys.call(.exit, .{}, noreturn, .{2});
+        }
+    }
+    pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
+        const spec = AddressSpace.addr_spec;
+        const lb_addr: u64 = AddressSpace.low(index);
+        const up_addr: u64 = AddressSpace.high(index);
+        const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+        if (helper.acquireStaticSet(AddressSpace, address_space, index)) {
+            if (logging.Acquire) {
+                debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
+            }
+        } else if (spec.errors.acquire == .throw) {
+            if (logging.Error) {
+                debug.arenaAcquireError(spec.errors.acquire.throw, index, lb_addr, up_addr, spec.label);
+            }
+            return spec.errors.acquire.throw;
+        } else if (spec.errors.acquire == .abort) {
+            if (logging.Fault) {
+                builtin.debug.logFault(debug.about_acq_2_s);
+            }
+            sys.call(.exit, .{}, noreturn, .{2});
+        }
+    }
+    pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
+        const spec = AddressSpace.addr_spec;
+        const lb_addr: u64 = address_space.low();
+        const up_addr: u64 = address_space.high();
+        const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+        if (helper.acquireSet(AddressSpace, address_space)) {
+            if (logging.Acquire) {
+                debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
+            }
+        } else if (comptime spec.errors.acquire == .throw) {
+            if (logging.Error) {
+                debug.arenaAcquireError(spec.errors.acquire.throw, null, lb_addr, up_addr, spec.label);
+            }
+            return spec.errors.acquire.throw;
+        } else if (comptime spec.errors.acquire == .abort) {
+            if (logging.Fault) {
                 builtin.debug.logFault(debug.about_acq_2_s);
             }
             sys.call(.exit, .{}, noreturn, .{2});
@@ -3341,137 +3426,67 @@ const special = opaque {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        if (releaseUnset(AddressSpace, address_space, index)) {
-            if (spec.logging.release.Release) {
+        const logging: builtin.Logging.ReleaseErrorFault = spec.logging.release.override();
+        if (helper.releaseUnset(AddressSpace, address_space, index)) {
+            if (logging.Release) {
                 debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
             }
             if (spec.options.require_unmap) {
-                try meta.wrap(releaseUnmap(AddressSpace, address_space));
+                try meta.wrap(helper.releaseUnmap(AddressSpace, address_space));
             }
         } else if (spec.errors.release == .throw) {
-            if (spec.logging.release.Error) {
+            if (logging.Error) {
                 debug.arenaReleaseError(spec.errors.throw, index, lb_addr, up_addr, spec.label);
             }
             return spec.errors.release.throw;
         } else if (spec.errors.release == .abort) {
+            if (logging.Fault) {
+                builtin.debug.logFault(debug.about_rel_2_s);
+            }
+            sys.call(.exit, .{}, noreturn, .{2});
+        }
+    }
+    pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
+        const spec = AddressSpace.addr_spec;
+        const lb_addr: u64 = AddressSpace.low(index);
+        const up_addr: u64 = AddressSpace.high(index);
+        const logging: builtin.Logging.ReleaseErrorFault = spec.logging.release.override();
+        if (helper.releaseStaticUnset(AddressSpace, address_space, index)) {
+            if (logging.Release) {
+                debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            }
+        } else if (spec.errors.release == .throw) {
+            if (logging.Error) {
+                debug.arenaReleaseError(spec.errors.throw, index, lb_addr, up_addr, spec.label);
+            }
+            return spec.errors.release.throw;
+        } else if (spec.errors.release == .abort) {
+            if (logging.Fault) {
+                builtin.debug.logFault(debug.about_rel_2_s);
+            }
+            sys.call(.exit, .{}, noreturn, .{2});
+        }
+    }
+    pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
+        const spec = AddressSpace.addr_spec;
+        const lb_addr: u64 = address_space.low();
+        const up_addr: u64 = address_space.high();
+        if (helper.releaseUnset(AddressSpace, address_space)) {
+            if (spec.logging.release.Release) {
+                debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
+            }
+        } else if (comptime spec.errors.release == .throw) {
+            if (spec.logging.release.Error) {
+                debug.arenaReleaseError(spec.errors.throw, null, lb_addr, up_addr, spec.label);
+            }
+            return spec.errors.release.throw;
+        } else if (comptime spec.errors.release == .abort) {
             if (spec.logging.release.Fault) {
                 builtin.debug.logFault(debug.about_rel_2_s);
             }
             sys.call(.exit, .{}, noreturn, .{2});
         }
     }
-    pub const static = opaque {
-        fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
-            if (comptime AddressSpace.arena(index).options.thread_safe) {
-                return address_space.atomicSet(index);
-            } else {
-                return address_space.set(index);
-            }
-        }
-        fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
-            if (comptime AddressSpace.arena(index).options.thread_safe) {
-                return address_space.atomicUnset(index);
-            } else {
-                return address_space.unset(index);
-            }
-        }
-        pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
-            const spec = AddressSpace.addr_spec;
-            const lb_addr: u64 = AddressSpace.low(index);
-            const up_addr: u64 = AddressSpace.high(index);
-            if (static.acquireSet(AddressSpace, address_space, index)) {
-                if (spec.logging.acquire.Acquire) {
-                    debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
-                }
-            } else if (spec.errors.acquire == .throw) {
-                if (spec.logging.acquire.Error) {
-                    debug.arenaAcquireError(spec.errors.acquire.throw, index, lb_addr, up_addr, spec.label);
-                }
-                return spec.errors.acquire.throw;
-            } else if (spec.errors.acquire == .abort) {
-                if (spec.logging.acquire.Fault) {
-                    builtin.debug.logFault(debug.about_acq_2_s);
-                }
-                sys.call(.exit, .{}, noreturn, .{2});
-            }
-        }
-        pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
-            const spec = AddressSpace.addr_spec;
-            const lb_addr: u64 = AddressSpace.low(index);
-            const up_addr: u64 = AddressSpace.high(index);
-            if (static.releaseUnset(AddressSpace, address_space, index)) {
-                if (spec.logging.release.Release) {
-                    debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
-                }
-            } else if (spec.errors.release == .throw) {
-                if (spec.logging.release.Error) {
-                    debug.arenaReleaseError(spec.errors.throw, index, lb_addr, up_addr, spec.label);
-                }
-                return spec.errors.release.throw;
-            } else if (spec.errors.release == .abort) {
-                if (spec.logging.release.Fault) {
-                    builtin.debug.logFault(debug.about_rel_2_s);
-                }
-                sys.call(.exit, .{}, noreturn, .{2});
-            }
-        }
-    };
-    pub const elementary = opaque {
-        fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace) bool {
-            if (comptime AddressSpace.addr_spec.options.thread_safe) {
-                return address_space.atomicSet();
-            } else {
-                return address_space.set();
-            }
-        }
-        fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace) bool {
-            if (comptime AddressSpace.addr_spec.options.thread_safe) {
-                return address_space.atomicUnset();
-            } else {
-                return address_space.unset();
-            }
-        }
-        pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
-            const spec = AddressSpace.addr_spec;
-            const lb_addr: u64 = address_space.low();
-            const up_addr: u64 = address_space.high();
-            if (elementary.acquireSet(AddressSpace, address_space)) {
-                if (spec.logging.acquire.Acquire) {
-                    debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
-                }
-            } else if (comptime spec.errors.acquire == .throw) {
-                if (spec.logging.acquire.Error) {
-                    debug.arenaAcquireError(spec.errors.acquire.throw, null, lb_addr, up_addr, spec.label);
-                }
-                return spec.errors.acquire.throw;
-            } else if (comptime spec.errors.acquire == .abort) {
-                if (spec.logging.acquire.Fault) {
-                    builtin.debug.logFault(debug.about_acq_2_s);
-                }
-                sys.call(.exit, .{}, noreturn, .{2});
-            }
-        }
-        pub fn release(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
-            const spec = AddressSpace.addr_spec;
-            const lb_addr: u64 = address_space.low();
-            const up_addr: u64 = address_space.high();
-            if (elementary.releaseUnset(AddressSpace, address_space)) {
-                if (spec.logging.release.Release) {
-                    debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
-                }
-            } else if (comptime spec.errors.release == .throw) {
-                if (spec.logging.release.Error) {
-                    debug.arenaReleaseError(spec.errors.throw, null, lb_addr, up_addr, spec.label);
-                }
-                return spec.errors.release.throw;
-            } else if (comptime spec.errors.release == .abort) {
-                if (spec.logging.release.Fault) {
-                    builtin.debug.logFault(debug.about_rel_2_s);
-                }
-                sys.call(.exit, .{}, noreturn, .{2});
-            }
-        }
-    };
 };
 const debug = opaque {
     const PrintArray = mem.StaticString(8192);
