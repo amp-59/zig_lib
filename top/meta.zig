@@ -403,14 +403,14 @@ pub fn Child(comptime T: type) type {
             if (struct_info.backing_integer) |backing_integer| {
                 return backing_integer;
             } else {
-                @compileError("expected packed struct");
+                @compileError("'" ++ @typeName(T) ++ "' not a packed struct");
             }
         },
         .Union => |union_info| {
             if (union_info.tag_type) |tag_type| {
                 return Child(tag_type);
             } else {
-                @compileError("expected tagged union");
+                @compileError("'" ++ @typeName(T) ++ "' not a tagged union");
             }
         },
         .Optional => |optional_info| {
