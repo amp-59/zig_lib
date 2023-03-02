@@ -43,7 +43,7 @@ pub fn main() !void {
     var array: Array = undefined;
     array.undefineAll();
     {
-        const parametric_example: out.DetailMore = .{
+        const parametric_example: detail.More = .{
             .index = 3,
             .kinds = .{ .parametric = true },
             .layouts = .{ .structured = true },
@@ -52,7 +52,7 @@ pub fn main() !void {
             .fields = .{ .undefined_byte_address = true },
             .techs = .{ .disjunct_alignment = true },
         };
-        const impl_detail: *const out.DetailMore = &parametric_example;
+        const impl_detail: *const detail.More = &parametric_example;
         {
             defer array.undefineAll();
             const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.unstreamed_byte_count));
@@ -95,7 +95,7 @@ pub fn main() !void {
         }
     }
     {
-        const dynamic_example: out.DetailMore = .{
+        const dynamic_example: detail.More = .{
             .index = 3,
             .kinds = .{ .dynamic = true },
             .layouts = .{ .structured = true },
@@ -104,7 +104,7 @@ pub fn main() !void {
             .fields = .{ .undefined_byte_address = true },
             .techs = .{ .disjunct_alignment = true },
         };
-        const impl_detail: *const out.DetailMore = &dynamic_example;
+        const impl_detail: *const detail.More = &dynamic_example;
         {
             defer array.undefineAll();
             const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.construct));
@@ -119,7 +119,7 @@ pub fn main() !void {
         }
     }
     {
-        const parametric_example: out.DetailMore = .{
+        const parametric_example: detail.More = .{
             .index = 3,
             .kinds = .{ .static = true },
             .layouts = .{ .structured = true },
@@ -128,7 +128,7 @@ pub fn main() !void {
             .fields = .{ .undefined_byte_address = true },
             .techs = .{ .disjunct_alignment = true },
         };
-        const impl_detail: *const out.DetailMore = &parametric_example;
+        const impl_detail: *const detail.More = &parametric_example;
         {
             defer array.undefineAll();
             const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.unstreamed_byte_count));
