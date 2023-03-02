@@ -17,15 +17,16 @@ pub const key: [88]Fn = .{
     .{ .tag = .index,                           .kind = .get,                                       .loc = .AllDefined },
     .{ .tag = .len,                             .kind = .get,                                       .loc = .AllDefined },
     .{ .tag = .avail,                           .kind = .get,                                       .loc = .AllUndefined },
-    .{ .tag = .__at,                            .kind = .get,                                       .loc = .AllDefined },
-    .{ .tag = .__ad,                            .kind = .get,                                       .loc = .AllDefined },
-    .{ .tag = .__len,                           .kind = .get,                                       .loc = .AllDefined },
-    .{ .tag = .__avail,                         .kind = .get,                                       .loc = .AllUndefined },
+    .{ .tag = .__avail,                         .kind = .get,                                       .loc = .AllUndefined, .decl = .{ .is_pub = false } },
+    .{ .tag = .__at,                            .kind = .get,                                       .loc = .AllDefined, .decl = .{ .is_pub = false } },
+    .{ .tag = .__ad,                            .kind = .get,                                       .loc = .AllDefined, .decl = .{ .is_pub = false } },
+    .{ .tag = .__len,                           .kind = .get,                                       .loc = .AllDefined, .decl = .{ .is_pub = false } },
+    .{ .tag = .__behind,                        .kind = .get,                                       .loc = .Behind, .decl = .{ .is_pub = false } },
+    .{ .tag = .__back,                          .kind = .get,                                       .loc = .Back, .decl = .{ .is_pub = false } },
     .{ .tag = .readAll,                         .kind = .read,      .val = .Many,                   .loc = .AllDefined },
     .{ .tag = .referAllDefined,                 .kind = .refer,     .val = .Many,                   .loc = .AllDefined },
     .{ .tag = .readAllWithSentinel,             .kind = .read,      .val = .ManyWithSentinel,       .loc = .AllDefined },
     .{ .tag = .referAllDefinedWithSentinel,     .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AllDefined },
-    .{ .tag = .__behind,                        .kind = .get,                                       .loc = .Behind },
     .{ .tag = .unstream,                        .kind = .set,                                       .loc = .Behind },
     .{ .tag = .readOneBehind,                   .kind = .read,      .val = .One,                    .loc = .Behind },
     .{ .tag = .readCountBehind,                 .kind = .read,      .val = .Count,                  .loc = .Behind },
@@ -54,7 +55,6 @@ pub const key: [88]Fn = .{
     .{ .tag = .readCountWithSentinelAhead,      .kind = .read,      .val = .CountWithSentinel,      .loc = .Ahead },
     .{ .tag = .readManyAhead,                   .kind = .read,      .val = .Many,                   .loc = .Ahead },
     .{ .tag = .readManyWithSentinelAhead,       .kind = .read,      .val = .ManyWithSentinel,       .loc = .Ahead },
-    .{ .tag = .__back,                          .kind = .get,                                       .loc = .Back },
     .{ .tag = .undefine,                        .kind = .set,                                       .loc = .Back },
     .{ .tag = .readOneBack,                     .kind = .read,      .val = .One,                    .loc = .Back },
     .{ .tag = .referOneBack,                    .kind = .refer,     .val = .One,                    .loc = .Back },
@@ -82,22 +82,22 @@ pub const key: [88]Fn = .{
     .{ .tag = .writeArgs,                       .kind = .write,     .val = .Args,                   .loc = .Next },
     .{ .tag = .writeFormat,                     .kind = .write,     .val = .Format,                 .loc = .Next },
     .{ .tag = .writeAny,                        .kind = .write,     .val = .Any,                    .loc = .Next },
-    .{ .tag = .static,                          .kind = .transform,                                 .err = .Wrap },
-    .{ .tag = .dynamic,                         .kind = .transform,                                 .err = .Wrap },
-    .{ .tag = .holder,                          .kind = .transform,                                 .err = .Wrap },
-    .{ .tag = .init,                            .kind = .allocate,                                  .err = .Wrap },
-    .{ .tag = .grow,                            .kind = .reallocate,                                .err = .Wrap },
-    .{ .tag = .deinit,                          .kind = .deallocate,                                .err = .Wrap },
-    .{ .tag = .shrink,                          .kind = .reallocate,                .loc = .AllUndefined,   .err = .Wrap },
-    .{ .tag = .increment,                       .kind = .reallocate,                .loc = .Next,           .err = .Wrap },
-    .{ .tag = .decrement,                       .kind = .reallocate,                .loc = .Back,           .err = .Wrap },
-    .{ .tag = .appendOne,                       .kind = .append, .val = .One,       .loc = .Next,           .err = .Wrap },
-    .{ .tag = .appendCount,                     .kind = .append, .val = .Count,     .loc = .Next,           .err = .Wrap },
-    .{ .tag = .appendMany,                      .kind = .append, .val = .Many,      .loc = .Next,           .err = .Wrap },
-    .{ .tag = .appendFields,                    .kind = .append, .val = .Fields,    .loc = .Next,           .err = .Wrap },
-    .{ .tag = .appendArgs,                      .kind = .append, .val = .Args,      .loc = .Next,           .err = .Wrap },
-    .{ .tag = .appendFormat,                    .kind = .append, .val = .Format,    .loc = .Next,           .err = .Wrap },
-    .{ .tag = .appendAny,                       .kind = .append, .val = .Any,       .loc = .Next,           .err = .Wrap },
+    .{ .tag = .static,                          .kind = .transform,     },
+    .{ .tag = .dynamic,                         .kind = .transform,     },
+    .{ .tag = .holder,                          .kind = .transform,     },
+    .{ .tag = .init,                            .kind = .allocate,      },
+    .{ .tag = .grow,                            .kind = .reallocate,    },
+    .{ .tag = .deinit,                          .kind = .deallocate,    },
+    .{ .tag = .shrink,                          .kind = .reallocate,                .loc = .AllUndefined,   },
+    .{ .tag = .increment,                       .kind = .reallocate,                .loc = .Next,           },
+    .{ .tag = .decrement,                       .kind = .reallocate,                .loc = .Back,           },
+    .{ .tag = .appendOne,                       .kind = .append, .val = .One,       .loc = .Next,           },
+    .{ .tag = .appendCount,                     .kind = .append, .val = .Count,     .loc = .Next,           },
+    .{ .tag = .appendMany,                      .kind = .append, .val = .Many,      .loc = .Next,           },
+    .{ .tag = .appendFields,                    .kind = .append, .val = .Fields,    .loc = .Next,           },
+    .{ .tag = .appendArgs,                      .kind = .append, .val = .Args,      .loc = .Next,           },
+    .{ .tag = .appendFormat,                    .kind = .append, .val = .Format,    .loc = .Next,           },
+    .{ .tag = .appendAny,                       .kind = .append, .val = .Any,       .loc = .Next,           },
 };
 // zig fmt: on
 pub inline fn get(comptime tag: Fn.Tag) *const Fn {
@@ -112,8 +112,9 @@ pub const Fn = packed struct {
     kind: Kind,
     val: Value = .None,
     loc: Location = .AllDefined,
-    err: ErrorHandler = .None,
-    decl: builtin.CallingConvention = .Unspecified,
+
+    decl: Declaration = .{},
+
     pub const Kind = enum(u4) {
         // State actions
         get = 0,
@@ -143,10 +144,9 @@ pub const Fn = packed struct {
         Location = 10,
         Offset = 11,
     };
-    const ErrorHandler = enum(u2) {
-        None = 0,
-        Try = 1,
-        Wrap = 2,
+    const Declaration = packed struct {
+        is_pub: bool = true,
+        is_inline: bool = true,
     };
     const Location = enum(u3) {
         /// below unstreamed_byte_address: (overwrite|read)*Behind
@@ -170,14 +170,14 @@ pub const Fn = packed struct {
         kind: Kind,
         val: Value = .None,
         loc: Location = .AllDefined,
-        err: ErrorHandler = .None,
+        decl: Declaration = .{},
 
         pub fn init(ctn_fn_info: *const Fn) Untagged {
             return .{
                 .kind = ctn_fn_info.kind,
                 .val = ctn_fn_info.val,
                 .loc = ctn_fn_info.loc,
-                .err = ctn_fn_info.err,
+                .decl = ctn_fn_info.decl,
             };
         }
         fn printSortedByUntaggedPart(allocator: anytype) void {
@@ -665,7 +665,7 @@ pub const Fn = packed struct {
                 arg_list.writeOne(sentinel_symbol);
                 arg_list.writeOne(offset_symbol);
             },
-            .readManyAt => {
+            .readManyAt, .referManyAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -678,7 +678,7 @@ pub const Fn = packed struct {
                 }
                 arg_list.writeOne(offset_symbol);
             },
-            .readManyWithSentinelAt => {
+            .readManyWithSentinelAt, .referManyWithSentinelAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -873,30 +873,6 @@ pub const Fn = packed struct {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
-                arg_list.writeOne(sentinel_symbol);
-                arg_list.writeOne(offset_symbol);
-            },
-            .referManyAt => {
-                arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
-                    arg_list.writeOne(child_type_symbol);
-                }
-                if (ctn_detail.kinds.parametric) {
-                    arg_list.writeOne(allocator_const_ptr_symbol);
-                }
-                if (config.user_defined_length) {
-                    arg_list.writeOne(count_symbol);
-                }
-                arg_list.writeOne(offset_symbol);
-            },
-            .referManyWithSentinelAt => {
-                arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
-                    arg_list.writeOne(child_type_symbol);
-                }
-                if (ctn_detail.kinds.parametric) {
-                    arg_list.writeOne(allocator_const_ptr_symbol);
-                }
                 arg_list.writeOne(sentinel_symbol);
                 arg_list.writeOne(offset_symbol);
             },
