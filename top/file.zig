@@ -1343,4 +1343,73 @@ const debug = opaque {
             }
         }
     }
+    fn writeDescribeType(st: *const FileStatus, buf: []u8) u64 {
+        var len: u64 = 0;
+        var mode: Mode = st.mode;
+        var owner: bool = false;
+        var group: bool = false;
+        var other: bool = false;
+        while (mode.val != 0) {
+            switch (mode.tag) {
+                .owner_read => {
+                    len +%= builtin.debug.writeMany(buf[len..], "owner: read");
+                    owner = true;
+                },
+                .owner_write => {
+                    len +%= builtin.debug.writeMany(buf[len..], if (owner) "+read" else "owner: read");
+                    owner = true;
+                },
+                .owner_execute => {
+                    len +%= builtin.debug.writeMany(buf[len..], if (owner) "+execute" else "owner: execute");
+                    owner = true;
+                },
+                .group_read => {
+                    len +%= builtin.debug.writeMany(buf[len..], "group: read");
+                    group = true;
+                },
+                .group_write => {
+                    len +%= builtin.debug.writeMany(buf[len..], if (group) "+read" else "group: read");
+                    group = true;
+                },
+                .group_execute => {
+                    len +%= builtin.debug.writeMany(buf[len..], if (group) "+execute" else "group: execute");
+                    group = true;
+                },
+                .other_read => {
+                    len +%= builtin.debug.writeMany(buf[len..], "other: read");
+                    other = true;
+                },
+                .other_write => {
+                    len +%= builtin.debug.writeMany(buf[len..], if (other) "+read" else "other: read");
+                    other = true;
+                },
+                .other_execute => {
+                    len +%= builtin.debug.writeMany(buf[len..], if (other) "+execute" else "other: execute");
+                    other = true;
+                },
+                .regular => {
+                    len +%= builtin.debug.writeMany(buf[len..], "regular file");
+                },
+                .directory => {
+                    len +%= builtin.debug.writeMany(buf[len..], "directory");
+                },
+                .character_special => {
+                    len +%= builtin.debug.writeMany(buf[len..], "character special file");
+                },
+                .block_special => {
+                    len +%= builtin.debug.writeMany(buf[len..], "block special file");
+                },
+                .named_pipe => {
+                    len +%= builtin.debug.writeMany(buf[len..], "named pipe");
+                },
+                .socket => {
+                    len +%= builtin.debug.writeMany(buf[len..], "socket");
+                },
+                .symbolic_link => {
+                    len +%= builtin.debug.writeMany(buf[len..], "symbolic link");
+                },
+            }
+        }
+        return len;
+    }
 };
