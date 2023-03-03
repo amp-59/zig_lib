@@ -14,7 +14,7 @@ const detail = @import("./detail.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
-const alloc_fn = @import("./alloc_fn.zig");
+//const alloc_fn = @import("./alloc_fn.zig");
 const out = struct {
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
@@ -92,11 +92,12 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
     var __avail_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__avail));
     _ = __avail_call;
     var __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
-    var __ad_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__ad));
-    _ = __ad_call;
+    var __forward_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__forward));
+    _ = __forward_call;
     var __back_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__back));
     _ = __back_call;
     var __behind_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__behind));
+    var __ahead_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__ahead));
     var pointer_one: [3]Expr = expr.interfacePointerOne(
         expr.symbol(tok.child_type_name),
         undefined,
@@ -319,10 +320,32 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.call(&pointer_many_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
-        .readOneAhead => {},
-        .readCountAhead => {},
-        .readCountWithSentinelAhead => {},
-        .readManyAhead, .readManyWithSentinelAhead => {},
+        .readOneAhead => {
+            pointer_one_loc.* = __ahead_call;
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_one));
+            return array.writeMany(tok.end_expression);
+        },
+        .readCountAhead => {
+            pointer_count_loc.* = __ahead_call;
+            pointer_count_len.* = expr.symbol(tok.count_name);
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_count));
+            return array.writeMany(tok.end_expression);
+        },
+        .readCountWithSentinelAhead => {
+            pointer_count_with_sentinel_loc.* = __ahead_call;
+            pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_count_with_sentinel));
+            return array.writeMany(tok.end_expression);
+        },
+        .readManyAhead => {
+            pointer_many_loc.* = __ahead_call;
+        },
+        .readManyWithSentinelAhead => {
+            pointer_many_with_sentinel_loc.* = __ahead_call;
+        },
         .readOneBack => {},
         .referOneBack => {},
         .overwriteOneBack => {},
@@ -599,6 +622,8 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expression);
         },
+        // return unstreamd address offset above amount of type
+        .__ahead => {},
         // return count of unstreamed of type
         .ahead => {
             var div_count_size: [3]Expr = expr.divT(
@@ -620,7 +645,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             return array.writeMany(tok.end_expression);
         },
         // return undefined address offset above amount of type
-        .__ad => {
+        .__forward => {
             array.writeMany(tok.return_keyword);
             var add_undefined_offset: [3]Expr = expr.add(
                 expr.join(&undefined_byte_address),
