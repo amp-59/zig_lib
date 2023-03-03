@@ -8,14 +8,13 @@ const tok = @import("./tok.zig");
 const detail = @import("./detail.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
-const alloc_fn = @import("./alloc_fn.zig");
+//const alloc_fn = @import("./alloc_fn.zig");
 
 const ExprTag = enum(u8) {
     constant,
     symbol,
     join,
     list,
-    //exprs,
     call,
     call_member,
 };
@@ -45,98 +44,7 @@ pub const Expr = struct {
             return expr.more()[1..];
         }
     }
-
-    pub fn formatWrite(format: Expr, array: anytype) void {
-        if (debug.show_expressions) {
-            debug.showOpen(format);
-        }
-        switch (format.tag()) {
-            .symbol => array.writeMany(format.symbol()),
-            .constant => array.writeFormat(fmt.ud64(format.data1)),
-            .join => for (format.more()) |op| {
-                op.formatWrite(array);
-            },
-            .list => for (format.more()) |op| {
-                op.formatWrite(array);
-                array.writeMany(tok.end_list_item);
-            },
-            //.exprs => for (format.more()) |op| {
-            //    op.formatWrite(array);
-            //    array.writeMany(tok.end_expression);
-            //},
-            .call => formatWriteCall(format, array),
-            .call_member => formatWriteCallMember(format, array),
-        }
-        if (debug.show_expressions) {
-            debug.showClose();
-        }
-    }
-    pub fn formatLength(format: Expr) u64 {
-        var len: u64 = 0;
-        switch (format.tag()) {
-            .symbol => len +%= format.data2 & mask,
-            .constant => len +%= fmt.ud64(format.data1).formatLength(),
-            .join => for (format.more()) |op| {
-                len +%= op.formatLength();
-            },
-            .list => for (format.more()) |op| {
-                len +%= op.formatLength() +% tok.end_list_item.len;
-            },
-            //.exprs => for (format.more()) |op| {
-            //    len +%= op.formatLength() +% tok.end_expression.len;
-            //},
-            .call => len +%= formatLengthCall(format),
-            .call_member => len +%= formatLengthCallMember(format),
-        }
-        return len;
-    }
-    pub fn formatWriteCall(format: Expr, array: anytype) void {
-        const fn_args: []const Expr = format.more()[1..];
-        array.writeFormat(format.more()[0]);
-        array.writeOne('(');
-        var idx: u64 = 0;
-        while (idx != fn_args.len) : (idx +%= 1) {
-            array.writeFormat(fn_args[idx]);
-            array.writeMany(tok.end_small_list_item);
-        }
-        if (idx != 0) {
-            array.undefine(tok.end_small_list_item.len);
-        }
-        array.writeOne(')');
-    }
-    pub fn formatLengthCall(format: Expr) u64 {
-        const fn_args: []const Expr = format.more()[1..];
-        var len: u64 = 0;
-        len +%= format.more()[0].formatLength();
-        len +%= 1;
-        var idx: u64 = 0;
-        while (idx != fn_args.len) : (idx +%= 1) {
-            len +%= fn_args[idx].formatLength();
-            len +%= tok.end_small_list_item.len;
-        }
-        if (idx != 0) {
-            len -%= tok.end_small_list_item.len;
-        }
-        len +%= 1;
-        return len;
-    }
-    pub fn formatWriteCallMember(format: Expr, array: anytype) void {
-        const fn_args: []const Expr = format.more()[1..];
-        fn_args[0].formatWrite(array);
-        array.writeOne('.');
-        array.writeFormat(format.more()[0]);
-        array.writeOne('(');
-        var idx: u64 = 1;
-        while (idx != fn_args.len) : (idx +%= 1) {
-            fn_args[idx].formatWrite(array);
-            array.writeMany(tok.end_small_list_item);
-        }
-        if (idx != 1) {
-            array.undefine(tok.end_small_list_item.len);
-        }
-        array.writeOne(')');
-    }
-    pub fn formatLengthCallMember(format: Expr) u64 {
+    fn formatLengthCallMember(format: Expr) u64 {
         const fn_args: []const Expr = format.more()[1..];
         var len: u64 = 0;
         len +%= fn_args[0].formatLength();
@@ -153,6 +61,123 @@ pub const Expr = struct {
         }
         len +%= 1;
         return len;
+    }
+    fn formatLengthCall(format: Expr) u64 {
+        const fn_args: []const Expr = format.more()[1..];
+        var len: u64 = 0;
+        len +%= format.more()[0].formatLength();
+        len +%= 1;
+        var idx: u64 = 0;
+        while (idx != fn_args.len) : (idx +%= 1) {
+            len +%= fn_args[idx].formatLength();
+            len +%= tok.end_small_list_item.len;
+        }
+        if (idx != 0) {
+            len -%= tok.end_small_list_item.len;
+        }
+        len +%= 1;
+        return len;
+    }
+    fn formatLengthList(format: Expr, array: anytype) void {
+        if (format.more().len == 0) {
+            return 0;
+        }
+        var len: u64 = 0;
+        const pos: u64 = array.len();
+        for (format.more()) |op| {
+            len +%= op.formatLength();
+            len +%= tok.end_small_list_item.len;
+        }
+        if (format.more().len == 1 or
+            array.len() -% pos < 40)
+        {
+            len -%= 1;
+        }
+    }
+    fn formatLengthJoin(format: Expr) u64 {
+        var len: u64 = 0;
+        for (format.more()) |op| {
+            len +%= op.formatLength();
+        }
+        return len;
+    }
+    pub fn formatLength(format: Expr) u64 {
+        var len: u64 = 0;
+        switch (format.tag()) {
+            .symbol => len +%= format.data2 & mask,
+            .constant => len +%= fmt.ud64(format.data1).formatLength(),
+            .call => len +%= formatLengthCall(format),
+            .call_member => len +%= formatLengthCallMember(format),
+            .join => formatLengthJoin(format),
+            .list => formatLengthList(format),
+        }
+        return len;
+    }
+    fn formatWriteList(format: Expr, array: anytype) void {
+        if (format.more().len == 0) {
+            return;
+        }
+        const pos: u64 = array.len();
+        for (format.more()) |op| {
+            op.formatWrite(array);
+            array.writeMany(tok.end_small_list_item);
+        }
+        if (format.more().len == 1 or
+            array.len() -% pos < 40)
+        {
+            array.undefine(1);
+        }
+    }
+    fn formatWriteJoin(format: Expr, array: anytype) void {
+        for (format.more()) |op| {
+            op.formatWrite(array);
+        }
+    }
+    fn formatWriteCall(format: Expr, array: anytype) void {
+        const fn_args: []const Expr = format.more()[1..];
+        array.writeFormat(format.more()[0]);
+        array.writeOne('(');
+        var idx: u64 = 0;
+        while (idx != fn_args.len) : (idx +%= 1) {
+            array.writeFormat(fn_args[idx]);
+            array.writeMany(tok.end_small_list_item);
+        }
+        if (idx != 0) {
+            array.undefine(tok.end_small_list_item.len);
+        }
+        array.writeOne(')');
+    }
+    fn formatWriteCallMember(format: Expr, array: anytype) void {
+        const fn_args: []const Expr = format.more()[1..];
+        fn_args[0].formatWrite(array);
+        array.writeOne('.');
+        array.writeFormat(format.more()[0]);
+        array.writeOne('(');
+        var idx: u64 = 1;
+        while (idx != fn_args.len) : (idx +%= 1) {
+            fn_args[idx].formatWrite(array);
+            array.writeMany(tok.end_small_list_item);
+        }
+        if (idx != 1) {
+            array.undefine(tok.end_small_list_item.len);
+        }
+        array.writeOne(')');
+    }
+    pub fn formatWrite(format: Expr, array: anytype) void {
+        if (debug.show_expressions) {
+            debug.showOpen(format);
+        }
+        switch (format.tag()) {
+            .symbol => array.writeMany(format.symbol()),
+            .constant => array.writeFormat(fmt.ud64(format.data1)),
+            .call => formatWriteCall(format, array),
+            .call_member => formatWriteCallMember(format, array),
+            .join => formatWriteJoin(format, array),
+            .list => formatWriteList(format, array),
+        }
+        if (debug.show_expressions) {
+            debug.showClose();
+        }
     }
     pub const debug = struct {
         pub const show_expressions: bool = builtin.define("show_expressions", bool, false);
@@ -250,14 +275,14 @@ const Init = struct {
         impl_const_param: [:0]const u8 = tok.impl_const_param,
         fn determine(impl_fn_info: *const impl_fn.Fn) Tokens {
             switch (impl_fn_info.*) {
-                .construct => {
+                .allocate => {
                     return .{
                         .impl_name = tok.source_impl_name,
                         .impl_type_name = tok.source_impl_type_name,
                     };
                 },
-                .reconstruct,
-                .translate,
+                .reallocate,
+                .move,
                 => {
                     return .{
                         .impl_name = tok.target_impl_name,
@@ -409,32 +434,6 @@ pub const VarDecl = struct {
         return len;
     }
 };
-pub const Initializer = struct {
-    type_name: [:0]const u8,
-    expr1: Expr,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany(tok.var_keyword);
-        array.writeFormat(format.val_name);
-        array.writeMany(tok.colon_operator);
-        array.writeFormat(format.type_name);
-        array.writeMany(tok.equal_operator);
-        array.writeFormat(format.expr1);
-        array.writeMany(tok.end_expression);
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        len +%= tok.var_keyword.len;
-        len +%= format.val_name.len;
-        len +%= tok.colon_operator.len;
-        len +%= format.type_name.len;
-        len +%= tok.equal_operator.len;
-        len +%= format.expr1.len;
-        len +%= tok.end_expression.len;
-        return len;
-    }
-};
-
 pub inline fn fnCall1(fn_name: [:0]const u8, expr1: Expr) [2]Expr {
     return .{ Init.symbol(fn_name), expr1 };
 }
