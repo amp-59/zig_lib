@@ -39,14 +39,14 @@ pub const Fn = enum(u5) {
     move = 20,
     reallocate = 21,
     deallocate = 22,
-    pub inline fn fnName(impl_fn_info: *const Fn) [:0]const u8 {
-        return @tagName(impl_fn_info.*);
+    pub inline fn fnName(impl_fn_info: Fn) [:0]const u8 {
+        return @tagName(impl_fn_info);
     }
-    pub fn hasCapability(fn_info: *const Fn, impl_variant: *const detail.More) bool {
+    pub fn hasCapability(fn_info: Fn, impl_variant: *const detail.More) bool {
         const is_always_aligned: bool =
             impl_variant.techs.auto_alignment or
             impl_variant.techs.unit_alignment;
-        switch (fn_info.*) {
+        switch (fn_info) {
             .define,
             .undefine,
             .undefined_byte_address,
@@ -83,7 +83,7 @@ pub const Fn = enum(u5) {
             },
         }
     }
-    pub fn argList(impl_fn_info: *const Fn, impl_variant: *const detail.More, list_kind: gen.ListKind) gen.ArgList {
+    pub fn argList(impl_fn_info: Fn, impl_variant: *const detail.More, list_kind: gen.ListKind) gen.ArgList {
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
@@ -116,14 +116,14 @@ pub const Fn = enum(u5) {
         };
         const allocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_allocated_byte_address_param;
                 } else {
                     break :blk tok.target_allocated_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_allocated_byte_address_name;
                 } else {
                     break :blk tok.target_allocated_byte_address_name;
@@ -132,14 +132,14 @@ pub const Fn = enum(u5) {
         };
         const aligned_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_aligned_byte_address_param;
                 } else {
                     break :blk tok.target_aligned_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_aligned_byte_address_name;
                 } else {
                     break :blk tok.target_aligned_byte_address_name;
@@ -148,14 +148,14 @@ pub const Fn = enum(u5) {
         };
         const unallocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_unallocated_byte_address_param;
                 } else {
                     break :blk tok.target_unallocated_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_unallocated_byte_address_name;
                 } else {
                     break :blk tok.target_unallocated_byte_address_name;
@@ -164,14 +164,14 @@ pub const Fn = enum(u5) {
         };
         const single_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_single_approximation_counts_param;
                 } else {
                     break :blk tok.target_single_approximation_counts_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_single_approximation_counts_name;
                 } else {
                     break :blk tok.target_single_approximation_counts_name;
@@ -180,21 +180,21 @@ pub const Fn = enum(u5) {
         };
         const double_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_double_approximation_counts_param;
                 } else {
                     break :blk tok.target_double_approximation_counts_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .allocate) {
+                if (impl_fn_info == .allocate) {
                     break :blk tok.source_double_approximation_counts_name;
                 } else {
                     break :blk tok.target_double_approximation_counts_name;
                 }
             },
         };
-        switch (impl_fn_info.*) {
+        switch (impl_fn_info) {
             .define, .undefine, .seek, .tell => {
                 arg_list.writeOne(impl_symbol);
                 arg_list.writeOne(offset_symbol);
@@ -262,7 +262,7 @@ pub const Fn = enum(u5) {
                 }
             },
             .allocate, .move, .reallocate => {
-                if (impl_fn_info.* != .allocate) {
+                if (impl_fn_info != .allocate) {
                     arg_list.writeOne(impl_symbol);
                 }
                 if (impl_variant.fields.allocated_byte_address) {
@@ -291,8 +291,8 @@ pub const Fn = enum(u5) {
         }
         return arg_list;
     }
-    pub fn returnType(impl_fn_info: *const Fn) [:0]const u8 {
-        switch (impl_fn_info.*) {
+    pub fn returnType(impl_fn_info: Fn) [:0]const u8 {
+        switch (impl_fn_info) {
             .allocated_byte_address,
             .aligned_byte_address,
             .unstreamed_byte_address,
