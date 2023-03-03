@@ -194,6 +194,18 @@ pub inline fn mulAdd16(arg1: u16, arg2: u16, arg3: u16) u16 {
 pub inline fn mulAdd8(arg1: u8, arg2: u8, arg3: u8) u8 {
     return add8(mul8(arg1, arg2), arg3);
 }
+pub inline fn mulSub64(arg1: u64, arg2: u64, arg3: u64) u64 {
+    return add64(mul64(arg1, arg2), arg3);
+}
+pub inline fn mulSub32(arg1: u32, arg2: u32, arg3: u32) u32 {
+    return add32(mul32(arg1, arg2), arg3);
+}
+pub inline fn mulSub16(arg1: u16, arg2: u16, arg3: u16) u16 {
+    return add16(mul16(arg1, arg2), arg3);
+}
+pub inline fn mulSub8(arg1: u8, arg2: u8, arg3: u8) u8 {
+    return add8(mul8(arg1, arg2), arg3);
+}
 pub inline fn shlOr64(arg1: u64, arg2: u64, arg3: u64) u64 {
     return or64(shl64(arg1, arg2), arg3);
 }
