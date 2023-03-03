@@ -9,285 +9,155 @@ const tok = @import("./tok.zig");
 const detail = @import("./detail.zig");
 const config = @import("./config.zig");
 // zig fmt: off
-pub const key: [89]Fn = .{
-    .{ .tag = .defineAll,                       .kind = .set,                                       .loc = .AllDefined  },
-    .{ .tag = .undefineAll,                     .kind = .set,                                       .loc = .AllDefined  },
-    .{ .tag = .streamAll,                       .kind = .set,                                       .loc = .AllDefined  },
-    .{ .tag = .unstreamAll,                     .kind = .set,                                       .loc = .AllDefined  },
-    .{ .tag = .index,                           .kind = .get,                                       .loc = .AllDefined  },
-    .{ .tag = .len,                             .kind = .get,                                       .loc = .AllDefined  },
-    .{ .tag = .avail,                           .kind = .get,                                       .loc = .AllUndefined },
-    .{ .tag = .__avail,                         .kind = .get,       .decl = .{ .is_pub = false },   .loc = .AllUndefined },
-    .{ .tag = .__at,                            .kind = .get,       .decl = .{ .is_pub = false },   .loc = .AllDefined  },
-    .{ .tag = .__forward,                       .kind = .get,       .decl = .{ .is_pub = false },   .loc = .AllDefined  },
-    .{ .tag = .__len,                           .kind = .get,       .decl = .{ .is_pub = false },   .loc = .AllDefined  },
-    .{ .tag = .__ahead,                         .kind = .get,       .decl = .{ .is_pub = false },   .loc = .Ahead       },
-    .{ .tag = .__behind,                        .kind = .get,       .decl = .{ .is_pub = false },   .loc = .Behind      },
-    .{ .tag = .__back,                          .kind = .get,       .decl = .{ .is_pub = false },   .loc = .Back        },
-    .{ .tag = .readAll,                         .kind = .read,      .val = .Many,                   .loc = .AllDefined },
-    .{ .tag = .referAllDefined,                 .kind = .refer,     .val = .Many,                   .loc = .AllDefined },
-    .{ .tag = .readAllWithSentinel,             .kind = .read,      .val = .ManyWithSentinel,       .loc = .AllDefined },
-    .{ .tag = .referAllDefinedWithSentinel,     .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AllDefined },
-    .{ .tag = .unstream,                        .kind = .set,                                       .loc = .Behind },
-    .{ .tag = .readOneBehind,                   .kind = .read,      .val = .One,                    .loc = .Behind },
-    .{ .tag = .readCountBehind,                 .kind = .read,      .val = .Count,                  .loc = .Behind },
-    .{ .tag = .readCountWithSentinelBehind,     .kind = .read,      .val = .CountWithSentinel,      .loc = .Behind },
-    .{ .tag = .referCountWithSentinelBehind,    .kind = .refer,     .val = .CountWithSentinel,      .loc = .Behind },
-    .{ .tag = .readManyBehind,                  .kind = .read,      .val = .Many,                   .loc = .Behind },
-    .{ .tag = .readManyWithSentinelBehind,      .kind = .read,      .val = .ManyWithSentinel,       .loc = .Behind },
-    .{ .tag = .referManyWithSentinelBehind,     .kind = .refer,     .val = .ManyWithSentinel,       .loc = .Behind },
-    .{ .tag = .readOneAt,                       .kind = .read,      .val = .One,                    .loc = .AnyDefined },
-    .{ .tag = .referOneAt,                      .kind = .refer,     .val = .One,                    .loc = .AnyDefined },
-    .{ .tag = .overwriteOneAt,                  .kind = .write,     .val = .One,                    .loc = .AnyDefined },
-    .{ .tag = .readCountAt,                     .kind = .read,      .val = .Count,                  .loc = .AnyDefined },
-    .{ .tag = .referCountAt,                    .kind = .refer,     .val = .Count,                  .loc = .AnyDefined },
-    .{ .tag = .overwriteCountAt,                .kind = .write,     .val = .Count,                  .loc = .AnyDefined },
-    .{ .tag = .readCountWithSentinelAt,         .kind = .read,      .val = .CountWithSentinel,      .loc = .AnyDefined },
-    .{ .tag = .referCountWithSentinelAt,        .kind = .refer,     .val = .CountWithSentinel,      .loc = .AnyDefined },
-    .{ .tag = .readManyAt,                      .kind = .read,      .val = .Many,                   .loc = .AnyDefined },
-    .{ .tag = .referManyAt,                     .kind = .refer,     .val = .Many,                   .loc = .AnyDefined },
-    .{ .tag = .overwriteManyAt,                 .kind = .write,     .val = .Many,                   .loc = .AnyDefined },
-    .{ .tag = .readManyWithSentinelAt,          .kind = .read,      .val = .ManyWithSentinel,       .loc = .AnyDefined },
-    .{ .tag = .referManyWithSentinelAt,         .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AnyDefined },
-    .{ .tag = .ahead,                           .kind = .set,                                       .loc = .Ahead },
-    .{ .tag = .stream,                          .kind = .set,                                       .loc = .Ahead },
-    .{ .tag = .readOneAhead,                    .kind = .read,      .val = .One,                    .loc = .Ahead },
-    .{ .tag = .readCountAhead,                  .kind = .read,      .val = .Count,                  .loc = .Ahead },
-    .{ .tag = .readCountWithSentinelAhead,      .kind = .read,      .val = .CountWithSentinel,      .loc = .Ahead },
-    .{ .tag = .readManyAhead,                   .kind = .read,      .val = .Many,                   .loc = .Ahead },
-    .{ .tag = .readManyWithSentinelAhead,       .kind = .read,      .val = .ManyWithSentinel,       .loc = .Ahead },
-    .{ .tag = .undefine,                        .kind = .set,                                       .loc = .Back },
-    .{ .tag = .readOneBack,                     .kind = .read,      .val = .One,                    .loc = .Back },
-    .{ .tag = .referOneBack,                    .kind = .refer,     .val = .One,                    .loc = .Back },
-    .{ .tag = .overwriteOneBack,                .kind = .write,     .val = .One,                    .loc = .Back },
-    .{ .tag = .readCountBack,                   .kind = .read,      .val = .Count,                  .loc = .Back },
-    .{ .tag = .referCountBack,                  .kind = .refer,     .val = .Count,                  .loc = .Back },
-    .{ .tag = .overwriteCountBack,              .kind = .write,     .val = .Count,                  .loc = .Back },
-    .{ .tag = .readCountWithSentinelBack,       .kind = .read,      .val = .CountWithSentinel,      .loc = .Back },
-    .{ .tag = .referCountWithSentinelBack,      .kind = .refer,     .val = .CountWithSentinel,      .loc = .Back },
-    .{ .tag = .readManyBack,                    .kind = .read,      .val = .Many,                   .loc = .Back },
-    .{ .tag = .referManyBack,                   .kind = .refer,     .val = .Many,                   .loc = .Back },
-    .{ .tag = .overwriteManyBack,               .kind = .write,     .val = .Many,                   .loc = .Back },
-    .{ .tag = .readManyWithSentinelBack,        .kind = .read,      .val = .ManyWithSentinel,       .loc = .Back },
-    .{ .tag = .referManyWithSentinelBack,       .kind = .refer,     .val = .ManyWithSentinel,       .loc = .Back },
-    .{ .tag = .referAllUndefined,               .kind = .refer,     .val = .Many,                   .loc = .AllUndefined },
-    .{ .tag = .referAllUndefinedWithSentinel,   .kind = .refer,     .val = .ManyWithSentinel,       .loc = .AllUndefined },
-    .{ .tag = .define,                          .kind = .set,                                       .loc = .Next },
-    .{ .tag = .referOneUndefined,               .kind = .refer,     .val = .One,                    .loc = .Next },
-    .{ .tag = .writeOne,                        .kind = .write,     .val = .One,                    .loc = .Next },
-    .{ .tag = .referCountUndefined,             .kind = .refer,     .val = .Count,                  .loc = .Next },
-    .{ .tag = .writeCount,                      .kind = .write,     .val = .Count,                  .loc = .Next },
-    .{ .tag = .referManyUndefined,              .kind = .refer,     .val = .Many,                   .loc = .Next },
-    .{ .tag = .writeMany,                       .kind = .write,     .val = .Many,                   .loc = .Next },
-    .{ .tag = .writeFields,                     .kind = .write,     .val = .Fields,                 .loc = .Next },
-    .{ .tag = .writeArgs,                       .kind = .write,     .val = .Args,                   .loc = .Next },
-    .{ .tag = .writeFormat,                     .kind = .write,     .val = .Format,                 .loc = .Next },
-    .{ .tag = .writeAny,                        .kind = .write,     .val = .Any,                    .loc = .Next },
-    .{ .tag = .static,                          .kind = .transform,     },
-    .{ .tag = .dynamic,                         .kind = .transform,     },
-    .{ .tag = .holder,                          .kind = .transform,     },
-    .{ .tag = .init,                            .kind = .allocate,      },
-    .{ .tag = .grow,                            .kind = .reallocate,    },
-    .{ .tag = .deinit,                          .kind = .deallocate,    },
-    .{ .tag = .shrink,                          .kind = .reallocate,                .loc = .AllUndefined,   },
-    .{ .tag = .increment,                       .kind = .reallocate,                .loc = .Next,           },
-    .{ .tag = .decrement,                       .kind = .reallocate,                .loc = .Back,           },
-    .{ .tag = .appendOne,                       .kind = .append, .val = .One,       .loc = .Next,           },
-    .{ .tag = .appendCount,                     .kind = .append, .val = .Count,     .loc = .Next,           },
-    .{ .tag = .appendMany,                      .kind = .append, .val = .Many,      .loc = .Next,           },
-    .{ .tag = .appendFields,                    .kind = .append, .val = .Fields,    .loc = .Next,           },
-    .{ .tag = .appendArgs,                      .kind = .append, .val = .Args,      .loc = .Next,           },
-    .{ .tag = .appendFormat,                    .kind = .append, .val = .Format,    .loc = .Next,           },
-    .{ .tag = .appendAny,                       .kind = .append, .val = .Any,       .loc = .Next,           },
+
+const kind = @import("./zig-out/src/container_kinds.zig");
+
+pub const key = blk: {
+    var res: [@typeInfo(Fn).Enum.fields.len]Fn = undefined;
+    for (@typeInfo(Fn).Enum.fields, 0..) |field, index| {
+        res[index] =@intToEnum(Fn, field.value);
+    }
+    break :blk res;
 };
 // zig fmt: on
-pub inline fn get(comptime tag: Fn.Tag) *const Fn {
+pub fn get(comptime tag: Fn) *const Fn {
     comptime {
         for (key) |val| {
-            if (val.tag == tag) return &val;
+            if (val == tag) return &val;
         }
     }
 }
-pub const Fn = packed struct {
-    tag: Tag,
-    kind: Kind,
-    val: Value = .None,
-    loc: Location = .AllDefined,
+pub const Fn = enum {
+    defineAll,
+    undefineAll,
+    streamAll,
+    unstreamAll,
 
-    decl: Declaration = .{},
+    len,
+    __len,
+    index,
+    __at,
+    avail,
+    __avail,
 
-    pub const Kind = enum(u4) {
-        // State actions
-        get = 0,
-        set = 1,
-        // Value actions
-        read = 2,
-        refer = 3,
-        write = 4,
-        append = 5,
-        // Interface state actions
-        allocate = 6,
-        reallocate = 7,
-        transform = 8,
-        deallocate = 9,
-    };
-    const Value = enum(u4) {
-        None = 0,
-        One = 1,
-        Count = 2,
-        CountWithSentinel = 3,
-        Many = 4,
-        ManyWithSentinel = 5,
-        Fields = 6,
-        Args = 7,
-        Format = 8,
-        Any = 9,
-        Location = 10,
-        Offset = 11,
-    };
-    const Declaration = packed struct {
-        is_pub: bool = true,
-        is_inline: bool = true,
-    };
-    const Location = enum(u3) {
-        /// below unstreamed_byte_address: (overwrite|read)*Behind
-        Behind = 0,
-        /// unstreamed_byte_address and above: (overwrite|read)*Ahead
-        Ahead = 1,
-        /// below undefined_byte_address: re(write|read)*Back
-        Back = 2,
-        /// undefined_byte_address and above (write|append)*
-        Next = 3,
-        /// All positions with defined values
-        AllDefined = 4,
-        /// Any position with a defined value
-        AnyDefined = 5,
-        // Any position with an undefined value
-        AnyUndefined = 6,
-        // All positions with undefined value
-        AllUndefined = 7,
-    };
-    pub const Untagged = packed struct {
-        kind: Kind,
-        val: Value = .None,
-        loc: Location = .AllDefined,
-        decl: Declaration = .{},
+    __undefined,
+    __defined,
+    __unstreamed,
+    __streamed,
 
-        pub fn init(ctn_fn_info: *const Fn) Untagged {
-            return .{
-                .kind = ctn_fn_info.kind,
-                .val = ctn_fn_info.val,
-                .loc = ctn_fn_info.loc,
-                .decl = ctn_fn_info.decl,
-            };
-        }
-        fn printSortedByUntaggedPart(allocator: anytype) void {
-            var sorted: [88]u32 = undefined;
-            for (&key, 0..) |*x, i| {
-                sorted[i] = meta.leastBitCast(Fn.Untagged.init(x));
-            }
-            algo.radixSort(allocator, u32, &sorted);
-            for (sorted) |x| {
-                testing.print(.{ fmt.any(@bitCast(Fn.Untagged, @truncate(meta.Child(Fn.Untagged), x))), '\n' });
-            }
-        }
-    };
-    pub const Tag = enum {
-        defineAll,
-        undefineAll,
-        streamAll,
-        unstreamAll,
-        len,
-        __len,
-        avail,
-        __avail,
-        __forward,
-        __back,
-        __ahead,
-        __behind,
-        index,
-        __at,
-        readAll,
-        referAllDefined,
-        readAllWithSentinel,
-        referAllDefinedWithSentinel,
-        unstream,
-        readOneBehind,
-        readCountBehind,
-        readCountWithSentinelBehind,
-        referCountWithSentinelBehind,
-        readManyBehind,
-        readManyWithSentinelBehind,
-        referManyWithSentinelBehind,
-        readOneAt,
-        referOneAt,
-        overwriteOneAt,
-        readCountAt,
-        referCountAt,
-        overwriteCountAt,
-        readCountWithSentinelAt,
-        referCountWithSentinelAt,
-        readManyAt,
-        referManyAt,
-        overwriteManyAt,
-        readManyWithSentinelAt,
-        referManyWithSentinelAt,
-        ahead,
-        stream,
-        readOneAhead,
-        readCountAhead,
-        readCountWithSentinelAhead,
-        readManyAhead,
-        readManyWithSentinelAhead,
-        undefine,
-        readOneBack,
-        referOneBack,
-        overwriteOneBack,
-        readCountBack,
-        referCountBack,
-        overwriteCountBack,
-        readCountWithSentinelBack,
-        referCountWithSentinelBack,
-        readManyBack,
-        referManyBack,
-        overwriteManyBack,
-        readManyWithSentinelBack,
-        referManyWithSentinelBack,
-        referAllUndefined,
-        referAllUndefinedWithSentinel,
-        define,
-        referOneUndefined,
-        writeOne,
-        referCountUndefined,
-        writeCount,
-        referManyUndefined,
-        writeMany,
-        writeFields,
-        writeArgs,
-        writeFormat,
-        writeAny,
-        static,
-        dynamic,
-        holder,
-        init,
-        grow,
-        deinit,
-        shrink,
-        increment,
-        decrement,
-        appendOne,
-        appendCount,
-        appendMany,
-        appendFields,
-        appendArgs,
-        appendFormat,
-        appendAny,
-    };
-    pub inline fn fnName(ctn_fn_info: *const Fn) [:0]const u8 {
-        return @tagName(ctn_fn_info.tag);
+    readAll,
+    referAllDefined,
+    readAllWithSentinel,
+    referAllDefinedWithSentinel,
+
+    unstream,
+    readOneStreamed,
+    readCountStreamed,
+    readCountWithSentinelStreamed,
+    referCountWithSentinelStreamed,
+    readManyStreamed,
+    readManyWithSentinelStreamed,
+    referManyWithSentinelStreamed,
+    readOneOffsetStreamed,
+    readCountOffsetStreamed,
+    readCountWithSentinelOffsetStreamed,
+    referCountWithSentinelOffsetStreamed,
+    readManyOffsetStreamed,
+    readManyWithSentinelOffsetStreamed,
+    referManyWithSentinelOffsetStreamed,
+
+    readOneAt,
+    referOneAt,
+    overwriteOneAt,
+    readCountAt,
+    referCountAt,
+    overwriteCountAt,
+    readCountWithSentinelAt,
+    referCountWithSentinelAt,
+    readManyAt,
+    referManyAt,
+    overwriteManyAt,
+    readManyWithSentinelAt,
+    referManyWithSentinelAt,
+
+    ahead,
+    stream,
+    readOneUnstreamed,
+    readCountUnstreamed,
+    readCountWithSentinelUnstreamed,
+    readManyUnstreamed,
+    readManyWithSentinelUnstreamed,
+    readOneOffsetUnstreamed,
+    readCountOffsetUnstreamed,
+    readCountWithSentinelOffsetUnstreamed,
+    readManyOffsetUnstreamed,
+    readManyWithSentinelOffsetUnstreamed,
+
+    undefine,
+    readOneDefined,
+    referOneDefined,
+    overwriteOneDefined,
+    readCountDefined,
+    referCountDefined,
+    overwriteCountDefined,
+    readCountWithSentinelDefined,
+    referCountWithSentinelDefined,
+    readManyDefined,
+    referManyDefined,
+    overwriteManyDefined,
+    readManyWithSentinelDefined,
+    referManyWithSentinelDefined,
+    readOneOffsetDefined,
+    referOneOffsetDefined,
+    overwriteOneOffsetDefined,
+    readCountOffsetDefined,
+    referCountOffsetDefined,
+    overwriteCountOffsetDefined,
+    readCountWithSentinelOffsetDefined,
+    referCountWithSentinelOffsetDefined,
+    readManyOffsetDefined,
+    referManyOffsetDefined,
+    overwriteManyOffsetDefined,
+    readManyWithSentinelOffsetDefined,
+    referManyWithSentinelOffsetDefined,
+
+    referAllUndefined,
+    referAllUndefinedWithSentinel,
+    define,
+    referOneUndefined,
+    referOneOffsetUndefined,
+    writeOne,
+    referCountUndefined,
+    referCountOffsetUndefined,
+    writeCount,
+    referManyUndefined,
+    referManyOffsetUndefined,
+    writeMany,
+    writeFields,
+    writeArgs,
+    writeFormat,
+    writeAny,
+    static,
+    dynamic,
+    holder,
+    init,
+    grow,
+    deinit,
+    shrink,
+    increment,
+    decrement,
+    appendOne,
+    appendCount,
+    appendMany,
+    appendFields,
+    appendArgs,
+    appendFormat,
+    appendAny,
+    pub inline fn fnName(ctn_fn_info: Fn) [:0]const u8 {
+        return @tagName(ctn_fn_info);
     }
-    pub fn hasCapability(ctn_fn_info: *const Fn, ctn_detail: *const detail.Less) bool {
-        switch (ctn_fn_info.tag) {
+    pub fn hasCapability(ctn_fn_info: Fn, ctn_detail: *const detail.Less) bool {
+        switch (ctn_fn_info) {
             .__at,
             .__len,
             .readAll,
@@ -315,51 +185,82 @@ pub const Fn = packed struct {
             .streamAll,
             .unstreamAll,
             .index,
-            .__behind,
-            .__ahead,
-            .readOneBehind,
-            .readCountBehind,
-            .readCountWithSentinelBehind,
-            .referCountWithSentinelBehind,
-            .readManyBehind,
-            .readManyWithSentinelBehind,
-            .referManyWithSentinelBehind,
+            .__streamed,
+            .__unstreamed,
+
+            .readOneStreamed,
+            .readCountStreamed,
+            .readCountWithSentinelStreamed,
+            .referCountWithSentinelStreamed,
+            .readManyStreamed,
+            .readManyWithSentinelStreamed,
+            .referManyWithSentinelStreamed,
+
+            .readOneOffsetStreamed,
+            .readCountOffsetStreamed,
+            .readCountWithSentinelOffsetStreamed,
+            .referCountWithSentinelOffsetStreamed,
+            .readManyOffsetStreamed,
+            .readManyWithSentinelOffsetStreamed,
+            .referManyWithSentinelOffsetStreamed,
+
             .ahead,
-            .readOneAhead,
-            .readCountAhead,
-            .readCountWithSentinelAhead,
-            .readManyAhead,
-            .readManyWithSentinelAhead,
+            .readOneUnstreamed,
+            .readCountUnstreamed,
+            .readCountWithSentinelUnstreamed,
+            .readManyUnstreamed,
+            .readManyWithSentinelUnstreamed,
+            .readOneOffsetUnstreamed,
+            .readCountOffsetUnstreamed,
+            .readCountWithSentinelOffsetUnstreamed,
+            .readManyOffsetUnstreamed,
+            .readManyWithSentinelOffsetUnstreamed,
             => return ctn_detail.modes.stream,
 
-            .__forward,
-            .__back,
+            .__undefined,
+            .__defined,
             .__avail,
             .defineAll,
             .undefineAll,
             .avail,
             .undefine,
-            .readOneBack,
-            .referOneBack,
-            .overwriteOneBack,
-            .readCountBack,
-            .referCountBack,
-            .overwriteCountBack,
-            .readCountWithSentinelBack,
-            .referCountWithSentinelBack,
-            .readManyBack,
-            .referManyBack,
-            .overwriteManyBack,
-            .readManyWithSentinelBack,
-            .referManyWithSentinelBack,
+            .readOneDefined,
+            .referOneDefined,
+            .overwriteOneDefined,
+            .readCountDefined,
+            .referCountDefined,
+            .overwriteCountDefined,
+            .readCountWithSentinelDefined,
+            .referCountWithSentinelDefined,
+            .readManyDefined,
+            .referManyDefined,
+            .overwriteManyDefined,
+            .readManyWithSentinelDefined,
+            .referManyWithSentinelDefined,
+            .readOneOffsetDefined,
+            .referOneOffsetDefined,
+            .overwriteOneOffsetDefined,
+            .readCountOffsetDefined,
+            .referCountOffsetDefined,
+            .overwriteCountOffsetDefined,
+            .readCountWithSentinelOffsetDefined,
+            .referCountWithSentinelOffsetDefined,
+            .readManyOffsetDefined,
+            .referManyOffsetDefined,
+            .overwriteManyOffsetDefined,
+            .readManyWithSentinelOffsetDefined,
+            .referManyWithSentinelOffsetDefined,
             .referAllUndefined,
             .referAllUndefinedWithSentinel,
             .define,
             .referOneUndefined,
+            .referOneOffsetUndefined,
             .writeOne,
             .referCountUndefined,
+            .referCountOffsetUndefined,
             .writeCount,
             .referManyUndefined,
+            .referManyOffsetUndefined,
             => return ctn_detail.modes.resize,
 
             .writeMany => {},
@@ -388,7 +289,7 @@ pub const Fn = packed struct {
         }
         return true;
     }
-    pub fn argList(ctn_fn_info: *const Fn, ctn_detail: *const detail.Less, list_kind: gen.ListKind) gen.ArgList { // 8KiB
+    pub fn argList(ctn_fn_info: Fn, ctn_detail: *const detail.Less, list_kind: gen.ListKind) gen.ArgList { // 8KiB
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
@@ -485,7 +386,7 @@ pub const Fn = packed struct {
                 };
             }
         };
-        switch (ctn_fn_info.tag) {
+        switch (ctn_fn_info) {
             .defineAll,
             .undefineAll,
             .unstreamAll,
@@ -538,10 +439,10 @@ pub const Fn = packed struct {
                 }
                 arg_list.writeOne(offset_symbol);
             },
-            .__forward,
-            .__back,
-            .__behind,
-            .__ahead,
+            .__undefined,
+            .__defined,
+            .__streamed,
+            .__unstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
@@ -600,35 +501,57 @@ pub const Fn = packed struct {
                 }
                 arg_list.writeOne(amount_symbol);
             },
-            .readOneBehind => {
+            .readOneStreamed,
+            .readOneOffsetStreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
+                if (tag == .readOneOffsetStreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readCountBehind => {
+            .readCountStreamed,
+            .readCountOffsetStreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
+                }
+                if (tag == .readCountOffsetStreamed) {
+                    arg_list.writeOne(offset_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
             },
-            .readCountWithSentinelBehind => {
+            .readCountWithSentinelStreamed,
+            .readCountWithSentinelOffsetStreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .readCountWithSentinelOffsetStreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readManyBehind => {
+            .readManyStreamed,
+            .readManyOffsetStreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
+                if (tag == .readManyOffsetStreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readManyWithSentinelBehind => {
+            .readManyWithSentinelStreamed,
+            .readManyWithSentinelOffsetStreamed,
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -636,6 +559,7 @@ pub const Fn = packed struct {
                 arg_list.writeOne(count_symbol);
                 arg_list.writeOne(sentinel_symbol);
             },
+
             .readOneAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
@@ -696,28 +620,45 @@ pub const Fn = packed struct {
                 arg_list.writeOne(sentinel_symbol);
                 arg_list.writeOne(offset_symbol);
             },
-            .readOneAhead => {
+            .readOneUnstreamed,
+            .readOneOffsetUnstreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
+                if (tag == .readOneOffsetUnstreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readCountAhead => {
+            .readCountUnstreamed,
+            .readCountOffsetUnstreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
+                if (tag == .readCountOffsetUnstreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readCountWithSentinelAhead => {
+            .readCountWithSentinelUnstreamed,
+            .readCountWithSentinelOffsetUnstreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .readCountWithSentinelOffsetUnstreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readManyAhead => {
+            .readManyUnstreamed,
+            .readManyOffsetUnstreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -725,8 +666,13 @@ pub const Fn = packed struct {
                 if (config.user_defined_length) {
                     arg_list.writeOne(count_symbol);
                 }
+                if (tag == .readManyOffsetUnstreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readManyWithSentinelAhead => {
+            .readManyWithSentinelUnstreamed,
+            .readManyWithSentinelOffsetUnstreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -735,36 +681,61 @@ pub const Fn = packed struct {
                     arg_list.writeOne(count_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .readManyWithSentinelOffsetUnstreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readOneBack => {
+            .readOneDefined,
+            .readOneOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
+                if (tag == .readOneOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readCountBack => {
+            .readCountDefined,
+            .readCountOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
+                if (tag == .readCountOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readCountWithSentinelBack => {
+            .readCountWithSentinelDefined,
+            .readCountWithSentinelOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .readCountWithSentinelOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readManyBack => {
+            .readManyDefined,
+            .readManyOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
+                if (tag == .readManyOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .readManyWithSentinelBack => {
+            .readManyWithSentinelDefined,
+            .readManyWithSentinelOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -773,6 +744,9 @@ pub const Fn = packed struct {
                     arg_list.writeOne(count_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .readManyWithSentinelOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
             .overwriteOneAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
@@ -809,43 +783,68 @@ pub const Fn = packed struct {
                 arg_list.writeOne(many_values_symbol);
                 arg_list.writeOne(offset_symbol);
             },
-            .overwriteOneBack => {
+            .overwriteOneDefined,
+            .overwriteOneOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
+                if (tag == .overwriteOneOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
                 arg_list.writeOne(value_symbol);
             },
-            .overwriteCountBack => {
+            .overwriteCountDefined,
+            .overwriteCountOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
+                if (tag == .overwriteCountOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
                 arg_list.writeOne(count_values_symbol);
             },
-            .overwriteManyBack => {
+            .overwriteManyDefined,
+            .overwriteManyOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
+                if (tag == .overwriteManyOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
                 arg_list.writeOne(many_values_symbol);
             },
-            .referCountWithSentinelBehind => {
+            .referCountWithSentinelStreamed,
+            .referCountWithSentinelOffsetStreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .referCountWithSentinelOffsetStreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .referManyWithSentinelBehind => {
+            .referManyWithSentinelStreamed,
+            .referManyWithSentinelOffsetStreamed,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .referManyWithSentinelOffsetStreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
             .referOneAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
@@ -880,35 +879,57 @@ pub const Fn = packed struct {
                 arg_list.writeOne(sentinel_symbol);
                 arg_list.writeOne(offset_symbol);
             },
-            .referOneBack => {
+            .referOneDefined,
+            .referOneOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
+                if (tag == .referOneOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .referCountBack => {
+            .referCountDefined,
+            .referCountOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
+                if (tag == .referCountOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .referManyBack => {
+            .referManyDefined,
+            .referManyOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
+                if (tag == .referManyOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .referCountWithSentinelBack => {
+            .referCountWithSentinelDefined,
+            .referCountWithSentinelOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .referCountWithSentinelOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .referManyWithSentinelBack => {
+            .referManyWithSentinelDefined,
+            .referManyWithSentinelOffsetDefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -917,6 +938,9 @@ pub const Fn = packed struct {
                     arg_list.writeOne(count_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
+                if (tag == .referManyWithSentinelOffsetDefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
             .referAllUndefined => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
@@ -937,7 +961,9 @@ pub const Fn = packed struct {
                 }
                 arg_list.writeOne(sentinel_symbol);
             },
-            .referOneUndefined => {
+            .referOneUndefined,
+            .referOneOffsetUndefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -945,21 +971,34 @@ pub const Fn = packed struct {
                 if (ctn_detail.kinds.parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
+                if (tag == .referOneOffsetUndefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .referCountUndefined => {
+            .referCountUndefined,
+            .referCountOffsetUndefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
+                if (tag == .referCountOffsetUndefined) {
+                    arg_list.writeOne(offset_symbol);
+                }
             },
-            .referManyUndefined => {
+            .referManyUndefined,
+            .referManyOffsetUndefined,
+            => |tag| {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 if (ctn_detail.kinds.parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
+                }
+                if (tag == .referManyOffsetUndefined) {
+                    arg_list.writeOne(offset_symbol);
                 }
             },
             .static => {},
@@ -1107,14 +1146,14 @@ pub const Fn = packed struct {
         }
         return arg_list;
     }
-    pub fn writeCall(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const detail.Less) void {
+    pub fn writeCall(ctn_fn_info: Fn, array: anytype, ctn_detail: *const detail.Less) void {
         const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         array.writeMany(ctn_fn_info.fnName());
         array.writeMany("(");
         for (list.readAll()) |arg| gen.writeArgument(array, arg);
         array.writeMany(")");
     }
-    pub fn writeSignature(ctn_fn_info: *const Fn, array: anytype, ctn_detail: *const detail.Less) void {
+    pub fn writeSignature(ctn_fn_info: Fn, array: anytype, ctn_detail: *const detail.Less) void {
         const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
         array.writeMany("pub fn ");
         array.writeMany(ctn_fn_info.fnName());
@@ -1123,27 +1162,55 @@ pub const Fn = packed struct {
         array.writeMany(") ");
         array.writeMany(list.ret);
     }
-    pub fn returnType(ctn_fn_info: *const Fn) [:0]const u8 {
-        switch (ctn_fn_info.kind) {
-            .write => return tok.void_type_name,
-            .refer => switch (ctn_fn_info.val) {
-                .One => return tok.child_ptr_type_name,
-                .Count => return tok.child_array_ptr_type_name,
-                .CountWithSentinel => return tok.child_array_ptr_with_sentinel_type_name,
-                .Many => return tok.child_slice_type_name,
-                .ManyWithSentinel => return tok.child_slice_with_sentinel_type_name,
-                else => return tok.void_type_name,
-            },
-            .read => switch (ctn_fn_info.val) {
-                .One => return tok.child_type_name,
-                .Count => return tok.child_array_type_name,
-                .CountWithSentinel => return tok.child_array_with_sentinel_type_name,
-                .Many => return tok.child_const_slice_type_name,
-                .ManyWithSentinel => return tok.child_const_slice_with_sentinel_type_name,
-                else => return tok.void_type_name,
-            },
-            .append => return tok.allocator_void_type_name,
-            else => return tok.word_type_name,
+    pub fn returnType(ctn_fn_info: Fn) [:0]const u8 {
+        if (kind.write(ctn_fn_info)) {
+            return tok.void_type_name;
         }
+        if (kind.sentinel(ctn_fn_info)) {
+            if (kind.refer_many(ctn_fn_info)) {
+                return tok.child_slice_with_sentinel_type_name;
+            }
+            if (kind.refer_count(ctn_fn_info)) {
+                return tok.child_array_ptr_with_sentinel_type_name;
+            }
+            if (kind.read_many(ctn_fn_info)) {
+                return tok.child_const_slice_with_sentinel_type_name;
+            }
+            if (kind.read_count(ctn_fn_info)) {
+                return tok.child_array_with_sentinel_type_name;
+            }
+            if (kind.read_one(ctn_fn_info)) {
+                return tok.child_type_name;
+            }
+        }
+        if (kind.refer_many(ctn_fn_info)) {
+            return tok.child_slice_type_name;
+        }
+        if (kind.refer_count(ctn_fn_info)) {
+            return tok.child_array_ptr_type_name;
+        }
+        if (kind.read_many(ctn_fn_info)) {
+            return tok.child_const_slice_type_name;
+        }
+        if (kind.read_count(ctn_fn_info)) {
+            return tok.child_array_type_name;
+        }
+        if (kind.refer_one(ctn_fn_info)) {
+            return tok.child_ptr_type_name;
+        }
+        if (kind.append(ctn_fn_info) or
+            ctn_fn_info == .init or
+            ctn_fn_info == .increment or
+            ctn_fn_info == .grow)
+        {
+            return tok.allocator_void_type_name;
+        }
+        if (ctn_fn_info == .deinit or
+            ctn_fn_info == .decrement or
+            ctn_fn_info == .shrink)
+        {
+            return tok.void_type_name;
+        }
+        return tok.word_type_name;
     }
 };
