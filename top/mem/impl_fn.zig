@@ -5,31 +5,13 @@ const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
 const detail = @import("./detail.zig");
 
-// zig fmt: off
-pub const key: [21]Fn = .{
-    .allocated_byte_address,
-    .aligned_byte_address,
-    .unstreamed_byte_address,
-    .undefined_byte_address,
-    .unwritable_byte_address,
-    .unallocated_byte_address,
-    .allocated_byte_count,
-    .aligned_byte_count,
-    .streamed_byte_count,
-    .unstreamed_byte_count,
-    .writable_byte_count,
-    .undefined_byte_count,
-    .defined_byte_count,
-    .alignment,
-    .define,
-    .undefine,
-    .seek,
-    .tell,
-    .construct,
-    .translate,
-    .reconstruct,
+pub const key = blk: {
+    var res: []const Fn = &.{};
+    for (@typeInfo(Fn).Enum.fields) |field| {
+        res = res ++ [1]Fn{@intToEnum(Fn, field.value)};
+    }
+    break :blk res;
 };
-// zig fmt: on
 pub inline fn get(comptime tag: Fn) *const Fn {
     return &key[@enumToInt(tag)];
 }
@@ -52,9 +34,11 @@ pub const Fn = enum(u5) {
     undefine = 15,
     seek = 16,
     tell = 17,
-    construct = 18,
-    translate = 19,
-    reconstruct = 20,
+    allocate = 18,
+    resize = 19,
+    move = 20,
+    reallocate = 21,
+    deallocate = 22,
     pub inline fn fnName(impl_fn_info: *const Fn) [:0]const u8 {
         return @tagName(impl_fn_info.*);
     }
@@ -82,10 +66,16 @@ pub const Fn = enum(u5) {
             .alignment => {
                 return !is_always_aligned;
             },
-            .translate, .reconstruct => {
-                return !impl_variant.kinds.automatic and !impl_variant.kinds.parametric;
+            .resize => {
+                return !impl_variant.kinds.static and
+                    !impl_variant.kinds.parametric and
+                    !impl_variant.kinds.automatic;
             },
-            .construct => {
+            .move, .reallocate => {
+                return !impl_variant.kinds.automatic and
+                    !impl_variant.kinds.parametric;
+            },
+            .allocate => {
                 return !impl_variant.kinds.automatic;
             },
             else => {
@@ -126,14 +116,14 @@ pub const Fn = enum(u5) {
         };
         const allocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_allocated_byte_address_param;
                 } else {
                     break :blk tok.target_allocated_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_allocated_byte_address_name;
                 } else {
                     break :blk tok.target_allocated_byte_address_name;
@@ -142,14 +132,14 @@ pub const Fn = enum(u5) {
         };
         const aligned_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_aligned_byte_address_param;
                 } else {
                     break :blk tok.target_aligned_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_aligned_byte_address_name;
                 } else {
                     break :blk tok.target_aligned_byte_address_name;
@@ -158,14 +148,14 @@ pub const Fn = enum(u5) {
         };
         const unallocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_unallocated_byte_address_param;
                 } else {
                     break :blk tok.target_unallocated_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_unallocated_byte_address_name;
                 } else {
                     break :blk tok.target_unallocated_byte_address_name;
@@ -174,14 +164,14 @@ pub const Fn = enum(u5) {
         };
         const single_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_single_approximation_counts_param;
                 } else {
                     break :blk tok.target_single_approximation_counts_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_single_approximation_counts_name;
                 } else {
                     break :blk tok.target_single_approximation_counts_name;
@@ -190,14 +180,14 @@ pub const Fn = enum(u5) {
         };
         const double_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_double_approximation_counts_param;
                 } else {
                     break :blk tok.target_double_approximation_counts_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info.* == .construct) {
+                if (impl_fn_info.* == .allocate) {
                     break :blk tok.source_double_approximation_counts_name;
                 } else {
                     break :blk tok.target_double_approximation_counts_name;
@@ -258,10 +248,21 @@ pub const Fn = enum(u5) {
                     arg_list.writeOne(impl_const_symbol);
                 }
             },
-            .construct, .translate, .reconstruct => {
-                if (impl_fn_info.* == .translate or
-                    impl_fn_info.* == .reconstruct)
-                {
+            .resize => {
+                arg_list.writeOne(impl_symbol);
+                if (impl_variant.fields.unallocated_byte_address) {
+                    arg_list.writeOne(unallocated_byte_address_symbol);
+                }
+                if (impl_variant.techs.single_packed_approximate_capacity) {
+                    arg_list.writeOne(single_approximation_counts_symbol);
+                }
+                if (impl_variant.techs.double_packed_approximate_capacity) {
+                    arg_list.writeOne(single_approximation_counts_symbol);
+                    arg_list.writeOne(double_approximation_counts_symbol);
+                }
+            },
+            .allocate, .move, .reallocate => {
+                if (impl_fn_info.* != .allocate) {
                     arg_list.writeOne(impl_symbol);
                 }
                 if (impl_variant.fields.allocated_byte_address) {
@@ -283,6 +284,9 @@ pub const Fn = enum(u5) {
                 if (impl_variant.fields.unallocated_byte_address) {
                     arg_list.writeOne(unallocated_byte_address_symbol);
                 }
+            },
+            .deallocate => {
+                arg_list.writeOne(impl_symbol);
             },
         }
         return arg_list;
@@ -306,13 +310,18 @@ pub const Fn = enum(u5) {
             => {
                 return tok.word_type_name;
             },
-            .define, .undefine, .seek, .tell => {
-                return tok.void_type_name;
-            },
-            .construct => {
+            .allocate => {
                 return tok.impl_type_name;
             },
-            .translate, .reconstruct => {
+            .define,
+            .undefine,
+            .seek,
+            .tell,
+            .move,
+            .reallocate,
+            .resize,
+            .deallocate,
+            => {
                 return tok.void_type_name;
             },
         }
