@@ -1320,7 +1320,7 @@ pub fn testEqualOneFront(comptime T: type, value: T, values: []const T) bool {
 }
 pub fn testEqualOneBack(comptime T: type, value: T, values: []const T) bool {
     if (values.len != 0) {
-        return values[values.len - 1] == value;
+        return values[values.len -% 1] == value;
     }
     return false;
 }
@@ -1334,20 +1334,23 @@ pub fn testEqualManyBack(comptime T: type, suffix_values: []const T, values: []c
     if (builtin.int2v(bool, suffix_values.len == 0, suffix_values.len > values.len)) {
         return false;
     }
-    return testEqualMany(T, suffix_values, values[values.len - suffix_values.len ..]);
+    return testEqualMany(T, suffix_values, values[values.len -% suffix_values.len ..]);
+}
+pub fn testEqualManyIn(comptime T: type, find_values: []const T, values: []const T) bool {
+    return indexOfFirstEqualMany(T, find_values, values) != null;
 }
 pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
     var idx: u64 = 0;
     while (idx != values.len) {
         if (values[idx] == value) return idx;
-        idx += 1;
+        idx +%= 1;
     }
     return null;
 }
 pub fn indexOfLastEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
     var idx: u64 = values.len;
     while (idx != 0) {
-        idx -= 1;
+        idx -%= 1;
         if (values[idx] == value) return idx;
     }
     return null;
@@ -1362,7 +1365,7 @@ pub fn indexOfFirstEqualMany(comptime T: type, sub_values: []const T, values: []
         if (testEqualManyFront(T, sub_values, values[idx..])) {
             return idx;
         }
-        idx += 1;
+        idx +%= 1;
     }
     return null;
 }
@@ -1373,7 +1376,7 @@ pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []c
     const max_idx: u64 = (values.len -% sub_values.len) +% 1;
     var idx: u64 = max_idx;
     while (idx != 0) {
-        idx -= 1;
+        idx -%= 1;
         if (testEqualManyFront(T, sub_values, values[idx..])) {
             return idx;
         }
@@ -1388,7 +1391,7 @@ pub fn readBeforeFirstEqualMany(comptime T: type, sub_values: []const T, values:
 }
 pub fn readAfterFirstEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
     if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
-        return values[index + sub_values.len ..];
+        return values[index +% sub_values.len ..];
     }
     return null;
 }
@@ -1400,7 +1403,7 @@ pub fn readBeforeLastEqualMany(comptime T: type, sub_values: []const T, values: 
 }
 pub fn readAfterLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
     if (indexOfLastEqualMany(T, sub_values, values)) |index| {
-        return values[sub_values.len + index ..];
+        return values[sub_values.len +% index ..];
     }
     return null;
 }
@@ -1412,7 +1415,7 @@ pub fn readBeforeFirstEqualOne(comptime T: type, value: T, values: []const T) ?[
 }
 pub fn readAfterFirstEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
     if (indexOfFirstEqualOne(T, value, values)) |index| {
-        return values[index + 1 ..];
+        return values[index +% 1 ..];
     }
     return null;
 }
@@ -1424,7 +1427,7 @@ pub fn readBeforeLastEqualOne(comptime T: type, value: T, values: []const T) ?[]
 }
 pub fn readAfterLastEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
     if (indexOfLastEqualOne(T, value, values)) |index| {
-        return values[index + 1 ..];
+        return values[index +% 1 ..];
     }
     return null;
 }
@@ -1435,7 +1438,7 @@ pub fn readAfterFirstEqualManyWithSentinel(
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
     if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
-        return values[index + sub_values.len ..];
+        return values[index +% sub_values.len ..];
     }
     return null;
 }
@@ -1446,7 +1449,7 @@ pub fn readAfterLastEqualManyWithSentinel(
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
     if (indexOfLastEqualMany(T, sub_values, values)) |index| {
-        return values[sub_values.len + index ..];
+        return values[sub_values.len +% index ..];
     }
     return null;
 }
@@ -1457,7 +1460,7 @@ pub fn readAfterLastEqualOneWithSentinel(
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
     if (indexOfLastEqualOne(T, value, values)) |index| {
-        return values[index + 1 ..];
+        return values[index +% 1 ..];
     }
     return null;
 }
@@ -1468,7 +1471,7 @@ pub fn readAfterFirstEqualOneWithSentinel(
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
     if (indexOfFirstEqualOne(T, value, values)) |index| {
-        return values[index + 1 ..];
+        return values[index +% 1 ..];
     }
     return null;
 }
@@ -1546,7 +1549,7 @@ pub fn propagateSearch(comptime T: type, arg1: []const T, arg2: []const T, index
         }
     } else {
         var spread: u64 = 0;
-        while (spread != haystack.len) : (spread += 1) {
+        while (spread != haystack.len) : (spread +%= 1) {
             const below_start: u64 = index -% spread;
             const above_start: u64 = index +% spread;
             if (below_start < haystack.len) {
@@ -1569,10 +1572,10 @@ pub fn orderedMatches(comptime T: type, arg1: []const T, arg2: []const T) u64 {
     const r_values: []const T = if (j) arg2 else arg1;
     var l_idx: u64 = 0;
     var mats: u64 = 0;
-    while (l_idx + mats < l_values.len) : (l_idx += 1) {
+    while (l_idx +% mats < l_values.len) : (l_idx +%= 1) {
         var r_idx: u64 = 0;
-        while (r_idx != r_values.len) : (r_idx += 1) {
-            mats += builtin.int(u64, l_values[l_idx + mats] == r_values[r_idx]);
+        while (r_idx != r_values.len) : (r_idx +%= 1) {
+            mats +%= builtin.int(u64, l_values[l_idx +% mats] == r_values[r_idx]);
         }
     }
     return mats;
