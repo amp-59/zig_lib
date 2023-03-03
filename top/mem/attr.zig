@@ -36,6 +36,150 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
     });
 }
 
+pub const Fn = struct {
+    fn isPrefix(prefix: []const u8, values: []const u8) bool {
+        if (prefix.len > values.len) {
+            return false;
+        }
+        return streql(prefix, values[0..prefix.len]);
+    }
+    fn isSuffix(suffix: []const u8, values: []const u8) bool {
+        if (suffix.len > values.len) {
+            return false;
+        }
+        return streql(suffix, values[values.len - suffix.len ..]);
+    }
+    fn isWithin(within: []const u8, values: []const u8) bool {
+        if (within.len > values.len) {
+            return false;
+        }
+        var idx: u64 = 0;
+        while (idx != values.len) : (idx +%= 1) {
+            if (values.len -% idx == within.len) {
+                return streql(within, values[idx..]);
+            }
+            if (streql(within, values[idx .. idx + within.len])) {
+                return true;
+            }
+        }
+        return false;
+    }
+    fn streql(arg1: []const u8, arg2: []const u8) bool {
+        for (arg1, arg2) |x, y| {
+            if (x != y) return false;
+        }
+        return true;
+    }
+
+    fn Array(comptime Allocator: type, comptime Tag: type) type {
+        return Allocator.StructuredVector(Tag);
+    }
+    pub fn Pair(comptime Allocator: type, comptime Tag: type) type {
+        return struct {
+            Allocator.StructuredVector(Tag),
+            Allocator.StructuredVector(Tag),
+        };
+    }
+    pub fn prefixSubTag(comptime Tag: type, allocator: anytype, sub_set: anytype, sub_tag_name: []const u8) Pair(@TypeOf(allocator.*), Tag) {
+        @setEvalBranchQuota(~@as(u32, 0));
+        var ret: Pair(@TypeOf(allocator.*), Tag) = .{
+            @TypeOf(sub_set).init(allocator, sub_set.len()),
+            @TypeOf(sub_set).init(allocator, sub_set.len()),
+        };
+        for (sub_set.readAll()) |tag| {
+            if (isPrefix(sub_tag_name, @tagName(tag))) {
+                ret[1].writeOne(tag);
+            } else {
+                ret[0].writeOne(tag);
+            }
+        }
+        return ret;
+    }
+    pub fn suffixSubTag(comptime Tag: type, allocator: anytype, sub_set: anytype, sub_tag_name: []const u8) Pair(@TypeOf(allocator.*), Tag) {
+        @setEvalBranchQuota(~@as(u32, 0));
+        var ret: Pair(@TypeOf(allocator.*), Tag) = .{
+            @TypeOf(sub_set).init(allocator, sub_set.len()),
+            @TypeOf(sub_set).init(allocator, sub_set.len()),
+        };
+        for (sub_set.readAll()) |tag| {
+            if (isSuffix(sub_tag_name, @tagName(tag))) {
+                ret[1].writeOne(tag);
+            } else {
+                ret[0].writeOne(tag);
+            }
+        }
+        return ret;
+    }
+    pub fn subTag(comptime Tag: type, allocator: anytype, sub_set: anytype, sub_tag_name: []const u8) Pair(@TypeOf(allocator.*), Tag) {
+        @setEvalBranchQuota(~@as(u32, 0));
+        var ret: Pair(@TypeOf(allocator.*), Tag) = .{
+            @TypeOf(sub_set).init(allocator, sub_set.len()),
+            @TypeOf(sub_set).init(allocator, sub_set.len()),
+        };
+        for (sub_set.readAll()) |tag| {
+            if (isWithin(sub_tag_name, @tagName(tag))) {
+                ret[1].writeOne(tag);
+            } else {
+                ret[0].writeOne(tag);
+            }
+        }
+        return ret;
+    }
+    pub fn prefixSubTagNew(comptime Tag: type, allocator: anytype, comptime sub_tag_name: []const u8) Pair(@TypeOf(allocator.*), Tag) {
+        var ret: Pair(@TypeOf(allocator.*), Tag) = .{
+            Array(@TypeOf(allocator.*), Tag).init(allocator, @typeInfo(Tag).Enum.fields.len),
+            Array(@TypeOf(allocator.*), Tag).init(allocator, @typeInfo(Tag).Enum.fields.len),
+        };
+        inline for (@typeInfo(Tag).Enum.fields) |field| {
+            if (isPrefix(sub_tag_name, field.name)) {
+                ret[1].writeOne(@field(Tag, field.name));
+            } else {
+                ret[0].writeOne(@field(Tag, field.name));
+            }
+        }
+        return ret;
+    }
+    pub fn suffixSubTagNew(comptime Tag: type, allocator: anytype, comptime sub_tag_name: []const u8) Pair(@TypeOf(allocator.*), Tag) {
+        var ret: Pair(@TypeOf(allocator.*), Tag) = .{
+            Array(@TypeOf(allocator.*), Tag).init(allocator, @typeInfo(Tag).Enum.fields.len),
+            Array(@TypeOf(allocator.*), Tag).init(allocator, @typeInfo(Tag).Enum.fields.len),
+        };
+        inline for (@typeInfo(Tag).Enum.fields) |field| {
+            if (isSuffix(sub_tag_name, field.name)) {
+                ret[1].writeOne(@field(Tag, field.name));
+            } else {
+                ret[0].writeOne(@field(Tag, field.name));
+            }
+        }
+        return ret;
+    }
+    pub fn subTagNew(comptime Tag: type, allocator: anytype, comptime sub_tag_name: []const u8) Pair(@TypeOf(allocator.*), Tag) {
+        var ret: Pair(@TypeOf(allocator.*), Tag) = .{
+            Array(@TypeOf(allocator.*), Tag).init(allocator, @typeInfo(Tag).Enum.fields.len),
+            Array(@TypeOf(allocator.*), Tag).init(allocator, @typeInfo(Tag).Enum.fields.len),
+        };
+        inline for (@typeInfo(Tag).Enum.fields) |field| {
+            if (isWithin(sub_tag_name, field.name)) {
+                ret[1].writeOne(@field(Tag, field.name));
+            } else {
+                ret[0].writeOne(@field(Tag, field.name));
+            }
+        }
+        return ret;
+    }
+    pub fn writeKind(comptime Tag: type, array: anytype, fn_name: [:0]const u8, set: anytype) void {
+        array.writeMany("pub fn ");
+        array.writeMany(fn_name);
+        array.writeMany("(tag: " ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
+        for (set.readAll()) |elem| {
+            array.writeMany(".");
+            array.writeMany(@tagName(elem));
+            array.writeMany(",");
+        }
+        array.writeMany("=>return true,else=>return false}\n}\n");
+    }
+};
+
 pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
