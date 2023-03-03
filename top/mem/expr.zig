@@ -590,3 +590,9 @@ pub inline fn subOr(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
 pub inline fn shlOr(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
     return fnCall3(tok.shl_or_fn_name, expr1, expr2, expr3);
 }
+pub inline fn mulAdd(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
+    return fnCall3(tok.mul_add_fn_name, expr1, expr2, expr3);
+}
+pub inline fn mulSub(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
+    return fnCall3(tok.mul_sub_fn_name, expr1, expr2, expr3);
+}
