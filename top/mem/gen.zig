@@ -175,7 +175,10 @@ pub fn GenericKeys(comptime Key: type, comptime max_len: u64) type {
         len: u64,
         const Keys = @This();
         const type_info: builtin.Type = @typeInfo(Key);
-        fn writeOneUnique(keys: *Keys, value: Key) void {
+        pub fn undefineAll(keys: *Keys) void {
+            keys.len = 0;
+        }
+        pub fn writeOneUnique(keys: *Keys, value: Key) void {
             for (keys.values[0..keys.len]) |unique| {
                 if (builtin.testEqual(Key, value, unique)) return;
             }
