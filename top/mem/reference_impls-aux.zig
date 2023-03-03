@@ -62,44 +62,106 @@ const Info = struct {
         info.alias = impl_fn_info;
     }
 };
-inline fn constructInitializer(allocator: *Allocator, impl_variant: *const detail.More, impl_fn_info: *const Fn) *[3]Expr {
+
+fn resizeInitializer(allocator: *Allocator, impl_variant: *const detail.More, impl_fn_info: *const Fn) *[3]Expr {
+    _ = impl_fn_info;
+    var buf: []Expr = allocator.allocateIrreversible(Expr, 8);
+    var len: u64 = 0;
+    const andn_undefined_65535: *[3]Expr = dupe(allocator, expr.andn(
+        expr.symbol(tok.undefined_byte_address_word_access),
+        expr.constant(65535),
+    ));
+    const andn_allocated_65535: *[3]Expr = dupe(allocator, expr.andn(
+        expr.symbol(tok.allocated_byte_address_word_access),
+        expr.constant(65535),
+    ));
+    if (impl_variant.fields.allocated_byte_address and
+        impl_variant.techs.single_packed_approximate_capacity)
+    {
+        const or_target_single: *[3]Expr = dupe(allocator, expr.@"or"(
+            expr.call(andn_allocated_65535),
+            expr.symbol(tok.target_single_approximation_counts_name),
+        ));
+        const init_lb_word: *[4]Expr = dupe(allocator, expr.initialize(
+            tok.allocated_byte_address_word_field_name,
+            expr.call(or_target_single),
+        ));
+        buf[len] = expr.join(init_lb_word);
+        len +%= 1;
+    }
+    if (impl_variant.fields.undefined_byte_address and
+        impl_variant.techs.double_packed_approximate_capacity)
+    {
+        const or_target_single: *[3]Expr = dupe(allocator, expr.@"or"(
+            expr.call(andn_allocated_65535),
+            expr.symbol(tok.target_single_approximation_counts_name),
+        ));
+        const or_target_double: *[3]Expr = dupe(allocator, expr.@"or"(
+            expr.call(andn_undefined_65535),
+            expr.symbol(tok.target_double_approximation_counts_name),
+        ));
+        const init_lb_word: *[4]Expr = dupe(allocator, expr.initialize(
+            tok.allocated_byte_address_word_field_name,
+            expr.call(or_target_single),
+        ));
+        const init_ub_word: *[4]Expr = dupe(allocator, expr.initialize(
+            tok.undefined_byte_address_word_field_name,
+            expr.call(or_target_double),
+        ));
+        buf[len] = expr.join(init_lb_word);
+        len +%= 1;
+        buf[len] = expr.join(init_ub_word);
+        len +%= 1;
+    }
+    if (impl_variant.fields.unallocated_byte_address) {
+        const init_up_word: *[4]Expr = dupe(allocator, expr.initialize(
+            tok.unallocated_byte_address_word_field_name,
+            expr.symbol(tok.target_unallocated_byte_address_name),
+        ));
+        buf[len] = expr.join(init_up_word);
+        len +%= 1;
+    }
+
+    return dupe(allocator, expr.initializer(expr.list(buf[0..len])));
+}
+fn constructInitializer(allocator: *Allocator, impl_variant: *const detail.More, impl_fn_info: *const Fn) *[3]Expr {
     const source_aligned_byte_address_name: [:0]const u8 = blk: {
-        if (impl_fn_info.* == .construct) {
+        if (impl_fn_info.* == .allocate) {
             break :blk tok.source_aligned_byte_address_name;
         }
         break :blk tok.target_aligned_byte_address_name;
     };
     const source_allocated_byte_address_name: [:0]const u8 = blk: {
-        if (impl_fn_info.* == .construct) {
+        if (impl_fn_info.* == .allocate) {
             break :blk tok.source_allocated_byte_address_name;
         }
         break :blk tok.target_allocated_byte_address_name;
     };
     const source_single_approximation_counts_name: [:0]const u8 = blk: {
-        if (impl_fn_info.* == .construct) {
+        if (impl_fn_info.* == .allocate) {
             break :blk tok.source_single_approximation_counts_name;
         }
         break :blk tok.target_single_approximation_counts_name;
     };
     const source_double_approximation_counts_name: [:0]const u8 = blk: {
-        if (impl_fn_info.* == .construct) {
+        if (impl_fn_info.* == .allocate) {
             break :blk tok.source_double_approximation_counts_name;
         }
         break :blk tok.target_double_approximation_counts_name;
     };
     const source_unallocated_byte_address_name: [:0]const u8 = blk: {
-        if (impl_fn_info.* == .construct) {
+        if (impl_fn_info.* == .allocate) {
             break :blk tok.source_unallocated_byte_address_name;
         }
         break :blk tok.target_unallocated_byte_address_name;
     };
-    var buf: []Expr = allocator.allocateIrreversible(Expr, 8);
-    var len: u64 = 0;
     const sub_or_ab_lb_ab: *[4]Expr = dupe(allocator, expr.subOr(
         expr.symbol(source_aligned_byte_address_name),
         expr.symbol(source_allocated_byte_address_name),
         expr.symbol(source_aligned_byte_address_name),
     ));
+    var buf: []Expr = allocator.allocateIrreversible(Expr, 8);
+    var len: u64 = 0;
     if (impl_variant.fields.allocated_byte_address) {
         if (impl_variant.techs.single_packed_approximate_capacity or
             impl_variant.techs.double_packed_approximate_capacity)
@@ -747,12 +809,21 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             array.writeFormat(expr.call(&sub_equ_unstreamed_offset));
             return array.writeMany(tok.end_expression);
         },
-        .construct => {
+        .allocate => {
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.join(constructInitializer(allocator, impl_variant, impl_fn_info)));
             return array.writeMany(tok.end_expression);
         },
-        .reconstruct, .translate => {
+        .resize => {
+            var impl_deref_stx: [2]Expr = expr.dereference(expr.symbol(tok.impl_name));
+            var assign_impl: [3]Expr = expr.assign(
+                expr.join(&impl_deref_stx),
+                expr.join(resizeInitializer(allocator, impl_variant, impl_fn_info)),
+            );
+            array.writeFormat(expr.join(&assign_impl));
+            return array.writeMany(tok.end_expression);
+        },
+        .reallocate, .move => {
             expr.subst(aligned_byte_address_call.args(), .{
                 .dst = expr.symbol(tok.impl_name),
                 .src = expr.symbol(tok.source_impl_name),
@@ -763,7 +834,6 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             });
             const target_aligned_byte_address_call: Expr =
                 expr.impl(allocator, impl_variant, impl_fn.get(.aligned_byte_address));
-
             var impl_deref_stx: [2]Expr = expr.dereference(expr.symbol(tok.impl_name));
             var s_impl_decl: [6]Expr = expr.constDecl(
                 tok.source_impl_name,
@@ -795,6 +865,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             array.writeFormat(expr.call(&copy));
             return array.writeMany(tok.end_expression);
         },
+        .deallocate => return,
     }
 }
 
