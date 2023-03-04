@@ -27,7 +27,7 @@ pub fn get(comptime tag: Fn) *const Fn {
         }
     }
 }
-pub const Fn = enum {
+pub const Fn = enum(u8) {
     defineAll,
     undefineAll,
     streamAll,
@@ -153,7 +153,7 @@ pub const Fn = enum {
     appendArgs,
     appendFormat,
     appendAny,
-    pub inline fn fnName(ctn_fn_info: Fn) [:0]const u8 {
+    pub fn fnName(ctn_fn_info: Fn) [:0]const u8 {
         return @tagName(ctn_fn_info);
     }
     pub fn hasCapability(ctn_fn_info: Fn, ctn_detail: *const detail.Less) bool {
