@@ -311,7 +311,7 @@ pub const FormatCommand = struct {
     color: ?enum(u2) { auto = 0, off = 1, on = 2 } = null,
     stdin: bool = false,
     check: bool = false,
-    ast_check: bool = false,
+    ast_check: bool = true,
     exclude: ?[]const u8 = null,
 };
 pub const RunCommand = struct {
