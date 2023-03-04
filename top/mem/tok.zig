@@ -13,9 +13,29 @@ pub const container_namespace: [:0]const u8 = "container";
 pub const mach_namespace: [:0]const u8 = "mach";
 pub const meta_namespace: [:0]const u8 = "meta";
 
+// Feature
+pub const addressable_byte_address_name: [:0]const u8 = "addressable_byte_address"; // noref
+pub const aligned_byte_address_name: [:0]const u8 = "aligned_byte_address";
+pub const allocated_byte_address_name: [:0]const u8 = "allocated_byte_address";
+pub const mapped_byte_address_name: [:0]const u8 = "mapped_byte_address"; // noref
+pub const unaddressable_byte_address_name: [:0]const u8 = "unaddressable_byte_address"; // noref
+pub const unallocated_byte_address_name: [:0]const u8 = "unallocated_byte_address";
+pub const undefined_byte_address_name: [:0]const u8 = "undefined_byte_address";
+pub const unmapped_byte_address_name: [:0]const u8 = "unmapped_byte_address";
+pub const unstreamed_byte_address_name: [:0]const u8 = "unstreamed_byte_address";
+pub const unwritable_byte_address_name: [:0]const u8 = "unwritable_byte_address";
+
+// Derived
+pub const alignment_name: [:0]const u8 = "alignment";
+pub const aligned_byte_count_name: [:0]const u8 = "aligned_byte_count";
+pub const allocated_byte_count_name: [:0]const u8 = "allocated_byte_count";
+pub const writable_byte_count_name: [:0]const u8 = "writable_byte_count";
+
 // Implementation
 pub const impl_name: [:0]const u8 = "impl";
 pub const impl_type_name: [:0]const u8 = "Implementation";
+pub const slave_fn_type_name: [:0]const u8 = "Slave";
+pub const static_fn_type_name: [:0]const u8 = "Static";
 pub const impl_ptr_type_name: [:0]const u8 = pointerTo(impl_type_name);
 pub const impl_const_ptr_type_name: [:0]const u8 = constPointerTo(impl_type_name);
 pub const impl_param: [:0]const u8 = paramDecl(impl_name, impl_ptr_type_name);
@@ -23,12 +43,18 @@ pub const impl_field: [:0]const u8 = paramDecl(impl_name, impl_type_name);
 pub const impl_const_param: [:0]const u8 = paramDecl(impl_name, impl_const_ptr_type_name);
 pub const spec_name: [:0]const u8 = "spec";
 pub const generic_spec_type_name: [:0]const u8 = "Specification";
-pub const sentinel_specifier_name: [:0]const u8 = fieldAccess(spec_name, "sentinel");
+pub const low_alignment_name: [:0]const u8 = "low_alignment";
+pub const high_alignment_name: [:0]const u8 = "high_alignment";
+pub const unit_alignment_name: [:0]const u8 = "unit_alignment";
+pub const auto_alignment_name: [:0]const u8 = "auto_alignment";
+pub const sentinel_ptr_name: [:0]const u8 = "sentinel";
+
+pub const sentinel_specifier_name: [:0]const u8 = fieldAccess(spec_name, sentinel_ptr_name);
 pub const arena_specifier_name: [:0]const u8 = fieldAccess(spec_name, "arena");
 pub const count_specifier_name: [:0]const u8 = fieldAccess(spec_name, "count");
-pub const low_alignment_specifier_name: [:0]const u8 = fieldAccess(spec_name, "low_alignment");
-pub const high_alignment_specifier_name: [:0]const u8 = fieldAccess(spec_name, "high_alignment");
-pub const child_specifier_name: [:0]const u8 = fieldAccess(spec_name, "child");
+pub const low_alignment_specifier_name: [:0]const u8 = fieldAccess(spec_name, low_alignment_name);
+pub const high_alignment_specifier_name: [:0]const u8 = fieldAccess(spec_name, high_alignment_name);
+pub const child_specifier_name: [:0]const u8 = fieldAccess(spec_name, child_type_name);
 pub const slave_specifier_name: [:0]const u8 = "allocator";
 pub const slave_specifier_type_name: [:0]const u8 = fieldAccess(spec_name, "Allocator");
 pub const slave_specifier_ptr_type_name: [:0]const u8 = pointerTo(slave_specifier_type_name);
@@ -36,9 +62,9 @@ pub const slave_specifier_const_ptr_type_name: [:0]const u8 = constPointerTo(sla
 pub const slave_specifier_param: [:0]const u8 = paramDecl(slave_specifier_name, slave_specifier_type_name);
 pub const slave_specifier_ptr_param: [:0]const u8 = paramDecl(slave_specifier_name, slave_specifier_ptr_type_name);
 pub const slave_specifier_const_ptr_param: [:0]const u8 = paramDecl(slave_specifier_name, slave_specifier_const_ptr_type_name);
-pub const slave_specifier_call_unallocated_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, "unallocated_byte_address"));
-pub const slave_specifier_call_unmapped_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, "unmapped_byte_address"));
-pub const slave_specifier_call_unaddressable_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, "unaddressable_byte_address"));
+pub const slave_specifier_call_unallocated_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unallocated_byte_address_name));
+pub const slave_specifier_call_unmapped_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unmapped_byte_address_name));
+pub const slave_specifier_call_unaddressable_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unaddressable_byte_address_name));
 pub const automatic_storage_type_name: [:0]const u8 = arrayType(child_specifier_name, count_specifier_name, null);
 pub const automatic_storage_with_sentinel_type_name: [:0]const u8 = arrayType(child_specifier_name, count_specifier_name, sentinel_specifier_name);
 pub const automatic_storage_field_name: [:0]const u8 = "auto";
@@ -97,9 +123,9 @@ pub const allocator_param: [:0]const u8 = paramDecl(allocator_name, allocator_ty
 pub const allocator_ptr_param: [:0]const u8 = paramDecl(allocator_name, allocator_ptr_type_name);
 pub const allocator_const_ptr_param: [:0]const u8 = paramDecl(allocator_name, allocator_const_ptr_type_name);
 pub const allocator_void_type_name: [:0]const u8 = fieldAccess(allocator_type_name, "allocate_void");
-pub const holder_type_name: [:0]const u8 = "Holder";
-pub const static_type_name: [:0]const u8 = "Static";
-pub const dynamic_type_name: [:0]const u8 = "Dynamic";
+pub const holder_type_name: [:0]const u8 = "t_holder_type";
+pub const static_type_name: [:0]const u8 = "t_static_type";
+pub const dynamic_type_name: [:0]const u8 = "t_dynamic_type";
 pub const holder_impl_type_name: [:0]const u8 = fieldAccess(holder_type_name, impl_type_name);
 pub const static_impl_type_name: [:0]const u8 = fieldAccess(static_type_name, impl_type_name);
 pub const dynamic_impl_type_name: [:0]const u8 = fieldAccess(dynamic_type_name, impl_type_name);
@@ -240,6 +266,7 @@ pub const target_single_approximation_counts_param: [:0]const u8 = paramDecl(tar
 pub const target_double_approximation_counts_param: [:0]const u8 = paramDecl(target_double_approximation_counts_name, counts_type_name);
 
 // Functions
+
 pub const wrap_fn_name: [:0]const u8 = metaFnName("wrap");
 pub const add_equ_fn_name: [:0]const u8 = machFnName("addEqu");
 pub const sub_equ_fn_name: [:0]const u8 = machFnName("subEqu");
@@ -300,6 +327,7 @@ pub const write_args_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret
 pub const write_args_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeArgsUnstructured");
 pub const write_any_structured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyStructured");
 pub const write_any_unstructured_fn_name: [:0]const u8 = fieldAccess("reinterpret", "writeAnyUnstructured");
+pub const copy_fn_name: [:0]const u8 = "copy";
 
 pub const slave_fn_type_decl_spec: [:0]const u8 = "fn(" ++ slave_specifier_const_ptr_type_name ++ ")callconv(.Inline)" ++ word_type_name;
 pub const static_fn_type_decl_spec: [:0]const u8 = "fn()callconv(.Inline)" ++ word_type_name;
@@ -319,9 +347,8 @@ pub const period_open_brace_operator: [:0]const u8 = ".{";
 pub const open_brace_operator: [:0]const u8 = "{";
 pub const close_brace_operator: [:0]const u8 = "}";
 
-pub const end_expression: [:0]const u8 = ";\n";
-pub const end_list_item: [:0]const u8 = ",\n";
-pub const end_small_list_item: [:0]const u8 = ",";
+pub const end_expr: [:0]const u8 = ";\n";
+pub const end_elem: [:0]const u8 = ",";
 
 pub const const_bytes_0: [:0]const u8 = amountBytes("0");
 pub const const_bytes_1: [:0]const u8 = amountBytes("1");
