@@ -73,6 +73,9 @@ pub const OptionSpec = struct {
     arg_type_name: ?[]const u8 = null,
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?*const OptionSpec = null,
+    /// Maybe define default value of this field. Should be false or null, but
+    /// allow the exception.
+    default_value: ?*const anyopaque = null,
 };
 pub const FormatCommandOptions = opaque {
     pub const color: OptionSpec = .{
@@ -81,7 +84,10 @@ pub const FormatCommandOptions = opaque {
     };
     pub const stdin: OptionSpec = .{ .string = "--stdin" };
     pub const check: OptionSpec = .{ .string = "--check" };
-    pub const ast_check: OptionSpec = .{ .string = "--ast-check" };
+    pub const ast_check: OptionSpec = .{
+        .string = "--ast-check",
+        .default_value = &true,
+    };
     pub const exclude: OptionSpec = .{
         .string = "--exclude",
         .arg_type = []const u8,
@@ -1385,7 +1391,12 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
         array.writeMany(ws[0..width] ++ what_field ++ ": ");
         switch (@typeInfo(field_type)) {
             .Bool => {
-                array.writeMany(@typeName(field_type) ++ " = false");
+                if (opt_spec.default_value) |default_value| {
+                    array.writeMany(@typeName(field_type) ++ " = " ++
+                        if (comptime mem.pointerOpaque(bool, default_value).*) "true" else "false");
+                } else {
+                    array.writeMany(@typeName(field_type) ++ " = false");
+                }
             },
             .Optional => |optional_info| {
                 array.writeOne('?');
