@@ -118,14 +118,30 @@ pub fn specIndex(comptime Detail: type, leader: Detail) u8 {
 }
 pub fn writeComma(array: anytype) void {
     const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
-    const j1: bool = mem.testEqualManyBack(u8, tok.end_small_list_item, array.readAll());
+    const j1: bool = mem.testEqualManyBack(u8, tok.end_elem, array.readAll());
     if (builtin.int2a(bool, !j0, !j1)) {
-        array.writeMany(tok.end_small_list_item);
+        array.writeMany(tok.end_elem);
     }
 }
 pub fn writeArgument(array: anytype, argument_name: [:0]const u8) void {
     writeComma(array);
     array.writeMany(argument_name);
+}
+pub fn subTemplate(src: [:0]const u8, comptime sub_name: [:0]const u8) ?[]const u8 {
+    const start_s: []const u8 = "// start-document " ++ sub_name ++ "\n";
+    const finish_s: []const u8 = "// finish-document " ++ sub_name ++ "\n";
+    if (mem.indexOfFirstEqualMany(u8, start_s, src)) |after| {
+        if (mem.indexOfFirstEqualMany(u8, finish_s, src[after..])) |before| {
+            const ret: []const u8 = src[after + start_s.len .. after + before];
+            return ret;
+        } else {
+            builtin.debug.write("missing: " ++ finish_s ++ "\n");
+            return null;
+        }
+    } else {
+        builtin.debug.write("missing: " ++ start_s ++ "\n");
+        return null;
+    }
 }
 pub fn writeFieldOfBool(array: anytype, any: anytype) void {
     inline for (@typeInfo(@TypeOf(any)).Struct.fields) |field| {
@@ -158,11 +174,11 @@ fn GenericStructOfEnum(comptime Struct: type) type {
                 if (field.type == u8) {
                     array.writeMany("." ++ field.name ++ "=");
                     writeIndex(array, @field(format, field.name));
-                    array.writeMany(tok.end_small_list_item);
+                    array.writeMany(tok.end_elem);
                 } else {
                     array.writeMany("." ++ field.name ++ "=.");
                     array.writeMany(@tagName(@field(format, field.name)));
-                    array.writeMany(tok.end_small_list_item);
+                    array.writeMany(tok.end_elem);
                 }
             }
             array.overwriteManyBack(tok.close_brace_operator);
