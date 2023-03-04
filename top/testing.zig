@@ -295,8 +295,8 @@ pub fn uniqueSet(comptime T: type, set: []const T) void {
                     printN(4096, .{
                         "non-unique: ", l_index,
                         " == ",         r_index,
-                        '\n',           meta.leastRealBitCast(set[l_index]),
-                        " == ",         meta.leastRealBitCast(set[r_index]),
+                        '\n',           set[l_index],
+                        " == ",         set[r_index],
                         '\n',
                     });
                 }
