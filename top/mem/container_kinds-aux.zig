@@ -1,13 +1,38 @@
 const gen = @import("./gen.zig");
 const mem = gen.mem;
+const proc = gen.proc;
 const preset = gen.preset;
 const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 
-const Array = mem.StaticString(1024 * 1024);
-
+pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+
+const Allocator = mem.GenericArenaAllocator(.{
+    .arena_index = 0,
+    .errors = preset.allocator.errors.noexcept,
+    .logging = preset.allocator.logging.silent,
+    .options = preset.allocator.options.small,
+    .AddressSpace = AddressSpace,
+});
+const AddressSpace = mem.GenericElementaryAddressSpace(.{
+    .logging = preset.address_space.logging.silent,
+    .errors = preset.address_space.errors.noexcept,
+    .options = .{},
+});
+const Array = mem.StaticString(1024 * 1024);
+fn concat(comptime Tags: type, allocator: *Allocator, sets: []const Tags) Tags {
+    var len: u64 = 0;
+    for (sets) |tags| {
+        len +%= tags.len();
+    }
+    var ret: Tags = Tags.init(allocator, len);
+    for (sets) |tags| {
+        ret.writeMany(tags.readAll());
+    }
+    return ret;
+}
 
 fn mainStatic() void {
     var array: Array = undefined;
@@ -65,34 +90,9 @@ fn mainStatic() void {
     writeKind(ctn_fn.Fn, &array, "@\"undefined\"", @"undefined"[1]);
     writeKind(ctn_fn.Fn, &array, "streamed", streamed[1]);
     writeKind(ctn_fn.Fn, &array, "unstreamed", unstreamed[1]);
-    writeKind(ctn_fn.Fn, &array, "relative", offset_defined[0] ++ offset_undefined[0] ++
-        offset_streamed[0] ++ offset_unstreamed[0]);
-    writeKind(ctn_fn.Fn, &array, "offset", offset_defined[1] ++ offset_undefined[1] ++
-        offset_streamed[1] ++ offset_unstreamed[1]);
+    writeKind(ctn_fn.Fn, &array, "relative", offset_defined[0] ++ offset_undefined[0] ++ offset_streamed[0] ++ offset_unstreamed[0]);
+    writeKind(ctn_fn.Fn, &array, "offset", offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
     gen.writeAuxiliarySourceFile(&array, "container_kinds.zig");
-}
-const Allocator = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
-    .options = preset.allocator.options.small,
-    .AddressSpace = AddressSpace,
-});
-const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .logging = preset.address_space.logging.silent,
-    .errors = preset.address_space.errors.noexcept,
-    .options = .{},
-});
-fn concat(comptime Tags: type, allocator: *Allocator, sets: []const Tags) Tags {
-    var len: u64 = 0;
-    for (sets) |tags| {
-        len +%= tags.len();
-    }
-    var ret: Tags = Tags.init(allocator, len);
-    for (sets) |tags| {
-        ret.writeMany(tags.readAll());
-    }
-    return ret;
 }
 fn mainAllocated() void {
     var array: Array = undefined;
