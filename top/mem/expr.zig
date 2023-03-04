@@ -11,6 +11,7 @@ const impl_fn = @import("./impl_fn.zig");
 //const alloc_fn = @import("./alloc_fn.zig");
 
 const ExprTag = enum(u8) {
+    scrub,
     constant,
     symbol,
     join,
@@ -44,6 +45,9 @@ pub const Expr = struct {
             return expr.more()[1..];
         }
     }
+    pub fn scrub(expr: Expr) u64 {
+        return expr.data1;
+    }
     fn formatLengthCallMember(format: Expr) u64 {
         const fn_args: []const Expr = format.more()[1..];
         var len: u64 = 0;
@@ -54,10 +58,10 @@ pub const Expr = struct {
         var idx: u64 = 1;
         while (idx != fn_args.len) : (idx +%= 1) {
             len +%= fn_args[idx].formatLength();
-            len +%= tok.end_small_list_item.len;
+            len +%= tok.end_elem.len;
         }
         if (idx != 1) {
-            len -%= tok.end_small_list_item.len;
+            len -%= tok.end_elem.len;
         }
         len +%= 1;
         return len;
@@ -70,10 +74,10 @@ pub const Expr = struct {
         var idx: u64 = 0;
         while (idx != fn_args.len) : (idx +%= 1) {
             len +%= fn_args[idx].formatLength();
-            len +%= tok.end_small_list_item.len;
+            len +%= tok.end_elem.len;
         }
         if (idx != 0) {
-            len -%= tok.end_small_list_item.len;
+            len -%= tok.end_elem.len;
         }
         len +%= 1;
         return len;
@@ -86,7 +90,7 @@ pub const Expr = struct {
         const pos: u64 = array.len();
         for (format.more()) |op| {
             len +%= op.formatLength();
-            len +%= tok.end_small_list_item.len;
+            len +%= tok.end_elem.len;
         }
         if (format.more().len == 1 or
             array.len() -% pos < 40)
@@ -104,6 +108,7 @@ pub const Expr = struct {
     pub fn formatLength(format: Expr) u64 {
         var len: u64 = 0;
         switch (format.tag()) {
+            .scrub => {},
             .symbol => len +%= format.data2 & mask,
             .constant => len +%= fmt.ud64(format.data1).formatLength(),
             .call => len +%= formatLengthCall(format),
@@ -120,7 +125,7 @@ pub const Expr = struct {
         const pos: u64 = array.len();
         for (format.more()) |op| {
             op.formatWrite(array);
-            array.writeMany(tok.end_small_list_item);
+            array.writeMany(tok.end_elem);
         }
         if (format.more().len == 1 or
             array.len() -% pos < 40)
@@ -140,10 +145,10 @@ pub const Expr = struct {
         var idx: u64 = 0;
         while (idx != fn_args.len) : (idx +%= 1) {
             array.writeFormat(fn_args[idx]);
-            array.writeMany(tok.end_small_list_item);
+            array.writeMany(tok.end_elem);
         }
         if (idx != 0) {
-            array.undefine(tok.end_small_list_item.len);
+            array.undefine(tok.end_elem.len);
         }
         array.writeOne(')');
     }
@@ -156,10 +161,10 @@ pub const Expr = struct {
         var idx: u64 = 1;
         while (idx != fn_args.len) : (idx +%= 1) {
             fn_args[idx].formatWrite(array);
-            array.writeMany(tok.end_small_list_item);
+            array.writeMany(tok.end_elem);
         }
         if (idx != 1) {
-            array.undefine(tok.end_small_list_item.len);
+            array.undefine(tok.end_elem.len);
         }
         array.writeOne(')');
     }
@@ -168,6 +173,7 @@ pub const Expr = struct {
             debug.showOpen(format);
         }
         switch (format.tag()) {
+            .scrub => array.undefine(format.scrub()),
             .symbol => array.writeMany(format.symbol()),
             .constant => array.writeFormat(fmt.ud64(format.data1)),
             .call => formatWriteCall(format, array),
@@ -243,10 +249,17 @@ const Init = struct {
         };
     }
     pub fn symbol(token: [:0]const u8) Expr {
+        //if (tok.symbolName(token) == null) {
+        //    builtin.debug.logAlways(token);
+        //    builtin.debug.logAlways("\n");
+        //}
         return .{
             .data1 = @ptrToInt(token.ptr),
             .data2 = mach.shlOr64(@enumToInt(ExprTag.symbol), 56, token.len),
         };
+    }
+    pub fn scrub(count: u64) Expr {
+        return .{ .data1 = count, .data2 = mach.shl64(@enumToInt(ExprTag.scrub), 56) };
     }
     pub fn join(exprs: []Expr) Expr {
         return packMore(.join, exprs);
@@ -392,7 +405,7 @@ pub const ConstDecl = struct {
         }
         array.writeMany(tok.equal_operator);
         array.writeFormat(format.expr1);
-        array.writeMany(tok.end_expression);
+        array.writeMany(tok.end_expr);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -404,7 +417,7 @@ pub const ConstDecl = struct {
         }
         len +%= tok.equal_operator.len;
         len +%= format.expr1.formatLength();
-        len +%= tok.end_expression.len;
+        len +%= tok.end_expr.len;
         return len;
     }
 };
@@ -420,7 +433,7 @@ pub const VarDecl = struct {
         array.writeFormat(format.type_name);
         array.writeMany(tok.equal_operator);
         array.writeFormat(format.expr1);
-        array.writeMany(tok.end_expression);
+        array.writeMany(tok.end_expr);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -430,7 +443,7 @@ pub const VarDecl = struct {
         len +%= format.type_name.len;
         len +%= tok.equal_operator.len;
         len +%= format.expr1.formatLength();
-        len +%= tok.end_expression.len;
+        len +%= tok.end_expr.len;
         return len;
     }
 };
@@ -516,21 +529,34 @@ pub inline fn dereference(expr1: Expr) [2]Expr {
 pub inline fn fieldAccess(expr1: Expr, expr2: Expr) [3]Expr {
     return .{ expr1, Init.symbol(tok.period_operator), expr2 };
 }
-pub inline fn assign(expr1: Expr, expr2: Expr) [3]Expr {
-    return .{ expr1, Init.symbol(tok.equal_operator), expr2 };
+pub inline fn assign(expr1: Expr, expr2: Expr) [4]Expr {
+    return .{ expr1, Init.symbol(tok.equal_operator), expr2, Init.symbol(tok.end_expr) };
 }
-pub inline fn constDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [6]Expr {
+pub inline fn constDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [7]Expr {
     return .{
         Init.symbol(tok.const_keyword),  Init.symbol(name),
         Init.symbol(tok.colon_operator), Init.symbol(type_name),
         Init.symbol(tok.equal_operator), value,
+        Init.symbol(tok.end_expr),
     };
 }
-pub inline fn varDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [6]Expr {
+pub inline fn varDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [7]Expr {
     return .{
         Init.symbol(tok.var_keyword),    Init.symbol(name),
         Init.symbol(tok.colon_operator), Init.symbol(type_name),
         Init.symbol(tok.equal_operator), value,
+        Init.symbol(tok.end_expr),
+    };
+}
+pub inline fn public(decl_expr: []Expr) [2]Expr {
+    return .{ Init.symbol(tok.pub_keyword), Init.join(decl_expr) };
+}
+pub inline fn comptimeField(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [7]Expr {
+    return .{
+        Init.symbol(tok.comptime_keyword), Init.symbol(name),
+        Init.symbol(tok.colon_operator),   Init.symbol(type_name),
+        Init.symbol(tok.equal_operator),   value,
+        Init.symbol(tok.end_elem),
     };
 }
 pub inline fn addEqu(expr1: Expr, expr2: Expr) [3]Expr {
