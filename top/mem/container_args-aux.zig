@@ -117,7 +117,6 @@ fn writeSecondThing(array_lists: *ArgListArray, lists: *Array, kind: gen.ListKin
     }
     lists.writeMany("};\n");
 }
-
 pub fn main() void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
@@ -128,6 +127,8 @@ pub fn main() void {
     var arg_lists: ArgListArray = ArgListArray.init(&allocator, out.impl_variants.len * ctn_fn.key.len);
     var param_lists: ArgListArray = ArgListArray.init(&allocator, out.impl_variants.len * ctn_fn.key.len);
     var ctn_index: u64 = 0;
+    gen.writeImport(&lists, "gen", "../../gen.zig");
+    gen.writeImport(&lists, "tok", "../../tok.zig");
     params.writeMany("const container_params:[]const PIndex=&[_]PIndex{");
     args.writeMany("const container_args:[]const AIndex=&[_]AIndex{");
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
@@ -141,8 +142,14 @@ pub fn main() void {
         }
         var ctn_fn_index: u64 = 0;
         while (ctn_fn_index != ctn_fn.key.len) : (ctn_fn_index +%= 1) {
-            params.writeFormat(fmt.ud64(writeOneUnique(&param_lists, ctn_fn.key[ctn_fn_index].argList(out.impl_variants[ctn_group[0]].less(), .Parameter))));
-            args.writeFormat(fmt.ud64(writeOneUnique(&arg_lists, ctn_fn.key[ctn_fn_index].argList(out.impl_variants[ctn_group[0]].less(), .Argument))));
+            params.writeFormat(fmt.ud64(writeOneUnique(
+                &param_lists,
+                ctn_fn.key[ctn_fn_index].argList(out.impl_variants[ctn_group[0]].less(), .Parameter),
+            )));
+            args.writeFormat(fmt.ud64(writeOneUnique(
+                &arg_lists,
+                ctn_fn.key[ctn_fn_index].argList(out.impl_variants[ctn_group[0]].less(), .Argument),
+            )));
             params.writeOne(',');
             args.writeOne(',');
         } else {
@@ -212,7 +219,7 @@ pub fn main() void {
         lists.writeMany("},\n");
     }
     lists.writeMany("};\n");
+    lists.writeMany(args.readAll());
+    lists.writeMany(params.readAll());
     gen.writeAuxiliarySourceFile(&lists, "container_args.zig");
-    gen.appendAuxiliarySourceFile(&args, "container_args.zig");
-    gen.appendAuxiliarySourceFile(&params, "container_args.zig");
 }
