@@ -503,49 +503,49 @@ pub const Fn = enum(u8) {
             },
             .readOneStreamed,
             .readOneOffsetStreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (tag == .readOneOffsetStreamed) {
+                if (ctn_fn_info == .readOneOffsetStreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readCountStreamed,
             .readCountOffsetStreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (tag == .readCountOffsetStreamed) {
+                if (ctn_fn_info == .readCountOffsetStreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
             },
             .readCountWithSentinelStreamed,
             .readCountWithSentinelOffsetStreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .readCountWithSentinelOffsetStreamed) {
+                if (ctn_fn_info == .readCountWithSentinelOffsetStreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readManyStreamed,
             .readManyOffsetStreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
-                if (tag == .readManyOffsetStreamed) {
+                if (ctn_fn_info == .readManyOffsetStreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
@@ -557,6 +557,9 @@ pub const Fn = enum(u8) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
+                if (ctn_fn_info == .readManyWithSentinelOffsetStreamed) {
+                    arg_list.writeOne(offset_symbol);
+                }
                 arg_list.writeOne(sentinel_symbol);
             },
 
@@ -622,43 +625,43 @@ pub const Fn = enum(u8) {
             },
             .readOneUnstreamed,
             .readOneOffsetUnstreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (tag == .readOneOffsetUnstreamed) {
+                if (ctn_fn_info == .readOneOffsetUnstreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readCountUnstreamed,
             .readCountOffsetUnstreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
-                if (tag == .readCountOffsetUnstreamed) {
+                if (ctn_fn_info == .readCountOffsetUnstreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readCountWithSentinelUnstreamed,
             .readCountWithSentinelOffsetUnstreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .readCountWithSentinelOffsetUnstreamed) {
+                if (ctn_fn_info == .readCountWithSentinelOffsetUnstreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readManyUnstreamed,
             .readManyOffsetUnstreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -666,13 +669,13 @@ pub const Fn = enum(u8) {
                 if (config.user_defined_length) {
                     arg_list.writeOne(count_symbol);
                 }
-                if (tag == .readManyOffsetUnstreamed) {
+                if (ctn_fn_info == .readManyOffsetUnstreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readManyWithSentinelUnstreamed,
             .readManyWithSentinelOffsetUnstreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -681,61 +684,61 @@ pub const Fn = enum(u8) {
                     arg_list.writeOne(count_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .readManyWithSentinelOffsetUnstreamed) {
+                if (ctn_fn_info == .readManyWithSentinelOffsetUnstreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readOneDefined,
             .readOneOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (tag == .readOneOffsetDefined) {
+                if (ctn_fn_info == .readOneOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readCountDefined,
             .readCountOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
-                if (tag == .readCountOffsetDefined) {
+                if (ctn_fn_info == .readCountOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readCountWithSentinelDefined,
             .readCountWithSentinelOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .readCountWithSentinelOffsetDefined) {
+                if (ctn_fn_info == .readCountWithSentinelOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readManyDefined,
             .readManyOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
-                if (tag == .readManyOffsetDefined) {
+                if (ctn_fn_info == .readManyOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .readManyWithSentinelDefined,
             .readManyWithSentinelOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -744,7 +747,7 @@ pub const Fn = enum(u8) {
                     arg_list.writeOne(count_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .readManyWithSentinelOffsetDefined) {
+                if (ctn_fn_info == .readManyWithSentinelOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
@@ -785,64 +788,64 @@ pub const Fn = enum(u8) {
             },
             .overwriteOneDefined,
             .overwriteOneOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (tag == .overwriteOneOffsetDefined) {
+                if (ctn_fn_info == .overwriteOneOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
                 arg_list.writeOne(value_symbol);
             },
             .overwriteCountDefined,
             .overwriteCountOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
-                if (tag == .overwriteCountOffsetDefined) {
+                if (ctn_fn_info == .overwriteCountOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
                 arg_list.writeOne(count_values_symbol);
             },
             .overwriteManyDefined,
             .overwriteManyOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (tag == .overwriteManyOffsetDefined) {
+                if (ctn_fn_info == .overwriteManyOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
                 arg_list.writeOne(many_values_symbol);
             },
             .referCountWithSentinelStreamed,
             .referCountWithSentinelOffsetStreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .referCountWithSentinelOffsetStreamed) {
+                if (ctn_fn_info == .referCountWithSentinelOffsetStreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .referManyWithSentinelStreamed,
             .referManyWithSentinelOffsetStreamed,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .referManyWithSentinelOffsetStreamed) {
+                if (ctn_fn_info == .referManyWithSentinelOffsetStreamed) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
@@ -881,55 +884,55 @@ pub const Fn = enum(u8) {
             },
             .referOneDefined,
             .referOneOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (tag == .referOneOffsetDefined) {
+                if (ctn_fn_info == .referOneOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .referCountDefined,
             .referCountOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
-                if (tag == .referCountOffsetDefined) {
+                if (ctn_fn_info == .referCountOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .referManyDefined,
             .referManyOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
-                if (tag == .referManyOffsetDefined) {
+                if (ctn_fn_info == .referManyOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .referCountWithSentinelDefined,
             .referCountWithSentinelOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .referCountWithSentinelOffsetDefined) {
+                if (ctn_fn_info == .referCountWithSentinelOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .referManyWithSentinelDefined,
             .referManyWithSentinelOffsetDefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -938,7 +941,7 @@ pub const Fn = enum(u8) {
                     arg_list.writeOne(count_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
-                if (tag == .referManyWithSentinelOffsetDefined) {
+                if (ctn_fn_info == .referManyWithSentinelOffsetDefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
@@ -963,42 +966,44 @@ pub const Fn = enum(u8) {
             },
             .referOneUndefined,
             .referOneOffsetUndefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
-                    arg_list.writeOne(allocator_const_ptr_symbol);
-                }
-                if (tag == .referOneOffsetUndefined) {
+                if (ctn_fn_info == .referOneOffsetUndefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .referCountUndefined,
             .referCountOffsetUndefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
-                if (tag == .referCountOffsetUndefined) {
+                if (ctn_fn_info == .referCountOffsetUndefined) {
                     arg_list.writeOne(offset_symbol);
                 }
             },
             .referManyUndefined,
             .referManyOffsetUndefined,
-            => |tag| {
+            => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (!config.user_defined_length and
+                    ctn_detail.kinds.parametric)
+                {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
-                if (tag == .referManyOffsetUndefined) {
+                if (ctn_fn_info == .referManyOffsetUndefined) {
                     arg_list.writeOne(offset_symbol);
+                }
+                if (config.user_defined_length) {
+                    arg_list.writeOne(count_symbol);
                 }
             },
             .static => {},
