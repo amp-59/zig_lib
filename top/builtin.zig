@@ -22,6 +22,22 @@ pub fn globalCacheDir() [:0]const u8 {
     return config.global_cache_dir.?;
 }
 
+pub fn Slice(comptime T: type) type {
+    return extern struct { ptr: [*]T, len: usize };
+}
+pub fn ConstSlice(comptime T: type) type {
+    return extern struct { ptr: [*]const T, len: usize };
+}
+pub fn slice(any: anytype) blk: {
+    const type_info: Type = @typeInfo(@TypeOf(any));
+    if (type_info.Pointer.is_const) {
+        break :blk ConstSlice(type_info.Pointer.child);
+    }
+    break :blk Slice(type_info.Pointer.child);
+} {
+    return .{ .ptr = any.ptr, .len = any.len };
+}
+
 pub const Exception = error{
     SubCausedOverflow,
     AddCausedOverflow,
