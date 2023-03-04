@@ -20,8 +20,8 @@ const out = struct {
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/containers.zig");
-    usingnamespace @import("./zig-out/src/container_kinds.zig");
 };
+const kind = @import("./zig-out/src/container_kinds.zig");
 
 pub usingnamespace proc.start;
 
@@ -135,112 +135,90 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         expr.symbol(child_size),
     );
 
-    {
-        // unstreamed and undefined: flush is just the address, offset is helper
-        const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
-        const __undefined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__undefined));
-        const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
-        const __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
+    // unstreamed and undefined: flush is just the address, offset is helper
+    const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
+    const __undefined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__undefined));
+    const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
+    const __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
 
-        pointer_one_loc.* = if (ctn_fn_info == .readOneUnstreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __unstreamed_call;
-        pointer_count_loc.* = if (ctn_fn_info == .readCountUnstreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __unstreamed_call;
-        pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelUnstreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __unstreamed_call;
-        pointer_many_loc.* = if (ctn_fn_info == .readManyUnstreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __unstreamed_call;
-        pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelUnstreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __unstreamed_call;
-        pointer_one_loc.* = if (ctn_fn_info == .referOneUndefined)
-            expr.join(&undefined_byte_address)
-        else
-            __undefined_call;
-        pointer_count_loc.* = if (ctn_fn_info == .referCountUndefined)
-            expr.join(&undefined_byte_address)
-        else
-            __undefined_call;
+    pointer_one_loc.* = if (ctn_fn_info == .referOneUndefined)
+        expr.join(&undefined_byte_address)
+    else
+        __undefined_call;
+    pointer_count_loc.* = if (ctn_fn_info == .referCountUndefined)
+        expr.join(&undefined_byte_address)
+    else
+        __undefined_call;
 
-        pointer_many_loc.* = if (ctn_fn_info == .referManyUndefined)
-            expr.join(&undefined_byte_address)
-        else
-            __undefined_call;
+    pointer_many_loc.* = if (ctn_fn_info == .referManyUndefined)
+        expr.join(&undefined_byte_address)
+    else
+        __undefined_call;
 
-        // streamed and defined: flush and offset are the same call, but:
-        // flush uses data size while offset uses offset
-        pointer_one_loc.* = if (ctn_fn_info == .readOneStreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __streamed_call;
-        pointer_count_loc.* = if (ctn_fn_info == .readCountStreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __streamed_call;
-        pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelStreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __streamed_call;
-        pointer_many_loc.* = if (ctn_fn_info == .readManyStreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __streamed_call;
-        pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelStreamed)
-            expr.join(&unstreamed_byte_address)
-        else
-            __streamed_call;
+    // streamed and defined: flush and offset are the same call, but:
+    // flush uses data size while offset uses offset
+    pointer_one_loc.* = if (ctn_fn_info == .readOneStreamed)
+        expr.join(&unstreamed_byte_address)
+    else
+        __streamed_call;
+    pointer_count_loc.* = if (ctn_fn_info == .readCountStreamed)
+        expr.join(&unstreamed_byte_address)
+    else
+        __streamed_call;
+    pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelStreamed)
+        expr.join(&unstreamed_byte_address)
+    else
+        __streamed_call;
+    pointer_many_loc.* = if (ctn_fn_info == .readManyStreamed)
+        expr.join(&unstreamed_byte_address)
+    else
+        __streamed_call;
+    pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelStreamed)
+        expr.join(&unstreamed_byte_address)
+    else
+        __streamed_call;
 
-        pointer_one_loc.* = if (ctn_fn_info == .readOneDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_count_loc.* = if (ctn_fn_info == .readCountDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_many_loc.* = if (ctn_fn_info == .readManyDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
+    pointer_one_loc.* = if (ctn_fn_info == .readOneDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_count_loc.* = if (ctn_fn_info == .readCountDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_many_loc.* = if (ctn_fn_info == .readManyDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
 
-        pointer_one_loc.* = if (ctn_fn_info == .referOneDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_count_loc.* = if (ctn_fn_info == .referCountDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .referCountWithSentinelDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_many_loc.* = if (ctn_fn_info == .referManyDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-        pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .referManyWithSentinelDefined)
-            expr.join(&undefined_byte_address)
-        else
-            __defined_call;
-    }
+    pointer_one_loc.* = if (ctn_fn_info == .referOneDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_count_loc.* = if (ctn_fn_info == .referCountDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .referCountWithSentinelDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_many_loc.* = if (ctn_fn_info == .referManyDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
+    pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .referManyWithSentinelDefined)
+        expr.join(&undefined_byte_address)
+    else
+        __defined_call;
 
     switch (ctn_fn_info) {
         .readAll,
@@ -263,8 +241,9 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.call(&pointer_many_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
-        .readOneStreamed, .readOneOffsetStreamed => |_| {
-            const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
+        .readOneStreamed,
+        .readOneOffsetStreamed,
+        => {
             pointer_one_loc.* = __streamed_call;
             expr.subst(__streamed_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
@@ -278,9 +257,9 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             return array.writeMany(tok.end_expression);
         },
         // return an array of type with a given length ending at unstreamed
-        .readCountStreamed, .readCountOffsetStreamed => |_| {
-            const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
-            pointer_count_loc.* = __streamed_call;
+        .readCountStreamed,
+        .readCountOffsetStreamed,
+        => {
             pointer_count_len.* = expr.symbol(tok.count_name);
             expr.subst(__streamed_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
@@ -290,9 +269,9 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.call(&pointer_count));
             return array.writeMany(tok.end_expression);
         },
-        .readCountWithSentinelStreamed, .readCountWithSentinelOffsetStreamed => |_| {
-            const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
-            pointer_count_with_sentinel_loc.* = __streamed_call;
+        .readCountWithSentinelStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        => {
             pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             expr.subst(__streamed_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
@@ -305,8 +284,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         .referCountWithSentinelStreamed,
         .referCountWithSentinelOffsetStreamed,
         => {
-            const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
-            pointer_count_with_sentinel_loc.* = __streamed_call;
             pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             expr.subst(__streamed_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
@@ -316,12 +293,9 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
-        // returns
         .readManyStreamed,
         .readManyOffsetStreamed,
         => {
-            const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
-            pointer_many_loc.* = __streamed_call;
             pointer_many_len.* = expr.symbol(tok.count_name);
             expr.subst(__streamed_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
@@ -336,8 +310,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         .readManyWithSentinelOffsetStreamed,
         .referManyWithSentinelOffsetStreamed,
         => {
-            const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
-            pointer_many_with_sentinel_loc.* = __streamed_call;
             pointer_many_with_sentinel_len.* = expr.symbol(tok.count_name);
             expr.subst(__streamed_call.args(), .{
                 .dst = expr.symbol(tok.offset_name),
@@ -450,18 +422,22 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .readOneUnstreamed,
         .readOneOffsetUnstreamed,
-        => |tag| {
-            const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
-            pointer_one_loc.* = if (tag == .readOneUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+        => {
+            pointer_one_loc.* = if (ctn_fn_info == .readOneUnstreamed)
+                expr.join(&unstreamed_byte_address)
+            else
+                __unstreamed_call;
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_one));
             return array.writeMany(tok.end_expression);
         },
         .readCountUnstreamed,
         .readCountOffsetUnstreamed,
-        => |tag| {
-            const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
-            pointer_count_loc.* = if (tag == .readCountUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+        => {
+            pointer_count_loc.* = if (ctn_fn_info == .readCountUnstreamed)
+                expr.join(&unstreamed_byte_address)
+            else
+                __unstreamed_call;
             pointer_count_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_count));
@@ -469,55 +445,70 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .readCountWithSentinelUnstreamed,
         .readCountWithSentinelOffsetUnstreamed,
-        => |tag| {
-            const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
-            pointer_count_with_sentinel_loc.* = if (tag == .readCountWithSentinelUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+        => {
+            pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelUnstreamed)
+                expr.join(&unstreamed_byte_address)
+            else
+                __unstreamed_call;
             pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
             return array.writeMany(tok.end_expression);
         },
-
         .readManyUnstreamed,
         .readManyOffsetUnstreamed,
         => |_| {
-            const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
-            pointer_many_loc.* = __unstreamed_call;
+            pointer_many_loc.* = if (ctn_fn_info == .readManyUnstreamed)
+                expr.join(&unstreamed_byte_address)
+            else
+                __unstreamed_call;
+            pointer_many_len.* = expr.symbol(tok.count_name);
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many));
+            return array.writeMany(tok.end_expression);
         },
         .readManyWithSentinelUnstreamed, .readManyWithSentinelOffsetUnstreamed => |_| {
-            const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
-            pointer_many_with_sentinel_loc.* = __unstreamed_call;
+            pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelUnstreamed)
+                expr.join(&unstreamed_byte_address)
+            else
+                __unstreamed_call;
+            pointer_many_len.* = expr.symbol(tok.count_name);
+            array.writeMany(tok.return_keyword);
+            array.writeFormat(expr.call(&pointer_many_with_sentinel));
+            return array.writeMany(tok.end_expression);
         },
         .readOneDefined,
         .readOneOffsetDefined,
-        => |_| {},
+        => {},
         .referOneDefined,
         .referOneOffsetDefined,
-        => |_| {},
+        => {},
         .overwriteOneDefined,
         .overwriteOneOffsetDefined,
-        => |_| {},
+        => {},
         .readCountDefined,
         .readCountOffsetDefined,
-        => |_| {},
+        => {},
         .referCountDefined,
         .referCountOffsetDefined,
-        => |_| {},
+        => {},
         .overwriteCountDefined,
         .overwriteCountOffsetDefined,
-        => |_| {},
+        => {},
         .readCountWithSentinelDefined,
         .readCountWithSentinelOffsetDefined,
-        => |_| {},
+        => {},
         .referCountWithSentinelDefined,
         .referCountWithSentinelOffsetDefined,
-        => |_| {},
+        => {},
         .readManyDefined,
         .readManyOffsetDefined,
         .referManyDefined,
         .referManyOffsetDefined,
+        => {},
+        .overwriteManyDefined,
+        .overwriteManyOffsetDefined,
         => |_| {},
-        .overwriteManyDefined, .overwriteManyOffsetDefined => |_| {},
         .readManyWithSentinelDefined,
         .readManyWithSentinelOffsetDefined,
         .referManyWithSentinelDefined,
