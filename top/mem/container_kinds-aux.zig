@@ -4,11 +4,8 @@ const preset = gen.preset;
 const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const ctn_fn = @import("./ctn_fn.zig");
-
 const Array = mem.StaticString(1024 * 1024);
-
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
-
 fn mainStatic() void {
     var array: Array = undefined;
     array.undefineAll();
@@ -70,7 +67,6 @@ fn mainStatic() void {
         offset_streamed[1] ++ offset_unstreamed[1]);
     gen.writeAuxiliarySourceFile(&array, "container_kinds.zig");
 }
-
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .errors = preset.allocator.errors.noexcept,

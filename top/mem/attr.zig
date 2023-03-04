@@ -35,7 +35,6 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
         }
     });
 }
-
 pub const Fn = struct {
     fn isPrefix(prefix: []const u8, values: []const u8) bool {
         if (prefix.len > values.len) {
@@ -70,7 +69,6 @@ pub const Fn = struct {
         }
         return true;
     }
-
     fn Array(comptime Allocator: type, comptime Tag: type) type {
         return Allocator.StructuredVector(Tag);
     }
@@ -178,8 +176,95 @@ pub const Fn = struct {
         }
         array.writeMany("=>return true,else=>return false}\n}\n");
     }
+    pub const static = struct {
+        pub fn Pair(comptime Tag: type) type {
+            return struct { []const Tag, []const Tag };
+        }
+        pub fn prefixSubTag(comptime Tag: type, sub_set: anytype, sub_tag_name: []const u8) static.Pair(Tag) {
+            @setEvalBranchQuota(~@as(u32, 0));
+            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            for (sub_set) |tag| {
+                if (isPrefix(sub_tag_name, @tagName(tag))) {
+                    ret[1] = ret[1] ++ [1]Tag{tag};
+                } else {
+                    ret[0] = ret[0] ++ [1]Tag{tag};
+                }
+            }
+            return ret;
+        }
+        pub fn suffixSubTag(comptime Tag: type, sub_set: anytype, sub_tag_name: []const u8) static.Pair(Tag) {
+            @setEvalBranchQuota(~@as(u32, 0));
+            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            for (sub_set) |tag| {
+                if (isSuffix(sub_tag_name, @tagName(tag))) {
+                    ret[1] = ret[1] ++ [1]Tag{tag};
+                } else {
+                    ret[0] = ret[0] ++ [1]Tag{tag};
+                }
+            }
+            return ret;
+        }
+        pub fn subTag(comptime Tag: type, sub_set: anytype, sub_tag_name: []const u8) static.Pair(Tag) {
+            @setEvalBranchQuota(~@as(u32, 0));
+            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            for (sub_set) |tag| {
+                if (isWithin(sub_tag_name, @tagName(tag))) {
+                    ret[1] = ret[1] ++ [1]Tag{tag};
+                } else {
+                    ret[0] = ret[0] ++ [1]Tag{tag};
+                }
+            }
+            return ret;
+        }
+        pub fn prefixSubTagNew(comptime Tag: type, comptime sub_tag_name: []const u8) static.Pair(Tag) {
+            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            inline for (@typeInfo(Tag).Enum.fields) |field| {
+                const tag: Tag = @field(Tag, field.name);
+                if (isPrefix(sub_tag_name, field.name)) {
+                    ret[1] = ret[1] ++ [1]Tag{tag};
+                } else {
+                    ret[0] = ret[0] ++ [1]Tag{tag};
+                }
+            }
+            return ret;
+        }
+        pub fn suffixSubTagNew(comptime Tag: type, comptime sub_tag_name: []const u8) static.pair(Tag) {
+            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            inline for (@typeInfo(Tag).Enum.fields) |field| {
+                const tag: Tag = @field(Tag, field.name);
+                if (isSuffix(sub_tag_name, field.name)) {
+                    ret[1] = ret[1] ++ [1]Tag{tag};
+                } else {
+                    ret[0] = ret[0] ++ [1]Tag{tag};
+                }
+            }
+            return ret;
+        }
+        pub fn subTagNew(comptime Tag: type, comptime sub_tag_name: []const u8) static.Pair(Tag) {
+            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            inline for (@typeInfo(Tag).Enum.fields) |field| {
+                const tag: Tag = @field(Tag, field.name);
+                if (isWithin(sub_tag_name, field.name)) {
+                    ret[1] = ret[1] ++ [1]Tag{tag};
+                } else {
+                    ret[0] = ret[0] ++ [1]Tag{tag};
+                }
+            }
+            return ret;
+        }
+        pub fn writeKind(comptime Tag: type, array: anytype, fn_name: [:0]const u8, set: []const Tag) void {
+            array.writeMany("pub fn ");
+            array.writeMany(fn_name);
+            array.writeMany("(tag: " ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
+            for (set) |elem| {
+                array.writeMany(".");
+                array.writeMany(@tagName(elem));
+                array.writeMany(",");
+            }
+            array.writeMany("=>return true,else=>return false}\n}\n");
+        }
+    };
 };
-
 pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
