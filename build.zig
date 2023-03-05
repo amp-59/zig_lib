@@ -89,6 +89,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg_interfaces: *build.Target      = mg_aux.addTarget(small_spec, allocator,   "mg_interfaces",            "top/mem/interfaces-aux.zig");
     const mg_reference_specs: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_reference_specs",       "top/mem/reference_specs-aux.zig");
     const mg_reference_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_reference_impls",       "top/mem/reference_impls-aux.zig");
+    const mg_container_kinds: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_kinds",       "top/mem/container_kinds-aux.zig");
+    const mg_container_args: *build.Target  = mg_aux.addTarget(small_spec, allocator,   "mg_container_args",        "top/mem/container_args-aux.zig");
     const mg_container_specs: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_specs",       "top/mem/container_specs-aux.zig");
     const mg_container_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_impls",       "top/mem/container_impls-aux.zig");
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
@@ -111,9 +113,14 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     mg_reference_specs.dependOnRun(allocator,   mg_specs);
     mg_reference_impls.dependOnRun(allocator,   mg_containers);
     mg_reference_impls.dependOnRun(allocator,   mg_reference_specs);
+    mg_container_kinds.dependOnRun(allocator,   mg_options);
+    mg_container_kinds.dependOnRun(allocator,   mg_type_descr);
+    mg_container_kinds.dependOnRun(allocator,   mg_containers);
     mg_container_specs.dependOnRun(allocator,   mg_options);
     mg_container_specs.dependOnRun(allocator,   mg_type_descr);
-    mg_container_specs.dependOnRun(allocator,   mg_containers);
+    mg_container_specs.dependOnRun(allocator,   mg_container_args);
+    mg_container_impls.dependOnRun(allocator,   mg_container_args);
+    mg_container_impls.dependOnRun(allocator,   mg_container_kinds);
     mg_container_impls.dependOnRun(allocator,   mg_container_specs);
     // Primary dependencies:
     generate_references.dependOnRun(allocator,  mg_reference_impls);
