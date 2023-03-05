@@ -349,6 +349,7 @@ pub const close_brace_operator: [:0]const u8 = "}";
 
 pub const end_expr: [:0]const u8 = ";\n";
 pub const end_elem: [:0]const u8 = ",";
+pub const discard: [:0]const u8 = "_=";
 
 pub const const_bytes_0: [:0]const u8 = amountBytes("0");
 pub const const_bytes_1: [:0]const u8 = amountBytes("1");
