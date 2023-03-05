@@ -14,7 +14,7 @@ pub const minimise_declaration: bool = true;
 pub const show_eliminated_options: bool = false;
 /// Improved binary size when multiple types of container are used. Slightly
 /// worse binary size if only one is used.
-pub const implement_write_inline: bool = false;
+pub const implement_write_inline: bool = true;
 pub const implement_count_as_one: bool = false;
 /// If enabled functions returning slices accept an additional parameter to
 /// define the length of the returned pointer.
