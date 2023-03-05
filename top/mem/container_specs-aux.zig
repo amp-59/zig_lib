@@ -168,6 +168,7 @@ fn generateParameters() !void {
     gen.writeImport(&array.options, "reference", "references.zig");
     gen.copySourceFile(&array.params, "container-template.zig");
     array.options.writeMany(gen.subTemplate(array.params.readAll()[0.. :0], "container-template.zig").?);
+
     array.params.undefineAll();
     var ctn_index: u64 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
@@ -175,9 +176,6 @@ fn generateParameters() !void {
         defer allocator.restore(save);
         const ctn_group: []const out.Index = out.containers[ctn_index];
         writeContainerGroup(&allocator, &array, ctn_group);
-    }
-    for (array.indices.readAll()) |x| {
-        builtin.debug.write(x);
     }
     gen.writeSourceFile(&array.options, "containers.zig");
     gen.appendSourceFile(&array.params, "containers.zig");
