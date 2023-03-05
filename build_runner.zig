@@ -20,11 +20,11 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = if (@hasDecl(root, "logging_override")) root.logging_override else .{
-    .Success = .null,
-    .Acquire = .null,
-    .Release = .null,
-    .Error = .null,
-    .Fault = .null,
+    .Success = null,
+    .Acquire = null,
+    .Release = null,
+    .Error = null,
+    .Fault = null,
 };
 pub const logging_default: builtin.Logging.Default = if (@hasDecl(root, "logging_default")) root.logging_default else .{
     .Success = false,
