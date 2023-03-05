@@ -71,10 +71,6 @@ pub const Fn = enum(u8) {
     readManyOffsetUnstreamed,
     readCountWithSentinelOffsetUnstreamed,
     readManyWithSentinelOffsetUnstreamed,
-    referAllDefined,
-    referAllUndefinedWithSentinel,
-    referAllUndefined,
-    referAllDefinedWithSentinel,
     referOneAt,
     referCountAt,
     referManyAt,
@@ -156,123 +152,38 @@ pub const Fn = enum(u8) {
         return @tagName(ctn_fn_info);
     }
     pub fn hasCapability(ctn_fn_info: Fn, ctn_detail: *const detail.Less) bool {
-        switch (ctn_fn_info) {
-            else => return true,
+        if (kind.stream(ctn_fn_info) or
+            kind.unstream(ctn_fn_info) or
+            kind.streamed(ctn_fn_info) or
+            kind.unstreamed(ctn_fn_info) or
+            ctn_fn_info == .ahead)
+        {
+            return ctn_detail.modes.stream;
+        }
+        if (kind.define(ctn_fn_info) or
+            kind.undefine(ctn_fn_info) or
+            kind.defined(ctn_fn_info) or
+            kind.undefined(ctn_fn_info) or
+            kind.write(ctn_fn_info) or
+            ctn_fn_info == .avail)
+        {
+            return ctn_detail.modes.resize;
+        }
 
-            .stream,
-            .unstream,
-            .streamAll,
-            .unstreamAll,
-            .index,
-            .__streamed,
-            .__unstreamed,
-            .readOneStreamed,
-            .readCountStreamed,
-            .readCountWithSentinelStreamed,
-            .readManyStreamed,
-            .readManyWithSentinelStreamed,
-            .readOneOffsetStreamed,
-            .readCountOffsetStreamed,
-            .readCountWithSentinelOffsetStreamed,
-            .readManyOffsetStreamed,
-            .readManyWithSentinelOffsetStreamed,
-            .ahead,
-
-            .readOneUnstreamed,
-            .readCountUnstreamed,
-            .readCountWithSentinelUnstreamed,
-            .readManyUnstreamed,
-            .readManyWithSentinelUnstreamed,
-            .readOneOffsetUnstreamed,
-            .readCountOffsetUnstreamed,
-            .readCountWithSentinelOffsetUnstreamed,
-            .readManyOffsetUnstreamed,
-            .readManyWithSentinelOffsetUnstreamed,
-
-            .referOneStreamed,
-            .referManyStreamed,
-            .referManyOffsetStreamed,
-            .referManyUnstreamed,
-            .referManyOffsetUnstreamed,
-            .referManyWithSentinelStreamed,
-            .referCountWithSentinelStreamed,
-            .referCountWithSentinelOffsetStreamed,
-            .referManyWithSentinelOffsetStreamed,
-            .referManyWithSentinelOffsetUnstreamed,
-            .referManyWithSentinelUnstreamed,
-            => return ctn_detail.modes.stream,
-
-            .__undefined,
-            .__defined,
-            .__avail,
-            .defineAll,
-            .undefineAll,
-            .avail,
-            .undefine,
-            .readOneDefined,
-            .referOneDefined,
-            .overwriteOneDefined,
-            .readCountDefined,
-            .referCountDefined,
-            .overwriteCountDefined,
-            .readCountWithSentinelDefined,
-            .referCountWithSentinelDefined,
-            .readManyDefined,
-            .referManyDefined,
-            .overwriteManyDefined,
-            .readManyWithSentinelDefined,
-            .referManyWithSentinelDefined,
-            .readOneOffsetDefined,
-            .referOneOffsetDefined,
-            .overwriteOneOffsetDefined,
-            .readCountOffsetDefined,
-            .referCountOffsetDefined,
-            .overwriteCountOffsetDefined,
-            .readCountWithSentinelOffsetDefined,
-            .referCountWithSentinelOffsetDefined,
-            .readManyOffsetDefined,
-            .referManyOffsetDefined,
-            .overwriteManyOffsetDefined,
-            .readManyWithSentinelOffsetDefined,
-            .referManyWithSentinelOffsetDefined,
-            .referAllUndefined,
-            .referAllUndefinedWithSentinel,
-            .define,
-            .referOneUndefined,
-            .referOneOffsetUndefined,
-            .referCountUndefined,
-            .referCountOffsetUndefined,
-            .referManyUndefined,
-            .referManyOffsetUndefined,
-            .writeOne,
-            .writeCount,
-            .writeMany,
-            .writeFields,
-            .writeArgs,
-            .writeFormat,
-            .writeAny,
-            => return ctn_detail.modes.resize,
-
-            .static => return !ctn_detail.kinds.static and !ctn_detail.kinds.automatic,
-            .dynamic => return !ctn_detail.kinds.dynamic and !ctn_detail.kinds.automatic,
-            .holder => return !ctn_detail.kinds.parametric and !ctn_detail.kinds.automatic,
-
-            .grow,
-            .shrink,
-            .increment,
-            .decrement,
-            .appendOne,
-            .appendCount,
-            .appendMany,
-            .appendFields,
-            .appendArgs,
-            .appendFormat,
-            .appendAny,
-            => return ctn_detail.modes.resize and !ctn_detail.kinds.automatic and !ctn_detail.kinds.static,
-
-            .init,
-            .deinit,
-            => return !ctn_detail.kinds.automatic,
+        if (ctn_fn_info == .init or
+            ctn_fn_info == .deinit)
+        {
+            return ctn_detail.managers.allocatable;
+        }
+        if (ctn_fn_info == .grow or
+            ctn_fn_info == .shrink or
+            ctn_fn_info == .increment or
+            ctn_fn_info == .decrement)
+        {
+            return ctn_detail.managers.resizable;
+        }
+        if (kind.append(ctn_fn_info)) {
+            return ctn_detail.managers.resizable and ctn_detail.modes.resize;
         }
         return true;
     }
@@ -437,9 +348,7 @@ pub const Fn = enum(u8) {
                 }
                 arg_list.writeOne(offset_symbol);
             },
-            .readAll,
-            .referAllDefined,
-            => {
+            .readAll => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -448,9 +357,7 @@ pub const Fn = enum(u8) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
-            .readAllWithSentinel,
-            .referAllDefinedWithSentinel,
-            => {
+            .readAllWithSentinel => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
                     arg_list.writeOne(child_type_symbol);
@@ -869,25 +776,6 @@ pub const Fn = enum(u8) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
-            },
-            .referAllUndefined => {
-                arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
-                    arg_list.writeOne(child_type_symbol);
-                }
-                if (ctn_detail.kinds.parametric) {
-                    arg_list.writeOne(allocator_const_ptr_symbol);
-                }
-            },
-            .referAllUndefinedWithSentinel => {
-                arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
-                    arg_list.writeOne(child_type_symbol);
-                }
-                if (ctn_detail.kinds.parametric) {
-                    arg_list.writeOne(allocator_const_ptr_symbol);
-                }
-                arg_list.writeOne(sentinel_symbol);
             },
             .referOneUndefined,
             .referOneOffsetUndefined,
