@@ -90,8 +90,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg_reference_specs: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_reference_specs",       "top/mem/reference_specs-aux.zig");
     const mg_reference_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_reference_impls",       "top/mem/reference_impls-aux.zig");
     const mg_container_kinds: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_kinds",       "top/mem/container_kinds-aux.zig");
-    const mg_container_args: *build.Target  = mg_aux.addTarget(small_spec, allocator,   "mg_container_args",        "top/mem/container_args-aux.zig");
-    _ = mg_container_args;
     const mg_container_specs: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_specs",       "top/mem/container_specs-aux.zig");
     const mg_container_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_impls",       "top/mem/container_impls-aux.zig");
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
