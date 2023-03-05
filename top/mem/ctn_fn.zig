@@ -7,12 +7,13 @@ const testing = gen.testing;
 const tok = @import("./tok.zig");
 const detail = @import("./detail.zig");
 const config = @import("./config.zig");
-// zig fmt: off
-const kind = @import("./zig-out/src/container_kinds.zig");
+
+pub const kind = @import("./zig-out/src/container_kinds.zig");
+
 pub const key = blk: {
     var res: [@typeInfo(Fn).Enum.fields.len]Fn = undefined;
     for (@typeInfo(Fn).Enum.fields, 0..) |field, index| {
-        res[index] =@intToEnum(Fn, field.value);
+        res[index] = @intToEnum(Fn, field.value);
     }
     break :blk res;
 };
@@ -272,7 +273,7 @@ pub const Fn = enum(u8) {
         }
         return true;
     }
-    pub fn argList(ctn_fn_info: Fn, ctn_detail: *const detail.Less, list_kind: gen.ListKind) gen.ArgList { // 8KiB
+    pub fn argList(ctn_fn_info: Fn, ctn_detail: *const detail.Less, list_kind: gen.ListKind) gen.ArgList {
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
@@ -1050,84 +1051,64 @@ pub const Fn = enum(u8) {
         }
         return arg_list;
     }
-    pub fn writeCall(ctn_fn_info: Fn, array: anytype, ctn_detail: *const detail.Less) void {
-        const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
-        array.writeMany(ctn_fn_info.fnName());
-        array.writeMany("(");
-        for (list.readAll()) |arg| gen.writeArgument(array, arg);
-        array.writeMany(")");
-    }
-    pub fn writeSignature(ctn_fn_info: Fn, array: anytype, ctn_detail: *const detail.Less) void {
-        const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
-        if (kind.helper(ctn_fn_info)) {
-            array.writeMany("fn ");
-        } else {
-            array.writeMany("pub fn ");
-        }
-        array.writeMany(ctn_fn_info.fnName());
-        array.writeMany("(");
-        for (list.readAll()) |arg| gen.writeArgument(array, arg);
-        array.writeMany(") ");
-        array.writeMany(list.ret);
-    }
     pub fn returnType(ctn_fn_info: Fn) [:0]const u8 {
         switch (ctn_fn_info) {
-            .defineAll, 
-            .undefineAll, 
-            .streamAll, 
-            .unstreamAll, => return tok.void_type_name,
-        
+            .defineAll,
+            .undefineAll,
+            .streamAll,
+            .unstreamAll,
+            => return tok.void_type_name,
             else => {
-        if (kind.write(ctn_fn_info)) {
-            return tok.void_type_name;
-        }
-        if (kind.sentinel(ctn_fn_info)) {
-            if (kind.refer_many(ctn_fn_info)) {
-                return tok.child_slice_with_sentinel_type_name;
-            }
-            if (kind.refer_count(ctn_fn_info)) {
-                return tok.child_array_ptr_with_sentinel_type_name;
-            }
-            if (kind.read_many(ctn_fn_info)) {
-                return tok.child_const_slice_with_sentinel_type_name;
-            }
-            if (kind.read_count(ctn_fn_info)) {
-                return tok.child_array_with_sentinel_type_name;
-            }
-            if (kind.read_one(ctn_fn_info)) {
-                return tok.child_type_name;
-            }
-        }
-        if (kind.refer_many(ctn_fn_info)) {
-            return tok.child_slice_type_name;
-        }
-        if (kind.refer_count(ctn_fn_info)) {
-            return tok.child_array_ptr_type_name;
-        }
-        if (kind.read_many(ctn_fn_info)) {
-            return tok.child_const_slice_type_name;
-        }
-        if (kind.read_count(ctn_fn_info)) {
-            return tok.child_array_type_name;
-        }
-        if (kind.refer_one(ctn_fn_info)) {
-            return tok.child_ptr_type_name;
-        }
-        if (kind.append(ctn_fn_info) or
-            ctn_fn_info == .init or
-            ctn_fn_info == .increment or
-            ctn_fn_info == .grow)
-        {
-            return tok.allocator_void_type_name;
-        }
-        if (ctn_fn_info == .deinit or
-            ctn_fn_info == .decrement or
-            ctn_fn_info == .shrink)
-        {
-            return tok.void_type_name;
-        }
-        return tok.word_type_name;
-            }
+                if (kind.write(ctn_fn_info)) {
+                    return tok.void_type_name;
+                }
+                if (kind.sentinel(ctn_fn_info)) {
+                    if (kind.refer_many(ctn_fn_info)) {
+                        return tok.child_slice_with_sentinel_type_name;
+                    }
+                    if (kind.refer_count(ctn_fn_info)) {
+                        return tok.child_array_ptr_with_sentinel_type_name;
+                    }
+                    if (kind.read_many(ctn_fn_info)) {
+                        return tok.child_const_slice_with_sentinel_type_name;
+                    }
+                    if (kind.read_count(ctn_fn_info)) {
+                        return tok.child_array_with_sentinel_type_name;
+                    }
+                    if (kind.read_one(ctn_fn_info)) {
+                        return tok.child_type_name;
+                    }
+                }
+                if (kind.refer_many(ctn_fn_info)) {
+                    return tok.child_slice_type_name;
+                }
+                if (kind.refer_count(ctn_fn_info)) {
+                    return tok.child_array_ptr_type_name;
+                }
+                if (kind.read_many(ctn_fn_info)) {
+                    return tok.child_const_slice_type_name;
+                }
+                if (kind.read_count(ctn_fn_info)) {
+                    return tok.child_array_type_name;
+                }
+                if (kind.refer_one(ctn_fn_info)) {
+                    return tok.child_ptr_type_name;
+                }
+                if (kind.append(ctn_fn_info) or
+                    ctn_fn_info == .init or
+                    ctn_fn_info == .increment or
+                    ctn_fn_info == .grow)
+                {
+                    return tok.allocator_void_type_name;
+                }
+                if (ctn_fn_info == .deinit or
+                    ctn_fn_info == .decrement or
+                    ctn_fn_info == .shrink)
+                {
+                    return tok.void_type_name;
+                }
+                return tok.word_type_name;
+            },
         }
     }
 };
