@@ -189,6 +189,7 @@ pub const Fn = enum(u8) {
             .readManyOffsetUnstreamed,
             .readManyWithSentinelOffsetUnstreamed,
 
+            .referOneStreamed,
             .referManyStreamed,
             .referManyOffsetStreamed,
             .referManyUnstreamed,
@@ -812,6 +813,8 @@ pub const Fn = enum(u8) {
             },
             .referOneDefined,
             .referOneOffsetDefined,
+            .referOneStreamed,
+            .referOneOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
