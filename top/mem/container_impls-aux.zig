@@ -21,7 +21,6 @@ const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/containers.zig");
 };
-const kind = @import("./zig-out/src/container_kinds.zig");
 
 pub usingnamespace proc.start;
 
@@ -80,23 +79,19 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         undefined,
         expr.symbol(tok.sentinel_name),
     );
-
     var amount_of_type_to_bytes: [3]Expr = expr.amountOfTypeToBytes(expr.symbol(tok.offset_name), expr.symbol(tok.child_type_name));
-
     var mul_sub_address_offset: [4]Expr = expr.mulSub(expr.symbol(tok.offset_name), expr.symbol(child_size), undefined);
-    var sub_address_amount_of_type_to_bytes: [3]Expr = expr.sub(undefined, expr.call(&amount_of_type_to_bytes));
-    const address_sub_offset: []Expr = if (ctn_detail.layouts.structured) &mul_sub_address_offset else &sub_address_amount_of_type_to_bytes;
-    const address_sub_offset_address: *Expr = if (ctn_detail.layouts.structured) &mul_sub_address_offset[3] else &sub_address_amount_of_type_to_bytes[1];
-
     var mul_add_address_offset: [4]Expr = expr.mulAdd(expr.symbol(tok.offset_name), expr.symbol(child_size), undefined);
+    var sub_address_amount_of_type_to_bytes: [3]Expr = expr.sub(undefined, expr.call(&amount_of_type_to_bytes));
     var add_address_amount_of_type_to_bytes: [3]Expr = expr.add(undefined, expr.call(&amount_of_type_to_bytes));
+    const address_sub_offset: []Expr = if (ctn_detail.layouts.structured) &mul_sub_address_offset else &sub_address_amount_of_type_to_bytes;
     const address_add_offset: []Expr = if (ctn_detail.layouts.structured) &mul_add_address_offset else &add_address_amount_of_type_to_bytes;
+    const address_sub_offset_address: *Expr = if (ctn_detail.layouts.structured) &mul_sub_address_offset[3] else &sub_address_amount_of_type_to_bytes[1];
     const address_add_offset_address: *Expr = if (ctn_detail.layouts.structured) &mul_add_address_offset[3] else &add_address_amount_of_type_to_bytes[1];
-
     var mul_offset_child_size: [3]Expr = expr.mul(expr.symbol(tok.offset_name), expr.symbol(child_size));
     var mul_count_child_size: [3]Expr = expr.mul(expr.symbol(tok.count_name), expr.symbol(child_size));
 
-    if (kind.append(ctn_fn_info)) return;
+    if (ctn_fn.kind.append(ctn_fn_info)) return;
 
     switch (ctn_fn_info) {
         .readAll,
@@ -128,7 +123,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         => {
             const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
             const pointer_one_loc: *Expr = &pointer_one[2];
-            pointer_one_loc.* = if (ctn_fn_info == .readOneStreamed) expr.join(&unstreamed_byte_address) else __streamed_call;
+            pointer_one_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __streamed_call;
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_one));
             return array.writeMany(tok.end_expr);
@@ -140,10 +135,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
             const pointer_count_loc: *Expr = &pointer_count[2];
             const pointer_count_len: *Expr = &pointer_count[3];
-            pointer_count_loc.* = if (ctn_fn_info == .readCountStreamed)
-                expr.join(&unstreamed_byte_address)
-            else
-                __streamed_call;
+            pointer_count_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __streamed_call;
             pointer_count_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_count));
@@ -155,7 +147,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
             const pointer_count_with_sentinel_loc: *Expr = &pointer_count_with_sentinel[2];
             const pointer_count_with_sentinel_len: *Expr = &pointer_count_with_sentinel[3];
-            pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelStreamed) expr.join(&unstreamed_byte_address) else __streamed_call;
+            pointer_count_with_sentinel_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __streamed_call;
             pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
@@ -167,7 +159,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
             const pointer_count_with_sentinel_loc: *Expr = &pointer_count_with_sentinel[2];
             const pointer_count_with_sentinel_len: *Expr = &pointer_count_with_sentinel[3];
-            pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .referCountWithSentinelStreamed) expr.join(&unstreamed_byte_address) else __streamed_call;
+            pointer_count_with_sentinel_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __streamed_call;
             pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
@@ -179,7 +171,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
             const pointer_many_loc: *Expr = &pointer_many[2];
             const pointer_many_len: *Expr = &pointer_many[3];
-            pointer_many_loc.* = if (ctn_fn_info == .readManyStreamed) expr.join(&unstreamed_byte_address) else __streamed_call;
+            pointer_many_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __streamed_call;
             pointer_many_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_many));
@@ -193,8 +185,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
             const pointer_many_with_sentinel_loc: *Expr = &pointer_many_with_sentinel[2];
             const pointer_many_with_sentinel_len: *Expr = &pointer_many_with_sentinel[3];
-            pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelStreamed or
-                ctn_fn_info == .referManyWithSentinelStreamed) expr.join(&unstreamed_byte_address) else __streamed_call;
+            pointer_many_with_sentinel_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __streamed_call;
             pointer_many_with_sentinel_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_many_with_sentinel));
@@ -222,12 +213,11 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const pointer_one_loc: *Expr = &pointer_one[2];
             pointer_one_loc.* = __at_call;
             var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
-            var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+            var pointer_one_deref_assign_value: [4]Expr = expr.assign(
                 expr.join(&pointer_one_deref),
                 expr.symbol(tok.value_name),
             );
-            array.writeFormat(expr.join(&pointer_one_deref_assign_value));
-            return array.writeMany(tok.end_expr);
+            return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
         },
         .readCountAt => {
             const __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
@@ -257,12 +247,11 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             pointer_count_loc.* = __at_call;
             pointer_count_len.* = expr.symbol(tok.count_name);
             var pointer_count_deref: [2]Expr = expr.dereference(expr.call(&pointer_count));
-            var pointer_count_deref_assign_values: [3]Expr = expr.assign(
+            var pointer_count_deref_assign_values: [4]Expr = expr.assign(
                 expr.join(&pointer_count_deref),
                 expr.symbol(tok.count_values_name),
             );
-            array.writeFormat(expr.join(&pointer_count_deref_assign_values));
-            return array.writeMany(tok.end_expr);
+            return array.writeFormat(expr.join(&pointer_count_deref_assign_values));
         },
         .readCountWithSentinelAt => {
             const __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
@@ -323,7 +312,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         => {
             const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
             const pointer_one_loc: *Expr = &pointer_one[2];
-            pointer_one_loc.* = if (ctn_fn_info == .readOneUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+            pointer_one_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __unstreamed_call;
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_one));
             return array.writeMany(tok.end_expr);
@@ -334,7 +323,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
             const pointer_count_loc: *Expr = &pointer_count[2];
             const pointer_count_len: *Expr = &pointer_count[3];
-            pointer_count_loc.* = if (ctn_fn_info == .readCountUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+            pointer_count_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __unstreamed_call;
             pointer_count_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_count));
@@ -346,7 +335,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
             const pointer_count_with_sentinel_loc: *Expr = &pointer_count_with_sentinel[2];
             const pointer_count_with_sentinel_len: *Expr = &pointer_count_with_sentinel[3];
-            pointer_count_with_sentinel_loc.* = if (ctn_fn_info == .readCountWithSentinelUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+            pointer_count_with_sentinel_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __unstreamed_call;
             pointer_count_with_sentinel_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_count_with_sentinel));
@@ -358,8 +347,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
             const pointer_many_loc: *Expr = &pointer_many[2];
             const pointer_many_len: *Expr = &pointer_many[3];
-
-            pointer_many_loc.* = if (ctn_fn_info == .readManyUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+            pointer_many_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __unstreamed_call;
             pointer_many_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_many));
@@ -371,7 +359,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
             const pointer_many_with_sentinel_loc: *Expr = &pointer_many_with_sentinel[2];
             const pointer_many_with_sentinel_len: *Expr = &pointer_many_with_sentinel[3];
-            pointer_many_with_sentinel_loc.* = if (ctn_fn_info == .readManyWithSentinelUnstreamed) expr.join(&unstreamed_byte_address) else __unstreamed_call;
+            pointer_many_with_sentinel_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&unstreamed_byte_address) else __unstreamed_call;
             pointer_many_with_sentinel_len.* = expr.symbol(tok.count_name);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_many_with_sentinel));
@@ -382,7 +370,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         => {
             const __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
             const pointer_one_loc: *Expr = &pointer_one[2];
-            pointer_one_loc.* = if (ctn_fn_info == .readOneDefined) expr.join(&undefined_byte_address) else __defined_call;
+            pointer_one_loc.* = if (!ctn_fn.kind.offset(ctn_fn_info)) expr.join(&undefined_byte_address) else __defined_call;
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_one));
             return array.writeMany(tok.end_expr);
@@ -399,7 +387,17 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .overwriteOneDefined,
         .overwriteOneOffsetDefined,
-        => {},
+        => {
+            const __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
+            const pointer_one_loc: *Expr = &pointer_one[2];
+            pointer_one_loc.* = if (ctn_fn_info == .overwriteOneDefined) expr.join(&undefined_byte_address) else __defined_call;
+            var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
+            var pointer_one_deref_assign_value: [4]Expr = expr.assign(
+                expr.join(&pointer_one_deref),
+                expr.symbol(tok.value_name),
+            );
+            return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
+        },
         .readCountDefined,
         .readCountOffsetDefined,
         => {
@@ -426,7 +424,19 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .overwriteCountDefined,
         .overwriteCountOffsetDefined,
-        => {},
+        => {
+            const __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
+            const pointer_count_loc: *Expr = &pointer_count[2];
+            const pointer_count_len: *Expr = &pointer_count[3];
+            pointer_count_loc.* = if (ctn_fn_info == .overwriteCountDefined) expr.join(&undefined_byte_address) else __defined_call;
+            pointer_count_len.* = expr.symbol(tok.count_name);
+            var pointer_count_deref: [2]Expr = expr.dereference(expr.call(&pointer_count));
+            var pointer_count_deref_assign_values: [4]Expr = expr.assign(
+                expr.join(&pointer_count_deref),
+                expr.symbol(tok.count_values_name),
+            );
+            return array.writeFormat(expr.join(&pointer_count_deref_assign_values));
+        },
         .readCountWithSentinelDefined,
         .readCountWithSentinelOffsetDefined,
         => {
@@ -629,12 +639,11 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
                 var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
                 const pointer_one_loc: *Expr = &pointer_one[2];
                 pointer_one_loc.* = expr.join(&undefined_byte_address);
-                var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+                var pointer_one_deref_assign_value: [4]Expr = expr.assign(
                     expr.join(&pointer_one_deref),
                     expr.symbol(tok.value_name),
                 );
-                array.writeFormat(expr.join(&pointer_one_deref_assign_value));
-                return array.writeMany(tok.end_expr);
+                return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
             } else {
                 var write_one: [4]Expr = expr.fnCall3(
                     tok.write_one_impl_fn_name,
@@ -655,7 +664,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
                 const pointer_one_loc: *Expr = &pointer_one[2];
                 pointer_one_loc.* = expr.call(&add_undefined_byte_address_loop_index);
                 var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
-                var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+                var pointer_one_deref_assign_value: [4]Expr = expr.assign(
                     expr.join(&pointer_one_deref),
                     expr.symbol(tok.value_name),
                 );
@@ -664,8 +673,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
                     .symbol1 = tok.value_name,
                     .symbol2 = tok.loop_index_name,
                 });
-                array.writeFormat(expr.join(&pointer_one_deref_assign_value));
-                return array.writeMany(tok.end_expr);
+                return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
             } else {
                 var write_count: [5]Expr = expr.fnCall4(
                     tok.write_count_impl_fn_name,
@@ -687,7 +695,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
                 const pointer_one_loc: *Expr = &pointer_one[2];
                 pointer_one_loc.* = expr.call(&add_undefined_byte_address_loop_index);
                 var pointer_one_deref: [2]Expr = expr.dereference(expr.call(&pointer_one));
-                var pointer_one_deref_assign_value: [3]Expr = expr.assign(
+                var pointer_one_deref_assign_value: [4]Expr = expr.assign(
                     expr.join(&pointer_one_deref),
                     expr.symbol(tok.value_name),
                 );
@@ -696,8 +704,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
                     .symbol1 = tok.value_name,
                     .symbol2 = tok.loop_index_name,
                 });
-                array.writeFormat(expr.join(&pointer_one_deref_assign_value));
-                return array.writeMany(tok.end_expr);
+                return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
             } else {
                 var write_many: [4]Expr = expr.fnCall3(
                     tok.write_many_impl_fn_name,
@@ -985,13 +992,14 @@ fn functionBodyUndefinedNotice(ctn_detail: *const detail.Less, ctn_fn_info: *con
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
+
 fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     for (ctn_fn.key) |ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
         }
         const len_0: u64 = array.len();
-        ctn_fn_info.writeSignature(array, ctn_detail);
+        writeSignature(array, ctn_fn_info, ctn_detail);
         array.writeMany("{\n");
         const len_1: u64 = array.len();
         writeFunctionBody(allocator, array, ctn_detail, ctn_fn_info);
@@ -1002,6 +1010,19 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const detai
             array.writeMany("}\n");
         }
     }
+}
+pub fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const detail.Less) void {
+    const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
+    if (ctn_fn.kind.helper(ctn_fn_info)) {
+        array.writeMany("fn ");
+    } else {
+        array.writeMany("pub fn ");
+    }
+    array.writeMany(ctn_fn_info.fnName());
+    array.writeMany("(");
+    for (list.readAll()) |arg| gen.writeArgument(array, arg);
+    array.writeMany(") ");
+    array.writeMany(list.ret);
 }
 
 fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
