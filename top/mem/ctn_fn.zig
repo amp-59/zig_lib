@@ -102,13 +102,19 @@ pub const Fn = enum(u7) {
     referManyAt,
     referManyDefined,
     referManyOffsetDefined,
+    referManyOffsetStreamed,
     referManyOffsetUndefined,
+    referManyOffsetUnstreamed,
+    referManyStreamed,
     referManyUndefined,
+    referManyUnstreamed,
     referManyWithSentinelAt,
     referManyWithSentinelDefined,
     referManyWithSentinelOffsetDefined,
     referManyWithSentinelOffsetStreamed,
+    referManyWithSentinelOffsetUnstreamed,
     referManyWithSentinelStreamed,
+    referManyWithSentinelUnstreamed,
     referOneAt,
     referOneDefined,
     referOneOffsetDefined,
@@ -167,18 +173,15 @@ pub const Fn = enum(u7) {
             .readOneStreamed,
             .readCountStreamed,
             .readCountWithSentinelStreamed,
-            .referCountWithSentinelStreamed,
             .readManyStreamed,
             .readManyWithSentinelStreamed,
-            .referManyWithSentinelStreamed,
             .readOneOffsetStreamed,
             .readCountOffsetStreamed,
             .readCountWithSentinelOffsetStreamed,
-            .referCountWithSentinelOffsetStreamed,
             .readManyOffsetStreamed,
             .readManyWithSentinelOffsetStreamed,
-            .referManyWithSentinelOffsetStreamed,
             .ahead,
+
             .readOneUnstreamed,
             .readCountUnstreamed,
             .readCountWithSentinelUnstreamed,
@@ -189,6 +192,17 @@ pub const Fn = enum(u7) {
             .readCountWithSentinelOffsetUnstreamed,
             .readManyOffsetUnstreamed,
             .readManyWithSentinelOffsetUnstreamed,
+
+            .referManyStreamed,
+            .referManyOffsetStreamed,
+            .referManyUnstreamed,
+            .referManyOffsetUnstreamed,
+            .referManyWithSentinelStreamed,
+            .referCountWithSentinelStreamed,
+            .referCountWithSentinelOffsetStreamed,
+            .referManyWithSentinelOffsetStreamed,
+            .referManyWithSentinelOffsetUnstreamed,
+            .referManyWithSentinelUnstreamed,
             => return ctn_detail.modes.stream,
 
             .__undefined,
@@ -612,6 +626,8 @@ pub const Fn = enum(u7) {
             },
             .readManyUnstreamed,
             .readManyOffsetUnstreamed,
+            .referManyUnstreamed,
+            .referManyOffsetUnstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
@@ -623,6 +639,8 @@ pub const Fn = enum(u7) {
             },
             .readManyWithSentinelUnstreamed,
             .readManyWithSentinelOffsetUnstreamed,
+            .referManyWithSentinelUnstreamed,
+            .referManyWithSentinelOffsetUnstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layouts.unstructured) {
@@ -843,6 +861,15 @@ pub const Fn = enum(u7) {
                     arg_list.writeOne(count_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
+            },
+            .referManyStreamed,
+            .referManyOffsetStreamed,
+            => {
+                arg_list.writeOne(arg_list_const_ptr_symbol);
+                if (ctn_detail.layouts.unstructured) {
+                    arg_list.writeOne(child_type_symbol);
+                }
+                arg_list.writeOne(count_symbol);
             },
             .referAllUndefined => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
