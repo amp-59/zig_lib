@@ -7,7 +7,7 @@ const builtin = srg.builtin;
 // Use zl startup code to speed compilation and reduce binary size.
 pub usingnamespace proc.start;
 
-pub fn main(args: [:0][]u8, vars: [:0][]u8) !void {
+pub fn main(args: [][:0]u8, vars: [][:0]u8) !void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
 
