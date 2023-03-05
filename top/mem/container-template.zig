@@ -3,7 +3,14 @@ const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
 const reference = @import("../reference.zig");
 // start-document container-template.zig
-pub const Amount = union(enum) { bytes: u64, count: u64 };
+pub const Amount = union(enum) { // bytes: u64, count: u64 };
+    bytes: u64,
+    count: u64,
+    const zero: Amount = .{ .bytes = 0 };
+    const one: Amount = .{ .bytes = 1 };
+    const none: Amount = .{ .count = 0 };
+    const unit: Amount = .{ .count = 1 };
+};
 pub inline fn amountToCountOfType(amt: Amount, comptime child: type) u64 {
     return switch (amt) {
         .bytes => |bytes| bytes / @sizeOf(child),
