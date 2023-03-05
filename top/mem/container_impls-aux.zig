@@ -91,8 +91,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
     var mul_offset_child_size: [3]Expr = expr.mul(expr.symbol(tok.offset_name), expr.symbol(child_size));
     var mul_count_child_size: [3]Expr = expr.mul(expr.symbol(tok.count_name), expr.symbol(child_size));
 
-    if (ctn_fn.kind.append(ctn_fn_info)) return;
-
     switch (ctn_fn_info) {
         .readAll,
         .referAllDefined,
@@ -128,7 +126,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.call(&pointer_one));
             return array.writeMany(tok.end_expr);
         },
-        // return an array of type with a given length ending at unstreamed
         .readCountStreamed,
         .readCountOffsetStreamed,
         => {
@@ -289,7 +286,17 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.call(&pointer_many));
             return array.writeMany(tok.end_expr);
         },
-        .overwriteManyAt => {},
+        .overwriteManyAt => {
+            const __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
+            var write_many: [4]Expr = expr.fnCall3(
+                tok.write_many_impl_fn_name,
+                expr.symbol(tok.child_type_name),
+                __at_call,
+                expr.symbol(tok.many_values_name),
+            );
+            array.writeFormat(expr.call(&write_many));
+            return array.writeMany(tok.end_expr);
+        },
         .readManyWithSentinelAt,
         .referManyWithSentinelAt,
         => {
@@ -478,7 +485,22 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .overwriteManyDefined,
         .overwriteManyOffsetDefined,
-        => {},
+        => {
+            var __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
+            var add_values_len_offset: [3]Expr = expr.add(expr.symbol(tok.many_values_len), expr.symbol(tok.offset_name));
+            expr.subst(__defined_call.args(), .{
+                .dst = expr.symbol(tok.offset_name),
+                .src = if (ctn_fn_info == .overwriteManyOffsetDefined) expr.call(&add_values_len_offset) else expr.symbol(tok.many_values_len),
+            });
+            var write_many: [4]Expr = expr.fnCall3(
+                tok.write_many_impl_fn_name,
+                expr.symbol(tok.child_type_name),
+                __defined_call,
+                expr.symbol(tok.many_values_name),
+            );
+            array.writeFormat(expr.call(&write_many));
+            return array.writeMany(tok.end_expr);
+        },
         .readManyWithSentinelDefined,
         .readManyWithSentinelOffsetDefined,
         .referManyWithSentinelDefined,
@@ -552,6 +574,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         .appendOne => {
             const increment_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.increment));
             const write_one_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeOne));
+            expr.subst(increment_call.args(), .{ .dst = expr.symbol(tok.offset_name), .src = if (ctn_detail.layouts.structured) expr.constant(1) else expr.symbol(tok.const_amount_1) });
             array.writeFormat(increment_call);
             array.writeMany(tok.end_expr);
             array.writeFormat(write_one_intr_call);
@@ -940,38 +963,21 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             array.writeFormat(expr.join(&tell));
             return array.writeMany(tok.end_expr);
         },
-        .init => {
-            // alloc_fn.get(.allocate);
+        .init,
+        .deinit,
+        .grow,
+        .shrink,
+        .increment,
+        .decrement,
+        .holder,
+        .static,
+        .dynamic,
+        => {
+            for (ctn_fn_info.argList(ctn_detail, .Argument).readAll()) |param_name| {
+                var discard_paramm: [3]Expr = expr.discard(param_name);
+                array.writeFormat(expr.join(&discard_paramm));
+            }
         },
-        .deinit => {
-            // alloc_fn.get(.deallocate);
-        },
-        // set writable count of type above defined
-        //.realloc => {
-        //    alloc_fn.get(.reallocate);
-        //},
-        // set writable count of type above current
-        .grow => {
-            // alloc_fn.get(.resizeAbove);
-        },
-        // set writable count of type below current
-        .shrink => {
-            // alloc_fn.get(.resizeBelow);
-        },
-        // require at least this many count of type undefined
-        // (grow if less than this undefined)
-        .increment => {
-            // alloc_fn.get(.resizeDeficit);
-        },
-        // require at most this many count of type undefined
-        // (shrink if more than this undefined)
-        .decrement => {
-            // alloc_fn.get(.resizeSurplus);
-        },
-
-        .holder => {},
-        .static => {},
-        .dynamic => {},
     }
 }
 fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const detail.Less, impl_fn_info: *const impl_fn.Fn) [3]Expr {
@@ -982,7 +988,7 @@ fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const detail.Less, i
     );
 }
 
-fn functionBodyUndefinedNotice(ctn_detail: *const detail.Less, ctn_fn_info: *const Fn) void {
+fn functionBodyUndefinedNotice(ctn_detail: *const detail.Less, ctn_fn_info: Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     array.writeMany("function body undefined: ");
@@ -1005,6 +1011,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const detai
         writeFunctionBody(allocator, array, ctn_detail, ctn_fn_info);
         const len_2: u64 = array.len();
         if (len_1 == len_2) {
+            functionBodyUndefinedNotice(ctn_detail, ctn_fn_info);
             array.undefine(len_1 - len_0);
         } else {
             array.writeMany("}\n");
@@ -1067,19 +1074,14 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const de
     };
     array.writeFormat(const_decl.*);
 }
-inline fn writeFields(array: *Array) void {
-    array.writeMany(tok.impl_field);
-    array.writeMany(tok.end_elem);
-}
 inline fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     array.writeMany("pub fn ");
     ctn_detail.writeContainerName(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ": anytype) type {\nreturn (struct {\n");
-    {
-        writeFields(array);
-        writeDeclarations(allocator, array, ctn_detail);
-        writeFunctions(allocator, array, ctn_detail);
-    }
+    array.writeMany(tok.impl_field);
+    array.writeMany(tok.end_elem);
+    writeDeclarations(allocator, array, ctn_detail);
+    writeFunctions(allocator, array, ctn_detail);
     array.writeMany("});\n}\n");
 }
 pub fn generateContainers() void {
