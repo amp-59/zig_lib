@@ -1,6 +1,6 @@
 const gen = @import("./gen.zig");
-const fmt = gen.fmt;
 const mem = gen.mem;
+const fmt = gen.fmt;
 const mach = gen.mach;
 const builtin = gen.builtin;
 
@@ -531,6 +531,9 @@ pub inline fn fieldAccess(expr1: Expr, expr2: Expr) [3]Expr {
 }
 pub inline fn assign(expr1: Expr, expr2: Expr) [4]Expr {
     return .{ expr1, Init.symbol(tok.equal_operator), expr2, Init.symbol(tok.end_expr) };
+}
+pub inline fn discard(name: [:0]const u8) [3]Expr {
+    return .{ Init.symbol(tok.discard), Init.symbol(name), Init.symbol(tok.end_expr) };
 }
 pub inline fn constDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [7]Expr {
     return .{
