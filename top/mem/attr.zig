@@ -264,7 +264,8 @@ pub const Fn = struct {
         }
         return ret;
     }
-    pub fn subTag(comptime Tag: type, allocator: anytype, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) Pair(@TypeOf(allocator.*), Tag) {
+    pub fn subTag(comptime Tag: type, allocator: anytype, array: anytype, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) Pair(@TypeOf(allocator.*), Tag) {
+        _ = array;
         @setEvalBranchQuota(~@as(u32, 0));
         var ret: Pair(@TypeOf(allocator.*), Tag) = .{
             @TypeOf(sub_set).init(allocator, sub_set.len()),
@@ -321,9 +322,9 @@ pub const Fn = struct {
         }
         return ret;
     }
-    pub fn writeKind(comptime Tag: type, array: anytype, fn_name: [:0]const u8, set: anytype) void {
+    pub fn writeKind(comptime Tag: type, array: anytype, comptime kind_tag: @Type(.EnumLiteral), set: anytype) void {
         array.writeMany("pub fn ");
-        array.writeMany(fn_name);
+        array.writeMany(@tagName(kind_tag));
         array.writeMany("(tag: " ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
         for (set.readAll()) |elem| {
             array.writeMany(".");
@@ -336,11 +337,11 @@ pub const Fn = struct {
         pub fn Pair(comptime Tag: type) type {
             return struct { []const Tag, []const Tag };
         }
-        pub fn prefixSubTag(comptime Tag: type, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
+        pub inline fn prefixSubTag(comptime Tag: type, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
             @setEvalBranchQuota(~@as(u32, 0));
-            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
-            for (sub_set) |tag| {
-                if (isPrefix(@tagName(sub_tag), @tagName(tag))) {
+            comptime var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            inline for (sub_set) |tag| {
+                if (comptime isPrefix(@tagName(sub_tag), @tagName(tag))) {
                     ret[1] = ret[1] ++ [1]Tag{tag};
                 } else {
                     ret[0] = ret[0] ++ [1]Tag{tag};
@@ -348,11 +349,11 @@ pub const Fn = struct {
             }
             return ret;
         }
-        pub fn suffixSubTag(comptime Tag: type, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
+        pub inline fn suffixSubTag(comptime Tag: type, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
             @setEvalBranchQuota(~@as(u32, 0));
-            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
-            for (sub_set) |tag| {
-                if (isSuffix(@tagName(sub_tag), @tagName(tag))) {
+            comptime var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            inline for (sub_set) |tag| {
+                if (comptime isSuffix(@tagName(sub_tag), @tagName(tag))) {
                     ret[1] = ret[1] ++ [1]Tag{tag};
                 } else {
                     ret[0] = ret[0] ++ [1]Tag{tag};
@@ -360,11 +361,11 @@ pub const Fn = struct {
             }
             return ret;
         }
-        pub fn subTag(comptime Tag: type, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
+        pub inline fn subTag(comptime Tag: type, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
             @setEvalBranchQuota(~@as(u32, 0));
-            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
-            for (sub_set) |tag| {
-                if (isWithin(@tagName(sub_tag), @tagName(tag))) {
+            comptime var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+            inline for (sub_set) |tag| {
+                if (comptime isWithin(@tagName(sub_tag), @tagName(tag))) {
                     ret[1] = ret[1] ++ [1]Tag{tag};
                 } else {
                     ret[0] = ret[0] ++ [1]Tag{tag};
@@ -372,11 +373,11 @@ pub const Fn = struct {
             }
             return ret;
         }
-        pub fn prefixSubTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
-            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+        pub inline fn prefixSubTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
+            comptime var ret: static.Pair(Tag) = .{ &.{}, &.{} };
             inline for (@typeInfo(Tag).Enum.fields) |field| {
                 const tag: Tag = @field(Tag, field.name);
-                if (isPrefix(@tagName(sub_tag), field.name)) {
+                if (comptime isPrefix(@tagName(sub_tag), field.name)) {
                     ret[1] = ret[1] ++ [1]Tag{tag};
                 } else {
                     ret[0] = ret[0] ++ [1]Tag{tag};
@@ -384,11 +385,11 @@ pub const Fn = struct {
             }
             return ret;
         }
-        pub fn suffixSubTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.pair(Tag) {
-            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+        pub inline fn suffixSubTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.pair(Tag) {
+            comptime var ret: static.Pair(Tag) = .{ &.{}, &.{} };
             inline for (@typeInfo(Tag).Enum.fields) |field| {
                 const tag: Tag = @field(Tag, field.name);
-                if (isSuffix(@tagName(sub_tag), field.name)) {
+                if (comptime isSuffix(@tagName(sub_tag), field.name)) {
                     ret[1] = ret[1] ++ [1]Tag{tag};
                 } else {
                     ret[0] = ret[0] ++ [1]Tag{tag};
@@ -396,11 +397,11 @@ pub const Fn = struct {
             }
             return ret;
         }
-        pub fn subTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
-            var ret: static.Pair(Tag) = .{ &.{}, &.{} };
+        pub inline fn subTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
+            comptime var ret: static.Pair(Tag) = .{ &.{}, &.{} };
             inline for (@typeInfo(Tag).Enum.fields) |field| {
                 const tag: Tag = @field(Tag, field.name);
-                if (isWithin(@tagName(sub_tag), field.name)) {
+                if (comptime isWithin(@tagName(sub_tag), field.name)) {
                     ret[1] = ret[1] ++ [1]Tag{tag};
                 } else {
                     ret[0] = ret[0] ++ [1]Tag{tag};
@@ -408,9 +409,9 @@ pub const Fn = struct {
             }
             return ret;
         }
-        pub fn writeKindSwitch(comptime Tag: type, array: anytype, fn_name: [:0]const u8, set: []const Tag) void {
+        pub inline fn writeKindSwitch(comptime Tag: type, array: anytype, comptime kind_tag: @Type(.EnumLiteral), set: []const Tag) void {
             array.writeMany("pub fn ");
-            array.writeMany(fn_name);
+            array.writeMany(@tagName(kind_tag));
             array.writeMany("(tag: " ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
             for (set) |elem| {
                 array.writeMany(".");
