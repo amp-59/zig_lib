@@ -47,6 +47,11 @@ fn writeVariantStruct(array: *Array, comptime impl_detail: detail.Base) u16 {
 fn detailToVariants() void {
     var array: Array = undefined;
     array.undefineAll();
+
+    // Wipe/touch files
+    gen.writeAuxiliarySourceFile(&array, "container_kinds.zig");
+    gen.writeAuxiliarySourceFile(&array, "reference_kinds.zig");
+
     gen.writeImport(&array, "detail", "../../detail.zig");
     array.writeMany("pub const impl_variants: []const detail.More = &[_]detail.More{\n");
     var vars: u64 = 0;
