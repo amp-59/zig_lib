@@ -1125,14 +1125,86 @@ pub const Fn = enum(u8) {
                 {
                     return tok.allocator_void_type_name;
                 }
-                if (ctn_fn_info == .deinit or
-                    ctn_fn_info == .decrement or
-                    ctn_fn_info == .shrink)
-                {
-                    return tok.void_type_name;
-                }
                 return tok.word_type_name;
             },
         }
+    }
+};
+pub const utility = struct {
+    const PseudoAttributes = packed struct {
+        helper: bool,
+        rwvalue: packed struct {
+            one: bool,
+            count: bool,
+            many: bool,
+            format: bool,
+            fields: bool,
+            args: bool,
+            any: bool,
+        },
+        sentinel: bool,
+        offset: bool,
+        loc: packed struct {
+            at: bool,
+            defined: bool,
+            undefined: bool,
+            streamed: bool,
+            unstreamed: bool,
+        },
+        rrwa: packed struct {
+            read: bool,
+            refer: bool,
+            overwrite: bool,
+            write: bool,
+            append: bool,
+        },
+        special: bool,
+    };
+    const Sort = struct {
+        fn comparison(x: anytype, y: anytype) bool {
+            return x > y;
+        }
+        fn transform(x: anytype) u64 {
+            return meta.leastBitCast(PseudoAttributes{
+                .helper = kind.helper(x),
+                .rwvalue = .{
+                    .one = kind.one(x),
+                    .count = kind.count(x),
+                    .many = kind.many(x),
+                    .format = kind.format(x),
+                    .args = kind.args(x),
+                    .fields = kind.fields(x),
+                    .any = kind.sentinel(x),
+                },
+                .sentinel = kind.sentinel(x),
+                .offset = kind.offset(x),
+                .loc = .{
+                    .at = kind.at(x),
+                    .defined = kind.defined(x),
+                    .undefined = kind.undefined(x),
+                    .streamed = kind.streamed(x),
+                    .unstreamed = kind.unstreamed(x),
+                },
+                .rrwa = .{
+                    .read = kind.read(x),
+                    .refer = kind.refer(x),
+                    .overwrite = kind.overwrite(x),
+                    .write = kind.write(x),
+                    .append = kind.append(x),
+                },
+                .special = kind.special(x),
+            });
+        }
+    };
+    pub fn showPseudoSorted() void {
+        var unsorted: [key.len]Fn = key;
+        algo.shellSort(Fn, Sort.comparison, Sort.transform, &unsorted);
+        builtin.debug.write("pub const Fn = enum(" ++ @typeName(@typeInfo(Fn).Enum.tag_type.?) ++ ") {\n");
+        for (unsorted) |sorted| {
+            builtin.debug.write("    ");
+            builtin.debug.write(@tagName(sorted));
+            builtin.debug.write(",\n");
+        }
+        builtin.debug.write("};\n");
     }
 };
