@@ -1075,6 +1075,9 @@ pub const Fn = enum(u8) {
             .undefineAll,
             .streamAll,
             .unstreamAll,
+            .deinit,
+            .decrement,
+            .shrink,
             => return tok.void_type_name,
             else => {
                 if (kind.write(ctn_fn_info)) {
@@ -1111,6 +1114,9 @@ pub const Fn = enum(u8) {
                 }
                 if (kind.refer_one(ctn_fn_info)) {
                     return tok.child_ptr_type_name;
+                }
+                if (kind.read_one(ctn_fn_info)) {
+                    return tok.child_type_name;
                 }
                 if (kind.append(ctn_fn_info) or
                     ctn_fn_info == .init or
