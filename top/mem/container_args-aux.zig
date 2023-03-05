@@ -129,11 +129,11 @@ pub fn main() void {
     var ctn_index: u64 = 0;
     gen.writeImport(&lists, "gen", "../../gen.zig");
     gen.writeImport(&lists, "tok", "../../tok.zig");
-    params.writeMany("const container_params:[]const PIndex=&[_]PIndex{");
-    args.writeMany("const container_args:[]const AIndex=&[_]AIndex{");
+    params.writeMany("pub const container_params:[]const []const PIndex=&[_][]const PIndex{");
+    args.writeMany("pub const container_args:[]const []const AIndex=&[_][]const AIndex{");
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
-        params.writeMany(".{");
-        args.writeMany(".{");
+        params.writeMany("&.{");
+        args.writeMany("&.{");
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
         const ctn_group: []const out.Index = out.containers[ctn_index];
@@ -173,7 +173,7 @@ pub fn main() void {
         256...65535 => lists.writeMany("u16;"),
         else => lists.writeMany("u32;"),
     }
-    lists.writeMany("\nconst param_lists:[]const gen.Arglist=&[_]gen.ArgList{");
+    lists.writeMany("\npub const param_lists:[]const gen.ArgList=&[_]gen.ArgList{");
     for (arg_lists.readAll()) |arg_list| {
         lists.writeMany(".{.args=.{");
         for (arg_list.args, 0..) |symbol, symbol_index| {
@@ -189,14 +189,17 @@ pub fn main() void {
                 lists.writeFormat(fmt.ud64(arg_list.args.len - symbol_index));
                 lists.writeMany(",.len=");
                 lists.writeFormat(fmt.ud64(arg_list.len));
-                lists.writeMany(",.kind=.Parameter");
+                lists.writeMany(",.kind=.Parameter,.ret=tok.");
+                if (tok.symbolName(arg_list.ret)) |symbol_name| {
+                    lists.writeMany(symbol_name);
+                }
                 break;
             }
         }
         lists.writeMany("},\n");
     }
     lists.writeMany("};\n");
-    lists.writeMany("const arg_lists:[]const gen.Arglist=&[_]gen.ArgList{");
+    lists.writeMany("pub const arg_lists:[]const gen.ArgList=&[_]gen.ArgList{");
     for (arg_lists.readAll()) |arg_list| {
         lists.writeMany(".{.args=.{");
         for (arg_list.args, 0..) |symbol, symbol_index| {
@@ -212,7 +215,10 @@ pub fn main() void {
                 lists.writeFormat(fmt.ud64(arg_list.args.len - symbol_index));
                 lists.writeMany(",.len=");
                 lists.writeFormat(fmt.ud64(arg_list.len));
-                lists.writeMany(",.kind=.Argument");
+                lists.writeMany(",.kind=.Argument,.ret=tok.");
+                if (tok.symbolName(arg_list.ret)) |symbol_name| {
+                    lists.writeMany(symbol_name);
+                }
                 break;
             }
         }
