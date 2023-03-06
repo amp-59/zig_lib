@@ -35,6 +35,19 @@ pub const GlobalOptions = struct {
     cmd: Target.Tag = .build,
     pub const Map = proc.GenericOptions(GlobalOptions);
 };
+pub const BuilderSpec = struct {
+    logging: struct {
+        path: builtin.Logging.AcquireErrorFault = .{},
+        fstatat: builtin.Logging.SuccessErrorFault = .{},
+        command: builtin.Logging.SuccessErrorFault = .{},
+    },
+    errors: struct {
+        path: sys.ErrorPolicy = sys.open_errors,
+        fstatat: sys.ErrorPolicy = sys.stat_errors,
+        command: sys.ErrorPolicy = sys.execve_errors,
+        gettime: sys.ErrorPolicy = sys.clock_get_errors,
+    },
+};
 pub const Builder = struct {
     paths: Paths,
     options: GlobalOptions,
@@ -97,26 +110,18 @@ pub const Builder = struct {
     }
     pub inline fn addTarget(
         builder: *Builder,
-        comptime spec: TargetSpec,
         allocator: *Allocator,
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
+        comptime spec: TargetSpec,
     ) *Target {
-        return join(
-            allocator,
-            builder,
-            &builder.groups.node.this.targets,
-            name,
-            pathname,
-            spec.fmt,
-            spec.build,
-            spec.run,
-            builder.options.mode orelse spec.mode,
-            spec.deps,
-            spec.mods,
-            spec.macros,
+        return @call(.auto, join, .{
+            allocator,              builder,   &builder.groups.node.this.targets,
+            name,                   pathname,  spec.fmt,
+            spec.build,             spec.run,  builder.options.mode orelse spec.mode,
+            spec.deps,              spec.mods, spec.macros,
             "zig-out/bin/" ++ name,
-        );
+        });
     }
     pub fn addGroup(
         builder: *Builder,
@@ -165,7 +170,7 @@ pub const Builder = struct {
         return ret;
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-        return file.fstatAt(.{}, builder.dir_fd, name) catch null;
+        return file.fstatAt(.{ .logging = .{ .Error = false } }, builder.dir_fd, name) catch null;
     }
 };
 pub const TargetSpec = struct {
@@ -219,12 +224,7 @@ fn join(
     if (spec_run) ret.addRun(allocator, .{});
     return ret;
 }
-pub const OutputMode = enum {
-    exe,
-    lib,
-    obj,
-    run,
-};
+pub const OutputMode = enum { exe, lib, obj, run };
 pub const BuildCommand = struct {
     kind: OutputMode,
     __compile_command: void,
@@ -257,21 +257,13 @@ pub const Group = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
-        return join(
-            allocator,
-            group.builder,
-            &group.targets,
-            name,
-            pathname,
-            spec.fmt,
-            spec.build,
-            spec.run,
-            group.builder.options.mode orelse spec.mode,
-            spec.deps,
-            spec.mods,
-            spec.macros,
+        return @call(.auto, join, .{
+            allocator,              group.builder, &group.targets,
+            name,                   pathname,      spec.fmt,
+            spec.build,             spec.run,      group.builder.options.mode orelse spec.mode,
+            spec.deps,              spec.mods,     spec.macros,
             "zig-out/bin/" ++ name,
-        );
+        });
     }
 };
 pub const TargetList = GenericList(Target);
@@ -327,10 +319,7 @@ pub const Target = struct {
     }
     const DependencyList = GenericList(Dependency);
     /// All dependencies are build dependencies
-    pub const Dependency = struct {
-        tag: Tag,
-        target: *Target,
-    };
+    pub const Dependency = struct { tag: Tag, target: *Target };
     fn getAsmPath(target: *const Target) Path {
         target.assertHave(.build, @src());
         return target.build_cmd.emit_asm.?.yes.?;
@@ -351,7 +340,6 @@ pub const Target = struct {
         target.assertHave(.build, @src());
         return target.build_cmd.emit_llvm_bc.?.yes.?;
     }
-
     pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
         target.fmt_cmd = allocator.duplicateIrreversible(FormatCommand, fmt_cmd);
         target.give(.fmt);
@@ -361,7 +349,6 @@ pub const Target = struct {
         target.give(.build);
     }
     pub fn addRun(target: *Target, allocator: *Allocator, run_cmd: RunCommand) void {
-        mach.assert(target.have(.build), "tried to add run command without build command");
         target.run_cmd = allocator.duplicateIrreversible(RunCommand, run_cmd);
         target.run_cmd.array.writeFormat(target.build_cmd.emit_bin.?.yes.?);
         target.run_cmd.array.writeOne(0);
