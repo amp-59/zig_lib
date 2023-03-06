@@ -362,11 +362,19 @@ pub const DiscreteMultiArena = struct {
     }
 };
 pub const RegularMultiArena = struct {
+    /// This will show up in logging.
     label: ?[]const u8 = null,
-
+    /// Lower bound of address space. This is used when computing division
+    /// length.
     lb_addr: u64 = 0,
+    /// Upper bound of address space. This is used when computing division
+    /// length.
     up_addr: u64 = 1 << 47,
+    /// The first arena starts at this offset in the first division.
+    /// This is an option to allow the largest alignment possible per division
+    /// while avoiding the binary mapping in the first division.
     lb_offset: u64 = 0,
+    /// The last arena ends at this offset below the end of the last division.
     up_offset: u64 = 0,
 
     divisions: u64 = 64,
