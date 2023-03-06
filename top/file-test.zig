@@ -58,6 +58,11 @@ const ftruncate_spec: file.TruncateSpec = .{
 const truncate_spec: file.TruncateSpec = .{
     .errors = .{ .throw = sys.truncate_errors },
 };
+const make_path_spec: file.MakePathSpec = .{
+    .errors = .{},
+    .logging = .{},
+};
+
 fn testFileOperationsRound1() !void {
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
@@ -106,6 +111,10 @@ fn testPathOperations() !void {
     try meta.wrap(testing.expectEqualMany(u8, "file", file.basename("file")));
     try meta.wrap(testing.expectEqualMany(u8, "/run/user/1000", file.dirname("/run/user/1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "////run/user/1000//", file.dirname("////run/user/1000///file_test///")));
+
+    try file.makePath(make_path_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
+    try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
+    try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something");
 }
 pub fn main() !void {
     try meta.wrap(testFileOperationsRound1());
