@@ -8,21 +8,21 @@ readonly support_dir="$(dirname "$script_realpath")";
 readonly zig_exe="$(hash -t zig)";
 readonly zig_real_exe="$(realpath "$zig_exe")";
 readonly zig_lib_dir="$(dirname "$zig_real_exe")/lib";
-readonly zig_build_runner="$zig_lib_dir/build_runner.zig";
+readonly std_build_runner="$zig_lib_dir/build_runner.zig";
 readonly zl_build_runner="$(realpath "$support_dir/../build_runner.zig")";
 readonly zl_zig_build="$(realpath "$support_dir/../build.zig")";
-readonly zig_build_runner_bkp="$zig_build_runner.bkp";
+readonly std_build_runner_bkp="$std_build_runner.bkp";
 
 fn () 
 {
-    if test -L "$zig_build_runner"; then
-        readonly build_runner_link_target="$(realpath "$zig_build_runner")";
+    if test -L "$std_build_runner"; then
+        readonly build_runner_link_target="$(realpath "$std_build_runner")";
         if test "$build_runner_link_target" -ef "$zl_build_runner"; then
-            if test -f "$zig_build_runner_bkp"; then
-                if ! rm "$zig_build_runner"; then
+            if test -f "$std_build_runner_bkp"; then
+                if ! rm "$std_build_runner"; then
                     return 2;
                 fi;
-                if ! mv -i "$zig_build_runner_bkp" "$zig_build_runner"; then
+                if ! mv -i "$std_build_runner_bkp" "$std_build_runner"; then
                     return 2;
                 fi;
                 if test -f "$zl_zig_build"; then
@@ -35,16 +35,16 @@ fn ()
             fi;
         else
             echo $error "expected link to zig_lib build runner, but found other file:";
-            echo $blank "'$zig_build_runner' -> ";
+            echo $blank "'$std_build_runner' -> ";
             echo $blank "'$build_runner_link_target' != ";
             echo $blank "'$zl_build_runner'";
             return 2;
         fi;
-    elif test -f "$zig_build_runner"; then
-        if ! mv -i "$zig_build_runner" "$zig_build_runner_bkp"; then
+    elif test -f "$std_build_runner"; then
+        if ! mv -i "$std_build_runner" "$std_build_runner_bkp"; then
             return 2;
         fi;
-        if ! ln -s "$zl_build_runner" "$zig_build_runner"; then
+        if ! ln -s "$zl_build_runner" "$std_build_runner"; then
             return 2;
         fi;
         if test -f "$zl_zig_build"; then
@@ -52,7 +52,7 @@ fn ()
         fi;
         echo "zl"
     else
-        echo $error "'$zig_build_runner': no such file or directory; did nothing"
+        echo $error "'$std_build_runner': no such file or directory; did nothing"
     fi;
 }
 fn;
