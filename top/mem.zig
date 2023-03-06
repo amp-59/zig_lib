@@ -676,7 +676,7 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
         sys.call(.exit, .{}, noreturn, .{2});
     }
 }
-pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
     const mmap_prot: Prot = spec.prot();
     const mmap_flags: Map = spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
@@ -691,7 +691,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors.thr
         return map_error;
     }
 }
-pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors, spec.return_type) {
     const mremap_flags: Remap = spec.flags();
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
@@ -705,7 +705,7 @@ pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64)
         return mremap_error;
     }
 }
-pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
         if (logging.Success) {
@@ -718,7 +718,7 @@ pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u6
         return mremap_error;
     }
 }
-pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
     const logging: builtin.Logging.ReleaseErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
         if (logging.Release) {
@@ -731,7 +731,7 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors
         return unmap_error;
     }
 }
-pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
     const prot: Prot = spec.prot();
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, prot.val }))) {
@@ -745,7 +745,7 @@ pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.er
         return protect_error;
     }
 }
-pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
     const advice: Advice = spec.advice();
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
@@ -759,7 +759,7 @@ pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.erro
         return madvise_error;
     }
 }
-pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: mem.Fd = spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
