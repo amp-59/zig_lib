@@ -21,16 +21,11 @@ pub const logging_override: builtin.Logging.Override = .{
     .Fault = false,
 };
 pub const runtime_assertions: bool = false;
-const use_function_type: bool = false;
+const is_function_type: bool = @typeInfo(types.Builder) == .Fn;
 const prefer_inline: bool = true;
 const write_fn_name: bool = false;
-const initial_indent: u64 = if (use_function_type) 2 else 1;
-const alloc_options = .{
-    .count_allocations = false,
-    .require_filo_free = false,
-    .require_geometric_growth = true,
-    .trace_state = false,
-};
+const commit_write: bool = true;
+const initial_indent: u64 = if (is_function_type) 2 else 1;
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 24,
     .options = preset.allocator.options.small,
@@ -1381,9 +1376,8 @@ pub fn writeFunctionBody(comptime Namespace: type, array: *Array, variant: Varia
         }
     }
 }
-
 pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
-    const width: u64 = (initial_indent * 4);
+    const width: u64 = 4;
     inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
         const opt_spec: OptionSpec = @field(Namespace, decl.name);
         const field_type: type = getOptType(opt_spec);
@@ -1481,6 +1475,16 @@ fn writeFile(allocator: Allocator, array: Array, pathname: [:0]const u8) !void {
     defer file.close(close_spec, build_fd);
     try file.write(.{}, build_fd, array.readAll(allocator));
 }
+fn killIndent(src: []const u8) []const u8 {
+    var idx: u64 = src.len;
+    while (idx != 0) {
+        idx -%= 1;
+        if (src[idx] == '\n') {
+            return src[0 .. idx + 1 :' '];
+        }
+    }
+    unreachable;
+}
 pub fn main() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
@@ -1520,23 +1524,27 @@ pub fn main() !void {
     writeImport(&array, "preset", "./preset.zig");
     writeImport(&array, "builtin", "./builtin.zig");
 
-    array.writeMany(build_src[0 .. build_members_offset - (initial_indent * 4)]);
+    array.writeMany(killIndent(build_src[0..build_members_offset]));
     writeStructMembers(BuildCommandOptions, &array);
-    array.writeMany(build_src[build_members_offset + build_members_loc_token.len + 1 .. format_members_offset - (initial_indent * 4)]);
+    array.writeMany(killIndent(build_src[build_members_offset + build_members_loc_token.len + 1 .. format_members_offset]));
     writeStructMembers(FormatCommandOptions, &array);
-    array.writeMany(build_src[format_members_offset + format_members_loc_token.len + 1 .. build_len_fn_body_offset - kill_spaces]);
+    array.writeMany(killIndent(build_src[format_members_offset + format_members_loc_token.len + 1 .. build_len_fn_body_offset]));
     writeFunctionBody(BuildCommandOptions, &array, .length);
-    array.writeMany(build_src[build_len_fn_body_offset + build_len_fn_body_loc_token.len + 1 .. build_write_fn_body_offset - kill_spaces]);
+    array.writeMany(killIndent(build_src[build_len_fn_body_offset + build_len_fn_body_loc_token.len + 1 .. build_write_fn_body_offset]));
     writeFunctionBody(BuildCommandOptions, &array, .write);
-    array.writeMany(build_src[build_write_fn_body_offset + build_write_fn_body_loc_token.len + 1 .. format_len_fn_body_offset - kill_spaces]);
+    array.writeMany(killIndent(build_src[build_write_fn_body_offset + build_write_fn_body_loc_token.len + 1 .. format_len_fn_body_offset]));
     writeFunctionBody(FormatCommandOptions, &array, .length);
-    array.writeMany(build_src[format_len_fn_body_offset + format_len_fn_body_loc_token.len + 1 .. format_write_fn_body_offset - kill_spaces]);
+    array.writeMany(killIndent(build_src[format_len_fn_body_offset + format_len_fn_body_loc_token.len + 1 .. format_write_fn_body_offset]));
     writeFunctionBody(FormatCommandOptions, &array, .write);
     array.writeMany(build_src[format_write_fn_body_offset + format_write_fn_body_loc_token.len + 1 ..]);
     array.writeMany(types_src);
     if (!prefer_inline) array.writeMany(option_fn_src);
 
-    try writeFile(allocator, array, builtin.build_root.? ++ "/top/build.zig");
+    if (commit_write) {
+        try writeFile(allocator, array, builtin.build_root.? ++ "/top/build.zig");
+    } else {
+        builtin.debug.write(array.readAll(allocator));
+    }
 
     mem.unmap(.{ .errors = .{} }, lb_addr, up_addr - lb_addr);
 }
