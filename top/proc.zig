@@ -358,7 +358,7 @@ pub const CloneSpec = struct {
         };
     }
 };
-pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
@@ -371,7 +371,7 @@ pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_
         return execve_error;
     }
 }
-pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: Execute = spec.flags();
@@ -384,7 +384,7 @@ pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, var
         return execve_error;
     }
 }
-pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
@@ -425,7 +425,7 @@ pub const Status = struct {
     }
 };
 
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors, spec.return_type) {
     if (meta.wrap(sys.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
@@ -435,7 +435,7 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(spec.errors, spec.return_type) {
     const idtype: IdType = spec.id_type;
     const flags: WaitId = spec.flags();
     if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 }))) |pid| {
@@ -447,7 +447,7 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(sp
         return wait_error;
     }
 }
-pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors.throw, spec.return_type) {
+pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors, spec.return_type) {
     if (meta.wrap(sys.call(.fork, spec.errors, spec.return_type, .{}))) |pid| {
         return pid;
     } else |fork_error| {
@@ -758,7 +758,7 @@ pub noinline fn callClone(
     result_ptr: anytype,
     function: anytype,
     args: anytype,
-) sys.Call(spec.errors.throw, spec.return_type) {
+) sys.Call(spec.errors, spec.return_type) {
     const Fn: type = @TypeOf(function);
     const cl_args: CloneArgs = spec.args(stack_addr);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
