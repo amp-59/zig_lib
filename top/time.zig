@@ -47,9 +47,9 @@ pub const Month = enum {
 pub const ClockSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
 };
-pub fn get(comptime clock_spec: ClockSpec, kind: Kind) sys.Call(clock_spec.errors.throw, TimeSpec) {
+pub fn get(comptime spec: ClockSpec, kind: Kind) sys.Call(spec.errors, TimeSpec) {
     var ts: TimeSpec = undefined;
-    if (meta.wrap(sys.call(.clock_gettime, clock_spec.errors, void, .{ @enumToInt(kind), @ptrToInt(&ts) }))) {
+    if (meta.wrap(sys.call(.clock_gettime, spec.errors, void, .{ @enumToInt(kind), @ptrToInt(&ts) }))) {
         return ts;
     } else |clock_error| {
         return clock_error;
@@ -68,7 +68,7 @@ const SleepSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
     pub usingnamespace sys.FunctionInterfaceSpec(SleepSpec);
 };
-pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) sys.Call(spec.errors.throw, void) {
+pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) sys.Call(spec.errors, void) {
     meta.wrap(sys.call(.nanosleep, spec.errors, spec.return_type, .{ @ptrToInt(&ts), 0 })) catch |nanosleep_error| {
         return nanosleep_error;
     };
