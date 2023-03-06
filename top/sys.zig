@@ -2079,16 +2079,21 @@ const syscalls = .{
     syscall4, syscall5,
     syscall6,
 };
-pub fn Call(comptime errors: ?[]const ErrorCode, comptime return_type: type) type {
-    if (errors) |throw| {
-        return builtin.ZigError(ErrorCode, throw, "OpaqueSystemError")!return_type;
+pub fn Call(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
+    if (error_policy.throw) |throw| {
+        if (@typeInfo(return_type) == .ErrorUnion) {
+            return (builtin.ZigError(ErrorCode, throw, "OpaqueSystemError") ||
+                @typeInfo(return_type).ErrorUnion.error_set)!@typeInfo(return_type).ErrorUnion.payload;
+        } else {
+            return builtin.ZigError(ErrorCode, throw, "OpaqueSystemError")!return_type;
+        }
     }
     return return_type;
 }
 pub fn Error(comptime errors: []const ErrorCode) type {
     return builtin.ZigError(ErrorCode, errors, "OpaqueSystemError");
 }
-pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors.throw, return_type) {
+pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors, return_type) {
     const ret: isize = switch (tag.args()) {
         0 => syscall0(@enumToInt(tag)),
         1 => syscall1(@enumToInt(tag), args),
