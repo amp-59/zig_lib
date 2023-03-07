@@ -1,9 +1,7 @@
+pub const mach = @import("./mach.zig");
 pub const config = @import("./config.zig");
 
 pub usingnamespace config;
-pub usingnamespace @import("./static/memcpy.zig");
-pub usingnamespace @import("./static/memset.zig");
-pub usingnamespace @import("./static/zig_probe_stack.zig");
 
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
@@ -1180,17 +1178,12 @@ pub const debug = opaque {
     }
     // At the time of writing, this function benefits from inlining but
     // writeMulti does not.
-    pub inline fn writeMany(buf: []u8, s: []const u8) u64 {
-        for (s, 0..) |c, i| buf[i] = c;
+    pub fn writeMany(buf: []u8, s: []const u8) u64 {
+        mach.memcpy(buf.ptr, s.ptr, s.len);
         return s.len;
     }
     pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
-        var len: u64 = 0;
-        for (ss) |s| {
-            for (s, 0..) |c, i| buf[len +% i] = c;
-            len +%= s.len;
-        }
-        return len;
+        return mach.memcpyMulti(buf.ptr, ss);
     }
     pub inline fn logAlways(buf: []const u8) void {
         write(buf);
