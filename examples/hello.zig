@@ -6,6 +6,7 @@ const builtin = srg.builtin;
 
 comptime {
     _ = builtin;
+    _ = srg.mach.memset;
 }
 
 const hello_world = "Hello, world!\n";
