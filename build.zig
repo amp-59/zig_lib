@@ -1,7 +1,6 @@
-const _ = struct {
+pub usingnamespace struct {
     pub const build = if (true) @import("build/build-aux.zig").main else buildMain;
 };
-pub usingnamespace @"_";
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
