@@ -110,10 +110,10 @@ pub const Builder = struct {
     }
     pub inline fn addTarget(
         builder: *Builder,
+        comptime spec: TargetSpec,
         allocator: *Allocator,
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
-        comptime spec: TargetSpec,
     ) *Target {
         return @call(.auto, join, .{
             allocator,              builder,   &builder.groups.node.this.targets,
