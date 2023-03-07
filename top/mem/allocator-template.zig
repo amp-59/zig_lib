@@ -416,25 +416,25 @@ fn Types(comptime Allocator: type) type {
         };
         pub fn allocate_payload(comptime s_impl_type: type) type {
             if (resize_error_policy.throw != null) {
-                return sys.Call(resize_error_policy.throw.?, s_impl_type);
+                return sys.Call(resize_error_policy, s_impl_type);
             }
             return s_impl_type;
         }
         pub const init_void: type = blk: {
             if (map_error_policy.throw != null) {
-                break :blk sys.Call(map_error_policy.throw.?, void);
+                break :blk sys.Call(map_error_policy, void);
             }
             break :blk void;
         };
         pub const allocate_void: type = blk: {
             if (resize_error_policy.throw != null) {
-                break :blk sys.Call(resize_error_policy.throw.?, void);
+                break :blk sys.Call(resize_error_policy, void);
             }
             break :blk void;
         };
         pub const deallocate_void: type = blk: {
             if (unmap_error_policy.throw != null) {
-                break :blk sys.Call(unmap_error_policy.throw.?, void);
+                break :blk sys.Call(unmap_error_policy, void);
             }
             break :blk void;
         };
