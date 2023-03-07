@@ -16,7 +16,7 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub const runtime_assertions: bool = true;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
