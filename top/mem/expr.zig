@@ -532,21 +532,21 @@ pub inline fn fieldAccess(expr1: Expr, expr2: Expr) [3]Expr {
 pub inline fn assign(expr1: Expr, expr2: Expr) [4]Expr {
     return .{ expr1, Init.symbol(tok.equal_operator), expr2, Init.symbol(tok.end_expr) };
 }
-pub inline fn discard(name: [:0]const u8) [3]Expr {
-    return .{ Init.symbol(tok.discard), Init.symbol(name), Init.symbol(tok.end_expr) };
+pub inline fn discard(name: Expr) [3]Expr {
+    return .{ Init.symbol(tok.discard), name, Init.symbol(tok.end_expr) };
 }
-pub inline fn constDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [7]Expr {
+pub inline fn constDecl(name: Expr, type_name: Expr, value: Expr) [7]Expr {
     return .{
-        Init.symbol(tok.const_keyword),  Init.symbol(name),
-        Init.symbol(tok.colon_operator), Init.symbol(type_name),
+        Init.symbol(tok.const_keyword),  name,
+        Init.symbol(tok.colon_operator), type_name,
         Init.symbol(tok.equal_operator), value,
         Init.symbol(tok.end_expr),
     };
 }
-pub inline fn varDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [7]Expr {
+pub inline fn varDecl(name: Expr, type_name: Expr, value: Expr) [7]Expr {
     return .{
-        Init.symbol(tok.var_keyword),    Init.symbol(name),
-        Init.symbol(tok.colon_operator), Init.symbol(type_name),
+        Init.symbol(tok.var_keyword),    name,
+        Init.symbol(tok.colon_operator), type_name,
         Init.symbol(tok.equal_operator), value,
         Init.symbol(tok.end_expr),
     };
@@ -554,10 +554,10 @@ pub inline fn varDecl(name: [:0]const u8, type_name: [:0]const u8, value: Expr) 
 pub inline fn public(decl_expr: []Expr) [2]Expr {
     return .{ Init.symbol(tok.pub_keyword), Init.join(decl_expr) };
 }
-pub inline fn comptimeField(name: [:0]const u8, type_name: [:0]const u8, value: Expr) [7]Expr {
+pub inline fn comptimeField(name: Expr, type_name: Expr, value: Expr) [7]Expr {
     return .{
-        Init.symbol(tok.comptime_keyword), Init.symbol(name),
-        Init.symbol(tok.colon_operator),   Init.symbol(type_name),
+        Init.symbol(tok.comptime_keyword), name,
+        Init.symbol(tok.colon_operator),   type_name,
         Init.symbol(tok.equal_operator),   value,
         Init.symbol(tok.end_elem),
     };
