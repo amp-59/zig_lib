@@ -518,24 +518,84 @@ comptime {
     asm (
         \\.intel_syntax noprefix
         \\asmAssert:
-        \\  test edi, edi
-        \\  jne .asmAssert_0
-        \\  mov eax, 1
-        \\  mov edi, 2
+        \\  test    edi, edi
+        \\  jne     .asmAssert_0
+        \\  mov     eax, 1
+        \\  mov     edi, 2
         \\  syscall
-        \\  mov eax, 60
-        \\  mov edi, 2
+        \\  mov     eax, 60
+        \\  mov     edi, 2
         \\  syscall
         \\.asmAssert_0:
         \\  ret
     );
 }
-pub fn memset(dest: [*]u8, value: u8, count: u64) void {
-    asm volatile ("rep stosb"
-        :
-        : [_] "{rdi}" (dest),
-          [_] "{al}" (value),
-          [_] "{rcx}" (count),
-        : "rax", "rdi", "rcx", "memory"
+pub extern fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void;
+comptime {
+    asm (
+        \\.intel_syntax noprefix
+        \\memset:
+        \\  test    edi, edi
+        \\  mov     eax, esi
+        \\  mov     rcx, rdx
+        \\  rep     stosb byte ptr es:[rdi], al
+        \\  ret
     );
 }
+pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
+comptime {
+    asm (
+        \\.intel_syntax noprefix
+        \\memcpy:
+        \\  xor     eax, eax
+        \\.memcpy_0:
+        \\  cmp     rax, rdx
+        \\  je      .memcpy_1
+        \\  mov     cl, byte ptr [rsi+rax]
+        \\  mov     byte ptr [rdi+rax], cl
+        \\  inc     rax
+        \\  jmp     .memcpy_0
+        \\.memcpy_1:
+        \\  ret
+    );
+}
+pub inline fn memcpyMulti(noalias dest: [*]u8, src: []const []const u8) u64 {
+    return asmMemcpyMulti(dest, src.ptr, src.len);
+}
+extern fn asmMemcpyMulti(noalias dest: [*]u8, src: [*]const []const u8, len: u64) callconv(.C) u64;
+comptime {
+    asm (
+        \\.intel_syntax noprefix
+        \\asmMemcpyMulti:
+        \\  xor     r8d, r8d
+        \\  xor     ecx, ecx
+        \\  cmp     r8, rdx
+        \\  jne     .asmMemcpyMulti_9
+        \\  mov     rax, rcx
+        \\  ret
+        \\.asmMemcpyMulti_9:
+        \\  push    rbx
+        \\.asmMemcpyMulti_5:
+        \\  mov     r10, qword ptr [rsi]
+        \\  mov     r9, qword ptr [rsi+8]
+        \\  xor     eax, eax
+        \\  lea     r11, [rdi+rcx]
+        \\.asmMemcpyMulti_3:
+        \\  cmp     rax, r9
+        \\  je      .asmMemcpyMulti_11
+        \\  mov     bl, byte ptr [r10+rax]
+        \\  mov     byte ptr [r11+rax], bl
+        \\  inc     rax
+        \\  jmp     .asmMemcpyMulti_3
+        \\.asmMemcpyMulti_11:
+        \\  inc     r8
+        \\  add     rcx, rax
+        \\  add     rsi, 16
+        \\  cmp     r8, rdx
+        \\  jne     .asmMemcpyMulti_5
+        \\  mov     rax, rcx
+        \\  pop     rbx
+        \\  ret
+    );
+}
+pub export fn __zig_probe_stack() callconv(.C) void {}
