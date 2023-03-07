@@ -218,7 +218,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         fn clear(s_lb_addr: u64, s_bytes: u64) void {
             mem.set(s_lb_addr, @as(u8, 0), s_bytes);
         }
-        fn getDirectoryEntries(dir: *const DirStream) sys.Call(spec.errors.getdents.throw, u64) {
+        fn getDirectoryEntries(dir: *const DirStream) sys.Call(spec.errors.getdents, u64) {
             return sys.call(.getdents64, spec.errors.getdents, u64, .{
                 dir.fd,
                 dir.blk.undefined_byte_address(),
