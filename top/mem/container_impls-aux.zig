@@ -26,6 +26,7 @@ pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
+pub const show_expressions: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -62,7 +63,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
     var undefined_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefined_byte_address));
     var unstreamed_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_address));
     var readable_byte_count: [3]Expr = if (ctn_detail.modes.resize) defined_byte_count else writable_byte_count;
-
     var amount_of_type_to_bytes: [3]Expr = expr.amountOfTypeToBytes(expr.symbol(tok.offset_name), expr.symbol(tok.child_type_name));
     var amount_to_count_of_type: [3]Expr = expr.amountToCountOfType(expr.symbol(tok.offset_name), expr.symbol(tok.child_type_name));
     var mul_sub_address_offset: [4]Expr = expr.mulSub(expr.symbol(tok.offset_name), expr.symbol(child_size), undefined);
@@ -73,7 +73,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
     var add_address_amount_of_type_to_bytes: [3]Expr = expr.add(undefined, expr.call(&amount_of_type_to_bytes));
     var mul_offset_child_size: [3]Expr = expr.mul(expr.symbol(tok.offset_name), expr.symbol(child_size));
     var mul_count_child_size: [3]Expr = expr.mul(expr.symbol(tok.count_name), expr.symbol(child_size));
-
     const __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
     const __undefined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__undefined));
     const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
@@ -88,17 +87,14 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
     const write_args_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeArgs));
     const write_fields_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeFields));
     const write_any_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeAny));
-
-    const mul_sub_address_offset_exprs: []Expr = if (ctn_detail.layouts.structured) &mul_sub_address_offset else &sub_address_amount_of_type_to_bytes;
-    const mul_add_address_offset_exprs: []Expr = if (ctn_detail.layouts.structured) &mul_add_address_offset else &add_address_amount_of_type_to_bytes;
-    const mul_sub_address_offset_address: *Expr = if (ctn_detail.layouts.structured) &mul_sub_address_offset[3] else &sub_address_amount_of_type_to_bytes[1];
-    const mul_add_address_offset_address: *Expr = if (ctn_detail.layouts.structured) &mul_add_address_offset[3] else &add_address_amount_of_type_to_bytes[1];
+    const mul_sub_address_offset_exprs: []Expr = &if (ctn_detail.layouts.structured) mul_sub_address_offset else sub_address_amount_of_type_to_bytes;
+    const mul_add_address_offset_exprs: []Expr = &if (ctn_detail.layouts.structured) mul_add_address_offset else add_address_amount_of_type_to_bytes;
+    const mul_sub_address_offset_address: *Expr = &if (ctn_detail.layouts.structured) mul_sub_address_offset[3] else sub_address_amount_of_type_to_bytes[1];
+    const mul_add_address_offset_address: *Expr = &if (ctn_detail.layouts.structured) mul_add_address_offset[3] else add_address_amount_of_type_to_bytes[1];
     const mul_sub_address_count_address: *Expr = &mul_sub_address_count[3];
     const sub_address_one_address: *Expr = &mul_sub_address_one[1];
-
     const is_offset: bool = ctn_fn.kind.offset(ctn_fn_info);
     const is_defined: bool = ctn_fn.kind.defined(ctn_fn_info);
-
     switch (ctn_fn_info) {
         .readAll => {
             const len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
@@ -897,11 +893,11 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         => {
             const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
             for (arg_list.readAll()) |param_name| {
-                var discard_paramm: [3]Expr = expr.discard(param_name);
+                var discard_paramm: [3]Expr = expr.discard(expr.symbol(param_name));
                 array.writeFormat(expr.join(&discard_paramm));
             }
             if (arg_list.len == 0) {
-                var discard_this: [3]Expr = expr.discard(tok.call_this);
+                var discard_this: [3]Expr = expr.discard(expr.symbol(tok.call_this));
                 array.writeFormat(expr.join(&discard_this));
             }
         },
