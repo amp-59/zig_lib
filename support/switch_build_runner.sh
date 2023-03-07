@@ -28,7 +28,7 @@ fn ()
                 if test -f "$zl_zig_build"; then
                     sed -i 's/pub const build = if (false)/pub const build = if (true)/' "$zl_zig_build";
                 fi;
-                echo "std"
+                echo "builder:zl->std"
             else
                 echo $error "would move back original zig build runner, but original file is missing"
                 return 2;
@@ -50,7 +50,7 @@ fn ()
         if test -f "$zl_zig_build"; then
             sed -i 's/pub const build = if (true)/pub const build = if (false)/' "$zl_zig_build";
         fi;
-        echo "zl"
+        echo "builder=std->zl"
     else
         echo $error "'$std_build_runner': no such file or directory; did nothing"
     fi;
