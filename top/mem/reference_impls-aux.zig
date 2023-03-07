@@ -41,17 +41,6 @@ const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
 const Fn = impl_fn.Fn;
 const Expr = expr.Expr;
 
-const allocated_byte_address_fn_info: *const Fn = impl_fn.get(.allocated_byte_address);
-const aligned_byte_address_fn_info: *const Fn = impl_fn.get(.aligned_byte_address);
-const unstreamed_byte_address_fn_info: *const Fn = impl_fn.get(.unstreamed_byte_address);
-const undefined_byte_address_fn_info: *const Fn = impl_fn.get(.undefined_byte_address);
-const unwritable_byte_address_fn_info: *const Fn = impl_fn.get(.unwritable_byte_address);
-const unallocated_byte_address_fn_info: *const Fn = impl_fn.get(.unallocated_byte_address);
-const allocated_byte_count_fn_info: *const Fn = impl_fn.get(.allocated_byte_count);
-const aligned_byte_count_fn_info: *const Fn = impl_fn.get(.aligned_byte_count);
-const writable_byte_count_fn_info: *const Fn = impl_fn.get(.writable_byte_count);
-const alignment_fn_info: *const Fn = impl_fn.get(.alignment);
-
 fn dupe(allocator: *Allocator, value: anytype) Allocator.allocate_payload(*@TypeOf(value)) {
     return allocator.duplicateIrreversible(@TypeOf(value), value);
 }
@@ -306,6 +295,16 @@ const render_spec = .{
 };
 
 fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const detail.More, impl_fn_info: Fn, info: *Info) void {
+    const allocated_byte_address_fn_info: *const Fn = impl_fn.get(.allocated_byte_address);
+    const aligned_byte_address_fn_info: *const Fn = impl_fn.get(.aligned_byte_address);
+    const unstreamed_byte_address_fn_info: *const Fn = impl_fn.get(.unstreamed_byte_address);
+    const undefined_byte_address_fn_info: *const Fn = impl_fn.get(.undefined_byte_address);
+    const unwritable_byte_address_fn_info: *const Fn = impl_fn.get(.unwritable_byte_address);
+    const unallocated_byte_address_fn_info: *const Fn = impl_fn.get(.unallocated_byte_address);
+    const allocated_byte_count_fn_info: *const Fn = impl_fn.get(.allocated_byte_count);
+    const aligned_byte_count_fn_info: *const Fn = impl_fn.get(.aligned_byte_count);
+    const writable_byte_count_fn_info: *const Fn = impl_fn.get(.writable_byte_count);
+    const alignment_fn_info: *const Fn = impl_fn.get(.alignment);
     const allocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, allocated_byte_address_fn_info);
     const aligned_byte_address_call: Expr = expr.impl(allocator, impl_variant, aligned_byte_address_fn_info);
     const unstreamed_byte_address_call: Expr = expr.impl(allocator, impl_variant, unstreamed_byte_address_fn_info);
@@ -832,13 +831,13 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 expr.impl(allocator, impl_variant, impl_fn.get(.aligned_byte_address));
             var impl_deref_stx: [2]Expr = expr.dereference(expr.symbol(tok.impl_name));
             var s_impl_decl: [7]Expr = expr.constDecl(
-                tok.source_impl_name,
-                tok.impl_type_name,
+                expr.symbol(tok.source_impl_name),
+                expr.symbol(tok.impl_type_name),
                 expr.join(&impl_deref_stx),
             );
             var t_impl_decl: [7]Expr = expr.constDecl(
-                tok.target_impl_name,
-                tok.impl_type_name,
+                expr.symbol(tok.target_impl_name),
+                expr.symbol(tok.impl_type_name),
                 expr.join(constructInitializer(allocator, impl_variant, impl_fn_info)),
             );
             var assign_impl_t_impl: [4]Expr = expr.assign(
@@ -881,8 +880,8 @@ fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const det
 fn writeDeclarations(array: *Array, impl_variant: *const detail.More) void {
     const no_type_expr: Expr = expr.scrub(1);
     var const_decl: [7]Expr = expr.constDecl(
-        tok.impl_type_name,
-        undefined,
+        expr.symbol(tok.impl_type_name),
+        no_type_expr,
         expr.symbol(tok.call_this),
     );
     const const_decl_name: *Expr = &const_decl[1];
@@ -990,7 +989,6 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, accm_spec_inde
     }
     array.writeMany("});\n}\n");
 }
-
 pub fn generateReferences() void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
