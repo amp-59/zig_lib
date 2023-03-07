@@ -1350,6 +1350,7 @@ pub const TypeDescrFormat = union(enum) {
     type_name: []const u8,
     type_decl: Container,
     type_refer: Reference,
+    var depth: u64 = 0;
     const Reference = struct { []const u8, *const TypeDescrFormat };
     const Enumeration = struct { []const u8, []const Decl };
     const Composition = struct { []const u8, []const Field };
@@ -1369,26 +1370,36 @@ pub const TypeDescrFormat = union(enum) {
             .type_decl => |type_decl| {
                 switch (type_decl) {
                     .Composition => |struct_defn| {
+                        depth +%= 1;
                         array.writeMany(struct_defn[0]);
-                        array.writeMany(" { ");
+                        array.writeMany(" {\n");
+                        for (0..depth) |_| array.writeCount(4, "    ".*);
                         for (struct_defn[1]) |field| {
                             array.writeMany(field[0]);
                             array.writeMany(": ");
                             field[1].formatWrite(array);
-                            array.writeMany(", ");
+                            array.writeMany(",\n");
+                            for (0..depth) |_| array.writeCount(4, "    ".*);
                         }
+                        array.undefine(4);
                         array.writeMany("}");
+                        depth -%= 1;
                     },
                     .Enumeration => |enum_defn| {
+                        depth +%= 1;
                         array.writeMany(enum_defn[0]);
-                        array.writeMany(" { ");
+                        array.writeMany(" {\n");
+                        for (0..depth) |_| array.writeCount(4, "    ".*);
                         for (enum_defn[1]) |field| {
                             array.writeMany(field[0]);
                             array.writeMany(" = ");
                             array.writeFormat(fmt.ud64(field[1]));
-                            array.writeMany(", ");
+                            array.writeMany(",\n");
+                            for (0..depth) |_| array.writeCount(4, "    ".*);
                         }
+                        array.undefine(4);
                         array.writeMany("}");
+                        depth -%= 1;
                     },
                 }
             },
@@ -1405,26 +1416,34 @@ pub const TypeDescrFormat = union(enum) {
             .type_decl => |type_decl| {
                 switch (type_decl) {
                     .Composition => |struct_defn| {
+                        depth +%= 1;
                         len +%= struct_defn[0].len;
                         len +%= 3;
+                        len +%= (depth * 4) +% 1;
                         for (struct_defn[1]) |field| {
                             len +%= field[0].len;
                             len +%= 2;
                             len +%= field[1].formatLength();
                             len +%= 2;
+                            len +%= depth *% 4;
                         }
                         len +%= 1;
+                        depth -%= 1;
                     },
                     .Enumeration => |enum_defn| {
+                        depth +%= 1;
                         len +%= enum_defn[0].len;
                         len +%= 3;
+                        len +%= (depth * 4) +% 1;
                         for (enum_defn[1]) |field| {
                             len +%= field[0].len;
                             len +%= 3;
                             len +%= fmt.ud64(field[1]).formatLength();
                             len +%= 2;
+                            len +%= depth *% 4;
                         }
                         len +%= 1;
+                        depth -%= 1;
                     },
                 }
             },
