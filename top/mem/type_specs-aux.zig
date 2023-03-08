@@ -1,19 +1,18 @@
 //! This stage derives specification variants
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const proc = @import("../proc.zig");
-const meta = @import("../meta.zig");
-const mach = @import("../mach.zig");
-const preset = @import("../preset.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const proc = gen.proc;
+const meta = gen.meta;
+const preset = gen.preset;
+const builtin = gen.builtin;
 const out = struct {
     usingnamespace @import("./abstract_spec.zig");
     usingnamespace @import("./zig-out/src/abstract_params.zig");
 };
 
 pub usingnamespace proc.start;
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
@@ -176,7 +175,7 @@ fn writeStructFromFields(array: *Array, comptime struct_fields: []const builtin.
     array.writeOne('}');
 }
 fn writeSpecifiersStruct(array: *Array, field_names: mem.StaticArray([]const u8, 16)) void {
-    array.writeMany("pub const Specifiers = packed struct {");
+    array.writeMany("pub const Specifiers=packed struct{");
     for (field_names.readAll()) |field_name| {
         array.writeMany(field_name);
         array.writeMany(":bool=false,");
@@ -198,4 +197,6 @@ pub fn abstractToTypeSpec() void {
     gen.writeAuxiliarySourceFile(&array, "type_specs.zig");
     writeSpecifiersStruct(&array, field_names);
 }
-pub const main = abstractToTypeSpec;
+pub inline fn main() void {
+    abstractToTypeSpec();
+}
