@@ -3,10 +3,10 @@ const mem = gen.mem;
 const sys = gen.sys;
 const proc = gen.proc;
 const meta = gen.meta;
-
+const preset = gen.preset;
+const builtin = gen.builtin;
 const detail = @import("./detail.zig");
 const canonical = @import("./canonical.zig");
-
 const out = struct {
     usingnamespace @import("./zig-out/src/specifiers.zig");
     usingnamespace @import("./zig-out/src/impl_details.zig");
@@ -14,6 +14,11 @@ const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/specifiers.zig");
 };
+
+pub usingnamespace proc.start;
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
 fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) void {
@@ -112,7 +117,6 @@ fn writeCanonicalStruct(array: *Array, comptime spec: canonical.CanonicalSpec) v
     array.writeMany("};\n}\n};\n");
     gen.writeAuxiliarySourceFile(array, "canonical.zig");
 }
-
 pub fn main() void {
     var array: Array = undefined;
     array.undefineAll();
