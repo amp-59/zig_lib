@@ -35,7 +35,7 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
 const Array = Allocator.StructuredStaticVector(u8, 1024 * 1024);
 
 fn writeReturnImplementation(array: *Array, impl_detail: detail.More) void {
-    const endl: bool = mem.testEqualManyBack(u8, " => ", array.readAll());
+    const endl: bool = mem.testEqualManyBack(u8, "=>", array.readAll());
     array.writeMany("return ");
     impl_detail.writeImplementationName(array);
     array.writeMany("(spec)");
@@ -95,7 +95,7 @@ fn writeDeductionTestBoolean(
     var buf: []detail.More = allocator.allocateIrreversible(detail.More, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, field_names[0]);
     if (filtered[1].len != 0) {
-        array.writeMany("if (options." ++ field_names[0] ++ ") {\n");
+        array.writeMany("if (options." ++ field_names[0] ++ "){\n");
         if (filtered[1].len == 1) {
             return writeReturnImplementation(array, filtered[1][0]);
         } else {
@@ -103,7 +103,7 @@ fn writeDeductionTestBoolean(
         }
     }
     if (filtered[0].len != 0) {
-        if (filtered[1].len != 0) array.writeMany("} else {\n");
+        if (filtered[1].len != 0) array.writeMany("}else{\n");
         if (filtered[0].len == 1) {
             return writeReturnImplementation(array, filtered[0][0]);
         } else {
@@ -134,7 +134,7 @@ fn writeDeductionCompareEnumerationInternal(
     var buf: []detail.More = allocator.allocateIrreversible(detail.More, impl_group.len);
     const filtered: Filtered = filterTechnique(impl_group, buf, options[0].info.field_field_names[field_index]);
     if (filtered[1].len != 0) {
-        array.writeMany("." ++ comptime options[0].tagName(field_index) ++ " => ");
+        array.writeMany("." ++ comptime options[0].tagName(field_index) ++ "=>");
         if (filtered[1].len == 1) {
             writeReturnImplementation(array, filtered[1][0]);
         } else {
@@ -157,7 +157,7 @@ fn writeDeductionCompareEnumeration(
 ) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    array.writeMany("switch (options." ++ options[0].info.field_name ++ ") {\n");
+    array.writeMany("switch(options." ++ options[0].info.field_name ++ "){\n");
     const rem: ?[]const detail.More =
         writeDeductionCompareEnumerationInternal(allocator, array, toplevel_impl_group, impl_group, options, 0);
     array.writeMany("}\n");
@@ -172,9 +172,9 @@ fn writeDeductionCompareOptionalEnumeration(
 ) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    array.writeMany("if (options." ++ options[0].info.field_name ++ ") |" ++
-        options[0].info.field_name ++ "| {\nswitch (" ++
-        options[0].info.field_name ++ ") {\n");
+    array.writeMany("if (options." ++ options[0].info.field_name ++ ")|" ++
+        options[0].info.field_name ++ "|{\nswitch(" ++
+        options[0].info.field_name ++ "){\n");
     const rem: ?[]const detail.More =
         writeDeductionCompareEnumerationInternal(allocator, array, toplevel_impl_group, impl_group, options, 0);
     array.writeMany("}\n}\n");
@@ -215,18 +215,21 @@ pub fn generateReferences() !void {
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1);
     array.undefineAll();
-
-    gen.writeGenerator(&array, @src());
     gen.writeImport(&array, "mach", "../mach.zig");
     gen.writeImport(&array, "algo", "../algo.zig");
-
     gen.copySourceFile(&array, "reference-template.zig");
     var accm_spec_index: u64 = 0;
     var ctn_index: u64 = 0;
     while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
-        const ctn_buf: []const detail.More = gen.groupImplementations(&allocator, detail.More, out.Index, out.containers[ctn_index], out.impl_variants);
+        const ctn_buf: []const detail.More = gen.groupImplementations(
+            &allocator,
+            detail.More,
+            out.Index,
+            out.containers[ctn_index],
+            out.impl_variants,
+        );
         const ctn_spec_group: []const []const out.Index = out.specifications[ctn_index];
         var spec_index: u64 = 0;
         while (spec_index != ctn_spec_group.len) : (spec_index +%= 1) {
@@ -234,18 +237,25 @@ pub fn generateReferences() !void {
             if (spec_group.len != 0) {
                 const leader: detail.More = gen.implLeader(detail.More, out.Index, spec_group, out.impl_variants);
                 array.writeMany("pub const Specification");
-                gen.writeIndex(&array, accm_spec_index);
-                array.writeMany(" = struct {\n");
+                gen.fmt.ud64(accm_spec_index).formatWrite(&array);
+                array.writeMany("=struct{\n");
                 for (out.type_descrs[leader.index].specs[gen.specIndex(detail.More, leader)].type_decl.Composition[1]) |field| {
                     gen.writeField(&array, field[0], field[1]);
                 }
-                array.writeMany("const Specification = @This();\npub fn Implementation(comptime spec: Specification");
+                array.writeMany("const Specification=@This();\n");
+                array.writeMany("pub fn Implementation(comptime spec:Specification");
                 if (spec_group.len == 1) {
-                    array.writeMany(") type {\n");
+                    array.writeMany(")type{\n");
                     writeReturnImplementation(&array, out.impl_variants[spec_group[0]]);
                 } else {
-                    array.writeMany(", comptime options: anytype) type {\n");
-                    const toplevel_impl_group: []const detail.More = gen.groupImplementations(&allocator, detail.More, out.Index, spec_group, out.impl_variants);
+                    array.writeMany(",comptime options:anytype)type{\n");
+                    const toplevel_impl_group: []const detail.More = gen.groupImplementations(
+                        &allocator,
+                        detail.More,
+                        out.Index,
+                        spec_group,
+                        out.impl_variants,
+                    );
                     writeDeduction(&allocator, &array, ctn_buf, toplevel_impl_group, &out.options);
                 }
                 array.writeMany("}\n};\n");
