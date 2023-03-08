@@ -1,22 +1,18 @@
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const proc = @import("../proc.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const fmt = gen.fmt;
+const proc = gen.proc;
+const builtin = gen.builtin;
 const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
 };
-
 pub usingnamespace proc.start;
-
 const Array = mem.StaticArray(u8, 1024 * 1024);
 const Keys = gen.GenericKeys(Key, 256);
 const Key = struct { kind: out.Kind };
-
-pub fn mapToKinds() void {
+pub fn kinds() void {
     const keys: Keys = Keys.init(out.Canonical, out.canonicals);
     var array: Array = undefined;
     array.undefineAll();
@@ -38,4 +34,4 @@ pub fn mapToKinds() void {
     array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(&array, "kinds.zig");
 }
-pub const main = mapToKinds;
+pub const main = kinds;
