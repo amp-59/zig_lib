@@ -1,20 +1,12 @@
 //! This stage summarises the abstract specification.
-const mem = @import("../mem.zig");
-const sys = @import("../sys.zig");
-const proc = @import("../proc.zig");
-const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const proc = gen.proc;
+const preset = gen.preset;
+const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 
-pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
-};
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 pub usingnamespace proc.start;
 
@@ -65,11 +57,11 @@ fn writeOptions(array: *Array) void {
     }
     array.writeMany("};\n");
 }
-pub fn specToOptions() void {
+pub fn options() void {
     var array: Array = undefined;
     array.undefineAll();
     gen.writeImport(&array, "attr", "../../attr.zig");
     writeOptions(&array);
     gen.writeAuxiliarySourceFile(&array, "options.zig");
 }
-pub const main = specToOptions;
+pub const main = options;
