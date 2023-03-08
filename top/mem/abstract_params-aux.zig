@@ -1,11 +1,10 @@
 //! This stage summarises the abstract specification.
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const proc = @import("../proc.zig");
-const preset = @import("../preset.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const fmt = gen.fmt;
+const proc = gen.proc;
+const builtin = gen.builtin;
+
 const abstract_spec = @import("./abstract_spec.zig");
 
 pub usingnamespace proc.start;
@@ -43,7 +42,7 @@ inline fn writeAbstractParametersInternal(array: *Array, comptime types: *[]cons
         }
     }
 }
-pub fn specToAbstract() void {
+pub fn abstractParams() void {
     const types: *[]const type = comptime slices(type);
     var array: Array = undefined;
     array.undefineAll();
@@ -53,4 +52,4 @@ pub fn specToAbstract() void {
     array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(&array, "abstract_params.zig");
 }
-pub const main = specToAbstract;
+pub const main = abstractParams;
