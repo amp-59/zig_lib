@@ -11,8 +11,6 @@ const detail = @import("./detail.zig");
 const impl_fn = @import("./impl_fn.zig");
 const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
-    usingnamespace @import("./zig-out/src/canonical.zig");
-    usingnamespace @import("./zig-out/src/canonicals.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
 pub usingnamespace proc.start;
