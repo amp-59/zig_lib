@@ -7,18 +7,15 @@ pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = true;
 
-fn proper(comptime value: comptime_int) []const u8 {
+fn comptimeIntToStringNoob(comptime value: comptime_int) []const u8 {
     var s: []const u8 = "";
     var y = if (value < 0) -value else value;
     while (y != 0) : (y /= 10) {
-        s = [_]u8{@truncate(u8, ((y % 10) + 48))} ++ s;
+        s = s ++ [1]u8{(y % 10) + 48};
     }
-    if (value < 0) {
-        s = [_]u8{'-'} ++ s;
-    }
-    return s;
+    return if (value < 0) "-" ++ s else s;
 }
-fn stupid(comptime value: comptime_int) []const u8 {
+fn comptimeIntToStringPro(comptime value: comptime_int) []const u8 {
     if (value < 0) {
         const s: []const u8 = @typeName([-value]void);
         return "-" ++ s[1 .. s.len - 5];
