@@ -1,20 +1,18 @@
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const meta = @import("../meta.zig");
-const proc = @import("../proc.zig");
-const builtin = @import("../builtin.zig");
-
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const fmt = gen.fmt;
+const meta = gen.meta;
+const proc = gen.proc;
+const preset = gen.preset;
+const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const out = struct {
-    usingnamespace @import("./detail.zig");
-    //usingnamespace @import("./detail_more.zig");
-
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/kinds.zig");
 };
+pub usingnamespace proc.start;
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
