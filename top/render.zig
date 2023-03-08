@@ -1495,77 +1495,79 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 return null;
             }
         }
-        pub fn init(comptime T: type) TypeDescrFormat {
-            const type_info: builtin.Type = @typeInfo(T);
-            switch (type_info) {
-                else => return .{ .type_name = @typeName(T) },
-                .Struct => |struct_info| {
-                    var type_decl: []const Field = &.{};
-                    inline for (struct_info.fields) |field| {
-                        if (spec.options.default_fields) {
-                            type_decl = type_decl ++ [1]Field{.{
+        pub inline fn init(comptime T: type) TypeDescrFormat {
+            comptime {
+                const type_info: builtin.Type = @typeInfo(T);
+                switch (type_info) {
+                    else => return .{ .type_name = @typeName(T) },
+                    .Struct => |struct_info| {
+                        var type_decl: []const Field = &.{};
+                        for (struct_info.fields) |field| {
+                            if (spec.options.default_fields) {
+                                type_decl = type_decl ++ [1]Field{.{
+                                    field.name,
+                                    init(field.type),
+                                    defaultFieldValue(field.type, field.default_value),
+                                }};
+                            } else {
+                                type_decl = type_decl ++ [1]Field{.{
+                                    field.name,
+                                    init(field.type),
+                                }};
+                            }
+                        }
+                        return .{ .type_decl = .{ .Composition = .{
+                            builtin.fmt.typeDeclSpecifier(type_info),
+                            type_decl,
+                        } } };
+                    },
+                    .Union => |union_info| {
+                        comptime var type_decl: []const Field = &.{};
+                        for (union_info.fields) |field| {
+                            if (spec.options.default_fields) {
+                                type_decl = type_decl ++ [1]Field{.{
+                                    field.name,
+                                    init(field.type),
+                                    null,
+                                }};
+                            } else {
+                                type_decl = type_decl ++ [1]Field{.{
+                                    field.name,
+                                    init(field.type),
+                                }};
+                            }
+                        }
+                        return .{ .type_decl = .{ .Composition = .{
+                            builtin.fmt.typeDeclSpecifier(type_info),
+                            type_decl,
+                        } } };
+                    },
+                    .Enum => |enum_info| {
+                        var type_decl: []const Decl = &.{};
+                        for (enum_info.fields) |field| {
+                            type_decl = type_decl ++ [1]Decl{.{
                                 field.name,
-                                init(field.type),
-                                defaultFieldValue(field.type, field.default_value),
-                            }};
-                        } else {
-                            type_decl = type_decl ++ [1]Field{.{
-                                field.name,
-                                init(field.type),
+                                field.value,
                             }};
                         }
-                    }
-                    return .{ .type_decl = .{ .Composition = .{
-                        builtin.fmt.typeDeclSpecifier(type_info),
-                        type_decl,
-                    } } };
-                },
-                .Union => |union_info| {
-                    var type_decl: []const Field = &.{};
-                    inline for (union_info.fields) |field| {
-                        if (spec.options.default_fields) {
-                            type_decl = type_decl ++ [1]Field{.{
-                                field.name,
-                                init(field.type),
-                                null,
-                            }};
-                        } else {
-                            type_decl = type_decl ++ [1]Field{.{
-                                field.name,
-                                init(field.type),
-                            }};
-                        }
-                    }
-                    return .{ .type_decl = .{ .Composition = .{
-                        builtin.fmt.typeDeclSpecifier(type_info),
-                        type_decl,
-                    } } };
-                },
-                .Enum => |enum_info| {
-                    var type_decl: []const Decl = &.{};
-                    inline for (enum_info.fields) |field| {
-                        type_decl = type_decl ++ [1]Decl{.{
-                            field.name,
-                            field.value,
-                        }};
-                    }
-                    return .{ .type_decl = .{ .Enum = .{
-                        builtin.fmt.typeDeclSpecifier(type_info),
-                        type_decl,
-                    } } };
-                },
-                .Optional => |optional_info| {
-                    return .{ .type_refer = .{
-                        builtin.fmt.typeDeclSpecifier(type_info),
-                        &init(optional_info.child),
-                    } };
-                },
-                .Pointer => |pointer_info| {
-                    return .{ .type_refer = .{
-                        builtin.fmt.typeDeclSpecifier(type_info),
-                        &init(pointer_info.child),
-                    } };
-                },
+                        return .{ .type_decl = .{ .Enum = .{
+                            builtin.fmt.typeDeclSpecifier(type_info),
+                            type_decl,
+                        } } };
+                    },
+                    .Optional => |optional_info| {
+                        return .{ .type_refer = .{
+                            builtin.fmt.typeDeclSpecifier(type_info),
+                            &init(optional_info.child),
+                        } };
+                    },
+                    .Pointer => |pointer_info| {
+                        return .{ .type_refer = .{
+                            builtin.fmt.typeDeclSpecifier(type_info),
+                            &init(pointer_info.child),
+                        } };
+                    },
+                }
             }
         }
     });
