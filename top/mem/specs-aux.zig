@@ -3,7 +3,6 @@ const mem = gen.mem;
 const fmt = gen.fmt;
 const proc = gen.proc;
 const builtin = gen.builtin;
-
 const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
@@ -11,11 +10,9 @@ const out = struct {
     usingnamespace @import("./zig-out/src/containers.zig");
 };
 pub usingnamespace proc.start;
-
 const Array = mem.StaticArray(u8, 1024 * 1024);
 const Keys = gen.GenericKeys(struct { spec: out.Specifier }, 256);
-
-fn mapToContainers() void {
+pub fn specs() void {
     const keys: Keys = Keys.init(out.Canonical, out.canonicals);
     var array: Array = undefined;
     array.undefineAll();
@@ -43,4 +40,4 @@ fn mapToContainers() void {
     array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(&array, "specifications.zig");
 }
-pub const main = mapToContainers;
+pub const main = specs;
