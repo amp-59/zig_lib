@@ -7,7 +7,6 @@ const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const detail = @import("./detail.zig");
-
 const out = struct {
     usingnamespace @import("./zig-out/src/options.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
@@ -16,8 +15,9 @@ const out = struct {
     usingnamespace @import("./zig-out/src/containers.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
-
 pub usingnamespace proc.start;
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
