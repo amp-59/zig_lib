@@ -999,7 +999,9 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const de
 fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     array.writeMany("pub fn ");
     ctn_detail.writeContainerName(array);
-    array.writeMany("(comptime " ++ tok.spec_name ++ ":anytype)type{\nreturn(struct{\n");
+    array.writeMany("(comptime " ++ tok.spec_name ++ ":");
+    ctn_detail.writeContainerName(array);
+    array.writeMany("Spec)type{\nreturn(struct{\n");
     array.writeMany(tok.impl_field);
     array.writeMany(tok.end_elem);
     writeDeclarations(allocator, array, ctn_detail);
