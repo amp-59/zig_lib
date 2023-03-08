@@ -18,14 +18,8 @@ const out = struct {
     usingnamespace @import("./zig-out/src/containers.zig");
 };
 pub usingnamespace proc.start;
-pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
-};
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -50,7 +44,6 @@ const Array = struct {
     params: String,
     indices: StringArray,
 };
-
 fn writeOptionsInternal(array: *Array, field_name: []const u8, usage: attr.Option.Usage, field_names: []const []const u8) void {
     switch (usage) {
         .test_boolean => {
@@ -162,14 +155,12 @@ fn generateParameters() !void {
     };
     array.options.undefineAll();
     array.params.undefineAll();
-    gen.writeGenerator(&array.options, @src());
     gen.writeImport(&array.options, "mach", "../mach.zig");
     gen.writeImport(&array.options, "meta", "../meta.zig");
     gen.writeImport(&array.options, "builtin", "../builtin.zig");
     gen.writeImport(&array.options, "reference", "references.zig");
     gen.copySourceFile(&array.params, "container-template.zig");
-    array.options.writeMany(gen.subTemplate(array.params.readAll()[0.. :0], "container-template.zig").?);
-
+    array.options.writeMany(gen.subTemplate(array.params.readAllWithSentinel(0), "container-template.zig").?);
     array.params.undefineAll();
     var ctn_index: u64 = 0;
     while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
