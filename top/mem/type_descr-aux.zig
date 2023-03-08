@@ -19,6 +19,8 @@ pub const logging_override: builtin.Logging.Override = .{
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
+const TypeDescrFormat = fmt.GenericTypeDescrFormat(.{});
+
 const fmt_spec = .{
     .infer_type_names = true,
     .ignore_formatter_decls = true,
@@ -30,23 +32,23 @@ fn mapContainersToParameters() void {
     array.writeMany("pub const type_descrs=");
     array.writeMany(
         \\&[_]struct {
-        \\    params: gen.fmt.TypeDescrFormat,
-        \\    specs: []const gen.fmt.TypeDescrFormat,
-        \\    vars: gen.fmt.TypeDescrFormat,
+        \\    params: gen.fmt.GenericTypeDescrFormat(.{}),
+        \\    specs: []const gen.fmt.GenericTypeDescrFormat(.{}),
+        \\    vars: gen.fmt.GenericTypeDescrFormat(.{}),
         \\}{ 
     );
     inline for (out.type_specs) |type_spec| {
         array.writeMany(".{.params=");
-        array.writeFormat(fmt.render(fmt_spec, comptime fmt.TypeDescrFormat.init(type_spec.params)));
+        array.writeFormat(fmt.render(fmt_spec, comptime TypeDescrFormat.init(type_spec.params)));
         array.writeMany(",\n");
         array.writeMany(".specs=&.{\n");
         inline for (type_spec.specs) |spec| {
-            array.writeFormat(fmt.render(fmt_spec, comptime fmt.TypeDescrFormat.init(spec)));
+            array.writeFormat(fmt.render(fmt_spec, comptime TypeDescrFormat.init(spec)));
             array.writeMany(",\n");
         }
         array.writeMany("},\n");
         array.writeMany(".vars=");
-        array.writeFormat(fmt.render(fmt_spec, comptime fmt.TypeDescrFormat.init(type_spec.vars)));
+        array.writeFormat(fmt.render(fmt_spec, comptime TypeDescrFormat.init(type_spec.vars)));
         array.writeMany("},\n");
     }
     array.overwriteManyBack("};");
