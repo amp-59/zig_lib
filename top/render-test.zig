@@ -219,8 +219,35 @@ fn testSpecificCases() !void {
         pub const x: u64 = 25;
         pub const y: u64 = 50;
     } }, "struct { pub const x: u64 = 25; pub const y: u64 = 50; }");
+}
+pub fn testOneBigCase() !void {
+    var address_space: builtin.AddressSpace() = .{};
+    var allocator: Allocator = if (use_alloc) try Allocator.init(&address_space) else undefined;
+    defer if (use_alloc) allocator.deinit(&address_space);
+    var dst: [16384]u8 = undefined;
+    var array = blk: {
+        if (use_min) {
+            break :blk MinimalRenderArray.init(&dst);
+        } else if (use_alloc) {
+            break :blk Array.init(&allocator);
+        } else if (use_dyn) {
+            break :blk DynamicArray{
+                .impl = DynamicArray.Implementation.construct(.{
+                    .lb_addr = @ptrToInt(&dst),
+                    .up_addr = @ptrToInt(&dst) + dst.len,
+                }),
+            };
+        } else {
+            break :blk StaticArray{
+                .impl = StaticArray.Implementation.construct(.{
+                    .lb_addr = @ptrToInt(&dst),
+                }),
+            };
+        }
+    };
 
-    array.writeFormat(comptime render.TypeDescrFormat.init(mem.AbstractSpec));
+    try allocator.mapBelow(allocator.ub_addr + 0x10000);
+    array.writeFormat(render.GenericTypeDescrFormat(.{}).init(mem.AbstractSpec));
     builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
@@ -229,4 +256,5 @@ pub fn main() !void {
     } else {
         try meta.wrap(testSpecificCases());
     }
+    try meta.wrap(testOneBigCase());
 }
