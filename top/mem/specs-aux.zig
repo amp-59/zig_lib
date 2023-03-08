@@ -1,9 +1,9 @@
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const proc = @import("../proc.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const fmt = gen.fmt;
+const proc = gen.proc;
+const builtin = gen.builtin;
+
 const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
@@ -20,7 +20,7 @@ fn mapToContainers() void {
     var array: Array = undefined;
     array.undefineAll();
     array.writeMany("const Index=" ++ @typeName(out.Index) ++ ";\n");
-    array.writeMany("pub const specifications: []const[]const[]const Index = &[_][]const[]const Index{\n");
+    array.writeMany("pub const specifications:[]const[]const[]const Index=&[_][]const[]const Index{\n");
     for (out.containers) |indices| {
         array.writeMany("&.{");
         for (keys.values[0..keys.len]) |key| {
