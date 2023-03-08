@@ -14,13 +14,9 @@ const out = struct {
     usingnamespace @import("./zig-out/src/specifications.zig");
 };
 pub usingnamespace proc.start;
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
-};
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .errors = preset.allocator.errors.noexcept,
