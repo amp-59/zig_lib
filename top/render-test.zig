@@ -247,7 +247,7 @@ pub fn testOneBigCase() !void {
     };
 
     try allocator.mapBelow(allocator.ub_addr + 0x10000);
-    array.writeFormat(render.GenericTypeDescrFormat(.{}).init(mem.AbstractSpec));
+    array.writeFormat(comptime render.GenericTypeDescrFormat(.{}).init(mem.AbstractSpec));
     builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
