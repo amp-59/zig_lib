@@ -93,10 +93,7 @@ pub fn appendAuxiliarySourceFile(array: anytype, comptime name: [:0]const u8) vo
     file.makeDir(mkdir_spec, zig_out_src_dir);
     appendSourceFile(array, zig_out_src_dir ++ "/" ++ name);
 }
-pub fn writeIndex(array: anytype, index: anytype) void {
-    array.writeMany(builtin.fmt.dec(@TypeOf(index), index).readAll());
-}
-pub fn writeField(array: anytype, name: []const u8, type_descr: fmt.TypeDescrFormat) void {
+pub fn writeField(array: anytype, name: []const u8, type_descr: anytype) void {
     array.writeMany(name);
     array.writeMany(":");
     array.writeFormat(type_descr);
@@ -173,7 +170,7 @@ fn GenericStructOfEnum(comptime Struct: type) type {
             inline for (@typeInfo(Struct).Struct.fields) |field| {
                 if (field.type == u8) {
                     array.writeMany("." ++ field.name ++ "=");
-                    writeIndex(array, @field(format, field.name));
+                    fmt.ud64(@field(format, field.name)).formatWrite(array);
                     array.writeMany(tok.end_elem);
                 } else {
                     array.writeMany("." ++ field.name ++ "=.");
