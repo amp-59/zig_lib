@@ -958,7 +958,6 @@ fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const detail.Les
 fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-
     const const_decl: *expr.ConstDecl = allocator.duplicateIrreversible(expr.ConstDecl, .{
         .val_name = tok.array_type_name,
         .type_name = tok.type_type_name,
@@ -1000,7 +999,7 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const de
 fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
     array.writeMany("pub fn ");
     ctn_detail.writeContainerName(array);
-    array.writeMany("(comptime " ++ tok.spec_name ++ ": anytype) type {\nreturn (struct {\n");
+    array.writeMany("(comptime " ++ tok.spec_name ++ ":anytype)type{\nreturn(struct{\n");
     array.writeMany(tok.impl_field);
     array.writeMany(tok.end_elem);
     writeDeclarations(allocator, array, ctn_detail);
