@@ -1,12 +1,18 @@
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const builtin = @import("../builtin.zig");
 const gen = @import("./gen.zig");
+const mem = gen.mem;
+const fmt = gen.fmt;
+const proc = gen.proc;
+const preset = gen.preset;
+const builtin = gen.builtin;
 const out = struct {
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
 };
+
+pub usingnamespace proc.start;
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+
 const Array = mem.StaticArray(u8, 1024 * 1024);
 const Keys = gen.GenericKeys(Container, 256);
 const Container = struct {
