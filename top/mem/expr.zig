@@ -8,7 +8,6 @@ const tok = @import("./tok.zig");
 const detail = @import("./detail.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
-//const alloc_fn = @import("./alloc_fn.zig");
 
 const ExprTag = enum(u8) {
     scrub,
@@ -82,21 +81,21 @@ pub const Expr = struct {
         len +%= 1;
         return len;
     }
-    fn formatLengthList(format: Expr, array: anytype) void {
+    fn formatLengthList(format: Expr) u64 {
         if (format.more().len == 0) {
             return 0;
         }
         var len: u64 = 0;
-        const pos: u64 = array.len();
         for (format.more()) |op| {
             len +%= op.formatLength();
             len +%= tok.end_elem.len;
         }
         if (format.more().len == 1 or
-            array.len() -% pos < 40)
+            (len < 40 and len != 0))
         {
             len -%= 1;
         }
+        return len;
     }
     fn formatLengthJoin(format: Expr) u64 {
         var len: u64 = 0;
@@ -108,13 +107,13 @@ pub const Expr = struct {
     pub fn formatLength(format: Expr) u64 {
         var len: u64 = 0;
         switch (format.tag()) {
-            .scrub => {},
+            .scrub => len -%= format.data1, // not a bug (yet)
             .symbol => len +%= format.data2 & mask,
             .constant => len +%= fmt.ud64(format.data1).formatLength(),
             .call => len +%= formatLengthCall(format),
             .call_member => len +%= formatLengthCallMember(format),
-            .join => formatLengthJoin(format),
-            .list => formatLengthList(format),
+            .join => len +%= formatLengthJoin(format),
+            .list => len +%= formatLengthList(format),
         }
         return len;
     }
@@ -122,13 +121,14 @@ pub const Expr = struct {
         if (format.more().len == 0) {
             return;
         }
-        const pos: u64 = array.len();
+        var len: u64 = array.len();
         for (format.more()) |op| {
             op.formatWrite(array);
             array.writeMany(tok.end_elem);
         }
+        len = array.len() -% len;
         if (format.more().len == 1 or
-            array.len() -% pos < 40)
+            (len < 40 and len != 0))
         {
             array.undefine(1);
         }
