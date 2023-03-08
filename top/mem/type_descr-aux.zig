@@ -1,41 +1,34 @@
-const sys = @import("../sys.zig");
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const proc = @import("../proc.zig");
-const meta = @import("../meta.zig");
-const builtin = @import("../builtin.zig");
-const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
-const out = @import("./zig-out/src/type_specs.zig");
-pub usingnamespace proc.start;
-pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
+const mem = gen.mem;
+const fmt = gen.fmt;
+const proc = gen.proc;
+const preset = gen.preset;
+const builtin = gen.builtin;
+
+const out = struct {
+    usingnamespace @import("./zig-out/src/type_specs.zig");
+    usingnamespace @import("./zig-out/src/abstract_params.zig");
 };
+pub usingnamespace proc.start;
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
-const TypeDescrFormat = fmt.GenericTypeDescrFormat(.{});
+const TypeDescrFormat = fmt.GenericTypeDescrFormat(.{ .options = .{ .default_fields = true } });
+const fmt_spec: fmt.RenderSpec = .{ .infer_type_names = true, .ignore_formatter_decls = true };
 
-const fmt_spec = .{
-    .infer_type_names = true,
-    .ignore_formatter_decls = true,
-};
 fn mapContainersToParameters() void {
     var array: Array = undefined;
     array.undefineAll();
     gen.writeImport(&array, "gen", "../../gen.zig");
-    array.writeMany("pub const type_descrs=");
+    array.writeMany("const TypeDescrFormat=gen.fmt.GenericTypeDescrFormat(.{.options=.{.default_fields=true}});\n");
     array.writeMany(
-        \\&[_]struct {
-        \\    params: gen.fmt.GenericTypeDescrFormat(.{}),
-        \\    specs: []const gen.fmt.GenericTypeDescrFormat(.{}),
-        \\    vars: gen.fmt.GenericTypeDescrFormat(.{}),
-        \\}{ 
+        \\pub const type_descrs=&[_]struct {
+        \\    params: TypeDescrFormat,
+        \\    specs: []const TypeDescrFormat,
+        \\    vars: TypeDescrFormat,
+        \\}{
     );
     inline for (out.type_specs) |type_spec| {
         array.writeMany(".{.params=");
