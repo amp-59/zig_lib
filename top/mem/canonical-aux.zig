@@ -30,7 +30,7 @@ fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) v
         uniques.writeOne(@bitCast(backing_int, value));
     }
     array.writeMany("pub const " ++ field.dst_type_name ++ "=enum(u");
-    gen.writeIndex(array, @intCast(u8, @bitSizeOf(u64) - @clz(uniques.len() - 1)));
+    gen.fmt.ud64(@intCast(u8, @bitSizeOf(u64) - @clz(uniques.len() - 1))).formatWrite(array);
     array.writeMany("){\n");
     for (uniques.readAll(), 0..) |unique, index| {
         const value: field.src_type = @bitCast(field.src_type, unique);
@@ -46,7 +46,7 @@ fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) v
             array.undefine(1);
         }
         array.writeMany("=");
-        gen.writeIndex(array, @intCast(u8, index));
+        gen.fmt.ud64(@intCast(u8, index)).formatWrite(array);
         array.writeMany(",");
     }
     var field_len: u64 = 0;
@@ -54,7 +54,7 @@ fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) v
     array.writeMany("switch (@bitCast(" ++ @typeName(backing_int) ++ "," ++ field.src_name ++ ")){\n");
     for (uniques.readAll()) |unique| {
         const value: field.src_type = @bitCast(field.src_type, unique);
-        gen.writeIndex(array, unique);
+        gen.fmt.ud64(unique).formatWrite(array);
         array.writeMany("=>return .");
         const save: u64 = array.len();
         inline for (@typeInfo(field.src_type).Struct.fields) |field_field| {
@@ -91,7 +91,7 @@ fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) v
             array.undefine(1);
         }
         array.writeMany("=>return@bitCast(T,@as(" ++ @typeName(backing_int) ++ ",");
-        gen.writeIndex(array, unique);
+        gen.fmt.ud64(unique).formatWrite(array);
         array.writeMany(")),\n");
     }
     array.writeMany("}\n}\n};\n");
