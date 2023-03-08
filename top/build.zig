@@ -214,7 +214,6 @@ fn join(
         .enable_cache = true,
         .compiler_rt = false,
         .strip = true,
-        .formatted_panics = false,
         .modules = spec_mods,
         .dependencies = spec_deps,
         .mode = mode,
