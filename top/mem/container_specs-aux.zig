@@ -149,6 +149,7 @@ fn writeContainerGroup(allocator: *Allocator, array: *Array, ctn_group: []const 
         array.params.writeFormat(fmt.ud64(decl_idx));
         array.params.writeMany(",");
     }
+    array.params.writeMany("const Specification=@This();\n");
     array.params.writeMany("};\n");
 }
 fn generateParameters() !void {
