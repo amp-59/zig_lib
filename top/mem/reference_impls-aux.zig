@@ -887,10 +887,8 @@ fn writeDeclarations(array: *Array, impl_variant: *const detail.More) void {
     const const_decl_name: *Expr = &const_decl[1];
     const const_decl_type_name: *Expr = &const_decl[3];
     const const_decl_value: *Expr = &const_decl[5];
-
     const_decl_type_name.* = no_type_expr;
     array.writeFormat(expr.join(&const_decl));
-
     if (impl_variant.kinds.parametric) {
         const_decl_name.* = expr.symbol(tok.slave_fn_type_name);
         const_decl_value.* = expr.symbol(tok.slave_fn_type_decl_spec);
@@ -922,7 +920,7 @@ fn writeSimpleRedecl(array: *Array, impl_fn_info: *const Fn, info: *Info) void {
         array.undefine(array.len() - info.start);
         array.writeMany("pub const ");
         array.writeMany(impl_fn_info.fnName());
-        array.writeMany(" = ");
+        array.writeMany("=");
         array.writeMany(impl_fn_alias_info.fnName());
         array.writeMany(";\n");
         info.alias = null;
@@ -933,11 +931,10 @@ inline fn writeComptimeField(array: *Array, impl_variant: *const detail.More, im
     if (args_list.comptimeField()) {
         array.writeMany(tok.comptime_keyword);
         array.writeMany(impl_fn_info.fnName());
-
         if (impl_variant.kinds.parametric) {
-            array.writeMany(": Slave = ");
+            array.writeMany(":Slave=");
         } else {
-            array.writeMany(": Static = ");
+            array.writeMany(":Static=");
         }
         array.writeMany(impl_fn_info.fnName());
         array.writeMany(tok.end_elem);
@@ -980,13 +977,11 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, accm_spec_inde
     array.writeMany("fn ");
     impl_variant.writeImplementationName(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ":" ++ tok.generic_spec_type_name);
-    gen.writeIndex(array, accm_spec_index);
+    gen.fmt.ud64(accm_spec_index).formatWrite(array);
     array.writeMany(")type{\nreturn(struct{\n");
-    {
-        writeFields(array, impl_variant);
-        writeDeclarations(array, impl_variant);
-        writeFunctions(allocator, array, impl_variant);
-    }
+    writeFields(array, impl_variant);
+    writeDeclarations(array, impl_variant);
+    writeFunctions(allocator, array, impl_variant);
     array.writeMany("});\n}\n");
 }
 pub fn generateReferences() void {
