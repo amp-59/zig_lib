@@ -1574,6 +1574,13 @@ pub const fmt = opaque {
             return s[1 .. s.len -% 5];
         }
     }
+    pub fn cx(comptime value: anytype) []const u8 {
+        const S: type = @TypeOf(value);
+        const T = [:value]S;
+        const s_type_name: []const u8 = @typeName(S);
+        const t_type_name: []const u8 = @typeName(T);
+        return t_type_name[2 .. t_type_name.len - (s_type_name.len + 1)];
+    }
     pub fn int(value: anytype) StaticString(@TypeOf(value), 10) {
         if (@sizeOf(@TypeOf(value)) == 0) {
             return ci(value);
