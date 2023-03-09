@@ -1351,6 +1351,7 @@ pub const TypeDescrFormatSpec = struct {
 
     const Options = struct {
         default_fields: bool = false,
+        init_depth: u64 = 0,
     };
     const Tokens = struct {
         lbrace: []const u8 = " {\n",
@@ -1358,7 +1359,7 @@ pub const TypeDescrFormatSpec = struct {
         rbrace: []const u8 = "}",
         next: []const u8 = ",\n",
         colon: []const u8 = ": ",
-        indent: []const u8 = "   ",
+        indent: []const u8 = "    ",
     };
 };
 pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
@@ -1367,7 +1368,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         type_decl: Container,
         type_refer: Reference,
         const TypeDescrFormat = @This();
-        var depth: u64 = 0;
+        var depth: u64 = spec.options.init_depth;
         const Reference = struct { []const u8, *const TypeDescrFormat };
         const Enumeration = struct { []const u8, []const Decl };
         const Composition = struct { []const u8, []const Field };
@@ -1390,8 +1391,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 .type_decl => |type_decl| {
                     switch (type_decl) {
                         .Composition => |struct_defn| {
-                            depth +%= 1;
+                            if (spec.options.init_depth != 0 and
+                                spec.options.init_depth == depth)
+                                for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             array.writeMany(struct_defn[0]);
+                            depth +%= 1;
                             array.writeMany(spec.tokens.lbrace);
                             for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             for (struct_defn[1]) |field| {
@@ -1412,8 +1416,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             depth -%= 1;
                         },
                         .Enumeration => |enum_defn| {
-                            depth +%= 1;
+                            if (spec.options.init_depth != 0 and
+                                spec.options.init_depth == depth)
+                                for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             array.writeMany(enum_defn[0]);
+                            depth +%= 1;
                             array.writeMany(spec.tokens.lbrace);
                             for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             for (enum_defn[1]) |field| {
@@ -1442,8 +1449,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 .type_decl => |type_decl| {
                     switch (type_decl) {
                         .Composition => |struct_defn| {
-                            depth +%= 1;
+                            if (spec.options.init_depth != 0 and
+                                spec.options.init_depth == depth)
+                                len +%= depth *% spec.tokens.indent.len;
                             len +%= struct_defn[0].len;
+                            depth +%= 1;
                             len +%= spec.tokens.lbrace.len;
                             len +%= depth *% spec.tokens.indent.len;
                             for (struct_defn[1]) |field| {
@@ -1464,8 +1474,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             depth -%= 1;
                         },
                         .Enumeration => |enum_defn| {
-                            depth +%= 1;
+                            if (spec.options.init_depth != 0 and
+                                spec.options.init_depth == depth)
+                                len +%= depth *% spec.tokens.indent.len;
                             len +%= enum_defn[0].len;
+                            depth +%= 1;
                             len +%= spec.tokens.lbrace.len;
                             len +%= depth *% spec.tokens.indent.len;
                             for (enum_defn[1]) |field| {
@@ -1487,10 +1500,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         fn defaultFieldValue(comptime field_type: type, comptime default_value_opt: ?*const anyopaque) ?[]const u8 {
             if (default_value_opt) |default_value_ptr| {
                 const default_value: field_type = mem.pointerOpaque(field_type, default_value_ptr).*;
-                const slice_type = [:default_value]field_type;
-                const s_type_name: []const u8 = @typeName(field_type);
-                const t_type_name: []const u8 = @typeName(slice_type);
-                return t_type_name[2 .. t_type_name.len - (s_type_name.len + 1)];
+                return builtin.fmt.cx(default_value);
             } else {
                 return null;
             }

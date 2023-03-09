@@ -1,5 +1,5 @@
 pub fn GenericStructOfBool(comptime Struct: type) type {
-    return (struct {
+    return struct {
         pub fn countTrue(bit_field: Struct) u64 {
             var ret: u64 = 0;
             inline for (@typeInfo(Struct).Struct.fields) |field| {
@@ -33,7 +33,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             }
             return len;
         }
-    });
+    };
 }
 pub const Kinds = packed struct {
     automatic: bool = false,
