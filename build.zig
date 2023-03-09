@@ -2,16 +2,16 @@ pub usingnamespace struct {
     pub const build = if (true) @import("build/build-aux.zig").main else buildMain;
 };
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
-pub const runtime_assertions: bool = false;
-pub const max_relevant_depth: u64 = 0;
-
 pub const srg = @import("./zig_lib.zig");
 const mem = srg.mem;
 const meta = srg.meta;
-const preset = srg.preset;
 const build = srg.build;
+const preset = srg.preset;
 const builtin = srg.builtin;
+
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const runtime_assertions: bool = false;
+pub const max_relevant_depth: u64 = 0;
 
 const deps: []const []const u8 = &.{"zig_lib"};
 const modules: []const build.Module = &.{.{
@@ -67,23 +67,23 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,       "generate_build", "top/build/generate_build.zig");
     const mg_aux: *build.Group              = builder.addGroup(allocator,               "memgen_auxiliary");
     const mg_abstract_params: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_abstract_params",       "top/mem/abstract_params-aux.zig");
-    const mg_impl_detail: *build.Target     = mg_aux.addTarget(small_spec, allocator,   "mg_impl_detail",           "top/mem/impl_detail-aux.zig");
-    const mg_options: *build.Target         = mg_aux.addTarget(small_spec, allocator,   "mg_options",               "top/mem/options-aux.zig");
+    const mg_impl_detail: *build.Target     = mg_aux.addTarget(debug_spec, allocator,   "mg_impl_detail",           "top/mem/impl_detail-aux.zig");
+    const mg_options: *build.Target         = mg_aux.addTarget(debug_spec, allocator,   "mg_options",               "top/mem/options-aux.zig");
     const mg_type_specs: *build.Target      = mg_aux.addTarget(small_spec, allocator,   "mg_type_specs",            "top/mem/type_specs-aux.zig");
     const mg_type_descr: *build.Target      = mg_aux.addTarget(small_spec, allocator,   "mg_type_descr",            "top/mem/type_descr-aux.zig");
-    const mg_impl_variants: *build.Target   = mg_aux.addTarget(small_spec, allocator,   "mg_impl_variants",         "top/mem/impl_variants-aux.zig");
-    const mg_canonical: *build.Target       = mg_aux.addTarget(small_spec, allocator,   "mg_canonical",             "top/mem/canonical-aux.zig");
+    const mg_impl_variants: *build.Target   = mg_aux.addTarget(debug_spec, allocator,   "mg_impl_variants",         "top/mem/impl_variants-aux.zig");
+    const mg_canonical: *build.Target       = mg_aux.addTarget(debug_spec, allocator,   "mg_canonical",             "top/mem/canonical-aux.zig");
     const mg_canonicals: *build.Target      = mg_aux.addTarget(small_spec, allocator,   "mg_canonicals",            "top/mem/canonicals-aux.zig");
-    const mg_containers: *build.Target      = mg_aux.addTarget(small_spec, allocator,   "mg_containers",            "top/mem/containers-aux.zig");
+    const mg_containers: *build.Target      = mg_aux.addTarget(debug_spec, allocator,   "mg_containers",            "top/mem/containers-aux.zig");
     const mg_kinds: *build.Target           = mg_aux.addTarget(small_spec, allocator,   "mg_kinds",                 "top/mem/kinds-aux.zig");
     const mg_specs: *build.Target           = mg_aux.addTarget(small_spec, allocator,   "mg_specs",                 "top/mem/specs-aux.zig");
-    const mg_interfaces: *build.Target      = mg_aux.addTarget(small_spec, allocator,   "mg_interfaces",            "top/mem/interfaces-aux.zig");
-    const mg_reference_specs: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_reference_specs",       "top/mem/reference_specs-aux.zig");
-    const mg_reference_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_reference_impls",       "top/mem/reference_impls-aux.zig");
-    const mg_container_kinds: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_kinds",       "top/mem/container_kinds-aux.zig");
-    const mg_container_args: *build.Target  = mg_aux.addTarget(small_spec, allocator,   "mg_container_args",        "top/mem/container_args-aux.zig");
-    const mg_container_specs: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_specs",       "top/mem/container_specs-aux.zig");
-    const mg_container_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_impls",       "top/mem/container_impls-aux.zig");
+    const mg_interfaces: *build.Target      = mg_aux.addTarget(debug_spec, allocator,   "mg_interfaces",            "top/mem/interfaces-aux.zig");
+    const mg_reference_specs: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_reference_specs",       "top/mem/reference_specs-aux.zig");
+    const mg_reference_impls: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_reference_impls",       "top/mem/reference_impls-aux.zig");
+    const mg_container_kinds: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_container_kinds",       "top/mem/container_kinds-aux.zig");
+    const mg_container_args: *build.Target  = mg_aux.addTarget(debug_spec, allocator,   "mg_container_args",        "top/mem/container_args-aux.zig");
+    const mg_container_specs: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_container_specs",       "top/mem/container_specs-aux.zig");
+    const mg_container_impls: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_container_impls",       "top/mem/container_impls-aux.zig");
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
     const memgen_test: *build.Target            = mg.addTarget(small_spec, allocator,   "memgen_test",             "top/mem/memgen-test.zig");
     const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_containers",      "top/mem/containers.zig");
@@ -115,8 +115,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     generate_references.dependOnRun(allocator,  mg_reference_impls);
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_allocators.dependOnRun(allocator,  mg_interfaces);
-    memgen_test.dependOnBuild(allocator,        generate_references);
-    memgen_test.dependOnBuild(allocator,        generate_containers);
     memgen_test.dependOnBuild(allocator,        generate_allocators);
     _ = readdir;
     _ = dynamic;
