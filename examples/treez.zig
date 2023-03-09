@@ -50,7 +50,7 @@ const thread_spec: proc.CloneSpec = .{
 };
 const Names = mem.StaticArray([:0]const u8, max_pathname_args);
 //
-const plain_print: bool = false;
+const plain_print: bool = true;
 const print_in_second_thread: bool = true;
 const permit_switch_arrows: bool = false;
 const use_wide_arrows: bool = false;
@@ -80,6 +80,7 @@ const about_follow_s: [:0]const u8 = "follow symbolic links";
 const about_no_follow_s: [:0]const u8 = "do not " ++ about_follow_s;
 const about_wide_s: [:0]const u8 = "display entries using wide character symbols";
 const about_max_depth_s: [:0]const u8 = "limit the maximum depth of recursion";
+const what_s: [:0]const u8 = "???";
 const endl_s: [:0]const u8 = "\x1b[0m\n";
 const del_s: [:0]const u8 = "\x08\x08\x08\x08";
 const spc_bs: [:0]const u8 = "    ";
@@ -121,8 +122,8 @@ const Results = struct {
     }
 };
 const Filter = meta.EnumBitField(file.Kind);
-const any_style: [16][]const u8 = blk: {
-    var tmp: [16][]const u8 = .{undefined} ** 16;
+const any_style: [16][:0]const u8 = blk: {
+    var tmp: [16][:0]const u8 = .{undefined} ** 16;
     tmp[sys.S.IFDIR >> 12] = lit.fx.style.bold;
     tmp[sys.S.IFREG >> 12] = lit.fx.color.fg.yellow;
     tmp[sys.S.IFLNK >> 12] = lit.fx.color.fg.hi_cyan;
@@ -133,17 +134,17 @@ const any_style: [16][]const u8 = blk: {
     break :blk tmp;
 };
 const Style = if (permit_switch_arrows) struct {
-    var spc_s: []const u8 = undefined;
-    var bar_s: []const u8 = undefined;
-    var links_to_s: []const u8 = undefined;
-    var file_arrow_s: []const u8 = undefined;
-    var last_file_arrow_s: []const u8 = undefined;
-    var link_arrow_s: []const u8 = undefined;
-    var last_link_arrow_s: []const u8 = undefined;
-    var dir_arrow_s: []const u8 = undefined;
-    var last_dir_arrow_s: []const u8 = undefined;
-    var empty_dir_arrow_s: []const u8 = undefined;
-    var last_empty_dir_arrow_s: []const u8 = undefined;
+    var spc_s: [:0]const u8 = undefined;
+    var bar_s: [:0]const u8 = undefined;
+    var links_to_s: [:0]const u8 = undefined;
+    var file_arrow_s: [:0]const u8 = undefined;
+    var last_file_arrow_s: [:0]const u8 = undefined;
+    var link_arrow_s: [:0]const u8 = undefined;
+    var last_link_arrow_s: [:0]const u8 = undefined;
+    var dir_arrow_s: [:0]const u8 = undefined;
+    var last_dir_arrow_s: [:0]const u8 = undefined;
+    var empty_dir_arrow_s: [:0]const u8 = undefined;
+    var last_empty_dir_arrow_s: [:0]const u8 = undefined;
     fn setArrows(options: Options) void {
         spc_s = if (options.wide) spc_ws else spc_bs;
         bar_s = if (options.wide) bar_ws else bar_bs;
@@ -158,17 +159,17 @@ const Style = if (permit_switch_arrows) struct {
         last_empty_dir_arrow_s = if (options.wide) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
     }
 } else struct {
-    const spc_s: []const u8 = if (use_wide_arrows) spc_ws else spc_bs;
-    const bar_s: []const u8 = if (use_wide_arrows) bar_ws else bar_bs;
-    const links_to_s: []const u8 = if (use_wide_arrows) links_to_ws else links_to_bs;
-    const file_arrow_s: []const u8 = if (use_wide_arrows) file_arrow_ws else file_arrow_bs;
-    const last_file_arrow_s: []const u8 = if (use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
-    const link_arrow_s: []const u8 = if (use_wide_arrows) file_arrow_ws else file_arrow_bs;
-    const last_link_arrow_s: []const u8 = if (use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
-    const dir_arrow_s: []const u8 = if (use_wide_arrows) dir_arrow_ws else dir_arrow_bs;
-    const last_dir_arrow_s: []const u8 = if (use_wide_arrows) last_dir_arrow_ws else last_dir_arrow_bs;
-    const empty_dir_arrow_s: []const u8 = if (use_wide_arrows) empty_dir_arrow_ws else empty_dir_arrow_bs;
-    const last_empty_dir_arrow_s: []const u8 = if (use_wide_arrows) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
+    const spc_s: [:0]const u8 = if (use_wide_arrows) spc_ws else spc_bs;
+    const bar_s: [:0]const u8 = if (use_wide_arrows) bar_ws else bar_bs;
+    const links_to_s: [:0]const u8 = if (use_wide_arrows) links_to_ws else links_to_bs;
+    const file_arrow_s: [:0]const u8 = if (use_wide_arrows) file_arrow_ws else file_arrow_bs;
+    const last_file_arrow_s: [:0]const u8 = if (use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
+    const link_arrow_s: [:0]const u8 = if (use_wide_arrows) file_arrow_ws else file_arrow_bs;
+    const last_link_arrow_s: [:0]const u8 = if (use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
+    const dir_arrow_s: [:0]const u8 = if (use_wide_arrows) dir_arrow_ws else dir_arrow_bs;
+    const last_dir_arrow_s: [:0]const u8 = if (use_wide_arrows) last_dir_arrow_ws else last_dir_arrow_bs;
+    const empty_dir_arrow_s: [:0]const u8 = if (use_wide_arrows) empty_dir_arrow_ws else empty_dir_arrow_bs;
+    const last_empty_dir_arrow_s: [:0]const u8 = if (use_wide_arrows) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
 };
 fn show(results: Results) void {
     var array: PrintArray = .{};
@@ -235,94 +236,20 @@ fn conditionalSkip(entry_name: []const u8) bool {
     }
     return false;
 }
-fn writeSymbolicLinkFollowing(
+fn writeReadLink(
     allocator_1: *Allocator1,
     array: *String1,
-    alts_buf: *PrintArray,
     link_buf: *PrintArray,
+    results: *Results,
     dir_fd: u64,
     base_name: [:0]const u8,
-    is_last: bool,
-) void {
-    const arrow_s: []const u8 = if (is_last) Style.last_link_arrow_s else Style.link_arrow_s;
-    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-        if (plain_print) {
-            break :blk .{ alts_buf.readAll(), base_name, endl_s };
-        } else {
-            break :blk .{ alts_buf.readAll(), arrow_s, lit.fx.color.fg.cyan, base_name, Style.links_to_s };
-        }
-    }));
+) !void {
     const buf: []u8 = link_buf.referManyUndefined(4096);
-    if (file.readLinkAt(.{}, dir_fd, base_name, buf)) |path_name| {
-        try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ path_name, endl_s }));
-    } else |_| {
-        try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ "???", endl_s }));
-    }
-}
-fn writeSymbolicLinkNoFollowing(
-    allocator_1: *Allocator1,
-    array: *String1,
-    alts_buf: *PrintArray,
-    base_name: [:0]const u8,
-    is_last: bool,
-) void {
-    const arrow_s: []const u8 = if (is_last) Style.last_link_arrow_s else Style.link_arrow_s;
-    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-        if (plain_print) {
-            break :blk .{ alts_buf.readAll(), base_name, endl_s };
-        } else {
-            break :blk .{ alts_buf.readAll(), arrow_s, lit.fx.color.fg.cyan, base_name, endl_s };
-        }
-    }));
-}
-fn writeMaybeCorrectEmptyDirectoryListing(
-    allocator_1: *Allocator1,
-    array: *String1,
-    alts_buf: *PrintArray,
-    base_name: [:0]const u8,
-    is_last: bool,
-    s_total: u64,
-    t_total: u64,
-    len_0: u64,
-) void {
-    const arrow_s: []const u8 = if (is_last) Style.last_empty_dir_arrow_s else Style.empty_dir_arrow_s;
-    if (s_total == t_total) {
-        array.undefine(array.len(allocator_1.*) -% len_0);
-        array.writeAny(preset.reinterpret.ptr, .{ alts_buf.readAll(), arrow_s, base_name, endl_s });
-    }
-}
-fn writeDirectory(
-    allocator_1: *Allocator1,
-    array: *String1,
-    alts_buf: *PrintArray,
-    base_name: [:0]const u8,
-    is_last: bool,
-) void {
-    const arrow_s: []const u8 = if (is_last) Style.last_dir_arrow_s else Style.dir_arrow_s;
-    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-        if (plain_print) {
-            break :blk .{ alts_buf.readAll(), base_name, endl_s };
-        } else {
-            break :blk .{ alts_buf.readAll(), arrow_s, base_name, endl_s };
-        }
-    }));
-}
-fn writeOtherFile(
-    allocator_1: *Allocator1,
-    array: *String1,
-    alts_buf: *PrintArray,
-    base_name: [:0]const u8,
-    kind: file.Kind,
-    is_last: bool,
-) void {
-    const arrow_s: []const u8 = if (is_last) Style.last_file_arrow_s else Style.file_arrow_s;
-    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-        if (plain_print) {
-            break :blk .{ alts_buf.readAll(), base_name, endl_s };
-        } else {
-            break :blk .{ alts_buf.readAll(), arrow_s, any_style[@enumToInt(kind)], base_name, endl_s };
-        }
-    }));
+    const link_pathname: [:0]const u8 = file.readLinkAt(.{}, dir_fd, base_name, buf) catch {
+        results.errors +%= 1;
+        return meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ what_s, endl_s }));
+    };
+    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s }));
 }
 fn writeAndWalkPlain(
     options: *const Options,
@@ -339,52 +266,39 @@ fn writeAndWalkPlain(
     const need_separator: bool = name[name.len -% 1] != '/';
     alts_buf.writeMany(name);
     if (need_separator) alts_buf.writeOne('/');
-    defer {
-        alts_buf.undefine(name.len);
-        alts_buf.undefine(builtin.int(u64, need_separator));
-    }
-    const try_empty_dir_correction: bool =
-        (permit_switch_arrows and options.wide) or
-        (use_wide_arrows) or
-        (always_try_empty_dir_correction);
-
+    defer alts_buf.undefine(name.len + builtin.int(u64, need_separator));
     var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
     while (list.at(index)) |entry| : (index +%= 1) {
-        const kind: file.Kind = entry.kind();
-        const base_name: [:0]const u8 = entry.name();
-        const is_last: bool = index == list.count -% 1;
-        if (options.hide and conditionalSkip(base_name)) {
+        const basename: [:0]const u8 = entry.name();
+        if (options.hide and conditionalSkip(basename)) {
             continue;
         }
-        switch (kind) {
-            .directory => {
-                results.dirs +%= 1;
-                const len_0: u64 = array.len(allocator_1.*);
-                writeDirectory(allocator_1, array, alts_buf, base_name, is_last);
-                if (depth != options.max_depth) {
-                    results.depth = builtin.max(u64, results.depth, depth +% 1);
-                    const s_total: u64 = results.total();
-                    writeAndWalkPlain(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth +% 1) catch {};
-                    const t_total: u64 = results.total();
-                    if (try_empty_dir_correction) {
-                        writeMaybeCorrectEmptyDirectoryListing(allocator_1, array, alts_buf, base_name, is_last, s_total, t_total, len_0);
-                    }
-                }
-            },
+        switch (entry.kind()) {
             .symbolic_link => {
                 results.links +%= 1;
                 if (options.follow) {
-                    writeSymbolicLinkFollowing(allocator_1, array, alts_buf, link_buf, dir.fd, base_name, is_last);
+                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, '\t' }));
+                    try writeReadLink(allocator_1, array, link_buf, results, dir.fd, basename);
                 } else {
-                    writeSymbolicLinkNoFollowing(allocator_1, array, alts_buf, base_name, is_last);
+                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s }));
                 }
             },
-            else => {
+            .regular, .character_special, .block_special, .named_pipe, .socket => {
                 results.files +%= 1;
-                writeOtherFile(allocator_1, array, alts_buf, base_name, kind, is_last);
+                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s }));
+            },
+            .directory => {
+                results.dirs +%= 1;
+                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s }));
+                if (depth != options.max_depth) {
+                    results.depth = builtin.max(u64, results.depth, depth +% 1);
+                    writeAndWalkPlain(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, basename, depth +% 1) catch {
+                        results.errors +%= 1;
+                    };
+                }
             },
         }
     }
@@ -402,51 +316,63 @@ fn writeAndWalk(
     depth: u64,
 ) !void {
     const try_empty_dir_correction: bool =
+        always_try_empty_dir_correction or
         (permit_switch_arrows and options.wide) or
-        (use_wide_arrows) or
-        (always_try_empty_dir_correction);
+        use_wide_arrows;
     var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
     while (list.at(index)) |entry| : (index +%= 1) {
-        const base_name: [:0]const u8 = entry.name();
-        if (options.hide and conditionalSkip(base_name)) {
+        const basename: [:0]const u8 = entry.name();
+        const last: bool = index == list.count -% 1;
+        if (options.hide and conditionalSkip(basename)) {
             continue;
         }
         const kind: file.Kind = entry.kind();
-        const is_last: bool = index == list.count -% 1;
-        const indent: []const u8 = if (is_last) Style.spc_s else Style.bar_s;
+        const indent: []const u8 = if (last) Style.spc_s else Style.bar_s;
         alts_buf.writeMany(indent);
         defer alts_buf.undefine(indent.len);
         switch (kind) {
-            .directory => {
-                results.dirs +%= 1;
-                const len_0: u64 = array.len(allocator_1.*);
-                writeDirectory(allocator_1, array, alts_buf, base_name, is_last);
-                if (depth != options.max_depth) {
-                    results.depth = builtin.max(u64, results.depth, depth +% 1);
-                    const s_total: u64 = results.total();
-                    writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth +% 1) catch {
-                        results.errors +%= 1;
-                    };
-                    const t_total: u64 = results.total();
-                    if (try_empty_dir_correction) {
-                        writeMaybeCorrectEmptyDirectoryListing(allocator_1, array, alts_buf, base_name, is_last, s_total, t_total, len_0);
-                    }
-                }
-            },
             .symbolic_link => {
                 results.links +%= 1;
                 if (options.follow) {
-                    writeSymbolicLinkFollowing(allocator_1, array, alts_buf, link_buf, dir.fd, base_name, is_last);
+                    const arrow_s: [:0]const u8 = if (last) Style.last_link_arrow_s else Style.link_arrow_s;
+                    const style_s: [:0]const u8 = lit.fx.color.fg.cyan;
+                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, Style.links_to_s }));
+                    try writeReadLink(allocator_1, array, link_buf, results, dir.fd, basename);
                 } else {
-                    writeSymbolicLinkNoFollowing(allocator_1, array, alts_buf, base_name, is_last);
+                    const arrow_s: [:0]const u8 = if (last) Style.last_link_arrow_s else Style.link_arrow_s;
+                    const style_s: [:0]const u8 = lit.fx.color.fg.cyan;
+                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, endl_s }));
                 }
             },
-            else => {
+            .regular, .character_special, .block_special, .named_pipe, .socket => {
                 results.files +%= 1;
-                writeOtherFile(allocator_1, array, alts_buf, base_name, kind, is_last);
+                const arrow_s: [:0]const u8 = if (last) Style.last_file_arrow_s else Style.file_arrow_s;
+                const style_s: [:0]const u8 = any_style[@enumToInt(kind)];
+                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, endl_s }));
+            },
+            .directory => {
+                results.dirs +%= 1;
+                var arrow_s: [:0]const u8 = if (last) Style.last_dir_arrow_s else Style.dir_arrow_s;
+                const len_0: u64 = array.len(allocator_1.*);
+                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, basename, endl_s }));
+                if (depth != options.max_depth) {
+                    results.depth = builtin.max(u64, results.depth, depth +% 1);
+                    const en_total: u64 = results.total();
+                    writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, basename, depth +% 1) catch {
+                        results.errors +%= 1;
+                    };
+                    const ex_total: u64 = results.total();
+                    if (try_empty_dir_correction) {
+                        arrow_s = if (index == list.count -% 1) Style.last_empty_dir_arrow_s else Style.empty_dir_arrow_s;
+                        if (en_total == ex_total) {
+                            array.undefine(array.len(allocator_1.*) -% len_0);
+                            array.writeAny(preset.reinterpret.ptr, .{ alts_buf.readAll(), arrow_s, basename, endl_s });
+                        }
+                    }
+                }
             },
         }
     }
@@ -473,36 +399,69 @@ pub fn main(args_in: [][*:0]u8) !void {
     try meta.wrap(allocator_0.map(32768));
     try meta.wrap(allocator_1.map(32768));
     for (names.readAll()) |arg| {
-        var done: bool = false;
         var results: Results = .{};
         var alts_buf: PrintArray = undefined;
-        if (!plain_print) {
-            alts_buf.writeCount(4096, (" " ** 4096).*);
-            alts_buf.undefine(4096);
-        }
-        var link_buf: PrintArray = .{};
+        alts_buf.undefineAll();
+        var link_buf: PrintArray = undefined;
+        link_buf.undefineAll();
         var array: String1 = String1.init(&allocator_1);
         defer array.deinit(&allocator_1);
-        if (print_in_second_thread) {
-            const stack_addr: u64 = try meta.wrap(thread.map(map_spec, 8));
-            tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
-        }
         try meta.wrap(array.appendMany(&allocator_1, arg));
         try meta.wrap(array.appendMany(&allocator_1, if (arg[arg.len -% 1] != '/') "/\n" else "\n"));
-        @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
-            &options,  &allocator_0, &allocator_1, &array,
-            &alts_buf, &link_buf,    &results,     null,
-            arg,       0,
-        }) catch {
-            results.errors +%= 1;
-        };
-        if (print_in_second_thread) {
-            done = true;
-            mem.monitor(bool, &done);
-            thread.unmap(.{ .errors = .{} }, 8);
+        if (plain_print) {
+            if (print_in_second_thread) {
+                var done: bool = false;
+                const stack_addr: u64 = try meta.wrap(thread.map(map_spec, 8));
+                tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
+                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
+                    &options,  &allocator_0, &allocator_1, &array,
+                    &alts_buf, &link_buf,    &results,     null,
+                    arg,       0,
+                }) catch {
+                    results.errors +%= 1;
+                };
+                done = true;
+                mem.monitor(bool, &done);
+                thread.unmap(.{ .errors = .{} }, 8);
+            } else {
+                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
+                    &options,  &allocator_0, &allocator_1, &array,
+                    &alts_buf, &link_buf,    &results,     null,
+                    arg,       0,
+                }) catch {
+                    results.errors +%= 1;
+                };
+                builtin.debug.write(array.readAll(allocator_1));
+                show(results);
+            }
         } else {
-            builtin.debug.write(array.readAll(allocator_1));
-            show(results);
+            alts_buf.writeMany(" " ** 4096);
+            alts_buf.undefine(4096);
+            if (print_in_second_thread) {
+                var done: bool = false;
+                const stack_addr: u64 = try meta.wrap(thread.map(map_spec, 8));
+                tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
+                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
+                    &options,  &allocator_0, &allocator_1, &array,
+                    &alts_buf, &link_buf,    &results,     null,
+                    arg,       0,
+                }) catch {
+                    results.errors +%= 1;
+                };
+                done = true;
+                mem.monitor(bool, &done);
+                thread.unmap(.{ .errors = .{} }, 8);
+            } else {
+                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
+                    &options,  &allocator_0, &allocator_1, &array,
+                    &alts_buf, &link_buf,    &results,     null,
+                    arg,       0,
+                }) catch {
+                    results.errors +%= 1;
+                };
+                builtin.debug.write(array.readAll(allocator_1));
+                show(results);
+            }
         }
     }
 }
