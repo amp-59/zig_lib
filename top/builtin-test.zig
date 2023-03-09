@@ -24,6 +24,12 @@ fn comptimeIntToStringPro(comptime value: comptime_int) []const u8 {
         return s[1 .. s.len - 5];
     }
 }
+fn testComptimeIntToString() void {
+    @setEvalBranchQuota(0x10000);
+    inline for (0x0..0x10000) |index| {
+        _ = comptime comptimeIntToStringPro(index);
+    }
+}
 pub fn testIntToString() !void {
     const T: type = u64;
     var arg1: T = 0;
