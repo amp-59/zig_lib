@@ -108,12 +108,14 @@ const about_dirs_s: [:0]const u8 = "dirs:           ";
 const about_files_s: [:0]const u8 = "files:          ";
 const about_links_s: [:0]const u8 = "links:          ";
 const about_depth_s: [:0]const u8 = "depth:          ";
+const about_errors_s: [:0]const u8 = "errors:         ";
 
 const Results = struct {
     files: u64 = 0,
     dirs: u64 = 0,
     links: u64 = 0,
     depth: u64 = 0,
+    errors: u64 = 0,
     inline fn total(results: Results) u64 {
         return results.dirs + results.files + results.links;
     }
@@ -181,6 +183,9 @@ fn show(results: Results) void {
     array.writeOne('\n');
     array.writeMany(about_depth_s);
     array.writeFormat(fmt.udh(results.depth));
+    array.writeOne('\n');
+    array.writeMany(about_errors_s);
+    array.writeFormat(fmt.udh(results.errors));
     array.writeOne('\n');
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
