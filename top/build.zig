@@ -116,14 +116,17 @@ pub const Builder = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
+        const emit_bin: bool = builder.options.emit_bin;
         const bin_path: [:0]const u8 = "zig-out/bin/" ++ name;
+        const emit_asm: bool = builder.options.emit_asm;
         const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
         const mode: builtin.Mode = builder.options.mode orelse spec.mode;
         const target_list: *TargetList = &builder.groups.node.this.targets;
         return @call(.auto, join, .{
-            allocator, builder,    target_list, name,     pathname,
-            spec.fmt,  spec.build, spec.run,    mode,     builder.options.emit_asm,
-            spec.deps, spec.mods,  spec.macros, bin_path, asm_path,
+            allocator, builder,     target_list, name,     pathname,
+            spec.fmt,  spec.build,  spec.run,    mode,     mode,
+            emit_bin,  bin_path,    emit_asm,    asm_path, spec.deps,
+            spec.mods, spec.macros,
         });
     }
     pub fn addGroup(
@@ -195,14 +198,14 @@ fn join(
     spec_build: bool,
     spec_run: bool,
     mode: builtin.Mode,
+    emit_bin: bool,
+    bin_path: [:0]const u8,
     emit_asm: bool,
+    asm_path: [:0]const u8,
     spec_deps: []const []const u8,
     spec_mods: []const Module,
     spec_macros: []const Macro,
-    bin_path: [:0]const u8,
-    asm_path: [:0]const u8,
 ) *Target {
-    _ = emit_asm;
     const ret: *Target = targets.create(allocator, .{
         .name = name,
         .root = pathname,
@@ -212,8 +215,8 @@ fn join(
     if (spec_fmt) ret.addFormat(allocator, .{});
     if (spec_build) ret.addBuild(allocator, .{
         .main_pkg_path = builder.paths.build_root,
-        .emit_bin = .{ .yes = builder.path(bin_path) },
-        .emit_asm = .{ .yes = builder.path(asm_path) },
+        .emit_bin = if (emit_bin) .{ .yes = builder.path(bin_path) } else null,
+        .emit_asm = if (emit_asm) .{ .yes = builder.path(asm_path) } else null,
         .name = name,
         .kind = .exe,
         .omit_frame_pointer = false,
@@ -346,13 +349,16 @@ pub const Group = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
+        const emit_bin: bool = group.builder.options.emit_bin;
         const bin_path: [:0]const u8 = "zig-out/bin/" ++ name;
+        const emit_asm: bool = group.builder.options.emit_asm;
         const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
         return @call(.auto, join, .{
-            allocator, group.builder, &group.targets, name,     pathname,
-            spec.fmt,  spec.build,    spec.run,       mode,     group.builder.options.emit_asm,
-            spec.deps, spec.mods,     spec.macros,    bin_path, asm_path,
+            allocator,   group.builder, &group.targets, name,      pathname,
+            spec.fmt,    spec.build,    spec.run,       mode,      emit_bin,
+            bin_path,    emit_asm,      asm_path,       spec.deps, spec.mods,
+            spec.macros,
         });
     }
 };

@@ -19,7 +19,7 @@ pub const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = builtin.AddressSpace(),
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
-    .options = preset.allocator.options.fast,
+    .options = preset.allocator.options.small,
 });
 pub const ArgsString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
 pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
@@ -33,6 +33,8 @@ pub const GlobalOptions = struct {
     strip: bool = true,
     verbose: bool = false,
     cmd: Target.Tag = .build,
+    emit_bin: bool = true,
+    emit_asm: bool = false,
     pub const Map = proc.GenericOptions(GlobalOptions);
 };
 pub const BuilderSpec = struct {
@@ -115,12 +117,17 @@ pub const Builder = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
+        const emit_bin: bool = builder.options.emit_bin;
+        const bin_path: [:0]const u8 = "zig-out/bin/" ++ name;
+        const emit_asm: bool = builder.options.emit_asm;
+        const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
+        const mode: builtin.Mode = builder.options.mode orelse spec.mode;
+        const target_list: *TargetList = &builder.groups.node.this.targets;
         return @call(.auto, join, .{
-            allocator,              builder,   &builder.groups.node.this.targets,
-            name,                   pathname,  spec.fmt,
-            spec.build,             spec.run,  builder.options.mode orelse spec.mode,
-            spec.deps,              spec.mods, spec.macros,
-            "zig-out/bin/" ++ name,
+            allocator, builder,     target_list, name,     pathname,
+            spec.fmt,  spec.build,  spec.run,    mode,     mode,
+            emit_bin,  bin_path,    emit_asm,    asm_path, spec.deps,
+            spec.mods, spec.macros,
         });
     }
     pub fn addGroup(
@@ -192,10 +199,13 @@ fn join(
     spec_build: bool,
     spec_run: bool,
     mode: builtin.Mode,
+    emit_bin: bool,
+    bin_path: [:0]const u8,
+    emit_asm: bool,
+    asm_path: [:0]const u8,
     spec_deps: []const []const u8,
     spec_mods: []const Module,
     spec_macros: []const Macro,
-    bin_path: [:0]const u8,
 ) *Target {
     const ret: *Target = targets.create(allocator, .{
         .name = name,
@@ -206,7 +216,8 @@ fn join(
     if (spec_fmt) ret.addFormat(allocator, .{});
     if (spec_build) ret.addBuild(allocator, .{
         .main_pkg_path = builder.paths.build_root,
-        .emit_bin = .{ .yes = builder.path(bin_path) },
+        .emit_bin = if (emit_bin) .{ .yes = builder.path(bin_path) } else null,
+        .emit_asm = if (emit_asm) .{ .yes = builder.path(asm_path) } else null,
         .name = name,
         .kind = .exe,
         .omit_frame_pointer = false,
@@ -256,12 +267,16 @@ pub const Group = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
+        const emit_bin: bool = group.builder.options.emit_bin;
+        const bin_path: [:0]const u8 = "zig-out/bin/" ++ name;
+        const emit_asm: bool = group.builder.options.emit_asm;
+        const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
+        const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
         return @call(.auto, join, .{
-            allocator,              group.builder, &group.targets,
-            name,                   pathname,      spec.fmt,
-            spec.build,             spec.run,      group.builder.options.mode orelse spec.mode,
-            spec.deps,              spec.mods,     spec.macros,
-            "zig-out/bin/" ++ name,
+            allocator,   group.builder, &group.targets, name,      pathname,
+            spec.fmt,    spec.build,    spec.run,       mode,      emit_bin,
+            bin_path,    emit_asm,      asm_path,       spec.deps, spec.mods,
+            spec.macros,
         });
     }
 };
