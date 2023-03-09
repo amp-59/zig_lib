@@ -227,7 +227,7 @@ fn testSpecificCases() !void {
 }
 pub fn testOneBigCase() !void {
     var array: mem.StaticString(0x10000) = .{};
-    array.writeFormat(comptime render.GenericTypeDescrFormat(.{ .options = .{ .init_depth = 0 } }).init(mem.AbstractSpec));
+    array.writeFormat(comptime render.GenericTypeDescrFormat(.{ .options = .{ .depth = 0 } }).init(mem.AbstractSpec));
     builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
