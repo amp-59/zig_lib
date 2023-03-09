@@ -123,10 +123,10 @@ pub const Builder = struct {
         const mode: builtin.Mode = builder.options.mode orelse spec.mode;
         const target_list: *TargetList = &builder.groups.node.this.targets;
         return @call(.auto, join, .{
-            allocator, builder,     target_list, name,     pathname,
-            spec.fmt,  spec.build,  spec.run,    mode,     mode,
-            emit_bin,  bin_path,    emit_asm,    asm_path, spec.deps,
-            spec.mods, spec.macros,
+            allocator,   builder,    target_list, name,      pathname,
+            spec.fmt,    spec.build, spec.run,    mode,      emit_bin,
+            bin_path,    emit_asm,   asm_path,    spec.deps, spec.mods,
+            spec.macros,
         });
     }
     pub fn addGroup(
