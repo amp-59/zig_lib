@@ -3,19 +3,13 @@ const gen = @import("./gen.zig");
 const mem = gen.mem;
 const fmt = gen.fmt;
 const proc = gen.proc;
+const preset = gen.preset;
 const builtin = gen.builtin;
 
 const abstract_spec = @import("./abstract_spec.zig");
 
 pub usingnamespace proc.start;
-pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
-};
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
@@ -35,8 +29,7 @@ inline fn writeAbstractParametersInternal(array: *Array, comptime types: *[]cons
         }
     } else {
         if (comptime isUniqueType(types.*, T)) {
-            array.writeMany("    ");
-            array.writeFormat(comptime fmt.TypeFormat(.{ .omit_trailing_comma = true }){ .value = T });
+            array.writeFormat(comptime fmt.GenericTypeDescrFormat(.{ .options = .{ .depth = 1 } }).init(T));
             array.writeMany(",\n");
             types.* = types.* ++ [1]type{T};
         }
