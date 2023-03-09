@@ -9,39 +9,18 @@ const proc = srg.proc;
 const preset = srg.preset;
 const thread = srg.thread;
 const builtin = srg.builtin;
-
 pub usingnamespace proc.start;
-pub const runtime_assertions: bool = false;
-pub const is_verbose: bool = false;
-pub const is_silent: bool = false;
-
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
     .divisions = 32,
-    .errors = .{
-        .acquire = .ignore,
-        .release = .ignore,
-    },
+    .errors = .{ .acquire = .ignore, .release = .ignore },
 });
-const map_spec: thread.MapSpec = .{
-    .errors = .{},
-    .options = .{},
-};
-const thread_spec: proc.CloneSpec = .{
-    .errors = .{},
-    .options = .{},
-    .return_type = u64,
-};
 const Allocator0 = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
-    .options = blk: {
-        var tmp = preset.allocator.options.small;
-        tmp.init_commit = 32768;
-        tmp.prefer_remap = false;
-        break :blk tmp;
-    },
+    .options = preset.allocator.options.small,
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
 });
@@ -52,46 +31,83 @@ const Allocator1 = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
 });
+const PrintArray = mem.StaticString(4096);
 const String1 = Allocator1.StructuredHolder(u8);
 const String0 = Allocator0.StructuredHolder(u8);
 const DirStream = file.GenericDirStream(.{
     .Allocator = Allocator0,
     .options = .{},
-    .logging = .{},
+    .logging = preset.dir.logging.silent,
 });
-const Names = mem.StructuredAutomaticVector([:0]const u8, null, 128, 8, .{});
-
-const PrintArray = mem.StaticString(4096);
-const Options = struct {
+const map_spec: thread.MapSpec = .{
+    .errors = .{},
+    .options = .{},
+};
+const thread_spec: proc.CloneSpec = .{
+    .errors = .{},
+    .options = .{},
+    .return_type = u64,
+};
+const Names = mem.StaticArray([:0]const u8, max_pathname_args);
+//
+const plain_print: bool = false;
+const print_in_second_thread: bool = true;
+const permit_switch_arrows: bool = false;
+const use_wide_arrows: bool = false;
+const always_try_empty_dir_correction: bool = false;
+const max_pathname_args: u16 = 128;
+//
+const Options = packed struct {
     hide: bool = false,
-    follow: bool = false,
+    follow: bool = true,
     wide: bool = false,
-    max_depth: ?u8 = null,
-
+    max_depth: u16 = ~@as(u16, 0),
     pub const Map = proc.GenericOptions(Options);
-
-    const plain_print: bool = false;
-    const print_in_second_thread: bool = true;
-    const always_show_hidden: bool = true;
-    const permit_switch_arrows: bool = false;
-    const use_wide_arrows: bool = false;
-    const always_try_empty_dir_correction: bool = false;
-    const about_all_s: []const u8 = "show hidden file system objects";
-    const about_follow_s: []const u8 = "follow symbolic links";
-    const about_no_follow_s: []const u8 = "do not " ++ about_follow_s;
-    const about_wide_s: []const u8 = "display entries using wide character symbols";
-    const about_max_depth_s: []const u8 = "limit the maximum depth of recursion";
     const yes = .{ .boolean = true };
     const no = .{ .boolean = false };
     const int = .{ .convert = convertToInt };
 };
 const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{ // zig fmt: off
-    .{ .field_name = "hide",       .long = "--hide",                        .assign = Options.yes, .descr = Options.about_all_s },
-    .{ .field_name = "follow",     .short = "-L", .long = "--follow",       .assign = Options.yes, .descr = Options.about_follow_s },
-    .{ .field_name = "follow",     .short = "+L", .long = "--no-follow",    .assign = Options.no,  .descr = Options.about_no_follow_s },
-    .{ .field_name = "wide",       .short = "-w", .long = "--wide",         .assign = Options.yes, .descr = Options.about_wide_s },
-    .{ .field_name = "max_depth",  .short = "-d", .long = "--max-depth",    .assign = Options.int, .descr = Options.about_max_depth_s },
+    .{ .field_name = "hide",       .long = "--hide",                        .assign = Options.yes, .descr = about_hide_s },
+    .{ .field_name = "follow",     .short = "-L", .long = "--follow",       .assign = Options.yes, .descr = about_follow_s },
+    .{ .field_name = "follow",     .short = "+L", .long = "--no-follow",    .assign = Options.no,  .descr = about_no_follow_s },
+    .{ .field_name = "wide",       .short = "-w", .long = "--wide",         .assign = Options.yes, .descr = about_wide_s },
+    .{ .field_name = "max_depth",  .short = "-d", .long = "--max-depth",    .assign = Options.int, .descr = about_max_depth_s },
 }); // zig fmt: on
+
+const about_hide_s: [:0]const u8 = "do not show hidden file system objects";
+const about_follow_s: [:0]const u8 = "follow symbolic links";
+const about_no_follow_s: [:0]const u8 = "do not " ++ about_follow_s;
+const about_wide_s: [:0]const u8 = "display entries using wide character symbols";
+const about_max_depth_s: [:0]const u8 = "limit the maximum depth of recursion";
+const endl_s: [:0]const u8 = "\x1b[0m\n";
+const del_s: [:0]const u8 = "\x08\x08\x08\x08";
+const spc_bs: [:0]const u8 = "    ";
+const spc_ws: [:0]const u8 = "    ";
+const bar_bs: [:0]const u8 = "|   ";
+const bar_ws: [:0]const u8 = "│   ";
+const links_to_bs: [:0]const u8 = " --> ";
+const links_to_ws: [:0]const u8 = " ⟶  ";
+const file_arrow_bs: [:0]const u8 = del_s ++ "|-> ";
+const file_arrow_ws: [:0]const u8 = del_s ++ "├── ";
+const last_file_arrow_bs: [:0]const u8 = del_s ++ "`-> ";
+const last_file_arrow_ws: [:0]const u8 = del_s ++ "└── ";
+const link_arrow_bs: [:0]const u8 = file_arrow_bs;
+const link_arrow_ws: [:0]const u8 = file_arrow_ws;
+const last_link_arrow_bs: [:0]const u8 = last_file_arrow_bs;
+const last_link_arrow_ws: [:0]const u8 = last_file_arrow_ws;
+const dir_arrow_bs: [:0]const u8 = del_s ++ "|---+ ";
+const dir_arrow_ws: [:0]const u8 = del_s ++ "├───┬ ";
+const last_dir_arrow_bs: [:0]const u8 = del_s ++ "`---+ ";
+const last_dir_arrow_ws: [:0]const u8 = del_s ++ "└───┬ ";
+const empty_dir_arrow_bs: [:0]const u8 = del_s ++ "|-- ";
+const empty_dir_arrow_ws: [:0]const u8 = del_s ++ "├── ";
+const last_empty_dir_arrow_bs: [:0]const u8 = del_s ++ "`-- ";
+const last_empty_dir_arrow_ws: [:0]const u8 = del_s ++ "└── ";
+const about_dirs_s: [:0]const u8 = "dirs:           ";
+const about_files_s: [:0]const u8 = "files:          ";
+const about_links_s: [:0]const u8 = "links:          ";
+const about_depth_s: [:0]const u8 = "depth:          ";
 
 const Results = struct {
     files: u64 = 0,
@@ -114,31 +130,7 @@ const any_style: [16][]const u8 = blk: {
     tmp[sys.S.IFSOCK >> 12] = lit.fx.color.fg.hi_magenta;
     break :blk tmp;
 };
-const endl_s: []const u8 = "\x1b[0m\n";
-const del_s: []const u8 = "\x08\x08\x08\x08";
-const spc_bs: []const u8 = "    ";
-const spc_ws: []const u8 = "    ";
-const bar_bs: []const u8 = "|   ";
-const bar_ws: []const u8 = "│   ";
-const links_to_bs: []const u8 = " --> ";
-const links_to_ws: []const u8 = " ⟶  ";
-const file_arrow_bs: []const u8 = del_s ++ "|-> ";
-const file_arrow_ws: []const u8 = del_s ++ "├── ";
-const last_file_arrow_bs: []const u8 = del_s ++ "`-> ";
-const last_file_arrow_ws: []const u8 = del_s ++ "└── ";
-const link_arrow_bs: []const u8 = file_arrow_bs;
-const link_arrow_ws: []const u8 = file_arrow_ws;
-const last_link_arrow_bs: []const u8 = last_file_arrow_bs;
-const last_link_arrow_ws: []const u8 = last_file_arrow_ws;
-const dir_arrow_bs: []const u8 = del_s ++ "|---+ ";
-const dir_arrow_ws: []const u8 = del_s ++ "├───┬ ";
-const last_dir_arrow_bs: []const u8 = del_s ++ "`---+ ";
-const last_dir_arrow_ws: []const u8 = del_s ++ "└───┬ ";
-const empty_dir_arrow_bs: []const u8 = del_s ++ "|-- ";
-const empty_dir_arrow_ws: []const u8 = del_s ++ "├── ";
-const last_empty_dir_arrow_bs: []const u8 = del_s ++ "`-- ";
-const last_empty_dir_arrow_ws: []const u8 = del_s ++ "└── ";
-const Style = if (Options.permit_switch_arrows) struct {
+const Style = if (permit_switch_arrows) struct {
     var spc_s: []const u8 = undefined;
     var bar_s: []const u8 = undefined;
     var links_to_s: []const u8 = undefined;
@@ -164,30 +156,31 @@ const Style = if (Options.permit_switch_arrows) struct {
         last_empty_dir_arrow_s = if (options.wide) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
     }
 } else struct {
-    const spc_s: []const u8 = if (Options.use_wide_arrows) spc_ws else spc_bs;
-    const bar_s: []const u8 = if (Options.use_wide_arrows) bar_ws else bar_bs;
-    const links_to_s: []const u8 = if (Options.use_wide_arrows) links_to_ws else links_to_bs;
-    const file_arrow_s: []const u8 = if (Options.use_wide_arrows) file_arrow_ws else file_arrow_bs;
-    const last_file_arrow_s: []const u8 = if (Options.use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
-    const link_arrow_s: []const u8 = if (Options.use_wide_arrows) file_arrow_ws else file_arrow_bs;
-    const last_link_arrow_s: []const u8 = if (Options.use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
-    const dir_arrow_s: []const u8 = if (Options.use_wide_arrows) dir_arrow_ws else dir_arrow_bs;
-    const last_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) last_dir_arrow_ws else last_dir_arrow_bs;
-    const empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) empty_dir_arrow_ws else empty_dir_arrow_bs;
-    const last_empty_dir_arrow_s: []const u8 = if (Options.use_wide_arrows) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
+    const spc_s: []const u8 = if (use_wide_arrows) spc_ws else spc_bs;
+    const bar_s: []const u8 = if (use_wide_arrows) bar_ws else bar_bs;
+    const links_to_s: []const u8 = if (use_wide_arrows) links_to_ws else links_to_bs;
+    const file_arrow_s: []const u8 = if (use_wide_arrows) file_arrow_ws else file_arrow_bs;
+    const last_file_arrow_s: []const u8 = if (use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
+    const link_arrow_s: []const u8 = if (use_wide_arrows) file_arrow_ws else file_arrow_bs;
+    const last_link_arrow_s: []const u8 = if (use_wide_arrows) last_file_arrow_ws else last_file_arrow_bs;
+    const dir_arrow_s: []const u8 = if (use_wide_arrows) dir_arrow_ws else dir_arrow_bs;
+    const last_dir_arrow_s: []const u8 = if (use_wide_arrows) last_dir_arrow_ws else last_dir_arrow_bs;
+    const empty_dir_arrow_s: []const u8 = if (use_wide_arrows) empty_dir_arrow_ws else empty_dir_arrow_bs;
+    const last_empty_dir_arrow_s: []const u8 = if (use_wide_arrows) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
 };
-fn show(results: *Results) void {
+fn show(results: Results) void {
     var array: PrintArray = .{};
-    array.writeMany("dirs:       ");
+    array.writeMany(about_dirs_s);
     array.writeFormat(fmt.udh(results.dirs));
-    array.writeMany("\nfiles:      ");
+    array.writeOne('\n');
+    array.writeMany(about_files_s);
     array.writeFormat(fmt.udh(results.files));
-    array.writeMany("\nlinks:      ");
+    array.writeOne('\n');
+    array.writeMany(about_links_s);
     array.writeFormat(fmt.udh(results.links));
-    array.writeMany("\ndepth:      ");
+    array.writeOne('\n');
+    array.writeMany(about_depth_s);
     array.writeFormat(fmt.udh(results.depth));
-    array.writeMany("\nswap:       ");
-    array.writeFormat(fmt.udh(DirStream.disordered));
     array.writeOne('\n');
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
@@ -215,18 +208,18 @@ fn writeAndWalk(
     depth: u64,
 ) !void {
     const need_separator: bool = name[name.len - 1] != '/';
-    if (Options.plain_print) {
+    if (plain_print) {
         alts_buf.writeMany(name);
         if (need_separator) alts_buf.writeOne('/');
     }
-    defer if (Options.plain_print) {
+    defer if (plain_print) {
         alts_buf.undefine(name.len);
         alts_buf.undefine(builtin.int(u64, need_separator));
     };
     const try_empty_dir_correction: bool =
-        (Options.permit_switch_arrows and options.wide) or
-        (Options.use_wide_arrows) or
-        (Options.always_try_empty_dir_correction);
+        (permit_switch_arrows and options.wide) or
+        (use_wide_arrows) or
+        (always_try_empty_dir_correction);
     var dir: DirStream = try DirStream.initAt(allocator_0, dirfd, name);
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
@@ -234,31 +227,30 @@ fn writeAndWalk(
     while (list.at(index)) |entry| : (index += 1) {
         const is_last: bool = index == list.count - 1;
         const indent: []const u8 = if (is_last) Style.spc_s else Style.bar_s;
-        if (!Options.plain_print) {
+        if (!plain_print) {
             alts_buf.writeMany(indent);
         }
-        defer if (!Options.plain_print) alts_buf.undefine(indent.len);
+        defer if (!plain_print) alts_buf.undefine(indent.len);
         const base_name: [:0]const u8 = entry.name();
         if (options.hide and conditionalSkip(base_name)) {
             continue;
         }
         switch (entry.kind()) {
             .directory => {
-                if (options.max_depth) |max_depth| {
-                    if (depth == max_depth) continue;
-                } else {
-                    results.depth = @max(results.depth, depth + 1);
-                }
                 results.dirs += 1;
                 const len_0: u64 = array.len(allocator_1.*);
                 const s_arrow_s: []const u8 = if (is_last) Style.last_dir_arrow_s else Style.dir_arrow_s;
                 try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-                    if (Options.plain_print) {
+                    if (plain_print) {
                         break :blk .{ alts_buf.readAll(), base_name, endl_s };
                     } else {
                         break :blk .{ alts_buf.readAll(), s_arrow_s, base_name, endl_s };
                     }
                 }));
+                if (depth == options.max_depth) {
+                    continue;
+                }
+                results.depth = @max(results.depth, depth + 1);
                 const s_total: u64 = results.total();
                 writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth + 1) catch {};
                 const t_total: u64 = results.total();
@@ -276,20 +268,20 @@ fn writeAndWalk(
                 const style: []const u8 = lit.fx.color.fg.cyan;
                 if (options.follow) {
                     try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-                        if (Options.plain_print) {
+                        if (plain_print) {
                             break :blk .{ alts_buf.readAll(), base_name, endl_s };
                         } else {
                             break :blk .{ alts_buf.readAll(), arrow, style, base_name, Style.links_to_s };
                         }
                     }));
-                    if (file.readLinkAt(.{}, dir.fd, base_name, link_buf.referCountAt(0, 4096))) |path_name| {
+                    if (file.readLinkAt(.{}, dir.fd, base_name, link_buf.referManyUndefined(4096))) |path_name| {
                         try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ path_name, endl_s }));
                     } else |_| {
                         try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ "???", endl_s }));
                     }
                 } else {
                     try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-                        if (Options.plain_print) {
+                        if (plain_print) {
                             break :blk .{ alts_buf.readAll(), base_name, endl_s };
                         } else {
                             break :blk .{ alts_buf.readAll(), arrow, style, base_name, endl_s };
@@ -301,7 +293,7 @@ fn writeAndWalk(
                 results.files += 1;
                 const arrow: []const u8 = if (is_last) Style.last_file_arrow_s else Style.file_arrow_s;
                 try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, blk: {
-                    if (Options.plain_print) {
+                    if (plain_print) {
                         break :blk .{ alts_buf.readAll(), base_name, endl_s };
                     } else {
                         break :blk .{ alts_buf.readAll(), arrow, any_style[@enumToInt(entry.kind())], base_name, endl_s };
@@ -335,10 +327,9 @@ noinline fn printAlong(results: *Results, done: *bool, allocator: *Allocator1, a
     while (offset != array.len(allocator.*)) {
         offset += printIfNAvail(1, allocator.*, array.*, offset);
     }
-    show(results);
+    show(results.*);
     done.* = false;
 }
-
 inline fn getNames(args: *[][*:0]u8) Names {
     var names: Names = .{};
     var i: u64 = 1;
@@ -347,17 +338,15 @@ inline fn getNames(args: *[][*:0]u8) Names {
     }
     return names;
 }
-
 fn convertToInt(options: *Options, arg: []const u8) void {
     options.max_depth = builtin.parse.ud(u8, arg);
 }
-
 pub fn main(args_in: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
-    var done: bool = undefined;
-    if (Options.permit_switch_arrows) {
+    var tid: u64 = undefined;
+    if (permit_switch_arrows) {
         Style.setArrows(options);
     }
     var names: Names = getNames(&args);
@@ -368,38 +357,33 @@ pub fn main(args_in: [][*:0]u8) !void {
     defer allocator_0.deinit(&address_space);
     var allocator_1: Allocator1 = Allocator1.init(&address_space);
     defer allocator_1.deinit(&address_space);
-    const stack_addr: u64 = if (Options.print_in_second_thread) try meta.wrap(thread.map(map_spec, 8)) else 0;
-    defer thread.unmap(.{ .errors = .{} }, 8);
-    try meta.wrap(allocator_0.map(64 * 1024 * 1024));
-    try meta.wrap(allocator_1.map(64 * 1024 * 1024));
+    try meta.wrap(allocator_0.map(32768));
+    try meta.wrap(allocator_1.map(32768));
     for (names.readAll()) |arg| {
-        done = false;
+        var done: bool = false;
         var results: Results = .{};
-        var alts_buf: PrintArray = .{};
-        if (!Options.plain_print) {
+        var alts_buf: PrintArray = undefined;
+        if (!plain_print) {
             alts_buf.writeCount(4096, (" " ** 4096).*);
             alts_buf.undefine(4096);
         }
         var link_buf: PrintArray = .{};
         var array: String1 = String1.init(&allocator_1);
-        var tid: u64 = undefined;
         defer array.deinit(&allocator_1);
-        if (Options.print_in_second_thread) {
+        if (print_in_second_thread) {
+            const stack_addr: u64 = try meta.wrap(thread.map(map_spec, 8));
             tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
         }
         try meta.wrap(array.appendMany(&allocator_1, arg));
-        if (arg[arg.len - 1] != '/') {
-            try meta.wrap(array.appendMany(&allocator_1, "/\n"));
-        } else {
-            try meta.wrap(array.appendMany(&allocator_1, "\n"));
-        }
+        try meta.wrap(array.appendMany(&allocator_1, if (arg[arg.len - 1] != '/') "/\n" else "\n"));
         writeAndWalk(&options, &allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &results, null, arg, 0) catch {};
-        if (Options.print_in_second_thread) {
+        if (print_in_second_thread) {
             done = true;
             mem.monitor(bool, &done);
+            thread.unmap(.{ .errors = .{} }, 8);
         } else {
             builtin.debug.write(array.readAll(allocator_1));
-            results.show();
+            show(results);
         }
     }
 }
