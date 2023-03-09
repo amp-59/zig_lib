@@ -850,6 +850,7 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
     const buf_addr: u64 = @ptrToInt(buf.ptr);
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.readlinkat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, buf_addr, buf.len }))) |len| {
+        buf[len] = 0;
         return buf[0..len :0];
     } else |readlink_error| {
         if (logging.Error) {

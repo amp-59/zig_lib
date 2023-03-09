@@ -213,6 +213,46 @@ pub const logging = opaque {
         };
     };
 };
+pub const dir = opaque {
+    pub const options = opaque {
+        pub const eager: file.DirStreamOptions = .{
+            .init_read_all = true,
+            .shrink_after_read = true,
+            .make_list = true,
+            .close_on_deinit = true,
+        };
+        pub const lazy: file.DirStreamOptions = .{
+            .init_read_all = false,
+            .shrink_after_read = false,
+            .make_list = false,
+            .close_on_deinit = false,
+        };
+    };
+    pub const logging = opaque {
+        pub const silent: file.DirStreamLogging = .{
+            .open = preset.logging.acquire_error_fault.silent,
+            .close = preset.logging.release_error_fault.silent,
+            .getdents = preset.logging.success_error_fault.silent,
+        };
+        pub const verbose: file.DirStreamLogging = .{
+            .open = preset.logging.acquire_error_fault.verbose,
+            .close = preset.logging.release_error_fault.verbose,
+            .getdents = preset.logging.success_error_fault.verbose,
+        };
+    };
+    pub const errors = opaque {
+        pub const zen: file.DirStreamErrors = .{
+            .open = .{ .throw = open.errors.all },
+            .close = .{ .abort = open.errors.all },
+            .getdents = .{ .throw = getdents.errors.all },
+        };
+        pub const noexcept: file.DirStreamErrors = .{
+            .open = .{},
+            .close = .{},
+            .getdents = .{},
+        };
+    };
+};
 pub const allocator = opaque {
     pub const options = opaque {
         pub const small: mem.ArenaAllocatorOptions = .{
