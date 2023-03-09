@@ -239,8 +239,8 @@ pub fn generateReferences() !void {
                 array.writeMany("pub const Specification");
                 gen.fmt.ud64(accm_spec_index).formatWrite(&array);
                 array.writeMany("=struct{\n");
-                for (out.type_descrs[leader.index].specs[gen.specIndex(detail.More, leader)].type_decl.Composition[1]) |field| {
-                    gen.writeField(&array, field[0], field[1]);
+                for (out.type_descrs[leader.index].specs[gen.specIndex(detail.More, leader)].type_decl.Composition.fields) |field| {
+                    gen.writeField(&array, field.name, field.type);
                 }
                 array.writeMany("const Specification=@This();\n");
                 array.writeMany("pub fn Implementation(comptime spec:Specification");
