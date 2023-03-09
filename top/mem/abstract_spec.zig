@@ -54,15 +54,6 @@ pub const AbstractSpec = union {
         unstreamed_byte_address: Stream(Parametric),
     })),
 };
-
-pub const Variant = enum {
-    stripped,
-    derived,
-    optional_derived,
-    optional_variant,
-    decl_optional_derived,
-    decl_optional_variant,
-};
 pub fn Stripped(comptime T: type) type {
     return union(enum) {
         /// Input is mandatory in interface, removed from specification.
@@ -99,7 +90,7 @@ pub fn DeclOptDrv(comptime T: type) type {
 pub fn DeclOptVar(comptime T: type) type {
     return union(enum) {
         /// Input is mandatory container in interface, with optional
-        /// declarations, variant in specification: arena offsets.
+        /// declarations, variant in specification.
         decl_optional_variant: T,
     };
 }
