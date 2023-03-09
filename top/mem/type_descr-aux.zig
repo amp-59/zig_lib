@@ -15,14 +15,14 @@ pub const logging_override: builtin.Logging.Override = preset.logging.override.s
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 
-const TypeDescrFormat = fmt.GenericTypeDescrFormat(.{ .options = .{ .default_fields = true } });
+const TypeDescrFormat = fmt.GenericTypeDescrFormat(.{ .options = .{ .default_field_values = true } });
 const fmt_spec: fmt.RenderSpec = .{ .infer_type_names = true, .ignore_formatter_decls = true };
 
 fn mapContainersToParameters() void {
     var array: Array = undefined;
     array.undefineAll();
     gen.writeImport(&array, "gen", "../../gen.zig");
-    array.writeMany("const TypeDescrFormat=gen.fmt.GenericTypeDescrFormat(.{.options=.{.default_fields=true}});\n");
+    array.writeMany("pub const TypeDescrFormat=gen.fmt.GenericTypeDescrFormat(.{.options=.{.default_field_values=true}});\n");
     array.writeMany(
         \\pub const type_descrs=&[_]struct {
         \\    params: TypeDescrFormat,
