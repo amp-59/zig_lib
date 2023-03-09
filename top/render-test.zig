@@ -14,19 +14,20 @@ const virtual_test = @import("./virtual-test.zig");
 
 pub usingnamespace proc.start;
 
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const AddressSpace = preset.address_space.regular_128;
 pub const runtime_assertions: bool = true;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
+const FakeAllocator = struct {
+    pub const arena_index = 127;
+};
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = AddressSpace,
     .logging = preset.allocator.logging.silent,
     .options = preset.allocator.options.small,
 });
-const FakeAllocator = struct {
-    pub const arena_index = 127;
-};
+
 const Array = Allocator.StructuredHolder(u8);
 const PrintArray = mem.StaticString(1024 * 1024);
 const DynamicArray = mem.StructuredVector(u8, null, 1, FakeAllocator, .{ .unit_alignment = true });
@@ -43,7 +44,6 @@ const render_spec: fmt.RenderSpec = .{
     .radix = 10,
     .omit_default_fields = false,
     .omit_type_names = false,
-    .zig_type_names = true,
 };
 
 const runTest = if (use_alloc) allocateRunTest else minimalRunTest;
@@ -51,19 +51,24 @@ const runTest = if (use_alloc) allocateRunTest else minimalRunTest;
 fn testLoopFormatAgainstStandard(comptime ThisAddressSpace: type) anyerror!void {
     const max_index: ThisAddressSpace.Index = comptime AddressSpace.addr_spec.count();
     comptime var arena_index: AddressSpace.Index = 0;
+    var array: mem.StaticString(1024 * 1024) = .{};
+    var buf = if (use_std) std.io.bufferedWriter(std.io.getStdOut().writer());
+    const writer = if (use_std) buf.writer();
     inline while (arena_index != max_index) : (arena_index += 1) {
         if (use_std) {
-            std.debug.print("s: {}:\t{}\n", .{
-                arena_index,
-                AddressSpace.arena(arena_index),
-            });
+            writer.print("s: {}:\t{}\n", .{ arena_index, AddressSpace.arena(arena_index) }) catch {};
         } else {
-            testing.printN(4096, .{
+            array.writeAny(preset.reinterpret.fmt, .{
                 "s: ", fmt.render(render_spec, arena_index),
                 ":\t", fmt.render(render_spec, AddressSpace.arena(arena_index)),
-                '\n',
+                "'\n",
             });
         }
+    }
+    if (use_std) {
+        try buf.flush();
+    } else {
+        builtin.debug.write(array.readAll());
     }
 }
 
@@ -221,32 +226,8 @@ fn testSpecificCases() !void {
     } }, "struct { pub const x: u64 = 25; pub const y: u64 = 50; }");
 }
 pub fn testOneBigCase() !void {
-    var address_space: builtin.AddressSpace() = .{};
-    var allocator: Allocator = if (use_alloc) try Allocator.init(&address_space) else undefined;
-    defer if (use_alloc) allocator.deinit(&address_space);
-    var dst: [16384]u8 = undefined;
-    var array = blk: {
-        if (use_min) {
-            break :blk MinimalRenderArray.init(&dst);
-        } else if (use_alloc) {
-            break :blk Array.init(&allocator);
-        } else if (use_dyn) {
-            break :blk DynamicArray{
-                .impl = DynamicArray.Implementation.construct(.{
-                    .lb_addr = @ptrToInt(&dst),
-                    .up_addr = @ptrToInt(&dst) + dst.len,
-                }),
-            };
-        } else {
-            break :blk StaticArray{
-                .impl = StaticArray.Implementation.construct(.{
-                    .lb_addr = @ptrToInt(&dst),
-                }),
-            };
-        }
-    };
-    try allocator.mapBelow(allocator.ub_addr + 0x10000);
-    array.writeFormat(render.GenericTypeDescrFormat(.{}).init(mem.AbstractSpec));
+    var array: mem.StaticString(0x10000) = .{};
+    array.writeFormat(comptime render.GenericTypeDescrFormat(.{ .options = .{ .init_depth = 0 } }).init(mem.AbstractSpec));
     builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
@@ -254,6 +235,6 @@ pub fn main() !void {
         try meta.wrap(testAgainstStandard());
     } else {
         try meta.wrap(testSpecificCases());
+        try meta.wrap(testOneBigCase());
     }
-    try meta.wrap(testOneBigCase());
 }
