@@ -19,7 +19,9 @@ pub fn specs() void {
     array.writeMany("const Index=" ++ @typeName(out.Index) ++ ";\n");
     array.writeMany("pub const specifications:[]const[]const[]const Index=&[_][]const[]const Index{\n");
     for (out.containers) |indices| {
-        array.writeMany("&.{");
+        array.writeMany("&.{ //");
+        out.impl_variants[indices[0]].less().writeContainerName(&array);
+        array.writeMany("\n");
         for (keys.values[0..keys.len]) |key| {
             if (indices.len == 0) {
                 array.writeMany("&.{},");
@@ -40,4 +42,6 @@ pub fn specs() void {
     array.writeMany("};\n");
     gen.writeAuxiliarySourceFile(&array, "specifications.zig");
 }
-pub const main = specs;
+pub fn main() void {
+    specs();
+}
