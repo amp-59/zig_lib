@@ -5,6 +5,26 @@ const srg = @import("zig_lib");
 const meta = srg.meta;
 const file = srg.file;
 const testing = srg.testing;
+const builtin = srg.builtin;
+
+fn ptr(comptime T: type) *T {
+    var ret: T = undefined;
+    return &ret;
+}
+fn slicesD(comptime T: type, comptime len: u64) []T {
+    if (datac.* == len) {} else {
+        datac.* +%= len;
+        var vals: [len]T = undefined;
+        return &vals;
+    }
+}
+
+const datac: *u64 = ptr(u64);
+comptime {
+    datac.* = 0;
+}
+const data1: []u8 = slicesD(u8, 4096);
+const data2: []u8 = slicesD(u8, 4096);
 
 fn pointers(comptime T: type, comptime n: comptime_int) *[n]T {
     var ptrs: [n]T = undefined;
@@ -35,4 +55,10 @@ pub fn main() !void {
     testing.expectEqualMany(u8, Test.concat_strings, "first");
     testing.expectEqualMany(u8, Test.assign_strings, "zeroth");
     testing.expectEqualMany(u8, Test.assign_strings, "first");
+
+    data1[0] = 'a';
+    builtin.debug.write(data2);
+    builtin.debug.write("\n");
+    builtin.debug.write(builtin.fmt.ux64(@ptrToInt(data2.ptr)).readAll());
+    builtin.debug.write("\n");
 }
