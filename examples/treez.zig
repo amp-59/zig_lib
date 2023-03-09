@@ -117,7 +117,7 @@ const Results = struct {
     depth: u64 = 0,
     errors: u64 = 0,
     inline fn total(results: Results) u64 {
-        return results.dirs + results.files + results.links;
+        return results.dirs +% results.files +% results.links;
     }
 };
 const Filter = meta.EnumBitField(file.Kind);
@@ -191,11 +191,11 @@ fn show(results: Results) void {
 }
 inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1, offset: u64) u64 {
     const many: []const u8 = array.readManyAt(allocator, offset);
-    if (many.len > (n - 1)) {
+    if (many.len > (n -% 1)) {
         if (n == 1) {
             file.write(.{ .errors = .{} }, 1, many);
             return many.len;
-        } else if (many[many.len - 1] == '\n') {
+        } else if (many[many.len -% 1] == '\n') {
             file.write(.{ .errors = .{} }, 1, many);
             return many.len;
         }
@@ -205,13 +205,13 @@ inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1
 noinline fn printAlong(results: *Results, done: *bool, allocator: *Allocator1, array: *String1) void {
     var offset: u64 = 0;
     while (true) {
-        offset += printIfNAvail(4096, allocator.*, array.*, offset);
+        offset +%= printIfNAvail(4096, allocator.*, array.*, offset);
         if (done.*) {
             break;
         }
     }
     while (offset != array.len(allocator.*)) {
-        offset += printIfNAvail(1, allocator.*, array.*, offset);
+        offset +%= printIfNAvail(1, allocator.*, array.*, offset);
     }
     show(results.*);
     done.* = false;
@@ -219,7 +219,7 @@ noinline fn printAlong(results: *Results, done: *bool, allocator: *Allocator1, a
 inline fn getNames(args: *[][*:0]u8) Names {
     var names: Names = .{};
     var i: u64 = 1;
-    while (i != args.len) : (i += 1) {
+    while (i != args.len) : (i +%= 1) {
         names.writeOne(meta.manyToSlice(args.*[i]));
     }
     return names;
@@ -336,7 +336,7 @@ fn writeAndWalkPlain(
     name: [:0]const u8,
     depth: u64,
 ) !void {
-    const need_separator: bool = name[name.len - 1] != '/';
+    const need_separator: bool = name[name.len -% 1] != '/';
     alts_buf.writeMany(name);
     if (need_separator) alts_buf.writeOne('/');
     defer {
@@ -352,22 +352,22 @@ fn writeAndWalkPlain(
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
-    while (list.at(index)) |entry| : (index += 1) {
+    while (list.at(index)) |entry| : (index +%= 1) {
         const kind: file.Kind = entry.kind();
         const base_name: [:0]const u8 = entry.name();
-        const is_last: bool = index == list.count - 1;
+        const is_last: bool = index == list.count -% 1;
         if (options.hide and conditionalSkip(base_name)) {
             continue;
         }
         switch (kind) {
             .directory => {
-                results.dirs += 1;
+                results.dirs +%= 1;
                 const len_0: u64 = array.len(allocator_1.*);
                 writeDirectory(allocator_1, array, alts_buf, base_name, is_last);
                 if (depth != options.max_depth) {
-                    results.depth = builtin.max(u64, results.depth, depth + 1);
+                    results.depth = builtin.max(u64, results.depth, depth +% 1);
                     const s_total: u64 = results.total();
-                    writeAndWalkPlain(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth + 1) catch {};
+                    writeAndWalkPlain(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth +% 1) catch {};
                     const t_total: u64 = results.total();
                     if (try_empty_dir_correction) {
                         writeMaybeCorrectEmptyDirectoryListing(allocator_1, array, alts_buf, base_name, is_last, s_total, t_total, len_0);
@@ -375,7 +375,7 @@ fn writeAndWalkPlain(
                 }
             },
             .symbolic_link => {
-                results.links += 1;
+                results.links +%= 1;
                 if (options.follow) {
                     writeSymbolicLinkFollowing(allocator_1, array, alts_buf, link_buf, dir.fd, base_name, is_last);
                 } else {
@@ -383,7 +383,7 @@ fn writeAndWalkPlain(
                 }
             },
             else => {
-                results.files += 1;
+                results.files +%= 1;
                 writeOtherFile(allocator_1, array, alts_buf, base_name, kind, is_last);
             },
         }
@@ -409,25 +409,25 @@ fn writeAndWalk(
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
-    while (list.at(index)) |entry| : (index += 1) {
+    while (list.at(index)) |entry| : (index +%= 1) {
         const base_name: [:0]const u8 = entry.name();
         if (options.hide and conditionalSkip(base_name)) {
             continue;
         }
         const kind: file.Kind = entry.kind();
-        const is_last: bool = index == list.count - 1;
+        const is_last: bool = index == list.count -% 1;
         const indent: []const u8 = if (is_last) Style.spc_s else Style.bar_s;
         alts_buf.writeMany(indent);
         defer alts_buf.undefine(indent.len);
         switch (kind) {
             .directory => {
-                results.dirs += 1;
+                results.dirs +%= 1;
                 const len_0: u64 = array.len(allocator_1.*);
                 writeDirectory(allocator_1, array, alts_buf, base_name, is_last);
                 if (depth != options.max_depth) {
-                    results.depth = builtin.max(u64, results.depth, depth + 1);
+                    results.depth = builtin.max(u64, results.depth, depth +% 1);
                     const s_total: u64 = results.total();
-                    writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth + 1) catch {
+                    writeAndWalk(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, base_name, depth +% 1) catch {
                         results.errors +%= 1;
                     };
                     const t_total: u64 = results.total();
@@ -437,7 +437,7 @@ fn writeAndWalk(
                 }
             },
             .symbolic_link => {
-                results.links += 1;
+                results.links +%= 1;
                 if (options.follow) {
                     writeSymbolicLinkFollowing(allocator_1, array, alts_buf, link_buf, dir.fd, base_name, is_last);
                 } else {
@@ -445,7 +445,7 @@ fn writeAndWalk(
                 }
             },
             else => {
-                results.files += 1;
+                results.files +%= 1;
                 writeOtherFile(allocator_1, array, alts_buf, base_name, kind, is_last);
             },
         }
@@ -488,12 +488,14 @@ pub fn main(args_in: [][*:0]u8) !void {
             tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
         }
         try meta.wrap(array.appendMany(&allocator_1, arg));
-        try meta.wrap(array.appendMany(&allocator_1, if (arg[arg.len - 1] != '/') "/\n" else "\n"));
+        try meta.wrap(array.appendMany(&allocator_1, if (arg[arg.len -% 1] != '/') "/\n" else "\n"));
         @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
             &options,  &allocator_0, &allocator_1, &array,
             &alts_buf, &link_buf,    &results,     null,
             arg,       0,
-        }) catch {};
+        }) catch {
+            results.errors +%= 1;
+        };
         if (print_in_second_thread) {
             done = true;
             mem.monitor(bool, &done);
