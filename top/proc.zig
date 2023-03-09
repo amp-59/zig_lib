@@ -913,9 +913,14 @@ pub fn GenericOptions(comptime Options: type) type {
                 else => anyCast(child, any),
             };
         }
+        fn getOptInternalArrityError(arg: [:0]const u8) void {
+            var buf: [4096]u8 = undefined;
+            builtin.debug.logFaultAIO(&buf, &.{ "'", arg, "' requires an argument\n" });
+        }
         fn getOptInternal(comptime flag: Option, options: *Options, args: *[][*:0]u8, index: u64, offset: u64) void {
             const field = &@field(options, flag.field_name);
             const Field = @TypeOf(field.*);
+            const arg: [:0]const u8 = meta.manyToSlice(args.*[index]);
             switch (flag.assign) {
                 .boolean => |value| {
                     shift(args, index);
@@ -925,12 +930,18 @@ pub fn GenericOptions(comptime Options: type) type {
                     if (offset == 0) {
                         shift(args, index);
                     }
+                    if (args.len == index) {
+                        getOptInternalArrityError(arg);
+                    }
                     field.* = meta.manyToSlice(args.*[index])[offset..];
                     shift(args, index);
                 },
                 .convert => |convert| {
                     if (offset == 0) {
                         shift(args, index);
+                    }
+                    if (args.len == index) {
+                        getOptInternalArrityError(arg);
                     }
                     convert(options, meta.manyToSlice(args.*[index])[offset..]);
                     shift(args, index);
