@@ -110,6 +110,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     mg_container_args.dependOnRun(allocator,    mg_container_kinds);
     mg_container_specs.dependOnRun(allocator,   mg_options);
     mg_container_specs.dependOnRun(allocator,   mg_type_descr);
+    mg_container_specs.dependOnRun(allocator,   mg_specs);
     mg_container_impls.dependOnRun(allocator,   mg_container_kinds);
     mg_container_impls.dependOnRun(allocator,   mg_container_specs);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
