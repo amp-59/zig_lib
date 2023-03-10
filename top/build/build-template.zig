@@ -225,7 +225,7 @@ fn join(
         .static = true,
         .enable_cache = true,
         .compiler_rt = false,
-        .strip = true,
+        .strip = builder.options.strip,
         .modules = spec_mods,
         .dependencies = spec_deps,
         .mode = mode,
