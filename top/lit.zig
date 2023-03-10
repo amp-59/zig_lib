@@ -28,7 +28,7 @@ pub const i64d_max_len: u64 = 20;
 pub const i64x_max_len: u64 = 19;
 /// Unconfirmed theory that using these is faster to compile when naming tuple
 /// fields.
-pub const ud8 = [256][]const u8{
+pub const ud8 = [256][:0]const u8{
     "0",   "1",   "2",   "3",   "4",   "5",   "6",   "7",   "8",   "9",
     "10",  "11",  "12",  "13",  "14",  "15",  "16",  "17",  "18",  "19",
     "20",  "21",  "22",  "23",  "24",  "25",  "26",  "27",  "28",  "29",
@@ -56,7 +56,7 @@ pub const ud8 = [256][]const u8{
     "240", "241", "242", "243", "244", "245", "246", "247", "248", "249",
     "250", "251", "252", "253", "254", "255",
 };
-pub const esc_hex_sequences = [256][]const u8{
+pub const esc_hex_sequences = [256][:0]const u8{
     "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07", "\\x08",
     "\\x09", "\\x0a", "\\x0b", "\\x0c", "\\x0d", "\\x0e", "\\x0f", "\\x10", "\\x11",
     "\\x12", "\\x13", "\\x14", "\\x15", "\\x16", "\\x17", "\\x18", "\\x19", "\\x1a",
@@ -87,7 +87,7 @@ pub const esc_hex_sequences = [256][]const u8{
     "\\xf3", "\\xf4", "\\xf5", "\\xf6", "\\xf7", "\\xf8", "\\xf9", "\\xfa", "\\xfb",
     "\\xfc", "\\xfd", "\\xfe", "\\xff",
 };
-pub const lit_hex_sequences: [256][]const u8 = .{
+pub const lit_hex_sequences: [256][:0]const u8 = .{
     "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07", "\\x08",
     "\\x09", "\\x0a", "\\x0b", "\\x0c", "\\x0d", "\\x0e", "\\x0f", "\\x10", "\\x11",
     "\\x12", "\\x13", "\\x14", "\\x15", "\\x16", "\\x17", "\\x18", "\\x19", "\\x1a",
@@ -135,70 +135,70 @@ pub const character_classes = opaque {
         .{ .lower = 123, .upper = 126 },
     };
 };
-pub const int_prefixes: [51][]const u8 = [_][]const u8{
+pub const int_prefixes: [51][]const u8 = [_][:0]const u8{
     "", "", "0b", "", "", "", "", "", "0o", "", "", "", "0d", "", "", "", "0x",
     "", "", "",   "", "", "", "", "", "",   "", "", "", "",   "", "", "", "",
     "", "", "0z", "", "", "", "", "", "",   "", "", "", "",   "", "", "", "",
 };
 pub const fx = opaque {
-    pub const none: []const u8 = "\x1b\x5b\x30\x6d";
+    pub const none: [:0]const u8 = "\x1b\x5b\x30\x6d";
     pub const color = opaque {
         pub const fg = opaque {
-            pub const black: []const u8 = "\x1b\x5b\x33\x30\x6d";
-            pub const red: []const u8 = "\x1b\x5b\x33\x31\x6d";
-            pub const green: []const u8 = "\x1b\x5b\x33\x32\x6d";
-            pub const yellow: []const u8 = "\x1b\x5b\x33\x33\x6d";
-            pub const blue: []const u8 = "\x1b\x5b\x33\x34\x6d";
-            pub const magenta: []const u8 = "\x1b\x5b\x33\x35\x6d";
-            pub const cyan: []const u8 = "\x1b\x5b\x33\x36\x6d";
-            pub const white: []const u8 = "\x1b\x5b\x33\x37\x6d";
-            pub const hi_red: []const u8 = "\x1b\x5b\x39\x31\x6d";
-            pub const hi_green: []const u8 = "\x1b\x5b\x39\x32\x6d";
-            pub const hi_yellow: []const u8 = "\x1b\x5b\x39\x33\x6d";
-            pub const hi_blue: []const u8 = "\x1b\x5b\x39\x34\x6d";
-            pub const hi_magenta: []const u8 = "\x1b\x5b\x39\x35\x6d";
-            pub const hi_cyan: []const u8 = "\x1b\x5b\x39\x36\x6d";
-            pub const max_red: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x39\x36\x6d";
-            pub const max_blue: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x37\x6d";
-            pub const dark_green: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x32\x6d";
-            pub const max_green_alt: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x37\x36\x6d";
-            pub const orange: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x30\x32\x6d";
-            pub const purple: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
-            pub const aqua: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
-            pub const max_white: []const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
-            pub fn shade(comptime index: u8) []const u8 {
+            pub const black: [:0]const u8 = "\x1b\x5b\x33\x30\x6d";
+            pub const red: [:0]const u8 = "\x1b\x5b\x33\x31\x6d";
+            pub const green: [:0]const u8 = "\x1b\x5b\x33\x32\x6d";
+            pub const yellow: [:0]const u8 = "\x1b\x5b\x33\x33\x6d";
+            pub const blue: [:0]const u8 = "\x1b\x5b\x33\x34\x6d";
+            pub const magenta: [:0]const u8 = "\x1b\x5b\x33\x35\x6d";
+            pub const cyan: [:0]const u8 = "\x1b\x5b\x33\x36\x6d";
+            pub const white: [:0]const u8 = "\x1b\x5b\x33\x37\x6d";
+            pub const hi_red: [:0]const u8 = "\x1b\x5b\x39\x31\x6d";
+            pub const hi_green: [:0]const u8 = "\x1b\x5b\x39\x32\x6d";
+            pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x39\x33\x6d";
+            pub const hi_blue: [:0]const u8 = "\x1b\x5b\x39\x34\x6d";
+            pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x39\x35\x6d";
+            pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x39\x36\x6d";
+            pub const max_red: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x39\x36\x6d";
+            pub const max_blue: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x37\x6d";
+            pub const dark_green: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x32\x6d";
+            pub const max_green_alt: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x37\x36\x6d";
+            pub const orange: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x30\x32\x6d";
+            pub const purple: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
+            pub const aqua: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
+            pub const max_white: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
+            pub fn shade(comptime index: u8) [:0]const u8 {
                 return mcode(.{ 38, 5, 255 - @min(23, index) });
             }
         };
         pub const bg = opaque {
-            pub const black: []const u8 = "\x1b\x5b\x34\x30\x6d";
-            pub const red: []const u8 = "\x1b\x5b\x34\x31\x6d";
-            pub const green: []const u8 = "\x1b\x5b\x34\x32\x6d";
-            pub const yellow: []const u8 = "\x1b\x5b\x34\x33\x6d";
-            pub const blue: []const u8 = "\x1b\x5b\x34\x34\x6d";
-            pub const magenta: []const u8 = "\x1b\x5b\x34\x35\x6d";
-            pub const cyan: []const u8 = "\x1b\x5b\x34\x36\x6d";
-            pub const white: []const u8 = "\x1b\x5b\x34\x37\x6d";
-            pub const hi_red: []const u8 = "\x1b\x5b\x31\x30\x31\x6d";
-            pub const hi_green: []const u8 = "\x1b\x5b\x31\x30\x32\x6d";
-            pub const hi_yellow: []const u8 = "\x1b\x5b\x31\x30\x33\x6d";
-            pub const hi_blue: []const u8 = "\x1b\x5b\x31\x30\x34\x6d";
-            pub const hi_magenta: []const u8 = "\x1b\x5b\x31\x30\x35\x6d";
-            pub const hi_cyan: []const u8 = "\x1b\x5b\x31\x30\x36\x6d";
-            pub const hi_white: []const u8 = "\x1b\x5b\x31\x30\x37\x6d";
+            pub const black: [:0]const u8 = "\x1b\x5b\x34\x30\x6d";
+            pub const red: [:0]const u8 = "\x1b\x5b\x34\x31\x6d";
+            pub const green: [:0]const u8 = "\x1b\x5b\x34\x32\x6d";
+            pub const yellow: [:0]const u8 = "\x1b\x5b\x34\x33\x6d";
+            pub const blue: [:0]const u8 = "\x1b\x5b\x34\x34\x6d";
+            pub const magenta: [:0]const u8 = "\x1b\x5b\x34\x35\x6d";
+            pub const cyan: [:0]const u8 = "\x1b\x5b\x34\x36\x6d";
+            pub const white: [:0]const u8 = "\x1b\x5b\x34\x37\x6d";
+            pub const hi_red: [:0]const u8 = "\x1b\x5b\x31\x30\x31\x6d";
+            pub const hi_green: [:0]const u8 = "\x1b\x5b\x31\x30\x32\x6d";
+            pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x31\x30\x33\x6d";
+            pub const hi_blue: [:0]const u8 = "\x1b\x5b\x31\x30\x34\x6d";
+            pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x31\x30\x35\x6d";
+            pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x31\x30\x36\x6d";
+            pub const hi_white: [:0]const u8 = "\x1b\x5b\x31\x30\x37\x6d";
         };
     };
     pub const style = opaque {
-        pub const bold: []const u8 = "\x1b\x5b\x31\x6d";
-        pub const faint: []const u8 = "\x1b\x5b\x32\x6d";
-        pub const italic: []const u8 = "\x1b\x5b\x33\x6d";
-        pub const underline: []const u8 = "\x1b\x5b\x34\x6d";
-        pub const inverted: []const u8 = "\x1b\x5b\x37\x6d";
-        pub const invisible: []const u8 = "\x1b\x5b\x38\x6d";
-        pub const strikeout: []const u8 = "\x1b\x5b\x39\x6d";
+        pub const bold: [:0]const u8 = "\x1b\x5b\x31\x6d";
+        pub const faint: [:0]const u8 = "\x1b\x5b\x32\x6d";
+        pub const italic: [:0]const u8 = "\x1b\x5b\x33\x6d";
+        pub const underline: [:0]const u8 = "\x1b\x5b\x34\x6d";
+        pub const inverted: [:0]const u8 = "\x1b\x5b\x37\x6d";
+        pub const invisible: [:0]const u8 = "\x1b\x5b\x38\x6d";
+        pub const strikeout: [:0]const u8 = "\x1b\x5b\x39\x6d";
     };
-    fn mcode(comptime args: anytype) []const u8 {
-        comptime var code: []const u8 = "\x1b[";
+    fn mcode(comptime args: anytype) [:0]const u8 {
+        comptime var code: [:0]const u8 = "\x1b[";
         inline for (args) |arg| {
             code = code ++ ud8[arg] ++ ";";
         }
