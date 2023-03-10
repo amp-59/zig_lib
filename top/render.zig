@@ -1372,11 +1372,80 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         pub const Reference = struct { spec: []const u8, type: *const TypeDescrFormat };
         pub const Enumeration = struct { spec: []const u8, fields: []const Decl };
         pub const Composition = struct { spec: []const u8, fields: []const Field };
-        pub const Decl = struct { name: []const u8, value: u64 };
+        pub const Decl = struct {
+            name: []const u8,
+            value: u64,
+            const Format = @This();
+            pub fn formatWrite(format: Format, array: anytype) void {
+                array.writeMany(format.name);
+                array.writeMany(spec.tokens.equal);
+                array.writeFormat(fmt.ud64(format.value));
+                array.writeMany(spec.tokens.next);
+                for (0..depth) |_| array.writeMany(spec.tokens.indent);
+            }
+            pub fn formatLength(format: Format) u64 {
+                var len: u64 = 0;
+                len +%= format.name.len;
+                len +%= spec.tokens.equal.len;
+                len +%= fmt.ud64(format.value).formatLength();
+                len +%= spec.tokens.next.len;
+                len +%= depth *% spec.tokens.indent.len;
+                return len;
+            }
+        };
         pub const Field = if (spec.options.default_field_values)
-            struct { name: []const u8, type: TypeDescrFormat, default_value: ?[]const u8 }
+            struct {
+                name: []const u8,
+                type: TypeDescrFormat,
+                default_value: ?[]const u8,
+                const Format = @This();
+                pub fn formatWrite(format: Format, array: anytype) void {
+                    array.writeMany(format.name);
+                    array.writeMany(spec.tokens.colon);
+                    format.type.formatWrite(array);
+                    if (format.default_value) |default_value| {
+                        array.writeMany(spec.tokens.equal);
+                        array.writeMany(default_value);
+                    }
+                    array.writeMany(spec.tokens.next);
+                    for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                }
+                pub fn formatLength(format: Format) u64 {
+                    var len: u64 = 0;
+                    len +%= format.name.len;
+                    len +%= spec.tokens.colon.len;
+                    len +%= format.type.formatLength();
+                    if (format.default_value) |default_value| {
+                        len +%= spec.tokens.equal.len;
+                        len +%= default_value.len;
+                    }
+                    len +%= spec.tokens.next.len;
+                    len +%= depth *% spec.tokens.indent.len;
+                    return len;
+                }
+            }
         else
-            struct { name: []const u8, type: TypeDescrFormat };
+            struct {
+                name: []const u8,
+                type: TypeDescrFormat,
+                const Format = @This();
+                pub fn formatWrite(format: Format, array: anytype) void {
+                    array.writeMany(format.name);
+                    array.writeMany(spec.tokens.colon);
+                    format.type.formatWrite(array);
+                    array.writeMany(spec.tokens.next);
+                    for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                }
+                pub fn formatLength(format: Format) u64 {
+                    var len: u64 = 0;
+                    len +%= format.name.len;
+                    len +%= spec.tokens.equal.len;
+                    len +%= fmt.ud64(format.value).formatLength();
+                    len +%= spec.tokens.next.len;
+                    len +%= depth *% spec.tokens.indent.len;
+                    return len;
+                }
+            };
         pub const Container = union(enum) {
             Enumeration: Enumeration,
             Composition: Composition,
@@ -1405,17 +1474,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             array.writeMany(spec.tokens.lbrace);
                             for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             for (struct_defn.fields) |field| {
-                                array.writeMany(field.name);
-                                array.writeMany(spec.tokens.colon);
-                                field.type.formatWrite(array);
-                                if (spec.options.default_field_values) {
-                                    if (field.default_value) |default_value| {
-                                        array.writeMany(spec.tokens.equal);
-                                        array.writeMany(default_value);
-                                    }
-                                }
-                                array.writeMany(spec.tokens.next);
-                                for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                                field.formatWrite(array);
                             }
                             array.undefine(spec.tokens.indent.len);
                             array.writeMany(spec.tokens.rbrace);
@@ -1430,11 +1489,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             array.writeMany(spec.tokens.lbrace);
                             for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             for (enum_defn.fields) |field| {
-                                array.writeMany(field.name);
-                                array.writeMany(spec.tokens.equal);
-                                array.writeFormat(fmt.ud64(field.value));
-                                array.writeMany(spec.tokens.next);
-                                for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                                field.formatWrite(array);
                             }
                             array.undefine(spec.tokens.indent.len);
                             array.writeMany(spec.tokens.rbrace);
@@ -1463,17 +1518,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             len +%= spec.tokens.lbrace.len;
                             len +%= depth *% spec.tokens.indent.len;
                             for (struct_defn.fields) |field| {
-                                len +%= field.name.len;
-                                len +%= spec.tokens.colon.len;
-                                len +%= field.type.formatLength();
-                                if (spec.options.default_field_values) {
-                                    if (field.default_value) |default_value| {
-                                        len +%= spec.tokens.equal.len;
-                                        len +%= default_value.len;
-                                    }
-                                }
-                                len +%= spec.tokens.next.len;
-                                len +%= depth *% spec.tokens.indent.len;
+                                len +%= field.formatLength();
                             }
                             len -%= spec.tokens.indent.len;
                             len +%= spec.tokens.rbrace.len;
@@ -1488,11 +1533,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             len +%= spec.tokens.lbrace.len;
                             len +%= depth *% spec.tokens.indent.len;
                             for (enum_defn.fields) |field| {
-                                len +%= field.name.len;
-                                len +%= spec.tokens.equal.len;
-                                len +%= fmt.ud64(field.value).formatLength();
-                                len +%= spec.tokens.next.len;
-                                len +%= depth *% spec.tokens.indent.len;
+                                len +%= field.formatLength();
                             }
                             len -%= spec.tokens.indent.len;
                             len +%= spec.tokens.rbrace.len;
