@@ -1,6 +1,7 @@
 const lit = @import("./lit.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
+const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
@@ -1401,32 +1402,110 @@ pub fn typeName(comptime T: type) []const u8 {
         else => return type_name,
     };
 }
-fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
-    return switch (c) {
-        'a'...'z' => s ++ [1]u8{c -% ('a' -% 'A')},
-        else => s ++ [1]u8{c},
-    };
-}
-pub fn toInitialism(comptime names: []const []const u8) []const u8 {
-    var ret: []const u8 = meta.empty;
+pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
+    var len: u64 = 0;
     var state: bool = false;
     for (names) |name| {
         for (name) |c| {
             if (c == '_' or c == '.') {
                 state = true;
-            } else if (state) {
-                ret = concatUpper(ret, c);
-                state = false;
+            } else {
+                if (state) {
+                    buf[len] = c -% ('a' -% 'A');
+                    state = false;
+                } else {
+                    buf[len] = c;
+                }
+                len +%= 1;
             }
         }
         state = true;
     }
-    return toTitlecase(ret);
+    return buf[0..len];
 }
-pub fn toCamelCases(comptime names: []const []const u8) []const u8 {
-    var ret: []const u8 = meta.empty;
+pub fn toCamelCase(noalias buf: []u8, name: []const u8) []u8 {
     var state: bool = false;
-    for (names) |name| {
+    var len: u64 = 0;
+    for (name) |c| {
+        if (c == '_' or c == '.') {
+            state = true;
+        } else {
+            if (state) {
+                buf[len] = c -% ('a' -% 'A');
+                state = false;
+            } else {
+                buf[len] = c;
+            }
+            len +%= 1;
+        }
+    }
+    return buf[0..len];
+}
+pub fn toTitlecases(noalias buf: []u8, comptime names: []const []const u8) []u8 {
+    const rename: []u8 = toCamelCases(buf, names);
+    if (rename[0] >= 'a') {
+        rename[0] -%= ('a' -% 'A');
+    }
+    return rename;
+}
+pub fn toTitlecase(noalias buf: []u8, name: []const u8) []u8 {
+    const rename: []u8 = toCamelCase(buf, name);
+    if (rename[0] >= 'a') {
+        rename[0] -%= ('a' -% 'A');
+    }
+    return rename;
+}
+pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
+    mach.memcpy(buf.ptr, name.ptr, name.len);
+    if (buf[0] >= 'a') {
+        buf[0] +%= ('a' -% 'A');
+    }
+    return buf[0..name.len];
+}
+pub const static = struct {
+    fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
+        return switch (c) {
+            'a'...'z' => s ++ [1]u8{c -% ('a' -% 'A')},
+            else => s ++ [1]u8{c},
+        };
+    }
+    pub fn toInitialism(comptime names: []const []const u8) []const u8 {
+        var ret: []const u8 = meta.empty;
+        var state: bool = false;
+        for (names) |name| {
+            for (name) |c| {
+                if (c == '_' or c == '.') {
+                    state = true;
+                } else if (state) {
+                    ret = concatUpper(ret, c);
+                    state = false;
+                }
+            }
+            state = true;
+        }
+        return static.toTitlecase(ret);
+    }
+    pub fn toCamelCases(comptime names: []const []const u8) []const u8 {
+        var ret: []const u8 = meta.empty;
+        var state: bool = false;
+        for (names) |name| {
+            for (name) |c| {
+                if (c == '_' or c == '.') {
+                    state = true;
+                } else if (state) {
+                    ret = concatUpper(ret, c);
+                    state = false;
+                } else {
+                    ret = ret ++ [1]u8{c};
+                }
+            }
+            state = true;
+        }
+        return ret;
+    }
+    pub fn toCamelCase(comptime name: []const u8) []const u8 {
+        var ret: []const u8 = meta.empty;
+        var state: bool = false;
         for (name) |c| {
             if (c == '_' or c == '.') {
                 state = true;
@@ -1437,51 +1516,35 @@ pub fn toCamelCases(comptime names: []const []const u8) []const u8 {
                 ret = ret ++ [1]u8{c};
             }
         }
-        state = true;
+        return ret;
     }
-    return ret;
-}
-pub fn toCamelCase(comptime name: []const u8) []const u8 {
-    var ret: []const u8 = meta.empty;
-    var state: bool = false;
-    for (name) |c| {
-        if (c == '_' or c == '.') {
-            state = true;
-        } else if (state) {
-            ret = concatUpper(ret, c);
-            state = false;
+    pub fn toTitlecases(comptime names: []const []const u8) []const u8 {
+        const rename: []const u8 = static.toCamelCases(names);
+        if (rename[0] >= 'a') {
+            return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
         } else {
-            ret = ret ++ [1]u8{c};
+            return rename;
         }
     }
-    return ret;
-}
-pub fn toTitlecases(comptime names: []const []const u8) []const u8 {
-    const rename: []const u8 = toCamelCases(names);
-    if (rename[0] >= 'a') {
-        return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
-    } else {
-        return rename;
+    pub fn toTitlecase(comptime name: []const u8) []const u8 {
+        const rename: []const u8 = static.toCamelCase(name);
+        if (rename[0] >= 'a') {
+            return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
+        } else {
+            return rename;
+        }
     }
-}
-pub fn toTitlecase(comptime name: []const u8) []const u8 {
-    const rename: []const u8 = toCamelCase(name);
-    if (rename[0] >= 'a') {
-        return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
-    } else {
-        return rename;
+    pub fn untitle(comptime name: []const u8) []const u8 {
+        switch (name[0]) {
+            'A'...'Z' => |c| {
+                return [1]u8{c +% ('a' -% 'A')} ++ name[1..];
+            },
+            else => {
+                return name;
+            },
+        }
     }
-}
-pub fn untitle(comptime name: []const u8) []const u8 {
-    switch (name[0]) {
-        'A'...'Z' => |c| {
-            return [1]u8{c +% ('a' -% 'A')} ++ name[1..];
-        },
-        else => {
-            return name;
-        },
-    }
-}
+};
 pub fn requireComptime(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .ComptimeFloat, .ComptimeInt, .Type => {
