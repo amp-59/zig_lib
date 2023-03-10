@@ -240,7 +240,7 @@ pub fn generateReferences() !void {
                 gen.fmt.ud64(accm_spec_index).formatWrite(&array);
                 array.writeMany("=struct{\n");
                 for (out.type_descrs[leader.index].specs[gen.specIndex(detail.More, leader)].type_decl.Composition.fields) |field| {
-                    gen.writeField(&array, field.name, field.type);
+                    field.formatWrite(&array);
                 }
                 array.writeMany("const Specification=@This();\n");
                 array.writeMany("pub fn Implementation(comptime spec:Specification");
