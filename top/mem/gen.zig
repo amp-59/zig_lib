@@ -14,13 +14,6 @@ const tok = @import("./tok.zig");
 const build_root = @cImport({}).build_root;
 pub const ListKind = enum { Parameter, Argument };
 
-const create_spec: file.CreateSpec = .{
-    .errors = .{},
-    .options = .{ .write = .truncate, .exclusive = false },
-};
-const close_spec: file.CloseSpec = .{
-    .errors = .{},
-};
 const open_read_spec: file.OpenSpec = .{
     .errors = .{},
     .options = .{ .read = true, .write = null },
@@ -28,6 +21,9 @@ const open_read_spec: file.OpenSpec = .{
 const open_append_spec: file.OpenSpec = .{
     .errors = .{},
     .options = .{ .write = .append },
+};
+const close_spec: file.CloseSpec = .{
+    .errors = .{},
 };
 const mkdir_spec: file.MakeDirSpec = .{
     .errors = .{},
@@ -39,7 +35,19 @@ const write_spec: file.WriteSpec = .{
     .logging = .{},
     .errors = .{},
 };
-
+const create_spec: file.CreateSpec = .{
+    .errors = .{},
+    .options = .{ .write = .truncate, .exclusive = false },
+};
+pub const ProtoTypeDescrFormat = fmt.GenericTypeDescrFormat(.{
+    .options = .{ .default_field_values = true },
+});
+pub const TypeDescrFormat = fmt.GenericTypeDescrFormat(.{
+    .options = .{
+        .token = [:0]const u8,
+        .default_field_values = true,
+    },
+});
 pub const TypeSpecMap = struct {
     params: type,
     specs: []const type,
@@ -102,12 +110,6 @@ pub fn appendAuxiliarySourceFile(array: anytype, comptime name: [:0]const u8) vo
     file.makeDir(mkdir_spec, zig_out_src_dir);
     appendSourceFile(array, zig_out_src_dir ++ "/" ++ name);
 }
-pub fn writeField(array: anytype, name: []const u8, type_descr: anytype) void {
-    array.writeMany(name);
-    array.writeMany(":");
-    array.writeFormat(type_descr);
-    array.writeMany(",\n");
-}
 pub fn groupImplementations(allocator: anytype, comptime Detail: type, comptime Index: type, group_key: []const Index, group: []const Detail) []const Detail {
     const buf: []Detail = allocator.allocateIrreversible(Detail, group_key.len);
     var impl_index: u16 = 0;
@@ -152,7 +154,7 @@ pub fn subTemplate(src: [:0]const u8, comptime sub_name: [:0]const u8) ?[]const 
 pub fn writeFieldOfBool(array: anytype, any: anytype) void {
     inline for (@typeInfo(@TypeOf(any)).Struct.fields) |field| {
         if (@field(any, field.name)) {
-            array.writeMany(comptime fmt.toTitlecase(field.name));
+            array.writeMany(comptime fmt.static.toTitlecase(field.name));
         }
     }
 }
