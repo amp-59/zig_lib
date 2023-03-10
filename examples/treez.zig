@@ -39,6 +39,40 @@ const DirStream = file.GenericDirStream(.{
     .options = .{},
     .logging = preset.dir.logging.silent,
 });
+const Filter = meta.EnumBitField(file.Kind);
+const Names = mem.StaticArray([:0]const u8, max_pathname_args);
+const Results = struct {
+    files: u64 = 0,
+    dirs: u64 = 0,
+    links: u64 = 0,
+    depth: u64 = 0,
+    errors: u64 = 0,
+    inline fn total(results: Results) u64 {
+        return results.dirs +% results.files +% results.links;
+    }
+};
+const Options = packed struct {
+    hide: bool = false,
+    follow: bool = true,
+    max_depth: u16 = ~@as(u16, 0),
+    pub const Map = proc.GenericOptions(Options);
+    const yes = .{ .boolean = true };
+    const no = .{ .boolean = false };
+    const int = .{ .convert = convertToInt };
+};
+//
+const plain_print: bool = false;
+const print_in_second_thread: bool = true;
+const use_wide_arrows: bool = false;
+const always_try_empty_dir_correction: bool = false;
+const max_pathname_args: u16 = 128;
+//
+const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{ // zig fmt: off
+    .{ .field_name = "hide",       .long = "--hide",                        .assign = Options.yes, .descr = about_hide_s },
+    .{ .field_name = "follow",     .short = "-L", .long = "--follow",       .assign = Options.yes, .descr = about_follow_s },
+    .{ .field_name = "follow",     .short = "+L", .long = "--no-follow",    .assign = Options.no,  .descr = about_no_follow_s },
+    .{ .field_name = "max_depth",  .short = "-d", .long = "--max-depth",    .assign = Options.int, .descr = about_max_depth_s },
+}); // zig fmt: on
 const map_spec: thread.MapSpec = .{
     .errors = .{},
     .options = .{},
@@ -48,33 +82,6 @@ const thread_spec: proc.CloneSpec = .{
     .options = .{},
     .return_type = u64,
 };
-const Names = mem.StaticArray([:0]const u8, max_pathname_args);
-//
-const plain_print: bool = true;
-const print_in_second_thread: bool = true;
-const permit_switch_arrows: bool = false;
-const use_wide_arrows: bool = false;
-const always_try_empty_dir_correction: bool = false;
-const max_pathname_args: u16 = 128;
-//
-const Options = packed struct {
-    hide: bool = false,
-    follow: bool = true,
-    wide: bool = false,
-    max_depth: u16 = ~@as(u16, 0),
-    pub const Map = proc.GenericOptions(Options);
-    const yes = .{ .boolean = true };
-    const no = .{ .boolean = false };
-    const int = .{ .convert = convertToInt };
-};
-const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .{ // zig fmt: off
-    .{ .field_name = "hide",       .long = "--hide",                        .assign = Options.yes, .descr = about_hide_s },
-    .{ .field_name = "follow",     .short = "-L", .long = "--follow",       .assign = Options.yes, .descr = about_follow_s },
-    .{ .field_name = "follow",     .short = "+L", .long = "--no-follow",    .assign = Options.no,  .descr = about_no_follow_s },
-    .{ .field_name = "wide",       .short = "-w", .long = "--wide",         .assign = Options.yes, .descr = about_wide_s },
-    .{ .field_name = "max_depth",  .short = "-d", .long = "--max-depth",    .assign = Options.int, .descr = about_max_depth_s },
-}); // zig fmt: on
-
 const about_hide_s: [:0]const u8 = "do not show hidden file system objects";
 const about_follow_s: [:0]const u8 = "follow symbolic links";
 const about_no_follow_s: [:0]const u8 = "do not " ++ about_follow_s;
@@ -110,18 +117,6 @@ const about_files_s: [:0]const u8 = "files:          ";
 const about_links_s: [:0]const u8 = "links:          ";
 const about_depth_s: [:0]const u8 = "depth:          ";
 const about_errors_s: [:0]const u8 = "errors:         ";
-
-const Results = struct {
-    files: u64 = 0,
-    dirs: u64 = 0,
-    links: u64 = 0,
-    depth: u64 = 0,
-    errors: u64 = 0,
-    inline fn total(results: Results) u64 {
-        return results.dirs +% results.files +% results.links;
-    }
-};
-const Filter = meta.EnumBitField(file.Kind);
 const any_style: [16][:0]const u8 = blk: {
     var tmp: [16][:0]const u8 = .{undefined} ** 16;
     tmp[sys.S.IFDIR >> 12] = lit.fx.style.bold;
@@ -133,32 +128,7 @@ const any_style: [16][:0]const u8 = blk: {
     tmp[sys.S.IFSOCK >> 12] = lit.fx.color.fg.hi_magenta;
     break :blk tmp;
 };
-const Style = if (permit_switch_arrows) struct {
-    var spc_s: [:0]const u8 = undefined;
-    var bar_s: [:0]const u8 = undefined;
-    var links_to_s: [:0]const u8 = undefined;
-    var file_arrow_s: [:0]const u8 = undefined;
-    var last_file_arrow_s: [:0]const u8 = undefined;
-    var link_arrow_s: [:0]const u8 = undefined;
-    var last_link_arrow_s: [:0]const u8 = undefined;
-    var dir_arrow_s: [:0]const u8 = undefined;
-    var last_dir_arrow_s: [:0]const u8 = undefined;
-    var empty_dir_arrow_s: [:0]const u8 = undefined;
-    var last_empty_dir_arrow_s: [:0]const u8 = undefined;
-    fn setArrows(options: Options) void {
-        spc_s = if (options.wide) spc_ws else spc_bs;
-        bar_s = if (options.wide) bar_ws else bar_bs;
-        links_to_s = if (options.wide) links_to_ws else links_to_bs;
-        file_arrow_s = if (options.wide) file_arrow_ws else file_arrow_bs;
-        last_file_arrow_s = if (options.wide) last_file_arrow_ws else last_file_arrow_bs;
-        link_arrow_s = if (options.wide) file_arrow_ws else file_arrow_bs;
-        last_link_arrow_s = if (options.wide) last_file_arrow_ws else last_file_arrow_bs;
-        dir_arrow_s = if (options.wide) dir_arrow_ws else dir_arrow_bs;
-        last_dir_arrow_s = if (options.wide) last_dir_arrow_ws else last_dir_arrow_bs;
-        empty_dir_arrow_s = if (options.wide) empty_dir_arrow_ws else empty_dir_arrow_bs;
-        last_empty_dir_arrow_s = if (options.wide) last_empty_dir_arrow_ws else last_empty_dir_arrow_bs;
-    }
-} else struct {
+const Style = struct {
     const spc_s: [:0]const u8 = if (use_wide_arrows) spc_ws else spc_bs;
     const bar_s: [:0]const u8 = if (use_wide_arrows) bar_ws else bar_bs;
     const links_to_s: [:0]const u8 = if (use_wide_arrows) links_to_ws else links_to_bs;
@@ -217,24 +187,18 @@ noinline fn printAlong(results: *Results, done: *bool, allocator: *Allocator1, a
     show(results.*);
     done.* = false;
 }
-inline fn getNames(args: *[][*:0]u8) Names {
+inline fn getNames(args: [][*:0]u8) Names {
     var names: Names = .{};
     var i: u64 = 1;
     while (i != args.len) : (i +%= 1) {
-        names.writeOne(meta.manyToSlice(args.*[i]));
+        names.writeOne(meta.manyToSlice(args[i]));
     }
     return names;
 }
 fn conditionalSkip(entry_name: []const u8) bool {
-    if (entry_name[0] == '.') {
-        return true;
-    }
-    if (mem.testEqualMany(u8, "zig-cache", entry_name) or
-        mem.testEqualMany(u8, "zig-out", entry_name))
-    {
-        return true;
-    }
-    return false;
+    return entry_name[0] == '.' or
+        mem.testEqualMany(u8, "zig-cache", entry_name) or
+        mem.testEqualMany(u8, "zig-out", entry_name);
 }
 fn writeReadLink(
     allocator_1: *Allocator1,
@@ -247,9 +211,9 @@ fn writeReadLink(
     const buf: []u8 = link_buf.referManyUndefined(4096);
     const link_pathname: [:0]const u8 = file.readLinkAt(.{}, dir_fd, base_name, buf) catch {
         results.errors +%= 1;
-        return meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ what_s, endl_s }));
+        return array.appendAny(preset.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
     };
-    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s }));
+    array.appendAny(preset.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
 }
 fn writeAndWalkPlain(
     options: *const Options,
@@ -280,19 +244,19 @@ fn writeAndWalkPlain(
             .symbolic_link => {
                 results.links +%= 1;
                 if (options.follow) {
-                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, '\t' }));
+                    array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, '\t' });
                     try writeReadLink(allocator_1, array, link_buf, results, dir.fd, basename);
                 } else {
-                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s }));
+                    array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s });
                 }
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => {
                 results.files +%= 1;
-                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s }));
+                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s });
             },
             .directory => {
                 results.dirs +%= 1;
-                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s }));
+                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, endl_s });
                 if (depth != options.max_depth) {
                     results.depth = builtin.max(u64, results.depth, depth +% 1);
                     writeAndWalkPlain(options, allocator_0, allocator_1, array, alts_buf, link_buf, results, dir.fd, basename, depth +% 1) catch {
@@ -315,10 +279,7 @@ fn writeAndWalk(
     name: [:0]const u8,
     depth: u64,
 ) !void {
-    const try_empty_dir_correction: bool =
-        always_try_empty_dir_correction or
-        (permit_switch_arrows and options.wide) or
-        use_wide_arrows;
+    const try_empty_dir_correction: bool = always_try_empty_dir_correction or use_wide_arrows;
     var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
@@ -339,19 +300,19 @@ fn writeAndWalk(
                 if (options.follow) {
                     const arrow_s: [:0]const u8 = if (last) Style.last_link_arrow_s else Style.link_arrow_s;
                     const style_s: [:0]const u8 = lit.fx.color.fg.cyan;
-                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, Style.links_to_s }));
+                    array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, Style.links_to_s });
                     try writeReadLink(allocator_1, array, link_buf, results, dir.fd, basename);
                 } else {
                     const arrow_s: [:0]const u8 = if (last) Style.last_link_arrow_s else Style.link_arrow_s;
                     const style_s: [:0]const u8 = lit.fx.color.fg.cyan;
-                    try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, endl_s }));
+                    array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, endl_s });
                 }
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => {
                 results.files +%= 1;
                 const arrow_s: [:0]const u8 = if (last) Style.last_file_arrow_s else Style.file_arrow_s;
                 const style_s: [:0]const u8 = any_style[@enumToInt(kind)];
-                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, endl_s }));
+                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, style_s, basename, endl_s });
             },
             .directory => {
                 results.dirs +%= 1;
@@ -380,15 +341,10 @@ fn writeAndWalk(
 fn convertToInt(options: *Options, arg: []const u8) void {
     options.max_depth = builtin.parse.ud(u8, arg);
 }
-pub fn main(args_in: [][*:0]u8) !void {
+pub fn main(args: [][*:0]u8) !void {
     var address_space: AddressSpace = .{};
-    var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
-    var tid: u64 = undefined;
-    if (permit_switch_arrows) {
-        Style.setArrows(options);
-    }
-    var names: Names = getNames(&args);
+    var names: Names = getNames(args);
     if (names.len() == 0) {
         names.writeOne(".");
     }
@@ -410,6 +366,7 @@ pub fn main(args_in: [][*:0]u8) !void {
         try meta.wrap(array.appendMany(&allocator_1, if (arg[arg.len -% 1] != '/') "/\n" else "\n"));
         if (plain_print) {
             if (print_in_second_thread) {
+                var tid: u64 = undefined;
                 var done: bool = false;
                 const stack_addr: u64 = try meta.wrap(thread.map(map_spec, 8));
                 tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
@@ -438,6 +395,7 @@ pub fn main(args_in: [][*:0]u8) !void {
             alts_buf.writeMany(" " ** 4096);
             alts_buf.undefine(4096);
             if (print_in_second_thread) {
+                var tid: u64 = undefined;
                 var done: bool = false;
                 const stack_addr: u64 = try meta.wrap(thread.map(map_spec, 8));
                 tid = proc.callClone(thread_spec, stack_addr, {}, printAlong, .{ &results, &done, &allocator_1, &array });
