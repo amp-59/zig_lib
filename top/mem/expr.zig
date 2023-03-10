@@ -9,10 +9,13 @@ const detail = @import("./detail.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
 
+const out = @import("./zig-out/src/type_descrs.zig");
+
 const ExprTag = enum(u8) {
     scrub,
     constant,
     symbol,
+    type,
     join,
     list,
     call,
@@ -23,30 +26,29 @@ pub const Expr = struct {
     data2: u64,
     const unit: u64 = 1;
     const mask: u64 = (unit << 56) - 1;
-    fn symbol(expr: Expr) [:0]const u8 {
-        const len: u64 = expr.data2 & mask;
-        return @intToPtr([*]const u8, expr.data1)[0..len :0];
-    }
-    fn more(expr: Expr) []Expr {
-        const len: u64 = expr.data2 & mask;
-        return @intToPtr([*]Expr, expr.data1)[0..len];
-    }
+
     fn constant(expr: Expr) u64 {
         return expr.data1;
-    }
-    pub fn tag(expr: Expr) ExprTag {
-        return @intToEnum(ExprTag, expr.data2 >> 56);
-    }
-    pub fn args(expr: Expr) []Expr {
-        if (expr.tag() == .call_member) {
-            return expr.more()[2..];
-        } else {
-            return expr.more()[1..];
-        }
     }
     pub fn scrub(expr: Expr) u64 {
         return expr.data1;
     }
+    pub fn args(expr: Expr) []Expr {
+        return expr.more()[1 + @as(u8, @boolToInt(expr.tag() == .call_member)) ..];
+    }
+    fn symbol(expr: Expr) [:0]const u8 {
+        return @intToPtr([*]const u8, expr.data1)[0 .. expr.data2 & mask :0];
+    }
+    fn more(expr: Expr) []Expr {
+        return @intToPtr([*]Expr, expr.data1)[0 .. expr.data2 & mask];
+    }
+    pub fn @"type"(expr: Expr) *const gen.TypeDescrFormat {
+        return @intToPtr(*const gen.TypeDescrFormat, expr.data1);
+    }
+    pub fn tag(expr: Expr) ExprTag {
+        return @intToEnum(ExprTag, expr.data2 >> 56);
+    }
+
     fn formatLengthCallMember(format: Expr) u64 {
         const fn_args: []const Expr = format.more()[1..];
         var len: u64 = 0;
@@ -104,12 +106,16 @@ pub const Expr = struct {
         }
         return len;
     }
+    fn formatLengthType(format: Expr) u64 {
+        return format.type().formatLength();
+    }
     pub fn formatLength(format: Expr) u64 {
         var len: u64 = 0;
         switch (format.tag()) {
             .scrub => len -%= format.data1, // not a bug (yet)
-            .symbol => len +%= format.data2 & mask,
             .constant => len +%= fmt.ud64(format.data1).formatLength(),
+            .symbol => len +%= format.data2 & mask,
+            .type => len +%= formatLengthType(format),
             .call => len +%= formatLengthCall(format),
             .call_member => len +%= formatLengthCallMember(format),
             .join => len +%= formatLengthJoin(format),
@@ -168,14 +174,18 @@ pub const Expr = struct {
         }
         array.writeOne(')');
     }
+    fn formatWriteType(format: Expr, array: anytype) void {
+        format.type().formatWrite(array);
+    }
     pub fn formatWrite(format: Expr, array: anytype) void {
         if (debug.show_expressions) {
             debug.showOpen(format);
         }
         switch (format.tag()) {
             .scrub => array.undefine(format.scrub()),
-            .symbol => array.writeMany(format.symbol()),
             .constant => array.writeFormat(fmt.ud64(format.data1)),
+            .symbol => array.writeMany(format.symbol()),
+            .type => formatWriteType(format, array),
             .call => formatWriteCall(format, array),
             .call_member => formatWriteCallMember(format, array),
             .join => formatWriteJoin(format, array),
@@ -249,10 +259,6 @@ const Init = struct {
         };
     }
     pub fn symbol(token: [:0]const u8) Expr {
-        //if (tok.symbolName(token) == null) {
-        //    builtin.debug.logAlways(token);
-        //    builtin.debug.logAlways("\n");
-        //}
         return .{
             .data1 = @ptrToInt(token.ptr),
             .data2 = mach.shlOr64(@enumToInt(ExprTag.symbol), 56, token.len),
@@ -260,6 +266,12 @@ const Init = struct {
     }
     pub fn scrub(count: u64) Expr {
         return .{ .data1 = count, .data2 = mach.shl64(@enumToInt(ExprTag.scrub), 56) };
+    }
+    pub fn @"type"(type_descr: *const gen.TypeDescrFormat) Expr {
+        return .{
+            .data1 = @ptrToInt(type_descr),
+            .data2 = mach.shl64(@enumToInt(ExprTag.type), 56),
+        };
     }
     pub fn join(exprs: []Expr) Expr {
         return packMore(.join, exprs);
@@ -270,7 +282,6 @@ const Init = struct {
     pub fn call(exprs: []Expr) Expr {
         return packMore(.call, exprs);
     }
-
     pub fn impl0(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: *const gen.ArgList) Expr {
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 3);
         var idx: u64 = 0;
