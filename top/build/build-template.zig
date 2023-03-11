@@ -226,10 +226,12 @@ fn join(
         .enable_cache = true,
         .compiler_rt = false,
         .strip = builder.options.strip,
+        .image_base = 0x10000,
         .modules = spec_mods,
         .dependencies = spec_deps,
         .mode = mode,
         .macros = spec_macros,
+        .reference_trace = true,
     });
     if (spec_run) ret.addRun(allocator, .{});
     return ret;
