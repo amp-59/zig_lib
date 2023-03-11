@@ -1001,8 +1001,7 @@ pub fn GenericOptions(comptime Options: type) type {
         }
     };
 }
-pub inline fn getOpts(comptime Options: type, any: anytype, comptime all_options: []const GenericOptions(Options)) Options {
-    const args: *[][*:0]u8 = @constCast(any);
+pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: []const GenericOptions(Options)) Options {
     var options: Options = .{};
     if (args.len == 0) {
         return options;
