@@ -35,7 +35,7 @@ fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) v
         uniques.writeOne(@bitCast(backing_int, value));
     }
     array.writeMany("pub const " ++ field.dst_type_name ++ "=enum(u");
-    gen.fmt.ud64(@intCast(u8, @bitSizeOf(u64) - @clz(uniques.len() - 1))).formatWrite(array);
+    gen.fmt.ud64(@max(@intCast(u8, @bitSizeOf(u64) - @clz(uniques.len() - 1)), 1)).formatWrite(array);
     array.writeMany("){\n");
     for (uniques.readAll(), 0..) |unique, index| {
         const value: field.src_type = @bitCast(field.src_type, unique);
