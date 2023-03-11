@@ -400,7 +400,7 @@ pub const Fn = struct {
             }
             return ret;
         }
-        pub inline fn suffixSubTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.pair(Tag) {
+        pub inline fn suffixSubTagNew(comptime Tag: type, comptime sub_tag: @Type(.EnumLiteral)) static.Pair(Tag) {
             comptime var ret: static.Pair(Tag) = .{ &.{}, &.{} };
             inline for (@typeInfo(Tag).Enum.fields) |field| {
                 const tag: Tag = @field(Tag, field.name);
