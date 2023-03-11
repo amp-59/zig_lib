@@ -237,9 +237,13 @@ pub const BuildCommandOptions = opaque {
         .string = "-fClang",
         .and_no = &.{ .string = "-fno-Clang" },
     };
-    pub const stage1: OptionSpec = .{
-        .string = "-fstage1",
-        .and_no = &.{ .string = "-fno-stage1" },
+    pub const reference_trace: OptionSpec = .{
+        .string = "-freference-trace",
+        .and_no = &.{ .string = "-fno-reference-trace" },
+    };
+    pub const error_trace: OptionSpec = .{
+        .string = "-ferror-trace",
+        .and_no = &.{ .string = "-fno-error-trace" },
     };
     pub const single_threaded: OptionSpec = .{
         .string = "-fsingle-threaded",
