@@ -1133,33 +1133,12 @@ const debug = opaque {
     fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
         var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
-        const bad_opt: []const u8 = blk: {
-            var idx: u64 = 0;
-            while (idx != arg.len) : (idx += 1) {
-                if (arg[idx] == '=') {
-                    break :blk arg[0..idx];
-                }
-            }
-            break :blk arg;
-        };
+        const bad_opt: []const u8 = getBadOpt(arg);
         len += builtin.debug.writeMulti(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
         for (all_options) |option| {
             const min: u64 = len;
             if (option.long) |long_switch| {
-                const mats: u64 = blk: {
-                    var l_idx: u64 = 0;
-                    var mats: u64 = 0;
-                    lo: while (true) : (l_idx += 1) {
-                        var r_idx: u64 = 0;
-                        while (r_idx < long_switch.len) : (r_idx += 1) {
-                            if (l_idx +% mats >= bad_opt.len) {
-                                break :lo;
-                            }
-                            mats += @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
-                        }
-                    }
-                    break :blk mats;
-                };
+                const mats: u64 = matchLongSwitch(bad_opt, long_switch);
                 if (builtin.diff(u64, mats, long_switch.len) < 3) {
                     len += builtin.debug.writeMany(buf[len..], about_opt_0_s);
                     if (option.short) |short_switch| {
@@ -1182,6 +1161,29 @@ const debug = opaque {
         }
         len += builtin.debug.writeMany(buf[len..], about_stop_s);
         builtin.debug.write(buf[0..len]);
+    }
+    fn getBadOpt(arg: [:0]const u8) []const u8 {
+        var idx: u64 = 0;
+        while (idx != arg.len) : (idx += 1) {
+            if (arg[idx] == '=') {
+                return arg[0..idx];
+            }
+        }
+        return arg;
+    }
+    fn matchLongSwitch(bad_opt: []const u8, long_switch: []const u8) u64 {
+        var l_idx: u64 = 0;
+        var mats: u64 = 0;
+        lo: while (true) : (l_idx += 1) {
+            var r_idx: u64 = 0;
+            while (r_idx < long_switch.len) : (r_idx += 1) {
+                if (l_idx +% mats >= bad_opt.len) {
+                    break :lo;
+                }
+                mats += @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
+            }
+        }
+        return mats;
     }
     // Try to make these two less original
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
