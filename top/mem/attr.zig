@@ -1,56 +1,6 @@
 const gen = @import("./gen.zig");
 const builtin = gen.builtin;
 
-pub fn GenericStructOfBool(comptime Struct: type) type {
-    return struct {
-        pub fn countTrue(bit_field: Struct) u64 {
-            var ret: u64 = 0;
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                ret +%= @boolToInt(@field(bit_field, field.name));
-            }
-            return ret;
-        }
-        pub fn formatWrite(format: Struct, array: anytype) void {
-            if (countTrue(format) == 0) {
-                array.writeMany(".{}");
-            } else {
-                array.writeMany(".{");
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        array.writeMany("." ++ field.name ++ "=true,");
-                    }
-                }
-                array.undefine(1);
-                array.writeOne('}');
-            }
-        }
-        pub fn formatLength(format: Struct) u64 {
-            var len: u64 = 3;
-            if (countTrue(format) != 0) {
-                len -%= 1;
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        len +%= 1 +% field.name.len +% 6;
-                    }
-                }
-            }
-            return len;
-        }
-        pub const Enum = blk: {
-            var fields: []const builtin.Type.EnumField = &.{};
-            inline for (@typeInfo(Struct)) |field| {
-                fields = fields ++ [1]builtin.Type.EnumField{.{
-                    .name = field.name,
-                    .value = 1 << @bitOffsetOf(Struct, field.name),
-                }};
-            }
-            break :blk @Type(.{ .Enum = .{
-                .fields = fields,
-                .tag_type = @typeInfo(Struct).Struct.backing_int.?,
-            } });
-        };
-    };
-}
 pub const Kinds = packed struct {
     automatic: bool = false,
     dynamic: bool = false,
@@ -112,6 +62,56 @@ pub const Techniques = packed struct {
     };
     pub usingnamespace GenericStructOfBool(Techniques);
 };
+pub fn GenericStructOfBool(comptime Struct: type) type {
+    return struct {
+        pub fn countTrue(bit_field: Struct) u64 {
+            var ret: u64 = 0;
+            inline for (@typeInfo(Struct).Struct.fields) |field| {
+                ret +%= @boolToInt(@field(bit_field, field.name));
+            }
+            return ret;
+        }
+        pub fn formatWrite(format: Struct, array: anytype) void {
+            if (countTrue(format) == 0) {
+                array.writeMany(".{}");
+            } else {
+                array.writeMany(".{");
+                inline for (@typeInfo(Struct).Struct.fields) |field| {
+                    if (@field(format, field.name)) {
+                        array.writeMany("." ++ field.name ++ "=true,");
+                    }
+                }
+                array.undefine(1);
+                array.writeOne('}');
+            }
+        }
+        pub fn formatLength(format: Struct) u64 {
+            var len: u64 = 3;
+            if (countTrue(format) != 0) {
+                len -%= 1;
+                inline for (@typeInfo(Struct).Struct.fields) |field| {
+                    if (@field(format, field.name)) {
+                        len +%= 1 +% field.name.len +% 6;
+                    }
+                }
+            }
+            return len;
+        }
+        pub const Enum = blk: {
+            var fields: []const builtin.Type.EnumField = &.{};
+            inline for (@typeInfo(Struct)) |field| {
+                fields = fields ++ [1]builtin.Type.EnumField{.{
+                    .name = field.name,
+                    .value = 1 << @bitOffsetOf(Struct, field.name),
+                }};
+            }
+            break :blk @Type(.{ .Enum = .{
+                .fields = fields,
+                .tag_type = @typeInfo(Struct).Struct.backing_int.?,
+            } });
+        };
+    };
+}
 comptime {
     const attribute_types: [6]type = .{ Modes, Kinds, Layouts, Fields, Managers, Techniques };
     inline for (attribute_types, 0..) |l_struct_of_bool, index| {
@@ -125,6 +125,7 @@ comptime {
         }
     }
 }
+
 pub const Option = struct {
     kind: Option.Kind,
     info: Info,
