@@ -121,8 +121,8 @@ pub fn groupImplementations(allocator: anytype, comptime Detail: type, comptime 
 pub fn implLeader(comptime Detail: type, comptime Index: type, group_key: []const Index, group: []const Detail) Detail {
     return group[group_key[0]];
 }
-pub fn specIndex(comptime Detail: type, leader: Detail) u8 {
-    return builtin.popcnt(u8, meta.leastRealBitCast(leader.specs));
+pub fn specIndex(comptime Detail: type, leader: Detail) u64 {
+    return builtin.popcnt(u8, meta.leastBitCast(leader.specs));
 }
 pub fn writeComma(array: anytype) void {
     const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());

@@ -46,7 +46,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             }
             break :blk @Type(.{ .Enum = .{
                 .fields = fields,
-                .tag_type = meta.Child(Struct),
+                .tag_type = @typeInfo(Struct).Struct.backing_int.?,
             } });
         };
     };
