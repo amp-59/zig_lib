@@ -67,6 +67,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,       "generate_build", "top/build/generate_build.zig");
     const mg_aux: *build.Group              = builder.addGroup(allocator,               "memgen_auxiliary");
     const mg_abstract_params: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_abstract_params",       "top/mem/abstract_params-aux.zig");
+    const mg_new_type_specs: *build.Target  = mg_aux.addTarget(small_spec, allocator,   "mg_new_type_specs",       "top/mem/new_type_specs-aux.zig");
+    _ = mg_new_type_specs;
     const mg_impl_detail: *build.Target     = mg_aux.addTarget(debug_spec, allocator,   "mg_impl_detail",           "top/mem/impl_detail-aux.zig");
     const mg_options: *build.Target         = mg_aux.addTarget(debug_spec, allocator,   "mg_options",               "top/mem/options-aux.zig");
     const mg_type_specs: *build.Target      = mg_aux.addTarget(small_spec, allocator,   "mg_type_specs",            "top/mem/type_specs-aux.zig");
