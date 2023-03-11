@@ -485,7 +485,7 @@ inline fn formatLengthOmitTrailingComma(comptime omit_trailing_comma: bool, fiel
     return builtin.int2a(u64, !omit_trailing_comma, fields_len != 0);
 }
 
-fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
+pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     if (!spec.ignore_formatter_decls) {
         if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
             return FormatFormat(Struct);
@@ -510,6 +510,7 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             } else {
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                    const field_spec: RenderSpec = if (field.type == type) field_spec_if_type else field_spec_if_not_type;
                     len +%= 1 + field_name_format.formatLength() + 3;
                     len +%= AnyFormat(field.type, field_spec).max_len;
                     len +%= 2;
@@ -517,9 +518,14 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             }
             break :blk len;
         };
-        const field_spec: RenderSpec = blk: {
+        const field_spec_if_not_type: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
             tmp.infer_type_names = true;
+            break :blk tmp;
+        };
+        const field_spec_if_type: RenderSpec = blk: {
+            var tmp: RenderSpec = spec;
+            tmp.infer_type_names = false;
             break :blk tmp;
         };
         fn writeFieldInitializer(array: anytype, field_name_format: fmt.IdentifierFormat, field_format: anytype) void {
@@ -538,6 +544,7 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                     const field_value: field.type = @field(format.value, field.name);
+                    const field_spec: RenderSpec = if (field.type == type) field_spec_if_type else field_spec_if_not_type;
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null) {
                         if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
@@ -558,6 +565,7 @@ fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             var fields_len: usize = 0;
             inline for (fields) |field| {
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                const field_spec: RenderSpec = if (field.type == type) field_spec_if_type else field_spec_if_not_type;
                 const FieldFormat = AnyFormat(field_spec, field.type);
                 const field_value: field.type = @field(format.value, field.name);
                 if (spec.omit_default_fields and field.default_value != null) {
@@ -722,7 +730,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             field_format.formatWrite(array);
             array.writeCount(2, ", ".*);
         }
-        pub fn formatWrite(format: Format, array: anytype) void {
+        pub fn formatWrite(format: anytype, array: anytype) void {
             if (show_enum_field) {
                 return formatWriteEnumField(format, array);
             }
