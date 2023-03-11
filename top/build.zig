@@ -225,10 +225,12 @@ fn join(
         .enable_cache = true,
         .compiler_rt = false,
         .strip = builder.options.strip,
+        .image_base = 0x10000,
         .modules = spec_mods,
         .dependencies = spec_deps,
         .mode = mode,
         .macros = spec_macros,
+        .reference_trace = true,
     });
     if (spec_run) ret.addRun(allocator, .{});
     return ret;
@@ -271,7 +273,8 @@ pub const BuildCommand = struct {
     unwind_tables: ?bool = null,
     llvm: ?bool = null,
     clang: ?bool = null,
-    stage1: ?bool = null,
+    reference_trace: ?bool = null,
+    error_trace: ?bool = null,
     single_threaded: ?bool = null,
     builtin: bool = false,
     function_sections: ?bool = null,
@@ -760,11 +763,18 @@ pub const Target = struct {
                 len +%= 11;
             }
         }
-        if (cmd.stage1) |stage1| {
-            if (stage1) {
-                len +%= 9;
+        if (cmd.reference_trace) |reference_trace| {
+            if (reference_trace) {
+                len +%= 18;
             } else {
-                len +%= 12;
+                len +%= 21;
+            }
+        }
+        if (cmd.error_trace) |error_trace| {
+            if (error_trace) {
+                len +%= 14;
+            } else {
+                len +%= 17;
             }
         }
         if (cmd.single_threaded) |single_threaded| {
@@ -1269,11 +1279,18 @@ pub const Target = struct {
                 array.writeMany("-fno-Clang\x00");
             }
         }
-        if (cmd.stage1) |stage1| {
-            if (stage1) {
-                array.writeMany("-fstage1\x00");
+        if (cmd.reference_trace) |reference_trace| {
+            if (reference_trace) {
+                array.writeMany("-freference-trace\x00");
             } else {
-                array.writeMany("-fno-stage1\x00");
+                array.writeMany("-fno-reference-trace\x00");
+            }
+        }
+        if (cmd.error_trace) |error_trace| {
+            if (error_trace) {
+                array.writeMany("-ferror-trace\x00");
+            } else {
+                array.writeMany("-fno-error-trace\x00");
             }
         }
         if (cmd.single_threaded) |single_threaded| {
