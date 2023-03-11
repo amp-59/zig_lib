@@ -2,6 +2,25 @@ const gen = @import("./gen.zig");
 const meta = gen.meta;
 const builtin = gen.builtin;
 
+// zig fmt: off
+pub const specs: []const Specification = &.{
+    .{ .kind = .automatic,  .fields = au,            .layouts = S,  .modes = rw,            .techniques = auto_techs,   .specifiers = auto_specs },
+    .{ .kind = .automatic,  .fields = au_ss,         .layouts = S,  .modes = rw_str,        .techniques = auto_techs,   .specifiers = auto_specs },
+    .{ .kind = .automatic,  .fields = au_ub,         .layouts = S,  .modes = rw_rsz,        .techniques = auto_techs,   .specifiers = auto_specs },
+    .{ .kind = .automatic,  .fields = au_ss_ub,      .layouts = S,  .modes = rw_str_rsz,    .techniques = auto_techs,   .specifiers = auto_specs },
+
+    .{ .kind = .dynamic,    .fields = lb_up,         .layouts = SU, .modes = rw,            .techniques = dyn_techs,    .specifiers = dyn_specs },
+    .{ .kind = .dynamic,    .fields = lb_ss_up,      .layouts = SU, .modes = rw_str,        .techniques = dyn_techs,    .specifiers = dyn_specs },
+    .{ .kind = .dynamic,    .fields = lb_ub_up,      .layouts = SU, .modes = rw_rsz,        .techniques = dyn_techs,    .specifiers = dyn_specs },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub_up,   .layouts = SU, .modes = rw_str_rsz,    .techniques = dyn_techs,    .specifiers = dyn_specs },
+
+    .{ .kind = .dynamic,    .fields = lb,            .layouts = SU, .modes = rw,            .techniques = dyn_techs_1,  .specifiers = dyn_specs },
+    .{ .kind = .dynamic,    .fields = lb_ss,         .layouts = SU, .modes = rw_str,        .techniques = dyn_techs_2,  .specifiers = dyn_specs },
+    .{ .kind = .dynamic,    .fields = lb_ub,         .layouts = SU, .modes = rw_rsz,        .techniques = dyn_techs_2,  .specifiers = dyn_specs },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub,      .layouts = SU, .modes = rw_str_rsz,    .techniques = dyn_techs_2,  .specifiers = dyn_specs },
+};
+// zig fmt: on
+
 pub const Kinds = packed struct(u4) {
     automatic: bool = false,
     dynamic: bool = false,
@@ -77,58 +96,6 @@ const Variant = union(enum) {
         decl_type: type,
     };
 };
-pub fn GenericStructOfBool(comptime Struct: type) type {
-    return struct {
-        pub fn countTrue(bit_field: Struct) u64 {
-            var ret: u64 = 0;
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                ret +%= @boolToInt(@field(bit_field, field.name));
-            }
-            return ret;
-        }
-        pub fn formatWrite(format: Struct, array: anytype) void {
-            if (countTrue(format) == 0) {
-                array.writeMany(".{}");
-            } else {
-                array.writeMany(".{");
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        array.writeMany("." ++ field.name ++ "=true,");
-                    }
-                }
-                array.undefine(1);
-                array.writeOne('}');
-            }
-        }
-        pub fn formatLength(format: Struct) u64 {
-            var len: u64 = 3;
-            if (countTrue(format) != 0) {
-                len -%= 1;
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        len +%= 1 +% field.name.len +% 6;
-                    }
-                }
-            }
-            return len;
-        }
-        pub const Tag = blk: {
-            var fields: []const builtin.Type.EnumField = &.{};
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                fields = fields ++ [1]builtin.Type.EnumField{.{
-                    .name = field.name,
-                    .value = 1 << @bitOffsetOf(Struct, field.name),
-                }};
-            }
-            break :blk @Type(.{ .Enum = .{
-                .fields = fields,
-                .tag_type = @typeInfo(Struct).Struct.backing_integer.?,
-                .decls = &.{},
-                .is_exhaustive = false,
-            } });
-        };
-    };
-}
 pub const Options = struct {
     capacity: ?enum {
         single_packed_approximate,
@@ -146,6 +113,7 @@ pub const Options = struct {
     },
 };
 const Specification = struct {
+    kind: Kinds.Tag,
     fields: []const Fields.Tag,
     modes: []const Modes.Tag,
     layouts: []const Layouts.Tag,
@@ -194,14 +162,13 @@ fn decl_optional_variant(
         .decl_type = decl_type,
     } };
 }
-const Arena = struct { lb_addr: u64, up_addr: u64 };
-
 const auto_specs = &.{
     default(.child, type),
     default(.count, u64),
     optional_derived(.low_alignment, u64),
     optional_variant(.sentinel, *const anyopaque),
 };
+const Arena = struct { lb_addr: u64, up_addr: u64 };
 const dyn_specs = &.{
     default(.child, type),
     optional_derived(.low_alignment, u64),
@@ -304,21 +271,55 @@ const SU: []const Layouts.Tag = &.{
     .structured,
     .unstructured,
 };
-
-// zig fmt: off
-pub const specs: []const Specification = &.{
-    .{ .fields = au,            .modes = rw,            .layouts = S,   .techniques = auto_techs,   .specifiers = auto_specs },
-    .{ .fields = au_ss,         .modes = rw_str,        .layouts = S,   .techniques = auto_techs,   .specifiers = auto_specs },
-    .{ .fields = au_ub,         .modes = rw_rsz,        .layouts = S,   .techniques = auto_techs,   .specifiers = auto_specs },
-    .{ .fields = au_ss_ub,      .modes = rw_str_rsz,    .layouts = S,   .techniques = auto_techs,   .specifiers = auto_specs },
-
-    .{ .fields = lb_up,         .modes = rw,            .layouts = SU,  .techniques = dyn_techs,    .specifiers = dyn_specs },
-    .{ .fields = lb_ss_up,      .modes = rw_str,        .layouts = SU,  .techniques = dyn_techs,    .specifiers = dyn_specs },
-    .{ .fields = lb_ub_up,      .modes = rw_rsz,        .layouts = SU,  .techniques = dyn_techs,    .specifiers = dyn_specs },
-    .{ .fields = lb_ss_ub_up,   .modes = rw_str_rsz,    .layouts = SU,  .techniques = dyn_techs,    .specifiers = dyn_specs },
-
-    .{ .fields = lb,            .modes = rw,            .layouts = SU,  .techniques = dyn_techs_1,  .specifiers = dyn_specs },
-    .{ .fields = lb_ss,         .modes = rw_str,        .layouts = SU,  .techniques = dyn_techs_2,  .specifiers = dyn_specs },
-    .{ .fields = lb_ub,         .modes = rw_rsz,        .layouts = SU,  .techniques = dyn_techs_2,  .specifiers = dyn_specs },
-    .{ .fields = lb_ss_ub,      .modes = rw_str_rsz,    .layouts = SU,  .techniques = dyn_techs_2,  .specifiers = dyn_specs },
-};
+pub fn GenericStructOfBool(comptime Struct: type) type {
+    return struct {
+        pub const Tag = blk: {
+            var fields: []const builtin.Type.EnumField = &.{};
+            inline for (@typeInfo(Struct).Struct.fields) |field| {
+                fields = fields ++ [1]builtin.Type.EnumField{.{
+                    .name = field.name,
+                    .value = 1 << @bitOffsetOf(Struct, field.name),
+                }};
+            }
+            break :blk @Type(.{ .Enum = .{
+                .fields = fields,
+                .tag_type = @typeInfo(Struct).Struct.backing_integer.?,
+                .decls = &.{},
+                .is_exhaustive = false,
+            } });
+        };
+        pub fn countTrue(bit_field: Struct) u64 {
+            var ret: u64 = 0;
+            inline for (@typeInfo(Struct).Struct.fields) |field| {
+                ret +%= @boolToInt(@field(bit_field, field.name));
+            }
+            return ret;
+        }
+        pub fn formatWrite(format: Struct, array: anytype) void {
+            if (countTrue(format) == 0) {
+                array.writeMany(".{}");
+            } else {
+                array.writeMany(".{");
+                inline for (@typeInfo(Struct).Struct.fields) |field| {
+                    if (@field(format, field.name)) {
+                        array.writeMany("." ++ field.name ++ "=true,");
+                    }
+                }
+                array.undefine(1);
+                array.writeOne('}');
+            }
+        }
+        pub fn formatLength(format: Struct) u64 {
+            var len: u64 = 3;
+            if (countTrue(format) != 0) {
+                len -%= 1;
+                inline for (@typeInfo(Struct).Struct.fields) |field| {
+                    if (@field(format, field.name)) {
+                        len +%= 1 +% field.name.len +% 6;
+                    }
+                }
+            }
+            return len;
+        }
+    };
+}
