@@ -1,25 +1,25 @@
 const gen = @import("./gen.zig");
 const builtin = gen.builtin;
 
-pub const Kinds = packed struct {
+pub const Kinds = packed struct(u4) {
     automatic: bool = false,
     dynamic: bool = false,
     static: bool = false,
     parametric: bool = false,
     pub usingnamespace GenericStructOfBool(Kinds);
 };
-pub const Layouts = packed struct {
+pub const Layouts = packed struct(u2) {
     structured: bool = false,
     unstructured: bool = false,
     pub usingnamespace GenericStructOfBool(Layouts);
 };
-pub const Modes = packed struct {
+pub const Modes = packed struct(u3) {
     read_write: bool = false,
     resize: bool = false,
     stream: bool = false,
     pub usingnamespace GenericStructOfBool(Modes);
 };
-pub const Fields = packed struct {
+pub const Fields = packed struct(u5) {
     automatic_storage: bool = false,
     allocated_byte_address: bool = false,
     undefined_byte_address: bool = false,
@@ -27,7 +27,7 @@ pub const Fields = packed struct {
     unstreamed_byte_address: bool = false,
     pub usingnamespace GenericStructOfBool(Fields);
 };
-pub const Managers = packed struct {
+pub const Managers = packed struct(u5) {
     allocatable: bool = false,
     reallocatable: bool = false,
     resizable: bool = false,
@@ -35,7 +35,17 @@ pub const Managers = packed struct {
     convertible: bool = false,
     pub usingnamespace GenericStructOfBool(Managers);
 };
-pub const Techniques = packed struct {
+pub const Specifiers = packed struct(u7) {
+    child: bool = false,
+    count: bool = false,
+    sentinel: bool = false,
+    low_alignment: bool = false,
+    high_alignment: bool = false,
+    Allocator: bool = false,
+    arena: bool = false,
+    pub usingnamespace GenericStructOfBool(Specifiers);
+};
+pub const Techniques = packed struct(u8) {
     auto_alignment: bool = false,
     lazy_alignment: bool = false,
     unit_alignment: bool = false,
@@ -97,9 +107,9 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             }
             return len;
         }
-        pub const Enum = blk: {
+        pub const Tag = blk: {
             var fields: []const builtin.Type.EnumField = &.{};
-            inline for (@typeInfo(Struct)) |field| {
+            inline for (@typeInfo(Struct).Struct.fields) |field| {
                 fields = fields ++ [1]builtin.Type.EnumField{.{
                     .name = field.name,
                     .value = 1 << @bitOffsetOf(Struct, field.name),
@@ -107,25 +117,13 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             }
             break :blk @Type(.{ .Enum = .{
                 .fields = fields,
-                .tag_type = @typeInfo(Struct).Struct.backing_int.?,
+                .tag_type = @typeInfo(Struct).Struct.backing_integer.?,
+                .decls = &.{},
+                .is_exhaustive = false,
             } });
         };
     };
 }
-comptime {
-    const attribute_types: [6]type = .{ Modes, Kinds, Layouts, Fields, Managers, Techniques };
-    inline for (attribute_types, 0..) |l_struct_of_bool, index| {
-        inline for (@typeInfo(l_struct_of_bool).Struct.fields) |field| {
-            inline for (attribute_types[index + 1 ..]) |r_struct_of_bool| {
-                if (@hasField(r_struct_of_bool, field.name)) {
-                    @compileError(@typeName(l_struct_of_bool) ++ ", " ++
-                        @typeName(r_struct_of_bool) ++ " share non-unique attribute name: " ++ field.name);
-                }
-            }
-        }
-    }
-}
-
 pub const Option = struct {
     kind: Option.Kind,
     info: Info,
@@ -450,3 +448,16 @@ pub const Fn = struct {
         }
     };
 };
+comptime {
+    const attribute_types: [6]type = .{ Modes, Kinds, Layouts, Fields, Managers, Techniques };
+    inline for (attribute_types, 0..) |l_struct_of_bool, index| {
+        inline for (@typeInfo(l_struct_of_bool).Struct.fields) |field| {
+            inline for (attribute_types[index + 1 ..]) |r_struct_of_bool| {
+                if (@hasField(r_struct_of_bool, field.name)) {
+                    @compileError(@typeName(l_struct_of_bool) ++ ", " ++
+                        @typeName(r_struct_of_bool) ++ " share non-unique attribute name: " ++ field.name);
+                }
+            }
+        }
+    }
+}
