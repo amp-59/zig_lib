@@ -291,6 +291,10 @@ pub const mul_add_fn_name: [:0]const u8 = machFnName("mulAdd");
 pub const mul_sub_fn_name: [:0]const u8 = machFnName("mulSub");
 pub const unpack_single_fn_name: [:0]const u8 = if (config.packed_capacity_low) "algo.unpackSingleApproxB" else "algo.unpackSingleApproxA";
 pub const unpack_double_fn_name: [:0]const u8 = if (config.packed_capacity_low) "algo.unpackDoubleApproxS" else "algo.unpackDoubleApproxH";
+pub const partial_unpack_single_fn_name: [:0]const u8 = "algo.partialUnpackSingleApprox";
+pub const partial_unpack_double_fn_name: [:0]const u8 = "algo.partialUnpackDoubleApprox";
+pub const partial_pack_single_fn_name: [:0]const u8 = "algo.partialPackSingleApprox";
+pub const partial_pack_double_fn_name: [:0]const u8 = "algo.partialPackDoubleApprox";
 pub const amount_of_type_to_bytes_fn_name: [:0]const u8 = "amountOfTypeToBytes";
 pub const amount_of_length_to_bytes_fn_name: [:0]const u8 = "amountOfLengthToBytes";
 pub const amount_to_count_of_type_name: [:0]const u8 = "amountToCountOfType";
@@ -357,6 +361,25 @@ pub const const_bytes_0: [:0]const u8 = amountBytes("0");
 pub const const_bytes_1: [:0]const u8 = amountBytes("1");
 pub const const_amount_0: [:0]const u8 = amountCount("0");
 pub const const_amount_1: [:0]const u8 = amountCount("1");
+
+const KV = struct { name: []const u8, symbol: [:0]const u8 };
+pub const list: []const KV = blk: {
+    var res: []const KV = &.{};
+    inline for (@typeInfo(@This()).Struct.decls) |decl| {
+        if (decl.name.len == 4 and
+            decl.name[0] == 'l' and
+            decl.name[1] == 'i' and
+            decl.name[2] == 's' and
+            decl.name[3] == 't') continue;
+        if (decl.is_pub) {
+            const value = @field(@This(), decl.name);
+            if (@TypeOf(value) == [:0]const u8) {
+                res = res ++ [1]KV{.{ .name = decl.name, .symbol = value }};
+            }
+        }
+    }
+    break :blk res;
+};
 
 fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
     return fieldAccess(meta_namespace, name);
