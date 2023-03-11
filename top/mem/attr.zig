@@ -1,3 +1,6 @@
+const gen = @import("./gen.zig");
+const builtin = gen.builtin;
+
 pub fn GenericStructOfBool(comptime Struct: type) type {
     return struct {
         pub fn countTrue(bit_field: Struct) u64 {
@@ -33,6 +36,19 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             }
             return len;
         }
+        pub const Enum = blk: {
+            var fields: []const builtin.Type.EnumField = &.{};
+            inline for (@typeInfo(Struct)) |field| {
+                fields = fields ++ [1]builtin.Type.EnumField{.{
+                    .name = field.name,
+                    .value = 1 << @bitOffsetOf(Struct, field.name),
+                }};
+            }
+            break :blk @Type(.{ .Enum = .{
+                .fields = fields,
+                .tag_type = meta.Child(Struct),
+            } });
+        };
     };
 }
 pub const Kinds = packed struct {
