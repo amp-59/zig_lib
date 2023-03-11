@@ -246,6 +246,35 @@ pub fn subst(buf: []Expr, what: struct { dst: Expr, src: Expr }) void {
     }
 }
 const Init = struct {
+    const Tokens = struct {
+        impl_name: [:0]const u8 = tok.impl_name,
+        impl_type_name: [:0]const u8 = tok.impl_type_name,
+        impl_const_param: [:0]const u8 = tok.impl_const_param,
+        fn determine(impl_fn_info: *const impl_fn.Fn) Tokens {
+            switch (impl_fn_info.*) {
+                .allocate => {
+                    return .{
+                        .impl_name = tok.source_impl_name,
+                        .impl_type_name = tok.source_impl_type_name,
+                    };
+                },
+                .reallocate,
+                .move,
+                => {
+                    return .{
+                        .impl_name = tok.target_impl_name,
+                        .impl_type_name = tok.target_impl_type_name,
+                    };
+                },
+                else => {
+                    return .{
+                        .impl_name = tok.impl_name,
+                        .impl_type_name = tok.impl_type_name,
+                    };
+                },
+            }
+        }
+    };
     fn packMore(tag: ExprTag, exprs: []Expr) Expr {
         return .{
             .data1 = @ptrToInt(exprs.ptr),
@@ -293,36 +322,6 @@ const Init = struct {
         }
         return packMore(.call, exprs[0..idx]);
     }
-    const Tokens = struct {
-        impl_name: [:0]const u8 = tok.impl_name,
-        impl_type_name: [:0]const u8 = tok.impl_type_name,
-        impl_const_param: [:0]const u8 = tok.impl_const_param,
-        fn determine(impl_fn_info: *const impl_fn.Fn) Tokens {
-            switch (impl_fn_info.*) {
-                .allocate => {
-                    return .{
-                        .impl_name = tok.source_impl_name,
-                        .impl_type_name = tok.source_impl_type_name,
-                    };
-                },
-                .reallocate,
-                .move,
-                => {
-                    return .{
-                        .impl_name = tok.target_impl_name,
-                        .impl_type_name = tok.target_impl_type_name,
-                    };
-                },
-                else => {
-                    return .{
-                        .impl_name = tok.impl_name,
-                        .impl_type_name = tok.impl_type_name,
-                    };
-                },
-            }
-        }
-    };
-
     pub fn impl1(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: *const gen.ArgList, tokens: Tokens) Expr {
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 3);
         var idx: u64 = 0;
@@ -623,6 +622,18 @@ pub inline fn unpck2x(expr1: Expr, expr2: Expr) [3]Expr {
 }
 pub inline fn unpck1x(expr1: Expr) [2]Expr {
     return fnCall1(tok.unpack_single_fn_name, expr1);
+}
+pub inline fn unpck2x05(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.partial_unpack_double_fn_name, expr1, expr2);
+}
+pub inline fn unpck1x05(expr1: Expr) [2]Expr {
+    return fnCall1(tok.partial_unpack_single_fn_name, expr1);
+}
+pub inline fn pck2x05(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.partial_pack_double_fn_name, expr1, expr2);
+}
+pub inline fn pck1x05(expr1: Expr) [2]Expr {
+    return fnCall1(tok.partial_pack_single_fn_name, expr1);
 }
 pub inline fn subOr(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
     return fnCall3(tok.sub_or_fn_name, expr1, expr2, expr3);
