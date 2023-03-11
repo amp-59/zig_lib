@@ -8,6 +8,7 @@ const preset = gen.preset;
 const builtin = gen.builtin;
 const testing = gen.testing;
 const tok = @import("./tok.zig");
+const expr = @import("./expr.zig");
 const attr = @import("./attr.zig");
 const detail = @import("./detail.zig");
 const config = @import("./config.zig");
@@ -18,6 +19,7 @@ const out = struct {
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/containers.zig");
     usingnamespace @import("./zig-out/src/specifications.zig");
+    usingnamespace @import("./zig-out/src/specifiers.zig");
 };
 pub usingnamespace proc.start;
 
@@ -38,14 +40,10 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .logging = preset.address_space.logging.silent,
 });
 
+const Expr = expr.Expr;
 const String = Allocator.StructuredVector(u8);
 const StringArray = Allocator.StructuredVector([]const u8);
 
-const Array = struct {
-    options: String,
-    params: String,
-    indices: StringArray,
-};
 fn writeOptionsInternal(options: *String, field_name: []const u8, usage: attr.Option.Usage, field_names: []const []const u8) void {
     switch (usage) {
         .test_boolean => {
@@ -147,26 +145,18 @@ fn writeOneUniqueOptionsStruct(indices: *StringArray, new: []const u8) ?u64 {
 //         }, options);
 //     }
 // }
-fn writeImplementation(params: *String, ctn_index: u64, spec_index: *u64) void {
-    params.writeMany("fn Implementation(spec:Specification)type{\n");
-    for (out.specifications[ctn_index]) |spec_group| {
-        if (spec_group.len != 0) {
-            params.writeMany("reference.Specification");
-            params.writeFormat(fmt.ud64(spec_index.*));
-            params.writeMany(".Implementation(spec, spec.options);\n");
-        }
-        spec_index.* +%= 1;
-    }
-    params.writeMany("}\n");
-}
+
 fn writeContainerGroup(allocator: *Allocator, options: *String, params: *String, indices: *StringArray, ctn_index: u64, spec_index: *u64) void {
     const ctn_group: []const out.Index = out.containers[ctn_index];
+    const impl_variant: detail.More = out.impl_variants[ctn_group[0]];
+    const params_index: u8 = impl_variant.index;
+
     params.writeMany("pub const ");
     out.impl_variants[ctn_group[0]].writeContainerName(params);
     params.writeMany("Spec=struct{\n");
 
-    for (out.type_descrs[out.impl_variants[ctn_group[0]].index].params.type_decl.Composition.fields) |field| {
-        gen.writeField(params, field.name, field.type);
+    for (out.type_descrs[params_index].params.fields()) |field| {
+        field.formatWrite(params);
     }
 
     const buf: []detail.More = allocator.allocateIrreversible(detail.More, ctn_group.len);
@@ -179,8 +169,16 @@ fn writeContainerGroup(allocator: *Allocator, options: *String, params: *String,
         params.writeFormat(fmt.ud64(decl_idx));
         params.writeMany(",");
     }
-    params.writeMany("const Specification=@This();\n");
-    writeImplementation(params, ctn_index, spec_index);
+    params.writeMany("const Specification=@This();\nfn Implementation(spec:Specification)type{\n");
+    for (out.specifications[ctn_index]) |spec_group| {
+        if (spec_group.len != 0) {
+            params.writeMany("reference.Specification");
+            params.writeFormat(fmt.ud64(spec_index.*));
+            params.writeMany(".Implementation(spec, spec.options);\n");
+        }
+        spec_index.* +%= 1;
+    }
+    params.writeMany("}\n");
     params.writeMany("};\n");
 }
 fn generateParameters() !void {
