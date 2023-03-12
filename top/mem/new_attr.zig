@@ -288,6 +288,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
                 .is_exhaustive = false,
             } });
         };
+        pub const tag_list: []const Tag = meta.tagList(Tag);
         pub fn countTrue(bit_field: Struct) u64 {
             var ret: u64 = 0;
             inline for (@typeInfo(Struct).Struct.fields) |field| {
