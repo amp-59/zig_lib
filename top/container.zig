@@ -721,6 +721,70 @@ pub const reinterpret = opaque {
         return len;
     }
 };
+fn highAlignment(comptime Specification: type, comptime spec: Specification) u64 {
+    if (@hasField(Specification, "high_alignment")) {
+        return spec.high_alignment;
+    }
+    if (@hasField(Specification, "child")) {
+        return @sizeOf(spec.child);
+    }
+    if (spec.low_alignment) |low_alignment| {
+        return low_alignment;
+    }
+    @compileError(@typeName(Specification) ++
+        ": no high address alignment, child size, or low " ++
+        "addess alignment defined in container parameters");
+}
+fn lowAlignment(comptime Specification: type, comptime spec: Specification) u64 {
+    if (spec.low_alignment) |low_alignment| {
+        return low_alignment;
+    }
+    if (@hasField(Specification, "child")) {
+        return @alignOf(spec.child);
+    }
+    if (@hasField(Specification, "high_alignment")) {
+        return spec.high_alignment;
+    }
+    @compileError(@typeName(Specification) ++
+        ": no low address alignment, child size, or high " ++
+        "addess alignment defined in container parameters");
+}
+fn unitAlignment(comptime Specification: type, comptime spec: Specification) u64 {
+    if (@hasDecl(spec.Allocator, "allocator_spec")) {
+        const AllocatorSpec: type = @TypeOf(spec.Allocator.allocator_spec);
+        if (@hasField(AllocatorSpec, "unit_alignment")) {
+            return spec.Allocator.allocator_spec.unit_alignment;
+        }
+        const AllocatorSpecOptions: type = @TypeOf(spec.Allocator.allocator_spec.options);
+        if (@hasField(AllocatorSpecOptions, "unit_alignment")) {
+            return spec.Allocator.allocator_spec.options.unit_alignment;
+        }
+    }
+    if (@hasDecl(spec.Allocator, "unit_alignment")) {
+        return spec.Allocator.unit_alignment;
+    }
+    @compileError(@typeName(Specification) ++
+        ": no unit aligment defined in Allocator declarations, " ++
+        "specification, or specification options");
+}
+fn arenaIndex(comptime Specification: type, comptime spec: Specification) ?u64 {
+    const Parameters = @TypeOf(spec);
+    if (@hasField(Parameters, "Allocator")) {
+        if (@hasDecl(spec.Allocator, "arena_index")) {
+            return spec.Allocator.arena_index;
+        }
+        if (@hasDecl(spec.Allocator, "allocator_spec")) {
+            const AllocatorOptions: type = @TypeOf(spec.Allocator.allocator_spec.options);
+            if (@hasField(AllocatorOptions, "arena_index")) {
+                return spec.Allocator.allocator_spec.options.arena_index;
+            }
+        }
+    } else {
+        @compileError(@typeName(Specification) ++
+            ": no Allocator field in specification");
+    }
+    return null;
+}
 fn GenericParameters(comptime Parameters: type) type {
     return struct {
         pub fn highAlignment(comptime params: Parameters) u64 {
@@ -903,7 +967,7 @@ pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*
         pub const spec: Specification = params.specification();
         pub const child_size: u64 = @sizeOf(child);
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -1035,7 +1099,7 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
             array.impl.undefine(array.impl.defined_byte_count());
         }
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -1562,7 +1626,7 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             array.impl.undefine(array.impl.defined_byte_count());
         }
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -2095,7 +2159,7 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             array.impl.undefine(array.impl.defined_byte_count());
         }
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -2573,7 +2637,7 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             array.impl.undefine(array.impl.defined_byte_count());
         }
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -2841,7 +2905,7 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
         pub const spec: Specification = params.specification();
         pub const child_size: u64 = @sizeOf(child);
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -3316,7 +3380,7 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             array.impl.undefine(array.impl.defined_byte_count());
         }
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -3583,7 +3647,7 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
         pub const Specification: type = params.Specification();
         pub const spec: Specification = params.specification();
         pub fn streamAll(array: *Array) void {
-            array.impl.seek(array.impl.ahead());
+            array.impl.seek(array.impl.unstreamed_byte_count());
         }
         pub fn unstreamAll(array: *Array) void {
             array.impl.tell(array.impl.streamed_byte_count());
@@ -4059,10 +4123,10 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             array.impl.undefine(array.impl.defined_byte_count(allocator));
         }
         pub fn streamAll(array: *Array, allocator: Allocator) void {
-            array.impl.seek(array.impl.ahead(allocator));
+            array.impl.seek(array.impl.unstreamed_byte_count(allocator));
         }
         pub fn unstreamAll(array: *Array, allocator: Allocator) void {
-            array.impl.tell(array.impl.behind(allocator));
+            array.impl.tell(array.impl.streamed_byte_count(allocator));
         }
         pub fn index(array: *const Array, allocator: Allocator) u64 {
             return array.impl.streamed_byte_count(allocator) / child_size;
@@ -4581,10 +4645,10 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             array.impl.undefine(array.impl.defined_byte_count(allocator));
         }
         pub fn streamAll(array: *Array, allocator: Allocator) void {
-            array.impl.seek(array.impl.ahead(allocator));
+            array.impl.seek(array.impl.unstreamed_byte_count(allocator));
         }
         pub fn unstreamAll(array: *Array, allocator: Allocator) void {
-            array.impl.tell(array.impl.behind(allocator));
+            array.impl.tell(array.impl.streamed_byte_count(allocator));
         }
         pub fn index(array: *const Array, comptime child: type, allocator: Allocator) u64 {
             return array.impl.streamed_byte_count(allocator) / @sizeOf(child);
