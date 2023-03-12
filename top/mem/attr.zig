@@ -1,129 +1,9 @@
 const gen = @import("./gen.zig");
 const builtin = gen.builtin;
 
-pub const Kinds = packed struct(u4) {
-    automatic: bool = false,
-    dynamic: bool = false,
-    static: bool = false,
-    parametric: bool = false,
-    pub usingnamespace GenericStructOfBool(Kinds);
-};
-pub const Layouts = packed struct(u2) {
-    structured: bool = false,
-    unstructured: bool = false,
-    pub usingnamespace GenericStructOfBool(Layouts);
-};
-pub const Modes = packed struct(u3) {
-    read_write: bool = false,
-    resize: bool = false,
-    stream: bool = false,
-    pub usingnamespace GenericStructOfBool(Modes);
-};
-pub const Fields = packed struct(u5) {
-    automatic_storage: bool = false,
-    allocated_byte_address: bool = false,
-    undefined_byte_address: bool = false,
-    unallocated_byte_address: bool = false,
-    unstreamed_byte_address: bool = false,
-    pub usingnamespace GenericStructOfBool(Fields);
-};
-pub const Managers = packed struct(u5) {
-    allocatable: bool = false,
-    reallocatable: bool = false,
-    resizable: bool = false,
-    movable: bool = false,
-    convertible: bool = false,
-    pub usingnamespace GenericStructOfBool(Managers);
-};
-pub const Specifiers = packed struct(u7) {
-    child: bool = false,
-    count: bool = false,
-    sentinel: bool = false,
-    low_alignment: bool = false,
-    high_alignment: bool = false,
-    Allocator: bool = false,
-    arena: bool = false,
-    pub usingnamespace GenericStructOfBool(Specifiers);
-};
-pub const Techniques = packed struct(u8) {
-    auto_alignment: bool = false,
-    lazy_alignment: bool = false,
-    unit_alignment: bool = false,
-    disjunct_alignment: bool = false,
-    single_packed_approximate_capacity: bool = false,
-    double_packed_approximate_capacity: bool = false,
-    arena_relative: bool = false,
-    address_space_relative: bool = false,
-    pub const Options = struct {
-        capacity: ?enum {
-            single_packed_approximate,
-            double_packed_approximate,
-        },
-        alignment: enum {
-            auto,
-            unit,
-            lazy,
-            disjunct,
-        },
-        relative: enum {
-            arena,
-            address_space,
-        },
-    };
-    pub usingnamespace GenericStructOfBool(Techniques);
-};
-pub fn GenericStructOfBool(comptime Struct: type) type {
-    return struct {
-        pub fn countTrue(bit_field: Struct) u64 {
-            var ret: u64 = 0;
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                ret +%= @boolToInt(@field(bit_field, field.name));
-            }
-            return ret;
-        }
-        pub fn formatWrite(format: Struct, array: anytype) void {
-            if (countTrue(format) == 0) {
-                array.writeMany(".{}");
-            } else {
-                array.writeMany(".{");
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        array.writeMany("." ++ field.name ++ "=true,");
-                    }
-                }
-                array.undefine(1);
-                array.writeOne('}');
-            }
-        }
-        pub fn formatLength(format: Struct) u64 {
-            var len: u64 = 3;
-            if (countTrue(format) != 0) {
-                len -%= 1;
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        len +%= 1 +% field.name.len +% 6;
-                    }
-                }
-            }
-            return len;
-        }
-        pub const Tag = blk: {
-            var fields: []const builtin.Type.EnumField = &.{};
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                fields = fields ++ [1]builtin.Type.EnumField{.{
-                    .name = field.name,
-                    .value = 1 << @bitOffsetOf(Struct, field.name),
-                }};
-            }
-            break :blk @Type(.{ .Enum = .{
-                .fields = fields,
-                .tag_type = @typeInfo(Struct).Struct.backing_integer.?,
-                .decls = &.{},
-                .is_exhaustive = false,
-            } });
-        };
-    };
-}
+const attr = @import("./new_attr.zig");
+pub usingnamespace attr;
+
 pub const Option = struct {
     kind: Option.Kind,
     info: Info,
@@ -148,8 +28,8 @@ pub const Option = struct {
     }
     pub fn count(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail) u64 {
         var ret: u64 = 0;
-        var techs: Techniques = .{};
-        inline for (@typeInfo(Techniques).Struct.fields) |field| {
+        var techs: attr.Techniques = .{};
+        inline for (@typeInfo(attr.Techniques).Struct.fields) |field| {
             for (toplevel_impl_group) |impl_variant| {
                 if (@field(impl_variant.techs, field.name)) {
                     @field(techs, field.name) = true;
@@ -162,8 +42,8 @@ pub const Option = struct {
         return ret;
     }
     pub fn names(comptime option: Option, comptime Detail: type, toplevel_impl_group: []const Detail, buf: [][]const u8) []const []const u8 {
-        var techs: Techniques = .{};
-        inline for (@typeInfo(Techniques).Struct.fields) |field| {
+        var techs: attr.Techniques = .{};
+        inline for (@typeInfo(attr.Techniques).Struct.fields) |field| {
             for (toplevel_impl_group) |impl_variant| {
                 if (@field(impl_variant.techs, field.name)) {
                     @field(techs, field.name) = true;
@@ -340,7 +220,7 @@ pub const Fn = struct {
     pub fn writeKind(comptime Tag: type, array: anytype, comptime kind_tag: @Type(.EnumLiteral), set: anytype) void {
         array.writeMany("pub fn ");
         array.writeMany(@tagName(kind_tag));
-        array.writeMany("(tag: " ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
+        array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
         for (set.readAll()) |elem| {
             array.writeMany(".");
             array.writeMany(@tagName(elem));
@@ -427,7 +307,7 @@ pub const Fn = struct {
         pub inline fn writeKindSwitch(comptime Tag: type, array: anytype, comptime kind_tag: @Type(.EnumLiteral), set: []const Tag) void {
             array.writeMany("pub fn ");
             array.writeMany(@tagName(kind_tag));
-            array.writeMany("(tag: " ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
+            array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
             for (set) |elem| {
                 array.writeMany(".");
                 array.writeMany(@tagName(elem));
@@ -438,7 +318,7 @@ pub const Fn = struct {
         pub fn writeKindBool(comptime Tag: type, array: anytype, fn_name: [:0]const u8, set: []const Tag) void {
             array.writeMany("pub fn ");
             array.writeMany(fn_name);
-            array.writeMany("(tag: " ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\ninline for (.{");
+            array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\ninline for (.{");
             for (set) |elem| {
                 array.writeMany(".");
                 array.writeMany(@tagName(elem));
@@ -449,7 +329,7 @@ pub const Fn = struct {
     };
 };
 comptime {
-    const attribute_types: [6]type = .{ Modes, Kinds, Layouts, Fields, Managers, Techniques };
+    const attribute_types: [6]type = .{ attr.Modes, attr.Kinds, attr.Layouts, attr.Fields, attr.Managers, attr.Techniques };
     inline for (attribute_types, 0..) |l_struct_of_bool, index| {
         inline for (@typeInfo(l_struct_of_bool).Struct.fields) |field| {
             inline for (attribute_types[index + 1 ..]) |r_struct_of_bool| {
