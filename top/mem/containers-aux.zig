@@ -23,7 +23,7 @@ const Container = struct {
 fn mapToContainers() void {
     var array: Array = undefined;
     array.undefineAll();
-    array.writeMany("pub const containers: []const []const u8 = &[_][]const u8{\n");
+    array.writeMany("pub const containers:[]const[]constIndex=&[_][]const Index{\n");
     var keys: Keys = Keys.init(out.Canonical, out.canonicals);
     for (keys.values[0..keys.len]) |key| {
         array.writeMany("&.{");
@@ -41,6 +41,8 @@ fn mapToContainers() void {
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
+    array.writeMany("const Index=" ++ @typeName(out.Index) ++ ";");
+
     gen.writeAuxiliarySourceFile(&array, "containers.zig");
 }
 pub const main = mapToContainers;
