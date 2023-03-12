@@ -550,6 +550,13 @@ pub fn EnumBitField(comptime E: type) type {
         }
     });
 }
+pub fn tagList(comptime E: type) []const E {
+    var res: [@typeInfo(E).Enum.fields.len]E = undefined;
+    for (@typeInfo(E).Enum.fields, 0..) |field, index| {
+        res[index] = @intToEnum(E, field.value);
+    }
+    return &res;
+}
 pub fn TaggedUnion(comptime Union: type) type {
     var tag_type_fields: []const builtin.Type.EnumField = empty;
     var value: comptime_int = 0;
