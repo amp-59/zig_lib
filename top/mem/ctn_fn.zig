@@ -10,14 +10,7 @@ const config = @import("./config.zig");
 
 pub const kind = @import("./zig-out/src/container_kinds.zig");
 
-pub const key = blk: {
-    var res: [@typeInfo(Fn).Enum.fields.len]Fn = undefined;
-    for (@typeInfo(Fn).Enum.fields, 0..) |field, index| {
-        res[index] = @intToEnum(Fn, field.value);
-    }
-    break :blk res;
-};
-// zig fmt: on
+pub const key = meta.tagList(Fn);
 pub fn get(comptime tag: Fn) *const Fn {
     comptime {
         for (key) |val| {
