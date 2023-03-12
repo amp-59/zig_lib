@@ -53,12 +53,13 @@ fn detailToVariants() void {
         vars +%= writeVariantStruct(&array, impl_detail);
     }
     array.writeMany("};\n");
-    array.writeMany("pub const Index = ");
+    gen.writeAuxiliarySourceFile(&array, "impl_variants.zig");
+    array.writeMany("pub const Index=");
     switch (vars) {
         0...255 => array.writeMany("u8;"),
         256...65535 => array.writeMany("u16;"),
         else => array.writeMany("u32;"),
     }
-    gen.writeAuxiliarySourceFile(&array, "impl_variants.zig");
+    gen.writeAuxiliarySourceFile(&array, "config.zig");
 }
 pub const main = detailToVariants;

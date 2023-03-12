@@ -7,6 +7,7 @@ const preset = gen.preset;
 const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const out = struct {
+    usingnamespace @import("./zig-out/src/config.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/kinds.zig");

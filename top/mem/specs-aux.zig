@@ -4,6 +4,7 @@ const fmt = gen.fmt;
 const proc = gen.proc;
 const builtin = gen.builtin;
 const out = struct {
+    usingnamespace @import("./zig-out/src/config.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");

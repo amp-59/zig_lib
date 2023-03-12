@@ -17,6 +17,7 @@ const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
 //const alloc_fn = @import("./alloc_fn.zig");
 const out = struct {
+    usingnamespace @import("./zig-out/src/config.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
     usingnamespace @import("./zig-out/src/containers.zig");

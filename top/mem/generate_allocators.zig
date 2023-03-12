@@ -1,25 +1,23 @@
 const gen = @import("./gen.zig");
 const mem = gen.mem;
+const fmt = gen.fmt;
 const proc = gen.proc;
 const preset = gen.preset;
 const builtin = gen.builtin;
 const testing = gen.testing;
-
 const tok = @import("./tok.zig");
-
+const expr = @import("./expr.zig");
+const config = @import("./config.zig");
+const detail = @import("./detail.zig");
+const ctn_fn = @import("./ctn_fn.zig");
+const impl_fn = @import("./impl_fn.zig");
 const out = struct {
-    usingnamespace @import("./detail.zig");
+    usingnamespace @import("./zig-out/src/config.zig");
     usingnamespace @import("./zig-out/src/interfaces.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/impl_variants.zig");
 };
-
-const expr = @import("./expr.zig");
-const config = @import("./config.zig");
-const ctn_fn = @import("./ctn_fn.zig");
-const impl_fn = @import("./impl_fn.zig");
-const alloc_fn = @import("./alloc_fn.zig");
 
 pub usingnamespace proc.start;
 

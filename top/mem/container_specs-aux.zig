@@ -13,6 +13,7 @@ const attr = @import("./attr.zig");
 const detail = @import("./detail.zig");
 const config = @import("./config.zig");
 const out = struct {
+    usingnamespace @import("./zig-out/src/config.zig");
     usingnamespace @import("./zig-out/src/type_specs.zig");
     usingnamespace @import("./zig-out/src/options.zig");
     usingnamespace @import("./zig-out/src/type_descrs.zig");

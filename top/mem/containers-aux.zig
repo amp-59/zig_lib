@@ -5,6 +5,7 @@ const proc = gen.proc;
 const preset = gen.preset;
 const builtin = gen.builtin;
 const out = struct {
+    usingnamespace @import("./zig-out/src/config.zig");
     usingnamespace @import("./zig-out/src/canonical.zig");
     usingnamespace @import("./zig-out/src/canonicals.zig");
 };
@@ -23,7 +24,7 @@ const Container = struct {
 fn mapToContainers() void {
     var array: Array = undefined;
     array.undefineAll();
-    array.writeMany("pub const containers:[]const[]constIndex=&[_][]const Index{\n");
+    array.writeMany("pub const containers:[]const[]const Index=&[_][]const Index{\n");
     var keys: Keys = Keys.init(out.Canonical, out.canonicals);
     for (keys.values[0..keys.len]) |key| {
         array.writeMany("&.{");
