@@ -137,6 +137,9 @@ pub const More = packed struct {
     pub fn less(detail: *const More) *const Less {
         return @ptrCast(*const Less, detail);
     }
+    pub fn kind(detail: *const More) attr.Kinds.Tag {
+        return @intToEnum(attr.Kinds.Tag, @bitCast(@typeInfo(attr.Kinds).Struct.backing_integer.?, detail.kinds));
+    }
 };
 
 const Canonical = struct {
