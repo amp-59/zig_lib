@@ -52,7 +52,6 @@ fn writeOptions(array: *Array) void {
             array.writeMany(field_field_name);
             array.writeMany("\",");
         }
-        array.undefine(2);
         array.writeMany("}}},\n");
     }
     array.writeMany("};\n");
