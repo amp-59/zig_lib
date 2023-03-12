@@ -786,4 +786,66 @@ fn arenaIndex(comptime Specification: type, comptime spec: Specification) ?u64 {
     }
     return null;
 }
+fn GenericParameters(comptime Parameters: type) type {
+    return struct {
+        pub fn highAlignment(comptime params: Parameters) u64 {
+            if (@hasField(Parameters, "high_alignment")) {
+                return params.high_alignment;
+            }
+            if (@hasField(Parameters, "child")) {
+                return @sizeOf(params.child);
+            }
+            if (params.low_alignment) |low_alignment| {
+                return low_alignment;
+            }
+            @compileError(@typeName(Parameters) ++
+                ": no high address alignment, child size, or low " ++
+                "addess alignment defined in container parameters");
+        }
+        pub fn lowAlignment(comptime params: Parameters) u64 {
+            if (params.low_alignment) |low_alignment| {
+                return low_alignment;
+            }
+            if (@hasField(Parameters, "child")) {
+                return @alignOf(params.child);
+            }
+            if (@hasField(Parameters, "high_alignment")) {
+                return params.high_alignment;
+            }
+            @compileError(@typeName(Parameters) ++
+                ": no low address alignment, child size, or high " ++
+                "addess alignment defined in container parameters");
+        }
+        pub fn unitAlignment(comptime params: Parameters) u64 {
+            if (@hasDecl(params.Allocator, "allocator_spec")) {
+                const AllocatorSpec: type = @TypeOf(params.Allocator.allocator_spec);
+                if (@hasField(AllocatorSpec, "unit_alignment")) {
+                    return params.Allocator.allocator_spec.unit_alignment;
+                }
+                const AllocatorSpecOptions: type = @TypeOf(params.Allocator.allocator_spec.options);
+                if (@hasField(AllocatorSpecOptions, "unit_alignment")) {
+                    return params.Allocator.allocator_spec.options.unit_alignment;
+                }
+            }
+            if (@hasDecl(params.Allocator, "unit_alignment")) {
+                return params.Allocator.unit_alignment;
+            }
+            @compileError(@typeName(Parameters) ++
+                ": no unit aligment defined in Allocator declarations, " ++
+                "specification, or specification options");
+        }
+        pub fn arenaIndex(comptime params: Parameters) ?u64 {
+            if (@hasDecl(params.Allocator, "arena_index")) {
+                return params.Allocator.arena_index;
+            }
+            if (@hasDecl(params.Allocator, "allocator_spec")) {
+                const AllocatorOptions: type = @TypeOf(params.Allocator.allocator_spec.options);
+                if (@hasField(AllocatorOptions, "arena_index")) {
+                    return params.Allocator.allocator_spec.options.arena_index;
+                }
+            }
+            return null;
+        }
+    };
+}
 // finish-document container-template.zig
