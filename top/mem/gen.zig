@@ -263,3 +263,22 @@ pub const ArgList = struct {
         return true;
     }
 };
+pub const DeclList = struct {
+    decls: [24][:0]const u8,
+    len: u8,
+    pub fn writeOne(decl_list: *DeclList, symbol: [:0]const u8) void {
+        decl_list.decls[decl_list.len] = symbol;
+        decl_list.len +%= 1;
+    }
+    pub fn readAll(decl_list: *const DeclList) []const [:0]const u8 {
+        return decl_list.decls[0..decl_list.len];
+    }
+    pub fn have(decl_list: *const DeclList, symbol: [:0]const u8) bool {
+        for (decl_list.readAll()) |decl| {
+            if (decl.ptr == symbol.ptr) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
