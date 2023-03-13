@@ -45,7 +45,7 @@ fn haveSpec(
     }
     return .{ f, t };
 }
-fn populateParameters(comptime spec: attr.Specification) [3][]const InfoS {
+fn populateParameters(comptime spec: attr.AbstractSpecification) [3][]const InfoS {
     comptime var p_info: []const InfoS = &.{};
     comptime var s_info: []const InfoS = &.{};
     comptime var v_info: []const InfoS = &.{};
@@ -70,7 +70,7 @@ fn populateParameters(comptime spec: attr.Specification) [3][]const InfoS {
     }
     return .{ p_info, s_info, v_info };
 }
-fn populateTechniques(comptime spec: attr.Specification) []const []const InfoT {
+fn populateTechniques(comptime spec: attr.AbstractSpecification) []const []const InfoT {
     comptime var v_i_infos: []const []const InfoT = &.{&.{}};
     inline for (spec.v_techs) |v_tech| {
         switch (v_tech) {
