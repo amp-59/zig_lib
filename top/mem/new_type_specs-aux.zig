@@ -46,10 +46,10 @@ fn haveSpec(
     return .{ f, t };
 }
 fn populateParameters(comptime spec: attr.AbstractSpecification) [3][]const InfoS {
-    comptime var p_info: []const InfoS = &.{};
-    comptime var s_info: []const InfoS = &.{};
-    comptime var v_info: []const InfoS = &.{};
-    inline for (spec.v_specs) |v_spec| {
+    var p_info: []const InfoS = &.{};
+    var s_info: []const InfoS = &.{};
+    var v_info: []const InfoS = &.{};
+    for (spec.v_specs) |v_spec| {
         const info: InfoS = v_spec;
         switch (v_spec) {
             .derived => {
@@ -71,28 +71,28 @@ fn populateParameters(comptime spec: attr.AbstractSpecification) [3][]const Info
     return .{ p_info, s_info, v_info };
 }
 fn populateTechniques(comptime spec: attr.AbstractSpecification) []const []const InfoT {
-    comptime var v_i_infos: []const []const InfoT = &.{&.{}};
-    inline for (spec.v_techs) |v_tech| {
+    var v_i_infos: []const []const InfoT = &.{&.{}};
+    for (spec.v_techs) |v_tech| {
         switch (v_tech) {
             .standalone => {
-                inline for (v_i_infos) |i_info| {
+                for (v_i_infos) |i_info| {
                     v_i_infos = v_i_infos ++ .{i_info ++ .{v_tech}};
                 }
             },
             .mutually_exclusive => |mutually_exclusive| {
                 switch (mutually_exclusive.kind) {
                     .optional => {
-                        inline for (v_i_infos) |i_info| {
-                            inline for (mutually_exclusive.tech_tags) |j_info| {
-                                v_i_infos = v_i_infos ++ .{i_info ++ .{comptime v_tech.resolve(j_info)}};
+                        for (v_i_infos) |i_info| {
+                            for (mutually_exclusive.tech_tags) |j_info| {
+                                v_i_infos = v_i_infos ++ .{i_info ++ .{v_tech.resolve(j_info)}};
                             }
                         }
                     },
                     .mandatory => {
-                        comptime var j_infos: []const []const InfoT = &.{};
-                        inline for (v_i_infos) |i_info| {
-                            inline for (mutually_exclusive.tech_tags) |j_info| {
-                                j_infos = j_infos ++ .{i_info ++ .{comptime v_tech.resolve(j_info)}};
+                        var j_infos: []const []const InfoT = &.{};
+                        for (v_i_infos) |i_info| {
+                            for (mutually_exclusive.tech_tags) |j_info| {
+                                j_infos = j_infos ++ .{i_info ++ .{v_tech.resolve(j_info)}};
                             }
                         }
                         v_i_infos = j_infos;
@@ -107,32 +107,31 @@ fn populateSpecifiers(
     comptime s_info: []const InfoS,
     comptime v_info: []const InfoS,
 ) []const []const InfoS {
-    comptime var s_v_infos: []const []const InfoS = &.{};
+    var s_v_infos: []const []const InfoS = &.{};
     s_v_infos = s_v_infos ++ .{s_info};
-    inline for (v_info) |v_field| {
-        inline for (s_v_infos) |s_v_info| {
+    for (v_info) |v_field| {
+        for (s_v_infos) |s_v_info| {
             s_v_infos = s_v_infos ++ .{s_v_info ++ .{v_field}};
         }
     }
     return s_v_infos;
 }
 fn populateDetails(
-    comptime spec: attr.Specification,
+    comptime spec: attr.AbstractSpecification,
     comptime p_idx: u8,
     comptime s_v_infos: []const []const InfoS,
     comptime v_i_infos: []const []const InfoT,
 ) []const attr.More {
-    @setEvalBranchQuota(2800);
-    comptime var details: []const attr.More = &.{};
-    comptime var detail: attr.More = attr.More.init(spec, p_idx);
-    inline for (spec.v_layouts) |v_layout| {
+    var details: []const attr.More = &.{};
+    var detail: attr.More = attr.More.init(spec, p_idx);
+    for (spec.v_layouts) |v_layout| {
         detail.layout = v_layout;
-        inline for (s_v_infos, 0..) |s_v_info, s_idx| {
-            detail.specs = comptime attr.Specifiers.detail(attr.specifiersTags(s_v_info));
-            detail.indices.idx.s = s_idx;
-            inline for (v_i_infos, 0..) |v_i_info, i_idx| {
-                detail.indices.idx.i = i_idx;
-                detail.techs = comptime attr.Techniques.detail(attr.techniqueTags(v_i_info));
+        for (s_v_infos, 0..) |s_v_info, s_idx| {
+            detail.specs = attr.Specifiers.detail(attr.specifiersTags(s_v_info));
+            detail.spec_idx = s_idx;
+            for (v_i_infos, 0..) |v_i_info, i_idx| {
+                detail.impl_idx = i_idx;
+                detail.techs = attr.Techniques.detail(attr.techniqueTags(v_i_info));
                 details = details ++ .{detail};
             }
         }
@@ -349,8 +348,8 @@ fn writeDetailsList(array: *Array, details: []const attr.More) void {
     }
     array.writeMany("};\n");
 }
-
 pub fn newNewTypeSpecs() void {
+    @setEvalBranchQuota(3391);
     var array: Array = undefined;
     array.undefineAll();
     // All implementation variant details
@@ -362,16 +361,18 @@ pub fn newNewTypeSpecs() void {
     comptime {
         for (attr.abstract_specs, 0..) |spec, p_idx| {
             const x_info: [3][]const InfoS = populateParameters(spec);
-            const s_v_infos: []const []const InfoS = populateSpecifiers(x_info[1], x_info[2]);
-            const v_i_infos: []const []const InfoT = populateTechniques(spec);
-            details = details ++ populateDetails(spec, p_idx, s_v_infos, v_i_infos);
-            x_infos = x_infos ++ .{s_v_infos};
             p_infos = p_infos ++ .{x_info[0]};
+            const s_v_infos: []const []const InfoS = populateSpecifiers(x_info[1], x_info[2]);
+            x_infos = x_infos ++ .{s_v_infos};
+            details = details ++ populateDetails(spec, p_idx, s_v_infos, populateTechniques(spec));
         }
     }
     inline for (p_infos, x_infos) |p_info, s_v_infos| {
         writeSpecificationDeduction(&array, p_info, s_v_infos);
     }
     file.write(.{ .errors = .{} }, 1, array.readAll());
+    array.undefineAll();
+    array.writeMany(&meta.sliceToBytes(attr.More, details));
+    gen.writeAuxiliarySourceFile(&array, "detail_raw");
 }
 pub const main = newNewTypeSpecs;
