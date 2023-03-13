@@ -3,21 +3,30 @@ const meta = gen.meta;
 const builtin = gen.builtin;
 
 // zig fmt: off
-pub const specs: []const Specification = &.{
-    .{ .kind = .automatic,  .fields = au,            .layouts = S,  .modes = rw,            .techniques = auto_techs,   .specifiers = auto_specs },
-    .{ .kind = .automatic,  .fields = au_ss,         .layouts = S,  .modes = rw_str,        .techniques = auto_techs,   .specifiers = auto_specs },
-    .{ .kind = .automatic,  .fields = au_ub,         .layouts = S,  .modes = rw_rsz,        .techniques = auto_techs,   .specifiers = auto_specs },
-    .{ .kind = .automatic,  .fields = au_ss_ub,      .layouts = S,  .modes = rw_str_rsz,    .techniques = auto_techs,   .specifiers = auto_specs },
+pub const abstract_specs: []const AbstractSpecification = &.{
+    .{ .kind = .automatic,  .fields = au,           .v_layouts = S,  .modes = rw,           .v_specs = auto_specs, .v_techs = auto_techs },
+    .{ .kind = .automatic,  .fields = au_ss,        .v_layouts = S,  .modes = rw_str,       .v_specs = auto_specs, .v_techs = auto_techs },
+    .{ .kind = .automatic,  .fields = au_ub,        .v_layouts = S,  .modes = rw_rsz,       .v_specs = auto_specs, .v_techs = auto_techs },
+    .{ .kind = .automatic,  .fields = au_ss_ub,     .v_layouts = S,  .modes = rw_str_rsz,   .v_specs = auto_specs, .v_techs = auto_techs },
 
-    .{ .kind = .dynamic,    .fields = lb_up,         .layouts = SU, .modes = rw,            .techniques = dyn_techs,    .specifiers = dyn_specs },
-    .{ .kind = .dynamic,    .fields = lb_ss_up,      .layouts = SU, .modes = rw_str,        .techniques = dyn_techs,    .specifiers = dyn_specs },
-    .{ .kind = .dynamic,    .fields = lb_ub_up,      .layouts = SU, .modes = rw_rsz,        .techniques = dyn_techs,    .specifiers = dyn_specs },
-    .{ .kind = .dynamic,    .fields = lb_ss_ub_up,   .layouts = SU, .modes = rw_str_rsz,    .techniques = dyn_techs,    .specifiers = dyn_specs },
+    .{ .kind = .static,    .fields = lb,            .v_layouts = SU, .modes = rw,           .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ss,         .v_layouts = SU, .modes = rw_str,       .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ub,         .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ss_ub,      .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs },
 
-    .{ .kind = .dynamic,    .fields = lb,            .layouts = SU, .modes = rw,            .techniques = dyn_techs_1,  .specifiers = dyn_specs },
-    .{ .kind = .dynamic,    .fields = lb_ss,         .layouts = SU, .modes = rw_str,        .techniques = dyn_techs_2,  .specifiers = dyn_specs },
-    .{ .kind = .dynamic,    .fields = lb_ub,         .layouts = SU, .modes = rw_rsz,        .techniques = dyn_techs_2,  .specifiers = dyn_specs },
-    .{ .kind = .dynamic,    .fields = lb_ss_ub,      .layouts = SU, .modes = rw_str_rsz,    .techniques = dyn_techs_2,  .specifiers = dyn_specs },
+    .{ .kind = .dynamic,    .fields = lb_up,        .v_layouts = SU, .modes = rw,           .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ss_up,     .v_layouts = SU, .modes = rw_str,       .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ub_up,     .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub_up,  .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs },
+
+    .{ .kind = .dynamic,    .fields = lb,           .v_layouts = SU, .modes = rw,           .v_specs = dyn_specs, .v_techs = dyn_techs_1 },
+    .{ .kind = .dynamic,    .fields = lb_ss,        .v_layouts = SU, .modes = rw_str,       .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
+    .{ .kind = .dynamic,    .fields = lb_ub,        .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub,     .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
+
+    .{ .kind = .parametric, .fields = ub,           .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs_1 },
+    .{ .kind = .parametric, .fields = ub_ss,        .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs_1 },
+
 };
 // zig fmt: on
 
@@ -75,8 +84,14 @@ pub const Techniques = packed struct(u8) {
     arena_relative: bool = false,
     address_space_relative: bool = false,
     pub usingnamespace GenericStructOfBool(Techniques);
+    pub const Options = packed struct(u3) {
+        alignment: bool = false,
+        capacity: bool = false,
+        relative: bool = false,
+        pub usingnamespace GenericStructOfBool(Techniques.Options);
+    };
 };
-pub const Variant = union(enum) {
+pub const Specifier = union(enum) {
     default: Simple,
     derived: Derived,
     stripped: Simple,
@@ -90,6 +105,7 @@ pub const Variant = union(enum) {
         type: type,
     };
     const Derived = struct {
+        tag: Specifiers.Tag,
         fn_name: []const u8,
     };
     const SimpleDerived = struct {
@@ -111,6 +127,70 @@ pub const Variant = union(enum) {
         fn_name: []const u8,
     };
 };
+
+const Kind = Kinds.Tag;
+const Layout = Layouts.Tag;
+
+pub const More = packed struct {
+    indices: Serial,
+    kind: Kind,
+    layout: Layout,
+    modes: Modes,
+    fields: Fields,
+    techs: Techniques,
+    specs: Specifiers,
+    const Serial = packed union {
+        ser: u64,
+        idx: packed struct { i: u32, s: u16, p: u8 },
+    };
+    pub fn init(
+        comptime spec: AbstractSpecification,
+        comptime index: u8,
+    ) More {
+        return .{
+            .indices = .{ .idx = .{
+                .p = index,
+                .s = undefined,
+                .i = undefined,
+            } },
+            .kind = spec.kind,
+            .modes = Modes.detail(spec.modes),
+            .fields = Fields.detail(spec.fields),
+            .layout = undefined,
+            .specs = undefined,
+            .techs = undefined,
+        };
+    }
+};
+
+pub fn techniqueTags(comptime options: []const Technique) []const Techniques.Tag {
+    comptime var ret: []const Techniques.Tag = &.{};
+    inline for (options) |option| {
+        if (option == .standalone) {
+            ret = ret ++ .{option.standalone};
+        } else {
+            ret = ret ++ .{option.mutually_exclusive.tech_tag.?};
+        }
+    }
+    return ret;
+}
+pub fn specifiersTags(comptime variants: []const Specifier) []const Specifiers.Tag {
+    comptime var ret: []const Specifiers.Tag = &.{};
+    inline for (variants) |variant| {
+        switch (variant) {
+            else => {
+                ret = ret ++ .{comptime meta.resolve(variant).tag};
+            },
+            .decl_optional_derived,
+            .decl_optional_variant,
+            => {
+                ret = ret ++ .{comptime meta.resolve(variant).decl_tag};
+            },
+        }
+    }
+    return ret;
+}
+
 pub const Options = struct {
     capacity: ?enum {
         single_packed_approximate,
@@ -127,35 +207,56 @@ pub const Options = struct {
         address_space,
     },
 };
-const Specification = struct {
+
+pub const Technique = union(enum) {
+    standalone: Techniques.Tag,
+    mutually_exclusive: Info,
+
+    const Info = struct {
+        kind: enum { mandatory, optional },
+        opt_tag: Techniques.Options.Tag,
+        tech_tag: ?Techniques.Tag = null,
+        tech_tags: []const Techniques.Tag,
+    };
+    pub fn resolve(
+        comptime opt: Technique,
+        comptime tech_tag: Techniques.Tag,
+    ) Technique {
+        var ret: Technique = opt;
+        ret.mutually_exclusive.tech_tag = tech_tag;
+        return ret;
+    }
+};
+
+pub const AbstractSpecification = struct {
     kind: Kinds.Tag,
     fields: []const Fields.Tag,
     modes: []const Modes.Tag,
-    layouts: []const Layouts.Tag,
-    techniques: []const Techniques.Tag,
-    specifiers: []const Variant,
+    v_layouts: []const Layouts.Tag,
+    v_techs: []const Technique,
+    v_specs: []const Specifier,
 };
-fn default(comptime tag: Specifiers.Tag, comptime @"type": type) Variant {
+fn default(comptime tag: Specifiers.Tag, comptime @"type": type) Specifier {
     return .{ .default = .{ .tag = tag, .type = @"type" } };
 }
 fn derived(
     comptime tag: Specifiers.Tag,
     comptime @"type": type,
     comptime fn_name: [:0]const u8,
-) Variant {
+) Specifier {
     return .{ .derived = .{ .tag = tag, .type = @"type", .fn_name = fn_name } };
 }
-fn stripped(comptime tag: Specifiers.Tag, comptime @"type": type) Variant {
+fn stripped(comptime tag: Specifiers.Tag, comptime @"type": type) Specifier {
     return .{ .stripped = .{ .tag = tag, .type = @"type" } };
 }
 fn optional_derived(
     comptime tag: Specifiers.Tag,
     comptime @"type": type,
     comptime fn_name: [:0]const u8,
-) Variant {
+) Specifier {
     return .{ .optional_derived = .{ .tag = tag, .type = @"type", .fn_name = fn_name } };
 }
-fn optional_variant(comptime tag: Specifiers.Tag, comptime @"type": type) Variant {
+fn optional_variant(comptime tag: Specifiers.Tag, comptime @"type": type) Specifier {
     return .{ .optional_variant = .{ .tag = tag, .type = @"type" } };
 }
 fn decl_optional_derived(
@@ -164,7 +265,7 @@ fn decl_optional_derived(
     comptime decl_tag: Specifiers.Tag,
     comptime decl_type: type,
     comptime fn_name: [:0]const u8,
-) Variant {
+) Specifier {
     return .{ .decl_optional_derived = .{
         .ctn_tag = ctn_tag,
         .decl_tag = decl_tag,
@@ -178,7 +279,7 @@ fn decl_optional_variant(
     comptime ctn_type: type,
     comptime decl_tag: Specifiers.Tag,
     comptime decl_type: type,
-) Variant {
+) Specifier {
     return .{ .decl_optional_variant = .{
         .ctn_tag = ctn_tag,
         .decl_tag = decl_tag,
@@ -192,33 +293,74 @@ const auto_specs = &.{
     optional_derived(.low_alignment, u64, "lowAlignment"),
     optional_variant(.sentinel, *const anyopaque),
 };
-const Arena = struct { lb_addr: u64, up_addr: u64 };
 const dyn_specs = &.{
     default(.child, type),
     optional_derived(.low_alignment, u64, "lowAlignment"),
     optional_variant(.sentinel, *const anyopaque),
-    decl_optional_variant(.Allocator, type, .arena, Arena),
+    decl_optional_variant(.Allocator, type, .arena, struct { lb_addr: u64, up_addr: u64 }),
 };
-const auto_techs = &.{
-    .auto_alignment,
+const param_specs = &.{
+    default(.child, type),
+    optional_derived(.low_alignment, u64, "lowAlignment"),
+    optional_variant(.sentinel, *const anyopaque),
+    default(.Allocator, type),
 };
-const dyn_techs = &.{
+
+fn standalone(comptime tech: Techniques.Tag) Technique {
+    return .{ .standalone = tech };
+}
+fn mutually_exclusive_optional(comptime opt_tag: Techniques.Options.Tag, comptime tech_tags: []const Techniques.Tag) Technique {
+    return .{ .mutually_exclusive = .{ .kind = .optional, .opt_tag = opt_tag, .tech_tags = tech_tags } };
+}
+fn mutually_exclusive_mandatory(comptime opt_tag: Techniques.Options.Tag, comptime tech_tags: []const Techniques.Tag) Technique {
+    return .{ .mutually_exclusive = .{ .kind = .mandatory, .opt_tag = opt_tag, .tech_tags = tech_tags } };
+}
+pub fn mutually_exclusive_resolved_optional(comptime opt_info: Technique.Info, comptime tech_tag: Techniques.Tag) Technique {
+    return .{ .mutually_exclusive = .{
+        .kind = .optional,
+        .opt_tag = opt_info.mutually_exclusive.opt_tag,
+        .tech_tag = tech_tag,
+        .tech_tags = opt_info.tech_tags,
+    } };
+}
+pub fn mutually_exclusive_resolved_mandatory(comptime opt_info: Technique.Info, comptime tech_tag: Techniques.Tag) Technique {
+    return .{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = opt_info.opt_tag,
+        .tech_tag = tech_tag,
+        .tech_tags = opt_info.tech_tags,
+    } };
+}
+
+const auto_alignment_opt: Technique = standalone(.auto_alignment);
+const capacity_opt: Technique = standalone(.single_packed_approximate_capacity);
+const alignment_opts: Technique = mutually_exclusive_mandatory(.alignment, &.{
     .lazy_alignment,
     .unit_alignment,
     .disjunct_alignment,
-};
-const dyn_techs_1 = &.{
+});
+const param_alignment_opts: Technique = mutually_exclusive_mandatory(.alignment, &.{
     .lazy_alignment,
     .unit_alignment,
-    .disjunct_alignment,
-    .single_packed_approximate_capacity,
-};
-const dyn_techs_2 = &.{
-    .lazy_alignment,
-    .unit_alignment,
-    .disjunct_alignment,
+});
+const capacity_opts: Technique = mutually_exclusive_optional(.capacity, &.{
     .single_packed_approximate_capacity,
     .double_packed_approximate_capacity,
+});
+const auto_techs: []const Technique = &.{};
+const dyn_techs: []const Technique = &.{
+    alignment_opts,
+};
+const dyn_techs_1: []const Technique = &.{
+    capacity_opt,
+    alignment_opts,
+};
+const dyn_techs_2: []const Technique = &.{
+    alignment_opts,
+    capacity_opts,
+};
+const param_techs: []const Technique = &.{
+    param_alignment_opts,
 };
 const rw: []const Modes.Tag = &.{
     .read_write,
@@ -288,6 +430,14 @@ const lb_ss_ub_up: []const Fields.Tag = &.{
     .undefined_byte_address,
     .unallocated_byte_address,
 };
+const ub: []const Fields.Tag = &.{
+    .undefined_byte_address,
+};
+const ub_ss: []const Fields.Tag = &.{
+    .undefined_byte_address,
+    .unstreamed_byte_address,
+};
+
 const S: []const Layouts.Tag = &.{
     .structured,
 };
@@ -297,6 +447,7 @@ const SU: []const Layouts.Tag = &.{
 };
 pub fn GenericStructOfBool(comptime Struct: type) type {
     return struct {
+        const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
         pub const Tag = blk: {
             var fields: []const builtin.Type.EnumField = &.{};
             inline for (@typeInfo(Struct).Struct.fields) |field| {
@@ -307,11 +458,18 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             }
             break :blk @Type(.{ .Enum = .{
                 .fields = fields,
-                .tag_type = @typeInfo(Struct).Struct.backing_integer.?,
+                .tag_type = tag_type,
                 .decls = &.{},
                 .is_exhaustive = false,
             } });
         };
+        pub fn detail(comptime tags: []const Tag) Struct {
+            comptime var int: tag_type = 0;
+            for (tags) |tag| {
+                int |= @enumToInt(tag);
+            }
+            return @bitCast(Struct, int);
+        }
         pub const tag_list: []const Tag = meta.tagList(Tag);
         pub fn countTrue(bit_field: Struct) u64 {
             var ret: u64 = 0;
