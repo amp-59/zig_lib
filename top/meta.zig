@@ -504,7 +504,7 @@ fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     }
     return true;
 }
-fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
+pub fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
     return @ptrCast(*const [@sizeOf(@TypeOf(any))]u8, &any).*;
 }
 pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
