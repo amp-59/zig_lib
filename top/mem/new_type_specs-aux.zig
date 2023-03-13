@@ -17,8 +17,8 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
-const InfoS = attr.Variant;
-const InfoT = attr.NewOption;
+const InfoS = attr.Specifier;
+const InfoT = attr.Technique;
 const InfoST = struct { InfoS, InfoT };
 
 const S = struct {
