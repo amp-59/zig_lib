@@ -707,7 +707,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
                 tagged_format.formatWrite(array);
             } else {
-                if (@sizeOf(Union) > 8) {
+                if (@sizeOf(Union) > @sizeOf(usize)) {
                     array.writeMany(type_name ++ "{}");
                 } else {
                     array.writeMany("@bitCast(" ++ @typeName(Union) ++ ", ");
@@ -725,7 +725,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 const TaggedFormat = AnyFormat(spec, Union.Tagged);
                 len +%= TaggedFormat.formatLength(.{ .value = format.value.tagged() });
             } else {
-                if (@sizeOf(Union) > 8) {
+                if (@sizeOf(Union) > @sizeOf(usize)) {
                     len +%= type_name.len +% 2;
                 } else {
                     len +%= ("@bitCast(" ++ @typeName(Union) ++ ", ").len;
