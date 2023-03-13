@@ -707,7 +707,13 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
                 tagged_format.formatWrite(array);
             } else {
-                array.writeMany(type_name ++ "{}");
+                if (@sizeOf(Union) > 8) {
+                    array.writeMany(type_name ++ "{}");
+                } else {
+                    array.writeMany("@bitCast(" ++ @typeName(Union) ++ ", ");
+                    array.writeFormat(fmt.ud(meta.leastRealBitCast(format.value)));
+                    array.writeMany(")");
+                }
             }
         }
         fn formatLengthUntagged(format: Format) u64 {
@@ -719,7 +725,13 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 const TaggedFormat = AnyFormat(spec, Union.Tagged);
                 len +%= TaggedFormat.formatLength(.{ .value = format.value.tagged() });
             } else {
-                len +%= type_name.len +% 2;
+                if (@sizeOf(Union) > 8) {
+                    len +%= type_name.len +% 2;
+                } else {
+                    len +%= ("@bitCast(" ++ @typeName(Union) ++ ", ").len;
+                    len +%= fmt.ud(meta.leastRealBitCast(format.value)).formatLength();
+                    len +%= 1;
+                }
             }
             return len;
         }
@@ -732,10 +744,10 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (show_enum_field) {
-                return formatWriteEnumField(format, array);
+                return format.formatWriteEnumField(array);
             }
             if (tag_type == null) {
-                return formatWriteUntagged(format, array);
+                return format.formatWriteUntagged(array);
             }
             if (fields.len == 0) {
                 array.writeMany(type_name ++ "{}");
