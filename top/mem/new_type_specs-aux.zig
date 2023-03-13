@@ -340,14 +340,6 @@ fn writeSpecificationDeduction(array: *Array, comptime p_info: []const InfoS, co
     array.writeMany("}\n");
     array.writeMany("};\n");
 }
-fn writeDetailsList(array: *Array, details: []const attr.More) void {
-    array.writeMany("const details=&.{\n");
-    for (details) |detail| {
-        array.writeFormat(detail);
-        array.writeMany(",\n");
-    }
-    array.writeMany("};\n");
-}
 pub fn newNewTypeSpecs() void {
     @setEvalBranchQuota(3391);
     var array: Array = undefined;
