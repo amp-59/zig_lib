@@ -337,6 +337,19 @@ pub fn LeastRealBitSize(comptime value: anytype) type {
         },
     });
 }
+/// This is for miscellaneous special cases that normally Zig refuses to cast.
+/// The user of this function gets what they ask for.
+pub fn bitCast(comptime T: type, any: anytype) T {
+    const S: type = @TypeOf(any);
+    const s_type_info: builtin.Type = @typeInfo(S);
+    const t_type_info: builtin.Type = @typeInfo(T);
+    if (s_type_info == .Enum) {
+        if (t_type_info == .Struct) {
+            const i: t_type_info.Struct.backing_integer.? = @enumToInt(any);
+            return @bitCast(T, i);
+        }
+    }
+}
 pub fn leastBitCast(any: anytype) @Type(.{ .Int = .{
     .bits = @bitSizeOf(@TypeOf(any)),
     .signedness = .unsigned,
@@ -551,11 +564,18 @@ pub fn EnumBitField(comptime E: type) type {
     });
 }
 pub fn tagList(comptime E: type) []const E {
-    var res: [@typeInfo(E).Enum.fields.len]E = undefined;
+    var ret: [@typeInfo(E).Enum.fields.len]E = undefined;
     for (@typeInfo(E).Enum.fields, 0..) |field, index| {
-        res[index] = @intToEnum(E, field.value);
+        ret[index] = @intToEnum(E, field.value);
     }
-    return &res;
+    return &ret;
+}
+pub fn tagNameList(comptime E: type, comptime tag_list: []const E) []const []const u8 {
+    var ret: [tag_list.len][]const u8 = undefined;
+    for (tag_list, 0..) |tag, index| {
+        ret[index] = @tagName(tag);
+    }
+    return &ret;
 }
 pub fn TaggedUnion(comptime Union: type) type {
     var tag_type_fields: []const builtin.Type.EnumField = empty;
