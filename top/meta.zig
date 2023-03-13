@@ -504,8 +504,18 @@ fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     }
     return true;
 }
+
+pub fn sliceToBytes(comptime E: type, comptime values: []const E) [@sizeOf(E) * values.len]u8 {
+    return @ptrCast(*const [@sizeOf(E) * values.len]u8, values.ptr).*;
+}
+pub fn bytesToSlice(comptime E: type, comptime bytes: []const u8) []const E {
+    return @ptrCast([*]const E, @alignCast(@alignOf(E), bytes.ptr))[0..@divExact(bytes.len, @sizeOf(E))];
+}
 pub fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
     return @ptrCast(*const [@sizeOf(@TypeOf(any))]u8, &any).*;
+}
+pub fn bytesTo(comptime E: type, comptime bytes: []const u8) E {
+    return @ptrCast(*const E, @alignCast(@alignOf(E), bytes.ptr)).*;
 }
 pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
     const T: type = @TypeOf(any);
