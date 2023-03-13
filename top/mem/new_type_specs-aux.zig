@@ -6,8 +6,10 @@ const file = gen.file;
 const meta = gen.meta;
 const proc = gen.proc;
 const preset = gen.preset;
+const testing = gen.testing;
 const builtin = gen.builtin;
 
+const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const abstract_spec = @import("./abstract_spec.zig");
 
@@ -15,15 +17,137 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
-const Info = struct { p_idx: u64, v_spec: attr.Variant };
+const InfoS = attr.Variant;
+const InfoT = attr.NewOption;
+const InfoST = struct { InfoS, InfoT };
 
-fn writeFields(array: *Array, comptime p_info: []const Info) void {
+const S = struct {
+    var spec_no: u64 = 0;
+};
+fn BinaryFilter(comptime T: type) type {
+    return (struct { []const T, []const T });
+}
+fn haveSpec(
+    comptime s_v_infos: []const []const InfoS,
+    comptime p_field: InfoS,
+) BinaryFilter([]const InfoS) {
+    comptime var t: []const []const InfoS = meta.empty;
+    comptime var f: []const []const InfoS = meta.empty;
+    inline for (s_v_infos) |s_v_info| {
+        inline for (s_v_info) |s_v_field| {
+            if (builtin.testEqual(InfoS, p_field, s_v_field)) {
+                t = t ++ .{s_v_info};
+                break;
+            }
+        } else {
+            f = f ++ .{s_v_info};
+        }
+    }
+    return .{ f, t };
+}
+fn populateParameters(comptime spec: attr.Specification) [3][]const InfoS {
+    comptime var p_info: []const InfoS = &.{};
+    comptime var s_info: []const InfoS = &.{};
+    comptime var v_info: []const InfoS = &.{};
+    inline for (spec.v_specs) |v_spec| {
+        const info: InfoS = v_spec;
+        switch (v_spec) {
+            .derived => {
+                s_info = s_info ++ .{info};
+            },
+            .stripped => {
+                p_info = p_info ++ .{info};
+            },
+            .default, .optional_derived, .decl_optional_derived => {
+                p_info = p_info ++ .{info};
+                s_info = s_info ++ .{info};
+            },
+            .optional_variant, .decl_optional_variant => {
+                p_info = p_info ++ .{info};
+                v_info = v_info ++ .{info};
+            },
+        }
+    }
+    return .{ p_info, s_info, v_info };
+}
+fn populateTechniques(comptime spec: attr.Specification) []const []const InfoT {
+    comptime var v_i_infos: []const []const InfoT = &.{&.{}};
+    inline for (spec.v_techs) |v_tech| {
+        switch (v_tech) {
+            .standalone => {
+                inline for (v_i_infos) |i_info| {
+                    v_i_infos = v_i_infos ++ .{i_info ++ .{v_tech}};
+                }
+            },
+            .mutually_exclusive => |mutually_exclusive| {
+                switch (mutually_exclusive.kind) {
+                    .optional => {
+                        inline for (v_i_infos) |i_info| {
+                            inline for (mutually_exclusive.tech_tags) |j_info| {
+                                v_i_infos = v_i_infos ++ .{i_info ++ .{comptime v_tech.resolve(j_info)}};
+                            }
+                        }
+                    },
+                    .mandatory => {
+                        comptime var j_infos: []const []const InfoT = &.{};
+                        inline for (v_i_infos) |i_info| {
+                            inline for (mutually_exclusive.tech_tags) |j_info| {
+                                j_infos = j_infos ++ .{i_info ++ .{comptime v_tech.resolve(j_info)}};
+                            }
+                        }
+                        v_i_infos = j_infos;
+                    },
+                }
+            },
+        }
+    }
+    return v_i_infos;
+}
+fn populateSpecifiers(
+    comptime s_info: []const InfoS,
+    comptime v_info: []const InfoS,
+) []const []const InfoS {
+    comptime var s_v_infos: []const []const InfoS = &.{};
+    s_v_infos = s_v_infos ++ .{s_info};
+    inline for (v_info) |v_field| {
+        inline for (s_v_infos) |s_v_info| {
+            s_v_infos = s_v_infos ++ .{s_v_info ++ .{v_field}};
+        }
+    }
+    return s_v_infos;
+}
+fn populateDetails(
+    comptime spec: attr.Specification,
+    comptime p_idx: u8,
+    comptime s_v_infos: []const []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
+) []const attr.More {
+    @setEvalBranchQuota(2800);
+    comptime var details: []const attr.More = &.{};
+    comptime var detail: attr.More = attr.More.init(spec, p_idx);
+    inline for (spec.v_layouts) |v_layout| {
+        detail.layout = v_layout;
+        inline for (s_v_infos, 0..) |s_v_info, s_idx| {
+            detail.specs = comptime attr.Specifiers.detail(attr.specifiersTags(s_v_info));
+            detail.indices.idx.s = s_idx;
+            inline for (v_i_infos, 0..) |v_i_info, i_idx| {
+                detail.indices.idx.i = i_idx;
+                detail.techs = comptime attr.Techniques.detail(attr.techniqueTags(v_i_info));
+                details = details ++ .{detail};
+            }
+        }
+    }
+    return details;
+}
+fn writeFields(array: *Array, comptime p_info: []const InfoS) void {
     inline for (p_info) |p_field| {
-        array.writeMany(comptime parametersFieldName(p_field) ++ ":" ++ parametersTypeName(p_field) ++ ",");
+        const field_name: []const u8 = comptime parametersFieldName(p_field);
+        const field_type_name: []const u8 = comptime parametersTypeName(p_field);
+        array.writeMany(field_name ++ ":" ++ field_type_name ++ ",");
     }
 }
-fn parametersFieldName(comptime p_field: Info) []const u8 {
-    switch (p_field.v_spec) {
+fn parametersFieldName(comptime p_field: InfoS) []const u8 {
+    switch (p_field) {
         .default => |default| {
             return @tagName(default.tag);
         },
@@ -37,18 +161,18 @@ fn parametersFieldName(comptime p_field: Info) []const u8 {
             return @tagName(optional_variant.tag);
         },
         .decl_optional_derived => |decl_optional_derived| {
-            return @tagName(decl_optional_derived.decl_tag);
+            return @tagName(decl_optional_derived.ctn_tag);
         },
         .decl_optional_variant => |decl_optional_variant| {
-            return @tagName(decl_optional_variant.decl_tag);
+            return @tagName(decl_optional_variant.ctn_tag);
         },
         .derived => {
             @compileError("???");
         },
     }
 }
-fn specificationFieldName(comptime s_v_field: Info) []const u8 {
-    switch (s_v_field.v_spec) {
+fn specificationFieldName(comptime s_v_field: InfoS) []const u8 {
+    switch (s_v_field) {
         .default => |default| {
             return @tagName(default.tag);
         },
@@ -72,8 +196,8 @@ fn specificationFieldName(comptime s_v_field: Info) []const u8 {
         },
     }
 }
-fn parametersTypeName(comptime p_field: Info) []const u8 {
-    switch (p_field.v_spec) {
+fn parametersTypeName(comptime p_field: InfoS) []const u8 {
+    switch (p_field) {
         .default => |default| {
             return @typeName(default.type);
         },
@@ -97,8 +221,8 @@ fn parametersTypeName(comptime p_field: Info) []const u8 {
         },
     }
 }
-fn specificationTypeName(s_v_field: Info) []const u8 {
-    switch (s_v_field.v_spec) {
+fn specificationTypeName(s_v_field: InfoS) []const u8 {
+    switch (s_v_field) {
         .default => |default| {
             return @typeName(default.type);
         },
@@ -122,8 +246,8 @@ fn specificationTypeName(s_v_field: Info) []const u8 {
         },
     }
 }
-fn declExpr(comptime p_field: Info) []const u8 {
-    switch (p_field.v_spec) {
+fn declExpr(comptime p_field: InfoS) []const u8 {
+    switch (p_field) {
         .default => |default| {
             const tag_name: []const u8 = @tagName(default.tag);
             const type_name: []const u8 = @typeName(default.type);
@@ -160,7 +284,7 @@ fn declExpr(comptime p_field: Info) []const u8 {
         },
     }
 }
-fn initExpr(comptime s_v_info: []const Info) []const u8 {
+fn initExpr(comptime s_v_info: []const InfoS) []const u8 {
     comptime var ret: []const u8 = "return.{";
     inline for (s_v_info) |s_v_field| {
         const s_field_name: []const u8 = comptime specificationFieldName(s_v_field);
@@ -168,36 +292,15 @@ fn initExpr(comptime s_v_info: []const Info) []const u8 {
     }
     return ret ++ "};\n";
 }
-fn BinaryFilter(comptime T: type) type {
-    return (struct { []const T, []const T });
-}
-fn haveSpec(
-    comptime s_v_infos: []const []const Info,
-    comptime p_field: Info,
-) BinaryFilter([]const Info) {
-    comptime var t: []const []const Info = meta.empty;
-    comptime var f: []const []const Info = meta.empty;
-    inline for (s_v_infos) |s_v_info| {
-        inline for (s_v_info) |s_v_field| {
-            if (builtin.testEqual(Info, p_field, s_v_field)) {
-                t = t ++ .{s_v_info};
-                break;
-            }
-        } else {
-            f = f ++ .{s_v_info};
-        }
-    }
-    return .{ f, t };
-}
 fn writeSpecificationDeductionInternal(
     array: *Array,
-    comptime p_info: []const Info,
-    comptime s_v_infos: []const []const Info,
+    comptime p_info: []const InfoS,
+    comptime s_v_infos: []const []const InfoS,
 ) void {
     if (p_info.len == 0) {
         @compileError("???");
     }
-    const filtered: BinaryFilter([]const Info) = comptime haveSpec(s_v_infos, p_info[0]);
+    const filtered: BinaryFilter([]const InfoS) = comptime haveSpec(s_v_infos, p_info[0]);
     if (filtered[1].len != 0) {
         array.writeMany(declExpr(p_info[0]));
         if (filtered[1].len == 1) {
@@ -208,8 +311,8 @@ fn writeSpecificationDeductionInternal(
     }
     if (filtered[0].len != 0) {
         if (filtered[1].len != 0 and
-            p_info[0].v_spec == .decl_optional_variant or
-            p_info[0].v_spec == .optional_variant)
+            p_info[0] == .decl_optional_variant or
+            p_info[0] == .optional_variant)
         {
             array.writeMany("}else{\n");
         }
@@ -220,20 +323,13 @@ fn writeSpecificationDeductionInternal(
         }
     }
     if (filtered[1].len != 0 and
-        p_info[0].v_spec == .decl_optional_variant or
-        p_info[0].v_spec == .optional_variant)
+        p_info[0] == .decl_optional_variant or
+        p_info[0] == .optional_variant)
     {
         array.writeMany("}\n");
     }
 }
-const S = struct {
-    var spec_no: u64 = 0;
-};
-fn writeSpecificationDeduction(
-    array: *Array,
-    comptime p_info: []const Info,
-    comptime s_v_infos: []const []const Info,
-) void {
+fn writeSpecificationDeduction(array: *Array, comptime p_info: []const InfoS, comptime s_v_infos: []const []const InfoS) void {
     array.writeMany("const Specification");
     array.writeFormat(fmt.ud64(S.spec_no));
     S.spec_no +%= 1;
@@ -245,50 +341,35 @@ fn writeSpecificationDeduction(
     array.writeMany("}\n");
     array.writeMany("};\n");
 }
+fn writeDetailsList(array: *Array, details: []const attr.More) void {
+    array.writeMany("const details=&.{\n");
+    for (details) |detail| {
+        array.writeFormat(detail);
+        array.writeMany(",\n");
+    }
+    array.writeMany("};\n");
+}
+
 pub fn newNewTypeSpecs() void {
     var array: Array = undefined;
     array.undefineAll();
-    inline for (attr.specs) |specification| {
-        comptime var p_info: []const Info = &.{};
-        comptime var s_info: []const Info = &.{};
-        comptime var v_info: []const Info = &.{};
-        inline for (specification.specifiers, 0..) |v_spec, p_idx| {
-            const info: Info = .{ .v_spec = v_spec, .p_idx = p_idx };
-            switch (v_spec) {
-                .default => {
-                    p_info = p_info ++ .{info};
-                    s_info = s_info ++ .{info};
-                },
-                .derived => {
-                    s_info = s_info ++ .{info};
-                },
-                .stripped => {
-                    p_info = p_info ++ .{info};
-                },
-                .optional_derived => {
-                    p_info = p_info ++ .{info};
-                    s_info = s_info ++ .{info};
-                },
-                .optional_variant => {
-                    p_info = p_info ++ .{info};
-                    v_info = v_info ++ .{info};
-                },
-                .decl_optional_derived => {
-                    p_info = p_info ++ .{info};
-                    s_info = s_info ++ .{info};
-                },
-                .decl_optional_variant => {
-                    p_info = p_info ++ .{info};
-                    v_info = v_info ++ .{info};
-                },
-            }
+    // All implementation variant details
+    comptime var details: []const attr.More = &.{};
+    // All parameter information
+    comptime var p_infos: []const []const InfoS = &.{};
+    // All multiple Specification and Technique information
+    comptime var x_infos: []const []const []const InfoS = &.{};
+    comptime {
+        for (attr.abstract_specs, 0..) |spec, p_idx| {
+            const x_info: [3][]const InfoS = populateParameters(spec);
+            const s_v_infos: []const []const InfoS = populateSpecifiers(x_info[1], x_info[2]);
+            const v_i_infos: []const []const InfoT = populateTechniques(spec);
+            details = details ++ populateDetails(spec, p_idx, s_v_infos, v_i_infos);
+            x_infos = x_infos ++ .{s_v_infos};
+            p_infos = p_infos ++ .{x_info[0]};
         }
-        comptime var s_v_infos: []const []const Info = &.{s_info};
-        inline for (v_info) |v_field| {
-            inline for (s_v_infos) |s_v_info| {
-                s_v_infos = s_v_infos ++ [1][]const Info{s_v_info ++ [1]Info{v_field}};
-            }
-        }
+    }
+    inline for (p_infos, x_infos) |p_info, s_v_infos| {
         writeSpecificationDeduction(&array, p_info, s_v_infos);
     }
     file.write(.{ .errors = .{} }, 1, array.readAll());
