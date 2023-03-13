@@ -632,6 +632,9 @@ fn testEqualPointer(comptime T: type, comptime pointer_info: Type.Pointer, arg1:
     return false;
 }
 fn testEqualStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T, arg2: T) bool {
+    if (struct_info.layout == .Packed) {
+        return @bitCast(struct_info.backing_integer.?, arg1) == @bitCast(struct_info.backing_integer.?, arg2);
+    }
     inline for (struct_info.fields) |field| {
         if (!testEqual(
             field.type,
