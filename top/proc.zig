@@ -1,6 +1,7 @@
 const sys = @import("./sys.zig");
 const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
+const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
 pub const SignalAction = extern struct {
@@ -1014,7 +1015,7 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
             }
             const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
             if (option.long) |long_switch| blk: {
-                if (builtin.testEqual([]const u8, long_switch, arg1)) {
+                if (mach.testEqualMany8(long_switch, arg1)) {
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
                 }
@@ -1023,14 +1024,14 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
                 }
                 const assign_long_switch: []const u8 = long_switch ++ "=";
                 if (arg1.len >= assign_long_switch.len and
-                    builtin.testEqual([]const u8, assign_long_switch, arg1[0..assign_long_switch.len]))
+                    mach.testEqualMany8(assign_long_switch, arg1[0..assign_long_switch.len]))
                 {
                     option.getOptInternal(&options, args, index, assign_long_switch.len);
                     continue :lo;
                 }
             }
             if (option.short) |short_switch| blk: {
-                if (builtin.testEqual([]const u8, short_switch, arg1)) {
+                if (mach.testEqualMany8(short_switch, arg1)) {
                     option.getOptInternal(&options, args, index, 0);
                     continue :lo;
                 }
@@ -1038,7 +1039,7 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
                     break :blk;
                 }
                 if (arg1.len >= short_switch.len and
-                    builtin.testEqual([]const u8, short_switch, arg1[0..short_switch.len]))
+                    mach.testEqualMany8(short_switch, arg1[0..short_switch.len]))
                 {
                     option.getOptInternal(&options, args, index, short_switch.len);
                     continue :lo;
@@ -1046,11 +1047,11 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
             }
         }
         const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
-        if (builtin.testEqual([]const u8, "--", arg1)) {
+        if (mach.testEqualMany8("--", arg1)) {
             shift(args, index);
             break :lo;
         }
-        if (builtin.testEqual([]const u8, "--help", arg1)) {
+        if (mach.testEqualMany8("--help", arg1)) {
             debug.optionNotice(Options, all_options);
             sys.call(.exit, .{}, noreturn, .{0});
         }
