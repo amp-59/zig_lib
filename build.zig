@@ -14,7 +14,7 @@ pub const runtime_assertions: bool = false;
 pub const max_relevant_depth: u64 = 0;
 
 const deps: []const []const u8 = &.{"zig_lib"};
-const modules: []const build.Module = &.{.{ .name = "zig_lib", .path = "./zig_lib.zig" }};
+const modules: []const build.Module = &.{ .{ .name = "zig_lib", .path = "./zig_lib.zig" }, .{ .name = "@build", .path = "./build.zig" } };
 const lib_parser_macros: []const build.Macro = &.{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
 const std_parser_macros: []const build.Macro = &.{.{ .name = "test_subject", .value = .{ .string = "std" } }};
 
@@ -25,6 +25,7 @@ const small_spec: build.TargetSpec =    .{ .mode = .ReleaseSmall,   .mods = modu
 const fast_spec: build.TargetSpec =     .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps };
 const parser_spec_a: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = lib_parser_macros };
 const parser_spec_b: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = std_parser_macros };
+const build_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = modules, .deps = &.{"@build"} };
 const gen_spec: build.TargetSpec =      .{ .fmt = true, .run = false, .build = false };
 
 pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
@@ -41,6 +42,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const pathsplit: *build.Target      = examples.addTarget(small_spec, allocator, "pathsplit",    "examples/pathsplit.zig");
     const declprint: *build.Target      = examples.addTarget(debug_spec, allocator, "declprint",    "examples/declprint.zig");
     const tests: *build.Group           = builder.addGroup(allocator,               "tests");
+    const build_test: *build.Target     = tests.addTarget(build_spec, allocator,    "build_test",       "build_runner.zig");
     const builtin_test: *build.Target   = tests.addTarget(debug_spec, allocator,    "builtin_test",     "top/builtin-test.zig");
     const meta_test: *build.Target      = tests.addTarget(debug_spec, allocator,    "meta_test",        "top/meta-test.zig");
     const mem_test: *build.Target       = tests.addTarget(debug_spec, allocator,    "mem_test",         "top/mem-test.zig");
@@ -51,14 +53,13 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const render_test: *build.Target    = tests.addTarget(small_spec, allocator,    "render_test",      "top/render-test.zig");
     const thread_test: *build.Target    = tests.addTarget(debug_spec, allocator,    "thread_test",      "top/thread-test.zig");
     const virtual_test: *build.Target   = tests.addTarget(small_spec, allocator,    "virtual_test",     "top/virtual-test.zig");
-    const build_test: *build.Target     = tests.addTarget(debug_spec, allocator,    "build_test",       "top/build-test.zig");
     const impl_test: *build.Target      = tests.addTarget(debug_spec, allocator,    "impl_test",        "top/impl-test.zig");
     const container_test: *build.Target = tests.addTarget(debug_spec, allocator,    "container_test",   "top/container-test.zig");
     const bg: *build.Group                  = builder.addGroup(allocator,               "buildgen");
-    const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,       "generate_build", "top/build/generate_build.zig");
+    const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,       "generate_build",           "top/build/generate_build.zig");
     const mg_aux: *build.Group              = builder.addGroup(allocator,               "memgen_auxiliary");
     const mg_abstract_params: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_abstract_params",       "top/mem/abstract_params-aux.zig");
-    const mg_new_type_specs: *build.Target  = mg_aux.addTarget(small_spec, allocator,   "mg_new_type_specs",       "top/mem/new_type_specs-aux.zig");
+    const mg_new_type_specs: *build.Target  = mg_aux.addTarget(small_spec, allocator,   "mg_new_type_specs",        "top/mem/new_type_specs-aux.zig");
     _ = mg_new_type_specs;
     const mg_impl_detail: *build.Target     = mg_aux.addTarget(debug_spec, allocator,   "mg_impl_detail",           "top/mem/impl_detail-aux.zig");
     const mg_options: *build.Target         = mg_aux.addTarget(debug_spec, allocator,   "mg_options",               "top/mem/options-aux.zig");
@@ -116,6 +117,14 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     memgen_test.dependOnBuild(allocator,        generate_references);
     memgen_test.dependOnBuild(allocator,        generate_containers);
     memgen_test.dependOnBuild(allocator,        generate_allocators);
+    build_test.dependOnRun(allocator,           generate_build);
+
+
+    build_test.run_cmd.addRunArgument(builder.zigExePath());
+    build_test.run_cmd.addRunArgument(builder.buildRootPath());
+    build_test.run_cmd.addRunArgument(builder.cacheDirPath());
+    build_test.run_cmd.addRunArgument(builder.globalCacheDirPath());
+
     _ = readdir;
     _ = dynamic;
     _ = mca;
@@ -136,9 +145,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     _ = render_test;
     _ = thread_test;
     _ = virtual_test;
-    _ = build_test;
     _ = impl_test;
     _ = container_test;
-    _ = generate_build;
     _ = address_space;
 }
