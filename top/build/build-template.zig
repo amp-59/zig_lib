@@ -21,7 +21,7 @@ pub const Allocator = mem.GenericArenaAllocator(.{
     .errors = preset.allocator.errors.noexcept,
     .options = preset.allocator.options.small,
 });
-pub const ArgsString = mem.StructuredAutomaticVector(u8, null, max_len, 8, .{});
+pub const ArgsString = mem.StructuredAutomaticVector(u8, &@as(u8, 0), max_len, 8, .{});
 pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
 
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
@@ -248,12 +248,9 @@ pub const RunCommand = struct {
     array: ArgsString = undefined,
     pub fn addRunArgument(run_cmd: *RunCommand, any: anytype) void {
         if (@typeInfo(@TypeOf(any)) == .Struct) {
-            run_cmd.array.writeFormat(preset.reinterpret.fmt, any);
+            run_cmd.array.writeAny(preset.reinterpret.fmt, any);
         } else {
             run_cmd.array.writeMany(any);
-        }
-        if (run_cmd.array.readOneBack() != 0) {
-            run_cmd.array.writeOne(0);
         }
     }
 };
@@ -436,8 +433,7 @@ pub const Target = struct {
     }
     fn formatWrite(target: Target, array: anytype) u64 {
         const cmd: *const FormatCommand = target.fmt_cmd;
-        array.writeMany("zig\x00");
-        array.writeMany("fmt\x00");
+        array.writeMany("zig\x00fmt\x00");
         cmd = formatWrite;
         array.writeFormat(target.builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
