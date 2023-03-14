@@ -252,6 +252,9 @@ pub const RunCommand = struct {
         } else {
             run_cmd.array.writeMany(any);
         }
+        if (run_cmd.array.readOneBack() != 0) {
+            run_cmd.array.writeOne(0);
+        }
     }
 };
 pub const GroupList = GenericList(Group);
