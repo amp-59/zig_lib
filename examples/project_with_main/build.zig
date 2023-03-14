@@ -9,7 +9,7 @@ pub const zig_lib = @import("zig_lib/zig_lib.zig");
 const build = zig_lib.build;
 
 // zl dependencies and modules:
-const deps: []const []const u8 = &.{"zig_lib"};
+const deps: []const build.ModuleDependency = &.{.{ .name = "zig_lib" }};
 const mods: []const build.Module = &.{.{
     .name = "zig_lib",
     .path = "zig_lib/zig_lib.zig",
