@@ -24,8 +24,8 @@ pub const abstract_specs: []const AbstractSpecification = &.{
     .{ .kind = .dynamic,    .fields = lb_ub,        .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
     .{ .kind = .dynamic,    .fields = lb_ss_ub,     .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
 
-    .{ .kind = .parametric, .fields = ub,           .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs_1 },
-    .{ .kind = .parametric, .fields = ub_ss,        .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs_1 },
+    .{ .kind = .parametric, .fields = ub,           .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = param_techs },
+    .{ .kind = .parametric, .fields = ub_ss,        .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = param_techs },
 
 };
 // zig fmt: on
@@ -216,6 +216,70 @@ pub const Technique = union(enum) {
         var ret: Technique = opt;
         ret.mutually_exclusive.tech_tag = tech_tag;
         return ret;
+    }
+    pub const Usage = enum {
+        eliminate_boolean_false,
+        eliminate_boolean_true,
+        test_boolean,
+        compare_enumeration,
+        compare_optional_enumeration,
+    };
+
+    pub fn len(comptime tech: Technique) u64 {
+        return tech.info.field_field_names.len;
+    }
+    pub fn count(comptime tech: Technique, comptime combinations: []const []const Technique) u64 {
+        var ret: u64 = 0;
+        for (combinations) |set| {
+            for (set) |elem| {
+                if (elem == .standalone) {
+                    if (tech == elem) {
+                        ret +%= 1;
+                    }
+                } else {
+                    if (tech == elem.mutually_exclusive.tech_tag.?) {
+                        ret +%= 1;
+                    }
+                }
+            }
+        }
+        return ret;
+    }
+    pub fn usage(comptime tech: Technique, comptime combinations: []const []const Technique) Usage {
+        const value: u64 = tech.count(combinations);
+        switch (tech) {
+            .standalone => switch (value) {
+                0 => return .eliminate_boolean_false,
+                1 => return .test_boolean,
+                else => unreachable,
+            },
+            .mutually_exclusive => |mutually_exclusive| {
+                switch (mutually_exclusive.kind) {
+                    .optional => switch (value) {
+                        0 => return .eliminate_boolean_false,
+                        1 => return .test_boolean,
+                        else => return .compare_techal_enumeration,
+                    },
+                    .mandatory => switch (value) {
+                        0 => return .eliminate_boolean_false,
+                        1 => return .eliminate_boolean_true,
+                        else => return .compare_enumeration,
+                    },
+                }
+            },
+        }
+    }
+    pub fn optTagName(comptime tech: Technique) []const u8 {
+        if (tech == .standalone) {
+            return @tagName(tech.standalone);
+        }
+        return @tagName(tech.mutually_exclusive.opt_tag);
+    }
+    pub fn techTagName(comptime tech: Technique) []const u8 {
+        if (tech == .standalone) {
+            return @tagName(tech.standalone);
+        }
+        return @tagName(tech.mutually_exclusive.tech_tag.?);
     }
 };
 
