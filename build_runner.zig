@@ -81,7 +81,6 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
     .{ .field_name = "strip",   .long = "--strip",      .assign = .{ .boolean = true },         .descr = strip_s },
     .{ .field_name = "strip",   .long = "--no-strip",   .assign = .{ .boolean = false },        .descr = no_strip_s },
     .{ .field_name = "mode",    .long = "--debug",      .assign = .{ .any = &(.Debug) },        .descr = debug_s },
-    .{ .field_name = "strip",   .long = "--extra",      .assign = .{ .boolean = false },        .descr = debug_s },
     .{ .field_name = "cmd",     .long = "--run",        .assign = .{ .any = &(.run) },          .descr = run_cmd_s },
     .{ .field_name = "cmd",     .long = "--build",      .assign = .{ .any = &(.build) },        .descr = build_cmd_s },
     .{ .field_name = "cmd",     .long = "--fmt",        .assign = .{ .any = &(.fmt) },          .descr = fmt_cmd_s },
