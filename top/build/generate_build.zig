@@ -366,8 +366,8 @@ pub const BuildCommandOptions = opaque {
         .arg_type_name = "[]const Module",
     };
     pub const dependencies: OptionSpec = .{
-        .string = "--deps",
-        .arg_type = []const []const u8,
+        .arg_type = []const types.ModuleDependency,
+        .arg_type_name = "[]const ModuleDependency",
     };
     pub const cflags: OptionSpec = .{
         .arg_type = types.CFlags,
@@ -1542,8 +1542,9 @@ pub fn main() !void {
     writeFunctionBody(FormatCommandOptions, &array, .write);
     array.writeMany(build_src[format_write_fn_body_offset + format_write_fn_body_loc_token.len + 1 ..]);
     array.writeMany(types_src);
-    if (!prefer_inline) array.writeMany(option_fn_src);
-
+    if (!prefer_inline) {
+        array.writeMany(option_fn_src);
+    }
     if (commit_write) {
         try writeFile(allocator, array, builtin.build_root.? ++ "/top/build.zig");
     } else {
