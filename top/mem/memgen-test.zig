@@ -22,6 +22,7 @@ const NoSerial = struct {
 };
 
 pub fn main() void {
+    if (return) {}
     var no_serial: [details.len]NoSerial = undefined;
 
     for (details, 0..) |detail, index| {
