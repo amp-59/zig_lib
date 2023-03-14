@@ -711,7 +711,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     array.writeMany(type_name ++ "{}");
                 } else {
                     array.writeMany("@bitCast(" ++ @typeName(Union) ++ ", ");
-                    array.writeFormat(fmt.ud(meta.leastRealBitCast(format.value)));
+                    array.writeFormat(fmt.ub(meta.leastRealBitCast(format.value)));
                     array.writeMany(")");
                 }
             }
@@ -729,7 +729,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     len +%= type_name.len +% 2;
                 } else {
                     len +%= ("@bitCast(" ++ @typeName(Union) ++ ", ").len;
-                    len +%= fmt.ud(meta.leastRealBitCast(format.value)).formatLength();
+                    len +%= fmt.ub(meta.leastRealBitCast(format.value)).formatLength();
                     len +%= 1;
                 }
             }
