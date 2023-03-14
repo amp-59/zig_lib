@@ -230,7 +230,7 @@ comptime {
         \\  ret
     );
 }
-extern fn asmWriteAllCommands(builder: *build.Builder, buf: *[1024 * 1024]u8, name_max_width: u64) callconv(.C) u64;
+extern fn asmWriteAllCommands(builder: *build.Builder, buf: [*]u8, name_max_width: u64) callconv(.C) u64;
 comptime {
     asm (
         \\.intel_syntax noprefix
