@@ -132,33 +132,24 @@ const Kind = Kinds.Tag;
 const Layout = Layouts.Tag;
 
 pub const More = packed struct {
-    indices: Serial,
+    param_idx: u8,
+    spec_idx: u16 = 0,
+    impl_idx: u32 = 0,
     kind: Kind,
-    layout: Layout,
+    layout: Layout = undefined,
     modes: Modes,
     fields: Fields,
-    techs: Techniques,
-    specs: Specifiers,
-    const Serial = packed union {
-        ser: u64,
-        idx: packed struct { i: u32, s: u16, p: u8 },
-    };
+    techs: Techniques = undefined,
+    specs: Specifiers = undefined,
     pub fn init(
-        comptime spec: AbstractSpecification,
-        comptime index: u8,
+        comptime abstr_spec: AbstractSpecification,
+        comptime param_idx: u8,
     ) More {
         return .{
-            .indices = .{ .idx = .{
-                .p = index,
-                .s = undefined,
-                .i = undefined,
-            } },
-            .kind = spec.kind,
-            .modes = Modes.detail(spec.modes),
-            .fields = Fields.detail(spec.fields),
-            .layout = undefined,
-            .specs = undefined,
-            .techs = undefined,
+            .param_idx = param_idx,
+            .kind = abstr_spec.kind,
+            .modes = Modes.detail(abstr_spec.modes),
+            .fields = Fields.detail(abstr_spec.fields),
         };
     }
 };
