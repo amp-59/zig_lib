@@ -73,7 +73,7 @@ const thread_spec: proc.CloneSpec = .{
     .return_type = u64,
 };
 const what_s: [:0]const u8 = "???";
-const endl_s: [:0]const u8 = if (plain_print) "\x00" else "\x1b[0m\n";
+const endl_s: [:0]const u8 = if (plain_print) "\x00" else "\n";
 const del_s: [:0]const u8 = "\x08\x08\x08\x08";
 
 const spc_s: [:0]const u8 = "    ";
@@ -197,13 +197,13 @@ fn writeReadLink(
 fn getSymbol(kind: file.Kind) [:0]const u8 {
     if (plain_print) {
         switch (kind) {
-            .regular => return "\x00f\x00",
-            .directory => return "\x00d\x00",
-            .symbolic_link => return links_to_s,
-            .block_special => return "\x00b",
-            .character_special => return "\x00c\x00",
-            .named_pipe => return "\x00p",
-            .socket => return "\x00S\x00",
+            .regular => return "f\x00",
+            .directory => return "d\x00",
+            .symbolic_link => return "L\x00",
+            .block_special => return "b\x00",
+            .character_special => return "c\x00",
+            .named_pipe => return "p\x00",
+            .socket => return "S\x00",
         }
     } else {
         switch (kind) {
@@ -239,30 +239,29 @@ fn writeAndWalkPlain(
     var list: DirStream.ListView = dir.list();
     var index: u64 = 1;
     while (list.at(index)) |entry| : (index +%= 1) {
-        const basename: [:0]const u8 = entry.name();
         switch (entry.kind()) {
-            .symbolic_link => {
+            .symbolic_link => |kind| {
                 if (count_links) {
                     status.link_count +%= 1;
                 }
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, links_to_s });
-                try writeReadLink(allocator_1, array, link_buf, status, dir.fd, basename);
+                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
+                try writeReadLink(allocator_1, array, link_buf, status, dir.fd, entry.name());
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
                 if (count_files) {
                     status.file_count +%= 1;
                 }
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, getSymbol(kind), 0 });
+                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
             },
             .directory => |kind| {
                 if (count_dirs) {
                     status.dir_count +%= 1;
                 }
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), basename, getSymbol(kind) });
+                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
                 if (track_max_depth) {
                     status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
                 }
-                writeAndWalkPlain(allocator_0, allocator_1, array, alts_buf, link_buf, status, dir.fd, basename, depth +% 1) catch |any_error| {
+                writeAndWalkPlain(allocator_0, allocator_1, array, alts_buf, link_buf, status, dir.fd, entry.name(), depth +% 1) catch |any_error| {
                     if (quit_on_error) {
                         return any_error;
                     }
