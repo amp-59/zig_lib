@@ -13,7 +13,6 @@ pub const logging_override: builtin.Logging.Override = preset.logging.override.s
 pub const runtime_assertions: bool = false;
 pub const max_relevant_depth: u64 = 0;
 
-//const deps: []const []const u8 = &.{"zig_lib"};
 const deps: []const build.ModuleDependency = &.{ .{ .name = "zig_lib" }, .{ .name = "@build" } };
 const modules: []const build.Module = &.{ .{ .name = "zig_lib", .path = "./zig_lib.zig" }, .{ .name = "@build", .path = "./build.zig" } };
 const lib_parser_macros: []const build.Macro = &.{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
