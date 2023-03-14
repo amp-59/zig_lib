@@ -107,7 +107,7 @@ pub const Builder = struct {
         return builder.path(root);
     }
     pub fn path(builder: *const Builder, name: [:0]const u8) Path {
-        return .{ .builder = builder, .pathname = name };
+        return .{ .absolute = builder.paths.build_root, .pathname = name };
     }
     pub inline fn addTarget(
         builder: *Builder,
@@ -184,8 +184,8 @@ pub const TargetSpec = struct {
     run: bool = true,
     fmt: bool = false,
     mode: builtin.Mode = .Debug,
-    deps: []const []const u8 = &.{},
     mods: []const Module = &.{},
+    deps: []const ModuleDependency = &.{},
     macros: []const Macro = &.{},
 };
 fn join(
@@ -202,7 +202,7 @@ fn join(
     bin_path: [:0]const u8,
     emit_asm: bool,
     asm_path: [:0]const u8,
-    spec_deps: []const []const u8,
+    spec_deps: []const ModuleDependency,
     spec_mods: []const Module,
     spec_macros: []const Macro,
 ) *Target {
@@ -310,7 +310,7 @@ pub const BuildCommand = struct {
     image_base: ?u64 = null,
     macros: ?[]const Macro = null,
     modules: ?[]const Module = null,
-    dependencies: ?[]const []const u8 = null,
+    dependencies: ?[]const ModuleDependency = null,
     cflags: ?struct { flags: []const []const u8 } = null,
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null,
     test_filter: ?[]const u8 = null,
@@ -959,9 +959,7 @@ pub const Target = struct {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
         }
         if (cmd.dependencies) |how| {
-            len +%= 7;
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
-            len +%= 1;
         }
         if (cmd.cflags) |how| {
             len +%= mem.reinterpret.lengthAny(u8, fmt_spec, how);
@@ -973,6 +971,7 @@ pub const Target = struct {
         }
         len +%= Path.formatLength(target.builder.sourceRootPath(target.root));
         len +%= 1;
+        ModuleDependency.l_leader = true;
         return len;
     }
     fn buildWrite(target: Target, array: anytype) u64 {
@@ -1475,9 +1474,7 @@ pub const Target = struct {
             array.writeAny(fmt_spec, how);
         }
         if (cmd.dependencies) |how| {
-            array.writeMany("--deps\x00");
             array.writeAny(fmt_spec, how);
-            array.writeOne('\x00');
         }
         if (cmd.cflags) |how| {
             array.writeAny(fmt_spec, how);
@@ -1490,6 +1487,7 @@ pub const Target = struct {
         array.writeFormat(target.builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
         array.undefine(1);
+        ModuleDependency.w_leader = true;
         return countArgs(array);
     }
     fn formatLength(target: Target) u64 {
@@ -1722,6 +1720,40 @@ pub const Module = struct {
         return len;
     }
 };
+pub const ModuleDependency = struct {
+    import: ?[]const u8 = null,
+    name: []const u8,
+
+    var w_leader: bool = true;
+    var l_leader: bool = true;
+
+    pub fn formatWrite(mod_dep: ModuleDependency, array: anytype) void {
+        defer w_leader = false;
+        if (w_leader) {
+            array.writeMany("--deps\x00");
+        } else {
+            array.overwriteOneBack(',');
+        }
+        if (mod_dep.import) |name| {
+            array.writeMany(name);
+            array.writeOne('=');
+        }
+        array.writeMany(mod_dep.name);
+        array.writeOne(0);
+    }
+    pub fn formatLength(mod_dep: ModuleDependency) u64 {
+        defer l_leader = false;
+        var len: u64 = 0;
+        if (l_leader) {
+            len +%= 7;
+        }
+        if (mod_dep.import) |name| {
+            len +%= name.len +% 1;
+        }
+        len +%= mod_dep.name.len +% 1;
+        return len;
+    }
+};
 pub const Macro = struct {
     name: []const u8,
     value: Value,
@@ -1802,13 +1834,13 @@ pub const CFlags = struct {
     }
 };
 pub const Path = struct {
-    builder: ?*const Builder = null,
+    absolute: ?[:0]const u8 = null,
     pathname: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.builder) |builder| {
+        if (format.absolute) |absolute| {
             if (format.pathname[0] != '/') {
-                array.writeMany(builder.paths.build_root);
+                array.writeMany(absolute);
                 array.writeOne('/');
             }
         }
@@ -1816,9 +1848,9 @@ pub const Path = struct {
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        if (format.builder) |builder| {
+        if (format.absolute) |absolute| {
             if (format.pathname[0] != '/') {
-                len +%= builder.paths.build_root.len;
+                len +%= absolute.len;
                 len +%= 1;
             }
         }
