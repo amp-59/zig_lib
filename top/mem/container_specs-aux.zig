@@ -126,27 +126,6 @@ fn writeOneUniqueOptionsStruct(indices: *StringArray, new: []const u8) ?u64 {
     }
     return null;
 }
-// fn Implementation(spec: Specification) type {
-//     const child: type = spec.child;
-//     const count: u64 = spec.count;
-//     const low_alignment: u64 = lowAlignment(spec);
-//     const options: Options0 = spec.options;
-//     if (spec.sentinel) |sentinel| {
-//         reference.Specification5.Implementation(.{
-//             .child = child,
-//             .sentinel = sentinel,
-//             .count = count,
-//             .low_alignment = low_alignment,
-//         }, options);
-//     } else {
-//         reference.Specification4.Implementation(.{
-//             .child = child,
-//             .count = count,
-//             .low_alignment = low_alignment,
-//         }, options);
-//     }
-// }
-
 fn writeContainerGroup(allocator: *Allocator, options: *String, params: *String, indices: *StringArray, ctn_index: u64, spec_index: *u64) void {
     const ctn_group: []const out.Index = out.containers[ctn_index];
     const impl_variant: detail.More = out.impl_variants[ctn_group[0]];
