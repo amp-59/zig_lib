@@ -14,8 +14,6 @@ pub const AddressSpace = virtual.GenericRegularAddressSpace(multi_arena);
 // but the binary mapping should start at ~64K, so it would need to be big to
 // overlap. If it did the program would abort due to MAP_FIXED_NOREPLACE.
 const start: u64 = 0x40000000;
-// Also 1GiB. Would rather not do something weird like size = start.
-// This is the size of each arena.
 const size: u64 = 1024 * 1024;
 const count: u64 = 1024;
 const finish: u64 = start + (size * count);
@@ -29,7 +27,7 @@ const Allocator = mem.GenericRtArenaAllocator(.{
     },
 });
 const multi_arena: virtual.RegularMultiArena = .{
-    .label = "1024x1GiB",
+    .label = "1024x1MiB",
     .lb_addr = start,
     .up_addr = finish,
     .divisions = count,
