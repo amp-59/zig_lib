@@ -521,12 +521,12 @@ pub const start = opaque {
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
             builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-                debug.about_error_s,             "indexing (",
+                debug.about_exit_1_s,            "indexing (",
                 builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
             });
         } else {
             builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-                debug.about_error_s,                      "index ",
+                debug.about_exit_1_s,                     "index ",
                 builtin.fmt.ud64(idx).readAll(),          " above maximum ",
                 builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
             });
@@ -537,7 +537,7 @@ pub const start = opaque {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_error_s,                 "sentinel mismatch: expected ",
+            debug.about_exit_1_s,                "sentinel mismatch: expected ",
             builtin.fmt.int(expected).readAll(), ", found ",
             builtin.fmt.int(actual).readAll(),   "\n",
         });
@@ -546,7 +546,7 @@ pub const start = opaque {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_error_s,               "start index ",
+            debug.about_exit_1_s,              "start index ",
             builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
             builtin.fmt.ud64(upper).readAll(), "\n",
         });
@@ -555,9 +555,9 @@ pub const start = opaque {
         @setCold(true);
         var buf: [1024]u8 = undefined;
         builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_error_s, "access of union field '",
-            @tagName(wanted),    "' while field '",
-            @tagName(active),    "' is active",
+            debug.about_exit_1_s, "access of union field '",
+            @tagName(wanted),     "' while field '",
+            @tagName(active),     "' is active",
         });
         sys.call(.exit, .{}, noreturn, .{2});
     }
@@ -1067,7 +1067,8 @@ const debug = opaque {
     const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
     const about_opt_0_s: []const u8 = "opt:            '";
     const about_opt_1_s: []const u8 = "opt-error:      '";
-    const about_error_s: []const u8 = "error:          ";
+    const about_exit_0_s: []const u8 = "exit:           ";
+    const about_exit_1_s: []const u8 = "error:          ";
     const about_fork_0_s: []const u8 = "fork:           ";
     const about_fork_1_s: []const u8 = "fork-error:     ";
     const about_wait_0_s: []const u8 = "wait:           ";
