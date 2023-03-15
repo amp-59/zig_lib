@@ -383,7 +383,7 @@ pub const Technique = union(enum) {
     pub fn len(comptime tech: Technique) u64 {
         return tech.info.field_field_names.len;
     }
-    pub fn count(comptime tech: Technique, comptime combinations: []const []const Technique) u64 {
+    pub fn count(tech: Technique, combinations: []const []const Technique) u64 {
         var ret: u64 = 0;
         for (combinations) |set| {
             if (tech == .standalone) {
@@ -407,8 +407,8 @@ pub const Technique = union(enum) {
         }
         return ret;
     }
-    pub fn usage(comptime tech: Technique, comptime combinations: []const []const Technique) Usage {
-        const value: u64 = comptime tech.count(combinations);
+    pub fn usage(tech: Technique, combinations: []const []const Technique) Usage {
+        const value: u64 = tech.count(combinations);
         switch (tech) {
             .standalone => switch (value) {
                 0 => return .eliminate_boolean_false,
@@ -419,7 +419,7 @@ pub const Technique = union(enum) {
                     .optional => switch (value) {
                         0 => return .eliminate_boolean_false,
                         1 => return .test_boolean,
-                        else => return .compare_enumeration,
+                        else => return .compare_optional_enumeration,
                     },
                     .mandatory => switch (value) {
                         0 => return .eliminate_boolean_false,
