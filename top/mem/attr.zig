@@ -478,14 +478,24 @@ const auto_specs = &.{
     optional_derived(.low_alignment, u64, "lowAlignment"),
     optional_variant(.sentinel, *const anyopaque),
 };
-const dyn_specs = &.{
+const s_dyn_specs = &.{
     default(.child, type),
     optional_derived(.low_alignment, u64, "lowAlignment"),
     optional_variant(.sentinel, *const anyopaque),
     decl_optional_variant(.Allocator, type, .arena, struct { lb_addr: u64, up_addr: u64 }),
 };
-const param_specs = &.{
+const u_dyn_specs = &.{
+    optional_derived(.low_alignment, u64, "lowAlignment"),
+    optional_variant(.sentinel, *const anyopaque),
+    decl_optional_variant(.Allocator, type, .arena, struct { lb_addr: u64, up_addr: u64 }),
+};
+const s_param_specs = &.{
     default(.child, type),
+    optional_derived(.low_alignment, u64, "lowAlignment"),
+    optional_variant(.sentinel, *const anyopaque),
+    default(.Allocator, type),
+};
+const u_param_specs = &.{
     optional_derived(.low_alignment, u64, "lowAlignment"),
     optional_variant(.sentinel, *const anyopaque),
     default(.Allocator, type),
