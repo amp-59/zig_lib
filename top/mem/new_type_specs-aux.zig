@@ -503,31 +503,16 @@ fn writeAbstractSpecification(array: *Array, comptime abstract_spec: attr.Abstra
     const q_info: []const InfoT = comptime populateUniqueTechniqueKeys(v_i_infos);
     writeSpecificationDeduction(array, abstract_spec, x_info[0], s_v_infos, v_i_infos, q_info);
 }
+
 pub fn newNewTypeSpecs() void {
-    @setEvalBranchQuota(3391);
+    @setEvalBranchQuota(3200);
     var array: Array = undefined;
     array.undefineAll();
-    // All implementation variant details
-    comptime var details: []const attr.More = &.{};
-    // All parameter information
-    comptime var p_infos: []const []const InfoS = &.{};
-    // All multiple Specification and Technique information
-    comptime var x_infos: []const []const []const InfoS = &.{};
-    comptime {
-        for (attr.abstract_specs, 0..) |spec, p_idx| {
-            const x_info: [3][]const InfoS = populateParameters(spec);
-            p_infos = p_infos ++ .{x_info[0]};
-            const s_v_infos: []const []const InfoS = populateSpecifiers(x_info[1], x_info[2]);
-            x_infos = x_infos ++ .{s_v_infos};
-            details = details ++ populateDetails(spec, p_idx, s_v_infos, populateTechniques(spec));
-        }
+    gen.copySourceFile(&array, "container-template.zig");
+    inline for (attr.abstract_specs) |abstract_spec| {
+        writeAbstractSpecification(&array, abstract_spec);
     }
-    inline for (p_infos, x_infos) |p_info, s_v_infos| {
-        writeSpecificationDeduction(&array, p_info, s_v_infos);
-    }
-    file.write(.{ .errors = .{} }, 1, array.readAll());
+    gen.writeSourceFile(&array, "containers.zig");
     array.undefineAll();
-    array.writeMany(&meta.sliceToBytes(attr.More, details));
-    gen.writeAuxiliarySourceFile(&array, "detail_raw");
 }
 pub const main = newNewTypeSpecs;
