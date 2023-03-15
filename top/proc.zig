@@ -643,17 +643,21 @@ pub const exception = opaque {
     const SA = sys.SA;
     const SIG = sys.SIG;
 };
-fn exitWithError(error_name: []const u8) void {
+fn exitWithError(error_name: []const u8, rc: ?u8) void {
     @setCold(true);
-    @setRuntimeSafety(false);
-    var buf: [4096]u8 = undefined;
-    builtin.debug.logFaultAIO(&buf, &.{ debug.about_exit_1_s, error_name, "\n" });
-    sys.call(.exit, .{}, noreturn, .{2});
+    if (builtin.logging_general.Fault) {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &.{ debug.about_exit_1_s, error_name, "\n" });
+    }
+    sys.call(.exit, .{}, noreturn, .{rc orelse 2});
 }
 fn exitWithoutError(rc: u8) void {
-    @setRuntimeSafety(false);
-    var buf: [4096]u8 = undefined;
-    builtin.debug.logSuccessAIO(&buf, &.{ debug.about_exit_0_s, builtin.fmt.ud8(rc).readAll(), "\n" });
+    if (builtin.logging_general.Success) {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &.{ debug.about_exit_0_s, builtin.fmt.ud8(rc).readAll(), "\n" });
+    }
     sys.call(.exit, .{}, noreturn, .{rc});
 }
 const static = opaque {
@@ -713,23 +717,17 @@ pub noinline fn callMain() noreturn {
         if (main_return_type == void) {
             @call(.auto, main, params);
             exitWithoutError(0);
-            sys.call(.exit, .{}, noreturn, .{0});
         }
         if (main_return_type == u8) {
-            const rc: u8 = @call(.auto, main, params);
-            exitWithoutError(rc);
-            sys.call(.exit, .{}, noreturn, .{rc});
+            exitWithoutError(@call(.auto, main, params));
         }
         if (main_return_type_info == .ErrorUnion and
             main_return_type_info.ErrorUnion.payload == void)
         {
             if (@call(.auto, main, params)) {
                 exitWithoutError(0);
-                sys.call(.exit, .{}, noreturn, .{0});
             } else |err| {
-                @setCold(true);
-                exitWithError(@errorName(err));
-                sys.call(.exit, .{}, noreturn, .{@intCast(u8, @errorToInt(err))});
+                exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
             }
         }
         if (main_return_type_info == .ErrorUnion and
@@ -737,11 +735,8 @@ pub noinline fn callMain() noreturn {
         {
             if (@call(.auto, builtin.root.main, params)) |rc| {
                 exitWithoutError(rc);
-                sys.call(.exit, .{}, noreturn, .{rc});
             } else |err| {
-                @setCold(true);
-                exitWithError(@errorName(err));
-                sys.call(.exit, .{}, noreturn, .{@intCast(u8, @errorToInt(err))});
+                exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
             }
         }
         if (main_return_type_info == .ErrorSet) {
