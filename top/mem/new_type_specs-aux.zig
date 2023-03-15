@@ -28,14 +28,11 @@ const S = struct {
     var spec_no: u64 = 0;
     var impl_no: u64 = 0;
 };
-fn haveSpec(
-    comptime s_v_infos: []const []const InfoS,
-    comptime p_field: InfoS,
-) BinaryFilter([]const InfoS) {
-    comptime var t: []const []const InfoS = meta.empty;
-    comptime var f: []const []const InfoS = meta.empty;
-    inline for (s_v_infos) |s_v_info| {
-        inline for (s_v_info) |s_v_field| {
+fn haveSpec(comptime s_v_infos: []const []const InfoS, comptime p_field: InfoS) BinaryFilter([]const InfoS) {
+    var t: []const []const InfoS = meta.empty;
+    var f: []const []const InfoS = meta.empty;
+    for (s_v_infos) |s_v_info| {
+        for (s_v_info) |s_v_field| {
             if (builtin.testEqual(InfoS, p_field, s_v_field)) {
                 t = t ++ .{s_v_info};
                 break;
