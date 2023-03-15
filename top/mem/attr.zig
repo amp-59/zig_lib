@@ -436,17 +436,17 @@ pub const Technique = union(enum) {
         const tech_tag_name: []const u8 = tech.techTagName();
         return tech_tag_name[0 .. tech_tag_name.len - (opt_tag_name.len + 1)];
     }
-    pub fn optTagName(comptime tech: Technique) []const u8 {
-        return @tagName(tech.optTag());
-    }
-    pub fn techTagName(comptime tech: Technique) []const u8 {
-        return @tagName(tech.techTag());
-    }
-    pub fn optTag(comptime tech: Technique) if (tech == .standalone) Techniques.Tag else Techniques.Options.Tag {
+    pub fn optTagName(tech: Technique) []const u8 {
         if (tech == .standalone) {
-            return tech.standalone;
+            return @tagName(tech.standalone);
         }
-        return tech.mutually_exclusive.opt_tag;
+        return @tagName(tech.mutually_exclusive.opt_tag);
+    }
+    pub fn techTagName(tech: Technique) []const u8 {
+        if (tech == .standalone) {
+            return @tagName(tech.standalone);
+        }
+        return @tagName(tech.mutually_exclusive.tech_tag.?);
     }
     pub fn techTag(comptime tech: Technique) Techniques.Tag {
         if (tech == .standalone) {
