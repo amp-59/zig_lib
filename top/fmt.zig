@@ -782,10 +782,10 @@ pub const Bytes = struct {
         inline for (fields, 0..) |field, i| {
             const integer: mem.Bytes = mem.Bytes.Unit.to(value, @field(mem.Bytes.Unit, field.name));
             if (integer.count != 0) {
-                const remainder: mem.Bytes = blk: {
-                    const j: u64 = if (i != fields.len -% 1) i +% 1 else i;
-                    break :blk Unit.to(value -| mem.Bytes.bytes(integer), @field(Unit, fields[j].name));
-                };
+                const remainder: mem.Bytes = Unit.to(
+                    value -| mem.Bytes.bytes(integer),
+                    @field(Unit, fields[if (i != fields.len -% 1) i +% 1 else i].name),
+                );
                 return .{ .value = .{
                     .integer = integer,
                     .remainder = remainder,
