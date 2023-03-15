@@ -269,8 +269,10 @@ fn initExpr(comptime s_v_info: []const InfoS) []const u8 {
 }
 fn writeSpecificationDeductionInternal(
     array: *Array,
+    any: anytype,
     comptime p_info: []const InfoS,
     comptime s_v_infos: []const []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
 ) void {
     if (p_info.len == 0) {
         @compileError("???");
@@ -279,9 +281,10 @@ fn writeSpecificationDeductionInternal(
     if (filtered[1].len != 0) {
         array.writeMany(declExpr(p_info[0]));
         if (filtered[1].len == 1) {
-            array.writeMany(initExpr(filtered[1][0]));
+            S.spec_no +%= 1;
+            writeImplementationDeduction(array, any.spec, v_i_infos, filtered[1][0], v_i_infos, any.keys);
         } else {
-            writeSpecificationDeductionInternal(array, p_info[1..], filtered[1]);
+            writeSpecificationDeductionInternal(array, any, p_info[1..], filtered[1], v_i_infos);
         }
     }
     if (filtered[0].len != 0) {
@@ -292,9 +295,10 @@ fn writeSpecificationDeductionInternal(
             array.writeMany("}else{\n");
         }
         if (filtered[0].len == 1) {
-            array.writeMany(initExpr(filtered[0][0]));
+            S.spec_no +%= 1;
+            writeImplementationDeduction(array, any.spec, v_i_infos, filtered[0][0], v_i_infos, any.keys);
         } else {
-            writeSpecificationDeductionInternal(array, p_info[1..], filtered[0]);
+            writeSpecificationDeductionInternal(array, any, p_info[1..], filtered[0], v_i_infos);
         }
     }
     if (filtered[1].len != 0 and
