@@ -342,13 +342,20 @@ pub const Technique = union(enum) {
     pub fn count(comptime tech: Technique, comptime combinations: []const []const Technique) u64 {
         var ret: u64 = 0;
         for (combinations) |set| {
-            for (set) |elem| {
-                if (elem == .standalone) {
-                    if (tech == elem) {
+            if (tech == .standalone) {
+                for (set) |elem| {
+                    if (elem == .standalone and
+                        tech.standalone == elem.standalone)
+                    {
                         ret +%= 1;
                     }
-                } else {
-                    if (tech == elem.mutually_exclusive.tech_tag.?) {
+                }
+            } else {
+                for (set) |elem| {
+                    if (elem == .mutually_exclusive and
+                        tech.mutually_exclusive.opt_tag ==
+                        elem.mutually_exclusive.opt_tag)
+                    {
                         ret +%= 1;
                     }
                 }
