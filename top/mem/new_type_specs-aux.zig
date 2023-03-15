@@ -43,17 +43,16 @@ fn haveSpec(comptime s_v_infos: []const []const InfoS, comptime p_field: InfoS) 
     }
     return .{ f, t };
 }
-fn haveTech(
-    comptime v_i_infos: []const []const InfoT,
-    comptime t_field: InfoT,
-) BinaryFilter([]const InfoT) {
-    comptime var t: []const []const InfoT = meta.empty;
-    comptime var f: []const []const InfoT = meta.empty;
-    inline for (v_i_infos) |v_i_info| {
-        inline for (v_i_info) |s_v_field| {
-            if (builtin.testEqual(InfoT, t_field, s_v_field)) {
-                t = t ++ .{v_i_info};
-                break;
+fn haveStandAloneTech(comptime v_i_infos: []const []const InfoT, comptime u_field: InfoT) BinaryFilter([]const InfoT) {
+    var t: []const []const InfoT = meta.empty;
+    var f: []const []const InfoT = meta.empty;
+    for (v_i_infos) |v_i_info| {
+        for (v_i_info) |v_i_field| {
+            if (v_i_field == .standalone) {
+                if (u_field.standalone == v_i_field.standalone) {
+                    t = t ++ .{v_i_info};
+                    break;
+                }
             }
         } else {
             f = f ++ .{v_i_info};
