@@ -364,7 +364,7 @@ pub const Technique = union(enum) {
         return ret;
     }
     pub fn usage(comptime tech: Technique, comptime combinations: []const []const Technique) Usage {
-        const value: u64 = tech.count(combinations);
+        const value: u64 = comptime tech.count(combinations);
         switch (tech) {
             .standalone => switch (value) {
                 0 => return .eliminate_boolean_false,
@@ -376,7 +376,7 @@ pub const Technique = union(enum) {
                     .optional => switch (value) {
                         0 => return .eliminate_boolean_false,
                         1 => return .test_boolean,
-                        else => return .compare_techal_enumeration,
+                        else => return .compare_enumeration,
                     },
                     .mandatory => switch (value) {
                         0 => return .eliminate_boolean_false,
