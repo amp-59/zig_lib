@@ -145,6 +145,31 @@ pub const Specifier = union(enum) {
         decl_type: type,
         fn_name: []const u8,
     };
+    pub fn isVariant(comptime spec: Specifier) bool {
+        switch (spec) {
+            .optional_variant,
+            .decl_optional_variant,
+            => {
+                return true;
+            },
+            else => {
+                return false;
+            },
+        }
+    }
+    pub fn isDerived(comptime spec: Specifier) bool {
+        switch (spec) {
+            .derived,
+            .decl_optional_derived,
+            .optional_derived,
+            => {
+                return true;
+            },
+            else => {
+                return false;
+            },
+        }
+    }
 };
 
 const Kind = Kinds.Tag;
