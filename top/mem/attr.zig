@@ -409,15 +409,15 @@ pub const Technique = union(enum) {
         if (tech == .standalone) {
             return tech.standalone;
         }
-        return @tagName(tech.mutually_exclusive.tech_tag.?);
+        return tech.mutually_exclusive.tech_tag.?;
     }
 };
 
 pub const AbstractSpecification = struct {
     kind: Kinds.Tag,
+    layout: Layouts.Tag,
     fields: []const Fields.Tag,
     modes: []const Modes.Tag,
-    v_layouts: []const Layouts.Tag,
     v_techs: []const Technique,
     v_specs: []const Specifier,
 };
