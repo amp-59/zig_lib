@@ -19,14 +19,16 @@ pub const logging_override: builtin.Logging.Override = preset.logging.override.s
 const Array = mem.StaticArray(u8, 1024 * 1024);
 const InfoS = attr.Specifier;
 const InfoT = attr.Technique;
-const InfoST = struct { InfoS, InfoT };
+
+fn BinaryFilter(comptime T: type) type {
+    return struct { []const T, []const T };
+}
 
 const S = struct {
+    var param_no: u64 = 0;
     var spec_no: u64 = 0;
+    var impl_no: u64 = 0;
 };
-fn BinaryFilter(comptime T: type) type {
-    return (struct { []const T, []const T });
-}
 fn haveSpec(
     comptime s_v_infos: []const []const InfoS,
     comptime p_field: InfoS,
