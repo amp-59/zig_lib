@@ -229,8 +229,8 @@ fn parametersTypeName(comptime p_field: InfoS) []const u8 {
     switch (p_field) {
         .default => |default| return @typeName(default.type),
         .stripped => |stripped| return @typeName(stripped.type),
-        .optional_derived => |optional_derived| return @typeName(optional_derived.type),
-        .optional_variant => |optional_variant| return @typeName(optional_variant.type),
+        .optional_derived => |optional_derived| return "?" ++ @typeName(optional_derived.type),
+        .optional_variant => |optional_variant| return "?" ++ @typeName(optional_variant.type),
         .decl_optional_derived => |decl_optional_derived| return @typeName(decl_optional_derived.ctn_type),
         .decl_optional_variant => |decl_optional_variant| return @typeName(decl_optional_variant.ctn_type),
         .derived => @compileError("???"),
