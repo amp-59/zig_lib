@@ -693,8 +693,8 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
                 .is_exhaustive = true,
             } });
         };
-        pub fn detail(comptime tags: []const Tag) Struct {
-            comptime var int: tag_type = 0;
+        pub fn detail(tags: []const Tag) Struct {
+            var int: tag_type = 0;
             for (tags) |tag| {
                 int |= @enumToInt(tag);
             }
@@ -1060,16 +1060,3 @@ pub const Fn = struct {
         }
     };
 };
-comptime {
-    const attribute_types: [6]type = .{ Modes, Kinds, Layouts, Fields, Managers, Techniques };
-    inline for (attribute_types, 0..) |l_struct_of_bool, index| {
-        inline for (@typeInfo(l_struct_of_bool).Struct.fields) |field| {
-            inline for (attribute_types[index + 1 ..]) |r_struct_of_bool| {
-                if (@hasField(r_struct_of_bool, field.name)) {
-                    @compileError(@typeName(l_struct_of_bool) ++ ", " ++
-                        @typeName(r_struct_of_bool) ++ " share non-unique attribute name: " ++ field.name);
-                }
-            }
-        }
-    }
-}
