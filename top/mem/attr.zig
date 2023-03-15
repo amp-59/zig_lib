@@ -46,8 +46,15 @@ pub const abstract_specs: []const AbstractSpecification = &.{
     .{ .kind = .dynamic,    .fields = lb_ss_ub,     .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_dyn_specs, .v_techs = dyn_techs_2 },
 
 };
+pub const AbstractSpecification = struct {
+    kind: Kinds.Tag,
+    layout: Layouts.Tag,
+    fields: []const Fields.Tag,
+    modes: []const Modes.Tag,
+    v_techs: []const Technique,
+    v_specs: []const Specifier,
+};
 // zig fmt: on
-
 pub const Kinds = packed struct(u4) {
     automatic: bool = false,
     dynamic: bool = false,
@@ -433,15 +440,6 @@ pub const Technique = union(enum) {
         }
         return tech.mutually_exclusive.tech_tag.?;
     }
-};
-
-pub const AbstractSpecification = struct {
-    kind: Kinds.Tag,
-    layout: Layouts.Tag,
-    fields: []const Fields.Tag,
-    modes: []const Modes.Tag,
-    v_techs: []const Technique,
-    v_specs: []const Specifier,
 };
 fn default(comptime tag: Specifiers.Tag, comptime @"type": type) Specifier {
     return .{ .default = .{ .tag = tag, .type = @"type" } };
