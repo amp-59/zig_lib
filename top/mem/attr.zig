@@ -176,25 +176,92 @@ const Kind = Kinds.Tag;
 const Layout = Layouts.Tag;
 
 pub const More = packed struct {
-    param_idx: u8,
-    spec_idx: u16 = 0,
-    impl_idx: u32 = 0,
     kind: Kind,
-    layout: Layout = undefined,
+    layout: Layout,
     modes: Modes,
     fields: Fields,
     techs: Techniques = undefined,
     specs: Specifiers = undefined,
-    pub fn init(
-        comptime abstr_spec: AbstractSpecification,
-        comptime param_idx: u8,
+
+    const Format = @This();
+
+    pub fn half(comptime abstract_spec: AbstractSpecification) More {
+        return .{
+            .kind = abstract_spec.kind,
+            .layout = abstract_spec.layout,
+            .modes = Modes.detail(abstract_spec.modes),
+            .fields = Fields.detail(abstract_spec.fields),
+        };
+    }
+    pub fn full(
+        comptime abstract_spec: AbstractSpecification,
+        comptime specs: []const Specifier,
+        comptime techs: []const Technique,
     ) More {
         return .{
-            .param_idx = param_idx,
-            .kind = abstr_spec.kind,
-            .modes = Modes.detail(abstr_spec.modes),
-            .fields = Fields.detail(abstr_spec.fields),
+            .kind = abstract_spec.kind,
+            .layout = abstract_spec.layout,
+            .modes = Modes.detail(abstract_spec.modes),
+            .fields = Fields.detail(abstract_spec.fields),
+            .specs = Specifiers.detail(specifiersTags(specs)),
+            .techs = Techniques.detail(techniqueTags(techs)),
         };
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        switch (format.kind) {
+            .parametric => len +%= "Parametric".len,
+            .dynamic => len +%= "Dynamic".len,
+            .static => len +%= "Static".len,
+            .automatic => len +%= "Automatic".len,
+        }
+        switch (format.layout) {
+            .structured => len +%= "Structured".len,
+            .unstructured => len +%= "Unstructured".len,
+        }
+        if (format.modes.read_write) {
+            len +%= "ReadWrite".len;
+        }
+        if (format.modes.stream) {
+            len +%= "Stream".len;
+        }
+        if (format.modes.resize) {
+            len +%= "Resize".len;
+        }
+        if (format.specs.arena) {
+            len +%= "Arena".len;
+        }
+        if (format.specs.sentinel) {
+            len +%= "Sentinel".len;
+        }
+        return len;
+    }
+    pub fn formatWrite(format: Format, array: anytype) void {
+        switch (format.kind) {
+            .parametric => array.writeMany("Parametric"),
+            .dynamic => array.writeMany("Dynamic"),
+            .static => array.writeMany("Static"),
+            .automatic => array.writeMany("Automatic"),
+        }
+        switch (format.layout) {
+            .structured => array.writeMany("Structured"),
+            .unstructured => array.writeMany("Unstructured"),
+        }
+        if (format.modes.read_write) {
+            array.writeMany("ReadWrite");
+        }
+        if (format.modes.stream) {
+            array.writeMany("Stream");
+        }
+        if (format.modes.resize) {
+            array.writeMany("Resize");
+        }
+        if (format.specs.arena) {
+            array.writeMany("Arena");
+        }
+        if (format.specs.sentinel) {
+            array.writeMany("Sentinel");
+        }
     }
 };
 
