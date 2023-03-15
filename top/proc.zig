@@ -647,8 +647,14 @@ fn exitWithError(error_name: []const u8) void {
     @setCold(true);
     @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    builtin.debug.logAbort(&buf, error_name);
+    builtin.debug.logFaultAIO(&buf, &.{ debug.about_exit_1_s, error_name, "\n" });
     sys.call(.exit, .{}, noreturn, .{2});
+}
+fn exitWithoutError(rc: u8) void {
+    @setRuntimeSafety(false);
+    var buf: [4096]u8 = undefined;
+    builtin.debug.logSuccessAIO(&buf, &.{ debug.about_exit_0_s, builtin.fmt.ud8(rc).readAll(), "\n" });
+    sys.call(.exit, .{}, noreturn, .{rc});
 }
 const static = opaque {
     var stack_addr: u64 = 0;
