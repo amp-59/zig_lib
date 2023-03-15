@@ -185,16 +185,13 @@ fn populateDetails(
 ) []const attr.More {
     var details: []const attr.More = &.{};
     var detail: attr.More = attr.More.init(spec, p_idx);
-    for (spec.v_layouts) |v_layout| {
-        detail.layout = v_layout;
-        for (s_v_infos, 0..) |s_v_info, s_idx| {
-            detail.specs = attr.Specifiers.detail(attr.specifiersTags(s_v_info));
-            detail.spec_idx = s_idx;
-            for (v_i_infos, 0..) |v_i_info, i_idx| {
-                detail.impl_idx = i_idx;
-                detail.techs = attr.Techniques.detail(attr.techniqueTags(v_i_info));
-                details = details ++ .{detail};
-            }
+    for (s_v_infos, 0..) |s_v_info, s_idx| {
+        detail.specs = attr.Specifiers.detail(attr.specifiersTags(s_v_info));
+        detail.spec_idx = s_idx;
+        for (v_i_infos, 0..) |v_i_info, i_idx| {
+            detail.impl_idx = i_idx;
+            detail.techs = attr.Techniques.detail(attr.techniqueTags(v_i_info));
+            details = details ++ .{detail};
         }
     }
     return details;
