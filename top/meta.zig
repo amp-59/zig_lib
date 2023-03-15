@@ -574,9 +574,18 @@ pub fn EnumBitField(comptime E: type) type {
     });
 }
 pub fn tagList(comptime E: type) []const E {
-    var ret: [@typeInfo(E).Enum.fields.len]E = undefined;
-    for (@typeInfo(E).Enum.fields, 0..) |field, index| {
+    const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
+    var ret: [enum_info.fields.len]E = undefined;
+    for (enum_info.fields, 0..) |field, index| {
         ret[index] = @intToEnum(E, field.value);
+    }
+    return &ret;
+}
+pub fn valueList(comptime E: type) []const E {
+    const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
+    var ret: [enum_info.fields.len]LeastRealBitSize(enum_info.tag_type) = undefined;
+    for (enum_info.fields, 0..) |field, index| {
+        ret[index] = field.value;
     }
     return &ret;
 }
