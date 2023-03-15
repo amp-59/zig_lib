@@ -60,7 +60,52 @@ fn haveStandAloneTech(comptime v_i_infos: []const []const InfoT, comptime u_fiel
     }
     return .{ f, t };
 }
-
+fn haveMutuallyExclusiveTech(comptime v_i_infos: []const []const InfoT, comptime u_tech: attr.Techniques.Tag) BinaryFilter([]const InfoT) {
+    var t: []const []const InfoT = meta.empty;
+    var f: []const []const InfoT = meta.empty;
+    for (v_i_infos) |v_i_info| {
+        for (v_i_info) |v_i_field| {
+            if (v_i_field == .mutually_exclusive) {
+                if (u_tech == v_i_field.mutually_exclusive.tech_tag.?) {
+                    t = t ++ .{v_i_info};
+                    break;
+                }
+            }
+        } else {
+            f = f ++ .{v_i_info};
+        }
+    }
+    return .{ f, t };
+}
+fn populateUniqueTechniqueKeys(comptime v_i_infos: []const []const InfoT) []const InfoT {
+    var ret: []const InfoT = &.{};
+    for (v_i_infos) |v_i_info| {
+        for (v_i_info) |v_i_field| {
+            if (v_i_field == .standalone) {
+                for (ret) |u_field| {
+                    if (u_field == .standalone and
+                        v_i_field.standalone == u_field.standalone)
+                    {
+                        break;
+                    }
+                } else {
+                    ret = ret ++ .{v_i_field};
+                }
+            } else {
+                for (ret) |u_field| {
+                    if (u_field == .mutually_exclusive and
+                        v_i_field.mutually_exclusive.opt_tag == u_field.mutually_exclusive.opt_tag)
+                    {
+                        break;
+                    }
+                } else {
+                    ret = ret ++ .{v_i_field};
+                }
+            }
+        }
+    }
+    return ret;
+}
 fn populateParameters(comptime spec: attr.AbstractSpecification) [3][]const InfoS {
     var p_info: []const InfoS = &.{};
     var s_info: []const InfoS = &.{};
