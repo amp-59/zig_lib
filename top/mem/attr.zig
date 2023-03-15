@@ -655,7 +655,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
                 .fields = fields,
                 .tag_type = tag_type,
                 .decls = &.{},
-                .is_exhaustive = false,
+                .is_exhaustive = true,
             } });
         };
         pub fn detail(comptime tags: []const Tag) Struct {
