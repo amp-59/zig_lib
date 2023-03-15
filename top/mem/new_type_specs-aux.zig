@@ -260,12 +260,12 @@ fn declExpr(comptime p_field: InfoS) []const u8 {
     }
 }
 fn initExpr(comptime s_v_info: []const InfoS) []const u8 {
-    comptime var ret: []const u8 = "return.{";
+    comptime var ret: []const u8 = ".{";
     inline for (s_v_info) |s_v_field| {
         const s_field_name: []const u8 = comptime specificationFieldName(s_v_field);
         ret = ret ++ "." ++ s_field_name ++ "=" ++ s_field_name ++ ",";
     }
-    return ret ++ "};\n";
+    return ret ++ "}";
 }
 fn writeSpecificationDeductionInternal(
     array: *Array,
