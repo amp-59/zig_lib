@@ -327,7 +327,166 @@ fn writeSpecificationDeductionInternal(
         array.writeMany("}\n");
     }
 }
-fn writeSpecificationDeduction(array: *Array, comptime p_info: []const InfoS, comptime s_v_infos: []const []const InfoS) void {
+fn writeDeductionTestBoolean(
+    array: *Array,
+    comptime abstract_spec: attr.AbstractSpecification,
+    comptime v_i_infos_top: []const []const InfoT,
+    comptime s_v_info: []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
+    comptime q_info: []const InfoT,
+) void {
+    if (q_info.len == 0) {
+        @compileError("???");
+    }
+    const filtered: BinaryFilter([]const InfoT) = comptime haveStandAloneTech(v_i_infos, q_info[0]);
+    array.writeMany("if(spec.");
+    array.writeMany(q_info[0].techTagName());
+    array.writeMany("){");
+    if (filtered[1].len != 0) {
+        if (filtered[1].len == 1) {
+            S.impl_no +%= 1;
+            writeReturnImplementation(
+                array,
+                comptime attr.More.full(abstract_spec, s_v_info, filtered[1][0]),
+                comptime initExpr(s_v_info),
+            );
+        } else {
+            writeImplementationDeduction(array, abstract_spec, v_i_infos_top, s_v_info, filtered[1], q_info[1..]);
+        }
+    }
+    if (filtered[0].len != 0) {
+        if (filtered[1].len != 0) {
+            array.writeMany("}else{\n");
+        }
+        if (filtered[0].len == 1) {
+            S.spec_no +%= 1;
+            writeReturnImplementation(
+                array,
+                comptime attr.More.full(abstract_spec, s_v_info, filtered[0][0]),
+                comptime initExpr(s_v_info),
+            );
+        } else {
+            writeImplementationDeduction(array, abstract_spec, v_i_infos_top, s_v_info, filtered[0], q_info[1..]);
+        }
+    }
+    if (filtered[1].len != 0) {
+        array.writeMany("}\n");
+    }
+}
+fn initExpr(comptime s_v_info: []const InfoS) []const u8 {
+    comptime var ret: []const u8 = ".{";
+    inline for (s_v_info) |s_v_field| {
+        const s_field_name: []const u8 = comptime specificationFieldName(s_v_field);
+        ret = ret ++ "." ++ s_field_name ++ "=" ++ s_field_name ++ ",";
+    }
+    return ret[0 .. ret.len - 1] ++ "},";
+}
+fn writeSwitchProngOpen(array: *Array, tag_name: []const u8) void {
+    array.writeMany(".");
+    array.writeMany(tag_name);
+    array.writeMany("=>{");
+}
+fn writeSwitchOpen(array: *Array, tag_name: []const u8) void {
+    array.writeMany("switch(spec.");
+    array.writeMany(tag_name);
+    array.writeMany("){\n");
+}
+noinline fn writeOptionalSwitchOpen(array: *Array, tag_name: []const u8) void {
+    array.writeMany("if (spec.");
+    array.writeMany(tag_name);
+    array.writeMany(")|");
+    array.writeMany(tag_name);
+    array.writeMany("|{\nswitch(");
+    array.writeMany(tag_name);
+    array.writeMany("){\n");
+}
+fn writeReturnImplementation(array: *Array, detail: attr.More, init_expr: []const u8) void {
+    array.writeMany("return ");
+    array.writeFormat(detail);
+    array.writeMany("(");
+    array.writeMany(init_expr);
+    array.writeMany(");\n");
+}
+fn writeDeductionCompareEnumerationInternal(
+    array: *Array,
+    comptime abstract_spec: attr.AbstractSpecification,
+    comptime v_i_infos_top: []const []const InfoT,
+    comptime s_v_info: []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
+    comptime q_info: []const InfoT,
+    comptime tag_index: u64,
+) void {
+    if (q_info[0].mutually_exclusive.tech_tags.len == tag_index) {
+        return;
+    }
+    const tech: attr.Techniques.Tag = q_info[0].mutually_exclusive.tech_tags[tag_index];
+    const filtered: BinaryFilter([]const InfoT) = comptime haveMutuallyExclusiveTech(v_i_infos, tech);
+    writeSwitchProngOpen(array, @tagName(tech));
+    writeImplementationDeduction(array, abstract_spec, v_i_infos_top, s_v_info, filtered[1], q_info[1..]);
+    array.writeMany("},\n");
+    writeDeductionCompareEnumerationInternal(array, abstract_spec, v_i_infos_top, s_v_info, filtered[0], q_info, tag_index + 1);
+}
+fn writeDeductionCompareEnumeration(
+    array: *Array,
+    comptime abstract_spec: attr.AbstractSpecification,
+    comptime v_i_infos_top: []const []const InfoT,
+    comptime s_v_info: []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
+    comptime q_info: []const InfoT,
+) void {
+    writeSwitchOpen(array, comptime q_info[0].optTagName());
+    writeDeductionCompareEnumerationInternal(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info, 0);
+    array.writeMany("}\n");
+}
+fn writeDeductionCompareOptionalEnumeration(
+    array: *Array,
+    comptime abstract_spec: attr.AbstractSpecification,
+    comptime v_i_infos_top: []const []const InfoT,
+    comptime s_v_infos: []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
+    comptime q_info: []const InfoT,
+) void {
+    writeOptionalSwitchOpen(array, comptime q_info[0].optTagName());
+    writeDeductionCompareEnumerationInternal(array, abstract_spec, v_i_infos_top, s_v_infos, v_i_infos, q_info, 0);
+    array.writeMany("}\n}\n");
+}
+fn writeImplementationDeduction(
+    array: *Array,
+    comptime abstract_spec: attr.AbstractSpecification,
+    comptime v_i_infos_top: []const []const InfoT,
+    comptime s_v_info: []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
+    comptime q_info: []const InfoT,
+) void {
+    if (q_info.len == 0 or v_i_infos.len == 1) {
+        writeReturnImplementation(
+            array,
+            comptime attr.More.full(abstract_spec, s_v_info, v_i_infos[0]),
+            comptime initExpr(s_v_info),
+        );
+    } else switch (comptime q_info[0].usage(v_i_infos_top)) {
+        .eliminate_boolean_false,
+        .eliminate_boolean_true,
+        => {},
+        .test_boolean => {
+            writeDeductionTestBoolean(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info);
+        },
+        .compare_enumeration => {
+            writeDeductionCompareEnumeration(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info);
+        },
+        .compare_optional_enumeration => {
+            writeDeductionCompareOptionalEnumeration(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info);
+        },
+    }
+}
+fn writeSpecificationDeduction(
+    array: *Array,
+    comptime abstract_spec: attr.AbstractSpecification,
+    comptime p_info: []const InfoS,
+    comptime s_v_infos: []const []const InfoS,
+    comptime v_i_infos: []const []const InfoT,
+    comptime q_info: []const InfoT,
+) void {
     array.writeMany("const Specification");
     array.writeFormat(fmt.ud64(S.spec_no));
     S.spec_no +%= 1;
