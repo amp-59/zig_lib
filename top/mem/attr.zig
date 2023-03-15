@@ -1,32 +1,51 @@
 const gen = @import("./gen.zig");
+const fmt = gen.fmt;
 const meta = gen.meta;
 const builtin = gen.builtin;
+const testing = gen.testing;
 
 // zig fmt: off
 pub const abstract_specs: []const AbstractSpecification = &.{
-    .{ .kind = .automatic,  .fields = au,           .v_layouts = S,  .modes = rw,           .v_specs = auto_specs, .v_techs = auto_techs },
-    .{ .kind = .automatic,  .fields = au_ss,        .v_layouts = S,  .modes = rw_str,       .v_specs = auto_specs, .v_techs = auto_techs },
-    .{ .kind = .automatic,  .fields = au_ub,        .v_layouts = S,  .modes = rw_rsz,       .v_specs = auto_specs, .v_techs = auto_techs },
-    .{ .kind = .automatic,  .fields = au_ss_ub,     .v_layouts = S,  .modes = rw_str_rsz,   .v_specs = auto_specs, .v_techs = auto_techs },
+    .{ .kind = .automatic,  .fields = au,           .layout = .structured,  .modes = rw,            .v_specs = auto_specs, .v_techs = auto_techs },
+    .{ .kind = .automatic,  .fields = au_ss,        .layout = .structured,  .modes = rw_str,        .v_specs = auto_specs, .v_techs = auto_techs },
+    .{ .kind = .automatic,  .fields = au_ub,        .layout = .structured,  .modes = rw_rsz,        .v_specs = auto_specs, .v_techs = auto_techs },
+    .{ .kind = .automatic,  .fields = au_ss_ub,     .layout = .structured,  .modes = rw_str_rsz,    .v_specs = auto_specs, .v_techs = auto_techs },
 
-    .{ .kind = .static,    .fields = lb,            .v_layouts = SU, .modes = rw,           .v_specs = dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ss,         .v_layouts = SU, .modes = rw_str,       .v_specs = dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ub,         .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ss_ub,      .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb,            .layout = .structured, .modes = rw,             .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ss,         .layout = .structured, .modes = rw_str,         .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ub,         .layout = .structured, .modes = rw_rsz,         .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ss_ub,      .layout = .structured, .modes = rw_str_rsz,     .v_specs = s_dyn_specs, .v_techs = dyn_techs },
 
-    .{ .kind = .dynamic,    .fields = lb_up,        .v_layouts = SU, .modes = rw,           .v_specs = dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .dynamic,    .fields = lb_ss_up,     .v_layouts = SU, .modes = rw_str,       .v_specs = dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .dynamic,    .fields = lb_ub_up,     .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .dynamic,    .fields = lb_ss_ub_up,  .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_up,        .layout = .structured, .modes = rw,             .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ss_up,     .layout = .structured, .modes = rw_str,         .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ub_up,     .layout = .structured, .modes = rw_rsz,         .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub_up,  .layout = .structured, .modes = rw_str_rsz,     .v_specs = s_dyn_specs, .v_techs = dyn_techs },
 
-    .{ .kind = .dynamic,    .fields = lb,           .v_layouts = SU, .modes = rw,           .v_specs = dyn_specs, .v_techs = dyn_techs_1 },
-    .{ .kind = .dynamic,    .fields = lb_ss,        .v_layouts = SU, .modes = rw_str,       .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
-    .{ .kind = .dynamic,    .fields = lb_ub,        .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
-    .{ .kind = .dynamic,    .fields = lb_ss_ub,     .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = dyn_techs_2 },
+    .{ .kind = .dynamic,    .fields = lb,           .layout = .structured, .modes = rw,             .v_specs = s_dyn_specs, .v_techs = dyn_techs_1 },
+    .{ .kind = .dynamic,    .fields = lb_ss,        .layout = .structured, .modes = rw_str,         .v_specs = s_dyn_specs, .v_techs = dyn_techs_2 },
+    .{ .kind = .dynamic,    .fields = lb_ub,        .layout = .structured, .modes = rw_rsz,         .v_specs = s_dyn_specs, .v_techs = dyn_techs_2 },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub,     .layout = .structured, .modes = rw_str_rsz,     .v_specs = s_dyn_specs, .v_techs = dyn_techs_2 },
 
-    .{ .kind = .parametric, .fields = ub,           .v_layouts = SU, .modes = rw_rsz,       .v_specs = dyn_specs, .v_techs = param_techs },
-    .{ .kind = .parametric, .fields = ub_ss,        .v_layouts = SU, .modes = rw_str_rsz,   .v_specs = dyn_specs, .v_techs = param_techs },
+    .{ .kind = .parametric, .fields = ub,           .layout = .structured, .modes = rw_rsz,         .v_specs = s_param_specs, .v_techs = param_techs },
+    .{ .kind = .parametric, .fields = ub_ss,        .layout = .structured, .modes = rw_str_rsz,     .v_specs = s_param_specs, .v_techs = param_techs },
 
+    .{ .kind = .static,    .fields = lb,            .layout = .unstructured, .modes = rw,           .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ss,         .layout = .unstructured, .modes = rw_str,       .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ub,         .layout = .unstructured, .modes = rw_rsz,       .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,    .fields = lb_ss_ub,      .layout = .unstructured, .modes = rw_str_rsz,   .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+
+    .{ .kind = .dynamic,    .fields = lb_up,        .layout = .unstructured, .modes = rw,           .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ss_up,     .layout = .unstructured, .modes = rw_str,       .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ub_up,     .layout = .unstructured, .modes = rw_rsz,       .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub_up,  .layout = .unstructured, .modes = rw_str_rsz,   .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+
+    .{ .kind = .dynamic,    .fields = lb,           .layout = .unstructured, .modes = rw,           .v_specs = u_dyn_specs, .v_techs = dyn_techs_1 },
+    .{ .kind = .dynamic,    .fields = lb_ss,        .layout = .unstructured, .modes = rw_str,       .v_specs = u_dyn_specs, .v_techs = dyn_techs_2 },
+    .{ .kind = .dynamic,    .fields = lb_ub,        .layout = .unstructured, .modes = rw_rsz,       .v_specs = u_dyn_specs, .v_techs = dyn_techs_2 },
+    .{ .kind = .dynamic,    .fields = lb_ss_ub,     .layout = .unstructured, .modes = rw_str_rsz,   .v_specs = u_dyn_specs, .v_techs = dyn_techs_2 },
+
+    .{ .kind = .parametric, .fields = ub,           .layout = .unstructured, .modes = rw_rsz,       .v_specs = u_dyn_specs, .v_techs = param_techs },
+    .{ .kind = .parametric, .fields = ub_ss,        .layout = .unstructured, .modes = rw_str_rsz,   .v_specs = u_dyn_specs, .v_techs = param_techs },
 };
 // zig fmt: on
 
