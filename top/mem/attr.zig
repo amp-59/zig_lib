@@ -210,7 +210,7 @@ pub const More = packed struct {
             .layout = abstract_spec.layout,
             .modes = Modes.detail(abstract_spec.modes),
             .fields = Fields.detail(abstract_spec.fields),
-            .specs = specifiersTags(specs),
+            .specs = specifierTags(specs),
             .techs = techniqueTags(techs),
         };
     }
@@ -296,32 +296,45 @@ pub const More = packed struct {
     }
 };
 
-pub fn techniqueTags(comptime options: []const Technique) []const Techniques.Tag {
-    comptime var ret: []const Techniques.Tag = &.{};
-    inline for (options) |option| {
+pub fn techniqueTags(options: []const Technique) Techniques {
+    var int: Techniques.tag_type = 0;
+    for (options) |option| {
         if (option == .standalone) {
-            ret = ret ++ .{option.standalone};
+            int |= @enumToInt(option.standalone);
         } else {
-            ret = ret ++ .{option.mutually_exclusive.tech_tag.?};
+            int |= @enumToInt(option.mutually_exclusive.tech_tag.?);
         }
     }
-    return ret;
+    return @bitCast(Techniques, int);
 }
-pub fn specifiersTags(comptime variants: []const Specifier) []const Specifiers.Tag {
-    comptime var ret: []const Specifiers.Tag = &.{};
-    inline for (variants) |variant| {
+pub fn specifierTags(variants: []const Specifier) Specifiers {
+    var int: Specifiers.tag_type = 0;
+    for (variants) |variant| {
         switch (variant) {
-            else => {
-                ret = ret ++ .{comptime meta.resolve(variant).tag};
+            .derived => {
+                int |= @enumToInt(variant.derived.tag);
             },
-            .decl_optional_derived,
-            .decl_optional_variant,
-            => {
-                ret = ret ++ .{comptime meta.resolve(variant).decl_tag};
+            .stripped => {
+                int |= @enumToInt(variant.stripped.tag);
+            },
+            .default => {
+                int |= @enumToInt(variant.default.tag);
+            },
+            .optional_derived => {
+                int |= @enumToInt(variant.optional_derived.tag);
+            },
+            .optional_variant => {
+                int |= @enumToInt(variant.optional_variant.tag);
+            },
+            .decl_optional_derived => {
+                int |= @enumToInt(variant.decl_optional_derived.decl_tag);
+            },
+            .decl_optional_variant => {
+                int |= @enumToInt(variant.decl_optional_variant.decl_tag);
             },
         }
     }
-    return ret;
+    return @bitCast(Specifiers, int);
 }
 
 pub const Options = struct {
