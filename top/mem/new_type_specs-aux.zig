@@ -492,11 +492,16 @@ fn writeSpecificationDeduction(
     S.param_no +%= 1;
     array.writeMany("=struct{\n");
     writeFields(array, p_info);
-    array.writeMany("const Specification=@This();\n");
-    array.writeMany("fn Implementation(spec:Specification)type{\n");
-    writeSpecificationDeductionInternal(array, p_info, s_v_infos);
-    array.writeMany("}\n");
-    array.writeMany("};\n");
+    array.writeMany("const Specification=@This();\nfn Implementation(spec:Specification)type{\n");
+    writeSpecificationDeductionInternal(array, abstract_spec, p_info, s_v_infos, v_i_infos, q_info);
+    array.writeMany("}\n};\n");
+}
+fn writeAbstractSpecification(array: *Array, comptime abstract_spec: attr.AbstractSpecification) void {
+    const x_info: [3][]const InfoS = comptime populateParameters(abstract_spec);
+    const s_v_infos: []const []const InfoS = comptime populateSpecifiers(x_info[1], x_info[2]);
+    const v_i_infos: []const []const InfoT = comptime populateTechniques(abstract_spec);
+    const q_info: []const InfoT = comptime populateUniqueTechniqueKeys(v_i_infos);
+    writeSpecificationDeduction(array, abstract_spec, x_info[0], s_v_infos, v_i_infos, q_info);
 }
 pub fn newNewTypeSpecs() void {
     @setEvalBranchQuota(3391);
