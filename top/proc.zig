@@ -664,10 +664,9 @@ pub noinline fn callMain() noreturn {
     if (@hasDecl(builtin.root, "main")) {
         const Main: type = @TypeOf(builtin.root.main);
         const main: Main = builtin.root.main;
-        const Type: type = @TypeOf(@typeInfo(Main));
-        const main_type_info: Type = @typeInfo(Main);
+        const main_type_info: builtin.Type = @typeInfo(Main);
         const main_return_type: type = main_type_info.Fn.return_type.?;
-        const main_return_type_info: Type = @typeInfo(main_return_type);
+        const main_return_type_info: builtin.Type = @typeInfo(main_return_type);
         const params = blk_0: {
             if (main_type_info.Fn.params.len == 0) {
                 break :blk_0 .{};
