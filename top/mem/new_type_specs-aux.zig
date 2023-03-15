@@ -196,17 +196,6 @@ fn populateDetails(
     }
     return details;
 }
-fn populateDetail(
-    comptime spec: attr.AbstractSpecification,
-    comptime s_v_info: []const InfoS,
-    comptime v_i_info: []const InfoT,
-) void {
-    var detail: attr.More = attr.More.init(spec, 0);
-    detail.layout = .structured;
-    detail.specs = attr.Specifiers.detail(attr.specifiersTags(s_v_info));
-    detail.techs = attr.Techniques.detail(attr.techniqueTags(v_i_info));
-    return detail;
-}
 fn writeFields(array: *Array, comptime p_info: []const InfoS) void {
     inline for (p_info) |p_field| {
         const field_name: []const u8 = comptime parametersFieldName(p_field);
