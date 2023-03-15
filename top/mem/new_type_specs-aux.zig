@@ -488,8 +488,8 @@ fn writeSpecificationDeduction(
     comptime q_info: []const InfoT,
 ) void {
     array.writeMany("const Specification");
-    array.writeFormat(fmt.ud64(S.spec_no));
-    S.spec_no +%= 1;
+    array.writeFormat(fmt.ud64(S.param_no));
+    S.param_no +%= 1;
     array.writeMany("=struct{\n");
     writeFields(array, p_info);
     array.writeMany("const Specification=@This();\n");
