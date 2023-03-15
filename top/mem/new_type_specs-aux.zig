@@ -301,9 +301,9 @@ fn writeSpecificationDeductionInternal(
         array.writeMany(declExpr(p_info[0]));
         if (filtered[1].len == 1) {
             S.spec_no +%= 1;
-            writeImplementationDeduction(array, any.spec, v_i_infos, filtered[1][0], v_i_infos, any.keys);
+            writeImplementationDeduction(array, abstract_spec, v_i_infos, filtered[1][0], v_i_infos, q_info);
         } else {
-            writeSpecificationDeductionInternal(array, any, p_info[1..], filtered[1], v_i_infos);
+            writeSpecificationDeductionInternal(array, abstract_spec, p_info[1..], filtered[1], v_i_infos, q_info);
         }
     }
     if (filtered[0].len != 0) {
@@ -315,9 +315,9 @@ fn writeSpecificationDeductionInternal(
         }
         if (filtered[0].len == 1) {
             S.spec_no +%= 1;
-            writeImplementationDeduction(array, any.spec, v_i_infos, filtered[0][0], v_i_infos, any.keys);
+            writeImplementationDeduction(array, abstract_spec, v_i_infos, filtered[0][0], v_i_infos, q_info);
         } else {
-            writeSpecificationDeductionInternal(array, any, p_info[1..], filtered[0], v_i_infos);
+            writeSpecificationDeductionInternal(array, abstract_spec, p_info[1..], filtered[0], v_i_infos, q_info);
         }
     }
     if (filtered[1].len != 0 and
