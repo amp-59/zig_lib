@@ -712,15 +712,19 @@ pub noinline fn callMain() noreturn {
         }
         if (main_return_type == void) {
             @call(.auto, main, params);
+            exitWithoutError(0);
             sys.call(.exit, .{}, noreturn, .{0});
         }
         if (main_return_type == u8) {
-            sys.call(.exit, .{}, noreturn, .{@call(.auto, main, params)});
+            const rc: u8 = @call(.auto, main, params);
+            exitWithoutError(rc);
+            sys.call(.exit, .{}, noreturn, .{rc});
         }
         if (main_return_type_info == .ErrorUnion and
             main_return_type_info.ErrorUnion.payload == void)
         {
             if (@call(.auto, main, params)) {
+                exitWithoutError(0);
                 sys.call(.exit, .{}, noreturn, .{0});
             } else |err| {
                 @setCold(true);
@@ -732,6 +736,7 @@ pub noinline fn callMain() noreturn {
             main_return_type_info.ErrorUnion.payload == u8)
         {
             if (@call(.auto, builtin.root.main, params)) |rc| {
+                exitWithoutError(rc);
                 sys.call(.exit, .{}, noreturn, .{rc});
             } else |err| {
                 @setCold(true);
