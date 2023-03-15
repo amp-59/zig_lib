@@ -201,17 +201,17 @@ pub const More = packed struct {
         };
     }
     pub fn full(
-        comptime abstract_spec: AbstractSpecification,
-        comptime specs: []const Specifier,
-        comptime techs: []const Technique,
+        abstract_spec: AbstractSpecification,
+        specs: []const Specifier,
+        techs: []const Technique,
     ) More {
         return .{
             .kind = abstract_spec.kind,
             .layout = abstract_spec.layout,
             .modes = Modes.detail(abstract_spec.modes),
             .fields = Fields.detail(abstract_spec.fields),
-            .specs = Specifiers.detail(specifiersTags(specs)),
-            .techs = Techniques.detail(techniqueTags(techs)),
+            .specs = specifiersTags(specs),
+            .techs = techniqueTags(techs),
         };
     }
     pub fn formatLength(format: Format) u64 {
