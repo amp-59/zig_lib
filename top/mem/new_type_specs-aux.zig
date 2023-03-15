@@ -11,7 +11,6 @@ const builtin = gen.builtin;
 
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
-const abstract_spec = @import("./abstract_spec.zig");
 
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
