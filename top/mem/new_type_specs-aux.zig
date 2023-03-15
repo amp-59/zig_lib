@@ -179,102 +179,46 @@ fn writeFields(array: *Array, comptime p_info: []const InfoS) void {
 }
 fn parametersFieldName(comptime p_field: InfoS) []const u8 {
     switch (p_field) {
-        .default => |default| {
-            return @tagName(default.tag);
-        },
-        .stripped => |stripped| {
-            return @tagName(stripped.tag);
-        },
-        .optional_derived => |optional_derived| {
-            return @tagName(optional_derived.tag);
-        },
-        .optional_variant => |optional_variant| {
-            return @tagName(optional_variant.tag);
-        },
-        .decl_optional_derived => |decl_optional_derived| {
-            return @tagName(decl_optional_derived.ctn_tag);
-        },
-        .decl_optional_variant => |decl_optional_variant| {
-            return @tagName(decl_optional_variant.ctn_tag);
-        },
-        .derived => {
-            @compileError("???");
-        },
+        .default => |default| return @tagName(default.tag),
+        .stripped => |stripped| return @tagName(stripped.tag),
+        .optional_derived => |optional_derived| return @tagName(optional_derived.tag),
+        .optional_variant => |optional_variant| return @tagName(optional_variant.tag),
+        .decl_optional_derived => |decl_optional_derived| return @tagName(decl_optional_derived.ctn_tag),
+        .decl_optional_variant => |decl_optional_variant| return @tagName(decl_optional_variant.ctn_tag),
+        .derived => @compileError("???"),
     }
 }
 fn specificationFieldName(comptime s_v_field: InfoS) []const u8 {
     switch (s_v_field) {
-        .default => |default| {
-            return @tagName(default.tag);
-        },
-        .derived => |derived| {
-            return @tagName(derived.tag);
-        },
-        .optional_derived => |optional_derived| {
-            return @tagName(optional_derived.tag);
-        },
-        .optional_variant => |optional_variant| {
-            return @tagName(optional_variant.tag);
-        },
-        .decl_optional_derived => |decl_optional_derived| {
-            return @tagName(decl_optional_derived.decl_tag);
-        },
-        .decl_optional_variant => |decl_optional_variant| {
-            return @tagName(decl_optional_variant.decl_tag);
-        },
-        .stripped => {
-            @compileError("???");
-        },
+        .default => |default| return @tagName(default.tag),
+        .derived => |derived| return @tagName(derived.tag),
+        .optional_derived => |optional_derived| return @tagName(optional_derived.tag),
+        .optional_variant => |optional_variant| return @tagName(optional_variant.tag),
+        .decl_optional_derived => |decl_optional_derived| return @tagName(decl_optional_derived.decl_tag),
+        .decl_optional_variant => |decl_optional_variant| return @tagName(decl_optional_variant.decl_tag),
+        .stripped => @compileError("???"),
     }
 }
 fn parametersTypeName(comptime p_field: InfoS) []const u8 {
     switch (p_field) {
-        .default => |default| {
-            return @typeName(default.type);
-        },
-        .stripped => |stripped| {
-            return @typeName(stripped.type);
-        },
-        .optional_derived => |optional_derived| {
-            return @typeName(optional_derived.type);
-        },
-        .optional_variant => |optional_variant| {
-            return @typeName(optional_variant.type);
-        },
-        .decl_optional_derived => |decl_optional_derived| {
-            return @typeName(decl_optional_derived.ctn_type);
-        },
-        .decl_optional_variant => |decl_optional_variant| {
-            return @typeName(decl_optional_variant.ctn_type);
-        },
-        .derived => {
-            @compileError("???");
-        },
+        .default => |default| return @typeName(default.type),
+        .stripped => |stripped| return @typeName(stripped.type),
+        .optional_derived => |optional_derived| return @typeName(optional_derived.type),
+        .optional_variant => |optional_variant| return @typeName(optional_variant.type),
+        .decl_optional_derived => |decl_optional_derived| return @typeName(decl_optional_derived.ctn_type),
+        .decl_optional_variant => |decl_optional_variant| return @typeName(decl_optional_variant.ctn_type),
+        .derived => @compileError("???"),
     }
 }
 fn specificationTypeName(s_v_field: InfoS) []const u8 {
     switch (s_v_field) {
-        .default => |default| {
-            return @typeName(default.type);
-        },
-        .derived => |derived| {
-            return @typeName(derived.type);
-        },
-        .optional_derived => |optional_derived| {
-            return @typeName(optional_derived.type);
-        },
-        .optional_variant => |optional_variant| {
-            return @typeName(optional_variant.type);
-        },
-        .decl_optional_derived => |decl_optional_derived| {
-            return @typeName(decl_optional_derived.decl_type);
-        },
-        .decl_optional_variant => |decl_optional_variant| {
-            return @typeName(decl_optional_variant.decl_type);
-        },
-        .stripped => {
-            @compileError("???");
-        },
+        .default => |default| return @typeName(default.type),
+        .derived => |derived| return @typeName(derived.type),
+        .optional_derived => |optional_derived| return @typeName(optional_derived.type),
+        .optional_variant => |optional_variant| return @typeName(optional_variant.type),
+        .decl_optional_derived => |decl_optional_derived| return @typeName(decl_optional_derived.decl_type),
+        .decl_optional_variant => |decl_optional_variant| return @typeName(decl_optional_variant.decl_type),
+        .stripped => @compileError("???"),
     }
 }
 fn declExpr(comptime p_field: InfoS) []const u8 {
