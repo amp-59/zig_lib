@@ -456,27 +456,27 @@ pub const Technique = union(enum) {
     }
 };
 fn default(comptime tag: Specifiers.Tag, comptime @"type": type) Specifier {
-    return .{ .default = .{ .tag = tag, .type = @"type" } };
+    return .{ .default = .{ .tag = tag, .type = ProtoTypeDescr.init(@"type") } };
 }
 fn derived(
     comptime tag: Specifiers.Tag,
     comptime @"type": type,
     comptime fn_name: [:0]const u8,
 ) Specifier {
-    return .{ .derived = .{ .tag = tag, .type = @"type", .fn_name = fn_name } };
+    return .{ .derived = .{ .tag = tag, .type = ProtoTypeDescr.init(@"type"), .fn_name = fn_name } };
 }
 fn stripped(comptime tag: Specifiers.Tag, comptime @"type": type) Specifier {
-    return .{ .stripped = .{ .tag = tag, .type = @"type" } };
+    return .{ .stripped = .{ .tag = tag, .type = ProtoTypeDescr.init(@"type") } };
 }
 fn optional_derived(
     comptime tag: Specifiers.Tag,
     comptime @"type": type,
     comptime fn_name: [:0]const u8,
 ) Specifier {
-    return .{ .optional_derived = .{ .tag = tag, .type = @"type", .fn_name = fn_name } };
+    return .{ .optional_derived = .{ .tag = tag, .type = ProtoTypeDescr.init(@"type"), .fn_name = fn_name } };
 }
 fn optional_variant(comptime tag: Specifiers.Tag, comptime @"type": type) Specifier {
-    return .{ .optional_variant = .{ .tag = tag, .type = @"type" } };
+    return .{ .optional_variant = .{ .tag = tag, .type = ProtoTypeDescr.init(@"type") } };
 }
 fn decl_optional_derived(
     comptime ctn_tag: Specifiers.Tag,
@@ -488,8 +488,8 @@ fn decl_optional_derived(
     return .{ .decl_optional_derived = .{
         .ctn_tag = ctn_tag,
         .decl_tag = decl_tag,
-        .ctn_type = ctn_type,
-        .decl_type = decl_type,
+        .ctn_type = ProtoTypeDescr.init(ctn_type),
+        .decl_type = ProtoTypeDescr.init(decl_type),
         .fn_name = fn_name,
     } };
 }
@@ -502,8 +502,8 @@ fn decl_optional_variant(
     return .{ .decl_optional_variant = .{
         .ctn_tag = ctn_tag,
         .decl_tag = decl_tag,
-        .ctn_type = ctn_type,
-        .decl_type = decl_type,
+        .ctn_type = ProtoTypeDescr.init(ctn_type),
+        .decl_type = ProtoTypeDescr.init(decl_type),
     } };
 }
 const auto_specs = &.{
@@ -666,14 +666,15 @@ const ub_ss: []const Fields.Tag = &.{
     .undefined_byte_address,
     .unstreamed_byte_address,
 };
-
-const S: []const Layouts.Tag = &.{
-    .structured,
-};
-const SU: []const Layouts.Tag = &.{
-    .structured,
-    .unstructured,
-};
+pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
+    .options = .{ .default_field_values = true },
+});
+pub const TypeDescr = fmt.GenericTypeDescrFormat(.{
+    .options = .{
+        .token = [:0]const u8,
+        .default_field_values = true,
+    },
+});
 pub fn GenericStructOfBool(comptime Struct: type) type {
     return struct {
         const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
