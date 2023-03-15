@@ -47,6 +47,25 @@ fn haveSpec(
     }
     return .{ f, t };
 }
+fn haveTech(
+    comptime v_i_infos: []const []const InfoT,
+    comptime t_field: InfoT,
+) BinaryFilter([]const InfoT) {
+    comptime var t: []const []const InfoT = meta.empty;
+    comptime var f: []const []const InfoT = meta.empty;
+    inline for (v_i_infos) |v_i_info| {
+        inline for (v_i_info) |s_v_field| {
+            if (builtin.testEqual(InfoT, t_field, s_v_field)) {
+                t = t ++ .{v_i_info};
+                break;
+            }
+        } else {
+            f = f ++ .{v_i_info};
+        }
+    }
+    return .{ f, t };
+}
+
 fn populateParameters(comptime spec: attr.AbstractSpecification) [3][]const InfoS {
     var p_info: []const InfoS = &.{};
     var s_info: []const InfoS = &.{};
