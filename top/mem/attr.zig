@@ -127,28 +127,29 @@ pub const Specifier = union(enum) {
 
     const Simple = struct {
         tag: Specifiers.Tag,
-        type: type,
+        type: ProtoTypeDescr,
     };
     const Derived = struct {
         tag: Specifiers.Tag,
         fn_name: []const u8,
+        type: ProtoTypeDescr,
     };
     const SimpleDerived = struct {
         tag: Specifiers.Tag,
-        type: type,
+        type: ProtoTypeDescr,
         fn_name: []const u8,
     };
     const Compound = struct {
         ctn_tag: Specifiers.Tag,
         decl_tag: Specifiers.Tag,
-        ctn_type: type,
-        decl_type: type,
+        ctn_type: ProtoTypeDescr,
+        decl_type: ProtoTypeDescr,
     };
     const CompoundDerived = struct {
         ctn_tag: Specifiers.Tag,
         decl_tag: Specifiers.Tag,
-        ctn_type: type,
-        decl_type: type,
+        ctn_type: ProtoTypeDescr,
+        decl_type: ProtoTypeDescr,
         fn_name: []const u8,
     };
     pub fn isVariant(comptime spec: Specifier) bool {
