@@ -148,10 +148,10 @@ inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: Array) 
 }
 noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *Array) void {
     while (true) {
-        array.stream(printIfNAvail(512, allocator.*, array.*));
+        array.stream(printIfNAvail(1, allocator.*, array.*));
         if (done(status)) break;
     }
-    while (array.index(allocator.*) != array.len(allocator.*)) {
+    if (array.index(allocator.*) < array.len(allocator.*)) {
         array.stream(printIfNAvail(1, allocator.*, array.*));
     }
     show(status.*);
