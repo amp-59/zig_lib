@@ -232,9 +232,9 @@ fn populateDetails(
     comptime p_idx: u8,
     comptime s_v_infos: []const []const InfoS,
     comptime v_i_infos: []const []const InfoT,
-) []const attr.More {
-    var details: []const attr.More = &.{};
-    var detail: attr.More = attr.More.init(spec, p_idx);
+) []const attr.Implementation {
+    var details: []const attr.Implementation = &.{};
+    var detail: attr.Implementation = attr.Implementation.init(spec, p_idx);
     for (s_v_infos, 0..) |s_v_info, s_idx| {
         detail.specs = attr.Specifiers.detail(attr.specifiersTags(s_v_info));
         detail.spec_idx = s_idx;
