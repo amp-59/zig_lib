@@ -293,15 +293,15 @@ fn writeParametersTypeName(array: *Array, p_field: InfoS) void {
         .derived => undefined,
     }
 }
-fn specificationTypeName(s_v_field: InfoS) []const u8 {
+fn writeSpecificationTypeName(array: *Array, s_v_field: InfoS) void {
     switch (s_v_field) {
-        .default => |default| return @typeName(default.type),
-        .derived => |derived| return @typeName(derived.type),
-        .optional_derived => |optional_derived| return @typeName(optional_derived.type),
-        .optional_variant => |optional_variant| return @typeName(optional_variant.type),
-        .decl_optional_derived => |decl_optional_derived| return @typeName(decl_optional_derived.decl_type),
-        .decl_optional_variant => |decl_optional_variant| return @typeName(decl_optional_variant.decl_type),
-        .stripped => @compileError("???"),
+        .default => |default| array.writeFormat(default.type),
+        .derived => |derived| array.writeFormat(derived.type),
+        .optional_derived => |optional_derived| array.writeFormat(optional_derived.type),
+        .optional_variant => |optional_variant| array.writeFormat(optional_variant.type),
+        .decl_optional_derived => |decl_optional_derived| array.writeFormat(decl_optional_derived.decl_type),
+        .decl_optional_variant => |decl_optional_variant| array.writeFormat(decl_optional_variant.decl_type),
+        .stripped => undefined,
     }
 }
 fn declExpr(comptime p_field: InfoS) []const u8 {
