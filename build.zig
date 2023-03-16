@@ -80,9 +80,9 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg_allocator_impls: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
     const mg_allocator_kinds: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_allocator_impls",   "top/mem/allocator_impls-aux.zig");
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
-    const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_containers",  "top/mem/containers.zig");
+    //const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_containers",  "top/mem/containers.zig");
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_references",  "top/mem/references.zig");
-    const generate_allocators: *build.Target    = mg.addTarget(small_spec, allocator,   "generate_allocators",  "top/mem/generate_allocators.zig");
+    //const generate_allocators: *build.Target    = mg.addTarget(small_spec, allocator,   "generate_allocators",  "top/mem/generate_allocators.zig");
     const memgen_test: *build.Target            = mg.addTarget(small_spec, allocator,   "memgen_test",          "top/mem/memgen-test.zig");
 
     //mg_type_specs.dependOnRun(allocator,        mg_abstract_params);
@@ -114,8 +114,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     mg_container_impls.dependOnRun(allocator,   mg_new_type_specs);
 
     generate_references.dependOnRun(allocator,  mg_reference_impls);
-    generate_allocators.dependOnRun(allocator,  mg_allocator_kinds);
-    generate_allocators.dependOnRun(allocator,  mg_allocator_impls);
+    //generate_allocators.dependOnRun(allocator,  mg_allocator_kinds);
+    //generate_allocators.dependOnRun(allocator,  mg_allocator_impls);
 
     //generate_allocators.dependOnRun(allocator,  mg_interfaces);
     //memgen_test.dependOnBuild(allocator,        generate_references);
@@ -152,6 +152,5 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     _ = impl_test;
     _ = container_test;
     _ = address_space;
-    _ = generate_containers;
     _ = memgen_test;
 }
