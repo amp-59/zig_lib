@@ -46,26 +46,24 @@ pub const abstract_specs: []const AbstractSpecification = &.{
     .{ .kind = .parametric, .fields = ub,           .layout = .unstructured,    .modes = rw_rsz,        .v_specs = u_dyn_specs, .v_techs = param_techs },
     .{ .kind = .parametric, .fields = ub_ss,        .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_dyn_specs, .v_techs = param_techs },
 };
+// zig fmt: on
 pub const AbstractSpecification = struct {
-    kind: Kinds.Tag,
-    layout: Layouts.Tag,
+    kind: Kind,
+    layout: Layout,
     fields: []const Fields.Tag,
     modes: []const Modes.Tag,
     v_techs: []const Technique,
     v_specs: []const Specifier,
 };
-// zig fmt: on
-pub const Kinds = packed struct(u4) {
-    automatic: bool = false,
-    dynamic: bool = false,
-    static: bool = false,
-    parametric: bool = false,
-    pub usingnamespace GenericStructOfBool(Kinds);
+pub const Kind = enum(u2) {
+    automatic,
+    dynamic,
+    static,
+    parametric,
 };
-pub const Layouts = packed struct(u2) {
-    structured: bool = false,
-    unstructured: bool = false,
-    pub usingnamespace GenericStructOfBool(Layouts);
+pub const Layout = enum(u1) {
+    structured,
+    unstructured,
 };
 pub const Modes = packed struct(u3) {
     read_write: bool = false,
