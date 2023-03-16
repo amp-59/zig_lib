@@ -77,11 +77,25 @@ pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void 
     array.writeMany(pathname);
     array.writeMany("\");\n");
 }
+pub fn primaryFile(comptime name: [:0]const u8) [:0]const u8 {
+    return build_root ++ "/top/mem/" ++ name;
+}
+pub fn auxiliaryFile(comptime name: [:0]const u8) [:0]const u8 {
+    return build_root ++ "/top/mem/zig-out/src/" ++ name;
+}
+pub fn deserialize(allocator: anytype, comptime T: type, pathname: [:0]const u8) []T {
+    const fd: u64 = file.open(.{ .errors = .{}, .options = .{} }, pathname);
+    const size: u64 = file.fstat(.{ .errors = .{} }, fd).size;
+    const count: u64 = @divExact(size, @sizeOf(T));
+    const buf: []T = allocator.allocateIrreversible(T, count);
+    builtin.assertEqual(u64, count, file.read(.{ .read_buf_type = []T, .errors = .{} }, fd, buf, buf.len));
+    return buf;
+}
 pub fn writeSourceFile(array: anytype, comptime name: [:0]const u8) void {
     const pathname: [:0]const u8 = if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
     const fd: u64 = file.create(create_spec, pathname);
     defer file.close(close_spec, fd);
-    file.write(write_spec, fd, array.readAll());
+    file.write(.{ .errors = .{}, .child = meta.Child(@TypeOf(array.readAll())) }, fd, array.readAll());
     array.undefineAll();
 }
 pub fn appendSourceFile(array: anytype, comptime name: [:0]const u8) void {
