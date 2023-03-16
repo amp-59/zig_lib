@@ -11,7 +11,6 @@ const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
-const detail = @import("./detail.zig");
 const impl_fn = @import("./impl_fn.zig");
 
 pub usingnamespace proc.start;
@@ -989,6 +988,6 @@ pub fn generateReferences() void {
     for (details) |*impl_detail| {
         writeTypeFunction(&allocator, &array, impl_detail);
     }
-    gen.appendSourceFile(&array, "references.zig");
+    gen.writeSourceFile(&array, "references.zig");
 }
 pub const main = generateReferences;
