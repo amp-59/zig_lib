@@ -276,15 +276,21 @@ fn writeSpecificationFieldName(array: *Array, s_v_field: InfoS) void {
         .stripped => unreachable,
     }
 }
-fn parametersTypeName(comptime p_field: InfoS) []const u8 {
+fn writeParametersTypeName(array: *Array, p_field: InfoS) void {
     switch (p_field) {
-        .default => |default| return @typeName(default.type),
-        .stripped => |stripped| return @typeName(stripped.type),
-        .optional_derived => |optional_derived| return "?" ++ @typeName(optional_derived.type),
-        .optional_variant => |optional_variant| return "?" ++ @typeName(optional_variant.type),
-        .decl_optional_derived => |decl_optional_derived| return @typeName(decl_optional_derived.ctn_type),
-        .decl_optional_variant => |decl_optional_variant| return @typeName(decl_optional_variant.ctn_type),
-        .derived => @compileError("???"),
+        .default => |default| array.writeFormat(default.type),
+        .stripped => |stripped| array.writeFormat(stripped.type),
+        .optional_derived => |optional_derived| {
+            array.writeMany("?");
+            array.writeFormat(optional_derived.type);
+        },
+        .optional_variant => |optional_variant| {
+            array.writeMany("?");
+            array.writeFormat(optional_variant.type);
+        },
+        .decl_optional_derived => |decl_optional_derived| array.writeFormat(decl_optional_derived.ctn_type),
+        .decl_optional_variant => |decl_optional_variant| array.writeFormat(decl_optional_variant.ctn_type),
+        .derived => undefined,
     }
 }
 fn specificationTypeName(s_v_field: InfoS) []const u8 {
