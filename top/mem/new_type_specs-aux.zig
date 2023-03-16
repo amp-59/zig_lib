@@ -5,6 +5,7 @@ const fmt = gen.fmt;
 const file = gen.file;
 const meta = gen.meta;
 const proc = gen.proc;
+const algo = gen.algo;
 const preset = gen.preset;
 const testing = gen.testing;
 const builtin = gen.builtin;
