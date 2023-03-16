@@ -246,11 +246,12 @@ fn populateDetails(
     }
     return details;
 }
-fn writeFields(array: *Array, comptime p_info: []const InfoS) void {
-    inline for (p_info) |p_field| {
-        const field_name: []const u8 = comptime parametersFieldName(p_field);
-        const field_type_name: []const u8 = comptime parametersTypeName(p_field);
-        array.writeMany(field_name ++ ":" ++ field_type_name ++ ",");
+fn writeFields(array: *Array, p_info: []const InfoS) void {
+    for (p_info) |p_field| {
+        writeParametersFieldName(array, p_field);
+        array.writeMany(":");
+        writeParametersTypeName(array, p_field);
+        array.writeMany(",");
     }
 }
 fn parametersFieldName(comptime p_field: InfoS) []const u8 {
