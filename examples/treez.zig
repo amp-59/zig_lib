@@ -4,6 +4,7 @@ const fmt = srg.fmt;
 const mem = srg.mem;
 const file = srg.file;
 const meta = srg.meta;
+const mach = srg.mach;
 const proc = srg.proc;
 const preset = srg.preset;
 const thread = srg.thread;
@@ -393,8 +394,7 @@ pub fn main(args: [][*:0]u8) !void {
                 show(status);
             }
         } else {
-            alts_buf.writeMany(" " ** 4096);
-            alts_buf.undefine(4096);
+            mach.memset(alts_buf.referManyAt(0).ptr, ' ', 4096);
             if (print_in_second_thread) {
                 var tid: u64 = undefined;
                 const stack_addr: u64 = try meta.wrap(thread.map(map_spec, 8));
