@@ -1668,6 +1668,9 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             defer Graphics.showWithReference(allocator, @src());
             allocator.ub_addr = state.ub_addr;
         }
+        pub inline fn alignAbove(allocator: *Allocator, comptime alignment: u64) void {
+            allocator.ub_addr = mach.alignA64(allocator.ub_addr, alignment);
+        }
         pub inline fn duplicateIrreversible(allocator: *Allocator, comptime T: type, value: T) Allocator.allocate_payload(*T) {
             const ret: *T = try meta.wrap(allocator.createIrreversible(T));
             ret.* = value;
