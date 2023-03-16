@@ -156,6 +156,12 @@ pub fn approxDouble(k_bytes: u64) u64 {
     const n_bytes_ctz: u64 = ~mach.shrx64(lit.max_bit_u64, n_bytes_cls);
     return mach.sub64(m_bytes, mach.shrx64(n_bytes_ctz, n_bytes_clz) +% 1);
 }
+pub fn asc(x: anytype, y: anytype) bool {
+    return x > y;
+}
+pub fn desc(x: anytype, y: anytype) bool {
+    return x < y;
+}
 /// insert: [524288]u64	 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
 pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
     var i: u64 = 1;
