@@ -5,7 +5,7 @@ const algo = gen.algo;
 const builtin = gen.builtin;
 const testing = gen.testing;
 const tok = @import("./tok.zig");
-const detail = @import("./detail.zig");
+const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 
 pub const kind = @import("./zig-out/src/container_kinds.zig");
@@ -144,7 +144,7 @@ pub const Fn = enum(u8) {
     pub fn fnName(ctn_fn_info: Fn) [:0]const u8 {
         return @tagName(ctn_fn_info);
     }
-    pub fn hasCapability(ctn_fn_info: Fn, ctn_detail: *const detail.Less) bool {
+    pub fn hasCapability(ctn_fn_info: Fn, ctn_detail: *const attr.Container) bool {
         if (kind.stream(ctn_fn_info) or
             kind.unstream(ctn_fn_info) or
             kind.streamed(ctn_fn_info) or
@@ -180,7 +180,7 @@ pub const Fn = enum(u8) {
         }
         return true;
     }
-    pub fn argList(ctn_fn_info: Fn, ctn_detail: *const detail.Less, list_kind: gen.ListKind) gen.ArgList {
+    pub fn argList(ctn_fn_info: Fn, ctn_detail: *const attr.Container, list_kind: gen.ListKind) gen.ArgList {
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
