@@ -176,34 +176,127 @@ pub const Specifier = union(enum) {
         }
     }
 };
+pub const Container = packed struct {
+    spec: u16,
+    ctn: u16,
+    kind: Kind,
+    layout: Layout,
+    modes: Modes,
 
-const Kind = Kinds.Tag;
-const Layout = Layouts.Tag;
+    const Format = @This();
+    pub const Indices = struct {
+        spec: u16 = 0,
+        ctn: u16 = 0,
+    };
+    pub fn init(
+        abstract_spec: AbstractSpecification,
+        indices: Indices,
+    ) Implementation {
+        return .{
+            .spec = indices.spec,
+            .ctn = indices.ctn,
+            .kind = abstract_spec.kind,
+            .layout = abstract_spec.layout,
+            .modes = Modes.detail(abstract_spec.modes),
+        };
+    }
+    pub fn formatWrite(format: Format, array: anytype) void {
+        switch (format.kind) {
+            .parametric => {
+                array.writeMany(tok.parametric_type_name);
+            },
+            .dynamic => {
+                array.writeMany(tok.dynamic_type_name);
+            },
+            .static => {
+                array.writeMany(tok.static_type_name);
+            },
+            .automatic => {
+                array.writeMany(tok.automatic_type_name);
+            },
+        }
+        switch (format.layout) {
+            .structured => {
+                array.writeMany(tok.structured_type_name);
+            },
+            .unstructured => {
+                array.writeMany(tok.unstructured_type_name);
+            },
+        }
+        if (format.modes.read_write) {
+            array.writeMany(tok.read_write_type_name);
+        }
+        if (format.modes.stream) {
+            array.writeMany(tok.stream_type_name);
+        }
+        if (format.modes.resize) {
+            array.writeMany(tok.resize_type_name);
+        }
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        switch (format.kind) {
+            .parametric => {
+                len +%= tok.parametric_type_name.len;
+            },
+            .dynamic => {
+                len +%= tok.dynamic_type_name.len;
+            },
+            .static => {
+                len +%= tok.static_type_name.len;
+            },
+            .automatic => {
+                len +%= tok.automatic_type_name.len;
+            },
+        }
+        switch (format.layout) {
+            .structured => {
+                len +%= tok.structured_type_name.len;
+            },
+            .unstructured => {
+                len +%= tok.unstructured_type_name.len;
+            },
+        }
+        if (format.modes.read_write) {
+            len +%= tok.read_write_type_name.len;
+        }
+        if (format.modes.stream) {
+            len +%= tok.stream_type_name.len;
+        }
+        if (format.modes.resize) {
+            len +%= tok.resize_type_name.len;
+        }
+        return len;
+    }
+};
 
-pub const More = packed struct {
+pub const Implementation = packed struct {
+    spec: u16,
+    ctn: u16,
+    impl: u16,
     kind: Kind,
     layout: Layout,
     modes: Modes,
     fields: Fields,
-    techs: Techniques = undefined,
-    specs: Specifiers = undefined,
+    techs: Techniques,
+    specs: Specifiers,
 
     const Format = @This();
-
-    pub fn half(comptime abstract_spec: AbstractSpecification) More {
-        return .{
-            .kind = abstract_spec.kind,
-            .layout = abstract_spec.layout,
-            .modes = Modes.detail(abstract_spec.modes),
-            .fields = Fields.detail(abstract_spec.fields),
-        };
-    }
-    pub fn full(
+    pub const Indices = struct {
+        spec: u16 = 0,
+        ctn: u16 = 0,
+        impl: u16 = 0,
+    };
+    pub fn init(
         abstract_spec: AbstractSpecification,
         specs: []const Specifier,
         techs: []const Technique,
-    ) More {
+        indices: Indices,
+    ) Implementation {
         return .{
+            .spec = indices.spec,
+            .ctn = indices.ctn,
+            .impl = indices.impl,
             .kind = abstract_spec.kind,
             .layout = abstract_spec.layout,
             .modes = Modes.detail(abstract_spec.modes),
@@ -212,85 +305,115 @@ pub const More = packed struct {
             .techs = techniqueTags(techs),
         };
     }
+    pub fn formatWrite(format: Format, array: anytype) void {
+        switch (format.kind) {
+            .parametric => {
+                array.writeMany(tok.parametric_type_name);
+            },
+            .dynamic => {
+                array.writeMany(tok.dynamic_type_name);
+            },
+            .static => {
+                array.writeMany(tok.static_type_name);
+            },
+            .automatic => {
+                array.writeMany(tok.automatic_type_name);
+            },
+        }
+        switch (format.layout) {
+            .structured => {
+                array.writeMany(tok.structured_type_name);
+            },
+            .unstructured => {
+                array.writeMany(tok.unstructured_type_name);
+            },
+        }
+        if (format.modes.read_write) {
+            array.writeMany(tok.read_write_type_name);
+        }
+        if (format.modes.stream) {
+            array.writeMany(tok.stream_type_name);
+        }
+        if (format.modes.resize) {
+            array.writeMany(tok.resize_type_name);
+        }
+        if (format.specs.arena) {
+            array.writeMany(tok.arena_type_name);
+        }
+        if (format.specs.sentinel) {
+            array.writeMany(tok.sentinel_type_name);
+        }
+        if (format.techs.lazy_alignment) {
+            array.writeMany(tok.lazy_alignment_type_name);
+        }
+        if (format.techs.unit_alignment) {
+            array.writeMany(tok.unit_alignment_type_name);
+        }
+        if (format.techs.disjunct_alignment) {
+            array.writeMany(tok.disjunct_alignment_type_name);
+        }
+        if (format.techs.double_packed_approximate_capacity) {
+            array.writeMany(tok.double_packed_approximate_capacity_type_name);
+        }
+        if (format.techs.single_packed_approximate_capacity) {
+            array.writeMany(tok.single_packed_approximate_capacity_type_name);
+        }
+    }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
         switch (format.kind) {
-            .parametric => len +%= "Parametric".len,
-            .dynamic => len +%= "Dynamic".len,
-            .static => len +%= "Static".len,
-            .automatic => len +%= "Automatic".len,
+            .parametric => {
+                len +%= tok.parametric_type_name.len;
+            },
+            .dynamic => {
+                len +%= tok.dynamic_type_name.len;
+            },
+            .static => {
+                len +%= tok.static_type_name.len;
+            },
+            .automatic => {
+                len +%= tok.automatic_type_name.len;
+            },
         }
         switch (format.layout) {
-            .structured => len +%= "Structured".len,
-            .unstructured => len +%= "Unstructured".len,
+            .structured => {
+                len +%= tok.structured_type_name.len;
+            },
+            .unstructured => {
+                len +%= tok.unstructured_type_name.len;
+            },
         }
         if (format.modes.read_write) {
-            len +%= "ReadWrite".len;
+            len +%= tok.read_write_type_name.len;
         }
         if (format.modes.stream) {
-            len +%= "Stream".len;
+            len +%= tok.stream_type_name.len;
         }
         if (format.modes.resize) {
-            len +%= "Resize".len;
+            len +%= tok.resize_type_name.len;
         }
         if (format.specs.arena) {
-            len +%= "Arena".len;
+            len +%= tok.arena_type_name.len;
         }
         if (format.specs.sentinel) {
-            len +%= "Sentinel".len;
+            len +%= tok.sentinel_type_name.len;
         }
         if (format.techs.lazy_alignment) {
-            len +%= "LazyAlignment".len;
-        } else if (format.techs.lazy_alignment) {
-            len +%= "UnitAlignment".len;
-        } else if (format.techs.disjunct_alignment) {
-            len +%= "DisjunctAligment".len;
+            len +%= tok.lazy_alignment_type_name.len;
+        }
+        if (format.techs.unit_alignment) {
+            len +%= tok.unit_alignment_type_name.len;
+        }
+        if (format.techs.disjunct_alignment) {
+            len +%= tok.disjunct_alignment_type_name.len;
         }
         if (format.techs.double_packed_approximate_capacity) {
-            len +%= "DoublePackedApproximateCapacity".len;
-        } else if (format.techs.single_packed_approximate_capacity) {
-            len +%= "SinglePackedApproximateCapacity".len;
+            len +%= tok.double_packed_approximate_capacity_type_name.len;
+        }
+        if (format.techs.single_packed_approximate_capacity) {
+            len +%= tok.single_packed_approximate_capacity_type_name.len;
         }
         return len;
-    }
-    pub fn formatWrite(format: Format, array: anytype) void {
-        switch (format.kind) {
-            .parametric => array.writeMany("Parametric"),
-            .dynamic => array.writeMany("Dynamic"),
-            .static => array.writeMany("Static"),
-            .automatic => array.writeMany("Automatic"),
-        }
-        switch (format.layout) {
-            .structured => array.writeMany("Structured"),
-            .unstructured => array.writeMany("Unstructured"),
-        }
-        if (format.modes.read_write) {
-            array.writeMany("ReadWrite");
-        }
-        if (format.modes.stream) {
-            array.writeMany("Stream");
-        }
-        if (format.modes.resize) {
-            array.writeMany("Resize");
-        }
-        if (format.specs.arena) {
-            array.writeMany("Arena");
-        }
-        if (format.specs.sentinel) {
-            array.writeMany("Sentinel");
-        }
-        if (format.techs.lazy_alignment) {
-            array.writeMany("LazyAlignment");
-        } else if (format.techs.lazy_alignment) {
-            array.writeMany("UnitAlignment");
-        } else if (format.techs.disjunct_alignment) {
-            array.writeMany("DisjunctAligment");
-        }
-        if (format.techs.double_packed_approximate_capacity) {
-            array.writeMany("DoublePackedApproximateCapacity");
-        } else if (format.techs.single_packed_approximate_capacity) {
-            array.writeMany("SinglePackedApproximateCapacity");
-        }
     }
 };
 
