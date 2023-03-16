@@ -78,14 +78,12 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     //const mg_container_specs: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_container_specs",   "top/mem/container_specs-aux.zig");
     const mg_container_impls: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_allocator_impls: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
-    _ = mg_allocator_impls;
     const mg_allocator_kinds: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_allocator_impls",   "top/mem/allocator_impls-aux.zig");
-    _ = mg_allocator_kinds;
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
     //const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_containers",  "top/mem/containers.zig");
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_references",  "top/mem/references.zig");
     //const generate_allocators: *build.Target    = mg.addTarget(small_spec, allocator,   "generate_allocators",  "top/mem/generate_allocators.zig");
-    const memgen_test: *build.Target            = mg.addTarget(small_spec, allocator,   "memgen_test",          "top/mem/memgen-test.zig");
+    //const memgen_test: *build.Target            = mg.addTarget(small_spec, allocator,   "memgen_test",          "top/mem/memgen-test.zig");
 
     //mg_type_specs.dependOnRun(allocator,        mg_abstract_params);
     //mg_type_descr.dependOnRun(allocator,        mg_type_specs);
@@ -155,4 +153,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     _ = container_test;
     _ = address_space;
     _ = memgen_test;
+    _ = mg_allocator_impls;
+    _ = mg_allocator_kinds;
 }
