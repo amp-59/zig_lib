@@ -88,7 +88,7 @@ pub fn deserialize(allocator: anytype, comptime T: type, pathname: [:0]const u8)
     const size: u64 = file.fstat(.{ .errors = .{} }, fd).size;
     const count: u64 = @divExact(size, @sizeOf(T));
     const buf: []T = allocator.allocateIrreversible(T, count);
-    builtin.assertEqual(u64, count, file.read(.{ .read_buf_type = []T, .errors = .{} }, fd, buf, buf.len));
+    builtin.assertEqual(u64, count, file.read(.{ .child = T, .errors = .{} }, fd, buf, buf.len));
     return buf;
 }
 pub fn writeSourceFile(array: anytype, comptime name: [:0]const u8) void {
