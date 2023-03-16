@@ -466,6 +466,7 @@ pub const Target = struct {
         target.deps.create(allocator, .{ .target = dependency, .tag = .fmt });
     }
     fn buildLength(target: Target) u64 {
+        @setRuntimeSafety(false);
         const cmd: *const BuildCommand = target.build_cmd;
         var len: u64 = 4;
         switch (cmd.kind) {
@@ -978,6 +979,7 @@ pub const Target = struct {
         return len;
     }
     fn buildWrite(target: Target, array: anytype) u64 {
+        @setRuntimeSafety(false);
         const cmd: *const BuildCommand = target.build_cmd;
         array.writeMany("zig\x00");
         switch (cmd.kind) {
@@ -1494,6 +1496,7 @@ pub const Target = struct {
         return countArgs(array);
     }
     fn formatLength(target: Target) u64 {
+        @setRuntimeSafety(false);
         const cmd: *const FormatCommand = target.fmt_cmd;
         var len: u64 = 8;
         if (cmd.color) |how| {
@@ -1520,6 +1523,7 @@ pub const Target = struct {
         return len;
     }
     fn formatWrite(target: Target, array: anytype) u64 {
+        @setRuntimeSafety(false);
         const cmd: *const FormatCommand = target.fmt_cmd;
         array.writeMany("zig\x00fmt\x00");
         if (cmd.color) |how| {

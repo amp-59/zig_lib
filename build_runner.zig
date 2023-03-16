@@ -93,6 +93,7 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
 // zig fmt: on
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
+    @setRuntimeSafety(false);
     var address_space: AddressSpace = .{};
     var allocator: build.Allocator = try build.Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
@@ -118,7 +119,9 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     };
     var builder: build.Builder = try build.Builder.init(&allocator, paths, options, args, vars);
     _ = builder.addGroup(&allocator, "all");
+    @setRuntimeSafety(true);
     try build_fn(&allocator, &builder);
+    @setRuntimeSafety(false);
     rewind(&builder);
     var index: u64 = 0;
     while (index != args.len) {
