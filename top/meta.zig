@@ -505,10 +505,10 @@ fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     return true;
 }
 
-pub fn sliceToBytes(comptime E: type, comptime values: []const E) [@sizeOf(E) * values.len]u8 {
-    return @ptrCast(*const [@sizeOf(E) * values.len]u8, values.ptr).*;
+pub fn sliceToBytes(comptime E: type, values: []const E) []const u8 {
+    return @ptrCast([*]const u8, values.ptr)[0 .. @sizeOf(E) * values.len];
 }
-pub fn bytesToSlice(comptime E: type, comptime bytes: []const u8) []const E {
+pub fn bytesToSlice(comptime E: type, bytes: []const u8) []const E {
     return @ptrCast([*]const E, @alignCast(@alignOf(E), bytes.ptr))[0..@divExact(bytes.len, @sizeOf(E))];
 }
 pub fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
