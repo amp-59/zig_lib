@@ -5,6 +5,7 @@ const mach = gen.mach;
 const builtin = gen.builtin;
 
 const tok = @import("./tok.zig");
+const attr = @import("./attr.zig");
 const detail = @import("./detail.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
@@ -344,7 +345,7 @@ const Init = struct {
         return packMore(.call_member, exprs[0..idx]);
     }
     pub fn impl(allocator: anytype, any_detail: anytype, impl_fn_info: *const impl_fn.Fn) Expr {
-        if (@TypeOf(any_detail.*) == detail.More) {
+        if (@TypeOf(any_detail.*) == attr.Implementation) {
             return impl0(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument));
         } else {
             return impl1(allocator, impl_fn_info, &impl_fn_info.argList(any_detail.more(), .Argument), Tokens.determine(impl_fn_info));
