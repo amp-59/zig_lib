@@ -18,6 +18,9 @@ const open_read_spec: file.OpenSpec = .{
     .errors = .{},
     .options = .{ .read = true, .write = null },
 };
+const stat_spec: file.StatSpec = .{
+    .errors = .{},
+};
 const open_append_spec: file.OpenSpec = .{
     .errors = .{},
     .options = .{ .write = .append },

@@ -275,10 +275,12 @@ pub const ModeSpec = struct {
     }
 };
 pub const ReadSpec = struct {
+    child: type = u8,
     errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
     logging: builtin.Logging.SuccessErrorFault = .{},
 };
 pub const WriteSpec = struct {
+    child: type = u8,
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
     logging: builtin.Logging.SuccessErrorFault = .{},
 };
@@ -590,14 +592,15 @@ pub const TruncateSpec = struct {
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
 };
-pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8, read_count: u64) sys.Call(spec.errors, u64) {
+pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, u64) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
+    const read_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
-    if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_count }))) |ret| {
+    if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_count *% read_count_mul }))) |ret| {
         if (logging.Success) {
             debug.readNotice(fd, ret);
         }
-        return ret;
+        return @divExact(ret, read_count_mul);
     } else |read_error| {
         if (logging.Error) {
             debug.readError(read_error, fd);
@@ -605,10 +608,11 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []u8, read_count: u64) s
         return read_error;
     }
 }
-pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const u8) sys.Call(spec.errors, void) {
+pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.Call(spec.errors, void) {
     const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
+    const write_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
-    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len }))) |ret| {
+    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len *% write_count_mul }))) |ret| {
         if (logging.Success) {
             debug.writeNotice(fd, ret);
         }
@@ -1164,7 +1168,7 @@ const debug = opaque {
         var buf: [16 + 32]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
             about_write_0_s,                 "fd=",
-            builtin.fmt.ud64(fd).readAll(),  " +",
+            builtin.fmt.ud64(fd).readAll(),  " =",
             builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
     }
