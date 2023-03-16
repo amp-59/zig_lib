@@ -9,7 +9,7 @@ const build = srg.build;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const max_relevant_depth: u64 = 0;
 
@@ -64,6 +64,9 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg_container_kinds: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_references",  "top/mem/references.zig");
+
+    mg_reference_impls.dependOnRun(allocator,   mg_touch);
+    mg_container_kinds.dependOnRun(allocator,   mg_touch);
     build_test.dependOnRun(allocator,           generate_build);
 
     build_test.run_cmd.addRunArgument(builder.zigExePath());
@@ -71,10 +74,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     build_test.run_cmd.addRunArgument(builder.cacheDirPath());
     build_test.run_cmd.addRunArgument(builder.globalCacheDirPath());
 
-    _ = mg_touch;
     _ = mg_new_type_specs;
-    _ = mg_reference_impls;
-    _ = mg_container_kinds;
     _ = generate_references;
     _ = readdir;
     _ = dynamic;
