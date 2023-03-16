@@ -1,19 +1,19 @@
 //! This stage generates reference impls
 const gen = @import("./gen.zig");
 const mem = gen.mem;
+const fmt = gen.fmt;
 const proc = gen.proc;
+const meta = gen.meta;
 const preset = gen.preset;
+const testing = gen.testing;
 const builtin = gen.builtin;
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
+const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const detail = @import("./detail.zig");
 const impl_fn = @import("./impl_fn.zig");
-const out = struct {
-    usingnamespace @import("./zig-out/src/config.zig");
-    usingnamespace @import("./zig-out/src/impl_variants.zig");
-    usingnamespace @import("./zig-out/src/specifications.zig");
-};
+
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
