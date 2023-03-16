@@ -643,7 +643,7 @@ pub const exception = opaque {
     const SA = sys.SA;
     const SIG = sys.SIG;
 };
-fn exitWithError(error_name: []const u8, rc: ?u8) void {
+fn exitWithError(error_name: []const u8, rc: ?u8) noreturn {
     @setCold(true);
     if (builtin.logging_general.Fault) {
         @setRuntimeSafety(false);
@@ -652,7 +652,7 @@ fn exitWithError(error_name: []const u8, rc: ?u8) void {
     }
     sys.call(.exit, .{}, noreturn, .{rc orelse 2});
 }
-fn exitWithoutError(rc: u8) void {
+fn exitWithoutError(rc: u8) noreturn {
     if (builtin.logging_general.Success) {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
@@ -1127,7 +1127,7 @@ const debug = opaque {
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ debug.about_exit_1_s, symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
     }
     fn forkError(fork_error: anytype) void {
         var buf: [16 +% 32 +% 512]u8 = undefined;
