@@ -152,7 +152,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     _ = impl_test;
     _ = container_test;
     _ = address_space;
-    _ = memgen_test;
     _ = mg_allocator_impls;
     _ = mg_allocator_kinds;
 }
