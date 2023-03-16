@@ -254,15 +254,15 @@ fn writeFields(array: *Array, p_info: []const InfoS) void {
         array.writeMany(",");
     }
 }
-fn parametersFieldName(comptime p_field: InfoS) []const u8 {
+fn writeParametersFieldName(array: *Array, p_field: InfoS) void {
     switch (p_field) {
-        .default => |default| return @tagName(default.tag),
-        .stripped => |stripped| return @tagName(stripped.tag),
-        .optional_derived => |optional_derived| return @tagName(optional_derived.tag),
-        .optional_variant => |optional_variant| return @tagName(optional_variant.tag),
-        .decl_optional_derived => |decl_optional_derived| return @tagName(decl_optional_derived.ctn_tag),
-        .decl_optional_variant => |decl_optional_variant| return @tagName(decl_optional_variant.ctn_tag),
-        .derived => @compileError("???"),
+        .default => |default| array.writeMany(@tagName(default.tag)),
+        .stripped => |stripped| array.writeMany(@tagName(stripped.tag)),
+        .optional_derived => |optional_derived| array.writeMany(@tagName(optional_derived.tag)),
+        .optional_variant => |optional_variant| array.writeMany(@tagName(optional_variant.tag)),
+        .decl_optional_derived => |decl_optional_derived| array.writeMany(@tagName(decl_optional_derived.ctn_tag)),
+        .decl_optional_variant => |decl_optional_variant| array.writeMany(@tagName(decl_optional_variant.ctn_tag)),
+        .derived => unreachable,
     }
 }
 fn specificationFieldName(comptime s_v_field: InfoS) []const u8 {
