@@ -319,14 +319,12 @@ fn writeAndWalk(
                 if (count_dirs) {
                     status.dir_count +%= 1;
                 }
-                var arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
+                const arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.directory);
-                const len_0: u64 = array.len(allocator_1.*);
                 try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
                 if (track_max_depth) {
                     status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
                 }
-                const en_total: u64 = (status.dir_count +% status.file_count +% status.link_count);
                 writeAndWalk(allocator_0, allocator_1, array, alts_buf, link_buf, status, dir.fd, basename, depth +% 1) catch |any_error| {
                     if (quit_on_error) {
                         return any_error;
@@ -335,14 +333,6 @@ fn writeAndWalk(
                         status.errors +%= 1;
                     }
                 };
-                const ex_total: u64 = status.dir_count +% status.file_count +% status.link_count;
-                if (always_try_empty_dir_correction) {
-                    arrow_s = if (index == list.count -% 1) last_empty_dir_arrow_s else empty_dir_arrow_s;
-                    if (en_total == ex_total) {
-                        array.undefine(array.len(allocator_1.*) -% len_0);
-                        array.writeAny(preset.reinterpret.ptr, .{ alts_buf.readAll(), arrow_s, basename, endl_s });
-                    }
-                }
             },
         }
     }
