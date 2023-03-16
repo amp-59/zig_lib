@@ -3,6 +3,7 @@ const testing = @import("../testing.zig");
 
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
+const attr = @import("./attr.zig");
 const detail = @import("./detail.zig");
 
 pub const key = blk: {
@@ -42,7 +43,7 @@ pub const Fn = enum(u5) {
     pub inline fn fnName(impl_fn_info: Fn) [:0]const u8 {
         return @tagName(impl_fn_info);
     }
-    pub fn hasCapability(fn_info: Fn, impl_variant: *const detail.More) bool {
+    pub fn hasCapability(fn_info: Fn, impl_variant: *const attr.Implementation) bool {
         const is_always_aligned: bool =
             impl_variant.techs.auto_alignment or
             impl_variant.techs.unit_alignment;
@@ -67,23 +68,23 @@ pub const Fn = enum(u5) {
                 return !is_always_aligned;
             },
             .resize => {
-                return !impl_variant.kinds.static and
-                    !impl_variant.kinds.parametric and
-                    !impl_variant.kinds.automatic;
+                return !(impl_variant.kind == .static) and
+                    !(impl_variant.kind == .parametric) and
+                    !(impl_variant.kind == .automatic);
             },
             .move, .reallocate => {
-                return !impl_variant.kinds.automatic and
-                    !impl_variant.kinds.parametric;
+                return !(impl_variant.kind == .automatic) and
+                    !(impl_variant.kind == .parametric);
             },
             .allocate => {
-                return !impl_variant.kinds.automatic;
+                return !(impl_variant.kind == .automatic);
             },
             else => {
                 return true;
             },
         }
     }
-    pub fn argList(impl_fn_info: Fn, impl_variant: *const detail.More, list_kind: gen.ListKind) gen.ArgList {
+    pub fn argList(impl_fn_info: Fn, impl_variant: *const attr.Implementation, list_kind: gen.ListKind) gen.ArgList {
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
@@ -91,8 +92,8 @@ pub const Fn = enum(u5) {
             .ret = impl_fn_info.returnType(),
         };
         const has_static_maximum_length: bool =
-            impl_variant.kinds.automatic or
-            impl_variant.kinds.static;
+            impl_variant.kind == .automatic or
+            impl_variant.kind == .static;
         const has_dynamic_maximum_length: bool =
             !has_static_maximum_length;
         const has_active_alignment: bool =
@@ -212,21 +213,21 @@ pub const Fn = enum(u5) {
             .streamed_byte_count,
             => {
                 arg_list.writeOne(impl_const_symbol);
-                if (impl_variant.kinds.parametric) {
+                if (impl_variant.kind == .parametric) {
                     arg_list.writeOne(slave_const_symbol);
                 }
             },
             .writable_byte_count,
             .aligned_byte_count,
             => {
-                if (impl_variant.kinds.parametric) {
+                if (impl_variant.kind == .parametric) {
                     arg_list.writeOne(slave_const_symbol);
                 } else if (has_dynamic_maximum_length) {
                     arg_list.writeOne(impl_const_symbol);
                 }
             },
             .allocated_byte_count => {
-                if (impl_variant.kinds.parametric) {
+                if (impl_variant.kind == .parametric) {
                     arg_list.writeOne(slave_const_symbol);
                 } else if (has_static_maximum_length) {
                     if (has_active_alignment) {
@@ -242,7 +243,7 @@ pub const Fn = enum(u5) {
             .unallocated_byte_address,
             .alignment,
             => {
-                if (impl_variant.kinds.parametric) {
+                if (impl_variant.kind == .parametric) {
                     arg_list.writeOne(slave_const_symbol);
                 } else {
                     arg_list.writeOne(impl_const_symbol);
@@ -326,7 +327,7 @@ pub const Fn = enum(u5) {
             },
         }
     }
-    pub fn writeSignature(impl_fn_info: *const Fn, array: anytype, impl_detail: *const detail.More) void {
+    pub fn writeSignature(impl_fn_info: *const Fn, array: anytype, impl_detail: *const attr.Implementation) void {
         const list: gen.ArgList = impl_fn_info.argList(impl_detail, .Parameter);
         array.writeMany("pub inline fn ");
         array.writeMany(impl_fn_info.fnName());
