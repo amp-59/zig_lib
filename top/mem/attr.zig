@@ -3,6 +3,7 @@ const fmt = gen.fmt;
 const meta = gen.meta;
 const builtin = gen.builtin;
 const testing = gen.testing;
+const tok = @import("tok.zig");
 
 // zig fmt: off
 pub const abstract_specs: []const AbstractSpecification = &.{
