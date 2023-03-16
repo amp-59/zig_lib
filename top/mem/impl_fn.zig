@@ -4,7 +4,6 @@ const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
-const detail = @import("./detail.zig");
 
 pub const key = blk: {
     var res: []const Fn = &.{};
