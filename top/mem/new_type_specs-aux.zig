@@ -378,101 +378,16 @@ fn writeDeclExpr(array: *Array, p_field: InfoS) void {
         },
     }
 }
-fn writeSpecificationDeductionInternal(
-    array: *Array,
-    comptime abstract_spec: attr.AbstractSpecification,
-    comptime p_info: []const InfoS,
-    comptime s_v_infos: []const []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
-    comptime q_info: []const InfoT,
-) void {
-    if (p_info.len == 0) {
-        @compileError("???");
+fn writeInitExpr(array: *Array, s_v_info: []const InfoS) void {
+    array.writeMany(".{");
+    for (s_v_info) |s_v_field| {
+        array.writeMany(".");
+        writeSpecificationFieldName(array, s_v_field);
+        array.writeMany("=");
+        writeSpecificationFieldName(array, s_v_field);
+        array.writeMany(",");
     }
-    const filtered: BinaryFilter([]const InfoS) = comptime haveSpec(s_v_infos, p_info[0]);
-    if (filtered[1].len != 0) {
-        array.writeMany(declExpr(p_info[0]));
-        if (filtered[1].len == 1) {
-            S.spec_no +%= 1;
-            writeImplementationDeduction(array, abstract_spec, v_i_infos, filtered[1][0], v_i_infos, q_info);
-        } else {
-            writeSpecificationDeductionInternal(array, abstract_spec, p_info[1..], filtered[1], v_i_infos, q_info);
-        }
-    }
-    if (filtered[0].len != 0) {
-        if (filtered[1].len != 0 and
-            p_info[0] == .decl_optional_variant or
-            p_info[0] == .optional_variant)
-        {
-            array.writeMany("}else{\n");
-        }
-        if (filtered[0].len == 1) {
-            S.spec_no +%= 1;
-            writeImplementationDeduction(array, abstract_spec, v_i_infos, filtered[0][0], v_i_infos, q_info);
-        } else {
-            writeSpecificationDeductionInternal(array, abstract_spec, p_info[1..], filtered[0], v_i_infos, q_info);
-        }
-    }
-    if (filtered[1].len != 0 and
-        p_info[0] == .decl_optional_variant or
-        p_info[0] == .optional_variant)
-    {
-        array.writeMany("}\n");
-    }
-}
-fn writeDeductionTestBoolean(
-    array: *Array,
-    comptime abstract_spec: attr.AbstractSpecification,
-    comptime v_i_infos_top: []const []const InfoT,
-    comptime s_v_info: []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
-    comptime q_info: []const InfoT,
-) void {
-    if (q_info.len == 0) {
-        @compileError("???");
-    }
-    const filtered: BinaryFilter([]const InfoT) = comptime haveStandAloneTech(v_i_infos, q_info[0]);
-    array.writeMany("if(spec.");
-    array.writeMany(q_info[0].techTagName());
-    array.writeMany("){");
-    if (filtered[1].len != 0) {
-        if (filtered[1].len == 1) {
-            S.impl_no +%= 1;
-            writeReturnImplementation(
-                array,
-                comptime attr.More.full(abstract_spec, s_v_info, filtered[1][0]),
-                comptime initExpr(s_v_info),
-            );
-        } else {
-            writeImplementationDeduction(array, abstract_spec, v_i_infos_top, s_v_info, filtered[1], q_info[1..]);
-        }
-    }
-    if (filtered[0].len != 0) {
-        if (filtered[1].len != 0) {
-            array.writeMany("}else{\n");
-        }
-        if (filtered[0].len == 1) {
-            S.spec_no +%= 1;
-            writeReturnImplementation(
-                array,
-                comptime attr.More.full(abstract_spec, s_v_info, filtered[0][0]),
-                comptime initExpr(s_v_info),
-            );
-        } else {
-            writeImplementationDeduction(array, abstract_spec, v_i_infos_top, s_v_info, filtered[0], q_info[1..]);
-        }
-    }
-    if (filtered[1].len != 0) {
-        array.writeMany("}\n");
-    }
-}
-fn initExpr(comptime s_v_info: []const InfoS) []const u8 {
-    comptime var ret: []const u8 = ".{";
-    inline for (s_v_info) |s_v_field| {
-        const s_field_name: []const u8 = comptime specificationFieldName(s_v_field);
-        ret = ret ++ "." ++ s_field_name ++ "=" ++ s_field_name ++ ",";
-    }
-    return ret[0 .. ret.len - 1] ++ "},";
+    array.writeMany("}");
 }
 fn writeSwitchProngOpen(array: *Array, tag_name: []const u8) void {
     array.writeMany(".");
@@ -484,7 +399,7 @@ fn writeSwitchOpen(array: *Array, tag_name: []const u8) void {
     array.writeMany(tag_name);
     array.writeMany("){\n");
 }
-noinline fn writeOptionalSwitchOpen(array: *Array, tag_name: []const u8) void {
+fn writeOptionalSwitchOpen(array: *Array, tag_name: []const u8) void {
     array.writeMany("if (spec.");
     array.writeMany(tag_name);
     array.writeMany(")|");
@@ -493,119 +408,255 @@ noinline fn writeOptionalSwitchOpen(array: *Array, tag_name: []const u8) void {
     array.writeMany(tag_name);
     array.writeMany("){\n");
 }
-fn writeReturnImplementation(array: *Array, detail: attr.More, init_expr: []const u8) void {
+fn writeReturnImplementation(array: *Array, detail: attr.Implementation, specs: []const InfoS) void {
     array.writeMany("return ");
     array.writeFormat(detail);
     array.writeMany("(");
-    array.writeMany(init_expr);
+    writeInitExpr(array, specs);
     array.writeMany(");\n");
 }
-fn writeDeductionCompareEnumerationInternal(
+fn writeDeductionTestBoolean(
+    allocator: *Allocator,
     array: *Array,
-    comptime abstract_spec: attr.AbstractSpecification,
-    comptime v_i_infos_top: []const []const InfoT,
-    comptime s_v_info: []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
-    comptime q_info: []const InfoT,
-    comptime tag_index: u64,
+    abstract_spec: attr.AbstractSpecification,
+    v_i_infos_top: []const []const InfoT,
+    s_v_info: []const InfoS,
+    v_i_infos: []const []const InfoT,
+    q_info: []const InfoT,
+    indices: *attr.Implementation.Indices,
 ) void {
-    if (q_info[0].mutually_exclusive.tech_tags.len == tag_index) {
-        return;
+    const save: Allocator.Save = allocator.save();
+    defer allocator.restore(save);
+    const filtered: BinaryFilter([]const InfoT) = haveStandAloneTech(allocator, v_i_infos, q_info[0]);
+    array.writeMany("if(spec.");
+    array.writeMany(q_info[0].techTagName());
+    array.writeMany("){");
+    if (filtered[1].len != 0) {
+        if (filtered[1].len == 1) {
+            writeReturnImplementation(array, attr.Implementation.init(abstract_spec, s_v_info, filtered[1][0], indices.*), s_v_info);
+            indices.impl +%= 1;
+        } else {
+            writeImplementationDeduction(allocator, array, abstract_spec, v_i_infos_top, s_v_info, filtered[1], q_info[1..], indices);
+        }
     }
+    if (filtered[0].len != 0) {
+        if (filtered[1].len != 0) {
+            array.writeMany("}else{\n");
+        }
+        if (filtered[0].len == 1) {
+            writeReturnImplementation(array, attr.Implementation.init(abstract_spec, s_v_info, filtered[0][0], indices.*), s_v_info);
+            indices.impl +%= 1;
+        } else {
+            writeImplementationDeduction(allocator, array, abstract_spec, v_i_infos_top, s_v_info, filtered[0], q_info[1..], indices);
+        }
+    }
+    if (filtered[1].len != 0) {
+        array.writeMany("}\n");
+    }
+}
+fn writeDeductionCompareEnumerationInternal(
+    allocator: *Allocator,
+    array: *Array,
+    abstract_spec: attr.AbstractSpecification,
+    v_i_infos_top: []const []const InfoT,
+    s_v_info: []const InfoS,
+    v_i_infos: []const []const InfoT,
+    q_info: []const InfoT,
+    indices: *attr.Implementation.Indices,
+    tag_index: u64,
+) void {
+    if (q_info[0].mutually_exclusive.tech_tags.len == tag_index) return;
     const tech: attr.Techniques.Tag = q_info[0].mutually_exclusive.tech_tags[tag_index];
-    const filtered: BinaryFilter([]const InfoT) = comptime haveMutuallyExclusiveTech(v_i_infos, tech);
-    writeSwitchProngOpen(array, @tagName(tech));
-    writeImplementationDeduction(array, abstract_spec, v_i_infos_top, s_v_info, filtered[1], q_info[1..]);
+    const tech_tag_name: []const u8 = @tagName(tech);
+    const save: Allocator.Save = allocator.save();
+    defer allocator.restore(save);
+    const filtered: BinaryFilter([]const InfoT) = haveMutuallyExclusiveTech(allocator, v_i_infos, tech);
+    writeSwitchProngOpen(array, tech_tag_name);
+    writeImplementationDeduction(allocator, array, abstract_spec, v_i_infos_top, s_v_info, filtered[1], q_info[1..], indices);
     array.writeMany("},\n");
-    writeDeductionCompareEnumerationInternal(array, abstract_spec, v_i_infos_top, s_v_info, filtered[0], q_info, tag_index + 1);
+    writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, v_i_infos_top, s_v_info, filtered[0], q_info, indices, tag_index + 1);
 }
 fn writeDeductionCompareEnumeration(
+    allocator: *Allocator,
     array: *Array,
-    comptime abstract_spec: attr.AbstractSpecification,
-    comptime v_i_infos_top: []const []const InfoT,
-    comptime s_v_info: []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
-    comptime q_info: []const InfoT,
+    abstract_spec: attr.AbstractSpecification,
+    v_i_infos_top: []const []const InfoT,
+    s_v_info: []const InfoS,
+    v_i_infos: []const []const InfoT,
+    q_info: []const InfoT,
+    indices: *attr.Implementation.Indices,
 ) void {
-    writeSwitchOpen(array, comptime q_info[0].optTagName());
-    writeDeductionCompareEnumerationInternal(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info, 0);
+    writeSwitchOpen(array, q_info[0].optTagName());
+    writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info, indices, 0);
     array.writeMany("}\n");
 }
 fn writeDeductionCompareOptionalEnumeration(
+    allocator: *Allocator,
     array: *Array,
-    comptime abstract_spec: attr.AbstractSpecification,
-    comptime v_i_infos_top: []const []const InfoT,
-    comptime s_v_infos: []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
-    comptime q_info: []const InfoT,
+    abstract_spec: attr.AbstractSpecification,
+    v_i_infos_top: []const []const InfoT,
+    s_v_infos: []const InfoS,
+    v_i_infos: []const []const InfoT,
+    q_info: []const InfoT,
+    indices: *attr.Implementation.Indices,
 ) void {
-    writeOptionalSwitchOpen(array, comptime q_info[0].optTagName());
-    writeDeductionCompareEnumerationInternal(array, abstract_spec, v_i_infos_top, s_v_infos, v_i_infos, q_info, 0);
+    writeOptionalSwitchOpen(array, q_info[0].optTagName());
+    writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, v_i_infos_top, s_v_infos, v_i_infos, q_info, indices, 0);
     array.writeMany("}\n}\n");
 }
 fn writeImplementationDeduction(
+    allocator: *Allocator,
     array: *Array,
-    comptime abstract_spec: attr.AbstractSpecification,
-    comptime v_i_infos_top: []const []const InfoT,
-    comptime s_v_info: []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
-    comptime q_info: []const InfoT,
+    abstract_spec: attr.AbstractSpecification,
+    v_i_infos_top: []const []const InfoT,
+    s_v_info: []const InfoS,
+    v_i_infos: []const []const InfoT,
+    q_info: []const InfoT,
+    indices: *attr.Implementation.Indices,
 ) void {
     if (q_info.len == 0 or v_i_infos.len == 1) {
         writeReturnImplementation(
             array,
-            comptime attr.More.full(abstract_spec, s_v_info, v_i_infos[0]),
-            comptime initExpr(s_v_info),
+            attr.Implementation.init(abstract_spec, s_v_info, v_i_infos[0], indices.*),
+            s_v_info,
         );
-    } else switch (comptime q_info[0].usage(v_i_infos_top)) {
-        .eliminate_boolean_false,
-        .eliminate_boolean_true,
-        => {},
+        indices.impl +%= 1;
+    } else switch (q_info[0].usage(v_i_infos_top)) {
         .test_boolean => {
-            writeDeductionTestBoolean(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info);
+            writeDeductionTestBoolean(allocator, array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info, indices);
         },
         .compare_enumeration => {
-            writeDeductionCompareEnumeration(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info);
+            writeDeductionCompareEnumeration(allocator, array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info, indices);
         },
         .compare_optional_enumeration => {
-            writeDeductionCompareOptionalEnumeration(array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info);
+            writeDeductionCompareOptionalEnumeration(allocator, array, abstract_spec, v_i_infos_top, s_v_info, v_i_infos, q_info, indices);
         },
+        else => return,
     }
 }
-fn writeSpecificationDeduction(
+fn writeSpecificationDeductionInternal(
+    allocator: *Allocator,
     array: *Array,
-    comptime abstract_spec: attr.AbstractSpecification,
-    comptime p_info: []const InfoS,
-    comptime s_v_infos: []const []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
-    comptime q_info: []const InfoT,
+    abstract_spec: attr.AbstractSpecification,
+    p_info: []const InfoS,
+    s_v_infos: []const []const InfoS,
+    v_i_infos: []const []const InfoT,
+    q_info: []const InfoT,
+    indices: *attr.Implementation.Indices,
 ) void {
+    const save: Allocator.Save = allocator.save();
+    defer allocator.restore(save);
+    const filtered: BinaryFilter([]const InfoS) = haveSpec(allocator, s_v_infos, p_info[0]);
+    if (filtered[1].len != 0) {
+        writeDeclExpr(array, p_info[0]);
+        if (filtered[1].len == 1) {
+            writeImplementationDeduction(allocator, array, abstract_spec, v_i_infos, filtered[1][0], v_i_infos, q_info, indices);
+            indices.ctn +%= 1;
+        } else {
+            writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[1], v_i_infos, q_info, indices);
+        }
+    }
+    if (filtered[0].len != 0) {
+        if (filtered[1].len != 0 and
+            p_info[0] == .decl_optional_variant or
+            p_info[0] == .optional_variant)
+        {
+            array.writeMany("}else{\n");
+        }
+        if (filtered[0].len == 1) {
+            writeImplementationDeduction(allocator, array, abstract_spec, v_i_infos, filtered[0][0], v_i_infos, q_info, indices);
+            indices.ctn +%= 1;
+        } else {
+            writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[0], v_i_infos, q_info, indices);
+        }
+    }
+    if (filtered[1].len != 0 and
+        p_info[0] == .decl_optional_variant or
+        p_info[0] == .optional_variant)
+    {
+        array.writeMany("}\n");
+    }
+}
+
+fn writeSpecificationDeduction(
+    allocator: *Allocator,
+    array: *Array,
+    abstract_spec: attr.AbstractSpecification,
+    p_info: []const InfoS,
+    s_v_infos: []const []const InfoS,
+    v_i_infos: []const []const InfoT,
+    q_info: []const InfoT,
+    indices: *attr.Implementation.Indices,
+) void {
+    const save: Allocator.Save = allocator.save();
+    defer allocator.restore(save);
     array.writeMany("const Specification");
-    array.writeFormat(fmt.ud64(S.param_no));
-    S.param_no +%= 1;
+    array.writeFormat(fmt.ud64(indices.spec));
     array.writeMany("=struct{\n");
     writeFields(array, p_info);
     array.writeMany("const Specification=@This();\nfn Implementation(spec:Specification)type{\n");
-    writeSpecificationDeductionInternal(array, abstract_spec, p_info, s_v_infos, v_i_infos, q_info);
+    writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, s_v_infos, v_i_infos, q_info, indices);
     array.writeMany("}\n};\n");
 }
-fn writeAbstractSpecification(array: *Array, comptime abstract_spec: attr.AbstractSpecification) void {
-    const x_info: [3][]const InfoS = comptime populateParameters(abstract_spec);
-    const s_v_infos: []const []const InfoS = comptime populateSpecifiers(x_info[1], x_info[2]);
-    const v_i_infos: []const []const InfoT = comptime populateTechniques(abstract_spec);
-    const q_info: []const InfoT = comptime populateUniqueTechniqueKeys(v_i_infos);
-    writeSpecificationDeduction(array, abstract_spec, x_info[0], s_v_infos, v_i_infos, q_info);
+fn writeSpecifications(
+    allocator: *Allocator,
+    array: *Array,
+    x_p_infos: []const []const InfoS,
+    x_q_infos: []const []const InfoT,
+    x_s_v_infos: []const []const []const InfoS,
+    x_v_i_infos: []const []const []const InfoT,
+) void {
+    gen.copySourceFile(array, "container-template.zig");
+    var indices: attr.Implementation.Indices = .{};
+    for (attr.abstract_specs, x_p_infos, x_s_v_infos, x_v_i_infos, x_q_infos) |abstract_spec, p_info, s_v_infos, v_i_infos, q_info| {
+        writeSpecificationDeduction(allocator, array, abstract_spec, p_info, s_v_infos, v_i_infos, q_info, &indices);
+        indices.spec +%= 1;
+    }
+    gen.writeSourceFile(array, "containers.zig");
+}
+fn writeImplementationDetails(
+    allocator: *Allocator,
+    x_s_v_infos: []const []const []const InfoS,
+    x_v_i_infos: []const []const []const InfoT,
+) void {
+    const Details = Allocator.StructuredVector(attr.Implementation);
+    var indices: attr.Implementation.Indices = .{};
+    var details: Details = Details.init(allocator, x_s_v_infos.len * x_v_i_infos.len);
+    for (attr.abstract_specs, x_s_v_infos, x_v_i_infos) |abstract_spec, s_v_infos, v_i_infos| {
+        for (s_v_infos) |s_v_info| {
+            for (v_i_infos) |v_i_info| {
+                details.appendOne(allocator, attr.Implementation.init(abstract_spec, s_v_info, v_i_info, indices));
+                indices.impl +%= 1;
+            }
+            indices.ctn +%= 1;
+        }
+        indices.spec +%= 1;
+    }
+    gen.writeAuxiliarySourceFile(&details, "details");
 }
 
 pub fn newNewTypeSpecs() void {
-    @setEvalBranchQuota(3200);
+    @setEvalBranchQuota(1500);
+    comptime var x_p_infos: []const []const InfoS = &.{};
+    comptime var x_q_infos: []const []const InfoT = &.{};
+    comptime var x_s_v_infos: []const []const []const InfoS = &.{};
+    comptime var x_v_i_infos: []const []const []const InfoT = &.{};
+    inline for (attr.abstract_specs) |abstract_spec| {
+        const x_info: [3][]const InfoS = comptime populateParameters(abstract_spec);
+        const s_v_infos: []const []const InfoS = comptime populateSpecifiers(x_info[1], x_info[2]);
+        const v_i_infos: []const []const InfoT = comptime populateTechniques(abstract_spec);
+        const q_info: []const InfoT = comptime populateUniqueTechniqueKeys(v_i_infos);
+        x_p_infos = x_p_infos ++ [1][]const InfoS{x_info[0]};
+        x_q_infos = x_q_infos ++ [1][]const InfoT{q_info};
+        x_s_v_infos = x_s_v_infos ++ [1][]const []const InfoS{s_v_infos};
+        x_v_i_infos = x_v_i_infos ++ [1][]const []const InfoT{v_i_infos};
+    }
+    var address_space: AddressSpace = .{};
+    var allocator: Allocator = Allocator.init(&address_space, 0);
+    defer allocator.deinit(&address_space, 0);
     var array: Array = undefined;
     array.undefineAll();
-    gen.copySourceFile(&array, "container-template.zig");
-    inline for (attr.abstract_specs) |abstract_spec| {
-        writeAbstractSpecification(&array, abstract_spec);
-    }
-    gen.writeSourceFile(&array, "containers.zig");
-    array.undefineAll();
+    writeSpecifications(&allocator, &array, x_p_infos, x_q_infos, x_s_v_infos, x_v_i_infos);
+    writeImplementationDetails(&allocator, x_s_v_infos, x_v_i_infos);
 }
 pub const main = newNewTypeSpecs;
