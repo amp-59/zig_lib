@@ -304,41 +304,77 @@ fn writeSpecificationTypeName(array: *Array, s_v_field: InfoS) void {
         .stripped => undefined,
     }
 }
-fn declExpr(comptime p_field: InfoS) []const u8 {
+fn writeDeclExpr(array: *Array, p_field: InfoS) void {
     switch (p_field) {
         .default => |default| {
-            const tag_name: []const u8 = @tagName(default.tag);
-            const type_name: []const u8 = @typeName(default.type);
-            return "const " ++ tag_name ++ ":" ++ type_name ++ "=spec." ++ tag_name ++ ";\n";
+            array.writeMany("const ");
+            array.writeMany(@tagName(default.tag));
+            array.writeMany(":");
+            array.writeFormat(default.type);
+            array.writeMany("=spec.");
+            array.writeMany(@tagName(default.tag));
+            array.writeMany(";\n");
         },
         .derived => |derived| {
             const tag_name: []const u8 = @tagName(derived.tag);
-            const type_name: []const u8 = @typeName(derived.type);
-            const fn_name: []const u8 = derived.fn_name;
-            return "const " ++ tag_name ++ ":" ++ type_name ++ "=" ++ fn_name ++ "(spec);\n";
+            array.writeMany("const ");
+            array.writeMany(tag_name);
+            array.writeMany(":");
+            array.writeFormat(derived.type);
+            array.writeMany(tag_name);
+            array.writeMany(":");
+            array.writeFormat(derived.type);
+            array.writeMany("=");
+            array.writeMany(derived.fn_name);
+            array.writeMany("(spec);\n");
         },
         .stripped => {},
         .optional_derived => |optional_derived| {
             const tag_name: []const u8 = @tagName(optional_derived.tag);
-            const type_name: []const u8 = @typeName(optional_derived.type);
-            const fn_name: []const u8 = optional_derived.fn_name;
-            return "const " ++ tag_name ++ ":" ++ type_name ++ "=spec." ++ tag_name ++ " orelse " ++ fn_name ++ "(spec);\n";
+            array.writeMany("const ");
+            array.writeMany(tag_name);
+            array.writeMany(":");
+            array.writeFormat(optional_derived.type);
+            array.writeMany("=spec.");
+            array.writeMany(tag_name);
+            array.writeMany(" orelse ");
+            array.writeMany(optional_derived.fn_name);
+            array.writeMany("(spec);\n");
         },
         .optional_variant => |optional_variant| {
             const tag_name: []const u8 = @tagName(optional_variant.tag);
-            return "if(spec." ++ tag_name ++ ")|" ++ tag_name ++ "|{\n";
+            array.writeMany("if(spec.");
+            array.writeMany(tag_name);
+            array.writeMany(")|");
+            array.writeMany(tag_name);
+            array.writeMany("|{\n");
         },
         .decl_optional_derived => |decl_optional_derived| {
             const ctn_name: []const u8 = @tagName(decl_optional_derived.ctn_tag);
             const decl_name: []const u8 = @tagName(decl_optional_derived.decl_tag);
-            const type_name: []const u8 = @typeName(decl_optional_derived.decl_type);
             const fn_name: []const u8 = decl_optional_derived.fn_name;
-            return "const " ++ decl_name ++ ":" ++ type_name ++ "hasDecl(spec." ++ ctn_name ++ ", \"" ++ decl_name ++ "\")orelse(" ++ fn_name ++ "(spec));\n";
+            array.writeMany("const ");
+            array.writeMany(decl_name);
+            array.writeMany(":");
+            array.writeFormat(decl_optional_derived.decl_type);
+            array.writeMany("hasDecl(spec.");
+            array.writeMany(ctn_name);
+            array.writeMany("\"");
+            array.writeMany(decl_name);
+            array.writeMany("\")orelse(");
+            array.writeMany(fn_name);
+            array.writeMany("(spec));\n");
         },
         .decl_optional_variant => |decl_optional_variant| {
             const ctn_name: []const u8 = @tagName(decl_optional_variant.ctn_tag);
             const decl_name: []const u8 = @tagName(decl_optional_variant.decl_tag);
-            return "if (spec." ++ ctn_name ++ "." ++ decl_name ++ ")|" ++ decl_name ++ "|{\n";
+            array.writeMany("if (spec.");
+            array.writeMany(ctn_name);
+            array.writeMany(".");
+            array.writeMany(decl_name);
+            array.writeMany(")|");
+            array.writeMany(decl_name);
+            array.writeMany("|{\n");
         },
     }
 }
