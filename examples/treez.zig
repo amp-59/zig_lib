@@ -31,7 +31,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
     .errors = preset.allocator.errors.noexcept,
 });
 const PrintArray = mem.StaticString(4096);
-const String1 = Allocator1.StructuredStreamHolder(u8);
+const Array = Allocator1.StructuredStreamHolder(u8);
 const String0 = Allocator0.StructuredHolder(u8);
 const DirStream = file.GenericDirStream(.{
     .Allocator = Allocator0,
@@ -122,7 +122,7 @@ fn show(status: Status) void {
     }
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
-inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1) u64 {
+inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: Array) u64 {
     const many: []u8 = array.referManyAt(allocator, array.index(allocator));
     if (plain_print) {
         if (many.len > (n -% 1)) {
@@ -145,7 +145,7 @@ inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: String1
     }
     return 0;
 }
-noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *String1) void {
+noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *Array) void {
     while (true) {
         array.stream(printIfNAvail(512, allocator.*, array.*));
         if (done(status)) break;
@@ -171,7 +171,7 @@ fn conditionalSkip(entry_name: []const u8) bool {
 }
 fn writeReadLink(
     allocator_1: *Allocator1,
-    array: *String1,
+    array: *Array,
     link_buf: *PrintArray,
     status: *volatile Status,
     dir_fd: u64,
@@ -220,7 +220,7 @@ fn getSymbol(kind: file.Kind) [:0]const u8 {
 fn writeAndWalkPlain(
     allocator_0: *Allocator0,
     allocator_1: *Allocator1,
-    array: *String1,
+    array: *Array,
     alts_buf: *PrintArray,
     link_buf: *PrintArray,
     status: *volatile Status,
@@ -276,7 +276,7 @@ fn writeAndWalkPlain(
 fn writeAndWalk(
     allocator_0: *Allocator0,
     allocator_1: *Allocator1,
-    array: *String1,
+    array: *Array,
     alts_buf: *PrintArray,
     link_buf: *PrintArray,
     status: *volatile Status,
@@ -362,7 +362,7 @@ pub fn main(args: [][*:0]u8) !void {
         alts_buf.undefineAll();
         var link_buf: PrintArray = undefined;
         link_buf.undefineAll();
-        var array: String1 = String1.init(&allocator_1);
+        var array: Array = Array.init(&allocator_1);
         defer array.deinit(&allocator_1);
         try meta.wrap(array.appendMany(&allocator_1, arg));
         try meta.wrap(array.appendMany(&allocator_1, if (arg[arg.len -% 1] != '/') "/\n" else "\n"));
