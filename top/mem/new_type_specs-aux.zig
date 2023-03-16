@@ -13,70 +13,119 @@ const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 
 pub usingnamespace proc.start;
+pub usingnamespace proc.exception;
+
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
-const Array = mem.StaticArray(u8, 1024 * 1024);
+const start: u64 = 0x40000000;
+const size: u64 = 64 * 1024 * 1024;
+const count: u64 = 1024 / 64;
+const finish: u64 = start + (size * count);
+
+const Allocators = mem.StaticArray(Allocator, count);
+
+const Allocator = mem.GenericRtArenaAllocator(.{
+    .AddressSpace = AddressSpace,
+    .logging = preset.allocator.logging.silent,
+    .errors = preset.allocator.errors.noexcept,
+    .options = preset.allocator.options.small,
+});
+const AddressSpace = mem.GenericRegularAddressSpace(.{
+    .label = "multi_addrspace",
+    .lb_addr = start,
+    .up_addr = finish,
+    .divisions = 4,
+    .logging = preset.address_space.logging.silent,
+    .errors = preset.address_space.errors.noexcept,
+});
+
+const Array = mem.StaticString(1024 * 1024);
 const InfoS = attr.Specifier;
 const InfoT = attr.Technique;
 
 fn BinaryFilter(comptime T: type) type {
     return struct { []const T, []const T };
 }
-
-const S = struct {
-    var param_no: u64 = 0;
-    var spec_no: u64 = 0;
-    var impl_no: u64 = 0;
-};
-fn haveSpec(comptime s_v_infos: []const []const InfoS, comptime p_field: InfoS) BinaryFilter([]const InfoS) {
-    var t: []const []const InfoS = meta.empty;
-    var f: []const []const InfoS = meta.empty;
+fn haveSpec(
+    allocator: *Allocator,
+    s_v_infos: []const []const InfoS,
+    p_field: InfoS,
+) BinaryFilter([]const InfoS) {
+    var t: [][]const InfoS =
+        allocator.allocateIrreversible([]const InfoS, s_v_infos.len);
+    var t_len: u64 = 0;
+    var f: [][]const InfoS =
+        allocator.allocateIrreversible([]const InfoS, s_v_infos.len);
+    var f_len: u64 = 0;
     for (s_v_infos) |s_v_info| {
         for (s_v_info) |s_v_field| {
             if (builtin.testEqual(InfoS, p_field, s_v_field)) {
-                t = t ++ .{s_v_info};
+                t[t_len] = s_v_info;
+                t_len +%= 1;
                 break;
             }
         } else {
-            f = f ++ .{s_v_info};
+            f[f_len] = s_v_info;
+            f_len +%= 1;
         }
     }
-    return .{ f, t };
+    return .{ f[0..f_len], t[0..t_len] };
 }
-fn haveStandAloneTech(comptime v_i_infos: []const []const InfoT, comptime u_field: InfoT) BinaryFilter([]const InfoT) {
-    var t: []const []const InfoT = meta.empty;
-    var f: []const []const InfoT = meta.empty;
+fn haveStandAloneTech(
+    allocator: *Allocator,
+    v_i_infos: []const []const InfoT,
+    u_field: InfoT,
+) BinaryFilter([]const InfoT) {
+    var t: [][]const InfoT =
+        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
+    var t_len: u64 = 0;
+    var f: [][]const InfoT =
+        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
+    var f_len: u64 = 0;
     for (v_i_infos) |v_i_info| {
         for (v_i_info) |v_i_field| {
             if (v_i_field == .standalone) {
                 if (u_field.standalone == v_i_field.standalone) {
-                    t = t ++ .{v_i_info};
+                    t[t_len] = v_i_info;
+                    t_len +%= 1;
                     break;
                 }
             }
         } else {
-            f = f ++ .{v_i_info};
+            f[f_len] = v_i_info;
+            f_len +%= 1;
         }
     }
-    return .{ f, t };
+    return .{ f[0..f_len], t[0..t_len] };
 }
-fn haveMutuallyExclusiveTech(comptime v_i_infos: []const []const InfoT, comptime u_tech: attr.Techniques.Tag) BinaryFilter([]const InfoT) {
-    var t: []const []const InfoT = meta.empty;
-    var f: []const []const InfoT = meta.empty;
+fn haveMutuallyExclusiveTech(
+    allocator: *Allocator,
+    v_i_infos: []const []const InfoT,
+    u_tech: attr.Techniques.Tag,
+) BinaryFilter([]const InfoT) {
+    var t: [][]const InfoT =
+        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
+    var t_len: u64 = 0;
+    var f: [][]const InfoT =
+        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
+    var f_len: u64 = 0;
     for (v_i_infos) |v_i_info| {
         for (v_i_info) |v_i_field| {
             if (v_i_field == .mutually_exclusive) {
                 if (u_tech == v_i_field.mutually_exclusive.tech_tag.?) {
-                    t = t ++ .{v_i_info};
+                    t[t_len] = v_i_info;
+                    t_len +%= 1;
                     break;
                 }
             }
         } else {
-            f = f ++ .{v_i_info};
+            f[f_len] = v_i_info;
+            f_len +%= 1;
         }
     }
-    return .{ f, t };
+    return .{ f[0..f_len], t[0..t_len] };
 }
+
 fn populateUniqueTechniqueKeys(comptime v_i_infos: []const []const InfoT) []const InfoT {
     var ret: []const InfoT = &.{};
     for (v_i_infos) |v_i_info| {
