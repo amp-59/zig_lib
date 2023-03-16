@@ -156,11 +156,11 @@ fn populateUniqueTechniqueKeys(comptime v_i_infos: []const []const InfoT) []cons
     }
     return ret;
 }
-fn populateParameters(comptime spec: attr.AbstractSpecification) [3][]const InfoS {
+fn populateParameters(comptime abstract_spec: attr.AbstractSpecification) [3][]const InfoS {
     var p_info: []const InfoS = &.{};
     var s_info: []const InfoS = &.{};
     var v_info: []const InfoS = &.{};
-    for (spec.v_specs) |v_spec| {
+    for (abstract_spec.v_specs) |v_spec| {
         const info: InfoS = v_spec;
         switch (v_spec) {
             .derived => {
@@ -181,9 +181,9 @@ fn populateParameters(comptime spec: attr.AbstractSpecification) [3][]const Info
     }
     return .{ p_info, s_info, v_info };
 }
-fn populateTechniques(comptime spec: attr.AbstractSpecification) []const []const InfoT {
+fn populateTechniques(comptime abstract_spec: attr.AbstractSpecification) []const []const InfoT {
     var v_i_infos: []const []const InfoT = &.{&.{}};
-    for (spec.v_techs) |v_tech| {
+    for (abstract_spec.v_techs) |v_tech| {
         switch (v_tech) {
             .standalone => {
                 for (v_i_infos) |i_info| {
