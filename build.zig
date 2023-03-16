@@ -67,6 +67,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
 
     mg_reference_impls.dependOnRun(allocator,   mg_touch);
     mg_container_kinds.dependOnRun(allocator,   mg_touch);
+    generate_references.dependOnRun(allocator,  mg_touch);
+
     build_test.dependOnRun(allocator,           generate_build);
 
     build_test.run_cmd.addRunArgument(builder.zigExePath());
@@ -75,7 +77,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     build_test.run_cmd.addRunArgument(builder.globalCacheDirPath());
 
     _ = mg_new_type_specs;
-    _ = generate_references;
     _ = readdir;
     _ = dynamic;
     _ = mca;
