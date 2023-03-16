@@ -166,9 +166,11 @@ inline fn getNames(args: [][*:0]u8) Names {
     return names;
 }
 fn conditionalSkip(entry_name: []const u8) bool {
-    return entry_name[0] == '.' or
-        mem.testEqualMany(u8, "zig-cache", entry_name) or
-        mem.testEqualMany(u8, "zig-out", entry_name);
+    return builtin.int3v(
+        entry_name[0] == '.',
+        mem.testEqualMany(u8, "zig-cache", entry_name),
+        mem.testEqualMany(u8, "zig-out", entry_name),
+    );
 }
 fn writeReadLink(
     allocator_1: *Allocator1,
