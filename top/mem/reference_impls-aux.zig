@@ -310,13 +310,13 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
     const aligned_byte_count_call: Expr = expr.impl(allocator, impl_variant, aligned_byte_count_fn_info);
     const alignment_call: Expr = expr.impl(allocator, impl_variant, alignment_fn_info);
     const has_static_maximum_length: bool =
-        impl_variant.kinds.automatic or
-        impl_variant.kinds.static;
+        impl_variant.kind == .automatic or
+        impl_variant.kind == .static;
     const has_packed_approximate_capacity: bool =
         impl_variant.techs.single_packed_approximate_capacity or
         impl_variant.techs.double_packed_approximate_capacity;
     const has_unit_alignment: bool =
-        impl_variant.techs.auto_alignment or
+        impl_variant.kind == .automatic or
         impl_variant.techs.unit_alignment;
     var sub_1: [3]Expr = expr.sub(
         expr.symbol(tok.low_alignment_specifier_name),
@@ -346,7 +346,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
     switch (impl_fn_info) {
         .allocated_byte_address => {
             array.writeMany(tok.return_keyword);
-            if (impl_variant.kinds.automatic) {
+            if (impl_variant.kind == .automatic) {
                 var add_address_offset: [3]Expr = expr.add(
                     expr.symbol(tok.address_of_impl),
                     expr.symbol(tok.offset_of_automatic_storage),
@@ -354,7 +354,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 array.writeFormat(expr.call(&add_address_offset));
                 return array.writeMany(tok.end_expr);
             }
-            if (impl_variant.kinds.parametric) {
+            if (impl_variant.kind == .parametric) {
                 array.writeMany(tok.slave_specifier_call_unallocated_byte_address);
                 return array.writeMany(tok.end_expr);
             }
@@ -416,7 +416,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 array.writeFormat(expr.call(&andn_allocated_sub));
                 return array.writeMany(tok.end_expr);
             }
-            if (impl_variant.kinds.parametric) {
+            if (impl_variant.kind == .parametric) {
                 if (impl_variant.techs.lazy_alignment) {
                     var aligna_unallocated_low_alignment: [3]Expr = expr.alignA(
                         expr.symbol(tok.slave_specifier_call_unallocated_byte_address),
@@ -459,7 +459,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 array.writeFormat(expr.call(&andn_undefined_shl));
                 return array.writeMany(tok.end_expr);
             }
-            if (impl_variant.kinds.automatic) {
+            if (impl_variant.kind == .automatic) {
                 var add_allocated_undefined: [3]Expr = expr.add(
                     allocated_byte_address_call,
                     expr.symbol(tok.undefined_byte_address_word_access),
@@ -489,7 +489,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         },
         .unwritable_byte_address => {
             array.writeMany(tok.return_keyword);
-            if (impl_variant.kinds.parametric) {
+            if (impl_variant.kind == .parametric) {
                 if (impl_variant.specs.sentinel) {
                     var sub_unallocated_high_alignment: [3]Expr = expr.sub(
                         unallocated_byte_address_call,
@@ -582,7 +582,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         },
         .writable_byte_count => {
             array.writeMany(tok.return_keyword);
-            if (impl_variant.kinds.parametric) {
+            if (impl_variant.kind == .parametric) {
                 var sub_unwritable_aligned: [3]Expr = expr.sub(
                     unwritable_byte_address_call,
                     aligned_byte_address_call,
@@ -884,12 +884,12 @@ fn writeDeclarations(array: *Array, impl_variant: *const attr.Implementation) vo
     const const_decl_value: *Expr = &const_decl[5];
     const_decl_type_name.* = no_type_expr;
     array.writeFormat(expr.join(&const_decl));
-    if (impl_variant.kinds.parametric) {
+    if (impl_variant.kind == .parametric) {
         const_decl_name.* = expr.symbol(tok.slave_fn_type_name);
         const_decl_value.* = expr.symbol(tok.slave_fn_type_decl_spec);
         array.writeFormat(expr.join(&const_decl));
     }
-    if (impl_variant.kinds.dynamic or impl_variant.kinds.parametric) {
+    if (impl_variant.kind == .dynamic or impl_variant.kind == .parametric) {
         if (impl_variant.techs.unit_alignment) {
             const_decl_name.* = expr.symbol(tok.unit_alignment_name);
             const_decl_type_name.* = expr.symbol(tok.word_type_name);
@@ -897,7 +897,7 @@ fn writeDeclarations(array: *Array, impl_variant: *const attr.Implementation) vo
             return array.writeFormat(expr.join(&const_decl));
         }
     } else {
-        if (impl_variant.kinds.automatic or impl_variant.kinds.static) {
+        if (impl_variant.kind == .automatic or impl_variant.kind == .static) {
             const_decl_name.* = expr.symbol(tok.static_fn_type_name);
             const_decl_value.* = expr.symbol(tok.static_fn_type_decl_spec);
             array.writeFormat(expr.join(&const_decl));
@@ -926,7 +926,7 @@ inline fn writeComptimeField(array: *Array, impl_variant: *const attr.Implementa
     if (args_list.comptimeField()) {
         array.writeMany(tok.comptime_keyword);
         array.writeMany(impl_fn_info.fnName());
-        if (impl_variant.kinds.parametric) {
+        if (impl_variant.kind == .parametric) {
             array.writeMany(":Slave=");
         } else {
             array.writeMany(":Static=");
@@ -970,9 +970,9 @@ inline fn writeFields(array: *Array, impl_variant: *const attr.Implementation) v
 }
 inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: *const attr.Implementation) void {
     array.writeMany("fn ");
-    impl_variant.writeImplementationName(array);
+    impl_variant.formatWrite(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ":" ++ tok.generic_spec_type_name);
-    gen.fmt.ud64(accm_spec_index).formatWrite(array);
+    gen.fmt.ud64(impl_variant.spec).formatWrite(array);
     array.writeMany(")type{\nreturn(struct{\n");
     writeFields(array, impl_variant);
     writeDeclarations(array, impl_variant);
