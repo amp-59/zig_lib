@@ -983,26 +983,11 @@ pub fn generateReferences() void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: Array = Array.init(&allocator, 1);
-    array.undefineAll();
 
-    var accm_spec_index: u64 = 0;
-    var ctn_index: u64 = 0;
-    while (ctn_index != out.specifications.len) : (ctn_index +%= 1) {
-        const s = allocator.save();
-        defer allocator.restore(s);
-        const ctn_group: []const []const out.Index = out.specifications[ctn_index];
-        var spec_index: u64 = 0;
-        while (spec_index != ctn_group.len) : (spec_index +%= 1) {
-            defer accm_spec_index +%= 1;
-            const spec_group: []const out.Index = ctn_group[spec_index];
-            var impl_index: u64 = 0;
-            while (impl_index != spec_group.len) : (impl_index +%= 1) {
-                if (spec_group.len != 0) {
-                    writeTypeFunction(&allocator, &array, accm_spec_index, &out.impl_variants[spec_group[impl_index]]);
-                }
-            }
-        }
+    var array: Array = Array.init(&allocator, 1);
+    const details: []attr.Implementation = gen.deserialize(&allocator, attr.Implementation, gen.auxiliaryFile("details"));
+    for (details) |*impl_detail| {
+        writeTypeFunction(&allocator, &array, impl_detail);
     }
     gen.appendSourceFile(&array, "references.zig");
 }
