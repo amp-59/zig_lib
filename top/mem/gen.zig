@@ -100,19 +100,22 @@ pub fn copySourceFile(array: anytype, comptime pathname: [:0]const u8) void {
     array.define(file.read(read_spec, fd, array.referAllUndefined(), array.avail()));
     defer file.close(close_spec, fd);
 }
-pub fn writeAuxiliarySourceFile(array: anytype, comptime name: [:0]const u8) void {
+fn makeZigOutSrc(comptime name: [:0]const u8) [:0]const u8 {
     const zig_out_dir: [:0]const u8 = build_root ++ "/top/mem/zig-out";
     const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
     file.makeDir(mkdir_spec, zig_out_dir);
     file.makeDir(mkdir_spec, zig_out_src_dir);
-    writeSourceFile(array, zig_out_src_dir ++ "/" ++ name);
+    return zig_out_src_dir ++ "/" ++ name;
 }
-pub fn appendAuxiliarySourceFile(array: anytype, comptime name: [:0]const u8) void {
-    const zig_out_dir: [:0]const u8 = build_root ++ "/top/mem/zig-out";
-    const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
-    file.makeDir(mkdir_spec, zig_out_dir);
-    file.makeDir(mkdir_spec, zig_out_src_dir);
-    appendSourceFile(array, zig_out_src_dir ++ "/" ++ name);
+pub fn writeAuxiliarySourceFile(comptime name: [:0]const u8, comptime T: type, buf: []const T) void {
+    const fd: u64 = file.create(create_spec, makeZigOutSrc(name));
+    defer file.close(close_spec, fd);
+    file.write(.{ .errors = .{}, .child = T }, fd, buf);
+}
+pub fn appendAuxiliarySourceFile(comptime name: [:0]const u8, comptime T: type, buf: []const T) void {
+    const fd: u64 = file.open(open_append_spec, makeZigOutSrc(name));
+    defer file.close(close_spec, fd);
+    file.write(.{ .errors = .{}, .child = T }, fd, buf);
 }
 pub fn groupImplementations(allocator: anytype, comptime Detail: type, comptime Index: type, group_key: []const Index, group: []const Detail) []const Detail {
     const buf: []Detail = allocator.allocateIrreversible(Detail, group_key.len);
