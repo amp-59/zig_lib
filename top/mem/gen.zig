@@ -88,8 +88,7 @@ pub fn auxiliaryFile(comptime name: [:0]const u8) [:0]const u8 {
 pub fn writeSourceFile(comptime name: [:0]const u8, comptime T: type, buf: []const T) void {
     const fd: u64 = file.create(create_spec, primaryFile(name));
     defer file.close(close_spec, fd);
-    file.write(.{ .errors = .{}, .child = meta.Child(@TypeOf(array.readAll())) }, fd, array.readAll());
-    array.undefineAll();
+    file.write(.{ .errors = .{}, .child = T }, fd, buf);
 }
 pub fn appendSourceFile(array: anytype, comptime name: [:0]const u8) void {
     const pathname: [:0]const u8 = if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
