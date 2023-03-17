@@ -84,17 +84,9 @@ pub fn primaryFile(comptime name: [:0]const u8) [:0]const u8 {
 pub fn auxiliaryFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') build_root ++ "/top/mem/zig-out/src/" ++ name else name;
 }
-pub fn deserialize(allocator: anytype, comptime T: type, pathname: [:0]const u8) []T {
-    const fd: u64 = file.open(.{ .errors = .{}, .options = .{} }, pathname);
-    const size: u64 = file.fstat(.{ .errors = .{} }, fd).size;
-    const count: u64 = @divExact(size, @sizeOf(T));
-    const buf: []T = allocator.allocateIrreversible(T, count);
-    builtin.assertEqual(u64, count, file.read(.{ .child = T, .errors = .{} }, fd, buf, buf.len));
-    return buf;
-}
-pub fn writeSourceFile(array: anytype, comptime name: [:0]const u8) void {
-    const pathname: [:0]const u8 = if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
-    const fd: u64 = file.create(create_spec, pathname);
+
+pub fn writeSourceFile(comptime name: [:0]const u8, comptime T: type, buf: []const T) void {
+    const fd: u64 = file.create(create_spec, primaryFile(name));
     defer file.close(close_spec, fd);
     file.write(.{ .errors = .{}, .child = meta.Child(@TypeOf(array.readAll())) }, fd, array.readAll());
     array.undefineAll();
