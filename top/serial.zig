@@ -98,7 +98,7 @@ inline fn deserialize1Internal(comptime T: type, addr: u64) []T {
     l0.* = mem.pointerMany(T, addr + @sizeOf(T1), l0.len);
     return l0.*;
 }
-fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype, sets: anytype) !void {
+inline fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype, sets: anytype) !void {
     const save: @TypeOf(allocator.*).Save = allocator.save();
     defer allocator.restore(save);
     const bytes: []const u8 = try meta.wrap(function(T, allocator, sets));
@@ -106,7 +106,7 @@ fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]const u
     defer file.close(.{ .errors = .{} }, fd);
     try file.write(.{}, fd, bytes);
 }
-fn deserializeInternal(comptime T: type, comptime S: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype) !S {
+inline fn deserializeInternal(comptime T: type, comptime S: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype) !S {
     const fd: u64 = try file.open(.{ .options = .{ .read = true, .write = null } }, pathname);
     defer file.close(.{ .errors = .{} }, fd);
     const st: file.Stat = try file.fstat(.{}, fd);
@@ -114,21 +114,21 @@ fn deserializeInternal(comptime T: type, comptime S: type, allocator: anytype, p
     builtin.assertEqual(u64, st.size, try file.read(.{}, fd, buf, st.size));
     return try meta.wrap(function(T, @ptrToInt(buf.ptr)));
 }
-pub fn serialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const []const T) !void {
+pub inline fn serialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const []const T) !void {
     return serializeInternal(T, allocator, pathname, serialize3Internal, sets);
 }
-pub fn serialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const T) !void {
+pub inline fn serialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const T) !void {
     return serializeInternal(T, allocator, pathname, serialize2Internal, sets);
 }
-pub fn serialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const T) !void {
+pub inline fn serialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const T) !void {
     return serializeInternal(T, allocator, pathname, serialize1Internal, sets);
 }
-pub fn deserialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][][]T {
+pub inline fn deserialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][][]T {
     return deserializeInternal(T, [][][]T, allocator, pathname, deserialize3Internal);
 }
-pub fn deserialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][]T {
+pub inline fn deserialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][]T {
     return deserializeInternal(T, [][]T, allocator, pathname, deserialize2Internal);
 }
-pub fn deserialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![]T {
+pub inline fn deserialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![]T {
     return deserializeInternal(T, []T, allocator, pathname, deserialize1Internal);
 }
