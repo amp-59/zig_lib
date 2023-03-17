@@ -3,6 +3,7 @@ const fmt = top.fmt;
 const mem = top.mem;
 const meta = top.meta;
 const file = top.file;
+const serial = top.serial;
 const preset = top.preset;
 const builtin = top.builtin;
 const testing = top.testing;
