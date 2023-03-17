@@ -665,87 +665,83 @@ const static = opaque {
 };
 pub noinline fn callMain() noreturn {
     @setAlignStack(16);
-    if (@hasDecl(builtin.root, "main")) {
-        const Main: type = @TypeOf(builtin.root.main);
-        const main: Main = builtin.root.main;
-        const main_type_info: builtin.Type = @typeInfo(Main);
-        const main_return_type: type = main_type_info.Fn.return_type.?;
-        const main_return_type_info: builtin.Type = @typeInfo(main_return_type);
-        const params = blk_0: {
-            if (main_type_info.Fn.params.len == 0) {
-                break :blk_0 .{};
-            }
-            if (main_type_info.Fn.params.len == 1) {
-                const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
-                const args_addr: u64 = static.stack_addr +% 8;
-                const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
-                break :blk_0 .{args[0..args_len]};
-            }
-            if (main_type_info.Fn.params.len == 2) {
-                const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
-                const args_addr: u64 = static.stack_addr +% 8;
-                const vars_addr: u64 = static.stack_addr +% 16 +% (args_len * 8);
-                const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
-                const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
-                const vars_len: u64 = blk_1: {
-                    var len: u64 = 0;
-                    while (@ptrToInt(vars[len]) != 0) len += 1;
-                    break :blk_1 len;
-                };
-                break :blk_0 .{ args[0..args_len], vars[0..vars_len] };
-            }
-            if (main_type_info.Fn.params.len == 3) {
-                const auxv_type: type = main_type_info.Fn.params[2].type orelse *const anyopaque;
-                const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
-                const args_addr: u64 = static.stack_addr +% 8;
-                const vars_addr: u64 = args_addr +% 8 +% (args_len * 8);
-                const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
-                const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
-                const vars_len: u64 = blk_1: {
-                    var len: u64 = 0;
-                    while (@ptrToInt(vars[len]) != 0) len += 1;
-                    break :blk_1 len;
-                };
-                const auxv_addr: u64 = vars_addr +% 8 +% (vars_len * 8);
-                const auxv: auxv_type = @intToPtr(auxv_type, auxv_addr);
-                break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
-            }
-        };
-        if (@hasDecl(builtin.root, "enableExceptionHandlers")) {
-            builtin.root.enableExceptionHandlers();
-        }
-        if (main_return_type == void) {
-            @call(.auto, main, params);
-            exitWithoutError(0);
-        }
-        if (main_return_type == u8) {
-            exitWithoutError(@call(.auto, main, params));
-        }
-        if (main_return_type_info == .ErrorUnion and
-            main_return_type_info.ErrorUnion.payload == void)
-        {
-            if (@call(.auto, main, params)) {
-                exitWithoutError(0);
-            } else |err| {
-                exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
-            }
-        }
-        if (main_return_type_info == .ErrorUnion and
-            main_return_type_info.ErrorUnion.payload == u8)
-        {
-            if (@call(.auto, builtin.root.main, params)) |rc| {
-                exitWithoutError(rc);
-            } else |err| {
-                exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
-            }
-        }
-        if (main_return_type_info == .ErrorSet) {
-            @compileError("main always return an error: " ++ @typeName(main_return_type));
-        }
-    } else if (builtin.zig.output_mode == .Exe) {
-        @compileError("main not public/defined in source root");
+    if (builtin.zig.output_mode != .Exe) {
+        return;
     }
-    unreachable;
+    const Main: type = @TypeOf(builtin.root.main);
+    const main: Main = builtin.root.main;
+    const main_type_info: builtin.Type = @typeInfo(Main);
+    const main_return_type: type = main_type_info.Fn.return_type.?;
+    const main_return_type_info: builtin.Type = @typeInfo(main_return_type);
+    const params = blk_0: {
+        if (main_type_info.Fn.params.len == 0) {
+            break :blk_0 .{};
+        }
+        if (main_type_info.Fn.params.len == 1) {
+            const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+            const args_addr: u64 = static.stack_addr +% 8;
+            const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
+            break :blk_0 .{args[0..args_len]};
+        }
+        if (main_type_info.Fn.params.len == 2) {
+            const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+            const args_addr: u64 = static.stack_addr +% 8;
+            const vars_addr: u64 = static.stack_addr +% 16 +% (args_len * 8);
+            const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
+            const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
+            const vars_len: u64 = blk_1: {
+                var len: u64 = 0;
+                while (@ptrToInt(vars[len]) != 0) len += 1;
+                break :blk_1 len;
+            };
+            break :blk_0 .{ args[0..args_len], vars[0..vars_len] };
+        }
+        if (main_type_info.Fn.params.len == 3) {
+            const auxv_type: type = main_type_info.Fn.params[2].type orelse *const anyopaque;
+            const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+            const args_addr: u64 = static.stack_addr +% 8;
+            const vars_addr: u64 = args_addr +% 8 +% (args_len * 8);
+            const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
+            const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
+            const vars_len: u64 = blk_1: {
+                var len: u64 = 0;
+                while (@ptrToInt(vars[len]) != 0) len += 1;
+                break :blk_1 len;
+            };
+            const auxv_addr: u64 = vars_addr +% 8 +% (vars_len * 8);
+            const auxv: auxv_type = @intToPtr(auxv_type, auxv_addr);
+            break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
+        }
+    };
+    if (@hasDecl(builtin.root, "enableExceptionHandlers")) {
+        builtin.root.enableExceptionHandlers();
+    }
+    if (main_return_type == void) {
+        @call(.auto, main, params);
+        exitWithoutError(0);
+    }
+    if (main_return_type == u8) {
+        exitWithoutError(@call(.auto, main, params));
+    }
+    if (main_return_type_info == .ErrorUnion and
+        main_return_type_info.ErrorUnion.payload == void)
+    {
+        if (@call(.auto, main, params)) {
+            exitWithoutError(0);
+        } else |err| {
+            exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
+        }
+    }
+    if (main_return_type_info == .ErrorUnion and
+        main_return_type_info.ErrorUnion.payload == u8)
+    {
+        if (@call(.auto, builtin.root.main, params)) |rc| {
+            exitWithoutError(rc);
+        } else |err| {
+            exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
+        }
+    }
+    builtin.static.assert(main_return_type_info != .ErrorSet);
 }
 
 // If the return value is greater than word size or is a zig error union, this
