@@ -190,8 +190,8 @@ pub const Container = packed struct {
     };
     pub fn init(
         abstract_spec: AbstractSpecification,
-        indices: Indices,
-    ) Implementation {
+        indices: anytype,
+    ) Container {
         return .{
             .spec = indices.spec,
             .ctn = indices.ctn,
@@ -291,7 +291,7 @@ pub const Implementation = packed struct {
         abstract_spec: AbstractSpecification,
         specs: []const Specifier,
         techs: []const Technique,
-        indices: Indices,
+        indices: anytype,
     ) Implementation {
         return .{
             .spec = indices.spec,
