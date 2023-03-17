@@ -1168,7 +1168,7 @@ const debug = opaque {
         var buf: [16 + 32]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
             about_read_0_s,                  "fd=",
-            builtin.fmt.ud64(fd).readAll(),  " =",
+            builtin.fmt.ud64(fd).readAll(),  ", ",
             builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
     }
@@ -1176,7 +1176,7 @@ const debug = opaque {
         var buf: [16 + 32]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{
             about_write_0_s,                 "fd=",
-            builtin.fmt.ud64(fd).readAll(),  ", +",
+            builtin.fmt.ud64(fd).readAll(),  ", ",
             builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
     }
