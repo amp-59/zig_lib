@@ -1012,8 +1012,7 @@ pub const Fn = struct {
         }
         return ret;
     }
-    pub fn subTag(comptime Tag: type, allocator: anytype, array: anytype, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) Pair(@TypeOf(allocator.*), Tag) {
-        _ = array;
+    pub fn subTag(comptime Tag: type, allocator: anytype, sub_set: anytype, comptime sub_tag: @Type(.EnumLiteral)) Pair(@TypeOf(allocator.*), Tag) {
         @setEvalBranchQuota(~@as(u32, 0));
         var ret: Pair(@TypeOf(allocator.*), Tag) = .{
             @TypeOf(sub_set).init(allocator, sub_set.len()),
