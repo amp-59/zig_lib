@@ -263,10 +263,51 @@ fn testMinMax() !void {
     try builtin.expect(builtin.testEqual(S, s, builtin.min(S, t, s)));
     try builtin.expect(builtin.testEqual(S, t, builtin.max(S, t, s)));
 }
+fn testTestEqual() !void {
+    const Specifier = @import("mem/attr.zig").Specifier;
+    const Technique = @import("mem/attr.zig").Technique;
+    {
+        var x: Specifier = undefined;
+        var y: Specifier = undefined;
+        builtin.assert(builtin.testEqual(Specifier, x, y));
+    }
+    {
+        var x: Specifier = undefined;
+        @ptrCast(*u64, &x).* +%= 1;
+        var y: Specifier = undefined;
+        builtin.assert(!builtin.testEqual(Specifier, x, y));
+    }
+    {
+        var x: Specifier = undefined;
+        @ptrCast(*u64, &x).* +%= 1;
+        var y: Specifier = undefined;
+        @ptrCast(*u64, &y).* +%= 1;
+        builtin.assert(builtin.testEqual(Specifier, x, y));
+    }
+    {
+        var x: Technique = undefined;
+        var y: Technique = undefined;
+        builtin.assert(builtin.testEqual(Technique, x, y));
+    }
+    {
+        var x: Technique = undefined;
+        @ptrCast(*u64, &x).* +%= 1;
+        var y: Technique = undefined;
+        builtin.assert(!builtin.testEqual(Technique, x, y));
+    }
+    {
+        var x: Technique = undefined;
+        @ptrCast(*u64, &x).* +%= 1;
+        var y: Technique = undefined;
+        @ptrCast(*u64, &y).* +%= 1;
+        builtin.assert(builtin.testEqual(Technique, x, y));
+    }
+}
 pub fn main() !void {
     try testIntToString();
     try testVersionParser();
     try testRuntimeAssertionsCompile();
     try testStaticAssertionsCompile();
     try testMinMax();
+    try testTestEqual();
 }
