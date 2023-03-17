@@ -79,10 +79,10 @@ pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void 
     array.writeMany("\");\n");
 }
 pub fn primaryFile(comptime name: [:0]const u8) [:0]const u8 {
-    return build_root ++ "/top/mem/" ++ name;
+    return if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
 }
 pub fn auxiliaryFile(comptime name: [:0]const u8) [:0]const u8 {
-    return build_root ++ "/top/mem/zig-out/src/" ++ name;
+    return if (name[0] != '/') build_root ++ "/top/mem/zig-out/src/" ++ name else name;
 }
 pub fn deserialize(allocator: anytype, comptime T: type, pathname: [:0]const u8) []T {
     const fd: u64 = file.open(.{ .errors = .{}, .options = .{} }, pathname);
