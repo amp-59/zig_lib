@@ -4,6 +4,7 @@ pub const Empty = struct {};
 pub const empty = &.{};
 pub const default = .{};
 pub const Generic = struct { type: type, value: *const anyopaque };
+pub const SliceProperty = struct { comptime_int, type };
 
 pub const number_types: []const builtin.TypeId = integer_types ++ float_types;
 pub const integer_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .ComptimeInt };
@@ -533,7 +534,7 @@ pub fn sliceChild(comptime T: type) type {
     }
     return T;
 }
-pub fn sliceProperty(comptime T: type) struct { comptime_int, type } {
+pub fn sliceProperty(comptime T: type) SliceProperty {
     return .{ sliceLevel(T), sliceChild(T) };
 }
 pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
