@@ -647,26 +647,8 @@ fn testEqualStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T,
     return true;
 }
 fn testEqualUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
-    if (union_info.tag_type) |tag_type| {
-        inline for (union_info.fields) |field| {
-            const tag: tag_type = @field(tag_type, field.name);
-            if (arg1 == tag) {
-                if (arg2 != tag) {
-                    return false;
-                }
-                if (!testEqual(
-                    field.type,
-                    @field(arg1, field.name),
-                    @field(arg2, field.name),
-                )) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    return testEqual(
-        []const u8,
+    return testEqual(union_info.tag_type.?, arg1, arg2) and
+        mach.testEqualMany8(
         @ptrCast(*const [@sizeOf(T)]u8, &arg1),
         @ptrCast(*const [@sizeOf(T)]u8, &arg2),
     );
