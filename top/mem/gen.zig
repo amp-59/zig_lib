@@ -93,14 +93,10 @@ pub fn writeSourceFile(comptime name: [:0]const u8, comptime T: type, buf: []con
 pub fn appendSourceFile(comptime name: [:0]const u8, buf: []const u8) void {
     const fd: u64 = file.open(open_append_spec, primaryFile(name));
     defer file.close(close_spec, fd);
-    file.write(write_spec, fd, array.readAll());
-    array.undefineAll();
+    file.write(write_spec, fd, buf);
 }
 pub fn copySourceFile(array: anytype, comptime pathname: [:0]const u8) void {
-    const fd: u64 = file.open(open_read_spec, if (pathname[0] != '/')
-        build_root ++ "/top/mem/" ++ pathname
-    else
-        pathname);
+    const fd: u64 = file.open(open_read_spec, primaryFile(pathname));
     array.define(file.read(read_spec, fd, array.referAllUndefined(), array.avail()));
     defer file.close(close_spec, fd);
 }
