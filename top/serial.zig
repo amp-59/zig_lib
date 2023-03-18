@@ -198,7 +198,7 @@ fn deserialize3Internal(comptime T: type, addr: u64) [][][]T {
     }
     return l0.*;
 }
-inline fn deserialize2Internal(comptime T: type, addr: u64) [][]T {
+fn deserialize2Internal(comptime T: type, addr: u64) [][]T {
     const T1 = []T;
     const T2 = []T1;
     const l0: *T2 = mem.pointerOne(T2, addr);
@@ -212,13 +212,13 @@ inline fn deserialize2Internal(comptime T: type, addr: u64) [][]T {
     }
     return l0.*;
 }
-inline fn deserialize1Internal(comptime T: type, addr: u64) []T {
+fn deserialize1Internal(comptime T: type, addr: u64) []T {
     const T1 = []T;
     const l0: *T1 = mem.pointerOne(T1, addr);
     l0.* = mem.pointerMany(T, addr + @sizeOf(T1), l0.len);
     return l0.*;
 }
-inline fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype, sets: anytype) !void {
+fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype, sets: anytype) !void {
     const save: @TypeOf(allocator.*).Save = allocator.save();
     defer allocator.restore(save);
     const bytes: []const u8 = try meta.wrap(function(T, allocator, sets));
@@ -226,29 +226,30 @@ inline fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]
     defer file.close(.{ .errors = .{} }, fd);
     try file.write(.{}, fd, bytes);
 }
-inline fn deserializeInternal(comptime T: type, comptime S: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype) !S {
+fn deserializeInternal(comptime T: type, comptime S: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype) !S {
     const fd: u64 = try file.open(.{ .options = .{ .read = true, .write = null } }, pathname);
     defer file.close(.{ .errors = .{} }, fd);
     const st: file.Stat = try file.fstat(.{}, fd);
+    allocator.alignAbove(16);
     const buf: []u8 = try meta.wrap(allocator.allocateIrreversible(u8, st.size));
     builtin.assertEqual(u64, st.size, try file.read(.{}, fd, buf, st.size));
     return try meta.wrap(function(T, @ptrToInt(buf.ptr)));
 }
-pub inline fn serialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const []const T) !void {
+pub fn serialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const []const T) !void {
     return serializeInternal(T, allocator, pathname, serialize3Internal, sets);
 }
-pub inline fn serialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const T) !void {
+pub fn serialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const T) !void {
     return serializeInternal(T, allocator, pathname, serialize2Internal, sets);
 }
-pub inline fn serialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const T) !void {
+pub fn serialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const T) !void {
     return serializeInternal(T, allocator, pathname, serialize1Internal, sets);
 }
-pub inline fn deserialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][][]T {
+pub fn deserialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][][]T {
     return deserializeInternal(T, [][][]T, allocator, pathname, deserialize3Internal);
 }
-pub inline fn deserialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][]T {
+pub fn deserialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][]T {
     return deserializeInternal(T, [][]T, allocator, pathname, deserialize2Internal);
 }
-pub inline fn deserialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![]T {
+pub fn deserialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![]T {
     return deserializeInternal(T, []T, allocator, pathname, deserialize1Internal);
 }
