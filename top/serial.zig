@@ -50,41 +50,48 @@ fn serialize1Internal(comptime T: type, allocator: anytype, s: []const T) ![]u8 
     }
     return array.referAllDefined(u8);
 }
-inline fn serialize2Internal(comptime T: type, allocator: anytype, ss: []const []const T) ![]u8 {
-    const UVector = @TypeOf(allocator.*).UnstructuredVector(@sizeOf(T), @alignOf(T));
-    var array: UVector = UVector.init(allocator, 16);
-    try meta.wrap(array.appendOne(u64, allocator, 0));
-    try meta.wrap(array.appendOne(u64, allocator, ss.len));
+fn serialize2Internal(comptime T: type, allocator: anytype, ss: []const []const T) ![]u8 {
+    allocator.alignAbove(maxAlignment(@TypeOf(ss), @alignOf(T)));
+    const UVector = @TypeOf(allocator.*).UnstructuredVector(1, 1);
+    var array: UVector = UVector.init(allocator, length2(T, ss));
+    array.writeOne(u64, 0);
+    array.writeOne(u64, ss.len);
     for (ss) |values| {
-        try meta.wrap(array.appendOne(u64, allocator, 0));
-        try meta.wrap(array.appendOne(u64, allocator, values.len));
+        array.writeOne(u64, 0);
+        array.writeOne(u64, values.len);
     }
     for (ss) |values| {
         for (values) |value| {
-            try meta.wrap(array.appendOne(T, allocator, value));
+            array.writeOne(T, value);
+        }
+    }
+    for (ss) |values| {
+        for (values) |value| {
+            array.writeOne(T, value);
         }
     }
     return array.referAllDefined(u8);
 }
-inline fn serialize3Internal(comptime T: type, allocator: anytype, sss: []const []const []const T) ![]u8 {
-    const UVector = @TypeOf(allocator.*).UnstructuredVector(@sizeOf(T), @alignOf(T));
-    var array: UVector = try meta.wrap(UVector.init(allocator, 16));
-    try meta.wrap(array.appendOne(u64, allocator, 0));
-    try meta.wrap(array.appendOne(u64, allocator, sss.len));
+fn serialize3Internal(comptime T: type, allocator: anytype, sss: []const []const []const T) ![]u8 {
+    allocator.alignAbove(maxAlignment(@TypeOf(sss), @alignOf(T)));
+    const UVector = @TypeOf(allocator.*).UnstructuredVector(1, 1);
+    var array: UVector = try meta.wrap(UVector.init(allocator, length3(T, sss)));
+    array.writeOne(u64, 0);
+    array.writeOne(u64, sss.len);
     for (sss) |ss| {
-        try meta.wrap(array.appendOne(u64, allocator, 0));
-        try meta.wrap(array.appendOne(u64, allocator, ss.len));
+        array.writeOne(u64, 0);
+        array.writeOne(u64, ss.len);
     }
     for (sss) |ss| {
         for (ss) |values| {
-            try meta.wrap(array.appendOne(u64, allocator, 0));
-            try meta.wrap(array.appendOne(u64, allocator, values.len));
+            array.writeOne(u64, 0);
+            array.writeOne(u64, values.len);
         }
     }
     for (sss) |ss| {
         for (ss) |values| {
             for (values) |value| {
-                try meta.wrap(array.appendOne(T, allocator, value));
+                array.writeOne(T, value);
             }
         }
     }
