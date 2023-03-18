@@ -29,9 +29,6 @@ const open_append_spec: file.OpenSpec = .{
 const close_spec: file.CloseSpec = .{
     .errors = .{},
 };
-const mkdir_spec: file.MakeDirSpec = .{
-    .errors = .{},
-};
 const read_spec: file.ReadSpec = .{
     .errors = .{},
 };
@@ -85,37 +82,36 @@ pub fn auxiliaryFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') build_root ++ "/top/mem/zig-out/src/" ++ name else name;
 }
 
-pub fn writeSourceFile(comptime name: [:0]const u8, comptime T: type, buf: []const T) void {
-    const fd: u64 = file.create(create_spec, primaryFile(name));
+pub fn writeSourceFile(comptime pathname: [:0]const u8, comptime T: type, buf: []const T) void {
+    if (pathname[0] != '/') {
+        @compileError("update usage of " ++ @src().fn_name ++ " for output: '" ++ pathname ++ "'");
+    }
+    const fd: u64 = file.create(create_spec, pathname);
     defer file.close(close_spec, fd);
     file.write(.{ .errors = .{}, .child = T }, fd, buf);
 }
-pub fn appendSourceFile(comptime name: [:0]const u8, buf: []const u8) void {
-    const fd: u64 = file.open(open_append_spec, primaryFile(name));
+pub fn appendSourceFile(comptime pathname: [:0]const u8, buf: []const u8) void {
+    if (pathname[0] != '/') {
+        @compileError("update usage of " ++ @src().fn_name ++ " for output: '" ++ pathname ++ "'");
+    }
+    const fd: u64 = file.open(open_append_spec, pathname);
     defer file.close(close_spec, fd);
     file.write(write_spec, fd, buf);
 }
 pub fn copySourceFile(array: anytype, comptime pathname: [:0]const u8) void {
+    if (pathname[0] != '/') {
+        @compileError("update usage of " ++ @src().fn_name ++ " for output: '" ++ pathname ++ "'");
+    }
     const fd: u64 = file.open(open_read_spec, primaryFile(pathname));
     array.define(file.read(read_spec, fd, array.referAllUndefined(), array.avail()));
     defer file.close(close_spec, fd);
 }
-fn makeZigOutSrc(comptime name: [:0]const u8) [:0]const u8 {
-    const zig_out_dir: [:0]const u8 = build_root ++ "/top/mem/zig-out";
-    const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
-    file.makeDir(mkdir_spec, zig_out_dir);
-    file.makeDir(mkdir_spec, zig_out_src_dir);
-    return zig_out_src_dir ++ "/" ++ name;
-}
-pub fn writeAuxiliarySourceFile(comptime name: [:0]const u8, comptime T: type, buf: []const T) void {
-    const fd: u64 = file.create(create_spec, makeZigOutSrc(name));
-    defer file.close(close_spec, fd);
-    file.write(.{ .errors = .{}, .child = T }, fd, buf);
-}
-pub fn appendAuxiliarySourceFile(comptime name: [:0]const u8, comptime T: type, buf: []const T) void {
-    const fd: u64 = file.open(open_append_spec, makeZigOutSrc(name));
-    defer file.close(close_spec, fd);
-    file.write(.{ .errors = .{}, .child = T }, fd, buf);
+fn allocateFile(allocator: anytype, pathname: [:0]const u8) ![]u8 {
+    const fd: u64 = try file.open(.{ .options = .{} }, pathname);
+    const st: file.Stat = try file.fstat(.{}, fd);
+    const buf: []u8 = allocator.allocateIrreversible(u8, st.size);
+    builtin.assertEqual(u64, st.size, try file.read(.{}, fd, buf, st.size));
+    return buf;
 }
 pub fn groupImplementations(allocator: anytype, comptime Detail: type, comptime Index: type, group_key: []const Index, group: []const Detail) []const Detail {
     const buf: []Detail = allocator.allocateIrreversible(Detail, group_key.len);
