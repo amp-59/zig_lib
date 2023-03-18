@@ -1272,7 +1272,7 @@ fn GenericConfiguration(comptime Allocator: type) type {
             var options: container.Parameters4.Options = .{};
             options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
-            return container.UnstructuredStreamView(low_alignment, high_alignment, Allocator, options);
+            return container.UnstructuredStreamView(high_alignment, low_alignment, Allocator, options);
         }
         pub fn UnstructuredVectorHighAligned(comptime high_alignment: u64) type {
             var options: container.Parameters4.Options = .{};
@@ -1288,9 +1288,9 @@ fn GenericConfiguration(comptime Allocator: type) type {
         }
         pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: u64) type {
             var options: container.Parameters4.Options = .{};
-            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
-            return container.UnstructuredVector(low_alignment, high_alignment, Allocator, options);
+            return container.UnstructuredVector(high_alignment, low_alignment, Allocator, options);
         }
         pub fn UnstructuredViewHighAligned(comptime high_alignment: u64) type {
             var options: container.Parameters4.Options = .{};
@@ -1308,7 +1308,7 @@ fn GenericConfiguration(comptime Allocator: type) type {
             var options: container.Parameters4.Options = .{};
             options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
-            return container.UnstructuredView(low_alignment, high_alignment, Allocator, options);
+            return container.UnstructuredView(high_alignment, low_alignment, Allocator, options);
         }
         pub fn StructuredStreamHolderWithSentinel(comptime child: type, comptime sentinel: child) type {
             var options: container.Parameters5.Options = .{};
