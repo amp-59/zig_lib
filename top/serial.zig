@@ -97,7 +97,84 @@ fn serialize3Internal(comptime T: type, allocator: anytype, sss: []const []const
     }
     return array.referAllDefined(u8);
 }
-inline fn deserialize3Internal(comptime T: type, addr: u64) [][][]T {
+pub fn pointerLength(comptime T: type, any: T) u64 {
+    const type_info: builtin.Type = @typeInfo(T);
+    switch (type_info) {
+        .Struct => |struct_info| {
+            var len: u64 = @sizeOf(T);
+            inline for (struct_info.fields) |field| {
+                len +%= pointerLength(field.type, @field(any, field.name));
+            }
+            return len;
+        },
+        .Union => |union_info| {
+            var len: u64 = @sizeOf(T);
+            if (union_info.tag_type) |tag_type| {
+                inline for (union_info.fields) |field| {
+                    if (any == @field(tag_type, field.name)) {
+                        len +%= pointerLength(field.type, @field(any, field.name));
+                    }
+                }
+            }
+            return len;
+        },
+        .Pointer => |pointer_info| {
+            var len: u64 = @sizeOf(T);
+            if (pointer_info.size == .One) {
+                len +%= pointerLength(pointer_info.child, any.*);
+            }
+            if (pointer_info.size == .Many) {
+                len +%= pointerLength(pointer_info.child, meta.manyToSlice(any));
+            }
+            if (pointer_info.size == .Slice) {
+                for (any) |value| {
+                    len +%= pointerLength(pointer_info.child, value);
+                }
+            }
+            return len;
+        },
+        else => return @sizeOf(T),
+    }
+}
+pub fn length(comptime T: type, any: T) u64 {
+    switch (@typeInfo(T)) {
+        .Struct => |struct_info| {
+            var len: u64 = 0;
+            inline for (struct_info.fields) |field| {
+                len +%= length(field.type, @field(any, field.name));
+            }
+            return len;
+        },
+        .Union => |union_info| {
+            var len: u64 = 0;
+            if (union_info.tag_type) |tag_type| {
+                inline for (union_info.fields) |field| {
+                    if (any == @field(tag_type, field.name)) {
+                        len +%= length(field.type, @field(any, field.name));
+                    }
+                }
+            }
+            return len;
+        },
+        .Pointer => |pointer_info| {
+            var len: u64 = 0;
+            if (pointer_info.size == .One) {
+                len +%= pointerLength(pointer_info.child, any.*);
+            }
+            if (pointer_info.size == .Many) {
+                len +%= pointerLength(pointer_info.child, meta.manyToSlice(any));
+            }
+            if (pointer_info.size == .Slice) {
+                for (any) |value| {
+                    len +%= pointerLength(pointer_info.child, value);
+                }
+            }
+            return len;
+        },
+        else => return 0,
+    }
+}
+fn deserialize3Internal(comptime T: type, addr: u64) [][][]T {
     const T1 = []T;
     const T2 = []T1;
     const T3 = []T2;
