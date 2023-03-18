@@ -4,11 +4,47 @@ const meta = @import("./meta.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
-inline fn serialize1Internal(comptime T: type, allocator: anytype, s: []const T) ![]u8 {
-    const UVector = @TypeOf(allocator.*).UnstructuredVector(@sizeOf(T), @alignOf(T));
-    var array: UVector = UVector.init(allocator, 16);
-    try meta.wrap(array.appendOne(u64, allocator, 0));
-    try meta.wrap(array.appendOne(u64, allocator, s.len));
+fn maxAlignment(comptime T: type, comptime in: comptime_int) comptime_int {
+    switch (@typeInfo(T)) {
+        inline .Struct, .Union => |info| {
+            var max: comptime_int = @max(in, @alignOf(T));
+            inline for (info.fields) |field| {
+                max = @max(max, maxAlignment(field.type, max));
+            }
+            return max;
+        },
+        .Pointer => |pointer_info| {
+            return maxAlignment(pointer_info.child, @max(in, @alignOf(T)));
+        },
+        else => return @max(in, @alignOf(T)),
+    }
+}
+fn length3(comptime T: type, sss: []const []const []const T) u64 {
+    var ret: u64 = 16 +% (sss.len *% 16);
+    for (sss) |ss| {
+        ret +%= ss.len *% @sizeOf(T);
+        for (ss) |values| {
+            ret +%= values.len *% @sizeOf(T);
+        }
+    }
+    return ret;
+}
+fn length2(comptime T: type, ss: []const []const T) u64 {
+    var ret: u64 = 16 +% (ss.len *% 16);
+    for (ss) |values| {
+        ret +%= values.len *% @sizeOf(T);
+    }
+    return ret;
+}
+fn length1(comptime T: type, s: []const T) u64 {
+    return 16 +% (s.len *% @sizeOf(T));
+}
+fn serialize1Internal(comptime T: type, allocator: anytype, s: []const T) ![]u8 {
+    allocator.alignAbove(maxAlignment(@TypeOf(s), @alignOf(T)));
+    const UVector = @TypeOf(allocator.*).UnstructuredVector(1, 1);
+    var array: UVector = UVector.init(allocator, length1(T, s));
+    array.writeOne(u64, 0);
+    array.writeOne(u64, s.len);
     for (s) |value| {
         try meta.wrap(array.appendOne(T, allocator, value));
     }
