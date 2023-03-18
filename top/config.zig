@@ -46,6 +46,10 @@ pub const cache_dir: ?[:0]const u8 = define("cache_dir", ?[:0]const u8, null);
 pub const global_cache_dir: ?[:0]const u8 = define("global_cache_dir", ?[:0]const u8, null);
 pub const root_src_file: ?[:0]const u8 = define("root_src_file", ?[:0]const u8, null);
 
+pub const about_prefix: [:0]const u8 = "";
+pub const about_suffix: [:0]const u8 = "";
+pub const about_indent: [:0]const u8 = "\t\t";
+
 pub fn AddressSpace() type {
     if (@hasDecl(root, "AddressSpace")) {
         return root.AddressSpace;
