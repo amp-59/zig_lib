@@ -17,6 +17,8 @@ const build = srg.build;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
+pub const message_style = "\x1b[91m";
+
 pub usingnamespace proc.start;
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
