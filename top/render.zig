@@ -647,7 +647,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
                 i -= 1;
-                const field: builtin.EnumField = enum_info.Enum.fields[i];
+                const field: builtin.Type.EnumField = enum_info.Enum.fields[i];
                 if (field.value != 0 or w == 0) {
                     const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
                     if (y == field.value) {
@@ -660,7 +660,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
             if (x != w) {
                 if (x != 0) {
-                    array.writeFormat(spec, IntFormat(enum_info.Enum.tag_type){ .value = x });
+                    array.writeFormat(IntFormat(spec, enum_info.Enum.tag_type){ .value = x });
                     array.writeCount(2, " }".*);
                 } else {
                     array.undefine(1);
@@ -668,7 +668,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 }
             } else {
                 if (x != 0) {
-                    array.writeFormat(spec, IntFormat(enum_info.Enum.tag_type){ .value = x });
+                    array.writeFormat(IntFormat(spec, enum_info.Enum.tag_type){ .value = x });
                     array.writeCount(2, " }".*);
                 } else {
                     array.overwriteOneBack('}');
