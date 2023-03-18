@@ -948,10 +948,24 @@ pub fn pack64(h: u32, l: u32) u64 {
 pub const debug = opaque {
     pub const itos = fmt.dec;
     const size: usize = 4096;
-    const about_fault_p0_s: []const u8 = "fault:          ";
-    const about_error_p0_s: []const u8 = "error:          ";
-    const about_fault_p1_s: []const u8 = " assertion failed: ";
-    const about_error_p1_s: []const u8 = " unexpected result: ";
+    const about_fault_p0_s: []const u8 = about("fault");
+    const about_error_p0_s: []const u8 = about("error");
+    const about_fault_p1_s: []const u8 = about(" assertion failed");
+    const about_error_p1_s: []const u8 = about(" unexpected result");
+
+    pub fn about(comptime s: [:0]const u8) [:0]const u8 {
+        var lhs: [:0]const u8 = s;
+        lhs = config.message_prefix ++ lhs;
+        lhs = lhs ++ config.message_suffix;
+        const len: u64 = lhs.len;
+        if (config.message_style) |style| {
+            lhs = style ++ lhs ++ config.message_no_style;
+        }
+        if (len >= config.message_indent) {
+            @compileError(s ++ " is too long");
+        }
+        return lhs ++ " " ** (config.message_indent - len);
+    }
 
     fn aboutFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
@@ -959,10 +973,10 @@ pub const debug = opaque {
     fn aboutError(comptime T: type) []const u8 {
         return about_error_p0_s ++ @typeName(T);
     }
-    fn comparisonFailedString(comptime T: type, about: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
+    fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = writeMulti(buf, &[_][]const u8{
-            about,                   " failed test: ",
+            what,                    " failed test: ",
             itos(T, arg1).readAll(), symbol,
             itos(T, arg2).readAll(), notation,
         });
@@ -983,11 +997,11 @@ pub const debug = opaque {
             itos(T, ~minimum).readAll(), ")\n",
         });
     }
-    fn subCausedOverflowString(comptime T: type, about: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
+    fn subCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
         len += writeMulti(msg, &[_][]const u8{
-            about,                   " integer overflow: ",
+            what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " - ",
             itos(T, arg2).readAll(), endl,
         });
@@ -996,11 +1010,11 @@ pub const debug = opaque {
         }
         return len;
     }
-    fn addCausedOverflowString(comptime T: type, about: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
+    fn addCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
         len += writeMulti(msg, &[_][]const u8{
-            about,                   " integer overflow: ",
+            what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " + ",
             itos(T, arg2).readAll(), endl,
         });
@@ -1011,25 +1025,25 @@ pub const debug = opaque {
         }
         return len;
     }
-    fn mulCausedOverflowString(comptime T: type, about: []const u8, buf: []u8, arg1: T, arg2: T) u64 {
+    fn mulCausedOverflowString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T) u64 {
         return writeMulti(buf, &[_][]const u8{
-            about,                   ": integer overflow: ",
+            what,                    ": integer overflow: ",
             itos(T, arg1).readAll(), " * ",
             itos(T, arg2).readAll(), "\n",
         });
     }
-    fn exactDivisionWithRemainderString(comptime T: type, about: []const u8, buf: []u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
+    fn exactDivisionWithRemainderString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
         return writeMulti(buf, &[_][]const u8{
-            about,                        ": exact division had a remainder: ",
+            what,                         ": exact division had a remainder: ",
             itos(T, arg1).readAll(),      "/",
             itos(T, arg2).readAll(),      " == ",
             itos(T, result).readAll(),    "r",
             itos(T, remainder).readAll(), "\n",
         });
     }
-    fn incorrectAlignmentString(comptime Pointer: type, about: []const u8, buf: []u8, address: usize, alignment: usize, remainder: u64) u64 {
+    fn incorrectAlignmentString(comptime Pointer: type, what: []const u8, buf: []u8, address: usize, alignment: usize, remainder: u64) u64 {
         return writeMulti(buf, &[_][]const u8{
-            about,                                     ": incorrect alignment: ",
+            what,                                      ": incorrect alignment: ",
             @typeName(Pointer),                        " align(",
             itos(u64, alignment).readAll(),            "): ",
             itos(u64, address).readAll(),              " == ",
