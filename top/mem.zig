@@ -776,27 +776,27 @@ pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors, spec.
     }
 }
 pub const debug = opaque {
-    const about_map_0_s: []const u8 = "map:            ";
-    const about_map_1_s: []const u8 = "map-error:      ";
-    const about_brk_1_s: []const u8 = "brk-error:      ";
-    const about_acq_0_s: []const u8 = "acq:            ";
-    const about_acq_1_s: []const u8 = "acq-error:      ";
     const about_acq_2_s: []const u8 = "acq-fault\n";
-    const about_rel_0_s: []const u8 = "rel:            ";
-    const about_rel_1_s: []const u8 = "rel-error:      ";
     const about_rel_2_s: []const u8 = "rel-fault\n";
-    const about_unmap_0_s: []const u8 = "unmap:          ";
-    const about_unmap_1_s: []const u8 = "unmap-error:    ";
-    const about_remap_0_s: []const u8 = "remap:          ";
-    const about_memfd_0_s: []const u8 = "memfd:          ";
-    const about_memfd_1_s: []const u8 = "memfd-error:    ";
-    const about_remap_1_s: []const u8 = "remap-error:    ";
-    const about_resize_0_s: []const u8 = "resize:         ";
-    const about_resize_1_s: []const u8 = "resize-error:   ";
-    const about_advice_0_s: []const u8 = "advice:         ";
-    const about_advice_1_s: []const u8 = "advice-error:   ";
-    const about_protect_0_s: []const u8 = "protect:         ";
-    const about_protect_1_s: []const u8 = "protect-error:   ";
+    const about_map_0_s: []const u8 = builtin.debug.about("map");
+    const about_map_1_s: []const u8 = builtin.debug.about("map-error");
+    const about_brk_1_s: []const u8 = builtin.debug.about("brk-error");
+    const about_acq_0_s: []const u8 = builtin.debug.about("acq");
+    const about_acq_1_s: []const u8 = builtin.debug.about("acq-error");
+    const about_rel_0_s: []const u8 = builtin.debug.about("rel");
+    const about_rel_1_s: []const u8 = builtin.debug.about("rel-error");
+    const about_unmap_0_s: []const u8 = builtin.debug.about("unmap");
+    const about_unmap_1_s: []const u8 = builtin.debug.about("unmap-error");
+    const about_remap_0_s: []const u8 = builtin.debug.about("remap");
+    const about_memfd_0_s: []const u8 = builtin.debug.about("memfd");
+    const about_memfd_1_s: []const u8 = builtin.debug.about("memfd-error");
+    const about_remap_1_s: []const u8 = builtin.debug.about("remap-error");
+    const about_resize_0_s: []const u8 = builtin.debug.about("resize");
+    const about_resize_1_s: []const u8 = builtin.debug.about("resize-error");
+    const about_advice_0_s: []const u8 = builtin.debug.about("advice");
+    const about_advice_1_s: []const u8 = builtin.debug.about("advice-error");
+    const about_protect_0_s: []const u8 = builtin.debug.about("protect");
+    const about_protect_1_s: []const u8 = builtin.debug.about("protect-error");
     pub fn mapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAcquireAIO(&buf, &[_][]const u8{
