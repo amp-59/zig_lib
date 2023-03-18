@@ -730,10 +730,9 @@ pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.Call
     }
 }
 fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
-    var len: u64 = 0;
-    while (len != pathname.len) : (len +%= 1) buf[len] = pathname[len];
-    buf[len] = 0;
-    return buf[0..len :0];
+    mach.memcpy(buf, pathname.ptr, pathname.len);
+    buf[pathname.len] = 0;
+    return buf[0..pathname.len :0];
 }
 fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
     const stat_spec: StatSpec = spec.statSpec();
@@ -741,9 +740,10 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8) sys.Call(spec
     const st: FileStatus = stat(stat_spec, pathname) catch |err| blk: {
         if (err == error.NoSuchFileOrDirectory) {
             const idx: u64 = indexOfDirnameFinish(pathname);
+            builtin.assertEqual(u8, pathname[idx], '/');
             if (idx != 0) {
                 pathname[idx] = 0;
-                try makePathInternal(spec, pathname[0..idx :0]);
+                try makePath(spec, pathname[0..idx :0]);
                 pathname[idx] = '/';
             }
         }
@@ -755,8 +755,9 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8) sys.Call(spec
     }
 }
 pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
-    var buf: [4096]u8 = undefined;
-    return makePathInternal(spec, writePath(&buf, pathname));
+    var buf: [4096:0]u8 = undefined;
+    const name: [:0]u8 = writePath(&buf, pathname);
+    return makePathInternal(spec, name);
 }
 
 pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
@@ -1132,37 +1133,37 @@ pub fn home(vars: [][*:0]u8) ![:0]const u8 {
     return error.NoHomeInEnvironment;
 }
 const debug = opaque {
-    const about_open_0_s: []const u8 = "open:           ";
-    const about_open_1_s: []const u8 = "open-error:     ";
-    const about_read_0_s: []const u8 = "read:           ";
-    const about_read_1_s: []const u8 = "read-error:     ";
-    const about_stat_1_s: []const u8 = "stat-error:     ";
-    const about_fstat_1_s: []const u8 = "fstat-error:    ";
-    const about_close_0_s: []const u8 = "close:          ";
-    const about_close_1_s: []const u8 = "close-error:    ";
-    const about_mkdir_0_s: []const u8 = "mkdir:          ";
-    const about_mkdir_1_s: []const u8 = "mkdir-error:    ";
-    const about_rmdir_0_s: []const u8 = "rmdir:          ";
-    const about_rmdir_1_s: []const u8 = "rmdir-error:    ";
-    const about_write_0_s: []const u8 = "write:          ";
-    const about_write_1_s: []const u8 = "write-error:    ";
-    const about_create_0_s: []const u8 = "create:         ";
-    const about_create_1_s: []const u8 = "create-error:   ";
-    const about_getcwd_0_s: []const u8 = "getcwd:         ";
-    const about_getcwd_1_s: []const u8 = "getcwd-error:   ";
-    const about_openat_0_s: []const u8 = "openat:         ";
-    const about_openat_1_s: []const u8 = "openat-error:   ";
-    const about_unlink_0_s: []const u8 = "unlink:         ";
-    const about_unlink_1_s: []const u8 = "unlink-error:   ";
-    const about_socket_0: [:0]const u8 = "socket:         ";
-    const about_socket_1: [:0]const u8 = "socket-error:   ";
-    const about_fstatat_1_s: []const u8 = "fstatat-error:  ";
-    const about_fexecve_1_s: []const u8 = "fexecve-error:  ";
-    const about_unlinkat_0_s: []const u8 = "unlinkat:       ";
-    const about_unlinkat_1_s: []const u8 = "unlinkat-error: ";
-    const about_readlink_1_s: []const u8 = "readlink-error: ";
-    const about_truncate_0_s: []const u8 = "truncate:       ";
-    const about_truncate_1_s: []const u8 = "truncate-error: ";
+    const about_open_0_s: []const u8 = builtin.debug.about("open");
+    const about_open_1_s: []const u8 = builtin.debug.about("open-error");
+    const about_read_0_s: []const u8 = builtin.debug.about("read");
+    const about_read_1_s: []const u8 = builtin.debug.about("read-error");
+    const about_stat_1_s: []const u8 = builtin.debug.about("stat-error");
+    const about_fstat_1_s: []const u8 = builtin.debug.about("fstat-error");
+    const about_close_0_s: []const u8 = builtin.debug.about("close");
+    const about_close_1_s: []const u8 = builtin.debug.about("close-error");
+    const about_mkdir_0_s: []const u8 = builtin.debug.about("mkdir");
+    const about_mkdir_1_s: []const u8 = builtin.debug.about("mkdir-error");
+    const about_rmdir_0_s: []const u8 = builtin.debug.about("rmdir");
+    const about_rmdir_1_s: []const u8 = builtin.debug.about("rmdir-error");
+    const about_write_0_s: []const u8 = builtin.debug.about("write");
+    const about_write_1_s: []const u8 = builtin.debug.about("write-error");
+    const about_create_0_s: []const u8 = builtin.debug.about("create");
+    const about_create_1_s: []const u8 = builtin.debug.about("create-error");
+    const about_getcwd_0_s: []const u8 = builtin.debug.about("getcwd");
+    const about_getcwd_1_s: []const u8 = builtin.debug.about("getcwd-error");
+    const about_openat_0_s: []const u8 = builtin.debug.about("openat");
+    const about_openat_1_s: []const u8 = builtin.debug.about("openat-error");
+    const about_unlink_0_s: []const u8 = builtin.debug.about("unlink");
+    const about_unlink_1_s: []const u8 = builtin.debug.about("unlink-error");
+    const about_socket_0: [:0]const u8 = builtin.debug.about("socket");
+    const about_socket_1: [:0]const u8 = builtin.debug.about("socket-error");
+    const about_fstatat_1_s: []const u8 = builtin.debug.about("fstatat-error");
+    const about_fexecve_1_s: []const u8 = builtin.debug.about("fexecve-error");
+    const about_unlinkat_0_s: []const u8 = builtin.debug.about("unlinkat");
+    const about_unlinkat_1_s: []const u8 = builtin.debug.about("unlinkat-error");
+    const about_readlink_1_s: []const u8 = builtin.debug.about("readlink-error");
+    const about_truncate_0_s: []const u8 = builtin.debug.about("truncate");
+    const about_truncate_1_s: []const u8 = builtin.debug.about("truncate-error");
 
     fn readNotice(fd: u64, len: u64) void {
         var buf: [16 + 32]u8 = undefined;
