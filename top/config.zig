@@ -46,9 +46,20 @@ pub const cache_dir: ?[:0]const u8 = define("cache_dir", ?[:0]const u8, null);
 pub const global_cache_dir: ?[:0]const u8 = define("global_cache_dir", ?[:0]const u8, null);
 pub const root_src_file: ?[:0]const u8 = define("root_src_file", ?[:0]const u8, null);
 
-pub const about_prefix: [:0]const u8 = "";
-pub const about_suffix: [:0]const u8 = "";
-pub const about_indent: [:0]const u8 = "\t\t";
+/// The primary reason that these constants exist is to distinguish between
+/// reports from the build runner and reports from a run command.
+///
+/// The length of this string does not count to the length of the column.
+/// Defining this string inserts `\x1b[0m` after the subject name.
+pub const message_style: ?[:0]const u8 = define("message_style", ?[:0]const u8, null);
+/// This text to the left of every subject name, to the right of the style.
+pub const message_prefix: [:0]const u8 = define("message_prefix", [:0]const u8, "");
+/// This text to the right of every string.
+pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, ":");
+/// The total length of the subject column, to the left of the information column.
+pub const message_indent: u8 = define("message_indent", u8, 16);
+/// Sequence used to undo `message_style` if defined.
+pub const message_no_style: [:0]const u8 = "\x1b[0m";
 
 pub fn AddressSpace() type {
     if (@hasDecl(root, "AddressSpace")) {
