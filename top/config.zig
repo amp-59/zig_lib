@@ -28,6 +28,16 @@ pub const logging_general: Logging.Default = .{
     .Error = logging_override.Error orelse logging_default.Error,
     .Fault = logging_override.Fault orelse logging_default.Fault,
 };
+pub const signal_handlers: SignalHandlers = define(
+    "signal_handlers",
+    SignalHandlers,
+    .{
+        .segmentation_fault = logging_general.Fault,
+        .illegal_instruction = logging_general.Fault,
+        .bus_error = logging_general.Fault,
+        .floating_point_error = is_debug,
+    },
+);
 
 // These are defined by the library builder
 pub const zig_exe: ?[:0]const u8 = define("zig_exe", ?[:0]const u8, null);
@@ -46,6 +56,12 @@ pub fn AddressSpace() type {
             debug.title_s ++ "address spaces are required by high level features with managed memory",
     );
 }
+pub const SignalHandlers = packed struct {
+    segmentation_fault: bool,
+    illegal_instruction: bool,
+    bus_error: bool,
+    floating_point_error: bool,
+};
 pub const Logging = struct {
     pub const Default = packed struct {
         /// Report major successful actions
