@@ -6,9 +6,16 @@ const builtin = @import("./builtin.zig");
 
 fn maxAlignment(comptime T: type, comptime in: comptime_int) comptime_int {
     switch (@typeInfo(T)) {
-        inline .Struct, .Union => |info| {
+        .Struct => |struct_info| {
             var max: comptime_int = @max(in, @alignOf(T));
-            inline for (info.fields) |field| {
+            inline for (struct_info.fields) |field| {
+                max = @max(max, maxAlignment(field.type, max));
+            }
+            return max;
+        },
+        .Union => |union_info| {
+            var max: comptime_int = @max(in, @alignOf(T));
+            inline for (union_info.fields) |field| {
                 max = @max(max, maxAlignment(field.type, max));
             }
             return max;
