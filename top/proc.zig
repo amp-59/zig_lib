@@ -1074,17 +1074,17 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
 }
 const debug = opaque {
     const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
-    const about_opt_0_s: []const u8 = "opt:            '";
-    const about_opt_1_s: []const u8 = "opt-error:      '";
-    const about_exit_0_s: []const u8 = "exit:           ";
-    const about_exit_1_s: []const u8 = "error:          ";
-    const about_fork_0_s: []const u8 = "fork:           ";
-    const about_fork_1_s: []const u8 = "fork-error:     ";
-    const about_wait_0_s: []const u8 = "wait:           ";
-    const about_wait_1_s: []const u8 = "wait-error:     ";
-    const about_execve_0_s: []const u8 = "execve:         ";
-    const about_execve_1_s: []const u8 = "execve-error:   ";
-    const about_execveat_1_s: []const u8 = "execveat-error: ";
+    const about_opt_0_s: []const u8 = builtin.debug.about("opt");
+    const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
+    const about_exit_0_s: []const u8 = builtin.debug.about("exit");
+    const about_exit_1_s: []const u8 = builtin.debug.about("error");
+    const about_fork_0_s: []const u8 = builtin.debug.about("fork");
+    const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
+    const about_wait_0_s: []const u8 = builtin.debug.about("wait");
+    const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
+    const about_execve_0_s: []const u8 = builtin.debug.about("execve");
+    const about_execve_1_s: []const u8 = builtin.debug.about("execve-error");
+    const about_execveat_1_s: []const u8 = builtin.debug.about("execveat-error");
 
     fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
         const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
