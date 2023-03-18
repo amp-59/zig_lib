@@ -46,7 +46,7 @@ fn serialize1Internal(comptime T: type, allocator: anytype, s: []const T) ![]u8 
     array.writeOne(u64, 0);
     array.writeOne(u64, s.len);
     for (s) |value| {
-        try meta.wrap(array.appendOne(T, allocator, value));
+        array.writeOne(T, value);
     }
     return array.referAllDefined(u8);
 }
