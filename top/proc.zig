@@ -582,10 +582,18 @@ pub const exception = opaque {
         setSignalAction(signo, &act, null);
     }
     fn updateExceptionHandlers(act: *const SignalAction) void {
-        setSignalAction(SIG.SEGV, act, null);
-        setSignalAction(SIG.ILL, act, null);
-        setSignalAction(SIG.BUS, act, null);
-        setSignalAction(SIG.FPE, act, null);
+        if (builtin.signal_handlers.segmentation_fault) {
+            setSignalAction(SIG.SEGV, act, null);
+        }
+        if (builtin.signal_handlers.illegal_instruction) {
+            setSignalAction(SIG.ILL, act, null);
+        }
+        if (builtin.signal_handlers.bus_error) {
+            setSignalAction(SIG.BUS, act, null);
+        }
+        if (builtin.signal_handlers.floating_point_error) {
+            setSignalAction(SIG.FPE, act, null);
+        }
     }
     pub fn enableExceptionHandlers() void {
         var act = SignalAction{
@@ -713,8 +721,8 @@ pub noinline fn callMain() noreturn {
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
     };
-    if (@hasDecl(builtin.root, "enableExceptionHandlers")) {
-        builtin.root.enableExceptionHandlers();
+    if (meta.leastBitCast(builtin.signal_handlers) != 0) {
+        exception.enableExceptionHandlers();
     }
     if (main_return_type == void) {
         @call(.auto, main, params);
