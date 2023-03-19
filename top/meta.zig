@@ -78,6 +78,28 @@ else
         return any;
     }
 }
+pub fn untaggedActiveField(comptime value: anytype) builtin.Type.UnionField {
+    const S: type = @TypeOf(value);
+    const fields: []const builtin.Type.UnionField = @typeInfo(S).Union.fields;
+    const T = [:value]S;
+    comptime {
+        if (@typeName(T)[6..][0] == ' ' and @typeName(T)[6..][1] == '=') {
+            return fields[0];
+        }
+        for (fields) |field| {
+            if (@typeName(T)[6..].len < field.name.len +% 2) {
+                continue;
+            }
+            for (@typeName(T)[6..][0..field.name.len], field.name) |s, t| {
+                if (s != t) {
+                    break;
+                }
+            } else {
+                return field;
+            }
+        }
+    }
+}
 pub fn slice(comptime T: type, values: anytype) []const T {
     return &@as([values.len]T, values);
 }
