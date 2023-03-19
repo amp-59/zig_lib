@@ -63,6 +63,13 @@ pub const reinterpret = opaque {
         .composite = .{ .format = true },
         .symbol = .{ .tag_name = true },
     });
+    pub const print: mem.ReinterpretSpec = reinterpretRecursively(.{
+        .reference = ptr.reference,
+        .aggregate = .{ .iterate = true },
+        .composite = .{ .format = true },
+        .symbol = .{ .tag_name = true },
+        .integral = .{ .format = .dec },
+    });
     pub const follow: mem.ReinterpretSpec = blk: {
         var rs_0: mem.ReinterpretSpec = .{};
         var rs_1: mem.ReinterpretSpec = .{ .reference = .{
@@ -74,7 +81,6 @@ pub const reinterpret = opaque {
         } };
         break :blk rs_1;
     };
-
     fn reinterpretRecursively(comptime spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
         var rs_0: mem.ReinterpretSpec = spec;
         var rs_1: mem.ReinterpretSpec = spec;
