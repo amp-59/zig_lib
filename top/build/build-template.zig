@@ -621,7 +621,7 @@ pub const Macro = struct {
         array.writeMany("=");
         switch (format.value) {
             .constant => |constant| {
-                array.writeAny(fmt_spec, constant);
+                array.writeAny(preset.reinterpret.print, constant);
             },
             .string => |string| {
                 array.writeOne('"');
@@ -646,7 +646,7 @@ pub const Macro = struct {
         len +%= 1;
         switch (format.value) {
             .constant => |constant| {
-                len +%= mem.reinterpret.lengthAny(u8, fmt_spec, constant);
+                len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, constant);
             },
             .string => |string| {
                 len +%= 1 +% string.len +% 1;
