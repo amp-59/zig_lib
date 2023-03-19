@@ -737,13 +737,13 @@ fn writeArg(
     switch (variant) {
         .length => {
             array.writeMany(ws[0..width.*]);
-            array.writeMany("len +%= mem.reinterpret.lengthAny(u8, fmt_spec, ");
+            array.writeMany("len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, ");
             array.writeMany(what_arg);
             array.writeMany(");\n");
         },
         .write => {
             array.writeMany(ws[0..width.*]);
-            array.writeMany("array.writeAny(fmt_spec, ");
+            array.writeMany("array.writeAny(preset.reinterpret.print, ");
             array.writeMany(what_arg);
             array.writeMany(");\n");
         },
