@@ -17,7 +17,8 @@ const build = srg.build;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
-pub const message_style = "\x1b[91m";
+pub const message_style: [:0]const u8 =
+    if (@hasDecl(root, "message_style")) root.message_style else "\x1b[2m";
 
 pub usingnamespace proc.start;
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
@@ -132,6 +133,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             return showHelpAndCommands(&builder);
         }
         if (mach.testEqualMany8(name, "--")) {
+            builder.run_args = args[index + 1 ..];
             break;
         }
         var groups: build.GroupList = builder.groups;
@@ -165,9 +167,9 @@ fn invokeTarget(allocator: *build.Allocator, builder: *build.Builder, target: *b
     const save: build.Allocator.Save = allocator.save();
     defer allocator.restore(save);
     switch (builder.options.cmd) {
-        .fmt => return target.format(),
-        .run => return target.run(),
-        .build => return target.build(),
+        .fmt => return builder.format(target),
+        .run => return builder.run(target),
+        .build => return builder.build(target),
     }
 }
 inline fn maxWidths(builder: *build.Builder) extern struct { u64, u64 } {
