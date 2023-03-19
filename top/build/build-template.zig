@@ -774,6 +774,53 @@ pub fn GenericList(comptime T: type) type {
         }
     };
 }
+const debug = struct {
+    const about_run_s: [:0]const u8 = builtin.debug.about("run");
+    const about_build_s: [:0]const u8 = builtin.debug.about("build");
+    const about_format_s: [:0]const u8 = builtin.debug.about("format");
+    const ChangedSize = fmt.ChangedBytesFormat(.{
+        .dec_style = "\x1b[92m-",
+        .inc_style = "\x1b[91m+",
+    });
+    fn buildNotice(name: [:0]const u8, bin_path: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
+        var array: mem.StaticString(4096) = undefined;
+        array.undefineAll();
+        array.writeMany(bin_path);
+        array.writeOne(0);
+        array.undefine(1);
+        array.undefineAll();
+        array.writeMany(about_build_s);
+        array.writeMany(name);
+        array.writeMany(", ");
+        array.writeFormat(ChangedSize.init(old_size, new_size));
+        array.writeMany(", ");
+        array.writeFormat(fmt.ud64(durat.sec));
+        array.writeMany(".");
+        array.writeFormat(fmt.nsec(durat.nsec));
+        array.undefine(6);
+        array.writeMany("s\n");
+        builtin.debug.write(array.readAll());
+    }
+    fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec) void {
+        var array: mem.StaticString(4096) = undefined;
+        array.undefineAll();
+        array.writeMany(about);
+        array.writeMany(name);
+        array.writeMany(", ");
+        array.writeFormat(fmt.ud64(durat.sec));
+        array.writeMany(".");
+        array.writeFormat(fmt.nsec(durat.nsec));
+        array.undefine(6);
+        array.writeMany("s\n");
+        builtin.debug.write(array.readAll());
+    }
+    inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec) void {
+        simpleTimedNotice(about_run_s, name, durat);
+    }
+    inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
+        simpleTimedNotice(about_format_s, name, durat);
+    }
+};
 // finish-document build-types.zig
 // start-document option-functions.zig
 fn lengthOptionalWhatNoArgWhatNot(option: anytype, len_equ: u64, len_yes: u64, len_no: u64) u64 {
@@ -781,7 +828,7 @@ fn lengthOptionalWhatNoArgWhatNot(option: anytype, len_equ: u64, len_yes: u64, l
         switch (value) {
             .yes => |yes_optional_arg| {
                 if (yes_optional_arg) |yes_arg| {
-                    return len_equ +% mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg) +% 1;
+                    return len_equ +% mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg) +% 1;
                 } else {
                     return len_yes;
                 }
@@ -797,7 +844,7 @@ fn lengthNonOptionalWhatNoArgWhatNot(option: anytype, len_yes: u64, len_no: u64)
     if (option) |value| {
         switch (value) {
             .yes => |yes_arg| {
-                return len_yes +% mem.reinterpret.lengthAny(u8, fmt_spec, yes_arg) +% 1;
+                return len_yes +% mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg) +% 1;
             },
             .no => {
                 return len_no;
@@ -818,7 +865,7 @@ fn lengthWhatOrWhatNot(option: anytype, len_yes: u64, len_no: u64) u64 {
 }
 fn lengthWhatHow(option: anytype, len_yes: u64) u64 {
     if (option) |how| {
-        return len_yes +% mem.reinterpret.lengthAny(u8, fmt_spec, how) +% 1;
+        return len_yes +% mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how) +% 1;
     }
     return 0;
 }
@@ -830,7 +877,7 @@ fn lengthWhat(option: bool, len_yes: u64) u64 {
 }
 fn lengthHow(option: anytype) u64 {
     if (option) |how| {
-        return mem.reinterpret.lengthAny(u8, fmt_spec, how);
+        return mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
     }
     return 0;
 }
@@ -840,7 +887,7 @@ fn writeOptionalWhatNoArgWhatNot(array: anytype, option: anytype, equ_switch: []
             .yes => |yes_optional_arg| {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany(equ_switch);
-                    array.writeAny(fmt_spec, yes_arg);
+                    array.writeAny(preset.reinterpret.print, yes_arg);
                     array.writeOne('\x00');
                 } else {
                     array.writeMany(yes_switch);
@@ -857,7 +904,7 @@ fn writeNonOptionalWhatNoArgWhatNot(array: anytype, option: anytype, yes_switch:
         switch (value) {
             .yes => |yes_arg| {
                 array.writeMany(yes_switch);
-                array.writeAny(fmt_spec, yes_arg);
+                array.writeAny(preset.reinterpret.print, yes_arg);
                 array.writeOne('\x00');
             },
             .no => {
@@ -878,7 +925,7 @@ fn writeWhatOrWhatNot(array: anytype, option: anytype, yes_switch: []const u8, n
 fn writeWhatHow(array: anytype, option: anytype, yes_switch: []const u8) void {
     if (option) |value| {
         array.writeMany(yes_switch);
-        array.writeAny(fmt_spec, value);
+        array.writeAny(preset.reinterpret.print, value);
         array.writeOne('\x00');
     }
 }
@@ -889,7 +936,7 @@ fn writeWhat(array: anytype, option: bool, yes_switch: []const u8) void {
 }
 fn writeHow(array: anytype, option: anytype) void {
     if (option) |how| {
-        array.writeAny(fmt_spec, how);
+        array.writeAny(preset.reinterpret.print, how);
     }
 }
 // finish-document option-functions.zig
