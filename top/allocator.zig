@@ -651,6 +651,22 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             showAllocate(T, ret);
             return ret;
         }
+        pub fn allocateSentinelIrreversible(allocator: *Allocator, comptime T: type, buf: []T, comptime sentinel: T) Allocator.allocate_payload([:sentinel]T) {
+            const s_ab_addr: u64 = @ptrToInt(buf.ptr);
+            const s_aligned_bytes: u64 = @sizeOf(T) *% buf.len;
+            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
+            const t_up_addr: u64 = s_up_addr + @sizeOf(T);
+            if (allocator.unallocated_byte_address() == s_up_addr) {
+                if (Allocator.allocator_spec.options.require_map and
+                    t_up_addr > allocator.unmapped_byte_address())
+                {
+                    try meta.wrap(allocator.mapBelow(t_up_addr));
+                }
+                allocator.allocate(t_up_addr);
+            }
+            buf.ptr[buf.len] = sentinel;
+            return buf.ptr[0.. :sentinel];
+        }
         pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = @ptrToInt(buf.ptr);
@@ -1252,9 +1268,9 @@ fn GenericConfiguration(comptime Allocator: type) type {
         }
         pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_alignment: u64) type {
             var options: container.Parameters4.Options = .{};
-            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
-            return container.UnstructuredStreamVector(low_alignment, high_alignment, Allocator, options);
+            return container.UnstructuredStreamVector(high_alignment, low_alignment, Allocator, options);
         }
         pub fn UnstructuredStreamViewHighAligned(comptime high_alignment: u64) type {
             var options: container.Parameters4.Options = .{};
@@ -1270,7 +1286,7 @@ fn GenericConfiguration(comptime Allocator: type) type {
         }
         pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignment: u64) type {
             var options: container.Parameters4.Options = .{};
-            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
             return container.UnstructuredStreamView(high_alignment, low_alignment, Allocator, options);
         }
@@ -1306,7 +1322,7 @@ fn GenericConfiguration(comptime Allocator: type) type {
         }
         pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: u64) type {
             var options: container.Parameters4.Options = .{};
-            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
             return container.UnstructuredView(high_alignment, low_alignment, Allocator, options);
         }
@@ -1372,9 +1388,9 @@ fn GenericConfiguration(comptime Allocator: type) type {
         }
         pub fn UnstructuredStreamHolder(comptime high_alignment: u64, comptime low_alignment: u64) type {
             var options: container.Parameters6.Options = .{};
-            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
-            return container.UnstructuredStreamHolder(Allocator, low_alignment, high_alignment, options);
+            return container.UnstructuredStreamHolder(Allocator, high_alignment, low_alignment, options);
         }
         pub fn UnstructuredHolderHighAligned(comptime high_alignment: u64) type {
             var options: container.Parameters6.Options = .{};
@@ -1390,9 +1406,9 @@ fn GenericConfiguration(comptime Allocator: type) type {
         }
         pub fn UnstructuredHolder(comptime high_alignment: u64, comptime low_alignment: u64) type {
             var options: container.Parameters6.Options = .{};
-            options.unit_alignment = high_alignment == Allocator.allocator_spec.options.unit_alignment;
+            options.unit_alignment = low_alignment == Allocator.allocator_spec.options.unit_alignment;
             options.lazy_alignment = !options.unit_alignment;
-            return container.UnstructuredHolder(Allocator, low_alignment, high_alignment, options);
+            return container.UnstructuredHolder(Allocator, high_alignment, low_alignment, options);
         }
     };
 }
@@ -3494,37 +3510,37 @@ const debug = opaque {
     const ArenaRange = fmt.AddressRangeFormat;
     const ChangedArenaRange = fmt.ChangedAddressRangeFormat;
     const ChangedBytes = fmt.ChangedBytesFormat(.{});
-    const about_next_s: []const u8 = "next:           ";
-    const about_count_s: []const u8 = "count:          ";
-    const about_map_0_s: []const u8 = "map:            ";
-    const about_map_1_s: []const u8 = "map-error:      ";
-    const about_acq_0_s: []const u8 = "acq:            ";
-    const about_acq_1_s: []const u8 = "acq-error:      ";
-    const about_rel_0_s: []const u8 = "rel:            ";
-    const about_rel_1_s: []const u8 = "rel-error:      ";
+    const about_next_s: []const u8 = builtin.debug.about("next");
+    const about_count_s: []const u8 = builtin.debug.about("count");
+    const about_map_0_s: []const u8 = builtin.debug.about("map");
+    const about_map_1_s: []const u8 = builtin.debug.about("map-error");
+    const about_acq_0_s: []const u8 = builtin.debug.about("acq");
+    const about_acq_1_s: []const u8 = builtin.debug.about("acq-error");
+    const about_rel_0_s: []const u8 = builtin.debug.about("rel");
+    const about_rel_1_s: []const u8 = builtin.debug.about("rel-error");
     const about_acq_2_s: []const u8 = "acq-fault\n";
     const about_rel_2_s: []const u8 = "rel-fault\n";
-    const about_brk_1_s: []const u8 = "brk-error:      ";
-    const about_no_op_s: []const u8 = "no-op:          ";
-    const about_move_0_s: []const u8 = "move:           ";
-    const about_move_1_s: []const u8 = "move-error:     ";
-    const about_finish_s: []const u8 = "finish:         ";
-    const about_holder_s: []const u8 = "holder:         ";
-    const about_unmap_0_s: []const u8 = "unmap:          ";
-    const about_unmap_1_s: []const u8 = "unmap-error:    ";
-    const about_remap_0_s: []const u8 = "remap:          ";
-    const about_remap_1_s: []const u8 = "remap-error:    ";
-    const about_utility_s: []const u8 = "utility:        ";
-    const about_capacity_s: []const u8 = "capacity:       ";
-    const about_resize_0_s: []const u8 = "resize:         ";
-    const about_resize_1_s: []const u8 = "resize-error:   ";
-    const about_advice_0_s: []const u8 = "advice:         ";
-    const about_advice_1_s: []const u8 = "advice-error:   ";
-    const about_remapped_s: []const u8 = "remapped:       ";
-    const about_allocated_s: []const u8 = "allocated:      ";
-    const about_filo_error_s: []const u8 = "filo-error:     ";
-    const about_deallocated_s: []const u8 = "deallocated:    ";
-    const about_reallocated_s: []const u8 = "reallocated:    ";
+    const about_brk_1_s: []const u8 = builtin.debug.about("brk-error");
+    const about_no_op_s: []const u8 = builtin.debug.about("no-op");
+    const about_move_0_s: []const u8 = builtin.debug.about("move");
+    const about_move_1_s: []const u8 = builtin.debug.about("move-error");
+    const about_finish_s: []const u8 = builtin.debug.about("finish");
+    const about_holder_s: []const u8 = builtin.debug.about("holder");
+    const about_unmap_0_s: []const u8 = builtin.debug.about("unmap");
+    const about_unmap_1_s: []const u8 = builtin.debug.about("unmap-error");
+    const about_remap_0_s: []const u8 = builtin.debug.about("remap");
+    const about_remap_1_s: []const u8 = builtin.debug.about("remap-error");
+    const about_utility_s: []const u8 = builtin.debug.about("utility");
+    const about_capacity_s: []const u8 = builtin.debug.about("capacity");
+    const about_resize_0_s: []const u8 = builtin.debug.about("resize");
+    const about_resize_1_s: []const u8 = builtin.debug.about("resize-error");
+    const about_advice_0_s: []const u8 = builtin.debug.about("advice");
+    const about_advice_1_s: []const u8 = builtin.debug.about("advice-error");
+    const about_remapped_s: []const u8 = builtin.debug.about("remapped");
+    const about_allocated_s: []const u8 = builtin.debug.about("allocated");
+    const about_filo_error_s: []const u8 = builtin.debug.about("filo-error");
+    const about_deallocated_s: []const u8 = builtin.debug.about("deallocated");
+    const about_reallocated_s: []const u8 = builtin.debug.about("reallocated");
     const pretty_bytes: bool = true;
     fn writeErrorName(array: *PrintArray, error_name: []const u8) void {
         array.writeMany("(");
