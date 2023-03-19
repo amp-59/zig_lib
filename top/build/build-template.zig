@@ -9,11 +9,6 @@ const time = @import("../time.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 // start-document build-struct.zig
-const fmt_spec: mem.ReinterpretSpec = blk: {
-    var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
-    tmp.integral = .{ .format = .dec };
-    break :blk tmp;
-};
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = builtin.AddressSpace(),
@@ -50,12 +45,33 @@ pub const BuilderSpec = struct {
         gettime: sys.ErrorPolicy = sys.clock_get_errors,
     },
 };
+pub const BuildCommand = struct {
+    kind: OutputMode,
+    __compile_command: void,
+};
+pub const FormatCommand = struct {
+    __format_command: void,
+};
+pub const RunCommand = struct {
+    array: ArgsString = undefined,
+    pub fn addRunArgument(run_cmd: *RunCommand, any: anytype) void {
+        if (@typeInfo(@TypeOf(any)) == .Struct) {
+            run_cmd.array.writeAny(preset.reinterpret.fmt, any);
+        } else {
+            run_cmd.array.writeMany(any);
+        }
+        if (run_cmd.array.readOneBack() != 0) {
+            run_cmd.array.writeOne(0);
+        }
+    }
+};
 pub const Builder = struct {
     paths: Paths,
     options: GlobalOptions,
     groups: GroupList,
     args: [][*:0]u8,
     vars: [][*:0]u8,
+    run_args: [][*:0]u8 = &.{},
     dir_fd: u64,
     depth: u64 = 0,
     pub const Paths = struct {
