@@ -776,8 +776,6 @@ pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors, spec.
     }
 }
 pub const debug = opaque {
-    const about_acq_2_s: []const u8 = "acq-fault\n";
-    const about_rel_2_s: []const u8 = "rel-fault\n";
     const about_map_0_s: []const u8 = builtin.debug.about("map");
     const about_map_1_s: []const u8 = builtin.debug.about("map-error");
     const about_brk_1_s: []const u8 = builtin.debug.about("brk-error");
@@ -785,6 +783,8 @@ pub const debug = opaque {
     const about_acq_1_s: []const u8 = builtin.debug.about("acq-error");
     const about_rel_0_s: []const u8 = builtin.debug.about("rel");
     const about_rel_1_s: []const u8 = builtin.debug.about("rel-error");
+    const about_acq_2_s: []const u8 = "acq-fault\n";
+    const about_rel_2_s: []const u8 = "rel-fault\n";
     const about_unmap_0_s: []const u8 = builtin.debug.about("unmap");
     const about_unmap_1_s: []const u8 = builtin.debug.about("unmap-error");
     const about_remap_0_s: []const u8 = builtin.debug.about("remap");
