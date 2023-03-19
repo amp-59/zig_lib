@@ -195,6 +195,135 @@ pub const Builder = struct {
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
         return file.fstatAt(.{ .logging = .{ .Error = false } }, builder.dir_fd, name) catch null;
     }
+    fn buildLength(builder: *Builder, target: *const Target) u64 {
+        const cmd: *const BuildCommand = target.build_cmd;
+        var len: u64 = 4;
+        switch (cmd.kind) {
+            .lib, .exe, .obj => {
+                len += 6 + @tagName(cmd.kind).len + 1;
+            },
+            .run => {
+                len += @tagName(cmd.kind).len + 1;
+            },
+        }
+        len +%= Macro.formatLength(builder.zigExePathMacro());
+        len +%= Macro.formatLength(builder.buildRootPathMacro());
+        len +%= Macro.formatLength(builder.cacheDirPathMacro());
+        len +%= Macro.formatLength(builder.globalCacheDirPathMacro());
+        cmd = buildLength;
+        len +%= Path.formatLength(builder.sourceRootPath(target.root));
+        len +%= 1;
+        ModuleDependency.l_leader = true;
+        return len;
+    }
+    fn buildWrite(builder: *Builder, target: *const Target, array: anytype) u64 {
+        const cmd: *const BuildCommand = target.build_cmd;
+        array.writeMany("zig\x00");
+        switch (cmd.kind) {
+            .lib, .exe, .obj => {
+                array.writeMany("build-");
+                array.writeMany(@tagName(cmd.kind));
+                array.writeOne('\x00');
+            },
+            .run => {
+                array.writeMany(@tagName(cmd.kind));
+                array.writeOne('\x00');
+            },
+        }
+        array.writeFormat(builder.zigExePathMacro());
+        array.writeFormat(builder.buildRootPathMacro());
+        array.writeFormat(builder.cacheDirPathMacro());
+        array.writeFormat(builder.globalCacheDirPathMacro());
+        cmd = buildWrite;
+        array.writeFormat(builder.sourceRootPath(target.root));
+        array.writeMany("\x00\x00");
+        array.undefine(1);
+        ModuleDependency.w_leader = true;
+        return countArgs(array);
+    }
+    fn formatLength(builder: *Builder, target: *const Target) u64 {
+        const cmd: *const FormatCommand = target.fmt_cmd;
+        var len: u64 = 8;
+        cmd = formatLength;
+        len +%= Path.formatLength(builder.sourceRootPath(target.root));
+        len +%= 1;
+        return len;
+    }
+    fn formatWrite(builder: *Builder, target: *const Target, array: anytype) u64 {
+        const cmd: *const FormatCommand = target.fmt_cmd;
+        array.writeMany("zig\x00fmt\x00");
+        cmd = formatWrite;
+        array.writeFormat(builder.sourceRootPath(target.root));
+        array.writeMany("\x00\x00");
+        array.undefine(1);
+        return countArgs(array);
+    }
+    pub fn build(builder: *Builder, target: *Target) !void {
+        try format(builder, target);
+        if (target.done(.build)) return;
+        if (target.have(.build)) {
+            target.do(.build);
+            builder.depth +%= 1;
+            try invokeDependencies(builder, target);
+            var array: ArgsString = undefined;
+            var args: ArgsPointers = undefined;
+            array.undefineAll();
+            args.undefineAll();
+            const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
+            const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
+            builtin.assertBelowOrEqual(u64, builder.buildWrite(target, &array), max_args);
+            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+            builtin.assertEqual(u64, array.len(), builder.buildLength(target));
+            const build_time: time.TimeSpec = try builder.exec(args.referAllDefined());
+            const new_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
+            builder.depth -%= 1;
+            if (builder.depth <= max_relevant_depth) {
+                debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
+            }
+        }
+    }
+    pub fn format(builder: *Builder, target: *Target) !void {
+        if (target.done(.fmt)) return;
+        if (target.have(.fmt)) {
+            target.do(.fmt);
+            try invokeDependencies(builder, target);
+            var array: ArgsString = undefined;
+            var args: ArgsPointers = undefined;
+            array.undefineAll();
+            args.undefineAll();
+            builtin.assertBelowOrEqual(u64, builder.formatWrite(target, &array), max_args);
+            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
+            builtin.assertEqual(u64, array.len(), builder.formatLength(target));
+            const format_time: time.TimeSpec = try builder.exec(args.referAllDefined());
+            if (builder.depth <= max_relevant_depth) {
+                debug.formatNotice(target.name, format_time);
+            }
+        }
+    }
+    pub fn run(builder: *Builder, target: *Target) !void {
+        if (target.done(.run)) return;
+        if (target.have(.run) and target.have(.build)) {
+            target.do(.run);
+            try build(builder, target);
+            var args: ArgsPointers = undefined;
+            args.undefineAll();
+            builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
+            const run_time: time.TimeSpec = try builder.system(args.referAllDefined());
+            if (builder.depth <= max_relevant_depth) {
+                debug.runNotice(target.name, run_time);
+            }
+        }
+    }
+    fn invokeDependencies(builder: *Builder, target: *Target) anyerror!void {
+        target.deps.head();
+        while (target.deps.next()) |node| : (target.deps.node = node) {
+            switch (target.deps.node.this.tag) {
+                .build => try build(builder, target.deps.node.this.target),
+                .run => try run(builder, target.deps.node.this.target),
+                .fmt => try format(builder, target.deps.node.this.target),
+            }
+        }
+    }
 };
 pub const TargetSpec = struct {
     build: bool = true,
