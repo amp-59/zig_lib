@@ -665,7 +665,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 allocator.allocate(t_up_addr);
             }
             buf.ptr[buf.len] = sentinel;
-            return buf.ptr[0.. :sentinel];
+            return buf[0.. :sentinel];
         }
         pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
