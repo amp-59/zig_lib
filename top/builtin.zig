@@ -599,7 +599,6 @@ pub inline fn equ(comptime T: type, dst: *T, src: T) void {
 fn @"test"(b: bool) bool {
     return b;
 }
-
 // Currently, only the following non-trivial comparisons are supported:
 fn testEqualArray(comptime T: type, comptime array_info: Type.Array, arg1: T, arg2: T) bool {
     var i: usize = 0;

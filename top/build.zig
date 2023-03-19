@@ -8,11 +8,6 @@ const proc = @import("./proc.zig");
 const time = @import("./time.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
-const fmt_spec: mem.ReinterpretSpec = blk: {
-    var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
-    tmp.integral = .{ .format = .dec };
-    break :blk tmp;
-};
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = builtin.AddressSpace(),
