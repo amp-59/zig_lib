@@ -355,7 +355,6 @@ fn join(
     const ret: *Target = targets.create(allocator, .{
         .name = name,
         .root = pathname,
-        .builder = builder,
         .deps = Target.DependencyList.init(allocator),
     });
     if (spec_fmt) ret.addFormat(allocator, .{});
@@ -382,26 +381,7 @@ fn join(
     return ret;
 }
 pub const OutputMode = enum { exe, lib, obj, run };
-pub const BuildCommand = struct {
-    kind: OutputMode,
-    __compile_command: void,
-};
-pub const FormatCommand = struct {
-    __format_command: void,
-};
-pub const RunCommand = struct {
-    array: ArgsString = undefined,
-    pub fn addRunArgument(run_cmd: *RunCommand, any: anytype) void {
-        if (@typeInfo(@TypeOf(any)) == .Struct) {
-            run_cmd.array.writeAny(preset.reinterpret.fmt, any);
-        } else {
-            run_cmd.array.writeMany(any);
-        }
-        if (run_cmd.array.readOneBack() != 0) {
-            run_cmd.array.writeOne(0);
-        }
-    }
-};
+
 pub const GroupList = GenericList(Group);
 pub const Group = struct {
     name: [:0]const u8,
@@ -436,11 +416,9 @@ pub const Target = struct {
     fmt_cmd: *FormatCommand = undefined,
     run_cmd: *RunCommand = undefined,
     deps: DependencyList,
-    builder: *Builder,
     flags: u8 = 0,
 
     pub const Process = enum { explicit, dependency };
-    /// Specify command for target
     pub const Tag = enum {
         fmt,
         build,
@@ -527,182 +505,6 @@ pub const Target = struct {
     pub fn dependOn(target: *Target, allocator: *Allocator, dependency: *Dependency) void {
         target.deps.create(allocator, .{ .target = dependency, .tag = .fmt });
     }
-    fn buildLength(target: Target) u64 {
-        const cmd: *const BuildCommand = target.build_cmd;
-        var len: u64 = 4;
-        switch (cmd.kind) {
-            .lib, .exe, .obj => {
-                len += 6 + @tagName(cmd.kind).len + 1;
-            },
-            .run => {
-                len += @tagName(cmd.kind).len + 1;
-            },
-        }
-        len +%= Macro.formatLength(target.builder.zigExePathMacro());
-        len +%= Macro.formatLength(target.builder.buildRootPathMacro());
-        len +%= Macro.formatLength(target.builder.cacheDirPathMacro());
-        len +%= Macro.formatLength(target.builder.globalCacheDirPathMacro());
-        cmd = buildLength;
-        len +%= Path.formatLength(target.builder.sourceRootPath(target.root));
-        len +%= 1;
-        ModuleDependency.l_leader = true;
-        return len;
-    }
-    fn buildWrite(target: Target, array: anytype) u64 {
-        const cmd: *const BuildCommand = target.build_cmd;
-        array.writeMany("zig\x00");
-        switch (cmd.kind) {
-            .lib, .exe, .obj => {
-                array.writeMany("build-");
-                array.writeMany(@tagName(cmd.kind));
-                array.writeOne('\x00');
-            },
-            .run => {
-                array.writeMany(@tagName(cmd.kind));
-                array.writeOne('\x00');
-            },
-        }
-        array.writeFormat(target.builder.zigExePathMacro());
-        array.writeFormat(target.builder.buildRootPathMacro());
-        array.writeFormat(target.builder.cacheDirPathMacro());
-        array.writeFormat(target.builder.globalCacheDirPathMacro());
-        cmd = buildWrite;
-        array.writeFormat(target.builder.sourceRootPath(target.root));
-        array.writeMany("\x00\x00");
-        array.undefine(1);
-        ModuleDependency.w_leader = true;
-        return countArgs(array);
-    }
-    fn formatLength(target: Target) u64 {
-        const cmd: *const FormatCommand = target.fmt_cmd;
-        var len: u64 = 8;
-        cmd = formatLength;
-        len +%= Path.formatLength(target.builder.sourceRootPath(target.root));
-        len +%= 1;
-        return len;
-    }
-    fn formatWrite(target: Target, array: anytype) u64 {
-        const cmd: *const FormatCommand = target.fmt_cmd;
-        array.writeMany("zig\x00fmt\x00");
-        cmd = formatWrite;
-        array.writeFormat(target.builder.sourceRootPath(target.root));
-        array.writeMany("\x00\x00");
-        array.undefine(1);
-        return countArgs(array);
-    }
-    pub fn build(target: *Target) !void {
-        try target.format();
-        if (target.done(.build)) return;
-        if (target.have(.build)) {
-            target.do(.build);
-            target.builder.depth +%= 1;
-            try target.maybeInvokeDependencies();
-            var array: ArgsString = undefined;
-            var args: ArgsPointers = undefined;
-            array.undefineAll();
-            args.undefineAll();
-            const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
-            const old_size: u64 = if (target.builder.stat(bin_path)) |st| st.size else 0;
-            builtin.assertBelowOrEqual(u64, target.buildWrite(&array), max_args);
-            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-            builtin.assertEqual(u64, array.len(), target.buildLength());
-            const build_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            const new_size: u64 = if (target.builder.stat(bin_path)) |st| st.size else 0;
-            target.builder.depth -%= 1;
-            if (target.builder.depth <= max_relevant_depth) {
-                debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
-            }
-        }
-    }
-    pub fn format(target: *Target) !void {
-        if (target.done(.fmt)) return;
-        if (target.have(.fmt)) {
-            target.do(.fmt);
-            try target.maybeInvokeDependencies();
-            var array: ArgsString = undefined;
-            var args: ArgsPointers = undefined;
-            array.undefineAll();
-            args.undefineAll();
-            builtin.assertBelowOrEqual(u64, target.formatWrite(&array), max_args);
-            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-            builtin.assertEqual(u64, array.len(), target.formatLength());
-            const format_time: time.TimeSpec = try target.builder.exec(args.referAllDefined());
-            if (target.builder.depth <= max_relevant_depth) {
-                debug.formatNotice(target.name, format_time);
-            }
-        }
-    }
-    pub fn run(target: *Target) !void {
-        if (target.done(.run)) return;
-        if (target.have(.run) and target.have(.build)) {
-            target.do(.run);
-            try target.build();
-            var args: ArgsPointers = undefined;
-            args.undefineAll();
-            builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
-            const run_time: time.TimeSpec = try target.builder.system(args.referAllDefined());
-            if (target.builder.depth <= max_relevant_depth) {
-                debug.runNotice(target.name, run_time);
-            }
-        }
-    }
-    fn maybeInvokeDependencies(target: *Target) anyerror!void {
-        target.deps.head();
-        while (target.deps.next()) |node| : (target.deps.node = node) {
-            switch (target.deps.node.this.tag) {
-                .build => try target.deps.node.this.target.build(),
-                .run => try target.deps.node.this.target.run(),
-                .fmt => try target.deps.node.this.target.format(),
-            }
-        }
-    }
-    const debug = struct {
-        const about_run_s: [:0]const u8 = "run:            ";
-        const about_build_s: [:0]const u8 = "build:          ";
-        const about_format_s: [:0]const u8 = "format:         ";
-        const ChangedSize = fmt.ChangedBytesFormat(.{
-            .dec_style = "\x1b[92m-",
-            .inc_style = "\x1b[91m+",
-        });
-        fn buildNotice(name: [:0]const u8, bin_path: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
-            var array: mem.StaticString(4096) = undefined;
-            array.undefineAll();
-            array.writeMany(bin_path);
-            array.writeOne(0);
-            array.undefine(1);
-            array.undefineAll();
-            array.writeMany(about_build_s);
-            array.writeMany(name);
-            array.writeMany(", ");
-            array.writeFormat(ChangedSize.init(old_size, new_size));
-            array.writeMany(", ");
-            array.writeFormat(fmt.ud64(durat.sec));
-            array.writeMany(".");
-            array.writeFormat(fmt.nsec(durat.nsec));
-            array.undefine(6);
-            array.writeMany("s\n");
-            builtin.debug.write(array.readAll());
-        }
-        fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec) void {
-            var array: mem.StaticString(4096) = undefined;
-            array.undefineAll();
-            array.writeMany(about);
-            array.writeMany(name);
-            array.writeMany(", ");
-            array.writeFormat(fmt.ud64(durat.sec));
-            array.writeMany(".");
-            array.writeFormat(fmt.nsec(durat.nsec));
-            array.undefine(6);
-            array.writeMany("s\n");
-            builtin.debug.write(array.readAll());
-        }
-        inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec) void {
-            simpleTimedNotice(about_run_s, name, durat);
-        }
-        inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
-            simpleTimedNotice(about_format_s, name, durat);
-        }
-    };
 };
 fn countArgs(array: anytype) u64 {
     var count: u64 = 0;
