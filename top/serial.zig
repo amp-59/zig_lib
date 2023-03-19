@@ -104,13 +104,13 @@ fn serialize3Internal(comptime T: type, allocator: anytype, sss: []const []const
     }
     return array.referAllDefined(u8);
 }
-pub fn pointerLength(comptime T: type, any: T) u64 {
+pub fn lengthPointer(comptime T: type, any: T) u64 {
     const type_info: builtin.Type = @typeInfo(T);
     switch (type_info) {
         .Struct => |struct_info| {
             var len: u64 = @sizeOf(T);
             inline for (struct_info.fields) |field| {
-                len +%= pointerLength(field.type, @field(any, field.name));
+                len +%= length(field.type, @field(any, field.name));
             }
             return len;
         },
@@ -119,7 +119,7 @@ pub fn pointerLength(comptime T: type, any: T) u64 {
             if (union_info.tag_type) |tag_type| {
                 inline for (union_info.fields) |field| {
                     if (any == @field(tag_type, field.name)) {
-                        len +%= pointerLength(field.type, @field(any, field.name));
+                        len +%= length(field.type, @field(any, field.name));
                     }
                 }
             }
@@ -128,15 +128,16 @@ pub fn pointerLength(comptime T: type, any: T) u64 {
         .Pointer => |pointer_info| {
             var len: u64 = @sizeOf(T);
             if (pointer_info.size == .One) {
-                len +%= pointerLength(pointer_info.child, any.*);
+                len +%= lengthPointer(pointer_info.child, any.*);
             }
             if (pointer_info.size == .Many) {
-                len +%= pointerLength(pointer_info.child, meta.manyToSlice(any));
+                len +%= lengthPointer(meta.ManyToSlice(T), meta.manyToSlice(any));
             }
             if (pointer_info.size == .Slice) {
                 for (any) |value| {
-                    len +%= pointerLength(pointer_info.child, value);
+                    len +%= lengthPointer(pointer_info.child, value);
                 }
+                len +%= @boolToInt(pointer_info.sentinel != null);
             }
             return len;
         },
@@ -166,21 +167,73 @@ pub fn length(comptime T: type, any: T) u64 {
         .Pointer => |pointer_info| {
             var len: u64 = 0;
             if (pointer_info.size == .One) {
-                len +%= pointerLength(pointer_info.child, any.*);
+                len +%= lengthPointer(pointer_info.child, any.*);
             }
             if (pointer_info.size == .Many) {
-                len +%= pointerLength(pointer_info.child, meta.manyToSlice(any));
+                len +%= lengthPointer(meta.ManyToSlice(T), meta.manyToSlice(any));
             }
             if (pointer_info.size == .Slice) {
                 for (any) |value| {
-                    len +%= pointerLength(pointer_info.child, value);
+                    len +%= lengthPointer(pointer_info.child, value);
                 }
+                len +%= @boolToInt(pointer_info.sentinel != null);
             }
             return len;
         },
         else => return 0,
     }
 }
+pub fn write(allocator: anytype, comptime T: type, any: T) !T {
+    switch (@typeInfo(T)) {
+        .Struct => |struct_info| {
+            var ret: T = any;
+            inline for (struct_info.fields) |field| {
+                @field(ret, field.name) = try write(allocator, field.type, @field(any, field.name));
+            }
+            return ret;
+        },
+        .Union => |union_info| {
+            var ret: T = any;
+            if (union_info.tag_type) |tag_type| {
+                inline for (union_info.fields) |field| {
+                    if (any == @field(tag_type, field.name)) {
+                        return @unionInit(T, field.name, try write(allocator, field.type, @field(any, field.name)));
+                    }
+                }
+            }
+            return ret;
+        },
+        .Pointer => |pointer_info| {
+            if (pointer_info.size == .One) {
+                var ret: *pointer_info.child = try allocator.createIrreversible(pointer_info.child);
+                ret.* = try write(allocator, pointer_info.child, any.*);
+                return ret;
+            }
+            if (pointer_info.size == .Many) {
+                return try write(allocator, meta.ManyToSlice(T), meta.manyToSlice(any));
+            }
+            if (pointer_info.size == .Slice) {
+                var ret: []pointer_info.child = try allocator.allocateIrreversible(pointer_info.child, any.len);
+                for (any, 0..) |value, i| {
+                    ret[i] = try write(allocator, pointer_info.child, value);
+                }
+                if (pointer_info.sentinel) |sentinel_ptr| {
+                    return allocator.allocateSentinelIrreversible(
+                        pointer_info.child,
+                        ret,
+                        comptime mem.pointerOpaque(pointer_info.child, sentinel_ptr).*,
+                    );
+                } else {
+                    return ret;
+                }
+            }
+        },
+        else => {
+            return any;
+        },
+    }
+}
+
 fn deserialize3Internal(comptime T: type, addr: u64) [][][]T {
     const T1 = []T;
     const T2 = []T1;
