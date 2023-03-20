@@ -1,4 +1,3 @@
-//! This stage summarises the abstract specification.
 const gen = @import("./gen.zig");
 const mem = gen.mem;
 const fmt = gen.fmt;
