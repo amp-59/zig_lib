@@ -512,6 +512,7 @@ pub fn sentinel(comptime T: type) ?Element(T) {
             }
         },
     }
+    return null;
 }
 fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     const bytes1: []const u8 = &toBytes(arg1);
@@ -559,6 +560,7 @@ pub fn sliceChild(comptime T: type) type {
 pub fn sliceProperty(comptime T: type) SliceProperty {
     return .{ sliceLevel(T), sliceChild(T) };
 }
+
 pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
     const T: type = @TypeOf(any);
     const type_info: builtin.Type = @typeInfo(T);
@@ -651,6 +653,12 @@ pub fn TaggedUnion(comptime Union: type) type {
     return @Type(.{ .Enum = .{ .fields = tag_type_fields } });
 }
 
+pub fn Var(comptime T: type) type {
+    return @TypeOf(@constCast(@as(T, undefined)));
+}
+pub fn Field(comptime T: type, comptime field_name: []const u8) type {
+    return @TypeOf(@field(@as(T, undefined), field_name));
+}
 pub fn unionFields(comptime Union: type) []const builtin.UnionField {
     return @typeInfo(Union).Union.fields;
 }
@@ -660,9 +668,7 @@ pub fn enumFields(comptime Enum: type) []const builtin.EnumField {
 pub fn structFields(comptime Struct: type) []const builtin.Type.StructField {
     return @typeInfo(Struct).Struct.fields;
 }
-pub fn Field(comptime T: type, comptime field_name: []const u8) type {
-    return @TypeOf(@field(@as(T, undefined), field_name));
-}
+
 pub fn FieldN(comptime T: type, comptime field_index: usize) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
