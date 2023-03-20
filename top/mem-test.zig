@@ -11,7 +11,6 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const is_verbose: bool = false;
 
 pub const itos = builtin.fmt.ux;
 
