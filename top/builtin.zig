@@ -3,43 +3,6 @@ pub const config = @import("./config.zig");
 
 pub usingnamespace config;
 
-/// Return an absolute path to a project file.
-pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
-    return @This().build_root.? ++ "/" ++ relative;
-}
-/// Returns an absolute path to the compiler used to compile this program.
-pub fn zigExe() [:0]const u8 {
-    const ret: [:0]const u8 = config.zig_exe.?;
-    if (ret[0] != '/') {
-        @compileError("'" ++ ret ++ "' must be an absolute path");
-    }
-    return ret;
-}
-/// Returns an absolute path to the project root directory.
-pub fn buildRoot() [:0]const u8 {
-    const ret: [:0]const u8 = config.build_root.?;
-    if (ret[0] != '/') {
-        @compileError("'" ++ ret ++ "' must be an absolute path");
-    }
-    return ret;
-}
-/// Returns an absolute path to the project cache directory.
-pub fn cacheDir() [:0]const u8 {
-    const ret: [:0]const u8 = config.cache_dir.?;
-    if (ret[0] != '/') {
-        @compileError("'" ++ ret ++ "' must be an absolute path");
-    }
-    return ret;
-}
-/// Returns an absolute path to the user (global) cache directory.
-pub fn globalCacheDir() [:0]const u8 {
-    const ret: [:0]const u8 = config.global_cache_dir.?;
-    if (ret[0] != '/') {
-        @compileError("'" ++ ret ++ "' must be an absolute path");
-    }
-    return ret;
-}
-
 pub fn Slice(comptime T: type) type {
     return extern struct { ptr: [*]T, len: usize };
 }
