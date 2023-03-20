@@ -383,7 +383,7 @@ fn writeDeclExpr(array: *Array, p_field: attr.Specifier) void {
         .decl_optional_variant => |decl_optional_variant| {
             const ctn_name: []const u8 = @tagName(decl_optional_variant.ctn_tag);
             const decl_name: []const u8 = @tagName(decl_optional_variant.decl_tag);
-            array.writeMany("if (spec.");
+            array.writeMany("if(spec.");
             array.writeMany(ctn_name);
             array.writeMany(".");
             array.writeMany(decl_name);
