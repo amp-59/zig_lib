@@ -53,6 +53,13 @@ inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
         return fmt.typeName(T);
     }
 }
+inline fn writeFormat(array: anytype, format: anytype) void {
+    if (builtin.runtime_assertions) {
+        array.writeFormat(format);
+    } else {
+        format.formatWrite(array);
+    }
+}
 pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
     if (Type == meta.Generic) {
         return GenericFormat(spec);
