@@ -11,13 +11,7 @@ const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
-};
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
 
 pub const AddressSpace = preset.address_space.regular_128;
@@ -115,7 +109,6 @@ fn approximationTest() void {
             }
         }
     }
-    // The error is below 2 percent.
     builtin.assertBelow(u64, total_returned - total_requested, (2 * total_requested) / 100);
 }
 pub fn main() !void {
