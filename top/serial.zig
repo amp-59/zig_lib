@@ -4,7 +4,7 @@ const meta = @import("./meta.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
-fn maxAlignment(comptime T: type, comptime in: comptime_int) comptime_int {
+pub fn maxAlignment(comptime T: type, comptime in: comptime_int) comptime_int {
     switch (@typeInfo(T)) {
         .Struct => |struct_info| {
             var max: comptime_int = @max(in, @alignOf(T));
@@ -137,7 +137,8 @@ pub fn lengthPointer(comptime T: type, any: T) u64 {
                 for (any) |value| {
                     len +%= lengthPointer(pointer_info.child, value);
                 }
-                len +%= @boolToInt(pointer_info.sentinel != null);
+                len +%= @sizeOf(pointer_info.child) *%
+                    @boolToInt(pointer_info.sentinel != null);
             }
             return len;
         },
@@ -176,61 +177,57 @@ pub fn length(comptime T: type, any: T) u64 {
                 for (any) |value| {
                     len +%= lengthPointer(pointer_info.child, value);
                 }
-                len +%= @boolToInt(pointer_info.sentinel != null);
+                len +%= @sizeOf(pointer_info.child) *%
+                    @boolToInt(pointer_info.sentinel != null);
             }
             return len;
         },
         else => return 0,
     }
 }
-pub fn write(allocator: anytype, comptime T: type, any: T) !T {
+pub fn write(allocator: anytype, comptime T: type, any: T) @TypeOf(allocator.*).allocate_payload(T) {
     switch (@typeInfo(T)) {
         .Struct => |struct_info| {
             var ret: T = any;
             inline for (struct_info.fields) |field| {
-                @field(ret, field.name) = try write(allocator, field.type, @field(any, field.name));
+                @field(ret, field.name) = try meta.wrap(write(allocator, field.type, @field(any, field.name)));
             }
             return ret;
         },
         .Union => |union_info| {
-            var ret: T = any;
             if (union_info.tag_type) |tag_type| {
                 inline for (union_info.fields) |field| {
                     if (any == @field(tag_type, field.name)) {
-                        return @unionInit(T, field.name, try write(allocator, field.type, @field(any, field.name)));
+                        return @unionInit(T, field.name, try meta.wrap(write(allocator, field.type, @field(any, field.name))));
                     }
                 }
             }
-            return ret;
+            return any;
         },
         .Pointer => |pointer_info| {
             if (pointer_info.size == .One) {
-                var ret: *pointer_info.child = try allocator.createIrreversible(pointer_info.child);
-                ret.* = try write(allocator, pointer_info.child, any.*);
+                var ret: *pointer_info.child = try meta.wrap(allocator.createIrreversible(pointer_info.child));
+                ret.* = try meta.wrap(write(allocator, pointer_info.child, any.*));
                 return ret;
             }
             if (pointer_info.size == .Many) {
-                return try write(allocator, meta.ManyToSlice(T), meta.manyToSlice(any));
+                return try meta.wrap(write(allocator, meta.ManyToSlice(T), meta.manyToSlice(any)));
             }
             if (pointer_info.size == .Slice) {
-                var ret: []pointer_info.child = try allocator.allocateIrreversible(pointer_info.child, any.len);
-                for (any, 0..) |value, i| {
-                    ret[i] = try write(allocator, pointer_info.child, value);
+                const ret: meta.Var(T) = blk: {
+                    if (comptime meta.sentinel(T)) |sentinel| {
+                        break :blk try meta.wrap(allocator.allocateWithSentinelIrreversible(pointer_info.child, any.len, sentinel));
+                    } else {
+                        break :blk try meta.wrap(allocator.allocateIrreversible(pointer_info.child, any.len));
+                    }
+                };
+                for (ret, 0..) |*ptr, i| {
+                    ptr.* = try meta.wrap(write(allocator, pointer_info.child, any[i]));
                 }
-                if (pointer_info.sentinel) |sentinel_ptr| {
-                    return allocator.allocateSentinelIrreversible(
-                        pointer_info.child,
-                        ret,
-                        comptime mem.pointerOpaque(pointer_info.child, sentinel_ptr).*,
-                    );
-                } else {
-                    return ret;
-                }
+                return ret;
             }
         },
-        else => {
-            return any;
-        },
+        else => return any,
     }
 }
 
