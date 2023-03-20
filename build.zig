@@ -11,7 +11,7 @@ const builtin = srg.builtin;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
-pub const max_relevant_depth: u64 = if (builtin.testEqual(builtin.Logging.Override, logging_override, preset.logging.override.verbose)) 255 else 0;
+pub const max_relevant_depth: u64 = if (builtin.testEqual(builtin.Logging.Override, logging_override, preset.logging.override.verbose)) 255 else 1;
 
 const deps: []const build.ModuleDependency = &.{ .{ .name = "zig_lib" }, .{ .name = "@build" } };
 const modules: []const build.Module = &.{ .{ .name = "zig_lib", .path = "./zig_lib.zig" }, .{ .name = "@build", .path = "./build.zig" } };
@@ -51,7 +51,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const list_test: *build.Target          = tests.addTarget(fast_spec,  allocator,    "list_test",            "top/list-test.zig");
     const fmt_test: *build.Target           = tests.addTarget(debug_spec, allocator,    "fmt_test",             "top/fmt-test.zig");
     const render_test: *build.Target        = tests.addTarget(small_spec, allocator,    "render_test",          "top/render-test.zig");
-    const serial_test: *build.Target        = tests.addTarget(small_spec, allocator,    "serial_test",          "top/serial-test.zig");
+    const serial_test: *build.Target        = tests.addTarget(debug_spec, allocator,    "serial_test",          "top/serial-test.zig");
     const thread_test: *build.Target        = tests.addTarget(debug_spec, allocator,    "thread_test",          "top/thread-test.zig");
     const virtual_test: *build.Target       = tests.addTarget(small_spec, allocator,    "virtual_test",         "top/virtual-test.zig");
     const impl_test: *build.Target          = tests.addTarget(debug_spec, allocator,    "impl_test",            "top/impl-test.zig");
@@ -71,6 +71,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
 
     const memgen_test: *build.Target            = mg.addTarget(debug_spec, allocator,   "memgen_test",          "top/mem/memgen-test.zig");
     build_test.dependOnRun(allocator,           generate_build);
+    mg_new_type_specs.dependOnRun(allocator,    mg_touch);
     mg_reference_impls.dependOnRun(allocator,   mg_touch);
     mg_container_kinds.dependOnRun(allocator,   mg_touch);
     mg_new_specs.dependOnRun(allocator,         mg_new_type_specs);
@@ -80,6 +81,9 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     generate_containers.dependOnRun(allocator,  mg_reference_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
     memgen_test.dependOnRun(allocator,          mg_new_type_specs);
+
+    generate_references.fmt_cmd.ast_check = false;
+    generate_containers.fmt_cmd.ast_check = false;
 
     build_test.run_cmd.addRunArgument(builder.zigExePath());
     build_test.run_cmd.addRunArgument(builder.buildRootPath());
