@@ -54,8 +54,12 @@ pub fn testIntToString() !void {
     try testing.expectEqualMany(u8, builtin.fmt.ub8(0).readAll(), "0b00000000");
     try testing.expectEqualMany(u8, builtin.fmt.ub8(1).readAll(), "0b00000001");
     const start = @ptrToInt(&arg1);
+    var inc: u64 = 1;
     uint = start;
-    while (uint - start < 0x100000) : (uint += 99) {
+    while (uint - start < 0x100000) : ({
+        uint +%= inc;
+        inc +%= 1;
+    }) {
         builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
         builtin.assertEqual(u64, uint, builtin.parse.ud(u64, builtin.fmt.ud64(uint).readAll()));
@@ -90,7 +94,11 @@ pub fn testIntToString() !void {
         try builtin.expectEqual(u8, @truncate(u8, uint), builtin.parse.ux(u8, builtin.fmt.ux8(@truncate(u8, uint)).readAll()));
     }
     iint = @bitCast(isize, start);
-    while (iint < 0x100000) : (iint += 99) {
+    inc = 1;
+    while (iint < 0x100000) : ({
+        uint +%= inc;
+        inc +%= 1;
+    }) {
         builtin.assertEqual(i64, iint, builtin.parse.ib(i64, builtin.fmt.ib64(iint).readAll()));
         builtin.assertEqual(i64, iint, builtin.parse.io(i64, builtin.fmt.io64(iint).readAll()));
         builtin.assertEqual(i64, iint, builtin.parse.id(i64, builtin.fmt.id64(iint).readAll()));
