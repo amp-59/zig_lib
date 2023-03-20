@@ -13,18 +13,13 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
-};
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
 const is_function_type: bool = @typeInfo(types.Builder) == .Fn;
 const prefer_inline: bool = true;
 const write_fn_name: bool = false;
 const commit_write: bool = true;
+const build_root: [:0]const u8 = builtin.buildRoot();
 const initial_indent: u64 = if (is_function_type) 2 else 1;
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 24,
@@ -462,15 +457,14 @@ const Kind = enum {
     what_maybe_how_and_how_not,
     what_maybe_how_and_maybe_how_not,
 };
-pub fn inaccurateGuessWarning(comptime string: []const u8, guess: u64, actual: u64, delta: u64) void {
+pub fn inaccurateGuessWarning(comptime string: []const u8, guess: u64, actual: u64) void {
     const max_len: u64 = 16 + 19 + 41 + string.len + 3 + 19 + 13 + 19 + 2;
     var buf: [max_len]u8 = undefined;
     builtin.debug.logErrorAIO(&buf, &.{
         "guess-warn:     ",                          builtin.fmt.ud64(guess).readAll(),
         ", better guess for starting position of '", string,
         "': ",                                       builtin.fmt.ud64(actual).readAll(),
-        " (abs.diff = ",                             builtin.fmt.ud64(delta).readAll(),
-        ")\n",
+        "\n",
     });
 }
 pub fn nullGuessWarning(comptime string: []const u8) void {
@@ -483,7 +477,7 @@ pub fn guessSourceOffset(src: []const u8, comptime string: []const u8, guess: u6
     if (mem.propagateSearch(u8, string, src, guess)) |actual| {
         const diff: u64 = builtin.diff(u64, actual, guess);
         if (diff != 0) {
-            inaccurateGuessWarning(string, guess, actual, diff);
+            inaccurateGuessWarning(string, guess, actual);
         }
         try builtin.expectEqual([]const u8, string, src[actual .. actual + string.len]);
         return actual;
@@ -1497,7 +1491,7 @@ pub fn main() !void {
     defer array.deinit(&allocator);
     array.increment(&allocator, 1024 * 1024);
 
-    const fd: u64 = try file.open(open_spec, builtin.build_root.? ++ "/top/build/build-template.zig");
+    const fd: u64 = try file.open(open_spec, build_root ++ "/top/build/build-template.zig");
     try mem.acquire(AddressSpace, &address_space, 1);
     const arena_1: mem.Arena = AddressSpace.arena(1);
 
@@ -1510,12 +1504,12 @@ pub fn main() !void {
     var types_src: []u8 = @constCast(subTemplate(template_src, "build-types.zig").?);
     var option_fn_src: []u8 = @constCast(subTemplate(template_src, "option-functions.zig").?);
 
-    const build_members_offset: u64 = try guessSourceOffset(build_src, build_members_loc_token, 6080);
-    const format_members_offset: u64 = try guessSourceOffset(build_src, format_members_loc_token, 6147);
-    const build_len_fn_body_offset: u64 = try guessSourceOffset(build_src, build_len_fn_body_loc_token, 6943);
-    const build_write_fn_body_offset: u64 = try guessSourceOffset(build_src, build_write_fn_body_loc_token, 7815);
-    const format_len_fn_body_offset: u64 = try guessSourceOffset(build_src, format_len_fn_body_loc_token, 8049);
-    const format_write_fn_body_offset: u64 = try guessSourceOffset(build_src, format_write_fn_body_loc_token, 8328);
+    const build_members_offset: u64 = try guessSourceOffset(build_src, build_members_loc_token, 1467);
+    const format_members_offset: u64 = try guessSourceOffset(build_src, format_members_loc_token, 1534);
+    const build_len_fn_body_offset: u64 = try guessSourceOffset(build_src, build_len_fn_body_loc_token, 7777);
+    const build_write_fn_body_offset: u64 = try guessSourceOffset(build_src, build_write_fn_body_loc_token, 8722);
+    const format_len_fn_body_offset: u64 = try guessSourceOffset(build_src, format_len_fn_body_loc_token, 9189);
+    const format_write_fn_body_offset: u64 = try guessSourceOffset(build_src, format_write_fn_body_loc_token, 9438);
 
     writeImport(&array, "sys", "./sys.zig");
     writeImport(&array, "mem", "./mem.zig");
@@ -1546,7 +1540,7 @@ pub fn main() !void {
         array.writeMany(option_fn_src);
     }
     if (commit_write) {
-        try writeFile(allocator, array, builtin.build_root.? ++ "/top/build.zig");
+        try writeFile(allocator, array, build_root ++ "/top/build.zig");
     } else {
         builtin.debug.write(array.readAll(allocator));
     }
