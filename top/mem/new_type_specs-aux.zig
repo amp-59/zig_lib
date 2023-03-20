@@ -59,66 +59,11 @@ pub fn limits(
         }
         ret.spec +%= 1;
     }
-    return .{ f[0..f_len], t[0..t_len] };
+    return ret;
 }
-fn haveStandAloneTech(
-    allocator: *Allocator,
-    v_i_infos: []const []const InfoT,
-    u_field: InfoT,
-) BinaryFilter([]const InfoT) {
-    var t: [][]const InfoT =
-        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
-    var t_len: u64 = 0;
-    var f: [][]const InfoT =
-        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
-    var f_len: u64 = 0;
-    for (v_i_infos) |v_i_info| {
-        for (v_i_info) |v_i_field| {
-            if (v_i_field == .standalone) {
-                if (u_field.standalone == v_i_field.standalone) {
-                    t[t_len] = v_i_info;
-                    t_len +%= 1;
-                    break;
-                }
-            }
-        } else {
-            f[f_len] = v_i_info;
-            f_len +%= 1;
-        }
-    }
-    return .{ f[0..f_len], t[0..t_len] };
-}
-fn haveMutuallyExclusiveTech(
-    allocator: *Allocator,
-    v_i_infos: []const []const InfoT,
-    u_tech: attr.Techniques.Tag,
-) BinaryFilter([]const InfoT) {
-    var t: [][]const InfoT =
-        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
-    var t_len: u64 = 0;
-    var f: [][]const InfoT =
-        allocator.allocateIrreversible([]const InfoT, v_i_infos.len);
-    var f_len: u64 = 0;
-    for (v_i_infos) |v_i_info| {
-        for (v_i_info) |v_i_field| {
-            if (v_i_field == .mutually_exclusive) {
-                if (u_tech == v_i_field.mutually_exclusive.tech_tag.?) {
-                    t[t_len] = v_i_info;
-                    t_len +%= 1;
-                    break;
-                }
-            }
-        } else {
-            f[f_len] = v_i_info;
-            f_len +%= 1;
-        }
-    }
-    return .{ f[0..f_len], t[0..t_len] };
-}
-
-fn populateUniqueTechniqueKeys(comptime v_i_infos: []const []const InfoT) []const InfoT {
-    var ret: []const InfoT = &.{};
-    for (v_i_infos) |v_i_info| {
+fn populateUniqueTechniqueKeys(comptime tech_set: []const []const attr.Technique) []const attr.Technique {
+    var ret: []const attr.Technique = &.{};
+    for (tech_set) |v_i_info| {
         for (v_i_info) |v_i_field| {
             if (v_i_field == .standalone) {
                 for (ret) |u_field| {
@@ -145,89 +90,88 @@ fn populateUniqueTechniqueKeys(comptime v_i_infos: []const []const InfoT) []cons
     }
     return ret;
 }
-fn populateParameters(comptime abstract_spec: attr.AbstractSpecification) [3][]const InfoS {
-    var p_info: []const InfoS = &.{};
-    var s_info: []const InfoS = &.{};
-    var v_info: []const InfoS = &.{};
+fn populateParameters(comptime abstract_spec: attr.AbstractSpecification) [3][]const attr.Specifier {
+    var params: []const attr.Specifier = &.{};
+    var static: []const attr.Specifier = &.{};
+    var variant: []const attr.Specifier = &.{};
     for (abstract_spec.v_specs) |v_spec| {
-        const info: InfoS = v_spec;
         switch (v_spec) {
             .derived => {
-                s_info = s_info ++ .{info};
+                static = static ++ .{v_spec};
             },
             .stripped => {
-                p_info = p_info ++ .{info};
+                params = params ++ .{v_spec};
             },
             .default, .optional_derived, .decl_optional_derived => {
-                p_info = p_info ++ .{info};
-                s_info = s_info ++ .{info};
+                params = params ++ .{v_spec};
+                static = static ++ .{v_spec};
             },
             .optional_variant, .decl_optional_variant => {
-                p_info = p_info ++ .{info};
-                v_info = v_info ++ .{info};
+                params = params ++ .{v_spec};
+                variant = variant ++ .{v_spec};
             },
         }
     }
-    return .{ p_info, s_info, v_info };
+    return .{ params, static, variant };
 }
-fn populateTechniques(comptime abstract_spec: attr.AbstractSpecification) []const []const InfoT {
-    var v_i_infos: []const []const InfoT = &.{&.{}};
+fn populateTechniques(comptime abstract_spec: attr.AbstractSpecification) []const []const attr.Technique {
+    var tech_set: []const []const attr.Technique = &.{&.{}};
     for (abstract_spec.v_techs) |v_tech| {
         switch (v_tech) {
             .standalone => {
-                for (v_i_infos) |i_info| {
-                    v_i_infos = v_i_infos ++ .{i_info ++ .{v_tech}};
+                for (tech_set) |i_info| {
+                    tech_set = tech_set ++ .{i_info ++ .{v_tech}};
                 }
             },
             .mutually_exclusive => |mutually_exclusive| {
                 switch (mutually_exclusive.kind) {
                     .optional => {
-                        for (v_i_infos) |i_info| {
+                        for (tech_set) |i_info| {
                             for (mutually_exclusive.tech_tags) |j_info| {
-                                v_i_infos = v_i_infos ++ .{i_info ++ .{v_tech.resolve(j_info)}};
+                                tech_set = tech_set ++ .{i_info ++ .{v_tech.resolve(j_info)}};
                             }
                         }
                     },
                     .mandatory => {
-                        var j_infos: []const []const InfoT = &.{};
-                        for (v_i_infos) |i_info| {
+                        var j_infos: []const []const attr.Technique = &.{};
+                        for (tech_set) |i_info| {
                             for (mutually_exclusive.tech_tags) |j_info| {
                                 j_infos = j_infos ++ .{i_info ++ .{v_tech.resolve(j_info)}};
                             }
                         }
-                        v_i_infos = j_infos;
+                        tech_set = j_infos;
                     },
                 }
             },
         }
     }
-    return v_i_infos;
+    return tech_set;
 }
 fn populateSpecifiers(
-    comptime s_info: []const InfoS,
-    comptime v_info: []const InfoS,
-) []const []const InfoS {
-    var s_v_infos: []const []const InfoS = &.{};
-    s_v_infos = s_v_infos ++ .{s_info};
+    comptime s_info: []const attr.Specifier,
+    comptime v_info: []const attr.Specifier,
+) []const []const attr.Specifier {
+    var spec_set: []const []const attr.Specifier = &.{};
+    spec_set = spec_set ++ .{s_info};
     for (v_info) |v_field| {
-        for (s_v_infos) |s_v_info| {
-            s_v_infos = s_v_infos ++ .{s_v_info ++ .{v_field}};
+        for (spec_set) |s_v_info| {
+            spec_set = spec_set ++ .{s_v_info ++ .{v_field}};
         }
     }
-    return s_v_infos;
+    return spec_set;
 }
 fn populateDetails(
     comptime spec: attr.AbstractSpecification,
     comptime p_idx: u8,
-    comptime s_v_infos: []const []const InfoS,
-    comptime v_i_infos: []const []const InfoT,
+    comptime spec_set: []const []const attr.Specifier,
+    comptime tech_set: []const []const attr.Technique,
 ) []const attr.Implementation {
     var details: []const attr.Implementation = &.{};
     var detail: attr.Implementation = attr.Implementation.init(spec, p_idx);
-    for (s_v_infos, 0..) |s_v_info, s_idx| {
+    for (spec_set, 0..) |s_v_info, s_idx| {
         detail.specs = attr.Specifiers.detail(attr.specifiersTags(s_v_info));
         detail.spec_idx = s_idx;
-        for (v_i_infos, 0..) |v_i_info, i_idx| {
+        for (tech_set, 0..) |v_i_info, i_idx| {
             detail.impl_idx = i_idx;
             detail.techs = attr.Techniques.detail(attr.techniqueTags(v_i_info));
             details = details ++ .{detail};
@@ -235,7 +179,89 @@ fn populateDetails(
     }
     return details;
 }
-fn writeFields(array: *Array, p_info: []const InfoS) void {
+fn BinaryFilter(comptime T: type) type {
+    return struct { []const T, []const T };
+}
+fn haveSpec(
+    allocator: *Allocator,
+    spec_set: []const []const attr.Specifier,
+    p_field: attr.Specifier,
+) BinaryFilter([]const attr.Specifier) {
+    var t: [][]const attr.Specifier =
+        allocator.allocateIrreversible([]const attr.Specifier, spec_set.len);
+    var t_len: u64 = 0;
+    var f: [][]const attr.Specifier =
+        allocator.allocateIrreversible([]const attr.Specifier, spec_set.len);
+    var f_len: u64 = 0;
+    for (spec_set) |s_v_info| {
+        for (s_v_info) |s_v_field| {
+            if (builtin.testEqual(attr.Specifier, p_field, s_v_field)) {
+                t[t_len] = s_v_info;
+                t_len +%= 1;
+                break;
+            }
+        } else {
+            f[f_len] = s_v_info;
+            f_len +%= 1;
+        }
+    }
+    return .{ f[0..f_len], t[0..t_len] };
+}
+fn haveStandAloneTech(
+    allocator: *Allocator,
+    tech_set: []const []const attr.Technique,
+    u_field: attr.Technique,
+) BinaryFilter([]const attr.Technique) {
+    var t: [][]const attr.Technique =
+        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+    var t_len: u64 = 0;
+    var f: [][]const attr.Technique =
+        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+    var f_len: u64 = 0;
+    for (tech_set) |v_i_info| {
+        for (v_i_info) |v_i_field| {
+            if (v_i_field == .standalone) {
+                if (u_field.standalone == v_i_field.standalone) {
+                    t[t_len] = v_i_info;
+                    t_len +%= 1;
+                    break;
+                }
+            }
+        } else {
+            f[f_len] = v_i_info;
+            f_len +%= 1;
+        }
+    }
+    return .{ f[0..f_len], t[0..t_len] };
+}
+fn haveMutuallyExclusiveTech(
+    allocator: *Allocator,
+    tech_set: []const []const attr.Technique,
+    u_tech: attr.Techniques.Tag,
+) BinaryFilter([]const attr.Technique) {
+    var t: [][]const attr.Technique =
+        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+    var t_len: u64 = 0;
+    var f: [][]const attr.Technique =
+        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+    var f_len: u64 = 0;
+    for (tech_set) |v_i_info| {
+        for (v_i_info) |v_i_field| {
+            if (v_i_field == .mutually_exclusive) {
+                if (u_tech == v_i_field.mutually_exclusive.tech_tag.?) {
+                    t[t_len] = v_i_info;
+                    t_len +%= 1;
+                    break;
+                }
+            }
+        } else {
+            f[f_len] = v_i_info;
+            f_len +%= 1;
+        }
+    }
+    return .{ f[0..f_len], t[0..t_len] };
+}
+fn writeFields(array: *Array, p_info: []const attr.Specifier) void {
     for (p_info) |p_field| {
         writeParametersFieldName(array, p_field);
         array.writeMany(":");
@@ -243,7 +269,7 @@ fn writeFields(array: *Array, p_info: []const InfoS) void {
         array.writeMany(",");
     }
 }
-fn writeParametersFieldName(array: *Array, p_field: InfoS) void {
+fn writeParametersFieldName(array: *Array, p_field: attr.Specifier) void {
     switch (p_field) {
         .default => |default| array.writeMany(@tagName(default.tag)),
         .stripped => |stripped| array.writeMany(@tagName(stripped.tag)),
@@ -254,7 +280,7 @@ fn writeParametersFieldName(array: *Array, p_field: InfoS) void {
         .derived => unreachable,
     }
 }
-fn writeSpecificationFieldName(array: *Array, s_v_field: InfoS) void {
+fn writeSpecificationFieldName(array: *Array, s_v_field: attr.Specifier) void {
     switch (s_v_field) {
         .default => |default| array.writeMany(@tagName(default.tag)),
         .derived => |derived| array.writeMany(@tagName(derived.tag)),
@@ -265,7 +291,7 @@ fn writeSpecificationFieldName(array: *Array, s_v_field: InfoS) void {
         .stripped => unreachable,
     }
 }
-fn writeParametersTypeName(array: *Array, p_field: InfoS) void {
+fn writeParametersTypeName(array: *Array, p_field: attr.Specifier) void {
     switch (p_field) {
         .default => |default| array.writeFormat(default.type),
         .stripped => |stripped| array.writeFormat(stripped.type),
@@ -282,7 +308,7 @@ fn writeParametersTypeName(array: *Array, p_field: InfoS) void {
         .derived => undefined,
     }
 }
-fn writeSpecificationTypeName(array: *Array, s_v_field: InfoS) void {
+fn writeSpecificationTypeName(array: *Array, s_v_field: attr.Specifier) void {
     switch (s_v_field) {
         .default => |default| array.writeFormat(default.type),
         .derived => |derived| array.writeFormat(derived.type),
@@ -293,7 +319,7 @@ fn writeSpecificationTypeName(array: *Array, s_v_field: InfoS) void {
         .stripped => undefined,
     }
 }
-fn writeDeclExpr(array: *Array, p_field: InfoS) void {
+fn writeDeclExpr(array: *Array, p_field: attr.Specifier) void {
     switch (p_field) {
         .default => |default| {
             array.writeMany("const ");
