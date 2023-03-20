@@ -479,32 +479,35 @@ pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
         r_values.len,
     );
 }
+
+const is_small = @import("builtin").mode == .ReleaseSmall;
+
 extern fn asmTestEqualMany8(l_values: [*]const u8, l_len: u64, r_values: [*]const u8, r_len: u64) callconv(.C) bool;
 comptime {
     asm (
         \\.intel_syntax noprefix
         \\asmTestEqualMany8:
         \\  cmp     rsi, rcx
-        \\  jne     .asmTestEqualMany8_2
-        \\  mov     al, 1
+        \\  jne     2f
+        \\  mov     al, 1f
         \\  cmp     rdi, rdx
-        \\  je      .asmTestEqualMany8_1
+        \\  je      1f
         \\  test    rsi, rsi
-        \\  je      .asmTestEqualMany8_1
+        \\  je      1f
         \\  dec     rsi
         \\  xor     ecx, ecx
-        \\.asmTestEqualMany8_0:
+        \\0:
         \\  movzx   eax, byte ptr [rdi + rcx]
         \\  cmp     al,  byte ptr [rdx + rcx]
         \\  sete    al
-        \\  jne    .asmTestEqualMany8_1
+        \\  jne     1f
         \\  lea     r8,  [rcx + 1]
         \\  cmp     rsi, rcx
         \\  mov     rcx, r8
-        \\  jne    .asmTestEqualMany8_0
-        \\.asmTestEqualMany8_1:
+        \\  jne     0b
+        \\1:
         \\  ret
-        \\.asmTestEqualMany8_2:
+        \\2:
         \\  xor    eax,  eax
         \\  ret
     );
@@ -519,14 +522,14 @@ comptime {
         \\.intel_syntax noprefix
         \\asmAssert:
         \\  test    edi, edi
-        \\  jne     .asmAssert_0
+        \\  jne     0f
         \\  mov     eax, 1
         \\  mov     edi, 2
         \\  syscall
         \\  mov     eax, 60
         \\  mov     edi, 2
         \\  syscall
-        \\.asmAssert_0:
+        \\0:
         \\  ret
     );
 }
@@ -535,7 +538,6 @@ comptime {
     asm (
         \\.intel_syntax noprefix
         \\memset:
-        \\  test    edi, edi
         \\  mov     eax, esi
         \\  mov     rcx, rdx
         \\  rep     stosb byte ptr es:[rdi], al
@@ -544,20 +546,30 @@ comptime {
 }
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
 comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\memcpy:
-        \\  xor     eax, eax
-        \\.memcpy_0:
-        \\  cmp     rax, rdx
-        \\  je      .memcpy_1
-        \\  mov     cl, byte ptr [rsi+rax]
-        \\  mov     byte ptr [rdi+rax], cl
-        \\  inc     rax
-        \\  jmp     .memcpy_0
-        \\.memcpy_1:
-        \\  ret
-    );
+    if (is_small) {
+        asm (
+            \\.intel_syntax noprefix
+            \\memcpy:
+            \\  xor     eax, eax
+            \\0:
+            \\  cmp     rax, rdx
+            \\  je      1f
+            \\  mov     cl, byte ptr [rsi + rax]
+            \\  mov     byte ptr [rdi + rax], cl
+            \\  inc     rax
+            \\  jmp     0b
+            \\1:
+            \\  ret
+        );
+    } else {
+        asm (
+            \\.intel_syntax noprefix
+            \\memcpy:
+            \\  mov     rcx, rdx
+            \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+            \\  ret
+        );
+    }
 }
 pub inline fn memcpyMulti(noalias dest: [*]u8, src: []const []const u8) u64 {
     return asmMemcpyMulti(dest, src.ptr, src.len);
@@ -570,29 +582,29 @@ comptime {
         \\  xor     r8d, r8d
         \\  xor     ecx, ecx
         \\  cmp     r8, rdx
-        \\  jne     .asmMemcpyMulti_9
+        \\  jne     9f
         \\  mov     rax, rcx
         \\  ret
-        \\.asmMemcpyMulti_9:
+        \\9:
         \\  push    rbx
-        \\.asmMemcpyMulti_5:
+        \\5:
         \\  mov     r10, qword ptr [rsi]
-        \\  mov     r9, qword ptr [rsi+8]
+        \\  mov     r9, qword ptr [rsi + 8]
         \\  xor     eax, eax
-        \\  lea     r11, [rdi+rcx]
-        \\.asmMemcpyMulti_3:
+        \\  lea     r11, [rdi + rcx]
+        \\3:
         \\  cmp     rax, r9
-        \\  je      .asmMemcpyMulti_11
-        \\  mov     bl, byte ptr [r10+rax]
-        \\  mov     byte ptr [r11+rax], bl
+        \\  je      11f
+        \\  mov     bl, byte ptr [r10 + rax]
+        \\  mov     byte ptr [r11 + rax], bl
         \\  inc     rax
-        \\  jmp     .asmMemcpyMulti_3
-        \\.asmMemcpyMulti_11:
+        \\  jmp     3b
+        \\11:
         \\  inc     r8
         \\  add     rcx, rax
         \\  add     rsi, 16
         \\  cmp     r8, rdx
-        \\  jne     .asmMemcpyMulti_5
+        \\  jne     5b
         \\  mov     rax, rcx
         \\  pop     rbx
         \\  ret
