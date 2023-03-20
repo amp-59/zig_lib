@@ -11,6 +11,8 @@ pub const is_debug: bool = zig.mode == .Debug;
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
 
+/// The values define the default field values for all Logging sub-types used in
+/// generic specifications.
 pub const logging_default: Logging.Default = define(
     "logging_default",
     Logging.Default,
