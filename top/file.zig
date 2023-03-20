@@ -243,7 +243,7 @@ pub const ModeSpec = struct {
         .other = dmode_other,
     };
     fn mode(comptime mode_spec: ModeSpec) Mode {
-        var mode_bitfield: Mode = .{ .val = 0 };
+        comptime var mode_bitfield: Mode = .{ .val = 0 };
         if (mode_spec.owner.read) {
             mode_bitfield.set(.owner_read);
         }
@@ -304,7 +304,7 @@ pub const OpenSpec = struct {
     };
     const Write = enum { append, truncate };
     pub fn flags(comptime spec: OpenSpec) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
+        comptime var flags_bitfield: Open = .{ .val = 0 };
         if (spec.options.no_cache) {
             flags_bitfield.set(.no_cache);
         }
@@ -360,7 +360,7 @@ pub const SocketSpec = struct {
         close_on_exec: bool = true,
     };
     fn flags(comptime spec: SocketSpec) Socket {
-        var flags_bitfield: Socket = .{ .val = 0 };
+        comptime var flags_bitfield: Socket = .{ .val = 0 };
         if (spec.options.non_block) {
             flags_bitfield.set(.non_block);
         }
@@ -417,7 +417,8 @@ pub const CreateSpec = struct {
         read: bool = false,
     };
     fn flags(comptime spec: CreateSpec) Open {
-        var flags_bitfield: Open = .{ .tag = .create };
+        comptime var flags_bitfield: Open = .{ .val = 0 };
+        flags_bitfield.set(.create);
         if (spec.options.exclusive) {
             flags_bitfield.set(.exclusive);
         }
@@ -459,7 +460,8 @@ pub const PathSpec = struct {
         close_on_exec: bool = true,
     };
     pub fn flags(comptime spec: PathSpec) Open {
-        var flags_bitfield: Open = .{ .tag = .path };
+        comptime var flags_bitfield: Open = .{ .val = 0 };
+        flags_bitfield.set(.path);
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
@@ -482,7 +484,7 @@ pub const StatSpec = struct {
         no_follow: bool = false,
     };
     fn flags(comptime spec: StatSpec) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
+        comptime var flags_bitfield: Open = .{ .val = 0 };
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
@@ -505,7 +507,7 @@ pub const ReadLinkSpec = struct {
         no_follow: bool = false,
     };
     fn flags(comptime spec: StatSpec) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
+        comptime var flags_bitfield: Open = .{ .val = 0 };
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
@@ -530,7 +532,8 @@ pub const MapSpec = struct {
     };
     const Visibility = enum { shared, shared_validate, private };
     pub fn flags(comptime spec: MapSpec) mem.Map {
-        var flags_bitfield: mem.Map = .{ .tag = .fixed_no_replace };
+        var flags_bitfield: mem.Map = .{ .val = 0 };
+        flags_bitfield.set(.fixed_no_replace);
         switch (spec.options.visibility) {
             .private => flags_bitfield.set(.private),
             .shared => flags_bitfield.set(.shared),
@@ -554,7 +557,7 @@ pub const MapSpec = struct {
         return flags_bitfield;
     }
     pub fn prot(comptime spec: MapSpec) mem.Prot {
-        var prot_bitfield: mem.Prot = .{ .val = 0 };
+        comptime var prot_bitfield: mem.Prot = .{ .val = 0 };
         if (spec.options.read) {
             prot_bitfield.set(.read);
         }
@@ -625,7 +628,7 @@ pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) s
 }
 pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const flags: Open = spec.flags();
+    const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
         if (logging.Acquire) {
@@ -641,7 +644,7 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.error
 }
 pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const flags: Open = spec.flags();
+    const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val }))) |fd| {
         if (logging.Acquire) {
@@ -656,7 +659,7 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call
     }
 }
 pub fn socket(comptime spec: SocketSpec, domain: Domain, connection: Connection) sys.Call(spec.errors, spec.return_type) {
-    const flags: Socket = spec.flags();
+    const flags: Socket = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{ @enumToInt(domain), flags.val | @enumToInt(connection), 0 }))) |fd| {
         if (logging.Acquire) {
@@ -699,7 +702,7 @@ pub fn basename(pathname: []const u8) []const u8 {
 }
 pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const flags: Open = spec.flags();
+    const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
         if (logging.Acquire) {
@@ -762,7 +765,7 @@ pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8) sys.Call(spec
 
 pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const flags: Open = spec.flags();
+    const flags: Open = comptime spec.flags();
     const mode: Mode = spec.mode.mode();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, mode.val }))) |fd| {
@@ -939,7 +942,7 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Cal
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     var st: Stat = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
-    const flags: Open = spec.flags();
+    const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.newfstatat, spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }))) {
         if (logging.Success) {
@@ -962,8 +965,8 @@ pub fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Cal
 /// };
 /// ```
 pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors, u64) {
-    const flags: mem.Map = spec.flags();
-    const prot: mem.Prot = spec.prot();
+    const flags: mem.Map = comptime spec.flags();
+    const prot: mem.Prot = comptime spec.prot();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     const st: Stat = fstat(.{ .errors = .{ .abort = &.{sys.ErrorCode.OPAQUE} } }, fd);
     const len: u64 = mach.alignA64(st.size, 4096);
