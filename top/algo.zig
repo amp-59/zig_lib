@@ -23,6 +23,8 @@ fn unpackSingleApproxA(s_counts_h: u64) u64 {
     const s_counts_l: u16 = builtin.shrY(u64, u16, s_counts_h, 48);
     return unpackSingleApproxB(s_counts_l);
 }
+/// Creates a 12-bit approximation of a 64-bit integer. Accuracy is better near
+/// binary powers.
 pub fn approx(n_bytes: u64) u64 {
     const n_bytes_clz: u8 = builtin.lzcnt(u64, n_bytes);
     const l_bytes_cls: u8 = builtin.lzcnt(u64, ~mach.shlx64(n_bytes, n_bytes_clz));
@@ -156,9 +158,11 @@ pub fn approxDouble(k_bytes: u64) u64 {
     const n_bytes_ctz: u64 = ~mach.shrx64(lit.max_bit_u64, n_bytes_cls);
     return mach.sub64(m_bytes, mach.shrx64(n_bytes_ctz, n_bytes_clz) +% 1);
 }
+/// Returns true if x is greater than y.
 pub fn asc(x: anytype, y: anytype) bool {
     return x > y;
 }
+/// Return true if x is less than y.
 pub fn desc(x: anytype, y: anytype) bool {
     return x < y;
 }
