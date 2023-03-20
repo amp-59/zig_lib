@@ -42,12 +42,52 @@ pub const signal_handlers: SignalHandlers = define(
 );
 
 // These are defined by the library builder
-pub const zig_exe: ?[:0]const u8 = define("zig_exe", ?[:0]const u8, null);
-pub const build_root: ?[:0]const u8 = define("build_root", ?[:0]const u8, null);
-pub const cache_dir: ?[:0]const u8 = define("cache_dir", ?[:0]const u8, null);
-pub const global_cache_dir: ?[:0]const u8 = define("global_cache_dir", ?[:0]const u8, null);
-pub const root_src_file: ?[:0]const u8 = define("root_src_file", ?[:0]const u8, null);
+const zig_exe: ?[:0]const u8 = define("zig_exe", [:0]const u8, undefined);
+const build_root: ?[:0]const u8 = define("build_root", [:0]const u8, undefined);
+const cache_dir: ?[:0]const u8 = define("cache_dir", [:0]const u8, undefined);
+const global_cache_dir: ?[:0]const u8 = define("global_cache_dir", [:0]const u8, undefined);
+const root_src_file: ?[:0]const u8 = define("root_src_file", [:0]const u8, undefined);
 
+/// Return an absolute path to a project file.
+pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
+    return build_root.? ++ "/" ++ relative;
+}
+/// Returns an absolute path to the compiler used to compile this program.
+pub fn zigExe() [:0]const u8 {
+    if (zig_exe) {
+        const ret: [:0]const u8 = zig_exe.?;
+        if (ret[0] != '/') {
+            @compileError("'" ++ ret ++ "' must be an absolute path");
+        }
+        return ret;
+    } else {
+        @compileError("Zig executable undefined. ");
+    }
+}
+/// Returns an absolute path to the project root directory.
+pub fn buildRoot() [:0]const u8 {
+    const ret: [:0]const u8 = build_root.?;
+    if (ret[0] != '/') {
+        @compileError("'" ++ ret ++ "' must be an absolute path");
+    }
+    return ret;
+}
+/// Returns an absolute path to the project cache directory.
+pub fn cacheDir() [:0]const u8 {
+    const ret: [:0]const u8 = cache_dir.?;
+    if (ret[0] != '/') {
+        @compileError("'" ++ ret ++ "' must be an absolute path");
+    }
+    return ret;
+}
+/// Returns an absolute path to the user (global) cache directory.
+pub fn globalCacheDir() [:0]const u8 {
+    const ret: [:0]const u8 = global_cache_dir.?;
+    if (ret[0] != '/') {
+        @compileError("'" ++ ret ++ "' must be an absolute path");
+    }
+    return ret;
+}
 /// The primary reason that these constants exist is to distinguish between
 /// reports from the build runner and reports from a run command.
 ///
@@ -64,14 +104,14 @@ pub const message_indent: u8 = define("message_indent", u8, 16);
 pub const message_no_style: [:0]const u8 = "\x1b[0m";
 
 pub fn AddressSpace() type {
-    if (@hasDecl(root, "AddressSpace")) {
-        return root.AddressSpace;
+    if (!@hasDecl(root, "AddressSpace")) {
+        @compileError(
+            "toplevel address space required:\n" ++
+                debug.title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.regular_128;' in program root\n" ++
+                debug.title_s ++ "address spaces are required by high level features with managed memory",
+        );
     }
-    @compileError(
-        "toplevel address space required:\n" ++
-            debug.title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.regular_128;' in program root\n" ++
-            debug.title_s ++ "address spaces are required by high level features with managed memory",
-    );
+    return root.AddressSpace;
 }
 pub const SignalHandlers = packed struct {
     segmentation_fault: bool,
