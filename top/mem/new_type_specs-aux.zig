@@ -12,9 +12,9 @@ const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 
 pub usingnamespace proc.start;
-pub usingnamespace proc.exception;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
+pub const runtime_assertions: bool = true;
 
 const start: u64 = 0x40000000;
 const size: u64 = 64 * 1024 * 1024;
