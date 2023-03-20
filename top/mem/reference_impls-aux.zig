@@ -3,8 +3,10 @@ const gen = @import("./gen.zig");
 const mem = gen.mem;
 const fmt = gen.fmt;
 const proc = gen.proc;
+const file = gen.file;
 const meta = gen.meta;
 const preset = gen.preset;
+const serial = gen.serial;
 const testing = gen.testing;
 const builtin = gen.builtin;
 const tok = @import("./tok.zig");
@@ -16,6 +18,7 @@ const impl_fn = @import("./impl_fn.zig");
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+var errors: u64 = 0;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
@@ -25,7 +28,6 @@ const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
 });
 const AddressSpace = mem.GenericRegularAddressSpace(.{
-    .lb_addr = 0,
     .lb_offset = 0x40000000,
     .divisions = 128,
     .errors = preset.address_space.errors.noexcept,
@@ -434,6 +436,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 array.writeFormat(expr.call(&aligna_allocated_low_alignment));
                 return array.writeMany(tok.end_expr);
             }
+            return array.writeMany(tok.end_expr);
         },
         .unstreamed_byte_address => {
             array.writeMany(tok.return_keyword);
@@ -978,16 +981,18 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: 
     writeFunctions(allocator, array, impl_variant);
     array.writeMany("});\n}\n");
 }
-pub fn generateReferences() void {
+pub fn generateReferences() !u8 {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
     var array: Array = Array.init(&allocator, 1);
-    const details: []attr.Implementation = gen.deserialize(&allocator, attr.Implementation, gen.auxiliaryFile("details"));
+
+    const details: []const attr.Implementation = try serial.deserialize1(attr.Implementation, &allocator, gen.auxiliaryFile("impl_detail"));
     for (details) |*impl_detail| {
         writeTypeFunction(&allocator, &array, impl_detail);
     }
-    gen.writeSourceFile(&array, "references.zig");
+    gen.writeSourceFile(gen.primaryFile("references.zig"), u8, array.readAll());
+    return @boolToInt(errors != 0);
 }
 pub const main = generateReferences;
