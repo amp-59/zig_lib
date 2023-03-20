@@ -100,7 +100,8 @@ pub const MapSpec = struct {
     };
     const Visibility = enum { shared, shared_validate, private };
     pub fn flags(comptime spec: Specification) Map {
-        var flags_bitfield: Map = .{ .tag = .fixed_no_replace };
+        comptime var flags_bitfield: Map = .{ .val = 0 };
+        flags_bitfield.set(.fixed_no_replace);
         switch (spec.options.visibility) {
             .private => flags_bitfield.set(.private),
             .shared => flags_bitfield.set(.shared),
@@ -124,7 +125,7 @@ pub const MapSpec = struct {
         return flags_bitfield;
     }
     pub fn prot(comptime spec: Specification) Prot {
-        var prot_bitfield: Prot = .{ .val = 0 };
+        comptime var prot_bitfield: Prot = .{ .val = 0 };
         if (spec.options.read) {
             prot_bitfield.set(.read);
         }
@@ -145,7 +146,7 @@ pub const MoveSpec = struct {
     const Specification = @This();
     const Options = struct { no_unmap: bool = false };
     pub fn flags(comptime spec: Specification) Remap {
-        var flags_bitfield: Remap = .{ .val = 0 };
+        comptime var flags_bitfield: Remap = .{ .val = 0 };
         if (spec.options.no_unmap) {
             flags_bitfield.set(.no_unmap);
         }
@@ -181,7 +182,7 @@ pub const ProtectSpec = struct {
         grows_down: bool = false,
     };
     pub fn prot(comptime spec: Specification) Prot {
-        var prot_bitfield: Prot = .{ .val = 0 };
+        comptime var prot_bitfield: Prot = .{ .val = 0 };
         if (spec.options.read) {
             prot_bitfield.set(.read);
         }
@@ -217,42 +218,42 @@ pub const AdviseSpec = struct {
     const Action = enum { reclaim, free, remove, pageout, poison };
     const Property = union(enum) { mergeable: bool, hugepage: bool, dump: bool, fork: bool, wipe_on_fork: bool };
     pub fn advice(comptime spec: AdviseSpec) Advice {
-        var flags: Advice = .{ .val = 0 };
+        comptime var advice_bitfield: Advice = .{ .val = 0 };
         if (spec.options.usage) |usage| {
             switch (usage) {
                 .normal => {
-                    flags.set(.normal);
+                    advice_bitfield.set(.normal);
                 },
                 .random => {
-                    flags.set(.random);
+                    advice_bitfield.set(.random);
                 },
                 .sequential => {
-                    flags.set(.sequential);
+                    advice_bitfield.set(.sequential);
                 },
                 .immediate => {
-                    flags.set(.immediate);
+                    advice_bitfield.set(.immediate);
                 },
                 .deferred => {
-                    flags.set(.deferred);
+                    advice_bitfield.set(.deferred);
                 },
             }
         }
         if (spec.options.action) |action| {
             switch (action) {
                 .remove => {
-                    flags.set(.remove);
+                    advice_bitfield.set(.remove);
                 },
                 .free => {
-                    flags.set(.free);
+                    advice_bitfield.set(.free);
                 },
                 .reclaim => {
-                    flags.set(.reclaim);
+                    advice_bitfield.set(.reclaim);
                 },
                 .pageout => {
-                    flags.set(.pageout);
+                    advice_bitfield.set(.pageout);
                 },
                 .poison => {
-                    flags.set(.poison);
+                    advice_bitfield.set(.poison);
                 },
             }
         }
@@ -260,45 +261,45 @@ pub const AdviseSpec = struct {
             switch (property) {
                 .mergeable => |mergeable| {
                     if (mergeable) {
-                        flags.set(.mergeable);
+                        advice_bitfield.set(.mergeable);
                     } else {
-                        flags.set(.unmergeable);
+                        advice_bitfield.set(.unmergeable);
                     }
                 },
                 .hugepage => |hugepage| {
                     if (hugepage) {
-                        flags.set(.hugepage);
+                        advice_bitfield.set(.hugepage);
                     } else {
-                        flags.set(.no_hugepage);
+                        advice_bitfield.set(.no_hugepage);
                     }
                 },
                 .dump => |dump| {
                     if (dump) {
-                        flags.set(.dump);
+                        advice_bitfield.set(.dump);
                     } else {
-                        flags.set(.no_dump);
+                        advice_bitfield.set(.no_dump);
                     }
                 },
                 .fork => |fork| {
                     if (fork) {
-                        flags.set(.fork);
+                        advice_bitfield.set(.fork);
                     } else {
-                        flags.set(.no_fork);
+                        advice_bitfield.set(.no_fork);
                     }
                 },
                 .wipe_on_fork => |wipe_on_fork| {
                     if (wipe_on_fork) {
-                        flags.set(.wipe_on_fork);
+                        advice_bitfield.set(.wipe_on_fork);
                     } else {
-                        flags.set(.keep_on_fork);
+                        advice_bitfield.set(.keep_on_fork);
                     }
                 },
             }
         }
-        if (flags.val == 0) {
-            flags.set(.normal);
+        if (advice_bitfield.val == 0) {
+            advice_bitfield.set(.normal);
         }
-        return flags;
+        return advice_bitfield;
     }
     pub fn describe(comptime spec: AdviseSpec) []const u8 {
         if (spec.options.usage) |usage| {
@@ -677,8 +678,8 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
     }
 }
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
-    const mmap_prot: Prot = spec.prot();
-    const mmap_flags: Map = spec.flags();
+    const mmap_prot: Prot = comptime spec.prot();
+    const mmap_flags: Map = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
         if (logging.Acquire) {
@@ -692,7 +693,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors, sp
     }
 }
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors, spec.return_type) {
-    const mremap_flags: Remap = spec.flags();
+    const mremap_flags: Remap = comptime spec.flags();
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
         if (logging.Success) {
@@ -732,7 +733,7 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors
     }
 }
 pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
-    const prot: Prot = spec.prot();
+    const prot: Prot = comptime spec.prot();
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, prot.val }))) {
         if (logging.Success) {
@@ -746,7 +747,7 @@ pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.er
     }
 }
 pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
-    const advice: Advice = spec.advice();
+    const advice: Advice = comptime spec.advice();
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
         if (logging.Success) {
@@ -761,7 +762,7 @@ pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.erro
 }
 pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const flags: mem.Fd = spec.flags();
+    const flags: mem.Fd = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
         if (logging.Acquire) {
