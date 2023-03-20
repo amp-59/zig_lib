@@ -705,62 +705,67 @@ const special = opaque {
     fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
         const mmap_prot: mem.Prot = spec.prot();
         const mmap_flags: mem.Map = spec.flags();
+        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
-            if (spec.logging.override().Acquire) {
+            if (logging.Acquire) {
                 debug.mapNotice(addr, len);
             }
         } else |map_error| {
-            if (spec.logging.override().Error) {
+            if (logging.Error) {
                 debug.mapError(map_error, addr, len);
             }
             return map_error;
         }
     }
     fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors, spec.return_type) {
-        const mremap_flags: mem.Remap = spec.flags();
+        const mremap_flags: mem.Remap = comptime spec.flags();
+        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
-            if (spec.logging.override().Success) {
+            if (logging.Success) {
                 debug.moveNotice(old_addr, old_len, new_addr);
             }
         } else |mremap_error| {
-            if (spec.logging.override().Error) {
+            if (logging.Error) {
                 debug.moveError(mremap_error, old_addr, old_len, new_addr);
             }
             return mremap_error;
         }
     }
     fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors, spec.return_type) {
+        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
-            if (spec.logging.override().Success) {
+            if (logging.Success) {
                 debug.resizeNotice(old_addr, old_len, new_len);
             }
         } else |mremap_error| {
-            if (spec.logging.override().Error) {
+            if (logging.Error) {
                 debug.resizeError(mremap_error, old_addr, old_len, new_len);
             }
             return mremap_error;
         }
     }
     fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
+        const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
-            if (spec.logging.override().Release) {
+            if (logging.Release) {
                 debug.unmapNotice(addr, len);
             }
         } else |unmap_error| {
-            if (spec.logging.override().Error) {
+            if (logging.Error) {
                 debug.unmapError(unmap_error, addr, len);
             }
             return unmap_error;
         }
     }
     fn advise(comptime spec: mem.AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
+        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
         const advice: mem.Advice = spec.advice();
         if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
-            if (spec.logging.Success and !builtin.is_silent) {
+            if (logging.Success) {
                 debug.adviseNotice(addr, len, spec.describe());
             }
         } else |madvise_error| {
-            if (spec.logging.Error and !builtin.is_silent) {
+            if (logging.Error) {
                 debug.adviseError(madvise_error, addr, len, spec.describe());
             }
             return madvise_error;
@@ -826,7 +831,7 @@ const special = opaque {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
         if (acquireSet(AddressSpace, address_space, index)) {
             if (spec.options.require_map) {
                 try meta.wrap(acquireMap(AddressSpace, address_space));
@@ -850,7 +855,7 @@ const special = opaque {
         const spec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
         if (acquireStaticSet(AddressSpace, address_space, index)) {
             if (logging.Acquire) {
                 debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
@@ -871,7 +876,7 @@ const special = opaque {
         const spec = AddressSpace.addr_spec;
         const lb_addr: u64 = address_space.low();
         const up_addr: u64 = address_space.high();
-        const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
         if (acquireElementarySet(AddressSpace, address_space)) {
             if (logging.Acquire) {
                 debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
@@ -892,7 +897,7 @@ const special = opaque {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        const logging: builtin.Logging.ReleaseErrorFault = spec.logging.release.override();
+        const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
         if (releaseUnset(AddressSpace, address_space, index)) {
             if (logging.Release) {
                 debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
@@ -916,7 +921,7 @@ const special = opaque {
         const spec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        const logging: builtin.Logging.ReleaseErrorFault = spec.logging.release.override();
+        const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
         if (releaseStaticUnset(AddressSpace, address_space, index)) {
             if (logging.Release) {
                 debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
@@ -1735,6 +1740,26 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             showAllocate(T, buf, &sentinel);
             return buf.ptr[0..buf.len :sentinel];
         }
+        pub fn allocateWithSentinelIrreversible(allocator: *Allocator, comptime T: type, count: u64, comptime sentinel: T) Allocator.allocate_payload([:sentinel]T) {
+            defer Graphics.showWithReference(allocator, @src());
+            const s_aligned_bytes: u64 = @sizeOf(T) *% (count + 1);
+            const s_lb_addr: u64 = allocator.unallocated_byte_address();
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
+            if (Allocator.allocator_spec.options.require_map and
+                s_up_addr > allocator.unmapped_byte_address())
+            {
+                try meta.wrap(allocator.mapBelow(s_up_addr));
+            }
+            allocator.allocate(s_up_addr);
+            const ret: [:sentinel]T = @intToPtr([*]T, s_ab_addr)[0..count :sentinel];
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.utility +%= s_aligned_bytes;
+            }
+            showAllocate(T, ret, &sentinel);
+            return ret;
+        }
+
         pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = @ptrToInt(buf.ptr);
