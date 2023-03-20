@@ -16,7 +16,7 @@ pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Uni
 pub const decl_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union, .Enum };
 pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union, .Opaque };
 
-fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
+inline fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
     inline for (type_types) |type_type| {
         if (@typeInfo(T) == type_type) {
             return true;
@@ -24,25 +24,25 @@ fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) boo
     }
     return false;
 }
-pub fn isNumber(comptime T: type) bool {
+pub inline fn isNumber(comptime T: type) bool {
     return isTypeType(T, number_types);
 }
-pub fn isInteger(comptime T: type) bool {
+pub inline fn isInteger(comptime T: type) bool {
     return isTypeType(T, integer_types);
 }
-pub fn isFloat(comptime T: type) bool {
+pub inline fn isFloat(comptime T: type) bool {
     return isTypeType(T, float_types);
 }
-pub fn isEnum(comptime T: type) bool {
+pub inline fn isEnum(comptime T: type) bool {
     return isTypeType(T, enum_types);
 }
-pub fn isTag(comptime T: type) bool {
+pub inline fn isTag(comptime T: type) bool {
     return isTypeType(T, tag_types);
 }
-pub fn isFunction(comptime T: type) bool {
+pub inline fn isFunction(comptime T: type) bool {
     return isTypeType(T, fn_types);
 }
-pub fn isContainer(comptime T: type) bool {
+pub inline fn isContainer(comptime T: type) bool {
     return isTypeType(T, container_types);
 }
 pub fn assertType(comptime T: type, comptime tag: builtin.TypeId) void {
@@ -68,7 +68,7 @@ pub fn assertHasField(comptime T: type, field_name: []const u8) void {
     }
 }
 /// If the input is a union return the active field else return the input.
-pub fn resolve(comptime any: anytype) if (@typeInfo(@TypeOf(any)) == .Union)
+pub inline fn resolve(comptime any: anytype) if (@typeInfo(@TypeOf(any)) == .Union)
     @TypeOf(comptime @field(any, @tagName(any)))
 else
     @TypeOf(any) {
@@ -184,10 +184,10 @@ pub fn defaultValue(comptime struct_field: builtin.Type.StructField) ?struct_fie
     }
     return null;
 }
-pub inline fn Tuple(comptime T: type) type {
+pub fn Tuple(comptime T: type) type {
     return @Type(tupleInfo(@typeInfo(T).Struct.fields));
 }
-pub inline fn Args(comptime Fn: type) type {
+pub fn Args(comptime Fn: type) type {
     var fields: []const builtin.Type.StructField = empty;
     inline for (@typeInfo(Fn).Fn.params, 0..) |arg, i| {
         fields = concat(builtin.Type.StructField, fields, structField(arg.type.?, builtin.fmt.ci(i), null));
@@ -276,11 +276,11 @@ pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
         }
     }
 }
-pub fn alignSizeBW(comptime T: type) u16 { // Needs a better name
+pub inline fn alignSizeBW(comptime T: type) u16 { // Needs a better name
     const bits: u16 = @bitSizeOf(T);
     return alignBW(bits);
 }
-pub fn alignSizeAW(comptime T: type) u16 { // Needs a better name
+pub inline fn alignSizeAW(comptime T: type) u16 { // Needs a better name
     const bits: u16 = @bitSizeOf(T);
     return alignAW(bits);
 }
@@ -362,7 +362,7 @@ pub fn LeastRealBitSize(comptime value: anytype) type {
 }
 /// This is for miscellaneous special cases that normally Zig refuses to cast.
 /// The user of this function gets what they ask for.
-pub fn bitCast(comptime T: type, any: anytype) T {
+pub inline fn bitCast(comptime T: type, any: anytype) T {
     const S: type = @TypeOf(any);
     const s_type_info: builtin.Type = @typeInfo(S);
     const t_type_info: builtin.Type = @typeInfo(T);
@@ -373,7 +373,7 @@ pub fn bitCast(comptime T: type, any: anytype) T {
         }
     }
 }
-pub fn leastBitCast(any: anytype) @Type(.{ .Int = .{
+pub inline fn leastBitCast(any: anytype) @Type(.{ .Int = .{
     .bits = @bitSizeOf(@TypeOf(any)),
     .signedness = .unsigned,
 } }) {
@@ -384,7 +384,7 @@ pub fn leastBitCast(any: anytype) @Type(.{ .Int = .{
     } });
     return @bitCast(U, any);
 }
-pub fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
+pub inline fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
     .bits = alignAW(@bitSizeOf(@TypeOf(any))),
     .signedness = .unsigned,
 } }) {
@@ -421,10 +421,10 @@ pub fn SliceToArrayPointer(comptime T: type, comptime len: comptime_int) type {
         } }),
     } });
 }
-pub fn arrayPointerToSlice(any: anytype) ArrayPointerToSlice(@TypeOf(any)) {
+pub inline fn arrayPointerToSlice(any: anytype) ArrayPointerToSlice(@TypeOf(any)) {
     return @as(ArrayPointerToSlice(@TypeOf(any)), any);
 }
-pub fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@TypeOf(any), any.len) {
+pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@TypeOf(any), any.len) {
     return @ptrCast(SliceToArrayPointer(@TypeOf(any), any.len), any.ptr);
 }
 pub fn Child(comptime T: type) type {
@@ -529,13 +529,13 @@ fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     return true;
 }
 
-pub fn sliceToBytes(comptime E: type, values: []const E) []const u8 {
+pub inline fn sliceToBytes(comptime E: type, values: []const E) []const u8 {
     return @ptrCast([*]const u8, values.ptr)[0 .. @sizeOf(E) * values.len];
 }
-pub fn bytesToSlice(comptime E: type, bytes: []const u8) []const E {
+pub inline fn bytesToSlice(comptime E: type, bytes: []const u8) []const E {
     return @ptrCast([*]const E, @alignCast(@alignOf(E), bytes.ptr))[0..@divExact(bytes.len, @sizeOf(E))];
 }
-pub fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
+pub inline fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
     return @ptrCast(*const [@sizeOf(@TypeOf(any))]u8, &any).*;
 }
 pub fn bytesTo(comptime E: type, comptime bytes: []const u8) E {
@@ -606,13 +606,13 @@ pub fn EnumBitField(comptime E: type) type {
         pub fn value(tag: Tag) Int {
             return @enumToInt(tag);
         }
-        pub fn check(bit_field: *const BitField, tag: Tag) bool {
+        pub inline fn check(bit_field: *const BitField, tag: Tag) bool {
             return bit_field.val & @enumToInt(tag) == @enumToInt(tag);
         }
-        pub fn set(bit_field: *BitField, tag: Tag) void {
+        pub inline fn set(bit_field: *BitField, tag: Tag) void {
             bit_field.val |= @enumToInt(tag);
         }
-        pub fn unset(bit_field: *BitField, tag: Tag) void {
+        pub inline fn unset(bit_field: *BitField, tag: Tag) void {
             bit_field.val &= ~@enumToInt(tag);
         }
     });
