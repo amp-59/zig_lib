@@ -37,36 +37,27 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .errors = preset.address_space.errors.noexcept,
     .options = .{},
 });
-
 const Array = mem.StaticString(1024 * 1024);
-const InfoS = attr.Specifier;
-const InfoT = attr.Technique;
-
-fn BinaryFilter(comptime T: type) type {
-    return struct { []const T, []const T };
-}
-fn haveSpec(
-    allocator: *Allocator,
-    s_v_infos: []const []const InfoS,
-    p_field: InfoS,
-) BinaryFilter([]const InfoS) {
-    var t: [][]const InfoS =
-        allocator.allocateIrreversible([]const InfoS, s_v_infos.len);
-    var t_len: u64 = 0;
-    var f: [][]const InfoS =
-        allocator.allocateIrreversible([]const InfoS, s_v_infos.len);
-    var f_len: u64 = 0;
-    for (s_v_infos) |s_v_info| {
-        for (s_v_info) |s_v_field| {
-            if (builtin.testEqual(InfoS, p_field, s_v_field)) {
-                t[t_len] = s_v_info;
-                t_len +%= 1;
-                break;
+const ContainerDetails = Allocator.StructuredVector(attr.Container);
+const ImplementationDetails = Allocator.StructuredVector(attr.Implementation);
+const verify_all_serial: bool = false;
+const serialise_extra: bool = false;
+pub fn limits(
+    spec_sets: []const []const []const attr.Specifier,
+    tech_sets: []const []const []const attr.Technique,
+) attr.Implementation.Indices {
+    var ret: attr.Implementation.Indices = .{};
+    var i: u64 = 0;
+    while (i != attr.abstract_specs.len) : (i +%= 1) {
+        var j: u64 = 0;
+        while (j != spec_sets[i].len) : (j +%= 1) {
+            var k: u64 = 0;
+            while (k != tech_sets[i].len) : (k +%= 1) {
+                ret.impl +%= 1;
             }
-        } else {
-            f[f_len] = s_v_info;
-            f_len +%= 1;
+            ret.ctn +%= 1;
         }
+        ret.spec +%= 1;
     }
     return .{ f[0..f_len], t[0..t_len] };
 }
