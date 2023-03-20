@@ -1,14 +1,13 @@
 const gen = @import("./gen.zig");
 const mem = gen.mem;
 const fmt = gen.fmt;
-const file = gen.file;
-const meta = gen.meta;
 const proc = gen.proc;
-const algo = gen.algo;
+const meta = gen.meta;
+const file = gen.file;
 const preset = gen.preset;
-const testing = gen.testing;
+const serial = gen.serial;
 const builtin = gen.builtin;
-
+const testing = gen.testing;
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 
