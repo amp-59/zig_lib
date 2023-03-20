@@ -16,26 +16,26 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
-const start: u64 = 0x40000000;
-const size: u64 = 64 * 1024 * 1024;
-const count: u64 = 1024 / 64;
-const finish: u64 = start + (size * count);
-
-const Allocators = mem.StaticArray(Allocator, count);
-
-const Allocator = mem.GenericRtArenaAllocator(.{
+const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
+    .arena_index = 0,
+    .logging = preset.allocator.logging.silent,
+    .errors = preset.allocator.errors.noexcept,
+    .options = preset.allocator.options.small,
+});
+const FAllocator = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
+    .arena_index = 1,
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
     .options = preset.allocator.options.small,
 });
 const AddressSpace = mem.GenericRegularAddressSpace(.{
-    .label = "multi_addrspace",
-    .lb_addr = start,
-    .up_addr = finish,
-    .divisions = 4,
+    .lb_offset = 0x40000000,
+    .divisions = 128,
     .logging = preset.address_space.logging.silent,
     .errors = preset.address_space.errors.noexcept,
+    .options = .{},
 });
 
 const Array = mem.StaticString(1024 * 1024);
