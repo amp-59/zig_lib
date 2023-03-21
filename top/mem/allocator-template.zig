@@ -233,10 +233,14 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
         pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
             return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
         }
-        fn allocate(allocator: *Allocator, s_up_addr: u64) void {
+        pub inline fn alignAbove(allocator: *Allocator, comptime alignment: u64) u64 {
+            allocator.ub_addr = mach.alignA64(allocator.ub_addr, alignment);
+            return allocator.ub_addr;
+        }
+        pub fn allocate(allocator: *Allocator, s_up_addr: u64) void {
             allocator.ub_addr = s_up_addr;
         }
-        fn deallocate(allocator: *Allocator, s_lb_addr: u64) void {
+        pub fn deallocate(allocator: *Allocator, s_lb_addr: u64) void {
             if (Allocator.allocator_spec.options.require_filo_free) {
                 allocator.ub_addr = s_lb_addr;
             } else {
@@ -1672,9 +1676,6 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         pub inline fn restore(allocator: *Allocator, state: Save) void {
             defer Graphics.showWithReference(allocator, @src());
             allocator.ub_addr = state.ub_addr;
-        }
-        pub inline fn alignAbove(allocator: *Allocator, comptime alignment: u64) void {
-            allocator.ub_addr = mach.alignA64(allocator.ub_addr, alignment);
         }
         pub inline fn duplicateIrreversible(allocator: *Allocator, comptime T: type, value: T) Allocator.allocate_payload(*T) {
             const ret: *T = try meta.wrap(allocator.createIrreversible(T));
