@@ -185,25 +185,15 @@ fn genericSerializeSlicesLoop(comptime T: type, comptime lvl: u64, s_ab_addr: u6
     }
     return t_ab_addr;
 }
-fn deserialize2Internal(comptime T: type, addr: u64) [][]T {
-    const T1 = []T;
-    const T2 = []T1;
-    const l0: *T2 = mem.pointerOne(T2, addr);
-    l0.* = mem.pointerMany(T1, addr +% @sizeOf(T2), l0.len);
-    const offset_0: u64 = @sizeOf(T2);
-    const offset_1: u64 = offset_0 +% (l0.len *% @sizeOf(T1));
-    var offset_2: u64 = offset_1;
-    for (l0.*) |*l1| {
-        l1.* = mem.pointerMany(T, addr +% offset_2, l1.len);
-        offset_2 +%= l1.len * @sizeOf(T);
+fn genericDeserializeSlicesLoop(comptime S: type, comptime lvl: u64, addr: u64, s_aligned_bytes: u64, any: anytype) u64 {
+    var t_aligned_bytes: u64 = s_aligned_bytes;
+    if (lvl == 0) {
+        any.* = mem.pointerMany(S, addr +% s_aligned_bytes, any.len);
+        return s_aligned_bytes +% (any.len *% @sizeOf(S));
+    } else for (any.*) |*value| {
+        t_aligned_bytes = genericDeserializeSlicesLoop(meta.Child(S), lvl - 1, addr, t_aligned_bytes, value);
     }
-    return l0.*;
-}
-fn deserialize1Internal(comptime T: type, addr: u64) []T {
-    const T1 = []T;
-    const l0: *T1 = mem.pointerOne(T1, addr);
-    l0.* = mem.pointerMany(T, addr + @sizeOf(T1), l0.len);
-    return l0.*;
+    return t_aligned_bytes;
 }
 fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype, sets: anytype) !void {
     const save: @TypeOf(allocator.*).Save = allocator.save();
