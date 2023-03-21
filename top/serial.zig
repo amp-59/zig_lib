@@ -239,12 +239,36 @@ pub fn genericDeserializeInternal(comptime S: type, s_ab_addr: u64) S {
     }
     return ret.*;
 }
-pub fn deserialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][][]T {
-    return deserializeInternal(T, [][][]T, allocator, pathname, deserialize3Internal);
+const create_spec: file.CreateSpec = .{ .options = .{ .exclusive = false, .read = false, .write = .truncate } };
+const read_spec: file.ReadSpec = .{ .return_value = void };
+const open_spec: file.OpenSpec = .{ .options = .{ .read = true, .write = null } };
+const write_spec: file.WriteSpec = .{};
+const stat_spec: file.StatSpec = .{};
+const close_spec: file.CloseSpec = .{};
+
+pub fn serialize(allocator: anytype, pathname: [:0]const u8, sets: anytype) !void {
+    const save = allocator.save();
+    defer allocator.restore(save);
+    const s_ab_addr: u64 = allocator.alignAbove(16);
+    const bytes: []const u8 = try meta.wrap(genericSerializeInternal(allocator, s_ab_addr, sets));
+    const fd: u64 = try file.create(create_spec, pathname);
+    try file.write(write_spec, fd, bytes);
+    try file.close(close_spec, fd);
 }
-pub fn deserialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![][]T {
-    return deserializeInternal(T, [][]T, allocator, pathname, deserialize2Internal);
+pub fn deserialize(comptime S: type, allocator: anytype, pathname: [:0]const u8) !S {
+    const fd: u64 = try file.open(open_spec, pathname);
+    const t_ab_addr: u64 = allocator.alignAbove(16);
+    const st: file.Stat = try file.fstat(stat_spec, fd);
+    const buf: []u8 = try meta.wrap(allocator.allocateIrreversible(u8, st.size));
+    try file.read(read_spec, fd, buf, st.size);
+    try file.close(close_spec, fd);
+    return try meta.wrap(genericDeserializeInternal(S, t_ab_addr));
 }
-pub fn deserialize1(comptime T: type, allocator: anytype, pathname: [:0]const u8) ![]T {
-    return deserializeInternal(T, []T, allocator, pathname, deserialize1Internal);
+
+fn allocateFile(allocator: anytype, pathname: [:0]const u8) !void {
+    const fd: u64 = try file.open(open_spec, pathname);
+    const st: file.Stat = try file.fstat(stat_spec, fd);
+    const buf: []u8 = try meta.wrap(allocator.allocateIrreversible(u8, st.size));
+    try file.read(read_spec, fd, buf, st.size);
+    try file.close(close_spec, fd);
 }
