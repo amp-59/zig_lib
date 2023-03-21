@@ -13,7 +13,7 @@ pub fn maxAlignment(comptime types: []const type) comptime_int {
         .Struct => |struct_info| {
             var ret: usize = @alignOf(T);
             lo: for (struct_info.fields) |field| {
-                for (types) |unique| {
+                for (types[0 .. types.len - 1]) |unique| {
                     if (field.type == unique) continue :lo;
                 }
                 ret = @max(ret, maxAlignment(types ++ .{field.type}));
@@ -23,7 +23,7 @@ pub fn maxAlignment(comptime types: []const type) comptime_int {
         .Union => |union_info| {
             var ret: usize = @alignOf(T);
             lo: for (union_info.fields) |field| {
-                for (types) |unique| {
+                for (types[0 .. types.len - 1]) |unique| {
                     if (field.type == unique) continue :lo;
                 }
                 ret = @max(ret, maxAlignment(types ++ .{field.type}));
@@ -31,7 +31,7 @@ pub fn maxAlignment(comptime types: []const type) comptime_int {
             return ret;
         },
         .Pointer => |pointer_info| {
-            for (types) |unique| {
+            for (types[0 .. types.len - 1]) |unique| {
                 if (pointer_info.child == unique) return @alignOf(T);
             }
             return @max(@alignOf(T), maxAlignment(types ++ .{pointer_info.child}));
