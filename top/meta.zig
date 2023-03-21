@@ -549,16 +549,16 @@ pub fn sliceLevel(comptime T: type) comptime_int {
     }
     return 0;
 }
-pub fn sliceChild(comptime T: type) type {
+pub fn SliceChild(comptime T: type) type {
     if (@typeInfo(T) == .Pointer and
         @typeInfo(T).Pointer.size == .Slice)
     {
-        return sliceChild(@typeInfo(T).Pointer.child);
+        return SliceChild(@typeInfo(T).Pointer.child);
     }
     return T;
 }
 pub fn sliceProperty(comptime T: type) SliceProperty {
-    return .{ sliceLevel(T), sliceChild(T) };
+    return .{ sliceLevel(T), SliceChild(T) };
 }
 
 pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
