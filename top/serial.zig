@@ -136,20 +136,17 @@ pub fn write(allocator: anytype, comptime T: type, addr: u64, any: T) @TypeOf(al
             if (union_info.tag_type) |tag_type| {
                 inline for (union_info.fields) |field| {
                     if (any == @field(tag_type, field.name)) {
-                        return @unionInit(T, field.name, try meta.wrap(write(allocator, field.type, @field(any, field.name))));
+                        return @unionInit(T, field.name, try meta.wrap(write(allocator, field.type, addr, @field(any, field.name))));
                     }
                 }
             }
             return any;
         },
         .Pointer => |pointer_info| {
-            if (pointer_info.size == .Many) {
-                return try meta.wrap(write(allocator, meta.ManyToSlice(T), meta.manyToSlice(any)));
-            }
             if (pointer_info.size == .One) {
                 var ret: *pointer_info.child = try meta.wrap(allocator.createIrreversible(pointer_info.child));
-                ret.* = try meta.wrap(write(allocator, pointer_info.child, any.*));
-                return ret;
+                ret.* = try meta.wrap(write(allocator, pointer_info.child, addr, any.*));
+                return toOffset(ret, addr);
             }
             if (pointer_info.size == .Slice) {
                 const ret: meta.Var(T) = blk: {
@@ -160,9 +157,19 @@ pub fn write(allocator: anytype, comptime T: type, addr: u64, any: T) @TypeOf(al
                     }
                 };
                 for (ret, 0..) |*ptr, i| {
-                    ptr.* = try meta.wrap(write(allocator, pointer_info.child, any[i]));
+                    ptr.* = try meta.wrap(write(allocator, pointer_info.child, addr, any[i]));
                 }
-                return ret;
+                return toOffset(ret, addr);
+            }
+            if (pointer_info.size == .Many) {
+                const sentinel: pointer_info.child = comptime meta.sentinel(T).?;
+                var idx: u64 = 0;
+                while (any[idx] != sentinel) idx +%= 1;
+                const ret: meta.Var(T) = try meta.wrap(allocator.allocateWithSentinelIrreversible(pointer_info.child, idx, sentinel));
+                for (ret, 0..) |*ptr, i| {
+                    ptr.* = try meta.wrap(write(allocator, pointer_info.child, addr, any[i]));
+                }
+                return toOffset(ret, addr);
             }
         },
         else => return any,
