@@ -542,18 +542,20 @@ pub fn bytesTo(comptime E: type, comptime bytes: []const u8) E {
     return @ptrCast(*const E, @alignCast(@alignOf(E), bytes.ptr)).*;
 }
 pub fn sliceLevel(comptime T: type) comptime_int {
-    if (@typeInfo(T) == .Pointer and
-        @typeInfo(T).Pointer.size == .Slice)
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Pointer and
+        type_info.Pointer.size == .Slice)
     {
-        return sliceLevel(@typeInfo(T).Pointer.child) + 1;
+        return sliceLevel(type_info.Pointer.child) + 1;
     }
     return 0;
 }
 pub fn SliceChild(comptime T: type) type {
-    if (@typeInfo(T) == .Pointer and
-        @typeInfo(T).Pointer.size == .Slice)
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Pointer and
+        type_info.Pointer.size == .Slice)
     {
-        return SliceChild(@typeInfo(T).Pointer.child);
+        return SliceChild(type_info.Pointer.child);
     }
     return T;
 }
