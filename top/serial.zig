@@ -50,12 +50,13 @@ pub fn length(comptime T: type, any: anytype) u64 {
     }
     return len;
 }
-pub fn read(comptime T: type, addr: u64, offset: u64, any: *T) u64 {
+pub fn read(addr: u64, offset: u64, any: anytype) u64 {
+    const T: type = @TypeOf(any.*);
     var len: u64 = offset;
     switch (@typeInfo(T)) {
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
-                len = read(field.type, addr, len, &@field(any, field.name));
+                len = read(addr, len, &@field(any, field.name));
             }
             return len;
         },
@@ -63,7 +64,7 @@ pub fn read(comptime T: type, addr: u64, offset: u64, any: *T) u64 {
             if (union_info.tag_type) |tag_type| {
                 inline for (union_info.fields) |field| {
                     if (any.* == @field(tag_type, field.name)) {
-                        return read(field.type, addr, len, &@field(any, field.name));
+                        return read(addr, len, &@field(any, field.name));
                     }
                 }
             }
@@ -75,13 +76,13 @@ pub fn read(comptime T: type, addr: u64, offset: u64, any: *T) u64 {
             if (pointer_info.size == .One) {
                 len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
                 len +%= @sizeOf(pointer_info.child);
-                len = read(pointer_info.child, addr, len, next);
+                len = read(addr, len, next);
             }
             if (pointer_info.size == .Slice) {
                 len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
                 len +%= @sizeOf(pointer_info.child) *% (next.len +% @boolToInt(pointer_info.sentinel != null));
                 for (next) |*value| {
-                    len = read(pointer_info.child, addr, len, value);
+                    len = read(addr, len, value);
                 }
             }
             if (pointer_info.size == .Many) {
@@ -208,7 +209,7 @@ fn genericSerializeValuesLoop(comptime T: type, allocator: anytype, s_ab_addr: u
 fn genericDeserializeValuesLoop(comptime T: type, s_up_addr: u64, s_aligned_bytes: u64, any: anytype) u64 {
     var t_aligned_bytes: u64 = s_aligned_bytes;
     if (@TypeOf(any) == *T) {
-        return read(T, s_up_addr, t_aligned_bytes, any);
+        return read(s_up_addr, t_aligned_bytes, any);
     } else for (any.*) |*value| {
         t_aligned_bytes = genericDeserializeValuesLoop(T, s_up_addr, t_aligned_bytes, value);
     }
