@@ -144,6 +144,28 @@ pub const Specifier = union(enum) {
         decl_type: ProtoTypeDescr,
         fn_name: []const u8,
     };
+    pub fn paramFormatter(spec: Specifier) ProtoTypeDescr {
+        switch (spec) {
+            .default => return spec.default.type,
+            .derived => return spec.derived.type,
+            .optional_derived => return spec.optional_derived.type,
+            .optional_variant => return spec.optional_variant.type,
+            .decl_optional_derived => return spec.decl_optional_derived.ctn_type,
+            .decl_optional_variant => return spec.decl_optional_variant.ctn_type,
+            .stripped => return undefined,
+        }
+    }
+    pub fn specFormatter(spec: Specifier) ProtoTypeDescr {
+        switch (spec) {
+            .default => return spec.default.type,
+            .derived => return spec.derived.type,
+            .optional_derived => return spec.optional_derived.type,
+            .optional_variant => return spec.optional_variant.type,
+            .decl_optional_derived => return spec.decl_optional_derived.decl_type,
+            .decl_optional_variant => return spec.decl_optional_variant.decl_type,
+            .stripped => return undefined,
+        }
+    }
     pub fn isVariant(comptime spec: Specifier) bool {
         switch (spec) {
             .optional_variant,
