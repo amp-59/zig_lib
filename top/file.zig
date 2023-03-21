@@ -276,16 +276,18 @@ pub const ModeSpec = struct {
 };
 pub const ReadSpec = struct {
     child: type = u8,
+    return_value: type = u64,
     errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
     logging: builtin.Logging.SuccessErrorFault = .{},
 };
 pub const WriteSpec = struct {
     child: type = u8,
+    return_value: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
     logging: builtin.Logging.SuccessErrorFault = .{},
 };
 pub const OpenSpec = struct {
-    options: Options,
+    options: Options = .{},
     return_type: type = u64,
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     logging: builtin.Logging.AcquireErrorFault = .{},
@@ -595,7 +597,7 @@ pub const TruncateSpec = struct {
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
 };
-pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, u64) {
+pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, spec.return_value) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
     const read_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
@@ -603,7 +605,9 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count
         if (logging.Success) {
             debug.readNotice(fd, ret);
         }
-        return @divExact(ret, read_count_mul);
+        if (spec.return_value != void) {
+            return @intCast(spec.return_value, @divExact(ret, read_count_mul));
+        }
     } else |read_error| {
         if (logging.Error) {
             debug.readError(read_error, fd);
@@ -611,13 +615,16 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count
         return read_error;
     }
 }
-pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.Call(spec.errors, void) {
+pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.Call(spec.errors, spec.return_value) {
     const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
     const write_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
     if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len *% write_count_mul }))) |ret| {
         if (logging.Success) {
             debug.writeNotice(fd, ret);
+        }
+        if (spec.return_value != void) {
+            return @intCast(spec.return_value, @divExact(ret, write_count_mul));
         }
     } else |write_error| {
         if (logging.Error) {
