@@ -550,6 +550,14 @@ comptime {
         asm (
             \\.intel_syntax noprefix
             \\memcpy:
+            \\  mov     rcx, rdx
+            \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+            \\  ret
+        );
+    } else {
+        asm (
+            \\.intel_syntax noprefix
+            \\memcpy:
             \\  xor     eax, eax
             \\0:
             \\  cmp     rax, rdx
@@ -559,14 +567,6 @@ comptime {
             \\  inc     rax
             \\  jmp     0b
             \\1:
-            \\  ret
-        );
-    } else {
-        asm (
-            \\.intel_syntax noprefix
-            \\memcpy:
-            \\  mov     rcx, rdx
-            \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
             \\  ret
         );
     }
