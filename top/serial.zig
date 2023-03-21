@@ -39,83 +39,16 @@ pub fn maxAlignment(comptime types: []const type) comptime_int {
         else => return @alignOf(T),
     }
 }
-fn length3(comptime T: type, sss: []const []const []const T) u64 {
-    var ret: u64 = 16 +% (sss.len *% 16);
-    for (sss) |ss| {
-        ret +%= ss.len *% @sizeOf(T);
-        for (ss) |values| {
-            ret +%= values.len *% @sizeOf(T);
-        }
+pub fn length(comptime T: type, any: anytype) u64 {
+    const S = @TypeOf(any);
+    if (T == S) {
+        return @sizeOf(T);
     }
-    return ret;
-}
-fn length2(comptime T: type, ss: []const []const T) u64 {
-    var ret: u64 = 16 +% (ss.len *% 16);
-    for (ss) |values| {
-        ret +%= values.len *% @sizeOf(T);
+    var len: u64 = @sizeOf(S);
+    for (any) |value| {
+        len +%= length(T, value);
     }
-    return ret;
-}
-fn length1(comptime T: type, s: []const T) u64 {
-    return 16 +% (s.len *% @sizeOf(T));
-}
-fn serialize1Internal(comptime T: type, allocator: anytype, s: []const T) ![]u8 {
-    allocator.alignAbove(maxAlignment(@TypeOf(s), @alignOf(T)));
-    const UVector = @TypeOf(allocator.*).UnstructuredVector(1, 1);
-    var array: UVector = UVector.init(allocator, length1(T, s));
-    array.writeOne(u64, 0);
-    array.writeOne(u64, s.len);
-    for (s) |value| {
-        array.writeOne(T, value);
-    }
-    return array.referAllDefined(u8);
-}
-fn serialize2Internal(comptime T: type, allocator: anytype, ss: []const []const T) ![]u8 {
-    allocator.alignAbove(maxAlignment(@TypeOf(ss), @alignOf(T)));
-    const UVector = @TypeOf(allocator.*).UnstructuredVector(1, 1);
-    var array: UVector = UVector.init(allocator, length2(T, ss));
-    array.writeOne(u64, 0);
-    array.writeOne(u64, ss.len);
-    for (ss) |values| {
-        array.writeOne(u64, 0);
-        array.writeOne(u64, values.len);
-    }
-    for (ss) |values| {
-        for (values) |value| {
-            array.writeOne(T, value);
-        }
-    }
-    for (ss) |values| {
-        for (values) |value| {
-            array.writeOne(T, value);
-        }
-    }
-    return array.referAllDefined(u8);
-}
-fn serialize3Internal(comptime T: type, allocator: anytype, sss: []const []const []const T) ![]u8 {
-    allocator.alignAbove(maxAlignment(@TypeOf(sss), @alignOf(T)));
-    const UVector = @TypeOf(allocator.*).UnstructuredVector(1, 1);
-    var array: UVector = try meta.wrap(UVector.init(allocator, length3(T, sss)));
-    array.writeOne(u64, 0);
-    array.writeOne(u64, sss.len);
-    for (sss) |ss| {
-        array.writeOne(u64, 0);
-        array.writeOne(u64, ss.len);
-    }
-    for (sss) |ss| {
-        for (ss) |values| {
-            array.writeOne(u64, 0);
-            array.writeOne(u64, values.len);
-        }
-    }
-    for (sss) |ss| {
-        for (ss) |values| {
-            for (values) |value| {
-                array.writeOne(T, value);
-            }
-        }
-    }
-    return array.referAllDefined(u8);
+    return len;
 }
 
 pub fn length(comptime T: type, any: T, offset: u64) u64 {
