@@ -195,25 +195,24 @@ fn genericDeserializeSlicesLoop(comptime S: type, comptime lvl: u64, addr: u64, 
     }
     return t_aligned_bytes;
 }
-fn serializeInternal(comptime T: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype, sets: anytype) !void {
-    const save: @TypeOf(allocator.*).Save = allocator.save();
-    defer allocator.restore(save);
-    const bytes: []const u8 = try meta.wrap(function(T, allocator, sets));
-    const fd: u64 = try file.create(.{ .options = .{ .exclusive = false, .read = false, .write = .truncate } }, pathname);
-    defer file.close(.{ .errors = .{} }, fd);
-    try file.write(.{}, fd, bytes);
+fn genericSerializeValuesLoop(comptime T: type, allocator: anytype, s_ab_addr: u64, s_up_addr: u64, any: anytype) u64 {
+    var t_ab_addr: u64 = s_ab_addr;
+    if (@TypeOf(any) == T) {
+        mem.pointerOne(T, t_ab_addr).* = write(allocator, T, s_up_addr, any);
+        return t_ab_addr +% @sizeOf(T);
+    } else for (any) |value| {
+        t_ab_addr = genericSerializeValuesLoop(T, allocator, t_ab_addr, s_up_addr, value);
+    }
+    return t_ab_addr;
 }
-fn deserializeInternal(comptime T: type, comptime S: type, allocator: anytype, pathname: [:0]const u8, comptime function: anytype) !S {
-    const fd: u64 = try file.open(.{ .options = .{ .read = true, .write = null } }, pathname);
-    defer file.close(.{ .errors = .{} }, fd);
-    const st: file.Stat = try file.fstat(.{}, fd);
-    allocator.alignAbove(16);
-    const buf: []u8 = try meta.wrap(allocator.allocateIrreversible(u8, st.size));
-    builtin.assertEqual(u64, st.size, try file.read(.{}, fd, buf, st.size));
-    return try meta.wrap(function(T, @ptrToInt(buf.ptr)));
-}
-pub fn serialize3(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const []const T) !void {
-    return serializeInternal(T, allocator, pathname, serialize3Internal, sets);
+fn genericDeserializeValuesLoop(comptime T: type, s_up_addr: u64, s_aligned_bytes: u64, any: anytype) u64 {
+    var t_aligned_bytes: u64 = s_aligned_bytes;
+    if (@TypeOf(any) == *T) {
+        return read(T, s_up_addr, t_aligned_bytes, any);
+    } else for (any.*) |*value| {
+        t_aligned_bytes = genericDeserializeValuesLoop(T, s_up_addr, t_aligned_bytes, value);
+    }
+    return t_aligned_bytes;
 }
 pub fn serialize2(comptime T: type, allocator: anytype, pathname: [:0]const u8, sets: []const []const T) !void {
     return serializeInternal(T, allocator, pathname, serialize2Internal, sets);
