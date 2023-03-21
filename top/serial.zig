@@ -1,9 +1,11 @@
 const mem = @import("./mem.zig");
+const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
+const testing = @import("./testing.zig");
 
 pub fn maxAlignment(comptime types: []const type) comptime_int {
     const T = types[types.len - 1];
