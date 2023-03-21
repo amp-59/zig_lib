@@ -175,30 +175,15 @@ pub fn write(allocator: anytype, comptime T: type, addr: u64, any: T) @TypeOf(al
         else => return any,
     }
 }
-
-fn deserialize3Internal(comptime T: type, addr: u64) [][][]T {
-    const T1 = []T;
-    const T2 = []T1;
-    const T3 = []T2;
-    const l0: *T3 = mem.pointerOne(T3, addr);
-    l0.* = mem.pointerMany(T2, addr + @sizeOf(T3), l0.len);
-    const offset_0: u64 = @sizeOf(T3);
-    const offset_1: u64 = offset_0 +% (l0.len *% @sizeOf(T2));
-    var offset_2: u64 = offset_1;
-    for (l0.*) |*l1| {
-        l1.* = mem.pointerMany(T1, addr +% offset_2, l1.len);
-        offset_2 +%= l1.len *% @sizeOf(T1);
+fn genericSerializeSlicesLoop(comptime T: type, comptime lvl: u64, s_ab_addr: u64, any: anytype) u64 {
+    var t_ab_addr: u64 = s_ab_addr;
+    if (lvl == 0) {
+        mem.pointerCount(u64, t_ab_addr, 2).* = .{ 0, any.len };
+        return t_ab_addr +% @sizeOf([2]u64);
+    } else for (any) |value| {
+        t_ab_addr = genericSerializeSlicesLoop(T, lvl - 1, t_ab_addr, value);
     }
-    var offset_3: u64 = offset_2;
-    offset_2 = offset_1;
-    for (l0.*) |l1| {
-        for (l1) |*l2| {
-            l2.* = mem.pointerMany(T, addr +% offset_3, l2.len);
-            offset_3 +%= l2.len *% @sizeOf(T);
-        }
-        offset_2 +%= l1.len *% @sizeOf(T1);
-    }
-    return l0.*;
+    return t_ab_addr;
 }
 fn deserialize2Internal(comptime T: type, addr: u64) [][]T {
     const T1 = []T;
