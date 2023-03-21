@@ -99,12 +99,36 @@ pub fn read(comptime T: type, addr: u64, offset: u64, any: *T) u64 {
         else => return len,
     }
 }
-pub fn write(allocator: anytype, comptime T: type, any: T) @TypeOf(allocator.*).allocate_payload(T) {
+fn addrAdd(ptr: anytype, offset: u64) @TypeOf(@constCast(ptr)) {
+    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
+        .Slice => return @intToPtr(@TypeOf(@constCast(ptr.ptr)), @ptrToInt(ptr.ptr) +% offset)[0..ptr.len],
+        .Many => return @intToPtr(@TypeOf(@constCast(ptr)), @ptrToInt(ptr.ptr) +% offset),
+        else => return @intToPtr(@TypeOf(@constCast(ptr)), @ptrToInt(ptr) +% offset),
+    }
+}
+fn addrSub(ptr: anytype, offset: u64) @TypeOf(ptr) {
+    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
+        .Slice => return @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) -% offset)[0..ptr.len],
+        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr.ptr) -% offset),
+        else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% offset),
+    }
+}
+
+fn toOffset(ptr: anytype, addr: u64) @TypeOf(@constCast(ptr)) {
+    @setRuntimeSafety(false);
+    return addrSub(ptr, addr);
+}
+fn toAddress(ptr: anytype, addr: u64) @TypeOf(@constCast(ptr)) {
+    @setRuntimeSafety(false);
+    return addrAdd(ptr, addr);
+}
+
+pub fn write(allocator: anytype, comptime T: type, addr: u64, any: T) @TypeOf(allocator.*).allocate_payload(T) {
     switch (@typeInfo(T)) {
         .Struct => |struct_info| {
             var ret: T = any;
             inline for (struct_info.fields) |field| {
-                @field(ret, field.name) = try meta.wrap(write(allocator, field.type, @field(any, field.name)));
+                @field(ret, field.name) = try meta.wrap(write(allocator, field.type, addr, @field(any, field.name)));
             }
             return ret;
         },
