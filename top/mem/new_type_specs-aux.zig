@@ -641,16 +641,27 @@ fn validateAllSerial(
         return;
     }
     if (serialise_extra) {
-        const f_spec_sets = try meta.wrap(serial.deserialize3(attr.Specifier, allocator, gen.auxiliaryFile("spec_sets")));
-        const f_tech_sets = try meta.wrap(serial.deserialize3(attr.Technique, allocator, gen.auxiliaryFile("tech_sets")));
-        const f_x_p_infos = try meta.wrap(serial.deserialize2(attr.Specifier, allocator, gen.auxiliaryFile("params")));
-        const f_x_q_infos = try meta.wrap(serial.deserialize2(attr.Technique, allocator, gen.auxiliaryFile("options")));
+        const f_x_q_infos = try meta.wrap(serial.deserialize([][]attr.Technique, allocator, gen.auxiliaryFile("options")));
+        const f_spec_sets = try meta.wrap(serial.deserialize([][][]attr.Specifier, allocator, gen.auxiliaryFile("spec_sets")));
+        const f_tech_sets = try meta.wrap(serial.deserialize([][][]attr.Technique, allocator, gen.auxiliaryFile("tech_sets")));
+        const f_x_p_infos = try meta.wrap(serial.deserialize([][]attr.Specifier, allocator, gen.auxiliaryFile("params")));
+
+        for (f_x_q_infos, x_q_infos, 0..) |xx, yy, idx_0| {
+            for (xx, yy, 0..) |x, y, idx_1| {
+                const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
+                if (!builtin.testEqual(@TypeOf(x), x, y)) {
+                    testing.print(.{ "options: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                } else {
+                    testing.print(.{ "options: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                }
+            }
+        }
         for (f_spec_sets, spec_sets, 0..) |xxx, yyy, idx_0| {
             for (xxx, yyy, 0..) |xx, yy, idx_1| {
                 for (xx, yy, 0..) |x, y, idx_2| {
                     const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
                     if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                        return testing.print(.{ "specs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
+                        testing.print(.{ "specs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
                     } else {
                         testing.print(.{ "specs: equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
                     }
@@ -662,7 +673,7 @@ fn validateAllSerial(
                 for (xx, yy, 0..) |x, y, idx_2| {
                     const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
                     if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                        return testing.print(.{ "techs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
+                        testing.print(.{ "techs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
                     } else {
                         testing.print(.{ "techs: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                     }
@@ -673,29 +684,19 @@ fn validateAllSerial(
             for (xx, yy, 0..) |x, y, idx_1| {
                 const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
                 if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                    return testing.print(.{ "params: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                    testing.print(.{ "params: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                 } else {
                     testing.print(.{ "params: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                 }
             }
         }
-        for (f_x_q_infos, x_q_infos, 0..) |xx, yy, idx_0| {
-            for (xx, yy, 0..) |x, y, idx_1| {
-                const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
-                if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                    return testing.print(.{ "options: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
-                } else {
-                    testing.print(.{ "options: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
-                }
-            }
-        }
     }
-    const f_impl_details = try meta.wrap(serial.deserialize1(attr.Implementation, allocator, gen.auxiliaryFile("impl_detail")));
-    const f_ctn_details = try meta.wrap(serial.deserialize1(attr.Container, allocator, gen.auxiliaryFile("ctn_detail")));
+    const f_impl_details = try meta.wrap(serial.deserialize([]attr.Implementation, allocator, gen.auxiliaryFile("impl_detail")));
+    const f_ctn_details = try meta.wrap(serial.deserialize([]attr.Container, allocator, gen.auxiliaryFile("ctn_detail")));
     for (f_impl_details, impl_details.readAll(), 0..) |x, y, idx_0| {
         const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
         if (!builtin.testEqual(@TypeOf(x), x, y)) {
-            return testing.print(.{ "impl: non-equal indices: ", idx_0 } ++ xy);
+            testing.print(.{ "impl: non-equal indices: ", idx_0 } ++ xy);
         } else {
             testing.print(.{ "impl: equal indices: ", idx_0 } ++ xy);
         }
@@ -703,7 +704,7 @@ fn validateAllSerial(
     for (f_ctn_details, ctn_details.readAll(), 0..) |x, y, idx_0| {
         const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
         if (!builtin.testEqual(@TypeOf(x), x, y)) {
-            return testing.print(.{ "ctn: non-equal indices: ", idx_0 } ++ xy);
+            testing.print(.{ "ctn: non-equal indices: ", idx_0 } ++ xy);
         } else {
             testing.print(.{ "ctn: equal indices: ", idx_0 } ++ xy);
         }
@@ -749,13 +750,14 @@ pub fn newNewTypeSpecs() !void {
         indices.spec +%= 1;
     }
     if (serialise_extra) {
-        try serial.serialize3(attr.Specifier, &allocator, gen.auxiliaryFile("spec_sets"), spec_sets);
-        try serial.serialize3(attr.Technique, &allocator, gen.auxiliaryFile("tech_sets"), tech_sets);
-        try serial.serialize2(attr.Specifier, &allocator, gen.auxiliaryFile("params"), x_p_infos);
-        try serial.serialize2(attr.Technique, &allocator, gen.auxiliaryFile("options"), x_q_infos);
+        try serial.serialize(&allocator, gen.auxiliaryFile("options"), x_q_infos);
+        try serial.serialize(&allocator, gen.auxiliaryFile("spec_sets"), spec_sets);
+        try serial.serialize(&allocator, gen.auxiliaryFile("tech_sets"), tech_sets);
+        try serial.serialize(&allocator, gen.auxiliaryFile("params"), x_p_infos);
     }
-    try serial.serialize1(attr.Container, &allocator, gen.auxiliaryFile("ctn_detail"), ctn_details.readAll());
-    try serial.serialize1(attr.Implementation, &allocator, gen.auxiliaryFile("impl_detail"), impl_details.readAll());
+    try serial.serialize(&allocator, gen.auxiliaryFile("ctn_detail"), ctn_details.readAll());
+    try serial.serialize(&allocator, gen.auxiliaryFile("impl_detail"), impl_details.readAll());
+
     try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details, ctn_details);
 }
 pub const main = newNewTypeSpecs;
