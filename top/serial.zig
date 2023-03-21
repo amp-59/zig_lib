@@ -50,41 +50,48 @@ pub fn length(comptime T: type, any: anytype) u64 {
     }
     return len;
 }
-
-pub fn length(comptime T: type, any: T, offset: u64) u64 {
+pub fn read(comptime T: type, addr: u64, offset: u64, any: *T) u64 {
     var len: u64 = offset;
     switch (@typeInfo(T)) {
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
-                len = length(field.type, @field(any, field.name), len);
+                len = read(field.type, addr, len, &@field(any, field.name));
             }
             return len;
         },
         .Union => |union_info| {
             if (union_info.tag_type) |tag_type| {
                 inline for (union_info.fields) |field| {
-                    if (any == @field(tag_type, field.name)) {
-                        return length(field.type, @field(any, field.name), len);
+                    if (any.* == @field(tag_type, field.name)) {
+                        return read(field.type, addr, len, &@field(any, field.name));
                     }
                 }
             }
-            return offset;
+            return len;
         },
         .Pointer => |pointer_info| {
+            const next = toAddress(any.*, addr);
+            defer any.* = next;
             if (pointer_info.size == .One) {
-                len = mach.alignA64(len, @alignOf(pointer_info.child));
+                len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
                 len +%= @sizeOf(pointer_info.child);
-                len = length(pointer_info.child, any.*, len);
-            }
-            if (pointer_info.size == .Many) {
-                len = length(meta.ManyToSlice(T), meta.manyToSlice(any), len);
+                len = read(pointer_info.child, addr, len, next);
             }
             if (pointer_info.size == .Slice) {
-                len = mach.alignA64(len, @alignOf(pointer_info.child));
-                len +%= @sizeOf(pointer_info.child) *
-                    (any.len +% @boolToInt(pointer_info.sentinel != null));
-                for (any) |value| {
-                    len = length(pointer_info.child, value, len);
+                len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+                len +%= @sizeOf(pointer_info.child) *% (next.len +% @boolToInt(pointer_info.sentinel != null));
+                for (next) |*value| {
+                    len = read(pointer_info.child, addr, len, value);
+                }
+            }
+            if (pointer_info.size == .Many) {
+                const sentinel: pointer_info.child = comptime meta.sentinel(T).?;
+                var idx: u64 = 0;
+                while (next[idx] != sentinel) idx +%= 1;
+                len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+                len +%= @sizeOf(pointer_info.child) *% (idx +% 1);
+                for (next[0..idx]) |*value| {
+                    len = read(pointer_info.child, addr, len, value);
                 }
             }
             return len;
