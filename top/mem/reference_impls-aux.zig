@@ -988,7 +988,7 @@ pub fn generateReferences() !u8 {
 
     var array: Array = Array.init(&allocator, 1);
 
-    const details: []const attr.Implementation = try serial.deserialize1(attr.Implementation, &allocator, gen.auxiliaryFile("impl_detail"));
+    const details: []const attr.Implementation = try serial.deserialize([]attr.Implementation, &allocator, gen.auxiliaryFile("impl_detail"));
     for (details) |*impl_detail| {
         writeTypeFunction(&allocator, &array, impl_detail);
     }
