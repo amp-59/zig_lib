@@ -13,8 +13,8 @@ const attr = @import("./attr.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
-pub const runtime_assertions: bool = true;
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const runtime_assertions: bool = false;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
