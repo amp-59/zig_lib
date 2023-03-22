@@ -223,13 +223,13 @@ fn genericDeserializeSlicesLoop(comptime S: type, comptime lvl: u64, addr: u64, 
     }
     return t_aligned_bytes;
 }
-fn genericSerializeValuesLoop(comptime T: type, allocator: anytype, s_ab_addr: u64, s_up_addr: u64, any: anytype) u64 {
+fn genericSerializeValuesLoop(comptime T: type, allocator: anytype, s_ab_addr: u64, s_up_addr: u64, any: anytype) @TypeOf(allocator.*).allocate_payload(u64) {
     var t_ab_addr: u64 = s_ab_addr;
     if (@TypeOf(any) == T) {
-        mem.pointerOne(T, t_ab_addr).* = write(allocator, T, s_up_addr, any);
+        mem.pointerOne(T, t_ab_addr).* = try meta.wrap(write(allocator, T, s_up_addr, any));
         return t_ab_addr +% @sizeOf(T);
     } else for (any) |value| {
-        t_ab_addr = genericSerializeValuesLoop(T, allocator, t_ab_addr, s_up_addr, value);
+        t_ab_addr = try meta.wrap(genericSerializeValuesLoop(T, allocator, t_ab_addr, s_up_addr, value));
     }
     return t_ab_addr;
 }
@@ -242,17 +242,17 @@ fn genericDeserializeValuesLoop(comptime T: type, s_up_addr: u64, s_aligned_byte
     }
     return t_aligned_bytes;
 }
-pub fn genericSerializeInternal(allocator: anytype, s_ab_addr: u64, any: anytype) ![]u8 {
+pub fn genericSerializeInternal(allocator: anytype, s_ab_addr: u64, any: anytype) @TypeOf(allocator.*).allocate_payload([]u8) {
     const S: type = @TypeOf(any);
     const T: type = meta.SliceChild(S);
     const s_up_addr: u64 = s_ab_addr +% length(T, any);
-    allocator.mapBelow(s_up_addr);
-    allocator.allocate(s_up_addr);
+    try meta.wrap(allocator.mapBelow(s_up_addr));
+    try meta.wrap(allocator.allocate(s_up_addr));
     var t_ab_addr: u64 = s_ab_addr;
     inline for (0..comptime meta.sliceLevel(S)) |lvl| {
-        t_ab_addr = genericSerializeSlicesLoop(T, lvl, t_ab_addr, any);
+        t_ab_addr = try meta.wrap(genericSerializeSlicesLoop(T, lvl, t_ab_addr, any));
     } else {
-        t_ab_addr = genericSerializeValuesLoop(T, allocator, t_ab_addr, s_up_addr, any);
+        t_ab_addr = try meta.wrap(genericSerializeValuesLoop(T, allocator, t_ab_addr, s_up_addr, any));
     }
     return mem.pointerMany(u8, s_ab_addr, allocator.unallocated_byte_address() - s_ab_addr);
 }
