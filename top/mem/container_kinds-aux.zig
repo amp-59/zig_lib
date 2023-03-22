@@ -109,5 +109,5 @@ pub fn main() void {
     writeKind(ctn_fn.Fn, &array, .relative_reverse, defined[1] ++ streamed[1]);
     writeKind(ctn_fn.Fn, &array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
     writeKind(ctn_fn.Fn, &array, .special, helper[0]);
-    gen.writeAuxiliarySourceFile(&array, "container_kinds.zig");
+    gen.writeSourceFile(gen.auxiliaryFile("container_kinds.zig"), u8, array.readAll());
 }
