@@ -59,8 +59,7 @@ pub fn testSingleComplexCase() !void {
     allocator = try Allocator.init(&address_space);
     const spec: attr.Specifier = try serial.deserialize(attr.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"));
 
-    spec
-        .array.writeFormat(spec.paramFormatter());
+    array.writeFormat(spec.paramFormatter());
     array.writeOne(' ');
     array.writeFormat(spec.specFormatter());
     array.writeOne('\n');
