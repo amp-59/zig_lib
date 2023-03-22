@@ -50,54 +50,81 @@ pub fn length(comptime T: type, any: anytype) u64 {
     }
     return len;
 }
+
+fn readStruct(comptime struct_info: builtin.Type.Struct, addr: u64, offset: u64, any: anytype) u64 {
+    var len: u64 = offset;
+    inline for (struct_info.fields) |field| {
+        len = read(addr, len, &@field(any, field.name));
+    }
+    return len;
+}
+fn readUnion(comptime union_info: builtin.Type.Union, addr: u64, offset: u64, any: anytype) u64 {
+    if (union_info.tag_type) |tag_type| {
+        inline for (union_info.fields) |field| {
+            if (any.* == @field(tag_type, field.name)) {
+                return read(addr, offset, &@field(any, field.name));
+            }
+        }
+    }
+    return offset;
+}
+fn readPointerOne(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
+    const next = toAddress(any.*, addr);
+    defer any.* = next;
+
+    var len: u64 = offset;
+    len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+    len +%= @sizeOf(pointer_info.child);
+    len = read(addr, len, next);
+    return len;
+}
+fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
+    const next = toAddress(any.*, addr);
+    defer any.* = next;
+
+    var len: u64 = offset;
+    len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+    len +%= @sizeOf(pointer_info.child) *% (next.len +% @boolToInt(pointer_info.sentinel != null));
+    for (next) |*value| {
+        len = read(addr, len, value);
+    }
+    return len;
+}
+fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) void {
+    const next = toAddress(any.*, addr);
+    defer any.* = next;
+
+    const sentinel: pointer_info.child = mem.pointerOpaque(pointer_info.child, pointer_info.sentinel);
+    var len: u64 = offset;
+    var idx: u64 = 0;
+    while (next[idx] != sentinel) idx +%= 1;
+    len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+    len +%= @sizeOf(pointer_info.child) *% (idx +% 1);
+    for (next[0..idx]) |*value| {
+        len = read(pointer_info.child, addr, len, value);
+    }
+}
 pub fn read(addr: u64, offset: u64, any: anytype) u64 {
     const T: type = @TypeOf(any.*);
-    var len: u64 = offset;
     switch (@typeInfo(T)) {
         .Struct => |struct_info| {
-            inline for (struct_info.fields) |field| {
-                len = read(addr, len, &@field(any, field.name));
-            }
-            return len;
+            return readStruct(struct_info, addr, offset, any);
         },
         .Union => |union_info| {
-            if (union_info.tag_type) |tag_type| {
-                inline for (union_info.fields) |field| {
-                    if (any.* == @field(tag_type, field.name)) {
-                        return read(addr, len, &@field(any, field.name));
-                    }
-                }
-            }
-            return len;
+            return readUnion(union_info, addr, offset, any);
         },
         .Pointer => |pointer_info| {
-            const next = toAddress(any.*, addr);
-            defer any.* = next;
             if (pointer_info.size == .One) {
-                len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
-                len +%= @sizeOf(pointer_info.child);
-                len = read(addr, len, next);
+                return readPointerOne(pointer_info, addr, offset, any);
             }
             if (pointer_info.size == .Slice) {
-                len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
-                len +%= @sizeOf(pointer_info.child) *% (next.len +% @boolToInt(pointer_info.sentinel != null));
-                for (next) |*value| {
-                    len = read(addr, len, value);
-                }
+                return readPointerSlice(pointer_info, addr, offset, any);
             }
             if (pointer_info.size == .Many) {
-                const sentinel: pointer_info.child = comptime meta.sentinel(T).?;
-                var idx: u64 = 0;
-                while (next[idx] != sentinel) idx +%= 1;
-                len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
-                len +%= @sizeOf(pointer_info.child) *% (idx +% 1);
-                for (next[0..idx]) |*value| {
-                    len = read(pointer_info.child, addr, len, value);
-                }
+                return readPointerMany(pointer_info, addr, offset, any);
             }
-            return len;
         },
-        else => return len,
+        else => return offset,
     }
 }
 fn addrAdd(ptr: anytype, offset: u64) @TypeOf(@constCast(ptr)) {
