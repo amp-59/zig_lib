@@ -732,7 +732,7 @@ pub fn newNewTypeSpecs() !void {
     indices = .{};
     for (attr.abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
         for (spec_set) |specs| {
-            ctn_details.writeOne(attr.Container.init(abstract_spec, indices));
+            writeOneUnique(&ctn_details, attr.Container.init(abstract_spec));
             for (tech_set) |techs| {
                 impl_details.writeOne(attr.Implementation.init(abstract_spec, specs, techs, indices));
                 indices.impl +%= 1;
@@ -741,6 +741,7 @@ pub fn newNewTypeSpecs() !void {
         }
         indices.spec +%= 1;
     }
+
     if (serialise_extra) {
         try serial.serialize(&allocator, gen.auxiliaryFile("options"), x_q_infos);
         try serial.serialize(&allocator, gen.auxiliaryFile("spec_sets"), spec_sets);
@@ -753,3 +754,24 @@ pub fn newNewTypeSpecs() !void {
     try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details, ctn_details);
 }
 pub const main = newNewTypeSpecs;
+
+fn writeOneUnique(array: *ContainerDetails, ctn_detail: attr.Container) void {
+    for (array.readAll()) |unique_detail| {
+        if (unique_detail.kind == ctn_detail.kind and
+            unique_detail.layout == ctn_detail.layout and
+            blk: {
+            inline for (@typeInfo(attr.Modes).Struct.fields) |field| {
+                if (@field(unique_detail.modes, field.name) !=
+                    @field(ctn_detail.modes, field.name))
+                {
+                    break :blk false;
+                }
+            }
+            break :blk true;
+        }) {
+            break;
+        }
+    } else {
+        array.writeOne(ctn_detail);
+    }
+}
