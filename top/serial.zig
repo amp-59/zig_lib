@@ -35,16 +35,16 @@ pub fn length(comptime T: type, any: anytype) u64 {
 fn toOffset(ptr: anytype, addr: u64) @TypeOf(ptr) {
     @setRuntimeSafety(false);
     switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
-        .Slice => return @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) -% addr)[0..ptr.len],
-        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr.ptr) -% addr),
+        .Slice => return @ptrCast(@TypeOf(ptr), @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) -% addr)[0..ptr.len]),
+        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% addr),
         else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% addr),
     }
 }
 fn toAddress(ptr: anytype, addr: u64) @TypeOf(ptr) {
     @setRuntimeSafety(false);
     switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
-        .Slice => return @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) +% addr)[0..ptr.len],
-        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr.ptr) +% addr),
+        .Slice => return @ptrCast(@TypeOf(ptr), @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) +% addr)[0..ptr.len]),
+        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) +% addr),
         else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) +% addr),
     }
 }
