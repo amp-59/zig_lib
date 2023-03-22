@@ -7,22 +7,16 @@ const algo = gen.algo;
 const proc = gen.proc;
 const meta = gen.meta;
 const preset = gen.preset;
+const serial = gen.serial;
 const builtin = gen.builtin;
 const testing = gen.testing;
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
-const detail = @import("./detail.zig");
+const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
 //const alloc_fn = @import("./alloc_fn.zig");
-const out = struct {
-    usingnamespace @import("./zig-out/src/config.zig");
-    usingnamespace @import("./zig-out/src/type_specs.zig");
-    usingnamespace @import("./zig-out/src/impl_variants.zig");
-    usingnamespace @import("./zig-out/src/containers.zig");
-};
-
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
@@ -45,12 +39,12 @@ const Array = Allocator.StructuredVector(u8);
 const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
 
-fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less, ctn_fn_info: Fn) void {
+fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container, ctn_fn_info: Fn) void {
     if (Expr.debug.show_expressions) {
         Expr.debug.showFunction(ctn_fn_info);
     }
-    const child_size: [:0]const u8 = if (ctn_detail.layouts.structured) tok.child_size_name else tok.call_sizeof_child;
-    const unit: Expr = if (ctn_detail.layouts.structured) expr.constant(1) else expr.symbol(tok.amount_unit);
+    const child_size: [:0]const u8 = if (ctn_detail.layout == .structured) tok.child_size_name else tok.call_sizeof_child;
+    const unit: Expr = if (ctn_detail.layout == .structured) expr.constant(1) else expr.symbol(tok.amount_unit);
     var define: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.define));
     var undefine: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefine));
     var seek: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.seek));
@@ -88,10 +82,10 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
     const write_args_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeArgs));
     const write_fields_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeFields));
     const write_any_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeAny));
-    const mul_sub_address_offset_exprs: []Expr = &if (ctn_detail.layouts.structured) mul_sub_address_offset else sub_address_amount_of_type_to_bytes;
-    const mul_add_address_offset_exprs: []Expr = &if (ctn_detail.layouts.structured) mul_add_address_offset else add_address_amount_of_type_to_bytes;
-    const mul_sub_address_offset_address: *Expr = &if (ctn_detail.layouts.structured) mul_sub_address_offset[3] else sub_address_amount_of_type_to_bytes[1];
-    const mul_add_address_offset_address: *Expr = &if (ctn_detail.layouts.structured) mul_add_address_offset[3] else add_address_amount_of_type_to_bytes[1];
+    const mul_sub_address_offset_exprs: []Expr = &if (ctn_detail.layout == .structured) mul_sub_address_offset else sub_address_amount_of_type_to_bytes;
+    const mul_add_address_offset_exprs: []Expr = &if (ctn_detail.layout == .structured) mul_add_address_offset else add_address_amount_of_type_to_bytes;
+    const mul_sub_address_offset_address: *Expr = &if (ctn_detail.layout == .structured) mul_sub_address_offset[3] else sub_address_amount_of_type_to_bytes[1];
+    const mul_add_address_offset_address: *Expr = &if (ctn_detail.layout == .structured) mul_add_address_offset[3] else add_address_amount_of_type_to_bytes[1];
     const mul_sub_address_count_address: *Expr = &mul_sub_address_count[3];
     const sub_address_one_address: *Expr = &mul_sub_address_one[1];
     const is_offset: bool = ctn_fn.kind.offset(ctn_fn_info);
@@ -667,7 +661,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .writeArgs => {
             var write_args: [5]Expr = expr.fnCall4(
-                if (ctn_detail.layouts.structured)
+                if (ctn_detail.layout == .structured)
                     tok.write_args_structured_fn_name
                 else
                     tok.write_args_unstructured_fn_name,
@@ -681,7 +675,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .writeFields => {
             var write_fields: [5]Expr = expr.fnCall4(
-                if (ctn_detail.layouts.structured)
+                if (ctn_detail.layout == .structured)
                     tok.write_fields_structured_fn_name
                 else
                     tok.write_fields_unstructured_fn_name,
@@ -695,7 +689,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
         .writeAny => {
             var write_any: [5]Expr = expr.fnCall4(
-                if (ctn_detail.layouts.structured)
+                if (ctn_detail.layout == .structured)
                     tok.write_any_structured_fn_name
                 else
                     tok.write_any_unstructured_fn_name,
@@ -751,7 +745,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         // return count of defined of type subtract amount of type
         .__len => {
             const len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
-            var sub_len_offset: [3]Expr = expr.sub(len_call, if (ctn_detail.layouts.structured)
+            var sub_len_offset: [3]Expr = expr.sub(len_call, if (ctn_detail.layout == .structured)
                 expr.call(&mul_offset_child_size)
             else
                 expr.call(&amount_to_count_of_type));
@@ -806,7 +800,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(define[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&if (ctn_detail.layouts.structured)
+                .src = expr.call(&if (ctn_detail.layout == .structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
@@ -826,7 +820,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(undefine[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&if (ctn_detail.layouts.structured)
+                .src = expr.call(&if (ctn_detail.layout == .structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
@@ -846,7 +840,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(seek[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&if (ctn_detail.layouts.structured)
+                .src = expr.call(&if (ctn_detail.layout == .structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
@@ -866,7 +860,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
             amount_of_type_to_bytes[1] = expr.symbol(tok.amount_name);
             expr.subst(tell[2].args(), .{
                 .dst = expr.symbol(tok.offset_bytes_name),
-                .src = expr.call(&if (ctn_detail.layouts.structured)
+                .src = expr.call(&if (ctn_detail.layout == .structured)
                     mul_count_child_size
                 else
                     amount_of_type_to_bytes),
@@ -904,7 +898,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const de
         },
     }
 }
-fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const detail.Less, impl_fn_info: *const impl_fn.Fn) [3]Expr {
+fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const attr.Container, impl_fn_info: *const impl_fn.Fn) [3]Expr {
     // Using array_impl in expr.impl would be better.
     return expr.fieldAccess(
         expr.symbol(tok.array_name),
@@ -912,18 +906,18 @@ fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const detail.Less, i
     );
 }
 
-fn functionBodyUndefinedNotice(ctn_detail: *const detail.Less, ctn_fn_info: Fn) void {
+fn functionBodyUndefinedNotice(ctn_detail: *const attr.Container, ctn_fn_info: Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     array.writeMany("function body undefined: ");
     array.writeMany(ctn_fn_info.fnName());
     array.writeOne(' ');
-    ctn_detail.writeContainerName(&array);
+    ctn_detail.formatWrite(&array);
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
 
-fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
+fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container) void {
     for (ctn_fn.key) |ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
@@ -942,7 +936,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const detai
         }
     }
 }
-fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const detail.Less) void {
+fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const attr.Container) void {
     const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
     if (ctn_fn.kind.helper(ctn_fn_info)) {
         array.writeMany("fn ");
@@ -956,7 +950,7 @@ fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const detail.Les
     array.writeMany(list.ret);
 }
 
-fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
+fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
     const const_decl: *expr.ConstDecl = allocator.duplicateIrreversible(expr.ConstDecl, .{
@@ -965,7 +959,7 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const de
         .expr1 = expr.symbol(tok.call_this),
     });
     array.writeFormat(const_decl.*);
-    if (ctn_detail.layouts.structured) {
+    if (ctn_detail.layout == .structured) {
         const_decl.* = expr.ConstDecl{
             .val_name = tok.child_type_name,
             .type_name = tok.type_type_name,
@@ -979,9 +973,9 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const de
         };
         array.writeFormat(const_decl.*);
     }
-    if (ctn_detail.kinds.dynamic or
-        ctn_detail.kinds.parametric or
-        ctn_detail.kinds.static)
+    if (ctn_detail.kind == .dynamic or
+        ctn_detail.kind == .parametric or
+        ctn_detail.kind == .static)
     {
         const_decl.* = expr.ConstDecl{
             .val_name = tok.allocator_type_name,
@@ -997,11 +991,11 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const de
     };
     array.writeFormat(const_decl.*);
 }
-fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const detail.Less) void {
+fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container) void {
     array.writeMany("pub fn ");
-    ctn_detail.writeContainerName(array);
+    ctn_detail.formatWrite(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ":");
-    ctn_detail.writeContainerName(array);
+    ctn_detail.formatWrite(array);
     array.writeMany("Spec)type{\nreturn(struct{\n");
     array.writeMany(tok.impl_field);
     array.writeMany(tok.end_elem);
@@ -1009,22 +1003,20 @@ fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const de
     writeFunctions(allocator, array, ctn_detail);
     array.writeMany("});\n}\n");
 }
-pub fn generateContainers() void {
+pub fn generateContainers() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
+    const details: []attr.Container = try serial.deserialize([]attr.Container, &allocator, gen.auxiliaryFile("ctn_detail"));
 
     var ctn_index: u64 = 0;
-    while (ctn_index != out.containers.len) : (ctn_index +%= 1) {
+    while (ctn_index != details.len) : (ctn_index +%= 1) {
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
-        const ctn_group: []const out.Index = out.containers[ctn_index];
-        if (ctn_group.len == 0) {
-            continue;
-        }
-        writeTypeFunction(&allocator, &array, out.impl_variants[ctn_group[0]].less());
+
+        writeTypeFunction(&allocator, &array, &details[ctn_index]);
     }
-    gen.appendSourceFile(&array, "containers.zig");
+    gen.appendSourceFile(gen.primaryFile("containers.zig"), array.readAll());
 }
 pub const main = generateContainers;
