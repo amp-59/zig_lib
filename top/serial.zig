@@ -85,21 +85,16 @@ fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offs
     any.* = next;
     return len;
 }
-fn readPointerMany(
-    comptime pointer_info: builtin.Type.Pointer,
-    addr: u64,
-    offset: u64,
-    any: anytype,
-) u64 {
+fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
-    const sentinel: pointer_info.child = mem.pointerOpaque(pointer_info.child, pointer_info.sentinel);
+    const sentinel: pointer_info.child = mem.pointerOpaque(pointer_info.child, pointer_info.sentinel.?).*;
     var len: u64 = offset;
     var idx: u64 = 0;
     while (next[idx] != sentinel) idx +%= 1;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
     len +%= @sizeOf(pointer_info.child) *% (idx +% 1);
     for (next[0..idx]) |*value| {
-        len = read(pointer_info.child, addr, len, value);
+        len = read(addr, len, value);
     }
     any.* = next;
     return len;
