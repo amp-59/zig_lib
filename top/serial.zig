@@ -21,38 +21,6 @@ const write_spec: file.WriteSpec = .{};
 const stat_spec: file.StatSpec = .{};
 const close_spec: file.CloseSpec = .{};
 
-pub fn maxAlignment(comptime types: []const type) comptime_int {
-    const T = types[types.len - 1];
-    switch (@typeInfo(T)) {
-        .Struct => |struct_info| {
-            var ret: usize = @alignOf(T);
-            lo: for (struct_info.fields) |field| {
-                for (types[0 .. types.len - 1]) |unique| {
-                    if (field.type == unique) continue :lo;
-                }
-                ret = @max(ret, maxAlignment(types ++ .{field.type}));
-            }
-            return ret;
-        },
-        .Union => |union_info| {
-            var ret: usize = @alignOf(T);
-            lo: for (union_info.fields) |field| {
-                for (types[0 .. types.len - 1]) |unique| {
-                    if (field.type == unique) continue :lo;
-                }
-                ret = @max(ret, maxAlignment(types ++ .{field.type}));
-            }
-            return ret;
-        },
-        .Pointer => |pointer_info| {
-            for (types[0 .. types.len - 1]) |unique| {
-                if (pointer_info.child == unique) return @alignOf(T);
-            }
-            return @max(@alignOf(T), maxAlignment(types ++ .{pointer_info.child}));
-        },
-        else => return @alignOf(T),
-    }
-}
 pub fn length(comptime T: type, any: anytype) u64 {
     const S = @TypeOf(any);
     if (T == S) {

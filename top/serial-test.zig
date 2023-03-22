@@ -71,8 +71,6 @@ pub fn testSingleComplexCase() !void {
 pub fn main() !void {
     try meta.wrap(testSingleComplexCase());
 }
-const spec_max_alignment: u64 = serial.maxAlignment(&.{attr.Specifier});
-const tech_max_alignment: u64 = serial.maxAlignment(&.{attr.Technique});
 const spec_sets_0: []const []const []const attr.Specifier = &.{ &.{ &.{ .{ .default = .{
     .tag = .child,
     .type = .{ .type_name = "type" },
