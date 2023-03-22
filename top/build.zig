@@ -60,7 +60,7 @@ pub const BuildCommand = struct {
     cache_dir: ?[]const u8 = null,
     global_cache_dir: ?[]const u8 = null,
     zig_lib_dir: ?[]const u8 = null,
-    enable_cache: bool = false,
+    enable_cache: bool = true,
     target: ?[]const u8 = null,
     cpu: ?[]const u8 = null,
     code_model: ?enum(u3) { default = 0, tiny = 1, small = 2, kernel = 3, medium = 4, large = 5 } = null,
@@ -89,6 +89,7 @@ pub const BuildCommand = struct {
     strip: ?bool = null,
     formatted_panics: ?bool = null,
     fmt: ?enum(u4) { elf = 0, c = 1, wasm = 2, coff = 3, macho = 4, spirv = 5, plan9 = 6, hex = 7, raw = 8 } = null,
+    files: ?Files = null,
     dirafter: ?[]const u8 = null,
     system: ?[]const u8 = null,
     include: ?[]const u8 = null,
@@ -119,7 +120,7 @@ pub const BuildCommand = struct {
     macros: ?[]const Macro = null,
     modules: ?[]const Module = null,
     dependencies: ?[]const ModuleDependency = null,
-    cflags: ?struct { flags: []const []const u8 } = null,
+    cflags: ?CFlags = null,
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null,
     test_filter: ?[]const u8 = null,
     test_name_prefix: ?[]const u8 = null,
@@ -625,6 +626,9 @@ pub const Builder = struct {
             len +%= 6;
             len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
             len +%= 1;
+        }
+        if (cmd.files) |how| {
+            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
         }
         if (cmd.dirafter) |how| {
             len +%= 10;
@@ -1141,6 +1145,9 @@ pub const Builder = struct {
             array.writeAny(preset.reinterpret.print, how);
             array.writeOne('\x00');
         }
+        if (cmd.files) |how| {
+            array.writeAny(preset.reinterpret.print, how);
+        }
         if (cmd.dirafter) |how| {
             array.writeMany("-dirafter\x00");
             array.writeAny(preset.reinterpret.print, how);
@@ -1469,6 +1476,8 @@ fn join(
         .single_threaded = true,
         .static = true,
         .enable_cache = true,
+        .gc_sections = true,
+        .function_sections = true,
         .compiler_rt = false,
         .strip = builder.options.strip,
         .image_base = 0x10000,
@@ -1593,6 +1602,10 @@ pub const Target = struct {
         target.run_cmd.array.writeFormat(target.build_cmd.emit_bin.?.yes.?);
         target.run_cmd.array.writeOne(0);
         target.give(.run);
+    }
+    pub fn addFiles(target: *Target, allocator: *Allocator, files: []const []const u8) void {
+        _ = allocator;
+        target.build_cmd.files = .{ .paths = files };
     }
     pub fn dependOnBuild(target: *Target, allocator: *Allocator, dependency: *Target) void {
         return target.deps.save(allocator, .{ .target = dependency, .tag = .build });
@@ -1771,7 +1784,7 @@ pub const CFlags = struct {
             array.writeMany(flag);
             array.writeOne(0);
         }
-        array.writeOne("--\x00");
+        array.writeMany("--\x00");
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -1781,6 +1794,7 @@ pub const CFlags = struct {
             len +%= 1;
         }
         len +%= 3;
+        return len;
     }
 };
 pub const Path = struct {
@@ -1805,6 +1819,24 @@ pub const Path = struct {
             }
         }
         len +%= format.pathname.len;
+        return len;
+    }
+};
+pub const Files = struct {
+    paths: []const []const u8,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        for (format.paths) |name| {
+            array.writeMany(name);
+            array.writeOne(0);
+        }
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        for (format.paths) |name| {
+            len +%= name.len;
+            len +%= 1;
+        }
         return len;
     }
 };
