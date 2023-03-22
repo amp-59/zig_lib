@@ -27,20 +27,25 @@ pub const abstract_specs: []const AbstractSpecification = &.{
     .{ .kind = .dynamic,    .fields = lb_ss,        .layout = .unstructured,    .modes = rw_str,        .v_specs = u_dyn_specs, .v_techs = dyn_techs_2 },
     .{ .kind = .dynamic,    .fields = lb_ub,        .layout = .unstructured,    .modes = rw_rsz,        .v_specs = u_dyn_specs, .v_techs = dyn_techs_2 },
     .{ .kind = .dynamic,    .fields = lb_ss_ub,     .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_dyn_specs, .v_techs = dyn_techs_2 },
-    .{ .kind = .static,    .fields = lb,            .layout = .structured,      .modes = rw,            .v_specs = s_dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ss,         .layout = .structured,      .modes = rw_str,        .v_specs = s_dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ub,         .layout = .structured,      .modes = rw_rsz,        .v_specs = s_dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ss_ub,      .layout = .structured,      .modes = rw_str_rsz,    .v_specs = s_dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb,            .layout = .unstructured,    .modes = rw,            .v_specs = u_dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ss,         .layout = .unstructured,    .modes = rw_str,        .v_specs = u_dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ub,         .layout = .unstructured,    .modes = rw_rsz,        .v_specs = u_dyn_specs, .v_techs = dyn_techs },
-    .{ .kind = .static,    .fields = lb_ss_ub,      .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb,           .layout = .structured,      .modes = rw,            .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb_ss,        .layout = .structured,      .modes = rw_str,        .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb_ub,        .layout = .structured,      .modes = rw_rsz,        .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb_ss_ub,     .layout = .structured,      .modes = rw_str_rsz,    .v_specs = s_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb,           .layout = .unstructured,    .modes = rw,            .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb_ss,        .layout = .unstructured,    .modes = rw_str,        .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb_ub,        .layout = .unstructured,    .modes = rw_rsz,        .v_specs = u_dyn_specs, .v_techs = dyn_techs },
+    .{ .kind = .static,     .fields = lb_ss_ub,     .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_dyn_specs, .v_techs = dyn_techs },
     .{ .kind = .parametric, .fields = ub,           .layout = .structured,      .modes = rw_rsz,        .v_specs = s_param_specs, .v_techs = param_techs },
     .{ .kind = .parametric, .fields = ub_ss,        .layout = .structured,      .modes = rw_str_rsz,    .v_specs = s_param_specs, .v_techs = param_techs },
-    .{ .kind = .parametric, .fields = ub,           .layout = .unstructured,    .modes = rw_rsz,        .v_specs = u_dyn_specs, .v_techs = param_techs },
-    .{ .kind = .parametric, .fields = ub_ss,        .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_dyn_specs, .v_techs = param_techs },
+    .{ .kind = .parametric, .fields = ub,           .layout = .unstructured,    .modes = rw_rsz,        .v_specs = u_param_specs, .v_techs = param_techs },
+    .{ .kind = .parametric, .fields = ub_ss,        .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_param_specs, .v_techs = param_techs },
 };
 // zig fmt: on
+
+const Map = struct {
+    ctn_spec: Container,
+    abstract_specs: []const AbstractSpecification,
+};
 pub const AbstractSpecification = struct {
     kind: Kind,
     layout: Layout,
@@ -116,7 +121,6 @@ pub const Specifier = union(enum) {
     optional_variant: Simple,
     decl_optional_derived: CompoundDerived,
     decl_optional_variant: Compound,
-
     const Simple = struct {
         tag: Specifiers.Tag,
         type: ProtoTypeDescr,
@@ -193,23 +197,14 @@ pub const Specifier = union(enum) {
     }
 };
 pub const Container = struct {
-    ctn: u16,
-    spec: u16,
     kind: Kind,
     layout: Layout,
     modes: Modes,
     const Format = @This();
-    pub const Indices = struct {
-        spec: u16 = 0,
-        ctn: u16 = 0,
-    };
     pub fn init(
         abstract_spec: AbstractSpecification,
-        indices: anytype,
     ) Container {
         return .{
-            .spec = indices.spec,
-            .ctn = indices.ctn,
             .kind = abstract_spec.kind,
             .layout = abstract_spec.layout,
             .modes = Modes.detail(abstract_spec.modes),
@@ -294,7 +289,6 @@ pub const Implementation = struct {
     fields: Fields,
     techs: Techniques,
     specs: Specifiers,
-
     const Format = @This();
     pub const Indices = struct {
         spec: u16 = 0,
@@ -430,7 +424,6 @@ pub const Implementation = struct {
         return len;
     }
 };
-
 pub fn techniqueTags(options: []const Technique) Techniques {
     var int: Techniques.tag_type = 0;
     for (options) |option| {
@@ -471,7 +464,6 @@ pub fn specifierTags(variants: []const Specifier) Specifiers {
     }
     return @bitCast(Specifiers, int);
 }
-
 pub const Options = struct {
     capacity: ?enum {
         single_packed_approximate,
@@ -488,11 +480,9 @@ pub const Options = struct {
         address_space,
     },
 };
-
 pub const Technique = union(enum) {
     standalone: Techniques.Tag,
     mutually_exclusive: Info,
-
     const Info = struct {
         kind: enum { mandatory, optional },
         opt_tag: Techniques.Options.Tag,
@@ -514,7 +504,6 @@ pub const Technique = union(enum) {
         compare_enumeration,
         compare_optional_enumeration,
     };
-
     pub fn len(comptime tech: Technique) u64 {
         return tech.info.field_field_names.len;
     }
@@ -565,7 +554,6 @@ pub const Technique = union(enum) {
             },
         }
     }
-
     pub fn tagName(comptime tech: Technique) []const u8 {
         const opt_tag_name: []const u8 = tech.optTagName();
         const tech_tag_name: []const u8 = tech.techTagName();
@@ -669,7 +657,6 @@ const u_param_specs = &.{
     optional_variant(.sentinel, *const anyopaque),
     default(.Allocator, type),
 };
-
 fn standalone(comptime tech: Techniques.Tag) Technique {
     return .{ .standalone = tech };
 }
@@ -695,7 +682,6 @@ pub fn mutually_exclusive_resolved_mandatory(comptime opt_info: Technique.Info, 
         .tech_tags = opt_info.tech_tags,
     } };
 }
-
 const auto_alignment_opt: Technique = standalone(.auto_alignment);
 const capacity_opt: Technique = standalone(.single_packed_approximate_capacity);
 const alignment_opts: Technique = mutually_exclusive_mandatory(.alignment, &.{
@@ -815,13 +801,13 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
         const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
         pub const Tag = blk: {
             var fields: []const builtin.Type.EnumField = &.{};
-            var value: u64 = 0;
+            var value: u64 = 1;
             inline for (@typeInfo(Struct).Struct.fields) |field| {
                 fields = fields ++ [1]builtin.Type.EnumField{.{
                     .name = field.name,
                     .value = value,
                 }};
-                value = if (value == 0) 1 else value *% 2;
+                value <<= 1;
             }
             break :blk @Type(.{ .Enum = .{
                 .fields = fields,
