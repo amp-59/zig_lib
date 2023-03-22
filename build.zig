@@ -51,7 +51,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const list_test: *build.Target          = tests.addTarget(fast_spec,  allocator,    "list_test",            "top/list-test.zig");
     const fmt_test: *build.Target           = tests.addTarget(debug_spec, allocator,    "fmt_test",             "top/fmt-test.zig");
     const render_test: *build.Target        = tests.addTarget(small_spec, allocator,    "render_test",          "top/render-test.zig");
-    const serial_test: *build.Target        = tests.addTarget(debug_spec, allocator,    "serial_test",          "top/serial-test.zig");
+    const serial_test: *build.Target        = tests.addTarget(small_spec, allocator,    "serial_test",          "top/serial-test.zig");
     const thread_test: *build.Target        = tests.addTarget(debug_spec, allocator,    "thread_test",          "top/thread-test.zig");
     const virtual_test: *build.Target       = tests.addTarget(small_spec, allocator,    "virtual_test",         "top/virtual-test.zig");
     const impl_test: *build.Target          = tests.addTarget(debug_spec, allocator,    "impl_test",            "top/impl-test.zig");
