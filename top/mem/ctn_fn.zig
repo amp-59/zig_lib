@@ -252,7 +252,7 @@ pub const Fn = enum(u8) {
             .Argument => tok.fields_name,
         };
         const amount_symbol: [:0]const u8 = blk: {
-            if (ctn_detail.layouts.unstructured) {
+            if (ctn_detail.layout == .unstructured) {
                 break :blk switch (list_kind) {
                     .Parameter => tok.amount_param,
                     .Argument => tok.amount_name,
@@ -265,7 +265,7 @@ pub const Fn = enum(u8) {
             }
         };
         const offset_symbol: [:0]const u8 = blk: {
-            if (ctn_detail.layouts.unstructured) {
+            if (ctn_detail.layout == .unstructured) {
                 break :blk switch (list_kind) {
                     .Parameter => tok.offset_amount_param,
                     .Argument => tok.offset_name,
@@ -283,7 +283,7 @@ pub const Fn = enum(u8) {
             .unstreamAll,
             => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
@@ -295,25 +295,25 @@ pub const Fn = enum(u8) {
             .avail,
             => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .ahead => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
             },
             .__at => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(offset_symbol);
@@ -322,10 +322,10 @@ pub const Fn = enum(u8) {
             .__avail,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(offset_symbol);
@@ -336,54 +336,54 @@ pub const Fn = enum(u8) {
             .__unstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(offset_symbol);
             },
             .readAll => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
             },
             .readAllWithSentinel => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(sentinel_symbol);
             },
             .unstream => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(amount_symbol);
             },
             .stream => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(amount_symbol);
             },
             .undefine => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(amount_symbol);
             },
             .define => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(amount_symbol);
@@ -392,7 +392,7 @@ pub const Fn = enum(u8) {
             .readOneOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
             },
@@ -400,7 +400,7 @@ pub const Fn = enum(u8) {
             .readCountOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -409,7 +409,7 @@ pub const Fn = enum(u8) {
             .readCountWithSentinelOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -419,7 +419,7 @@ pub const Fn = enum(u8) {
             .readManyOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
@@ -428,7 +428,7 @@ pub const Fn = enum(u8) {
             .readManyWithSentinelOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
@@ -436,20 +436,20 @@ pub const Fn = enum(u8) {
             },
             .readOneAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(offset_symbol);
             },
             .readCountAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -457,10 +457,10 @@ pub const Fn = enum(u8) {
             },
             .readCountWithSentinelAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -469,10 +469,10 @@ pub const Fn = enum(u8) {
             },
             .readManyAt, .referManyAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 if (config.user_defined_length) {
@@ -482,10 +482,10 @@ pub const Fn = enum(u8) {
             },
             .readManyWithSentinelAt, .referManyWithSentinelAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 if (config.user_defined_length) {
@@ -498,7 +498,7 @@ pub const Fn = enum(u8) {
             .readOneOffsetUnstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
             },
@@ -506,7 +506,7 @@ pub const Fn = enum(u8) {
             .readCountOffsetUnstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -515,7 +515,7 @@ pub const Fn = enum(u8) {
             .readCountWithSentinelOffsetUnstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -527,7 +527,7 @@ pub const Fn = enum(u8) {
             .referManyOffsetUnstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
@@ -540,7 +540,7 @@ pub const Fn = enum(u8) {
             .referManyWithSentinelOffsetUnstreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
@@ -552,7 +552,7 @@ pub const Fn = enum(u8) {
             .readOneOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
             },
@@ -560,7 +560,7 @@ pub const Fn = enum(u8) {
             .readCountOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -569,7 +569,7 @@ pub const Fn = enum(u8) {
             .readCountWithSentinelOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -579,7 +579,7 @@ pub const Fn = enum(u8) {
             .readManyOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
@@ -588,7 +588,7 @@ pub const Fn = enum(u8) {
             .readManyWithSentinelOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
@@ -598,10 +598,10 @@ pub const Fn = enum(u8) {
             },
             .overwriteOneAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(value_symbol);
@@ -609,10 +609,10 @@ pub const Fn = enum(u8) {
             },
             .overwriteCountAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -621,10 +621,10 @@ pub const Fn = enum(u8) {
             },
             .overwriteManyAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(many_values_symbol);
@@ -634,7 +634,7 @@ pub const Fn = enum(u8) {
             .overwriteOneOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(value_symbol);
@@ -643,7 +643,7 @@ pub const Fn = enum(u8) {
             .overwriteCountOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -653,7 +653,7 @@ pub const Fn = enum(u8) {
             .overwriteManyOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(many_values_symbol);
@@ -662,7 +662,7 @@ pub const Fn = enum(u8) {
             .referCountWithSentinelOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -672,7 +672,7 @@ pub const Fn = enum(u8) {
             .referManyWithSentinelOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
@@ -680,20 +680,20 @@ pub const Fn = enum(u8) {
             },
             .referOneAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(offset_symbol);
             },
             .referCountAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -701,10 +701,10 @@ pub const Fn = enum(u8) {
             },
             .referCountWithSentinelAt => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
-                if (ctn_detail.kinds.parametric) {
+                if (ctn_detail.kind == .parametric) {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -717,7 +717,7 @@ pub const Fn = enum(u8) {
             .referOneOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
             },
@@ -725,7 +725,7 @@ pub const Fn = enum(u8) {
             .referCountOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -734,7 +734,7 @@ pub const Fn = enum(u8) {
             .referManyOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
@@ -743,7 +743,7 @@ pub const Fn = enum(u8) {
             .referCountWithSentinelOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -753,7 +753,7 @@ pub const Fn = enum(u8) {
             .referManyWithSentinelOffsetDefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 if (config.user_defined_length) {
@@ -765,7 +765,7 @@ pub const Fn = enum(u8) {
             .referManyOffsetStreamed,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(count_symbol);
@@ -774,7 +774,7 @@ pub const Fn = enum(u8) {
             .referOneOffsetUndefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
             },
@@ -782,7 +782,7 @@ pub const Fn = enum(u8) {
             .referCountOffsetUndefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -791,11 +791,11 @@ pub const Fn = enum(u8) {
             .referManyOffsetUndefined,
             => {
                 arg_list.writeOne(arg_list_const_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 if (!config.user_defined_length and
-                    ctn_detail.kinds.parametric)
+                    ctn_detail.kind == .parametric)
                 {
                     arg_list.writeOne(allocator_const_ptr_symbol);
                 }
@@ -808,7 +808,7 @@ pub const Fn = enum(u8) {
             .holder => {},
             .init => {
                 arg_list.writeOne(allocator_ptr_symbol);
-                if (ctn_detail.kinds.dynamic) {
+                if (ctn_detail.kind == .dynamic) {
                     arg_list.writeOne(count_symbol);
                 }
             },
@@ -825,7 +825,7 @@ pub const Fn = enum(u8) {
             .decrement,
             => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(allocator_ptr_symbol);
@@ -833,14 +833,14 @@ pub const Fn = enum(u8) {
             },
             .writeOne => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(value_symbol);
             },
             .appendOne => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(allocator_ptr_symbol);
@@ -848,7 +848,7 @@ pub const Fn = enum(u8) {
             },
             .writeCount => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(static_count_symbol);
@@ -856,7 +856,7 @@ pub const Fn = enum(u8) {
             },
             .appendCount => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(allocator_ptr_symbol);
@@ -865,14 +865,14 @@ pub const Fn = enum(u8) {
             },
             .writeMany => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(many_values_symbol);
             },
             .appendMany => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(allocator_ptr_symbol);
@@ -880,14 +880,14 @@ pub const Fn = enum(u8) {
             },
             .writeFormat => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(format_symbol);
             },
             .appendFormat => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(allocator_ptr_symbol);
@@ -895,7 +895,7 @@ pub const Fn = enum(u8) {
             },
             .writeFields => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(reinterpret_spec_symbol);
@@ -903,7 +903,7 @@ pub const Fn = enum(u8) {
             },
             .appendFields => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(reinterpret_spec_symbol);
@@ -912,7 +912,7 @@ pub const Fn = enum(u8) {
             },
             .writeArgs => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(reinterpret_spec_symbol);
@@ -920,7 +920,7 @@ pub const Fn = enum(u8) {
             },
             .appendArgs => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(reinterpret_spec_symbol);
@@ -929,7 +929,7 @@ pub const Fn = enum(u8) {
             },
             .writeAny => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(reinterpret_spec_symbol);
@@ -937,7 +937,7 @@ pub const Fn = enum(u8) {
             },
             .appendAny => {
                 arg_list.writeOne(arg_list_ptr_symbol);
-                if (ctn_detail.layouts.unstructured) {
+                if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
                 arg_list.writeOne(reinterpret_spec_symbol);
