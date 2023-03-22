@@ -166,17 +166,21 @@ pub const Fn = enum(u8) {
         if (ctn_fn_info == .init or
             ctn_fn_info == .deinit)
         {
-            return ctn_detail.managers.allocatable;
+            return ctn_detail.kind == .dynamic or
+                ctn_detail.kind == .parametric or
+                ctn_detail.kind == .static;
         }
         if (ctn_fn_info == .grow or
             ctn_fn_info == .shrink or
             ctn_fn_info == .increment or
             ctn_fn_info == .decrement)
         {
-            return ctn_detail.managers.resizable;
+            return ctn_detail.kind == .dynamic or
+                ctn_detail.kind == .parametric;
         }
         if (kind.append(ctn_fn_info)) {
-            return ctn_detail.managers.resizable and ctn_detail.modes.resize;
+            return ctn_detail.kind == .dynamic or
+                ctn_detail.kind == .parametric;
         }
         return true;
     }
