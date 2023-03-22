@@ -12,6 +12,13 @@ const attr = @import("./mem/attr.zig");
 
 pub usingnamespace proc.start;
 
+pub const logging_override: builtin.Logging.Override = .{
+    .Success = true,
+    .Acquire = false,
+    .Release = false,
+    .Error = true,
+    .Fault = true,
+};
 pub const signal_handlers: builtin.SignalHandlers = .{
     .segmentation_fault = true,
     .bus_error = false,
@@ -28,6 +35,35 @@ const Allocator = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
 });
+
+const Variety = struct {
+    x: []const []const u8,
+    y: [*:0]const u8,
+};
+pub fn testVarietyStructure() !void {
+    const std = @import("std");
+    _ = std;
+
+    var address_space: AddressSpace = .{};
+    var allocator: Allocator = try Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+
+    const v: []const []const []const []const Variety = &.{&.{&.{&.{
+        .{ .x = &.{ "one,", "two,", "three," }, .y = "one,two,three\n" },
+        .{ .x = &.{ "four,", "five,", "six," }, .y = "four,five,six\n\n" },
+    }}}};
+    const Return = @TypeOf(@constCast(v));
+
+    try serial.serialize(&allocator, "zig-out/bin/variety_0", v);
+    const u: Return = try serial.deserialize(Return, &allocator, "zig-out/bin/variety_0");
+
+    try serial.serialize(&allocator, "zig-out/bin/variety_1", u);
+    const t: Return = try serial.deserialize(Return, &allocator, "zig-out/bin/variety_1");
+
+    testing.print(v);
+    testing.print(u);
+    testing.print(t);
+}
 pub fn testSingleComplexCase() !void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
@@ -58,17 +94,12 @@ pub fn testSingleComplexCase() !void {
 
     allocator = try Allocator.init(&address_space);
     const spec: attr.Specifier = try serial.deserialize(attr.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"));
-
-    array.writeFormat(spec.paramFormatter());
-    array.writeOne(' ');
-    array.writeFormat(spec.specFormatter());
-    array.writeOne('\n');
+    _ = spec;
 
     allocator.deinit(&address_space);
-
-    builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
+    try meta.wrap(testVarietyStructure());
     try meta.wrap(testSingleComplexCase());
 }
 const spec_sets_0: []const []const []const attr.Specifier = &.{ &.{ &.{ .{ .default = .{
