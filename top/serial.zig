@@ -48,24 +48,14 @@ fn toAddress(ptr: anytype, addr: u64) @TypeOf(ptr) {
         else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) +% addr),
     }
 }
-fn readStruct(
-    comptime struct_info: builtin.Type.Struct,
-    addr: u64,
-    offset: u64,
-    any: anytype,
-) u64 {
+fn readStruct(comptime struct_info: builtin.Type.Struct, addr: u64, offset: u64, any: anytype) u64 {
     var len: u64 = offset;
     inline for (struct_info.fields) |field| {
         len = read(addr, len, &@field(any, field.name));
     }
     return len;
 }
-fn readUnion(
-    comptime union_info: builtin.Type.Union,
-    addr: u64,
-    offset: u64,
-    any: anytype,
-) u64 {
+fn readUnion(comptime union_info: builtin.Type.Union, addr: u64, offset: u64, any: anytype) u64 {
     if (union_info.tag_type) |tag_type| {
         inline for (union_info.fields) |field| {
             if (any.* == @field(tag_type, field.name)) {
@@ -75,12 +65,7 @@ fn readUnion(
     }
     return offset;
 }
-fn readPointerOne(
-    comptime pointer_info: builtin.Type.Pointer,
-    addr: u64,
-    offset: u64,
-    any: anytype,
-) u64 {
+fn readPointerOne(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
@@ -89,12 +74,7 @@ fn readPointerOne(
     any.* = next;
     return len;
 }
-fn readPointerSlice(
-    comptime pointer_info: builtin.Type.Pointer,
-    addr: u64,
-    offset: u64,
-    any: anytype,
-) u64 {
+fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
