@@ -21,14 +21,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
-    .options = preset.allocator.options.small,
-});
-const FAllocator = mem.GenericArenaAllocator(.{
-    .AddressSpace = AddressSpace,
-    .arena_index = 1,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
-    .options = preset.allocator.options.small,
+    .options = preset.allocator.options.fast,
 });
 const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_offset = 0x40000000,
@@ -186,12 +179,12 @@ fn haveSpec(
     allocator: *Allocator,
     spec_set: []const []const attr.Specifier,
     p_field: attr.Specifier,
-) BinaryFilter([]const attr.Specifier) {
+) Allocator.allocate_payload(BinaryFilter([]const attr.Specifier)) {
     var t: [][]const attr.Specifier =
-        allocator.allocateIrreversible([]const attr.Specifier, spec_set.len);
+        try meta.wrap(allocator.allocateIrreversible([]const attr.Specifier, spec_set.len));
     var t_len: u64 = 0;
     var f: [][]const attr.Specifier =
-        allocator.allocateIrreversible([]const attr.Specifier, spec_set.len);
+        try meta.wrap(allocator.allocateIrreversible([]const attr.Specifier, spec_set.len));
     var f_len: u64 = 0;
     for (spec_set) |s_v_info| {
         for (s_v_info) |s_v_field| {
@@ -211,12 +204,12 @@ fn haveStandAloneTech(
     allocator: *Allocator,
     tech_set: []const []const attr.Technique,
     u_field: attr.Technique,
-) BinaryFilter([]const attr.Technique) {
+) Allocator.allocate_payload(BinaryFilter([]const attr.Technique)) {
     var t: [][]const attr.Technique =
-        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+        try meta.wrap(allocator.allocateIrreversible([]const attr.Technique, tech_set.len));
     var t_len: u64 = 0;
     var f: [][]const attr.Technique =
-        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+        try meta.wrap(allocator.allocateIrreversible([]const attr.Technique, tech_set.len));
     var f_len: u64 = 0;
     for (tech_set) |v_i_info| {
         for (v_i_info) |v_i_field| {
@@ -238,12 +231,12 @@ fn haveMutuallyExclusiveTech(
     allocator: *Allocator,
     tech_set: []const []const attr.Technique,
     u_tech: attr.Techniques.Tag,
-) BinaryFilter([]const attr.Technique) {
+) Allocator.allocate_payload(BinaryFilter([]const attr.Technique)) {
     var t: [][]const attr.Technique =
-        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+        try meta.wrap(allocator.allocateIrreversible([]const attr.Technique, tech_set.len));
     var t_len: u64 = 0;
     var f: [][]const attr.Technique =
-        allocator.allocateIrreversible([]const attr.Technique, tech_set.len);
+        try meta.wrap(allocator.allocateIrreversible([]const attr.Technique, tech_set.len));
     var f_len: u64 = 0;
     for (tech_set) |v_i_info| {
         for (v_i_info) |v_i_field| {
@@ -439,10 +432,10 @@ fn writeDeductionTestBoolean(
     tech_set: []const []const attr.Technique,
     q_info: []const attr.Technique,
     indices: *attr.Implementation.Indices,
-) void {
+) Allocator.allocate_void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    const filtered: BinaryFilter([]const attr.Technique) = haveStandAloneTech(allocator, tech_set, q_info[0]);
+    const filtered: BinaryFilter([]const attr.Technique) = try meta.wrap(haveStandAloneTech(allocator, tech_set, q_info[0]));
     array.writeMany("if(spec.");
     array.writeMany(q_info[0].techTagName());
     array.writeMany("){");
@@ -451,7 +444,7 @@ fn writeDeductionTestBoolean(
             writeReturnImplementation(array, attr.Implementation.init(abstract_spec, s_v_info, filtered[1][0], indices.*), s_v_info);
             indices.impl +%= 1;
         } else {
-            writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices);
+            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices));
         }
     }
     if (filtered[0].len != 0) {
@@ -462,7 +455,7 @@ fn writeDeductionTestBoolean(
             writeReturnImplementation(array, attr.Implementation.init(abstract_spec, s_v_info, filtered[0][0], indices.*), s_v_info);
             indices.impl +%= 1;
         } else {
-            writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info[1..], indices);
+            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info[1..], indices));
         }
     }
     if (filtered[1].len != 0) {
@@ -479,17 +472,17 @@ fn writeDeductionCompareEnumerationInternal(
     q_info: []const attr.Technique,
     indices: *attr.Implementation.Indices,
     tag_index: u64,
-) void {
+) Allocator.allocate_void {
     if (q_info[0].mutually_exclusive.tech_tags.len == tag_index) return;
     const tech: attr.Techniques.Tag = q_info[0].mutually_exclusive.tech_tags[tag_index];
     const tech_tag_name: []const u8 = @tagName(tech);
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    const filtered: BinaryFilter([]const attr.Technique) = haveMutuallyExclusiveTech(allocator, tech_set, tech);
+    const filtered: BinaryFilter([]const attr.Technique) = try meta.wrap(haveMutuallyExclusiveTech(allocator, tech_set, tech));
     writeSwitchProngOpen(array, tech_tag_name);
-    writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices);
+    try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices));
     array.writeMany("},\n");
-    writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info, indices, tag_index + 1);
+    try meta.wrap(writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info, indices, tag_index + 1));
 }
 fn writeDeductionCompareEnumeration(
     allocator: *Allocator,
@@ -500,9 +493,9 @@ fn writeDeductionCompareEnumeration(
     tech_set: []const []const attr.Technique,
     q_info: []const attr.Technique,
     indices: *attr.Implementation.Indices,
-) void {
+) Allocator.allocate_void {
     writeSwitchOpen(array, q_info[0].optTagName());
-    writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices, 0);
+    try meta.wrap(writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices, 0));
     array.writeMany("}\n");
 }
 fn writeDeductionCompareOptionalEnumeration(
@@ -514,9 +507,9 @@ fn writeDeductionCompareOptionalEnumeration(
     tech_set: []const []const attr.Technique,
     q_info: []const attr.Technique,
     indices: *attr.Implementation.Indices,
-) void {
+) Allocator.allocate_void {
     writeOptionalSwitchOpen(array, q_info[0].optTagName());
-    writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, spec_set, tech_set, q_info, indices, 0);
+    try meta.wrap(writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, spec_set, tech_set, q_info, indices, 0));
     array.writeMany("}\n}\n");
 }
 fn writeImplementationDeduction(
@@ -528,7 +521,7 @@ fn writeImplementationDeduction(
     tech_set: []const []const attr.Technique,
     q_info: []const attr.Technique,
     indices: *attr.Implementation.Indices,
-) void {
+) Allocator.allocate_void {
     if (q_info.len == 0 or tech_set.len == 1) {
         writeReturnImplementation(
             array,
@@ -538,13 +531,13 @@ fn writeImplementationDeduction(
         indices.impl +%= 1;
     } else switch (q_info[0].usage(tech_set_top)) {
         .test_boolean => {
-            writeDeductionTestBoolean(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices);
+            try meta.wrap(writeDeductionTestBoolean(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices));
         },
         .compare_enumeration => {
-            writeDeductionCompareEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices);
+            try meta.wrap(writeDeductionCompareEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices));
         },
         .compare_optional_enumeration => {
-            writeDeductionCompareOptionalEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices);
+            try meta.wrap(writeDeductionCompareOptionalEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices));
         },
         else => return,
     }
@@ -558,17 +551,17 @@ fn writeSpecificationDeductionInternal(
     tech_set: []const []const attr.Technique,
     q_info: []const attr.Technique,
     indices: *attr.Implementation.Indices,
-) void {
+) Allocator.allocate_void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    const filtered: BinaryFilter([]const attr.Specifier) = haveSpec(allocator, spec_set, p_info[0]);
+    const filtered: BinaryFilter([]const attr.Specifier) = try meta.wrap(haveSpec(allocator, spec_set, p_info[0]));
     if (filtered[1].len != 0) {
         writeDeclExpr(array, p_info[0]);
         if (filtered[1].len == 1) {
-            writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[1][0], tech_set, q_info, indices);
+            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[1][0], tech_set, q_info, indices));
             indices.ctn +%= 1;
         } else {
-            writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[1], tech_set, q_info, indices);
+            try meta.wrap(writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[1], tech_set, q_info, indices));
         }
     }
     if (filtered[0].len != 0) {
@@ -579,10 +572,10 @@ fn writeSpecificationDeductionInternal(
             array.writeMany("}else{\n");
         }
         if (filtered[0].len == 1) {
-            writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[0][0], tech_set, q_info, indices);
+            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[0][0], tech_set, q_info, indices));
             indices.ctn +%= 1;
         } else {
-            writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[0], tech_set, q_info, indices);
+            try meta.wrap(writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[0], tech_set, q_info, indices));
         }
     }
     if (filtered[1].len != 0 and
@@ -601,7 +594,7 @@ fn writeSpecificationDeduction(
     tech_set: []const []const attr.Technique,
     q_info: []const attr.Technique,
     indices: *attr.Implementation.Indices,
-) void {
+) Allocator.allocate_void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
     array.writeMany("const Specification");
@@ -609,7 +602,7 @@ fn writeSpecificationDeduction(
     array.writeMany("=struct{\n");
     writeFields(array, p_info);
     array.writeMany("const Specification=@This();\nfn Implementation(spec:Specification)type{\n");
-    writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, indices);
+    try meta.wrap(writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, indices));
     array.writeMany("}\n};\n");
 }
 fn writeSpecifications(
@@ -619,11 +612,11 @@ fn writeSpecifications(
     x_q_infos: []const []const attr.Technique,
     spec_sets: []const []const []const attr.Specifier,
     tech_sets: []const []const []const attr.Technique,
-) void {
+) Allocator.allocate_void {
     gen.copySourceFile(array, gen.primaryFile("container-template.zig"));
     var indices: attr.Implementation.Indices = .{};
     for (attr.abstract_specs, x_p_infos, spec_sets, tech_sets, x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
-        writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices);
+        try meta.wrap(writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices));
         indices.spec +%= 1;
     }
     gen.writeSourceFile(gen.primaryFile("containers.zig"), u8, array.readAll());
@@ -641,27 +634,16 @@ fn validateAllSerial(
         return;
     }
     if (serialise_extra) {
-        const f_x_q_infos = try meta.wrap(serial.deserialize([][]attr.Technique, allocator, gen.auxiliaryFile("options")));
         const f_spec_sets = try meta.wrap(serial.deserialize([][][]attr.Specifier, allocator, gen.auxiliaryFile("spec_sets")));
         const f_tech_sets = try meta.wrap(serial.deserialize([][][]attr.Technique, allocator, gen.auxiliaryFile("tech_sets")));
         const f_x_p_infos = try meta.wrap(serial.deserialize([][]attr.Specifier, allocator, gen.auxiliaryFile("params")));
-
-        for (f_x_q_infos, x_q_infos, 0..) |xx, yy, idx_0| {
-            for (xx, yy, 0..) |x, y, idx_1| {
-                const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
-                if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                    testing.print(.{ "options: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
-                } else {
-                    testing.print(.{ "options: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
-                }
-            }
-        }
+        const f_x_q_infos = try meta.wrap(serial.deserialize([][]attr.Technique, allocator, gen.auxiliaryFile("options")));
         for (f_spec_sets, spec_sets, 0..) |xxx, yyy, idx_0| {
             for (xxx, yyy, 0..) |xx, yy, idx_1| {
                 for (xx, yy, 0..) |x, y, idx_2| {
                     const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
                     if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                        testing.print(.{ "specs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
+                        return testing.print(.{ "specs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
                     } else {
                         testing.print(.{ "specs: equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
                     }
@@ -673,7 +655,7 @@ fn validateAllSerial(
                 for (xx, yy, 0..) |x, y, idx_2| {
                     const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
                     if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                        testing.print(.{ "techs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
+                        return testing.print(.{ "techs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
                     } else {
                         testing.print(.{ "techs: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                     }
@@ -684,9 +666,19 @@ fn validateAllSerial(
             for (xx, yy, 0..) |x, y, idx_1| {
                 const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
                 if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                    testing.print(.{ "params: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                    return testing.print(.{ "params: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                 } else {
                     testing.print(.{ "params: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                }
+            }
+        }
+        for (f_x_q_infos, x_q_infos, 0..) |xx, yy, idx_0| {
+            for (xx, yy, 0..) |x, y, idx_1| {
+                const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
+                if (!builtin.testEqual(@TypeOf(x), x, y)) {
+                    return testing.print(.{ "options: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                } else {
+                    testing.print(.{ "options: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                 }
             }
         }
@@ -696,7 +688,7 @@ fn validateAllSerial(
     for (f_impl_details, impl_details.readAll(), 0..) |x, y, idx_0| {
         const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
         if (!builtin.testEqual(@TypeOf(x), x, y)) {
-            testing.print(.{ "impl: non-equal indices: ", idx_0 } ++ xy);
+            return testing.print(.{ "impl: non-equal indices: ", idx_0 } ++ xy);
         } else {
             testing.print(.{ "impl: equal indices: ", idx_0 } ++ xy);
         }
@@ -704,7 +696,7 @@ fn validateAllSerial(
     for (f_ctn_details, ctn_details.readAll(), 0..) |x, y, idx_0| {
         const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
         if (!builtin.testEqual(@TypeOf(x), x, y)) {
-            testing.print(.{ "ctn: non-equal indices: ", idx_0 } ++ xy);
+            return testing.print(.{ "ctn: non-equal indices: ", idx_0 } ++ xy);
         } else {
             testing.print(.{ "ctn: equal indices: ", idx_0 } ++ xy);
         }
@@ -714,9 +706,9 @@ fn validateAllSerial(
 
 pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
-    var allocator: Allocator = Allocator.init(&address_space);
+    var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
     defer allocator.deinit(&address_space);
-    @setEvalBranchQuota(4000);
+    @setEvalBranchQuota(3000);
     comptime var x_p_infos: []const []const attr.Specifier = &.{};
     comptime var x_q_infos: []const []const attr.Technique = &.{};
     comptime var spec_sets: []const []const []const attr.Specifier = &.{};
@@ -733,10 +725,10 @@ pub fn newNewTypeSpecs() !void {
     }
     var array: Array = undefined;
     array.undefineAll();
-    writeSpecifications(&allocator, &array, x_p_infos, x_q_infos, spec_sets, tech_sets);
+    try meta.wrap(writeSpecifications(&allocator, &array, x_p_infos, x_q_infos, spec_sets, tech_sets));
     var indices: attr.Implementation.Indices = limits(spec_sets, tech_sets);
-    var impl_details: ImplementationDetails = ImplementationDetails.init(&allocator, indices.impl);
-    var ctn_details: ContainerDetails = ContainerDetails.init(&allocator, indices.ctn);
+    var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, indices.impl));
+    var ctn_details: ContainerDetails = try meta.wrap(ContainerDetails.init(&allocator, indices.ctn));
     indices = .{};
     for (attr.abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
         for (spec_set) |specs| {
