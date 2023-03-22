@@ -1322,6 +1322,7 @@ const debug = opaque {
         writeAddressRangeBytes(&array, addr, addr + len);
         array.writeMany(" ");
         writeErrorName(&array, @errorName(map_error));
+        array.writeMany("\n");
         builtin.debug.logError(array.readAll());
     }
     fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
