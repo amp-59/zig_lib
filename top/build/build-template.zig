@@ -368,6 +368,8 @@ fn join(
         .single_threaded = true,
         .static = true,
         .enable_cache = true,
+        .gc_sections = true,
+        .function_sections = true,
         .compiler_rt = false,
         .strip = builder.options.strip,
         .image_base = 0x10000,
@@ -492,6 +494,10 @@ pub const Target = struct {
         target.run_cmd.array.writeFormat(target.build_cmd.emit_bin.?.yes.?);
         target.run_cmd.array.writeOne(0);
         target.give(.run);
+    }
+    pub fn addFiles(target: *Target, allocator: *Allocator, files: []const []const u8) void {
+        _ = allocator;
+        target.build_cmd.files = .{ .paths = files };
     }
     pub fn dependOnBuild(target: *Target, allocator: *Allocator, dependency: *Target) void {
         return target.deps.save(allocator, .{ .target = dependency, .tag = .build });
@@ -672,7 +678,7 @@ pub const CFlags = struct {
             array.writeMany(flag);
             array.writeOne(0);
         }
-        array.writeOne("--\x00");
+        array.writeMany("--\x00");
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -682,6 +688,7 @@ pub const CFlags = struct {
             len +%= 1;
         }
         len +%= 3;
+        return len;
     }
 };
 pub const Path = struct {
@@ -706,6 +713,24 @@ pub const Path = struct {
             }
         }
         len +%= format.pathname.len;
+        return len;
+    }
+};
+pub const Files = struct {
+    paths: []const []const u8,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        for (format.paths) |name| {
+            array.writeMany(name);
+            array.writeOne(0);
+        }
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        for (format.paths) |name| {
+            len +%= name.len;
+            len +%= 1;
+        }
         return len;
     }
 };
