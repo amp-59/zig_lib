@@ -345,7 +345,7 @@ const Init = struct {
         if (@TypeOf(any_detail.*) == attr.Implementation) {
             return impl0(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument));
         } else {
-            return impl1(allocator, impl_fn_info, &impl_fn_info.argList(any_detail.more(), .Argument), Tokens.determine(impl_fn_info));
+            return impl1(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument), Tokens.determine(impl_fn_info));
         }
     }
     pub fn intr(allocator: anytype, ctn_detail: *const attr.Container, ctn_fn_info: *const ctn_fn.Fn) Expr {

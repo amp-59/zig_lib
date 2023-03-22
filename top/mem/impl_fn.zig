@@ -83,7 +83,8 @@ pub const Fn = enum(u5) {
             },
         }
     }
-    pub fn argList(impl_fn_info: Fn, impl_variant: *const attr.Implementation, list_kind: gen.ListKind) gen.ArgList {
+    pub fn argList(impl_fn_info: Fn, impl_variant: anytype, list_kind: gen.ListKind) gen.ArgList {
+        const Variant = @TypeOf(impl_variant.*);
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
@@ -95,9 +96,6 @@ pub const Fn = enum(u5) {
             impl_variant.kind == .static;
         const has_dynamic_maximum_length: bool =
             !has_static_maximum_length;
-        const has_active_alignment: bool =
-            impl_variant.techs.disjunct_alignment or
-            impl_variant.techs.lazy_alignment;
         const impl_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => tok.impl_param,
             .Argument => tok.impl_name,
@@ -228,10 +226,6 @@ pub const Fn = enum(u5) {
             .allocated_byte_count => {
                 if (impl_variant.kind == .parametric) {
                     arg_list.writeOne(slave_const_symbol);
-                } else if (has_static_maximum_length) {
-                    if (has_active_alignment) {
-                        arg_list.writeOne(impl_const_symbol);
-                    }
                 } else {
                     arg_list.writeOne(impl_const_symbol);
                 }
@@ -249,40 +243,44 @@ pub const Fn = enum(u5) {
                 }
             },
             .resize => {
-                arg_list.writeOne(impl_symbol);
-                if (impl_variant.fields.unallocated_byte_address) {
-                    arg_list.writeOne(unallocated_byte_address_symbol);
-                }
-                if (impl_variant.techs.single_packed_approximate_capacity) {
-                    arg_list.writeOne(single_approximation_counts_symbol);
-                }
-                if (impl_variant.techs.double_packed_approximate_capacity) {
-                    arg_list.writeOne(single_approximation_counts_symbol);
-                    arg_list.writeOne(double_approximation_counts_symbol);
+                if (Variant == attr.Implementation) {
+                    arg_list.writeOne(impl_symbol);
+                    if (impl_variant.fields.unallocated_byte_address) {
+                        arg_list.writeOne(unallocated_byte_address_symbol);
+                    }
+                    if (impl_variant.techs.single_packed_approximate_capacity) {
+                        arg_list.writeOne(single_approximation_counts_symbol);
+                    }
+                    if (impl_variant.techs.double_packed_approximate_capacity) {
+                        arg_list.writeOne(single_approximation_counts_symbol);
+                        arg_list.writeOne(double_approximation_counts_symbol);
+                    }
                 }
             },
             .allocate, .move, .reallocate => {
-                if (impl_fn_info != .allocate) {
-                    arg_list.writeOne(impl_symbol);
-                }
-                if (impl_variant.fields.allocated_byte_address) {
-                    arg_list.writeOne(allocated_byte_address_symbol);
-                }
-                if (impl_variant.fields.undefined_byte_address or
-                    impl_variant.fields.unstreamed_byte_address or
-                    impl_variant.techs.disjunct_alignment)
-                {
-                    arg_list.writeOne(aligned_byte_address_symbol);
-                }
-                if (impl_variant.techs.single_packed_approximate_capacity) {
-                    arg_list.writeOne(single_approximation_counts_symbol);
-                }
-                if (impl_variant.techs.double_packed_approximate_capacity) {
-                    arg_list.writeOne(single_approximation_counts_symbol);
-                    arg_list.writeOne(double_approximation_counts_symbol);
-                }
-                if (impl_variant.fields.unallocated_byte_address) {
-                    arg_list.writeOne(unallocated_byte_address_symbol);
+                if (Variant == attr.Implementation) {
+                    if (impl_fn_info != .allocate) {
+                        arg_list.writeOne(impl_symbol);
+                    }
+                    if (impl_variant.fields.allocated_byte_address) {
+                        arg_list.writeOne(allocated_byte_address_symbol);
+                    }
+                    if (impl_variant.fields.undefined_byte_address or
+                        impl_variant.fields.unstreamed_byte_address or
+                        impl_variant.techs.disjunct_alignment)
+                    {
+                        arg_list.writeOne(aligned_byte_address_symbol);
+                    }
+                    if (impl_variant.techs.single_packed_approximate_capacity) {
+                        arg_list.writeOne(single_approximation_counts_symbol);
+                    }
+                    if (impl_variant.techs.double_packed_approximate_capacity) {
+                        arg_list.writeOne(single_approximation_counts_symbol);
+                        arg_list.writeOne(double_approximation_counts_symbol);
+                    }
+                    if (impl_variant.fields.unallocated_byte_address) {
+                        arg_list.writeOne(unallocated_byte_address_symbol);
+                    }
                 }
             },
             .deallocate => {
