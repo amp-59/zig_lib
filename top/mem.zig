@@ -443,48 +443,52 @@ pub const Bytes = struct {
         return amt.count * @enumToInt(amt.unit);
     }
 };
-pub noinline fn monitor(comptime T: type, ptr: *volatile T) void {
+pub noinline fn monitor(comptime T: type, ptr: *T) void {
     const in: T = ptr.*;
     switch (T) {
         u8, bool => asm volatile (
-            \\lo:
+            \\pause
+            \\0:
             \\mov %[done], %al
             \\cmpb %al, %[in]
-            \\je lo
+            \\je 0b
             :
             : [done] "p" (ptr),
               [in] "r" (in),
-            : "al"
+            : "al", "memory"
         ),
         u16 => asm volatile (
-            \\lo:
+            \\pause
+            \\0:
             \\mov %[done], %ax
             \\cmp %ax, %[in]
-            \\je lo
+            \\je 0b
             :
             : [done] "p" (ptr),
               [in] "r" (in),
-            : "ax"
+            : "ax", "memory"
         ),
         u32 => asm volatile (
-            \\lo:
+            \\pause
+            \\0:
             \\movl %[done], %eax
             \\cmpl %eax, %[in]
-            \\je lo
+            \\je 0b
             :
             : [done] "p" (ptr),
               [in] "r" (in),
-            : "eax"
+            : "eax", "memory"
         ),
         u64 => asm volatile (
-            \\lo:
+            \\pause
+            \\0:
             \\movq %[done], %rax
             \\cmpq %rax, %[in]
-            \\je lo
+            \\je 0b
             :
             : [ptr] "p" (ptr),
               [in] "r" (in),
-            : "rax"
+            : "rax", "memory"
         ),
         else => @compileError("???"),
     }
