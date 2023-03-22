@@ -620,16 +620,15 @@ pub const exception = opaque {
         var act = SignalAction{ .handler = sys.SIG.DFL, .flags = 0, .restorer = 0 };
         updateExceptionHandlers(&act);
     }
-    pub fn exceptionHandler(sig: u32, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
+    pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
         resetExceptionHandlers();
         debug.exceptionFaultAtAddress(switch (sig) {
-            SIG.SEGV => "SIGSEGV",
-            SIG.ILL => "SIGILL",
-            SIG.BUS => "SIGBUS",
-            SIG.FPE => "SIGFPE",
-            else => unreachable,
+            .SEGV => "SIGSEGV",
+            .ILL => "SIGILL",
+            .BUS => "SIGBUS",
+            .FPE => "SIGFPE",
         }, info.fields.fault.addr);
-        sys.call(.exit, .{}, noreturn, .{2});
+        sys.call(.exit, .{}, noreturn, .{@enumToInt(sig)});
     }
     pub fn restoreRunTime() callconv(.Naked) void {
         switch (builtin.zig.zig_backend) {
