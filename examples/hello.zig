@@ -4,11 +4,6 @@ const mem = srg.mem;
 const file = srg.file;
 const builtin = srg.builtin;
 
-comptime {
-    _ = builtin;
-    _ = srg.mach.memset;
-}
-
 const hello_world = "Hello, world!\n";
 
 fn NTuple(comptime n: usize) type {
@@ -30,13 +25,13 @@ pub export fn _start() void {
         array.writeAny(mem.follow_wr_spec, .{ "Hello", ",", " World", "!", "\n" });
         builtin.debug.write(array.readAll());
     }
-    if (false) {
-        var array: mem.StaticString(4096) = .{};
+    if (true) {
+        var array: mem.StaticString(4096) = undefined;
         array.undefineAll();
         array.writeMany("Hello, world!\n");
         builtin.debug.write(array.readAll());
     }
-    if (true) {
+    if (false) {
         const S = struct {
             len: u64 = 0,
             auto: [256]u8 align(1) = undefined,
