@@ -188,24 +188,24 @@ comptime {
         \\  mov     r9, qword ptr [rdi + 88]
         \\  xor     edx, edx
         \\  xor     eax, eax
-        \\.asmMaxWidths_1:
+        \\1:
         \\  cmp     r9, r8
-        \\  je      .asmMaxWidths_2
+        \\  je      2f
         \\  mov     r10, qword ptr [rcx + 8]
         \\  test    r10, r10
-        \\  je      .asmMaxWidths_3
+        \\  je      3f
         \\  mov     rsi, qword ptr [rcx]
         \\  mov     r15, rdx
         \\  mov     rdi, rax
         \\  mov     rcx, qword ptr [rsi + 24]
         \\  mov     r11, qword ptr [rsi + 32]
         \\  mov     r14, qword ptr [rsi + 40]
-        \\.asmMaxWidths_6:
+        \\6:
         \\  cmp     r14, r11
-        \\  je      .asmMaxWidths_7
+        \\  je      7f
         \\  mov     rbx, qword ptr [rcx + 8]
         \\  test    rbx, rbx
-        \\  je      .asmMaxWidths_9
+        \\  je      9f
         \\  mov     rcx, qword ptr [rcx]
         \\  mov     rsi, qword ptr [rcx + 8]
         \\  mov     rcx, qword ptr [rcx + 24]
@@ -214,19 +214,19 @@ comptime {
         \\  cmp     r15, rcx
         \\  cmovbe  r15, rcx
         \\  mov     rcx, rbx
-        \\  jmp     .asmMaxWidths_6
-        \\.asmMaxWidths_7:
+        \\  jmp     6b
+        \\7:
         \\  mov     rcx, r10
-        \\  jmp     .asmMaxWidths_1
-        \\.asmMaxWidths_9:
+        \\  jmp     1b
+        \\9:
         \\  mov     rcx, r10
         \\  mov     rdx, r15
         \\  mov     rax, rdi
-        \\  jmp     .asmMaxWidths_1
-        \\.asmMaxWidths_2:
+        \\  jmp     1b
+        \\2:
         \\  xor     edx, edx
         \\  xor     eax, eax
-        \\.asmMaxWidths_3:
+        \\3:
         \\  add     rax, 8
         \\  add     rdx, 8
         \\  and     rax, -8
@@ -538,13 +538,13 @@ comptime {
         \\  .intel_syntax noprefix
         \\asmRewind:
         \\  cmp     qword ptr [rdi + 80], 0
-        \\  je      .asmRewind_4
+        \\  je      4f
         \\  mov     rax, qword ptr [rdi + 64]
         \\  mov     rcx, qword ptr [rax + 8]
         \\  test    rcx, rcx
-        \\  je      .asmRewind_4
+        \\  je      4f
         \\  .p2align    4, 0x90
-        \\.asmRewind_2:
+        \\2:
         \\  mov     rax, qword ptr [rax]
         \\  mov     rdx, qword ptr [rax + 16]
         \\  mov     qword ptr [rax + 24], rdx
@@ -552,8 +552,8 @@ comptime {
         \\  mov     rax, rcx
         \\  mov     rcx, qword ptr [rcx + 8]
         \\  test    rcx, rcx
-        \\  jne     .asmRewind_2
-        \\.asmRewind_4:
+        \\  jne     2b
+        \\4:
         \\  ret
     );
 }
