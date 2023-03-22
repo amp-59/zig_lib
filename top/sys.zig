@@ -1422,7 +1422,7 @@ pub const SignalCode = enum(u32) {
     FPE = SIG.FPE,
     BUS = SIG.BUS,
     ILL = SIG.ILL,
-    pub fn errorName(error_code: ErrorCode) []const u8 {
+    pub fn errorName(error_code: SignalCode) []const u8 {
         switch (error_code) {
             .SEGV => return "SegmentationFault",
             .FPE => return "FloatingPointError",
