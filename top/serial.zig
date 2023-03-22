@@ -50,7 +50,22 @@ pub fn length(comptime T: type, any: anytype) u64 {
     }
     return len;
 }
-
+fn toOffset(ptr: anytype, addr: u64) @TypeOf(ptr) {
+    @setRuntimeSafety(false);
+    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
+        .Slice => return @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) -% addr)[0..ptr.len],
+        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr.ptr) -% addr),
+        else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% addr),
+    }
+}
+fn toAddress(ptr: anytype, addr: u64) @TypeOf(ptr) {
+    @setRuntimeSafety(false);
+    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
+        .Slice => return @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) +% addr)[0..ptr.len],
+        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr.ptr) +% addr),
+        else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) +% addr),
+    }
+}
 fn readStruct(comptime struct_info: builtin.Type.Struct, addr: u64, offset: u64, any: anytype) u64 {
     var len: u64 = offset;
     inline for (struct_info.fields) |field| {
@@ -90,7 +105,7 @@ fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offs
     }
     return len;
 }
-fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) void {
+fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
     const next = toAddress(any.*, addr);
     defer any.* = next;
 
@@ -103,10 +118,10 @@ fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offse
     for (next[0..idx]) |*value| {
         len = read(pointer_info.child, addr, len, value);
     }
+    return len;
 }
 pub fn read(addr: u64, offset: u64, any: anytype) u64 {
-    const T: type = @TypeOf(any.*);
-    switch (@typeInfo(T)) {
+    switch (@typeInfo(@TypeOf(any.*))) {
         .Struct => |struct_info| {
             return readStruct(struct_info, addr, offset, any);
         },
@@ -115,89 +130,80 @@ pub fn read(addr: u64, offset: u64, any: anytype) u64 {
         },
         .Pointer => |pointer_info| {
             if (pointer_info.size == .One) {
-                return readPointerOne(pointer_info, addr, offset, any);
+                return readPointerOne(pointer_info, addr, offset, @constCast(any));
             }
             if (pointer_info.size == .Slice) {
-                return readPointerSlice(pointer_info, addr, offset, any);
+                return readPointerSlice(pointer_info, addr, offset, @constCast(any));
             }
             if (pointer_info.size == .Many) {
-                return readPointerMany(pointer_info, addr, offset, any);
+                return readPointerMany(pointer_info, addr, offset, @constCast(any));
             }
         },
         else => return offset,
     }
 }
-fn addrAdd(ptr: anytype, offset: u64) @TypeOf(@constCast(ptr)) {
-    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
-        .Slice => return @intToPtr(@TypeOf(@constCast(ptr.ptr)), @ptrToInt(ptr.ptr) +% offset)[0..ptr.len],
-        .Many => return @intToPtr(@TypeOf(@constCast(ptr)), @ptrToInt(ptr.ptr) +% offset),
-        else => return @intToPtr(@TypeOf(@constCast(ptr)), @ptrToInt(ptr) +% offset),
+fn writeStruct(comptime struct_info: builtin.Type.Struct, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    const T: type = @TypeOf(any);
+    var ret: T = any;
+    inline for (struct_info.fields) |field| {
+        @field(ret, field.name) = try meta.wrap(write(allocator, addr, @field(any, field.name)));
     }
+    return ret;
 }
-fn addrSub(ptr: anytype, offset: u64) @TypeOf(ptr) {
-    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
-        .Slice => return @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) -% offset)[0..ptr.len],
-        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr.ptr) -% offset),
-        else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% offset),
-    }
-}
-
-fn toOffset(ptr: anytype, addr: u64) @TypeOf(@constCast(ptr)) {
-    @setRuntimeSafety(false);
-    return addrSub(ptr, addr);
-}
-fn toAddress(ptr: anytype, addr: u64) @TypeOf(@constCast(ptr)) {
-    @setRuntimeSafety(false);
-    return addrAdd(ptr, addr);
-}
-
-pub fn write(allocator: anytype, comptime T: type, addr: u64, any: T) @TypeOf(allocator.*).allocate_payload(T) {
-    switch (@typeInfo(T)) {
-        .Struct => |struct_info| {
-            var ret: T = any;
-            inline for (struct_info.fields) |field| {
-                @field(ret, field.name) = try meta.wrap(write(allocator, field.type, addr, @field(any, field.name)));
+fn writeUnion(comptime union_info: builtin.Type.Union, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    const T: type = @TypeOf(any);
+    if (union_info.tag_type) |tag_type| {
+        inline for (union_info.fields) |field| {
+            if (any == @field(tag_type, field.name)) {
+                return @unionInit(T, field.name, try meta.wrap(write(allocator, addr, @field(any, field.name))));
             }
-            return ret;
+        }
+    }
+    return any;
+}
+fn writePointerOne(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    return toOffset(try meta.wrap(allocator.duplicateIrreversible(pointer_info.child, try meta.wrap(write(allocator, addr, any.*)))), addr);
+}
+fn writePointerSliceWithSentinel(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype, comptime sentinel: pointer_info.child) @TypeOf(any) {
+    const ret: @TypeOf(@constCast(any)) = try meta.wrap(allocator.allocateWithSentinelIrreversible(pointer_info.child, any.len, sentinel));
+    for (ret, 0..) |*ptr, i| {
+        ptr.* = try meta.wrap(write(allocator, pointer_info.child, addr, any[i]));
+    }
+    return toOffset(ret, addr);
+}
+fn writePointerSlice(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    const ret: @TypeOf(@constCast(any)) = try meta.wrap(allocator.allocateIrreversible(pointer_info.child, any.len));
+    for (ret, 0..) |*ptr, i| {
+        ptr.* = try meta.wrap(write(allocator, addr, any[i]));
+    }
+    return toOffset(ret, addr);
+}
+fn writePointerMany(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype, comptime sentinel: pointer_info.child) @TypeOf(any) {
+    var idx: u64 = 0;
+    while (any[idx] != sentinel) idx +%= 1;
+    return writePointerSliceWithSentinel(pointer_info, allocator, addr, any[0..idx], sentinel).ptr;
+}
+pub fn write(allocator: anytype, addr: u64, any: anytype) @TypeOf(allocator.*).allocate_payload(@TypeOf(any)) {
+    switch (@typeInfo(@TypeOf(any))) {
+        .Struct => |struct_info| {
+            return writeStruct(struct_info, allocator, addr, any);
         },
         .Union => |union_info| {
-            if (union_info.tag_type) |tag_type| {
-                inline for (union_info.fields) |field| {
-                    if (any == @field(tag_type, field.name)) {
-                        return @unionInit(T, field.name, try meta.wrap(write(allocator, field.type, addr, @field(any, field.name))));
-                    }
-                }
-            }
-            return any;
+            return writeUnion(union_info, allocator, addr, any);
         },
         .Pointer => |pointer_info| {
             if (pointer_info.size == .One) {
-                var ret: *pointer_info.child = try meta.wrap(allocator.createIrreversible(pointer_info.child));
-                ret.* = try meta.wrap(write(allocator, pointer_info.child, addr, any.*));
-                return toOffset(ret, addr);
+                return writePointerOne(pointer_info, allocator, addr, any);
             }
             if (pointer_info.size == .Slice) {
-                const ret: meta.Var(T) = blk: {
-                    if (comptime meta.sentinel(T)) |sentinel| {
-                        break :blk try meta.wrap(allocator.allocateWithSentinelIrreversible(pointer_info.child, any.len, sentinel));
-                    } else {
-                        break :blk try meta.wrap(allocator.allocateIrreversible(pointer_info.child, any.len));
-                    }
-                };
-                for (ret, 0..) |*ptr, i| {
-                    ptr.* = try meta.wrap(write(allocator, pointer_info.child, addr, any[i]));
+                if (pointer_info.sentinel) |sentinel| {
+                    return writePointerSliceWithSentinel(pointer_info, allocator, addr, any, sentinel);
+                } else {
+                    return writePointerSlice(pointer_info, allocator, addr, any);
                 }
-                return toOffset(ret, addr);
             }
             if (pointer_info.size == .Many) {
-                const sentinel: pointer_info.child = comptime meta.sentinel(T).?;
-                var idx: u64 = 0;
-                while (any[idx] != sentinel) idx +%= 1;
-                const ret: meta.Var(T) = try meta.wrap(allocator.allocateWithSentinelIrreversible(pointer_info.child, idx, sentinel));
-                for (ret, 0..) |*ptr, i| {
-                    ptr.* = try meta.wrap(write(allocator, pointer_info.child, addr, any[i]));
-                }
-                return toOffset(ret, addr);
+                return writePointerMany(pointer_info, allocator, addr, any);
             }
         },
         else => return any,
@@ -226,7 +232,7 @@ fn genericDeserializeSlicesLoop(comptime S: type, comptime lvl: u64, addr: u64, 
 fn genericSerializeValuesLoop(comptime T: type, allocator: anytype, s_ab_addr: u64, s_up_addr: u64, any: anytype) @TypeOf(allocator.*).allocate_payload(u64) {
     var t_ab_addr: u64 = s_ab_addr;
     if (@TypeOf(any) == T) {
-        mem.pointerOne(T, t_ab_addr).* = try meta.wrap(write(allocator, T, s_up_addr, any));
+        mem.pointerOne(T, t_ab_addr).* = try meta.wrap(write(allocator, s_up_addr, any));
         return t_ab_addr +% @sizeOf(T);
     } else for (any) |value| {
         t_ab_addr = try meta.wrap(genericSerializeValuesLoop(T, allocator, t_ab_addr, s_up_addr, value));
