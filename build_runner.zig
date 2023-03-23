@@ -103,11 +103,10 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
     if (args.len < 5) {
-        builtin.debug.logAlways("Expected path to zig compiler, " ++
+        builtin.proc.exitWithFault("Expected path to zig compiler, " ++
             "build root directory path, " ++
             "cache root directory path, " ++
-            "global cache root directory path");
-        sys.call(.exit, .{}, noreturn, .{2});
+            "global cache root directory path", 2);
     }
     const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
     const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
