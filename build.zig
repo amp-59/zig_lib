@@ -68,8 +68,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_references",  "top/mem/references.zig");
     const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_containers",  "top/mem/containers.zig");
-
     const memgen_test: *build.Target            = mg.addTarget(debug_spec, allocator,   "memgen_test",          "top/mem/memgen-test.zig");
+
     build_test.dependOnRun(allocator,           generate_build);
     mg_new_type_specs.dependOnRun(allocator,    mg_touch);
     mg_reference_impls.dependOnRun(allocator,   mg_touch);
