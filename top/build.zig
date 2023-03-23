@@ -792,7 +792,7 @@ pub const Builder = struct {
         ModuleDependency.l_leader = true;
         return len;
     }
-    fn buildWrite(builder: *Builder, target: *const Target, array: anytype) u64 {
+    fn buildWrite(builder: *Builder, target: *const Target, array: anytype) void {
         const cmd: *const BuildCommand = target.build_cmd;
         array.writeMany("zig\x00");
         switch (cmd.kind) {
@@ -1309,7 +1309,6 @@ pub const Builder = struct {
         array.writeMany("\x00\x00");
         array.undefine(1);
         ModuleDependency.w_leader = true;
-        return countArgs(array);
     }
     fn formatLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const FormatCommand = target.fmt_cmd;
@@ -1337,7 +1336,7 @@ pub const Builder = struct {
         len +%= 1;
         return len;
     }
-    fn formatWrite(builder: *Builder, target: *const Target, array: anytype) u64 {
+    fn formatWrite(builder: *Builder, target: *const Target, array: anytype) void {
         const cmd: *const FormatCommand = target.fmt_cmd;
         array.writeMany("zig\x00fmt\x00");
         if (cmd.color) |how| {
@@ -1362,7 +1361,6 @@ pub const Builder = struct {
         array.writeFormat(builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
         array.undefine(1);
-        return countArgs(array);
     }
     pub fn build(builder: *Builder, target: *Target) !void {
         try format(builder, target);
