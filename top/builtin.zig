@@ -744,6 +744,135 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
         debug.comparisonFailedFault(T, " > ", arg1, arg2);
     }
 }
+fn length(any: anytype) usize {
+    var idx: usize = 0;
+    while (any[idx] != @ptrCast(
+        *const @typeInfo(@TypeOf(any)).Pointer.child,
+        @typeInfo(@TypeOf(any)).Pointer.sentinel.?,
+    ).*) idx +%= 1;
+    return idx;
+}
+fn Length(comptime T: type) type {
+    return @TypeOf(@as(T, undefined)[0..1]);
+}
+
+pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) void {
+    switch (@typeInfo(T)) {
+        else => @compileError(@typeName(T)),
+        .Int, .Enum => {
+            return arg1 == arg2;
+        },
+        .Struct => |struct_info| {
+            inline for (struct_info.fields) |field| {
+                if (!testEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name))) {
+                    return false;
+                }
+            }
+            return true;
+        },
+        .Union => |union_info| {
+            if (union_info.tag_type) |tag_type| {
+                if (!testEqual(tag_type, arg1, arg2)) {
+                    return false;
+                }
+                switch (arg1) {
+                    inline else => |value, tag| {
+                        return testEqualMemory(@TypeOf(value), value, @field(arg2, @tagName(tag)));
+                    },
+                }
+            } else {
+                @compileError(@typeName(T));
+            }
+        },
+        .Optional => |optional_info| {
+            if (arg1 != null and arg2 != null) {
+                return testEqualMemory(optional_info.child, arg1.?, arg2.?);
+            }
+            return arg1 == null and arg2 == null;
+        },
+        .Pointer => |pointer_info| {
+            switch (pointer_info.size) {
+                .Many => {
+                    const len1: usize = length(arg1);
+                    const len2: usize = length(arg2);
+                    if (len1 == len2) {
+                        return false;
+                    }
+                    for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
+                        if (!testEqualMemory(pointer_info.child, value1, value2)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                },
+                .Slice => {
+                    if (arg1.len != arg2.len) {
+                        return false;
+                    }
+                    for (arg1, arg2) |value1, value2| {
+                        if (!testEqualMemory(pointer_info.child, value1, value2)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                },
+                else => return testEqualMemory(pointer_info.child, arg1.*, arg2.*),
+            }
+        },
+    }
+}
+pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
+    switch (@typeInfo(T)) {
+        else => @compileError(@typeName(T)),
+        .Int, .Enum => {
+            assertEqual(T, arg1, arg2);
+        },
+        .Struct => |struct_info| {
+            inline for (struct_info.fields) |field| {
+                assertEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
+            }
+        },
+        .Union => |union_info| {
+            if (union_info.tag_type) |tag_type| {
+                assertEqual(tag_type, arg1, arg2);
+                switch (arg1) {
+                    inline else => |value, tag| {
+                        assertEqualMemory(@TypeOf(value), value, @field(arg2, @tagName(tag)));
+                    },
+                }
+            } else {
+                @compileError(@typeName(T));
+            }
+        },
+        .Optional => |optional_info| {
+            if (arg1 != null and arg2 != null) {
+                assertEqualMemory(optional_info.child, arg1.?, arg2.?);
+            } else {
+                assert(arg1 == null and arg2 == null);
+            }
+        },
+        .Pointer => |pointer_info| {
+            switch (pointer_info.size) {
+                .Many => {
+                    const len1: usize = length(arg1);
+                    const len2: usize = length(arg2);
+                    assertEqual(usize, len1, len2);
+                    for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
+                        assertEqualMemory(pointer_info.child, value1, value2);
+                    }
+                },
+                .Slice => {
+                    assertEqual(usize, arg1.len, arg2.len);
+                    for (arg1, arg2) |value1, value2| {
+                        assertEqualMemory(pointer_info.child, value1, value2);
+                    }
+                },
+                else => assertEqualMemory(pointer_info.child, arg1.*, arg2.*),
+            }
+        },
+    }
+}
+
 const FaultExtra = struct {
     src: SourceLocation,
     about: ?[]const u8 = null,
