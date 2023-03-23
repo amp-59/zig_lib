@@ -1370,19 +1370,22 @@ pub const Builder = struct {
             builder.depth +%= 1;
             try invokeDependencies(builder, target);
             var array: ArgsString = undefined;
-            var args: ArgsPointers = undefined;
+            var build_time: time.TimeSpec = undefined;
+            var build_args: ArgsPointers = undefined;
             array.undefineAll();
-            args.undefineAll();
+            build_args.undefineAll();
             const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
             const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
-            builtin.assertBelowOrEqual(u64, builder.buildWrite(target, &array), max_args);
-            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-            builtin.assertEqual(u64, array.len(), builder.buildLength(target));
-            const build_time: time.TimeSpec = try builder.exec(args.referAllDefined());
+            builder.buildWrite(target, &array);
+            makeArgs(&array, &build_args);
+            const rc: u8 = try builder.exec(build_args.referAllDefined(), &build_time);
             const new_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
             builder.depth -%= 1;
             if (builder.depth <= max_relevant_depth) {
                 debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
+            }
+            if (rc != 0) {
+                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
             }
         }
     }
@@ -1392,15 +1395,18 @@ pub const Builder = struct {
             target.do(.fmt);
             try invokeDependencies(builder, target);
             var array: ArgsString = undefined;
-            var args: ArgsPointers = undefined;
+            var format_args: ArgsPointers = undefined;
+            var format_time: time.TimeSpec = undefined;
             array.undefineAll();
-            args.undefineAll();
-            builtin.assertBelowOrEqual(u64, builder.formatWrite(target, &array), max_args);
-            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-            builtin.assertEqual(u64, array.len(), builder.formatLength(target));
-            const format_time: time.TimeSpec = try builder.exec(args.referAllDefined());
+            format_args.undefineAll();
+            builder.formatWrite(target, &array);
+            makeArgs(&array, &format_args);
+            const rc: u8 = try builder.exec(format_args.referAllDefined(), &format_time);
             if (builder.depth <= max_relevant_depth) {
                 debug.formatNotice(target.name, format_time);
+            }
+            if (rc != 0) {
+                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
             }
         }
     }
@@ -1409,12 +1415,16 @@ pub const Builder = struct {
         if (target.have(.run) and target.have(.build)) {
             target.do(.run);
             try build(builder, target);
-            var args: ArgsPointers = undefined;
-            args.undefineAll();
-            builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
-            const run_time: time.TimeSpec = try builder.system(args.referAllDefined());
-            if (builder.depth <= max_relevant_depth) {
-                debug.runNotice(target.name, run_time);
+            var run_time: time.TimeSpec = undefined;
+            var run_args: ArgsPointers = undefined;
+            run_args.undefineAll();
+            makeArgs(&target.run_cmd.array, &run_args);
+            const rc: u8 = try builder.system(run_args.referAllDefined(), &run_time);
+            if (rc != 0 or builder.depth <= max_relevant_depth) {
+                debug.runNotice(target.name, run_time, rc);
+            }
+            if (rc != 0) {
+                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
             }
         }
     }
