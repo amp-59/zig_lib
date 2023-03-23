@@ -2239,3 +2239,14 @@ fn Src() type {
 fn Overflow(comptime T: type) type {
     return struct { T, u1 };
 }
+fn length(any: anytype) usize {
+    var idx: usize = 0;
+    while (any[idx] != @ptrCast(
+        *const @typeInfo(@TypeOf(any)).Pointer.child,
+        @typeInfo(@TypeOf(any)).Pointer.sentinel.?,
+    ).*) idx +%= 1;
+    return idx;
+}
+fn Length(comptime T: type) type {
+    return @TypeOf(@as(T, undefined)[0..1]);
+}
