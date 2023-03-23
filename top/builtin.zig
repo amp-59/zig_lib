@@ -1339,8 +1339,6 @@ pub const debug = opaque {
         );
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
     }
-    // At the time of writing, this function benefits from inlining but
-    // writeMulti does not.
     pub fn writeMany(buf: []u8, s: []const u8) u64 {
         mach.memcpy(buf.ptr, s.ptr, s.len);
         return s.len;
@@ -1484,7 +1482,7 @@ pub const debug = opaque {
                     itos(T, result).readAll(),    "r",
                     itos(T, remainder).readAll(), "\n",
                 }) |s| {
-                    @memcpy(buf.ptr + len, s.ptr, s.len);
+                    for (s, 0..) |c, idx| buf[len +% idx] = c;
                     len +%= s.len;
                 }
                 @compileError(buf[0..len]);
@@ -1509,7 +1507,7 @@ pub const debug = opaque {
                     itos(T, result).readAll(),    "+",
                     itos(T, remainder).readAll(), "\n",
                 }) |s| {
-                    @memcpy(buf.ptr + len, s.ptr, s.len);
+                    for (s, 0..) |c, idx| buf[len +% idx] = c;
                     len +%= s.len;
                 }
                 @compileError(buf[0..len]);
@@ -1529,14 +1527,20 @@ pub const debug = opaque {
                     itos(T, arg1).readAll(), symbol,
                     itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
                 }) |s| {
-                    for (s, 0..) |c, i| buf[len +% i] = c;
+                    for (s, 0..) |c, idx| buf[len +% idx] = c;
                     len +%= s.len;
                 }
                 if (@min(arg1, arg2) > 10_000) {
                     if (arg1 > arg2) {
-                        len += writeMulti(buf[len..], &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                        for ([_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" }) |s| {
+                            for (s, 0..) |c, idx| buf[len +% idx] = c;
+                            len +%= s.len;
+                        }
                     } else {
-                        len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
+                        for ([_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" }) |s| {
+                            for (s, 0..) |c, idx| buf[len +% idx] = c;
+                            len +%= s.len;
+                        }
                     }
                 }
                 @compileError(buf[0..len]);
