@@ -8,21 +8,24 @@ fn rewind(builder: *build.Builder) callconv(.C) void {
         groups.node.this.targets.head();
     }
 }
-fn writeAllCommands(builder: *build.Builder, buf: *[1024 * 1024]u8, name_max_width: u64) callconv(.C) u64 {
+export fn writeAllCommands(builder: *build.Builder, buf: *[1024 * 1024]u8, name_max_width: u64) callconv(.C) u64 {
+    @setRuntimeSafety(false);
     var groups: build.GroupList = builder.groups;
     var len: u64 = 0;
-    while (@call(.always_inline, build.GroupList.next, .{&groups})) |group_node| : (groups.node = group_node) {
+    while (groups.next()) |group_node| : (groups.node = group_node) {
         len +%= builtin.debug.writeMulti(buf[len..], &.{ groups.node.this.name, ":\n" });
         var targets: build.TargetList = groups.node.this.targets;
-        while (@call(.always_inline, build.TargetList.next, .{&targets})) |target_node| : (targets.node = target_node) {
-            for ("    ", 0..) |c, i| buf[len + i] = c;
+        while (targets.next()) |target_node| : (targets.node = target_node) {
+            mach.memset(buf[len..].ptr, ' ', 4);
             len +%= 4;
-            for (targets.node.this.name, 0..) |c, i| buf[len + i] = c;
+            mach.memcpy(buf[len..].ptr, targets.node.this.name.ptr, targets.node.this.name.len);
+            //for (targets.node.this.name, 0..) |c, i| buf[len + i] = c;
             len +%= targets.node.this.name.len;
             const count: u64 = name_max_width - targets.node.this.name.len;
             mach.memset(buf[len..].ptr, ' ', count);
             len +%= count;
-            for (targets.node.this.root, 0..) |c, i| buf[len + i] = c;
+            mach.memcpy(buf[len..].ptr, targets.node.this.root.ptr, targets.node.this.root.len);
+            //for (targets.node.this.root, 0..) |c, i| buf[len + i] = c;
             len +%= targets.node.this.root.len;
             buf[len] = '\n';
             len +%= 1;
@@ -46,3 +49,55 @@ fn maxWidths(builder: *build.Builder) extern struct { u64, u64 } {
     root_max_width += alignment;
     return .{ name_max_width & ~(alignment - 1), root_max_width & ~(alignment - 1) };
 }
+const debug = struct {
+    const about_target_0_s: [:0]const u8 = builtin.debug.about("target");
+    const about_target_1_s: [:0]const u8 = builtin.debug.about("target-error");
+    fn targetErrorInternal(builder: *build.Builder, arg: [*:0]const u8, arg_len: u64) void {
+        var buf: [4096 +% 128]u8 = undefined;
+        var len: u64 = 0;
+        len += builtin.debug.writeMany(buf[len..], debug.about_target_1_s);
+        buf[len] = '\'';
+        len +%= 1;
+        len += builtin.debug.writeMany(buf[len..], arg[0..arg_len]);
+        len += builtin.debug.writeMany(buf[len..], "'\n");
+        len +%= 2;
+        var groups: build.GroupList = builder.groups;
+        while (groups.next()) |group_node| : (groups.node = group_node) {
+            var targets: build.TargetList = groups.node.this.targets;
+            while (targets.next()) |target_node| : (targets.node = target_node) {
+                const name: []const u8 = targets.node.this.name;
+                const min: u64 = len;
+                const mats: u64 = blk: {
+                    var l_idx: u64 = 0;
+                    var mats: u64 = 0;
+                    lo: while (true) : (l_idx += 1) {
+                        var r_idx: u64 = 0;
+                        while (r_idx < name.len) : (r_idx += 1) {
+                            if (l_idx +% mats >= arg_len) {
+                                break :lo;
+                            }
+                            mats += @boolToInt(arg[l_idx +% mats] == name[r_idx]);
+                        }
+                    }
+                    break :blk mats;
+                };
+                if (builtin.diff(u64, mats, name.len) < 2) {
+                    len += builtin.debug.writeMany(buf[len..], debug.about_target_0_s);
+                    len += builtin.debug.writeMany(buf[len..], name);
+                }
+                if (min != len) {
+                    buf[len] = '\'';
+                    len +%= 1;
+                    if (targets.node.this.descr) |descr| {
+                        buf[len] = '\t';
+                        len += 1;
+                        len += builtin.debug.writeMany(buf[len..], descr);
+                    }
+                    buf[len] = '\n';
+                    len +%= 1;
+                }
+            }
+        }
+        builtin.debug.write(buf[0..len]);
+    }
+};
