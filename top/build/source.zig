@@ -19,13 +19,11 @@ export fn writeAllCommands(builder: *build.Builder, buf: *[1024 * 1024]u8, name_
             mach.memset(buf[len..].ptr, ' ', 4);
             len +%= 4;
             mach.memcpy(buf[len..].ptr, targets.node.this.name.ptr, targets.node.this.name.len);
-            //for (targets.node.this.name, 0..) |c, i| buf[len + i] = c;
             len +%= targets.node.this.name.len;
             const count: u64 = name_max_width - targets.node.this.name.len;
             mach.memset(buf[len..].ptr, ' ', count);
             len +%= count;
             mach.memcpy(buf[len..].ptr, targets.node.this.root.ptr, targets.node.this.root.len);
-            //for (targets.node.this.root, 0..) |c, i| buf[len + i] = c;
             len +%= targets.node.this.root.len;
             buf[len] = '\n';
             len +%= 1;
