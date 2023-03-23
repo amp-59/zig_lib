@@ -1062,9 +1062,47 @@ const U64 = packed struct { h: u32, l: u32 };
 pub fn pack64(h: u32, l: u32) u64 {
     return @bitCast(u64, U64{ .h = h, .l = l });
 }
+
+pub const proc = struct {
+    pub fn exitWithError(exit_error: anytype, return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Error or
+            config.logging_general.Fault)
+        {
+            debug.exitError(@errorName(exit_error), return_code);
+        }
+        exit(return_code);
+    }
+    pub fn exitWithNotice(return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Success) {
+            debug.exitNotice(return_code);
+        }
+        exit(return_code);
+    }
+    pub fn exitWithFault(message: []const u8, return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Fault) {
+            debug.exitFault(message, return_code);
+        }
+        exit(return_code);
+    }
+    pub fn exit(rc: u8) noreturn {
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (60), // linux sys_exit
+              [arg1] "{rdi}" (rc), // exit code
+        );
+        unreachable;
+    }
+};
 pub const debug = opaque {
     pub const itos = fmt.dec;
     const size: usize = 4096;
+    const about_exit_0_s: []const u8 = about("exit");
+    const about_exit_1_s: []const u8 = about_error_p0_s;
+    const about_exit_2_s: []const u8 = about_fault_p0_s;
     const about_fault_p0_s: []const u8 = about("fault");
     const about_error_p0_s: []const u8 = about("error");
     const about_fault_p1_s: []const u8 = about(" assertion failed");
@@ -1083,12 +1121,23 @@ pub const debug = opaque {
         }
         return lhs ++ " " ** (config.message_indent - len);
     }
-
     fn aboutFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
     }
     fn aboutError(comptime T: type) []const u8 {
         return about_error_p0_s ++ @typeName(T);
+    }
+    fn exitNotice(rc: u8) void {
+        var buf: [4096]u8 = undefined;
+        logAlwaysAIO(&buf, &.{ debug.about_exit_0_s, fmt.ud8(rc).readAll(), "\n" });
+    }
+    fn exitError(symbol: [:0]const u8, rc: u8) void {
+        var buf: [4096]u8 = undefined;
+        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, "(", symbol, ")", fmt.ud8(rc).readAll(), "\n" });
+    }
+    fn exitFault(message: [:0]const u8, rc: u8) void {
+        var buf: [4096]u8 = undefined;
+        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, fmt.ud8(rc).readAll(), "\n" });
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
