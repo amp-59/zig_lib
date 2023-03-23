@@ -1475,7 +1475,7 @@ pub const debug = opaque {
             comptime remainder: T,
         ) noreturn {
             comptime {
-                var msg: [size]u8 = undefined;
+                var buf: [size]u8 = undefined;
                 var len: u64 = 0;
                 for ([_][]const u8{
                     @typeName(T),                 ": exact division had a remainder: ",
@@ -1484,10 +1484,10 @@ pub const debug = opaque {
                     itos(T, result).readAll(),    "r",
                     itos(T, remainder).readAll(), "\n",
                 }) |s| {
-                    for (s, 0..) |c, i| msg[len +% i] = c;
+                    @memcpy(buf.ptr + len, s.ptr, s.len);
                     len +%= s.len;
                 }
-                @compileError(msg[0..len]);
+                @compileError(buf[0..len]);
             }
         }
         fn incorrectAlignment(
@@ -1499,7 +1499,7 @@ pub const debug = opaque {
             comptime remainder: T,
         ) noreturn {
             comptime {
-                var msg: [size]u8 = undefined;
+                var buf: [size]u8 = undefined;
                 var len: u64 = 0;
                 for ([_][]const u8{
                     @typeName(T),                 ": incorrect alignment: ",
@@ -1509,10 +1509,10 @@ pub const debug = opaque {
                     itos(T, result).readAll(),    "+",
                     itos(T, remainder).readAll(), "\n",
                 }) |s| {
-                    for (s, 0..) |c, i| msg[len +% i] = c;
+                    @memcpy(buf.ptr + len, s.ptr, s.len);
                     len +%= s.len;
                 }
-                @compileError(msg[0..len]);
+                @compileError(buf[0..len]);
             }
         }
         fn comparisonFailed(
@@ -1523,11 +1523,15 @@ pub const debug = opaque {
         ) void {
             comptime {
                 var buf: [size]u8 = undefined;
-                var len: u64 = writeMulti(&buf, &[_][]const u8{
+                var len: u64 = 0;
+                for ([_][]const u8{
                     @typeName(T),            " assertion failed: ",
                     itos(T, arg1).readAll(), symbol,
                     itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
-                });
+                }) |s| {
+                    for (s, 0..) |c, i| buf[len +% i] = c;
+                    len +%= s.len;
+                }
                 if (@min(arg1, arg2) > 10_000) {
                     if (arg1 > arg2) {
                         len += writeMulti(buf[len..], &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
@@ -2008,7 +2012,6 @@ pub const fmt = opaque {
     pub fn ixsize(value: isize) StaticString(isize, 16) {
         return hex(isize, value);
     }
-
     fn Absolute(comptime Int: type) type {
         return @Type(.{ .Int = .{
             .bits = @max(@bitSizeOf(Int), 8),
@@ -2142,6 +2145,7 @@ pub const fmt = opaque {
         };
     }
 };
+
 pub const Version = struct {
     major: u32,
     minor: u32,
