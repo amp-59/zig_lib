@@ -243,21 +243,19 @@ pub const Builder = struct {
         builder.groups.head();
         return ret;
     }
-    fn exec(builder: Builder, args: [][*:0]u8) !time.TimeSpec {
+    fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
         const start: time.TimeSpec = try time.get(.{}, .realtime);
-        if (0 != try proc.command(.{}, builder.paths.zig_exe, args, builder.vars)) {
-            return error.UnexpectedExitStatus;
-        }
+        const rc: u8 = try proc.command(.{}, builder.paths.zig_exe, args, builder.vars);
         const finish: time.TimeSpec = try time.get(.{}, .realtime);
-        return time.diff(finish, start);
+        ts.* = time.diff(finish, start);
+        return rc;
     }
-    fn system(builder: Builder, args: [][*:0]u8) !time.TimeSpec {
+    fn system(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
         const start: time.TimeSpec = try time.get(.{}, .realtime);
-        if (0 != try proc.command(.{}, meta.manyToSlice(args[0]), args, builder.vars)) {
-            return error.UnexpectedExitStatus;
-        }
+        const ret: u8 = try proc.command(.{}, meta.manyToSlice(args[0]), args, builder.vars);
         const finish: time.TimeSpec = try time.get(.{}, .realtime);
-        return time.diff(finish, start);
+        ts.* = time.diff(finish, start);
+        return ret;
     }
     pub fn init(
         allocator: *Allocator,
