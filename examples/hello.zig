@@ -12,8 +12,8 @@ fn NTuple(comptime n: usize) type {
 
 pub export fn _start() void {
     @setAlignStack(16);
-    if (false) {
-        builtin.debug.write(hello_world);
+    if (true) {
+        return builtin.debug.write(hello_world);
     }
     if (false) {
         const x: []const u8 = (comptime mem.view("Hello, world!\n")).readAll();
@@ -41,5 +41,5 @@ pub export fn _start() void {
         inline for (hello_world, 0..) |c, i| s.auto[i] = c;
         builtin.debug.write(z.auto[0..hello_world.len]);
     }
-    sys.call(.exit, .{}, noreturn, .{0});
+    builtin.proc.exit(0);
 }
