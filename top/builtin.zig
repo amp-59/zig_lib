@@ -1363,9 +1363,8 @@ pub const debug = opaque {
     pub inline fn logError(buf: []const u8) void {
         if (config.logging_general.Error) write(buf);
     }
-    pub inline fn logFault(buf: []const u8) noreturn {
+    pub inline fn logFault(buf: []const u8) void {
         if (config.logging_general.Fault) write(buf);
-        abort();
     }
     pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
         var len: u64 = 0;
@@ -1374,27 +1373,81 @@ pub const debug = opaque {
         len +%= name(buf[len..]);
         len +%= writeMulti(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
         logFault(buf[0..len]);
+        proc.exit(2);
     }
-    pub inline fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
+    pub fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
         write(buf[0..writeMulti(buf, slices)]);
     }
-    pub inline fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging_general.Success) write(buf[0..writeMulti(buf, slices)]);
+    pub fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
+        logSuccess(buf[0..writeMulti(buf, slices)]);
     }
-    pub inline fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging_general.Acquire) write(buf[0..writeMulti(buf, slices)]);
+    pub fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
+        logAcquire(buf[0..writeMulti(buf, slices)]);
     }
-    pub inline fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging_general.Release) write(buf[0..writeMulti(buf, slices)]);
+    pub fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
+        logRelease(buf[0..writeMulti(buf, slices)]);
     }
-    pub inline fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
-        if (config.logging_general.Error) write(buf[0..writeMulti(buf, slices)]);
+    pub fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
+        logError(buf[0..writeMulti(buf, slices)]);
     }
-    pub inline fn logFaultAIO(buf: []u8, slices: []const []const u8) noreturn {
-        if (config.logging_general.Fault) write(buf[0..writeMulti(buf, slices)]);
-        abort();
+    pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
+        logFault(buf[0..writeMulti(buf, slices)]);
     }
-
+    pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?usize) noreturn {
+        @setCold(true);
+        logFault(msg);
+        proc.exit(2);
+    }
+    pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
+        @setCold(true);
+        var buf: [1024]u8 = undefined;
+        if (max_len == 0) {
+            logFaultAIO(&buf, &[_][]const u8{
+                debug.about_exit_1_s,    "indexing (",
+                fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
+            });
+        } else {
+            logFaultAIO(&buf, &[_][]const u8{
+                debug.about_exit_1_s,             "index ",
+                fmt.ud64(idx).readAll(),          " above maximum ",
+                fmt.ud64(max_len -% 1).readAll(), "\n",
+            });
+        }
+        proc.exitWithError(error.PanicOutOfBounds, 2);
+    }
+    pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
+        @setCold(true);
+        var buf: [1024]u8 = undefined;
+        logFaultAIO(&buf, &[_][]const u8{
+            debug.about_exit_1_s,        "sentinel mismatch: expected ",
+            fmt.int(expected).readAll(), ", found ",
+            fmt.int(actual).readAll(),   "\n",
+        });
+        proc.exit(2);
+    }
+    pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
+        @setCold(true);
+        var buf: [1024]u8 = undefined;
+        logFaultAIO(&buf, &[_][]const u8{
+            debug.about_exit_1_s,      "start index ",
+            fmt.ud64(lower).readAll(), " is larger than end index ",
+            fmt.ud64(upper).readAll(), "\n",
+        });
+        proc.exit(2);
+    }
+    pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
+        @setCold(true);
+        var buf: [1024]u8 = undefined;
+        logFaultAIO(&buf, &[_][]const u8{
+            debug.about_exit_1_s, "access of union field '",
+            @tagName(wanted),     "' while field '",
+            @tagName(active),     "' is active",
+        });
+        proc.exit(2);
+    }
+    pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
+        @compileError("error is discarded");
+    }
     const static = opaque {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             comptime {
