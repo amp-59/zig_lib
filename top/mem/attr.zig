@@ -6,7 +6,7 @@ const testing = gen.testing;
 const tok = @import("tok.zig");
 
 // zig fmt: off
-pub const abstract_specs: []const AbstractSpecification = &.{
+pub const abstract_specs: [32]AbstractSpecification = [_]AbstractSpecification{
     .{ .kind = .automatic,  .fields = au,           .layout = .structured,      .modes = rw,            .v_specs = auto_specs, .v_techs = auto_techs },
     .{ .kind = .automatic,  .fields = au_ss,        .layout = .structured,      .modes = rw_str,        .v_specs = auto_specs, .v_techs = auto_techs },
     .{ .kind = .automatic,  .fields = au_ub,        .layout = .structured,      .modes = rw_rsz,        .v_specs = auto_specs, .v_techs = auto_techs },
@@ -41,10 +41,32 @@ pub const abstract_specs: []const AbstractSpecification = &.{
     .{ .kind = .parametric, .fields = ub_ss,        .layout = .unstructured,    .modes = rw_str_rsz,    .v_specs = u_param_specs, .v_techs = param_techs },
 };
 // zig fmt: on
-
-const Map = struct {
-    ctn_spec: Container,
-    abstract_specs: []const AbstractSpecification,
+pub const ctn_details: []const Container = blk: {
+    var res: []const meta.Child(Container) = &.{};
+    for (abstract_specs) |abstract_spec| {
+        const ctn_detail_val: meta.Child(Container) =
+            meta.leastBitCast(Container.init(abstract_spec));
+        for (res) |unique_ctn_detail| {
+            if (ctn_detail_val == unique_ctn_detail) {
+                break;
+            }
+        } else {
+            res = res ++ .{ctn_detail_val};
+        }
+    }
+    break :blk @ptrCast([]const Container, res);
+};
+pub const ctn_groups: [ctn_details.len][]const AbstractSpecification = blk: {
+    @setEvalBranchQuota(10000);
+    var res: [ctn_details.len][]const AbstractSpecification = .{&.{}} ** ctn_details.len;
+    for (@ptrCast([]const meta.Child(Container), ctn_details), 0..) |ctn_detail, ctn_index| {
+        for (abstract_specs) |abstract_spec| {
+            if (ctn_detail == meta.leastBitCast(Container.init(abstract_spec))) {
+                res[ctn_index] = res[ctn_index] ++ .{abstract_spec};
+            }
+        }
+    }
+    break :blk res;
 };
 pub const AbstractSpecification = struct {
     kind: Kind,
@@ -196,7 +218,7 @@ pub const Specifier = union(enum) {
         }
     }
 };
-pub const Container = struct {
+pub const Container = packed struct {
     kind: Kind,
     layout: Layout,
     modes: Modes,
