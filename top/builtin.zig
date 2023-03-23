@@ -597,9 +597,10 @@ fn testEqualPointer(comptime T: type, comptime pointer_info: Type.Pointer, arg1:
     }
     return false;
 }
-fn testEqualStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T, arg2: T) bool {
+fn testIdenticalStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T, arg2: T) bool {
     if (struct_info.layout == .Packed) {
-        return @bitCast(struct_info.backing_integer.?, arg1) == @bitCast(struct_info.backing_integer.?, arg2);
+        return @bitCast(struct_info.backing_integer.?, arg1) ==
+            @bitCast(struct_info.backing_integer.?, arg2);
     }
     inline for (struct_info.fields) |field| {
         if (!testEqual(
@@ -612,12 +613,43 @@ fn testEqualStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T,
     }
     return true;
 }
-fn testEqualUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
+fn testEqualStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T, arg2: T) bool {
+    inline for (struct_info.fields) |field| {
+        if (!testEqual(
+            field.type,
+            @field(arg1, field.name),
+            @field(arg2, field.name),
+        )) {
+            return false;
+        }
+    }
+    return true;
+}
+fn testIdenticalUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
     return testEqual(union_info.tag_type.?, arg1, arg2) and
         mach.testEqualMany8(
         @ptrCast(*const [@sizeOf(T)]u8, &arg1),
         @ptrCast(*const [@sizeOf(T)]u8, &arg2),
     );
+}
+fn testEqualUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
+    if (union_info.tag_type) |tag_type| {
+        if (@enumToInt(arg1) != @enumToInt(arg2)) {
+            return false;
+        }
+        inline for (union_info.fields) |field| {
+            if (@enumToInt(arg1) == @enumToInt(@field(tag_type, field.name))) {
+                if (!testEqual(
+                    field.type,
+                    @field(arg1, field.name),
+                    @field(arg2, field.name),
+                )) {
+                    return false;
+                }
+            }
+        }
+    }
+    return testIdenticalUnion(T, union_info, arg1, arg2);
 }
 fn testEqualOptional(comptime T: type, comptime optional_info: Type.Optional, arg1: T, arg2: T) bool {
     if (@typeInfo(optional_info.child) == .Pointer and
