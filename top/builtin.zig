@@ -1222,6 +1222,7 @@ pub const debug = opaque {
         var buf: [size]u8 = undefined;
         const len: u64 = debug.intCastTruncatedBitsString(T, U, &buf, arg);
         logFault(buf[0..len]);
+        proc.exit(2);
     }
     fn subCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
@@ -1235,6 +1236,7 @@ pub const debug = opaque {
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
+        proc.exit(2);
     }
     fn addCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
@@ -1248,6 +1250,7 @@ pub const debug = opaque {
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
+        proc.exit(2);
     }
     fn mulCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
@@ -1261,6 +1264,7 @@ pub const debug = opaque {
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2);
         logFault(buf[0..len]);
+        proc.exit(2);
     }
     fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
         @setCold(true);
@@ -1274,6 +1278,7 @@ pub const debug = opaque {
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), &buf, arg1, arg2, result, remainder);
         logFault(buf[0..len]);
+        proc.exit(2);
     }
     fn incorrectAlignmentException(comptime T: type, address: usize, alignment: usize) Exception {
         @setCold(true);
@@ -1289,6 +1294,7 @@ pub const debug = opaque {
         var buf: [size]u8 = undefined;
         const len: u64 = incorrectAlignmentString(T, aboutFault(T), &buf, address, alignment, remainder);
         logFault(buf[0..len]);
+        proc.exit(2);
     }
     fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
         @setCold(true);
@@ -1308,6 +1314,7 @@ pub const debug = opaque {
         } else {
             logFault("assertion failed");
         }
+        proc.exit(2);
     }
     pub fn write(buf: []const u8) void {
         asm volatile (
@@ -1331,15 +1338,6 @@ pub const debug = opaque {
             : "rcx", "r11", "memory"
         );
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
-    }
-    fn abort() noreturn {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (60), // linux sys_exit
-              [arg1] "{rdi}" (2), // exit code
-        );
-        unreachable;
     }
     // At the time of writing, this function benefits from inlining but
     // writeMulti does not.
