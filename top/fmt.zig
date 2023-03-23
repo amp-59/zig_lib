@@ -684,15 +684,14 @@ pub const SourceLocationFormat = struct {
         array.writeMany(lit.fx.none ++ "\n");
     }
     fn functionName(format: SourceLocationFormat) []const u8 {
-        const begin: u64 = blk: {
-            var i: u64 = 0;
-            var j: u64 = 0;
-            while (i != format.value.fn_name.len) : (i +%= 1) {
-                if (format.value.fn_name[i] == '.') j = i;
+        return format.value.fn_name[blk: {
+            var start: u64 = 0;
+            var idx: u64 = 0;
+            while (idx != format.value.fn_name.len) : (idx +%= 1) {
+                if (format.value.fn_name[idx] == '.') start = idx;
             }
-            break :blk if (j != 0) j +% 1 else 0;
-        };
-        return format.value.fn_name[begin.. :0];
+            break :blk start +% @boolToInt(start != 0);
+        }.. :0];
     }
     pub fn formatLength(format: SourceLocationFormat) u64 {
         const fn_name: []const u8 = format.functionName();
