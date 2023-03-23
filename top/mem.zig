@@ -1,6 +1,7 @@
 const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
+const proc = @import("./proc.zig");
 const builtin = @import("./builtin.zig");
 const _virtual = @import("./virtual.zig");
 const _reference = @import("./reference.zig");
@@ -568,10 +569,7 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
-        if (logging.Fault) {
-            builtin.debug.logFault(debug.about_acq_2_s);
-        }
-        sys.call(.exit, .{}, noreturn, .{2});
+        builtin.proc.exitWithFault(debug.about_acq_2_s, 2);
     }
 }
 pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
@@ -589,10 +587,7 @@ pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
-        if (logging.Fault) {
-            builtin.debug.logFault(debug.about_acq_2_s);
-        }
-        sys.call(.exit, .{}, noreturn, .{2});
+        builtin.proc.exitWithFault(debug.about_acq_2_s, 2);
     }
 }
 pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
@@ -609,11 +604,8 @@ pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpa
             debug.arenaAcquireError(spec.errors.acquire.throw, null, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
-    } else if (comptime spec.errors.acquire == .abort) {
-        if (logging.Fault) {
-            builtin.debug.logFault(debug.about_acq_2_s);
-        }
-        sys.call(.exit, .{}, noreturn, .{2});
+    } else if (spec.errors.acquire == .abort) {
+        builtin.proc.exitWithFault(debug.about_acq_2_s, 2);
     }
 }
 pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_void {
@@ -634,10 +626,7 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
-        if (logging.Fault) {
-            builtin.debug.logFault(debug.about_rel_2_s);
-        }
-        sys.call(.exit, .{}, noreturn, .{2});
+        builtin.proc.exitWithFault(debug.about_rel_2_s, 2);
     }
 }
 pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
@@ -655,10 +644,7 @@ pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
-        if (logging.Fault) {
-            builtin.debug.logFault(debug.about_rel_2_s);
-        }
-        sys.call(.exit, .{}, noreturn, .{2});
+        builtin.proc.exitWithFault(debug.about_rel_2_s, 2);
     }
 }
 pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
@@ -675,10 +661,7 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
         }
         return spec.errors.release.throw;
     } else if (comptime spec.errors.release == .abort) {
-        if (spec.logging.release.Fault) {
-            builtin.debug.logFault(debug.about_rel_2_s);
-        }
-        sys.call(.exit, .{}, noreturn, .{2});
+        builtin.proc.exitWithFault(debug.about_rel_2_s, 2);
     }
 }
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
