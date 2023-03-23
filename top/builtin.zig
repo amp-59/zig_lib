@@ -66,11 +66,7 @@ pub fn zigErrorThrow(
 /// Attempt to match a return value against a set of error codes--aborting the
 /// program on success.
 /// This function is exceptional in this namespace for its use of system calls.
-pub fn zigErrorAbort(
-    comptime Value: type,
-    comptime values: []const Value,
-    ret: isize,
-) void {
+pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     inline for (values) |value| {
         if (ret == @enumToInt(value)) {
             var buf: [4608]u8 = undefined;
@@ -744,19 +740,7 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
         debug.comparisonFailedFault(T, " > ", arg1, arg2);
     }
 }
-fn length(any: anytype) usize {
-    var idx: usize = 0;
-    while (any[idx] != @ptrCast(
-        *const @typeInfo(@TypeOf(any)).Pointer.child,
-        @typeInfo(@TypeOf(any)).Pointer.sentinel.?,
-    ).*) idx +%= 1;
-    return idx;
-}
-fn Length(comptime T: type) type {
-    return @TypeOf(@as(T, undefined)[0..1]);
-}
-
-pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) void {
+pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
         .Int, .Enum => {
@@ -789,6 +773,9 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) void {
                 return testEqualMemory(optional_info.child, arg1.?, arg2.?);
             }
             return arg1 == null and arg2 == null;
+        },
+        .Array => |array_info| {
+            return testEqual([]const array_info.child, &arg1, &arg2);
         },
         .Pointer => |pointer_info| {
             switch (pointer_info.size) {
@@ -850,6 +837,9 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
             } else {
                 assert(arg1 == null and arg2 == null);
             }
+        },
+        .Array => |array_info| {
+            assertEqual([]const array_info.child, &arg1, &arg2);
         },
         .Pointer => |pointer_info| {
             switch (pointer_info.size) {
