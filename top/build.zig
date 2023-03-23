@@ -1635,7 +1635,7 @@ fn countArgs(array: anytype) u64 {
     }
     return count +% 1;
 }
-fn makeArgs(array: anytype, args: anytype) u64 {
+fn makeArgs(array: anytype, args: anytype) void {
     var idx: u64 = 0;
     for (array.readAll(), 0..) |c, i| {
         if (c == 0) {
@@ -1646,7 +1646,6 @@ fn makeArgs(array: anytype, args: anytype) u64 {
     if (args.len() != 0) {
         mem.set(args.impl.undefined_byte_address(), @as(u64, 0), 1);
     }
-    return args.len();
 }
 pub const Module = struct {
     name: []const u8,
@@ -1938,7 +1937,7 @@ const debug = struct {
         array.writeMany("s\n");
         builtin.debug.write(array.readAll());
     }
-    fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec) void {
+    fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec, rc: ?u8) void {
         var array: mem.StaticString(4096) = undefined;
         array.undefineAll();
         array.writeMany(about);
@@ -1948,13 +1947,19 @@ const debug = struct {
         array.writeMany(".");
         array.writeFormat(fmt.nsec(durat.nsec));
         array.undefine(6);
-        array.writeMany("s\n");
+        if (rc) |return_code| {
+            array.writeMany("s, ->");
+            array.writeFormat(fmt.ud8(return_code));
+        } else {
+            array.writeMany("s");
+        }
+        array.writeMany("\n");
         builtin.debug.write(array.readAll());
     }
-    inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec) void {
-        simpleTimedNotice(about_run_s, name, durat);
+    inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
+        simpleTimedNotice(about_run_s, name, durat, rc);
     }
     inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
-        simpleTimedNotice(about_format_s, name, durat);
+        simpleTimedNotice(about_format_s, name, durat, null);
     }
 };
