@@ -546,30 +546,13 @@ comptime {
 }
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
 comptime {
-    if (is_small) {
-        asm (
-            \\.intel_syntax noprefix
-            \\memcpy:
-            \\  mov     rcx, rdx
-            \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
-            \\  ret
-        );
-    } else {
-        asm (
-            \\.intel_syntax noprefix
-            \\memcpy:
-            \\  xor     eax, eax
-            \\0:
-            \\  cmp     rax, rdx
-            \\  je      1f
-            \\  mov     cl, byte ptr [rsi + rax]
-            \\  mov     byte ptr [rdi + rax], cl
-            \\  inc     rax
-            \\  jmp     0b
-            \\1:
-            \\  ret
-        );
-    }
+    asm (
+        \\.intel_syntax noprefix
+        \\memcpy:
+        \\  mov     rcx, rdx
+        \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+        \\  ret
+    );
 }
 pub inline fn memcpyMulti(noalias dest: [*]u8, src: []const []const u8) u64 {
     return asmMemcpyMulti(dest, src.ptr, src.len);
@@ -579,34 +562,34 @@ comptime {
     asm (
         \\.intel_syntax noprefix
         \\asmMemcpyMulti:
-        \\  xor     r8d, r8d
-        \\  xor     ecx, ecx
-        \\  cmp     r8, rdx
-        \\  jne     9f
-        \\  mov     rax, rcx
-        \\  ret
-        \\9:
+        \\  push    r15
+        \\  push    r14
         \\  push    rbx
-        \\5:
-        \\  mov     r10, qword ptr [rsi]
-        \\  mov     r9, qword ptr [rsi + 8]
-        \\  xor     eax, eax
-        \\  lea     r11, [rdi + rcx]
-        \\3:
-        \\  cmp     rax, r9
-        \\  je      11f
-        \\  mov     bl, byte ptr [r10 + rax]
-        \\  mov     byte ptr [r11 + rax], bl
-        \\  inc     rax
-        \\  jmp     3b
-        \\11:
-        \\  inc     r8
-        \\  add     rcx, rax
-        \\  add     rsi, 16
-        \\  cmp     r8, rdx
-        \\  jne     5b
-        \\  mov     rax, rcx
-        \\  pop     rbx
+        \\  test    rdx, rdx
+        \\  je      1f
+        \\  mov     rbx, rsi
+        \\  mov     r15, rdi
+        \\  mov     r14, rdx
+        \\  add     r15, rdx
+        \\  add     rbx, 8
+        \\  jmp     2f
+        \\0:
+        \\  add     rbx, 16
+        \\  dec     r14
+        \\  je      1f
+        \\2:
+        \\  mov     rdx, qword ptr [rbx]
+        \\  test    rdx, rdx
+        \\  je      0b
+        \\  mov     rsi, qword ptr [rbx - 8]
+        \\  mov     rdi, r15
+        \\  call    memcpy@PLT
+        \\  jmp     0b
+        \\1:
+        \\  xor    eax, eax
+        \\  pop    rbx
+        \\  pop    r14
+        \\  pop    r15
         \\  ret
     );
 }
