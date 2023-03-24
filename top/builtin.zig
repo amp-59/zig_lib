@@ -1131,11 +1131,11 @@ pub const debug = opaque {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ debug.about_exit_0_s, fmt.ud8(rc).readAll(), "\n" });
     }
-    fn exitError(symbol: [:0]const u8, rc: u8) void {
+    fn exitError(symbol: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, "(", symbol, ")", fmt.ud8(rc).readAll(), "\n" });
     }
-    fn exitFault(message: [:0]const u8, rc: u8) void {
+    fn exitFault(message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, fmt.ud8(rc).readAll(), "\n" });
     }
