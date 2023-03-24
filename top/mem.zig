@@ -764,27 +764,26 @@ pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors, spec.
     }
 }
 pub const debug = opaque {
-    const about_map_0_s: []const u8 = builtin.debug.about("map");
-    const about_map_1_s: []const u8 = builtin.debug.about("map-error");
-    const about_brk_1_s: []const u8 = builtin.debug.about("brk-error");
-    const about_acq_0_s: []const u8 = builtin.debug.about("acq");
-    const about_acq_1_s: []const u8 = builtin.debug.about("acq-error");
-    const about_rel_0_s: []const u8 = builtin.debug.about("rel");
-    const about_rel_1_s: []const u8 = builtin.debug.about("rel-error");
-    const about_acq_2_s: []const u8 = builtin.debug.about("acq-fault\n");
-    const about_rel_2_s: []const u8 = builtin.debug.about("rel-fault\n");
-    const about_unmap_0_s: []const u8 = builtin.debug.about("unmap");
-    const about_unmap_1_s: []const u8 = builtin.debug.about("unmap-error");
-    const about_remap_0_s: []const u8 = builtin.debug.about("remap");
-    const about_memfd_0_s: []const u8 = builtin.debug.about("memfd");
-    const about_memfd_1_s: []const u8 = builtin.debug.about("memfd-error");
-    const about_remap_1_s: []const u8 = builtin.debug.about("remap-error");
-    const about_resize_0_s: []const u8 = builtin.debug.about("resize");
-    const about_resize_1_s: []const u8 = builtin.debug.about("resize-error");
-    const about_advice_0_s: []const u8 = builtin.debug.about("advice");
-    const about_advice_1_s: []const u8 = builtin.debug.about("advice-error");
-    const about_protect_0_s: []const u8 = builtin.debug.about("protect");
-    const about_protect_1_s: []const u8 = builtin.debug.about("protect-error");
+    const about_map_0_s: [:0]const u8 = builtin.debug.about("map");
+    const about_map_1_s: [:0]const u8 = builtin.debug.about("map-error");
+    const about_acq_0_s: [:0]const u8 = builtin.debug.about("acq");
+    const about_acq_1_s: [:0]const u8 = builtin.debug.about("acq-error");
+    const about_rel_0_s: [:0]const u8 = builtin.debug.about("rel");
+    const about_rel_1_s: [:0]const u8 = builtin.debug.about("rel-error");
+    const about_acq_2_s: [:0]const u8 = builtin.debug.about("acq-fault\n");
+    const about_rel_2_s: [:0]const u8 = builtin.debug.about("rel-fault\n");
+    const about_unmap_0_s: [:0]const u8 = builtin.debug.about("unmap");
+    const about_unmap_1_s: [:0]const u8 = builtin.debug.about("unmap-error");
+    const about_remap_0_s: [:0]const u8 = builtin.debug.about("remap");
+    const about_remap_1_s: [:0]const u8 = builtin.debug.about("remap-error");
+    const about_memfd_0_s: [:0]const u8 = builtin.debug.about("memfd");
+    const about_memfd_1_s: [:0]const u8 = builtin.debug.about("memfd-error");
+    const about_resize_0_s: [:0]const u8 = builtin.debug.about("resize");
+    const about_resize_1_s: [:0]const u8 = builtin.debug.about("resize-error");
+    const about_advice_0_s: [:0]const u8 = builtin.debug.about("advice");
+    const about_advice_1_s: [:0]const u8 = builtin.debug.about("advice-error");
+    const about_protect_0_s: [:0]const u8 = builtin.debug.about("protect");
+    const about_protect_1_s: [:0]const u8 = builtin.debug.about("protect-error");
     pub fn mapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAcquireAIO(&buf, &[_][]const u8{
@@ -924,16 +923,6 @@ pub const debug = opaque {
             "..",        builtin.fmt.ux64(new_addr +% new_len).readAll(),
             notation_s,  builtin.fmt.ud64(abs_diff).readAll(),
             " bytes (",  @errorName(mremap_err),
-            ")\n",
-        });
-    }
-    fn brkError(brk_error: anytype, old_addr: u64, new_addr: u64) void {
-        var buf: [4096]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{
-            about_brk_1_s, builtin.fmt.ux64(old_addr).readAll(),
-            "..",          builtin.fmt.ux64(new_addr).readAll(),
-            ", ",          builtin.fmt.ud64(new_addr -% old_addr).readAll(),
-            " bytes (",    @errorName(brk_error),
             ")\n",
         });
     }
