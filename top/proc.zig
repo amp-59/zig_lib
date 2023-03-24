@@ -427,10 +427,12 @@ pub const Status = struct {
 };
 
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors, spec.return_type) {
-    if (meta.wrap(sys.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), if (status_opt) |status| @ptrToInt(status) else 0, 0, 0, 0 }))) |pid| {
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    const status: u64 = if (status_opt) |status| @ptrToInt(status) else 0;
+    if (meta.wrap(sys.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), status, 0, 0, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.waitError(wait_error);
         }
         return wait_error;
@@ -439,20 +441,22 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys
 pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(spec.errors, spec.return_type) {
     const idtype: IdType = spec.id_type;
     const flags: WaitId = spec.flags();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.waitError(wait_error);
         }
         return wait_error;
     }
 }
 pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors, spec.return_type) {
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.fork, spec.errors, spec.return_type, .{}))) |pid| {
         return pid;
     } else |fork_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             debug.forkError(fork_error);
         }
         return fork_error;
@@ -463,41 +467,39 @@ pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.ar
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const pid: u64 = try fork(.{});
-    var status: u32 = 0;
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (pid == 0) {
-        if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
-            unreachable;
-        } else |execve_error| {
-            if (spec.logging.override().Error) {
+        meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr })) catch |execve_error| {
+            if (logging.Error) {
                 debug.executeError(execve_error, pathname, args);
             }
             return execve_error;
-        }
+        };
     }
-    if (spec.logging.override().Success) {
+    var status: u32 = 0;
+    if (logging.Success) {
         debug.executeNotice(pathname, args);
     }
-    builtin.assertEqual(u64, pid, try waitPid(.{}, .{ .pid = pid }, &status));
+    try waitPid(.{ .return_type = void }, .{ .pid = pid }, &status);
     return Status.exitStatus(status);
 }
 pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u8 {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
+    const flags: Execute = comptime spec.flags();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     const pid: u64 = try fork(.{});
-    var status: u32 = 0;
     if (pid == 0) {
-        const flags: Execute = comptime spec.flags();
-        if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
-            unreachable;
-        } else |execve_error| {
-            if (spec.logging.override().Error) {
+        meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val })) catch |execve_error| {
+            if (logging.Error) {
                 debug.executeError(execve_error, name, args);
             }
             return execve_error;
-        }
+        };
     }
-    if (spec.logging.override().Success) {
+    var status: u32 = 0;
+    if (logging.Success) {
         debug.executeNotice(name, args);
     }
     builtin.assertEqual(u64, pid, try waitPid(.{}, .{ .pid = pid }, &status));
@@ -679,7 +681,6 @@ pub noinline fn callMain() noreturn {
             builtin.proc.exitWithError(err, @intCast(u8, @errorToInt(err)));
         }
     }
-    builtin.proc.exitWithNotice(0);
     builtin.static.assert(main_return_type_info != .ErrorSet);
 }
 
