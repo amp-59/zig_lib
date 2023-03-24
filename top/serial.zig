@@ -216,10 +216,12 @@ fn genericSerializeSlicesLoop(comptime T: type, comptime lvl: u64, s_ab_addr: u6
 fn genericDeserializeSlicesLoop(comptime S: type, comptime lvl: u64, addr: u64, s_aligned_bytes: u64, any: anytype) u64 {
     var t_aligned_bytes: u64 = s_aligned_bytes;
     if (lvl == 0) {
-        @constCast(any).* = mem.pointerMany(S, addr +% s_aligned_bytes, any.len);
+        @constCast(any).* = mem.pointerSlice(S, addr +% s_aligned_bytes, any.len);
         return s_aligned_bytes +% (any.len *% @sizeOf(S));
-    } else for (any.*) |*value| {
-        t_aligned_bytes = genericDeserializeSlicesLoop(meta.Child(S), lvl - 1, addr, t_aligned_bytes, value);
+    } else {
+        for (any.*) |*value| {
+            t_aligned_bytes = genericDeserializeSlicesLoop(meta.Child(S), lvl - 1, addr, t_aligned_bytes, value);
+        }
     }
     return t_aligned_bytes;
 }
@@ -264,7 +266,7 @@ pub fn genericSerializeInternal(allocator: anytype, s_ab_addr: u64, any: anytype
             genericSerializeValuesLoop(T, allocator, t_ab_addr, s_up_addr, any),
         );
     }
-    return mem.pointerMany(u8, s_ab_addr, allocator.unallocated_byte_address() - s_ab_addr);
+    return mem.pointerSlice(u8, s_ab_addr, allocator.unallocated_byte_address() - s_ab_addr);
 }
 pub fn genericDeserializeInternal(comptime S: type, s_ab_addr: u64) S {
     const ret: *S = mem.pointerOne(S, s_ab_addr);
