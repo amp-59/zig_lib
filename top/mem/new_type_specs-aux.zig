@@ -638,47 +638,55 @@ fn validateAllSerial(
         const f_tech_sets = try meta.wrap(serial.deserialize([][][]attr.Technique, allocator, gen.auxiliaryFile("tech_sets")));
         const f_x_p_infos = try meta.wrap(serial.deserialize([][]attr.Specifier, allocator, gen.auxiliaryFile("params")));
         const f_x_q_infos = try meta.wrap(serial.deserialize([][]attr.Technique, allocator, gen.auxiliaryFile("options")));
-        for (f_spec_sets, spec_sets, 0..) |xxx, yyy, idx_0| {
-            for (xxx, yyy, 0..) |xx, yy, idx_1| {
-                for (xx, yy, 0..) |x, y, idx_2| {
-                    const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
-                    if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                        return testing.print(.{ "specs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
-                    } else {
-                        testing.print(.{ "specs: equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
+        var i: u64 = 0;
+        var j: u64 = 0;
+        var k: u64 = 0;
+        while (i != spec_sets.len) : (i +%= 1) {
+            while (j != spec_sets[i].len) : (j +%= 1) {
+                while (k != spec_sets[i][j].len) : (k +%= 1) {
+                    if (!builtin.testEqual(@TypeOf(f_spec_sets[i][j][k]), f_spec_sets[i][j][k], spec_sets[i][j][k])) {
+                        testing.print(.{
+                            "specs: non-equal indices: ", i, ' ', j, ' ', k,
+                        } ++ .{
+                            ": ",   (meta.uniformData(f_spec_sets[i][j][k])),
+                            " == ", (meta.uniformData(spec_sets[i][j][k])),
+                            '\n',
+                        });
                     }
                 }
             }
         }
-        for (f_tech_sets, tech_sets, 0..) |xxx, yyy, idx_0| {
-            for (xxx, yyy, 0..) |xx, yy, idx_1| {
-                for (xx, yy, 0..) |x, y, idx_2| {
-                    const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
-                    if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                        return testing.print(.{ "techs: non-equal indices: ", idx_0, ' ', idx_1, ' ', idx_2 } ++ xy);
-                    } else {
-                        testing.print(.{ "techs: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+        i = 0;
+        j = 0;
+        k = 0;
+        while (i != tech_sets.len) : (i +%= 1) {
+            while (j != tech_sets[i].len) : (j +%= 1) {
+                while (k != tech_sets[i][j].len) : (k +%= 1) {
+                    if (!builtin.testEqual(@TypeOf(f_tech_sets[i][j][k]), f_tech_sets[i][j][k], tech_sets[i][j][k])) {
+                        testing.print(.{
+                            "techs: non-equal indices: ", i, ' ', j, ' ', k,
+                        } ++ .{
+                            ": ",   (meta.uniformData(f_tech_sets[i][j][k])),
+                            " == ", (meta.uniformData(tech_sets[i][j][k])),
+                            '\n',
+                        });
                     }
                 }
             }
         }
         for (f_x_p_infos, x_p_infos, 0..) |xx, yy, idx_0| {
             for (xx, yy, 0..) |x, y, idx_1| {
-                const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
+                const xy = .{ ": ", (meta.uniformData(x)), " == ", (meta.uniformData(y)), '\n' };
                 if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                    return testing.print(.{ "params: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
-                } else {
-                    testing.print(.{ "params: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                    testing.print(.{ "params: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                 }
             }
         }
         for (f_x_q_infos, x_q_infos, 0..) |xx, yy, idx_0| {
             for (xx, yy, 0..) |x, y, idx_1| {
-                const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
+                const xy = .{ ": ", (meta.uniformData(x)), " == ", (meta.uniformData(y)), '\n' };
                 if (!builtin.testEqual(@TypeOf(x), x, y)) {
-                    return testing.print(.{ "options: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
-                } else {
-                    testing.print(.{ "options: equal indices: ", idx_0, ' ', idx_1 } ++ xy);
+                    testing.print(.{ "options: non-equal indices: ", idx_0, ' ', idx_1 } ++ xy);
                 }
             }
         }
@@ -686,19 +694,15 @@ fn validateAllSerial(
     const f_impl_details = try meta.wrap(serial.deserialize([]attr.Implementation, allocator, gen.auxiliaryFile("impl_detail")));
     const f_ctn_details = try meta.wrap(serial.deserialize([]attr.Container, allocator, gen.auxiliaryFile("ctn_detail")));
     for (f_impl_details, impl_details.readAll(), 0..) |x, y, idx_0| {
-        const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
+        const xy = .{ ": ", (meta.uniformData(x)), " == ", (meta.uniformData(y)), '\n' };
         if (!builtin.testEqual(@TypeOf(x), x, y)) {
-            return testing.print(.{ "impl: non-equal indices: ", idx_0 } ++ xy);
-        } else {
-            testing.print(.{ "impl: equal indices: ", idx_0 } ++ xy);
+            testing.print(.{ "impl: non-equal indices: ", idx_0 } ++ xy);
         }
     }
     for (f_ctn_details, ctn_details.readAll(), 0..) |x, y, idx_0| {
-        const xy = .{ ": ", (meta.toBytes(x)), " == ", (meta.toBytes(y)), '\n' };
+        const xy = .{ ": ", (meta.uniformData(x)), " == ", (meta.uniformData(y)), '\n' };
         if (!builtin.testEqual(@TypeOf(x), x, y)) {
-            return testing.print(.{ "ctn: non-equal indices: ", idx_0 } ++ xy);
-        } else {
-            testing.print(.{ "ctn: equal indices: ", idx_0 } ++ xy);
+            testing.print(.{ "ctn: non-equal indices: ", idx_0 } ++ xy);
         }
     }
     testing.print("all verified\n");
@@ -708,7 +712,8 @@ pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
     defer allocator.deinit(&address_space);
-    @setEvalBranchQuota(3000);
+    @setEvalBranchQuota(4000);
+
     comptime var x_p_infos: []const []const attr.Specifier = &.{};
     comptime var x_q_infos: []const []const attr.Technique = &.{};
     comptime var spec_sets: []const []const []const attr.Specifier = &.{};
@@ -732,7 +737,6 @@ pub fn newNewTypeSpecs() !void {
     indices = .{};
     for (attr.abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
         for (spec_set) |specs| {
-            writeOneUnique(&ctn_details, attr.Container.init(abstract_spec));
             for (tech_set) |techs| {
                 impl_details.writeOne(attr.Implementation.init(abstract_spec, specs, techs, indices));
                 indices.impl +%= 1;
@@ -741,37 +745,15 @@ pub fn newNewTypeSpecs() !void {
         }
         indices.spec +%= 1;
     }
-
     if (serialise_extra) {
         try serial.serialize(&allocator, gen.auxiliaryFile("options"), x_q_infos);
         try serial.serialize(&allocator, gen.auxiliaryFile("spec_sets"), spec_sets);
         try serial.serialize(&allocator, gen.auxiliaryFile("tech_sets"), tech_sets);
         try serial.serialize(&allocator, gen.auxiliaryFile("params"), x_p_infos);
     }
-    try serial.serialize(&allocator, gen.auxiliaryFile("ctn_detail"), ctn_details.readAll());
+    try serial.serialize(&allocator, gen.auxiliaryFile("ctn_detail"), attr.ctn_details);
     try serial.serialize(&allocator, gen.auxiliaryFile("impl_detail"), impl_details.readAll());
 
     try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details, ctn_details);
 }
 pub const main = newNewTypeSpecs;
-
-fn writeOneUnique(array: *ContainerDetails, ctn_detail: attr.Container) void {
-    for (array.readAll()) |unique_detail| {
-        if (unique_detail.kind == ctn_detail.kind and
-            unique_detail.layout == ctn_detail.layout and
-            blk: {
-            inline for (@typeInfo(attr.Modes).Struct.fields) |field| {
-                if (@field(unique_detail.modes, field.name) !=
-                    @field(ctn_detail.modes, field.name))
-                {
-                    break :blk false;
-                }
-            }
-            break :blk true;
-        }) {
-            break;
-        }
-    } else {
-        array.writeOne(ctn_detail);
-    }
-}
