@@ -1100,13 +1100,13 @@ pub const proc = struct {
 pub const debug = opaque {
     pub const itos = fmt.dec;
     const size: usize = 4096;
-    const about_exit_0_s: []const u8 = about("exit");
-    const about_exit_1_s: []const u8 = about_error_p0_s;
-    const about_exit_2_s: []const u8 = about_fault_p0_s;
-    const about_fault_p0_s: []const u8 = about("fault");
-    const about_error_p0_s: []const u8 = about("error");
-    const about_fault_p1_s: []const u8 = about(" assertion failed");
-    const about_error_p1_s: []const u8 = about(" unexpected result");
+    const about_exit_0_s: [:0]const u8 = about("exit");
+    const about_exit_1_s: [:0]const u8 = about_error_p0_s;
+    const about_exit_2_s: [:0]const u8 = about_fault_p0_s;
+    const about_fault_p0_s: [:0]const u8 = about("fault");
+    const about_error_p0_s: [:0]const u8 = about("error");
+    const about_fault_p1_s: [:0]const u8 = about(" assertion failed");
+    const about_error_p1_s: [:0]const u8 = about(" unexpected result");
 
     pub fn about(comptime s: [:0]const u8) [:0]const u8 {
         var lhs: [:0]const u8 = s;
