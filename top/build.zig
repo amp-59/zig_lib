@@ -101,7 +101,7 @@ pub const BuildCommand = struct {
     dynamic_linker: ?[]const u8 = null,
     sysroot: ?[]const u8 = null,
     version: bool = false,
-    entry: bool = false,
+    entry: ?[]const u8 = null,
     soname: ?union(enum) { yes: []const u8, no: void } = null,
     lld: ?bool = null,
     compiler_rt: ?bool = null,
@@ -681,8 +681,10 @@ pub const Builder = struct {
         if (cmd.version) {
             len +%= 10;
         }
-        if (cmd.entry) {
+        if (cmd.entry) |how| {
             len +%= 8;
+            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= 1;
         }
         if (cmd.soname) |soname| {
             switch (soname) {
@@ -1199,8 +1201,10 @@ pub const Builder = struct {
         if (cmd.version) {
             array.writeMany("--version\x00");
         }
-        if (cmd.entry) {
+        if (cmd.entry) |how| {
             array.writeMany("--entry\x00");
+            array.writeAny(preset.reinterpret.print, how);
+            array.writeOne('\x00');
         }
         if (cmd.soname) |soname| {
             switch (soname) {
