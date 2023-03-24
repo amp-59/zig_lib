@@ -477,11 +477,11 @@ pub inline fn pointerOne(expr1: Expr, expr2: Expr) [3]Expr {
 pub inline fn pointerOpaque(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.pointer_opaque_fn_name, expr1, expr2);
 }
-pub inline fn pointerMany(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
-    return fnCall3(tok.pointer_many_fn_name, expr1, expr2, expr3);
+pub inline fn pointerSlice(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
+    return fnCall3(tok.pointer_slice_fn_name, expr1, expr2, expr3);
 }
-pub inline fn pointerManyWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr) [5]Expr {
-    return fnCall4(tok.pointer_many_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
+pub inline fn pointerSliceWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr) [5]Expr {
+    return fnCall4(tok.pointer_slice_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
 }
 pub inline fn pointerCount(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
     return fnCall3(tok.reference_namespace, tok.pointer_count_fn_name, expr1, expr2, expr3);
@@ -496,10 +496,10 @@ pub inline fn interfacePointerOpaque(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.intr_pointer_opaque_fn_name, expr1, expr2);
 }
 pub inline fn interfacePointerMany(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
-    return fnCall3(tok.intr_pointer_many_fn_name, expr1, expr2, expr3);
+    return fnCall3(tok.intr_pointer_slice_fn_name, expr1, expr2, expr3);
 }
 pub inline fn interfacePointerManyWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr) [5]Expr {
-    return fnCall4(tok.intr_pointer_many_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
+    return fnCall4(tok.intr_pointer_slice_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
 }
 pub inline fn interfacePointerCount(expr1: Expr, expr2: Expr, expr3: Expr) [4]Expr {
     return fnCall3(tok.intr_pointer_count_fn_name, expr1, expr2, expr3);
