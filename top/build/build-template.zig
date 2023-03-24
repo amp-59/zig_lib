@@ -159,21 +159,19 @@ pub const Builder = struct {
         builder.groups.head();
         return ret;
     }
-    fn exec(builder: Builder, args: [][*:0]u8) !time.TimeSpec {
+    fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
         const start: time.TimeSpec = try time.get(.{}, .realtime);
-        if (0 != try proc.command(.{}, builder.paths.zig_exe, args, builder.vars)) {
-            return error.UnexpectedExitStatus;
-        }
+        const rc: u8 = try proc.command(.{}, builder.paths.zig_exe, args, builder.vars);
         const finish: time.TimeSpec = try time.get(.{}, .realtime);
-        return time.diff(finish, start);
+        ts.* = time.diff(finish, start);
+        return rc;
     }
-    fn system(builder: Builder, args: [][*:0]u8) !time.TimeSpec {
+    fn system(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
         const start: time.TimeSpec = try time.get(.{}, .realtime);
-        if (0 != try proc.command(.{}, meta.manyToSlice(args[0]), args, builder.vars)) {
-            return error.UnexpectedExitStatus;
-        }
+        const ret: u8 = try proc.command(.{}, meta.manyToSlice(args[0]), args, builder.vars);
         const finish: time.TimeSpec = try time.get(.{}, .realtime);
-        return time.diff(finish, start);
+        ts.* = time.diff(finish, start);
+        return ret;
     }
     pub fn init(
         allocator: *Allocator,
@@ -216,7 +214,7 @@ pub const Builder = struct {
         ModuleDependency.l_leader = true;
         return len;
     }
-    fn buildWrite(builder: *Builder, target: *const Target, array: anytype) u64 {
+    fn buildWrite(builder: *Builder, target: *const Target, array: anytype) void {
         const cmd: *const BuildCommand = target.build_cmd;
         array.writeMany("zig\x00");
         switch (cmd.kind) {
@@ -239,7 +237,6 @@ pub const Builder = struct {
         array.writeMany("\x00\x00");
         array.undefine(1);
         ModuleDependency.w_leader = true;
-        return countArgs(array);
     }
     fn formatLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const FormatCommand = target.fmt_cmd;
@@ -249,14 +246,13 @@ pub const Builder = struct {
         len +%= 1;
         return len;
     }
-    fn formatWrite(builder: *Builder, target: *const Target, array: anytype) u64 {
+    fn formatWrite(builder: *Builder, target: *const Target, array: anytype) void {
         const cmd: *const FormatCommand = target.fmt_cmd;
         array.writeMany("zig\x00fmt\x00");
         cmd = formatWrite;
         array.writeFormat(builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
         array.undefine(1);
-        return countArgs(array);
     }
     pub fn build(builder: *Builder, target: *Target) !void {
         try format(builder, target);
@@ -266,19 +262,22 @@ pub const Builder = struct {
             builder.depth +%= 1;
             try invokeDependencies(builder, target);
             var array: ArgsString = undefined;
-            var args: ArgsPointers = undefined;
+            var build_time: time.TimeSpec = undefined;
+            var build_args: ArgsPointers = undefined;
             array.undefineAll();
-            args.undefineAll();
+            build_args.undefineAll();
             const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
             const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
-            builtin.assertBelowOrEqual(u64, builder.buildWrite(target, &array), max_args);
-            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-            builtin.assertEqual(u64, array.len(), builder.buildLength(target));
-            const build_time: time.TimeSpec = try builder.exec(args.referAllDefined());
+            builder.buildWrite(target, &array);
+            makeArgs(&array, &build_args);
+            const rc: u8 = try builder.exec(build_args.referAllDefined(), &build_time);
             const new_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
             builder.depth -%= 1;
             if (builder.depth <= max_relevant_depth) {
                 debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
+            }
+            if (rc != 0) {
+                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
             }
         }
     }
@@ -288,15 +287,18 @@ pub const Builder = struct {
             target.do(.fmt);
             try invokeDependencies(builder, target);
             var array: ArgsString = undefined;
-            var args: ArgsPointers = undefined;
+            var format_args: ArgsPointers = undefined;
+            var format_time: time.TimeSpec = undefined;
             array.undefineAll();
-            args.undefineAll();
-            builtin.assertBelowOrEqual(u64, builder.formatWrite(target, &array), max_args);
-            builtin.assertBelowOrEqual(u64, makeArgs(&array, &args), max_args);
-            builtin.assertEqual(u64, array.len(), builder.formatLength(target));
-            const format_time: time.TimeSpec = try builder.exec(args.referAllDefined());
+            format_args.undefineAll();
+            builder.formatWrite(target, &array);
+            makeArgs(&array, &format_args);
+            const rc: u8 = try builder.exec(format_args.referAllDefined(), &format_time);
             if (builder.depth <= max_relevant_depth) {
                 debug.formatNotice(target.name, format_time);
+            }
+            if (rc != 0) {
+                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
             }
         }
     }
@@ -305,12 +307,16 @@ pub const Builder = struct {
         if (target.have(.run) and target.have(.build)) {
             target.do(.run);
             try build(builder, target);
-            var args: ArgsPointers = undefined;
-            args.undefineAll();
-            builtin.assertBelowOrEqual(u64, makeArgs(&target.run_cmd.array, &args), max_args);
-            const run_time: time.TimeSpec = try builder.system(args.referAllDefined());
-            if (builder.depth <= max_relevant_depth) {
-                debug.runNotice(target.name, run_time);
+            var run_time: time.TimeSpec = undefined;
+            var run_args: ArgsPointers = undefined;
+            run_args.undefineAll();
+            makeArgs(&target.run_cmd.array, &run_args);
+            const rc: u8 = try builder.system(run_args.referAllDefined(), &run_time);
+            if (rc != 0 or builder.depth <= max_relevant_depth) {
+                debug.runNotice(target.name, run_time, rc);
+            }
+            if (rc != 0) {
+                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
             }
         }
     }
@@ -521,7 +527,7 @@ fn countArgs(array: anytype) u64 {
     }
     return count +% 1;
 }
-fn makeArgs(array: anytype, args: anytype) u64 {
+fn makeArgs(array: anytype, args: anytype) void {
     var idx: u64 = 0;
     for (array.readAll(), 0..) |c, i| {
         if (c == 0) {
@@ -532,7 +538,6 @@ fn makeArgs(array: anytype, args: anytype) u64 {
     if (args.len() != 0) {
         mem.set(args.impl.undefined_byte_address(), @as(u64, 0), 1);
     }
-    return args.len();
 }
 // finish-document build-struct.zig
 // start-document build-types.zig
@@ -826,7 +831,7 @@ const debug = struct {
         array.writeMany("s\n");
         builtin.debug.write(array.readAll());
     }
-    fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec) void {
+    fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec, rc: ?u8) void {
         var array: mem.StaticString(4096) = undefined;
         array.undefineAll();
         array.writeMany(about);
@@ -836,14 +841,20 @@ const debug = struct {
         array.writeMany(".");
         array.writeFormat(fmt.nsec(durat.nsec));
         array.undefine(6);
-        array.writeMany("s\n");
+        if (rc) |return_code| {
+            array.writeMany("s, ->");
+            array.writeFormat(fmt.ud8(return_code));
+        } else {
+            array.writeMany("s");
+        }
+        array.writeMany("\n");
         builtin.debug.write(array.readAll());
     }
-    inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec) void {
-        simpleTimedNotice(about_run_s, name, durat);
+    inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
+        simpleTimedNotice(about_run_s, name, durat, rc);
     }
     inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
-        simpleTimedNotice(about_format_s, name, durat);
+        simpleTimedNotice(about_format_s, name, durat, null);
     }
 };
 // finish-document build-types.zig
