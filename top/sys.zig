@@ -2018,7 +2018,7 @@ pub const no_errors: []const ErrorCode = &[_]ErrorCode{};
 //    x32           rdi   rsi   rdx   r10   r8    r9    -
 //    xtensa        a6    a3    a4    a5    a8    a9    -
 
-inline fn syscall0(comptime sysno: usize) isize {
+inline fn syscall0(comptime sysno: usize, _: [0]usize) isize {
     return asm volatile ("syscall"
         : [ret] "={rax}" (-> isize),
         : [_] "{rax}" (sysno),
@@ -2088,52 +2088,38 @@ inline fn syscall6(comptime sysno: usize, args: [6]usize) isize {
         : "rcx", "r11", "memory"
     );
 }
+pub fn Call(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
+    if (error_policy.throw) |throw| {
+        if (@typeInfo(return_type) == .ErrorUnion) {
+            return (builtin.ZigError(ErrorCode, throw) ||
+                @typeInfo(return_type).ErrorUnion.error_set)!@typeInfo(return_type).ErrorUnion.payload;
+        } else {
+            return builtin.ZigError(ErrorCode, throw)!return_type;
+        }
+    }
+    return return_type;
+}
+pub fn Error(comptime errors: []const ErrorCode) type {
+    return builtin.ZigError(ErrorCode, errors);
+}
 const syscalls = .{
     syscall0, syscall1,
     syscall2, syscall3,
     syscall4, syscall5,
     syscall6,
 };
-pub fn Call(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
-    if (error_policy.throw) |throw| {
-        if (@typeInfo(return_type) == .ErrorUnion) {
-            return (builtin.ZigError(ErrorCode, throw, "OpaqueSystemError") ||
-                @typeInfo(return_type).ErrorUnion.error_set)!@typeInfo(return_type).ErrorUnion.payload;
-        } else {
-            return builtin.ZigError(ErrorCode, throw, "OpaqueSystemError")!return_type;
-        }
-    }
-    return return_type;
-}
-pub fn Error(comptime errors: []const ErrorCode) type {
-    return builtin.ZigError(ErrorCode, errors, "OpaqueSystemError");
-}
 pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors, return_type) {
-    const ret: isize = switch (tag.args()) {
-        0 => syscall0(@enumToInt(tag)),
-        1 => syscall1(@enumToInt(tag), args),
-        2 => syscall2(@enumToInt(tag), args),
-        3 => syscall3(@enumToInt(tag), args),
-        4 => syscall4(@enumToInt(tag), args),
-        5 => syscall5(@enumToInt(tag), args),
-        6 => syscall6(@enumToInt(tag), args),
-        else => unreachable,
-    };
+    const ret: isize = syscalls[tag.args()](@enumToInt(tag), args);
+    if (return_type == noreturn) {
+        unreachable;
+    }
     if (errors.throw) |throw| {
-        if (ret < 0) {
-            return builtin.zigErrorThrow(ErrorCode, throw, ret, "OpaqueSystemError");
-        }
+        try builtin.zigErrorThrow(ErrorCode, throw, ret);
     }
     if (errors.abort) |abort| {
-        if (ret < 0) {
-            return builtin.zigErrorAbort(ErrorCode, abort, ret);
-        }
+        builtin.zigErrorAbort(ErrorCode, abort, ret);
     }
-    if (return_type == void) {
-        return;
-    }
-    if (return_type != noreturn) {
+    if (return_type != void) {
         return @intCast(return_type, ret);
     }
-    unreachable;
 }
