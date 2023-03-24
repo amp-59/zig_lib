@@ -917,9 +917,9 @@ fn writeSimpleRedecl(array: *Array, impl_fn_info: *const Fn, info: *Info) void {
         array.undefine(array.len() - info.start);
         array.writeMany("pub const ");
         array.writeMany(impl_fn_info.fnName());
-        array.writeMany("=");
+        array.writeMany(tok.equal_operator);
         array.writeMany(impl_fn_alias_info.fnName());
-        array.writeMany(";\n");
+        array.writeMany(tok.end_expr);
         info.alias = null;
     }
 }
@@ -929,9 +929,9 @@ inline fn writeComptimeField(array: *Array, impl_variant: *const attr.Implementa
         array.writeMany(tok.comptime_keyword);
         array.writeMany(impl_fn_info.fnName());
         if (impl_variant.kind == .parametric) {
-            array.writeMany(":Slave=");
+            array.writeMany(tok.colon_operator ++ tok.slave_fn_type_name ++ tok.equal_operator);
         } else {
-            array.writeMany(":Static=");
+            array.writeMany(tok.colon_operator ++ tok.static_type_name ++ tok.equal_operator);
         }
         array.writeMany(impl_fn_info.fnName());
         array.writeMany(tok.end_elem);
@@ -973,7 +973,7 @@ inline fn writeFields(array: *Array, impl_variant: *const attr.Implementation) v
 inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: *const attr.Implementation) void {
     array.writeMany("fn ");
     impl_variant.formatWrite(array);
-    array.writeMany("(comptime " ++ tok.spec_name ++ ":" ++ tok.generic_spec_type_name);
+    array.writeMany("(" ++ tok.comptime_keyword ++ tok.spec_name ++ tok.colon_operator ++ tok.generic_spec_type_name);
     gen.fmt.ud64(impl_variant.spec).formatWrite(array);
     array.writeMany(")type{\nreturn(struct{\n");
     writeFields(array, impl_variant);
