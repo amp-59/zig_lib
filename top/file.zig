@@ -753,7 +753,7 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8) sys.Call(spec
             builtin.assertEqual(u8, pathname[idx], '/');
             if (idx != 0) {
                 pathname[idx] = 0;
-                try makePath(spec, pathname[0..idx :0]);
+                try makePathInternal(spec, pathname[0..idx :0]);
                 pathname[idx] = '/';
             }
         }
@@ -1143,38 +1143,38 @@ pub fn home(vars: [][*:0]u8) ![:0]const u8 {
     return error.NoHomeInEnvironment;
 }
 const debug = opaque {
-    const about_open_0_s: []const u8 = builtin.debug.about("open");
-    const about_open_1_s: []const u8 = builtin.debug.about("open-error");
-    const about_read_0_s: []const u8 = builtin.debug.about("read");
-    const about_read_1_s: []const u8 = builtin.debug.about("read-error");
-    const about_stat_1_s: []const u8 = builtin.debug.about("stat-error");
-    const about_fstat_1_s: []const u8 = builtin.debug.about("fstat-error");
-    const about_close_0_s: []const u8 = builtin.debug.about("close");
-    const about_close_1_s: []const u8 = builtin.debug.about("close-error");
-    const about_mkdir_0_s: []const u8 = builtin.debug.about("mkdir");
-    const about_mkdir_1_s: []const u8 = builtin.debug.about("mkdir-error");
-    const about_rmdir_0_s: []const u8 = builtin.debug.about("rmdir");
-    const about_rmdir_1_s: []const u8 = builtin.debug.about("rmdir-error");
-    const about_write_0_s: []const u8 = builtin.debug.about("write");
-    const about_write_1_s: []const u8 = builtin.debug.about("write-error");
-    const about_create_0_s: []const u8 = builtin.debug.about("create");
-    const about_create_1_s: []const u8 = builtin.debug.about("create-error");
-    const about_getcwd_0_s: []const u8 = builtin.debug.about("getcwd");
-    const about_getcwd_1_s: []const u8 = builtin.debug.about("getcwd-error");
-    const about_openat_0_s: []const u8 = builtin.debug.about("openat");
-    const about_openat_1_s: []const u8 = builtin.debug.about("openat-error");
-    const about_unlink_0_s: []const u8 = builtin.debug.about("unlink");
-    const about_unlink_1_s: []const u8 = builtin.debug.about("unlink-error");
+    const about_open_0_s: [:0]const u8 = builtin.debug.about("open");
+    const about_open_1_s: [:0]const u8 = builtin.debug.about("open-error");
+    const about_read_0_s: [:0]const u8 = builtin.debug.about("read");
+    const about_read_1_s: [:0]const u8 = builtin.debug.about("read-error");
+    const about_stat_1_s: [:0]const u8 = builtin.debug.about("stat-error");
+    const about_fstat_1_s: [:0]const u8 = builtin.debug.about("fstat-error");
+    const about_close_0_s: [:0]const u8 = builtin.debug.about("close");
+    const about_close_1_s: [:0]const u8 = builtin.debug.about("close-error");
+    const about_mkdir_0_s: [:0]const u8 = builtin.debug.about("mkdir");
+    const about_mkdir_1_s: [:0]const u8 = builtin.debug.about("mkdir-error");
+    const about_rmdir_0_s: [:0]const u8 = builtin.debug.about("rmdir");
+    const about_rmdir_1_s: [:0]const u8 = builtin.debug.about("rmdir-error");
+    const about_write_0_s: [:0]const u8 = builtin.debug.about("write");
+    const about_write_1_s: [:0]const u8 = builtin.debug.about("write-error");
+    const about_create_0_s: [:0]const u8 = builtin.debug.about("create");
+    const about_create_1_s: [:0]const u8 = builtin.debug.about("create-error");
+    const about_getcwd_0_s: [:0]const u8 = builtin.debug.about("getcwd");
+    const about_getcwd_1_s: [:0]const u8 = builtin.debug.about("getcwd-error");
+    const about_openat_0_s: [:0]const u8 = builtin.debug.about("openat");
+    const about_openat_1_s: [:0]const u8 = builtin.debug.about("openat-error");
+    const about_unlink_0_s: [:0]const u8 = builtin.debug.about("unlink");
+    const about_unlink_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
     const about_socket_0: [:0]const u8 = builtin.debug.about("socket");
     const about_socket_1: [:0]const u8 = builtin.debug.about("socket-error");
-    const about_fstatat_0_s: []const u8 = builtin.debug.about("fstatat");
-    const about_fstatat_1_s: []const u8 = builtin.debug.about("fstatat-error");
-    const about_fexecve_1_s: []const u8 = builtin.debug.about("fexecve-error");
-    const about_unlinkat_0_s: []const u8 = builtin.debug.about("unlinkat");
-    const about_unlinkat_1_s: []const u8 = builtin.debug.about("unlinkat-error");
-    const about_readlink_1_s: []const u8 = builtin.debug.about("readlink-error");
-    const about_truncate_0_s: []const u8 = builtin.debug.about("truncate");
-    const about_truncate_1_s: []const u8 = builtin.debug.about("truncate-error");
+    const about_fstatat_0_s: [:0]const u8 = builtin.debug.about("fstatat");
+    const about_fstatat_1_s: [:0]const u8 = builtin.debug.about("fstatat-error");
+    const about_fexecve_1_s: [:0]const u8 = builtin.debug.about("fexecve-error");
+    const about_unlinkat_0_s: [:0]const u8 = builtin.debug.about("unlinkat");
+    const about_unlinkat_1_s: [:0]const u8 = builtin.debug.about("unlinkat-error");
+    const about_readlink_1_s: [:0]const u8 = builtin.debug.about("readlink-error");
+    const about_truncate_0_s: [:0]const u8 = builtin.debug.about("truncate");
+    const about_truncate_1_s: [:0]const u8 = builtin.debug.about("truncate-error");
 
     fn readNotice(fd: u64, len: u64) void {
         var buf: [16 + 32]u8 = undefined;
