@@ -71,9 +71,9 @@ pub fn main(args: [][*:0]u8) !void {
     mem.copy(mbuf_start, fbuf_start, bytes, 8);
 
     if (mem.testEqualMany(u8, "sort", command)) {
-        return sortBuf(mem.pointerMany(u64, mbuf_start, bytes / 8));
+        return sortBuf(mem.pointerSlice(u64, mbuf_start, bytes / 8));
     }
     if (mem.testEqualMany(u8, "show", command)) {
-        return showFile(mem.pointerMany(u64, fbuf_start, bytes / 8));
+        return showFile(mem.pointerSlice(u64, fbuf_start, bytes / 8));
     }
 }
