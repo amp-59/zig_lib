@@ -3422,7 +3422,7 @@ const special = opaque {
             if (logging.Fault) {
                 builtin.debug.logFault(debug.about_acq_2_s);
             }
-            sys.call(.exit, .{}, noreturn, .{2});
+            builtin.proc.exit(2);
         }
     }
     pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
@@ -3443,7 +3443,7 @@ const special = opaque {
             if (logging.Fault) {
                 builtin.debug.logFault(debug.about_acq_2_s);
             }
-            sys.call(.exit, .{}, noreturn, .{2});
+            builtin.proc.exit(2);
         }
     }
     pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
@@ -3464,7 +3464,7 @@ const special = opaque {
             if (logging.Fault) {
                 builtin.debug.logFault(debug.about_acq_2_s);
             }
-            sys.call(.exit, .{}, noreturn, .{2});
+            builtin.proc.exit(2);
         }
     }
     pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_void {
@@ -3488,7 +3488,7 @@ const special = opaque {
             if (logging.Fault) {
                 builtin.debug.logFault(debug.about_rel_2_s);
             }
-            sys.call(.exit, .{}, noreturn, .{2});
+            builtin.proc.exit(2);
         }
     }
     pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
@@ -3509,7 +3509,7 @@ const special = opaque {
             if (logging.Fault) {
                 builtin.debug.logFault(debug.about_rel_2_s);
             }
-            sys.call(.exit, .{}, noreturn, .{2});
+            builtin.proc.exit(2);
         }
     }
     pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
@@ -3529,7 +3529,7 @@ const special = opaque {
             if (spec.logging.release.Fault) {
                 builtin.debug.logFault(debug.about_rel_2_s);
             }
-            sys.call(.exit, .{}, noreturn, .{2});
+            builtin.proc.exit(2);
         }
     }
 };

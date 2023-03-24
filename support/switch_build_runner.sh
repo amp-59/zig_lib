@@ -29,7 +29,7 @@ fn ()
                 if test -f "$zl_zig_build"; then
                     sed -i 's/pub const build = if (false)/pub const build = if (true)/' "$zl_zig_build";
                 fi;
-                echo "builder:zl->std"
+                echo "builder = zl => std"
             else
                 echo $error "would move back original zig build runner, but original file is missing"
                 return 2;
@@ -56,7 +56,7 @@ fn ()
             if ! ln -s "$zl_build_runner" "$std_build_runner"; then
                 return 2;
             fi;
-            echo "builder=zl->zl"
+            echo "builder = zl => zl"
         else
             echo $error "expected link to zig_lib build runner, but found other file:";
             echo $blank "'$std_build_runner' -> ";
@@ -74,9 +74,15 @@ fn ()
         if test -f "$zl_zig_build"; then
             sed -i 's/pub const build = if (true)/pub const build = if (false)/' "$zl_zig_build";
         fi;
-        echo "builder=std->zl"
+        echo "builder = std => zl"
     else
-        echo $error "'$std_build_runner': no such file or directory; did nothing"
+        echo $error "'$std_build_runner': no such file or directory"
+        if test -f "$std_build_runner_bkp"; then
+            if ! mv -i "$std_build_runner_bkp" "$std_build_runner"; then
+                return 2;
+            fi;
+            echo "builder = null => std"
+        fi;
     fi;
 }
 fn;
