@@ -19,6 +19,7 @@ pub inline fn shrx64(value: u64, shift_amt: u64) u64 {
 pub inline fn shrx32(value: u32, shift_amt: u32) u32 {
     return shrx(u32, value, shift_amt);
 }
+
 // The following operations are distinct from similarly named in builtin by
 // truncating instead of casting. This matches the machine behaviour more
 // closely. There is no need to forward these to a generic function to ask meta
@@ -121,66 +122,87 @@ pub inline fn cmovx(b: bool, t_value: anytype, f_value: @TypeOf(t_value)) @TypeO
 pub inline fn cmovxZ(b: bool, t_value: anytype) ?@TypeOf(t_value) {
     return if (b) t_value else null;
 }
-// Basic arithmetic operations--safety off by default:
-inline fn add(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 +% arg2;
-}
-inline fn sub(comptime T: type, arg1: T, arg2: T) T {
+// Unused, but potentially useful for testing.
+const simple_generic = struct {
+    inline fn sub(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 -% arg2) {
+        return arg1 -% arg2;
+    }
+    inline fn add(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 +% arg2) {
+        return arg1 +% arg2;
+    }
+    inline fn mul(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 *% arg2) {
+        return arg1 *% arg2;
+    }
+    inline fn div(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 / arg2) {
+        return arg1 / arg2;
+    }
+    pub const sub64 = sub;
+    pub const add64 = add;
+    pub const mul64 = mul;
+    pub const div64 = div;
+
+    pub const sub32 = sub;
+    pub const add32 = add;
+    pub const mul32 = mul;
+    pub const div32 = div;
+
+    pub const sub16 = sub;
+    pub const add16 = add;
+    pub const mul16 = mul;
+    pub const div16 = div;
+
+    pub const sub8 = sub;
+    pub const add8 = add;
+    pub const mul8 = mul;
+    pub const div8 = div;
+};
+pub inline fn sub64(arg1: u64, arg2: u64) u64 {
     return arg1 -% arg2;
 }
-inline fn mul(comptime T: type, arg1: T, arg2: T) T {
+pub inline fn mul64(arg1: u64, arg2: u64) u64 {
     return arg1 *% arg2;
 }
-inline fn div(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 / arg2;
-}
-pub inline fn sub64(arg1: u64, arg2: u64) u64 {
-    return sub(u64, arg1, arg2);
-}
-pub inline fn mul64(arg1: u64, arg2: u64) u64 {
-    return mul(u64, arg1, arg2);
-}
 pub inline fn add64(arg1: u64, arg2: u64) u64 {
-    return add(u64, arg1, arg2);
+    return arg1 +% arg2;
 }
 pub inline fn div64(arg1: u64, arg2: u64) u64 {
-    return div(u64, arg1, arg2);
+    return arg1 / arg2;
 }
 pub inline fn sub32(arg1: u32, arg2: u32) u32 {
-    return sub(u32, arg1, arg2);
+    return arg1 -% arg2;
 }
 pub inline fn mul32(arg1: u32, arg2: u32) u32 {
-    return mul(u32, arg1, arg2);
+    return arg1 *% arg2;
 }
 pub inline fn add32(arg1: u32, arg2: u32) u32 {
-    return add(u32, arg1, arg2);
+    return arg1 +% arg2;
 }
 pub inline fn div32(arg1: u32, arg2: u32) u32 {
-    return div(u32, arg1, arg2);
+    return arg1 / arg2;
 }
 pub inline fn sub16(arg1: u16, arg2: u16) u16 {
-    return sub(u16, arg1, arg2);
+    return arg1 -% arg2;
 }
 pub inline fn mul16(arg1: u16, arg2: u16) u16 {
-    return mul(u16, arg1, arg2);
+    return arg1 *% arg2;
 }
 pub inline fn add16(arg1: u16, arg2: u16) u16 {
-    return add(u16, arg1, arg2);
+    return arg1 +% arg2;
 }
 pub inline fn div16(arg1: u16, arg2: u16) u16 {
-    return div(u16, arg1, arg2);
+    return arg1 / arg2;
 }
 pub inline fn sub8(arg1: u8, arg2: u8) u8 {
-    return sub(u8, arg1, arg2);
+    return arg1 -% arg2;
 }
 pub inline fn mul8(arg1: u8, arg2: u8) u8 {
-    return mul(u8, arg1, arg2);
+    return arg1 *% arg2;
 }
 pub inline fn add8(arg1: u8, arg2: u8) u8 {
-    return add(u8, arg1, arg2);
+    return arg1 +% arg2;
 }
 pub inline fn div8(arg1: u8, arg2: u8) u8 {
-    return div(u8, arg1, arg2);
+    return arg1 / arg2;
 }
 /// arg3 +% (arg1 *% arg2)
 pub inline fn mulAdd64(arg1: u64, arg2: u64, arg3: u64) u64 {
@@ -238,54 +260,53 @@ pub inline fn subOr16(arg1: u16, arg2: u16, arg3: u16) u16 {
 pub inline fn subOr8(arg1: u8, arg2: u8, arg3: u8) u8 {
     return or8(sub8(arg1, arg2), arg3);
 }
-
 pub inline fn subEqu64(arg1: *u64, arg2: u64) void {
-    arg1.* = sub(u64, arg1.*, arg2);
+    arg1.* = sub64(arg1.*, arg2);
 }
 pub inline fn mulEqu64(arg1: *u64, arg2: u64) void {
-    arg1.* = mul(u64, arg1.*, arg2);
+    arg1.* = mul64(arg1.*, arg2);
 }
 pub inline fn addEqu64(arg1: *u64, arg2: u64) void {
-    arg1.* = add(u64, arg1.*, arg2);
+    arg1.* = add64(arg1.*, arg2);
 }
 pub inline fn divEqu64(arg1: *u64, arg2: u64) void {
-    arg1.* = div(u64, arg1.*, arg2);
+    arg1.* = div64(arg1.*, arg2);
 }
 pub inline fn subEqu32(arg1: *u32, arg2: u32) void {
-    arg1.* = sub(u32, arg1.*, arg2);
+    arg1.* = sub32(arg1.*, arg2);
 }
 pub inline fn mulEqu32(arg1: *u32, arg2: u32) void {
-    arg1.* = mul(u32, arg1.*, arg2);
+    arg1.* = mul32(arg1.*, arg2);
 }
 pub inline fn addEqu32(arg1: *u32, arg2: u32) void {
-    arg1.* = add(u32, arg1.*, arg2);
+    arg1.* = add32(arg1.*, arg2);
 }
 pub inline fn divEqu32(arg1: *u32, arg2: u32) void {
-    arg1.* = div(u32, arg1.*, arg2);
+    arg1.* = div32(arg1.*, arg2);
 }
 pub inline fn subEqu16(arg1: *u16, arg2: u16) void {
-    arg1.* = sub(u16, arg1.*, arg2);
+    arg1.* = sub16(arg1.*, arg2);
 }
 pub inline fn mulEqu16(arg1: *u16, arg2: u16) void {
-    arg1.* = mul(u16, arg1.*, arg2);
+    arg1.* = mul16(arg1.*, arg2);
 }
 pub inline fn addEqu16(arg1: *u16, arg2: u16) void {
-    arg1.* = add(u16, arg1.*, arg2);
+    arg1.* = add16(arg1.*, arg2);
 }
 pub inline fn divEqu16(arg1: *u16, arg2: u16) void {
-    arg1.* = div(u16, arg1.*, arg2);
+    arg1.* = div16(arg1.*, arg2);
 }
 pub inline fn subEqu8(arg1: *u8, arg2: u8) void {
-    arg1.* = sub(u8, arg1.*, arg2);
+    arg1.* = sub8(arg1.*, arg2);
 }
 pub inline fn mulEqu8(arg1: *u8, arg2: u8) void {
-    arg1.* = mul(u8, arg1.*, arg2);
+    arg1.* = mul8(arg1.*, arg2);
 }
 pub inline fn addEqu8(arg1: *u8, arg2: u8) void {
-    arg1.* = add(u8, arg1.*, arg2);
+    arg1.* = add8(arg1.*, arg2);
 }
 pub inline fn divEqu8(arg1: *u8, arg2: u8) void {
-    arg1.* = div(u8, arg1.*, arg2);
+    arg1.* = div8(arg1.*, arg2);
 }
 pub inline fn mulAddEqu64(arg1: *u64, arg2: u64, arg3: u64) void {
     arg1.* = add64(mul64(arg1.*, arg2), arg3);
@@ -369,7 +390,6 @@ pub inline fn orn8(arg1: u8, arg2: u8) u8 {
 pub inline fn xor8(arg1: u8, arg2: u8) u8 {
     return xor(u8, arg1, arg2);
 }
-
 pub inline fn alignA(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
     const mask: @TypeOf(value) = alignment - 1;
     return (value +% mask) & ~mask;
@@ -435,8 +455,6 @@ pub inline fn shiftRightMaskTruncate(
 ) U {
     return @truncate(U, value >> shift_amt) & ((@as(U, 1) << pop_count) -% 1);
 }
-
-// Sub-registers
 pub inline fn mask32(value: u64) u32 {
     return @truncate(u32, value);
 }
@@ -481,6 +499,7 @@ pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
 }
 
 const is_small = @import("builtin").mode == .ReleaseSmall;
+const is_debug = @import("builtin").mode == .Debug;
 
 extern fn asmTestEqualMany8(l_values: [*]const u8, l_len: u64, r_values: [*]const u8, r_len: u64) callconv(.C) bool;
 comptime {
