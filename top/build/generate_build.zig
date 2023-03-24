@@ -72,8 +72,12 @@ pub const FormatCommandOptions = opaque {
         .string = "--color",
         .arg_type = enum { auto, off, on },
     };
-    pub const stdin: OptionSpec = .{ .string = "--stdin" };
-    pub const check: OptionSpec = .{ .string = "--check" };
+    pub const stdin: OptionSpec = .{
+        .string = "--stdin",
+    };
+    pub const check: OptionSpec = .{
+        .string = "--check",
+    };
     pub const ast_check: OptionSpec = .{
         .string = "--ast-check",
         .default_value = &true,
@@ -84,7 +88,9 @@ pub const FormatCommandOptions = opaque {
     };
 };
 pub const BuildCommandOptions = opaque {
-    pub const watch: OptionSpec = .{ .string = "--watch" };
+    pub const watch: OptionSpec = .{
+        .string = "--watch",
+    };
     pub const color: OptionSpec = .{
         .string = "--color",
         .arg_type = enum { on, off, auto },
@@ -150,7 +156,10 @@ pub const BuildCommandOptions = opaque {
         .string = "--zig-lib-dir",
         .arg_type = []const u8,
     };
-    pub const enable_cache: OptionSpec = .{ .string = "--enable-cache" };
+    pub const enable_cache: OptionSpec = .{
+        .string = "--enable-cache",
+        .default_value = &true,
+    };
     pub const target: OptionSpec = .{
         .string = "-target",
         .arg_type = []const u8,
@@ -261,6 +270,10 @@ pub const BuildCommandOptions = opaque {
         .string = "-ofmt",
         .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
     };
+    pub const files: OptionSpec = .{
+        .arg_type = types.Files,
+        .arg_type_name = "Files",
+    };
     pub const dirafter: OptionSpec = .{
         .string = "-dirafter",
         .arg_type = []const u8,
@@ -302,7 +315,10 @@ pub const BuildCommandOptions = opaque {
         .arg_type = []const u8,
     };
     pub const version: OptionSpec = .{ .string = "--version" };
-    pub const entry: OptionSpec = .{ .string = "--entry" };
+    pub const entry: OptionSpec = .{
+        .string = "--entry",
+        .arg_type = []const u8,
+    };
     pub const soname: OptionSpec = .{
         .string = "-fsoname",
         .arg_type = []const u8,
@@ -333,9 +349,15 @@ pub const BuildCommandOptions = opaque {
         .string = "-fbuild-id",
         .and_no = &.{ .string = "-fno-build-id" },
     };
-    pub const dynamic: OptionSpec = .{ .string = "-dynamic" };
-    pub const static: OptionSpec = .{ .string = "-static" };
-    pub const symbolic: OptionSpec = .{ .string = "-Bsymbolic" };
+    pub const dynamic: OptionSpec = .{
+        .string = "-dynamic",
+    };
+    pub const static: OptionSpec = .{
+        .string = "-static",
+    };
+    pub const symbolic: OptionSpec = .{
+        .string = "-Bsymbolic",
+    };
     pub const compress_debug_sections: OptionSpec = .{
         .string = "--compress-debug-sections",
         .arg_type = enum { none, zlib },
@@ -1378,6 +1400,7 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
     const width: u64 = 4;
     inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
         const opt_spec: OptionSpec = @field(Namespace, decl.name);
+
         const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name;
         array.writeMany(ws[0..width] ++ what_field ++ ": ");
@@ -1399,10 +1422,14 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                         const import_type: type = @field(types, type_name);
                         switch (@typeInfo(optional_info.child)) {
                             .Enum, .Struct, .Union => {
-                                formatCompositeLiteral(array, optional_info.child, .{
-                                    .import_type = ?import_type,
-                                    .type_name = "?" ++ type_name,
-                                });
+                                if (!@hasDecl(optional_info.child, "formatWrite")) {
+                                    formatCompositeLiteral(array, optional_info.child, .{
+                                        .import_type = ?import_type,
+                                        .type_name = "?" ++ type_name,
+                                    });
+                                } else {
+                                    array.writeMany(opt_spec.arg_type_name.?);
+                                }
                                 array.writeMany(" = null");
                             },
                             else => {
@@ -1413,7 +1440,11 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                 } else {
                     switch (@typeInfo(optional_info.child)) {
                         .Enum, .Struct, .Union => {
-                            formatCompositeLiteral(array, optional_info.child, null);
+                            if (!@hasDecl(optional_info.child, "formatWrite")) {
+                                formatCompositeLiteral(array, optional_info.child, null);
+                            } else {
+                                array.writeMany(opt_spec.arg_type_name);
+                            }
                             array.writeMany(" = null");
                         },
                         else => {
@@ -1430,10 +1461,14 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                         const import_type: type = @field(types, type_name);
                         switch (@typeInfo(field_type)) {
                             .Enum, .Struct, .Union => {
-                                formatCompositeLiteral(array, field_type, .{
-                                    .import_type = import_type,
-                                    .type_name = type_name,
-                                });
+                                if (!@hasDecl(opt_spec.arg_type.?, "formatWrite")) {
+                                    formatCompositeLiteral(array, field_type, .{
+                                        .import_type = import_type,
+                                        .type_name = type_name,
+                                    });
+                                } else {
+                                    array.writeMany(opt_spec.arg_type_name);
+                                }
                             },
                             else => {
                                 array.writeMany(type_name);
@@ -1443,7 +1478,11 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                 } else {
                     switch (@typeInfo(field_type)) {
                         .Enum, .Struct, .Union => {
-                            formatCompositeLiteral(array, field_type, null);
+                            if (!@hasDecl(field_type.child, "formatWrite")) {
+                                formatCompositeLiteral(array, field_type, null);
+                            } else {
+                                array.writeMany(opt_spec.arg_type_name);
+                            }
                         },
                         else => {
                             array.writeMany(@typeName(field_type));
@@ -1499,7 +1538,7 @@ pub fn main() !void {
     const ub_addr: u64 = try file.map(.{ .options = .{} }, lb_addr, fd);
     const up_addr: u64 = mach.alignA64(ub_addr, 4096);
 
-    const template_src: [:0]const u8 = mem.pointerManyWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
+    const template_src: [:0]const u8 = mem.pointerSliceWithSentinel(u8, lb_addr, ub_addr - lb_addr, 0);
     var build_src: []u8 = @constCast(subTemplate(template_src, "build-struct.zig").?);
     var types_src: []u8 = @constCast(subTemplate(template_src, "build-types.zig").?);
     var option_fn_src: []u8 = @constCast(subTemplate(template_src, "option-functions.zig").?);
