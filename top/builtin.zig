@@ -35,32 +35,21 @@ pub fn ExternalError(comptime E: type) type {
         pub const Enum = E;
     });
 }
-pub fn ZigError(comptime Value: type, comptime return_codes: []const Value, comptime catch_all: ?[]const u8) type {
+pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type {
     var error_set: []const Type.Error = &.{};
     for (return_codes) |error_code| {
         error_set = error_set ++ [1]Type.Error{.{ .name = error_code.errorName() }};
-    }
-    if (catch_all) |error_name| {
-        error_set = error_set ++ [1]Type.Error{.{ .name = error_name }};
     }
     return @Type(.{ .ErrorSet = error_set });
 }
 /// Attempt to match a return value against a set of error codes--returning the
 /// corresponding zig error on success.
-pub fn zigErrorThrow(
-    comptime Value: type,
-    comptime values: []const Value,
-    ret: isize,
-    comptime catch_all: ?[]const u8,
-) ZigError(Value, values, catch_all) {
-    const Error = ZigError(Value, values, catch_all);
+pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: isize) ZigError(Value, values)!void {
+    const Error = ZigError(Value, values);
     inline for (values) |value| {
         if (ret == @enumToInt(value)) {
             return @field(Error, value.errorName());
         }
-    }
-    if (catch_all) |error_name| {
-        return @field(Error, error_name);
     }
 }
 /// Attempt to match a return value against a set of error codes--aborting the
