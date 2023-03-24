@@ -487,7 +487,7 @@ pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, ar
     const pid: u64 = try fork(.{});
     var status: u32 = 0;
     if (pid == 0) {
-        const flags: Execute = spec.flags();
+        const flags: Execute = comptime spec.flags();
         if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
             unreachable;
         } else |execve_error| {
@@ -511,59 +511,7 @@ pub const start = opaque {
         );
         @call(.never_inline, callMain, .{});
     }
-    pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?usize) noreturn {
-        @setCold(true);
-        sys.call(.write, .{}, void, .{ 2, @ptrToInt(msg.ptr), msg.len });
-        sys.call(.exit, .{}, noreturn, .{2});
-    }
-    pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
-        @setCold(true);
-        var buf: [1024]u8 = undefined;
-        if (max_len == 0) {
-            builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-                debug.about_exit_1_s,            "indexing (",
-                builtin.fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
-            });
-        } else {
-            builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-                debug.about_exit_1_s,                     "index ",
-                builtin.fmt.ud64(idx).readAll(),          " above maximum ",
-                builtin.fmt.ud64(max_len -% 1).readAll(), "\n",
-            });
-        }
-        sys.call(.exit, .{}, noreturn, .{2});
-    }
-    pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
-        @setCold(true);
-        var buf: [1024]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s,                "sentinel mismatch: expected ",
-            builtin.fmt.int(expected).readAll(), ", found ",
-            builtin.fmt.int(actual).readAll(),   "\n",
-        });
-    }
-    pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
-        @setCold(true);
-        var buf: [1024]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s,              "start index ",
-            builtin.fmt.ud64(lower).readAll(), " is larger than end index ",
-            builtin.fmt.ud64(upper).readAll(), "\n",
-        });
-    }
-    pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
-        @setCold(true);
-        var buf: [1024]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s, "access of union field '",
-            @tagName(wanted),     "' while field '",
-            @tagName(active),     "' is active",
-        });
-        sys.call(.exit, .{}, noreturn, .{2});
-    }
-    pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
-        @compileError("error is discarded");
-    }
+    pub usingnamespace builtin.debug;
     fn unexpectedReturnCodeValueError(rc: u64) void {
         var buf: [512]u8 = undefined;
         builtin.debug.logFaultAIO(&buf, &[_][]const u8{
@@ -628,7 +576,7 @@ pub const exception = opaque {
             .BUS => "SIGBUS",
             .FPE => "SIGFPE",
         }, info.fields.fault.addr);
-        sys.call(.exit, .{}, noreturn, .{@enumToInt(sig)});
+        builtin.proc.exit(2);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
         switch (builtin.zig.zig_backend) {
@@ -650,23 +598,6 @@ pub const exception = opaque {
     const SA = sys.SA;
     const SIG = sys.SIG;
 };
-fn exitWithError(error_name: []const u8, rc: ?u8) noreturn {
-    @setCold(true);
-    if (builtin.logging_general.Fault) {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &.{ debug.about_exit_1_s, error_name, "\n" });
-    }
-    sys.call(.exit, .{}, noreturn, .{rc orelse 2});
-}
-fn exitWithoutError(rc: u8) noreturn {
-    if (builtin.logging_general.Success) {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        builtin.debug.logSuccessAIO(&buf, &.{ debug.about_exit_0_s, builtin.fmt.ud8(rc).readAll(), "\n" });
-    }
-    sys.call(.exit, .{}, noreturn, .{rc});
-}
 const static = opaque {
     var stack_addr: u64 = 0;
 };
@@ -725,29 +656,30 @@ pub noinline fn callMain() noreturn {
     }
     if (main_return_type == void) {
         @call(.auto, main, params);
-        exitWithoutError(0);
+        builtin.proc.exitWithNotice(0);
     }
     if (main_return_type == u8) {
-        exitWithoutError(@call(.auto, main, params));
+        builtin.proc.exitWithNotice(@call(.auto, main, params));
     }
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == void)
     {
         if (@call(.auto, main, params)) {
-            exitWithoutError(0);
+            builtin.proc.exitWithNotice(0);
         } else |err| {
-            exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
+            builtin.proc.exitWithError(err, @intCast(u8, @errorToInt(err)));
         }
     }
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == u8)
     {
         if (@call(.auto, builtin.root.main, params)) |rc| {
-            exitWithoutError(rc);
+            builtin.proc.exitWithNotice(rc);
         } else |err| {
-            exitWithError(@errorName(err), @intCast(u8, @errorToInt(err)));
+            builtin.proc.exitWithError(err, @intCast(u8, @errorToInt(err)));
         }
     }
+    builtin.proc.exitWithNotice(0);
     builtin.static.assert(main_return_type_info != .ErrorSet);
 }
 
@@ -1061,11 +993,11 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
         }
         if (mach.testEqualMany8("--help", arg1)) {
             debug.optionNotice(Options, all_options);
-            sys.call(.exit, .{}, noreturn, .{0});
+            builtin.proc.exitWithNotice(0);
         }
         if (arg1.len != 0 and arg1[0] == '-') {
             debug.optionError(Options, all_options, arg1);
-            sys.call(.exit, .{}, noreturn, .{2});
+            builtin.proc.exitWithNotice(0);
         }
         index += 1;
     }
@@ -1073,10 +1005,9 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
 }
 const debug = opaque {
     const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
+    const about_fault_s: []const u8 = builtin.debug.about("fault");
     const about_opt_0_s: []const u8 = builtin.debug.about("opt");
     const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
-    const about_exit_0_s: []const u8 = builtin.debug.about("exit");
-    const about_exit_1_s: []const u8 = builtin.debug.about("error");
     const about_fork_0_s: []const u8 = builtin.debug.about("fork");
     const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
     const about_wait_0_s: []const u8 = builtin.debug.about("wait");
@@ -1089,6 +1020,7 @@ const debug = opaque {
         const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
         builtin.debug.write(buf);
     }
+
     pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
         var argc: u64 = args.len;
         var buf: [4096 +% 128]u8 = undefined;
@@ -1130,15 +1062,15 @@ const debug = opaque {
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ debug.about_exit_1_s, symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ debug.about_fault_s, symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
     }
     fn forkError(fork_error: anytype) void {
         var buf: [16 +% 32 +% 512]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
     }
     fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
         var buf: [16 +% 32 +% 512]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
     fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
         var buf: [4096 +% 128]u8 = undefined;
