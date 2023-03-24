@@ -7,10 +7,20 @@ fn automatic_storage_address(impl: anytype) u64 {
 pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
     return @intToPtr(*child, s_lb_addr);
 }
-pub fn pointerMany(comptime child: type, s_lb_addr: u64, count: u64) []child {
-    return @intToPtr([*]child, s_lb_addr)[0..count];
+pub fn pointerMany(comptime child: type, s_lb_addr: u64) [*]child {
+    return @intToPtr([*]child, s_lb_addr);
 }
 pub fn pointerManyWithSentinel(
+    comptime child: type,
+    s_lb_addr: u64,
+    comptime sentinel: child,
+) [*:sentinel]child {
+    return @intToPtr([*:sentinel]child, s_lb_addr);
+}
+pub fn pointerSlice(comptime child: type, s_lb_addr: u64, count: u64) []child {
+    return @intToPtr([*]child, s_lb_addr)[0..count];
+}
+pub fn pointerSliceWithSentinel(
     comptime child: type,
     s_lb_addr: u64,
     count: u64,
