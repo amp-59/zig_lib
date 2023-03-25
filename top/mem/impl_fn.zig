@@ -4,6 +4,7 @@ const testing = @import("../testing.zig");
 const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
+const types = @import("./types.zig");
 
 pub const key = blk: {
     var res: []const Fn = &.{};
@@ -42,7 +43,7 @@ pub const Fn = enum(u5) {
     pub inline fn fnName(impl_fn_info: Fn) [:0]const u8 {
         return @tagName(impl_fn_info);
     }
-    pub fn hasCapability(fn_info: Fn, impl_variant: *const attr.Implementation) bool {
+    pub fn hasCapability(fn_info: Fn, impl_variant: *const types.Implementation) bool {
         const is_always_aligned: bool =
             impl_variant.techs.auto_alignment or
             impl_variant.techs.unit_alignment;
@@ -243,7 +244,7 @@ pub const Fn = enum(u5) {
                 }
             },
             .resize => {
-                if (Variant == attr.Implementation) {
+                if (Variant == types.Implementation) {
                     arg_list.writeOne(impl_symbol);
                     if (impl_variant.fields.unallocated_byte_address) {
                         arg_list.writeOne(unallocated_byte_address_symbol);
@@ -258,7 +259,7 @@ pub const Fn = enum(u5) {
                 }
             },
             .allocate, .move, .reallocate => {
-                if (Variant == attr.Implementation) {
+                if (Variant == types.Implementation) {
                     if (impl_fn_info != .allocate) {
                         arg_list.writeOne(impl_symbol);
                     }
@@ -324,7 +325,7 @@ pub const Fn = enum(u5) {
             },
         }
     }
-    pub fn writeSignature(impl_fn_info: *const Fn, array: anytype, impl_detail: *const attr.Implementation) void {
+    pub fn writeSignature(impl_fn_info: *const Fn, array: anytype, impl_detail: *const types.Implementation) void {
         const list: gen.ArgList = impl_fn_info.argList(impl_detail, .Parameter);
         array.writeMany("pub inline fn ");
         array.writeMany(impl_fn_info.fnName());
