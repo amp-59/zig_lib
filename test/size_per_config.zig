@@ -42,17 +42,48 @@ inline fn subPerc(x: u64, y: u64) u64 {
 fn sub(x: u64, y: u64) u64 {
     return x - y;
 }
+
+pub fn mut(comptime T: type) type {
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Pointer) {
+        var ret: builtin.Type = type_info;
+        const child_type_info: builtin.Type = @typeInfo(type_info.Pointer.child);
+        ret.Pointer.is_const = false;
+        if (child_type_info == .Pointer) {
+            ret.Pointer.child = mut(type_info.Pointer.child);
+        }
+        return @Type(.{ .Pointer = ret.Pointer });
+    }
+    return T;
+}
+pub fn mut2(comptime T: type) type {
+    if (@typeInfo(T) != .Pointer) {
+        return T;
+    }
+    var ret: builtin.Type = @typeInfo(@TypeOf(@constCast(@as(T, undefined))));
+    ret.Pointer.child = mut2(ret.Pointer.child);
+    return @Type(ret);
+}
+
 noinline fn testImpactOfTrivialForwardedOperations() !void {
     @setEvalBranchQuota(~@as(u32, 0));
     var x: u64 = 0;
     comptime var i: u64 = 0;
-    x -%= 1;
     inline while (i != 0x1000) : (i +%= 1) {
         //x -= 1;
         //x = sub(x, 1);
         x = subPerc(x, 1);
         //x -%= 1;
         //x -= 1;
+    }
+}
+noinline fn testDifferenceBetweenMutMethods() !void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    comptime var i: u64 = 0;
+
+    inline while (i != 0x10000) : (i +%= 1) {
+        const T = []const []const []const @Type(.{ .Int = .{ .bits = i, .signedness = .unsigned } });
+        _ = mut2(T);
     }
 }
 noinline fn testDifferenceBetweenHighAndLowLevelMemoryManagement() !void {
@@ -71,8 +102,9 @@ noinline fn testDifferenceBetweenHighAndLowLevelMemoryManagement() !void {
     }
 }
 pub export fn _start() void {
-    try meta.wrap(testImpactOfTrivialForwardedOperations());
+    //try meta.wrap(testImpactOfTrivialForwardedOperations());
     //try meta.wrap(testDifferenceBetweenHighAndLowLevelMemoryManagement());
+    try meta.wrap(testDifferenceBetweenMutMethods());
 
     sys.call(.exit, .{}, noreturn, .{0});
 }
