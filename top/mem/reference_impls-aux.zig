@@ -967,7 +967,7 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: 
     array.writeMany("fn ");
     impl_variant.formatWrite(array);
     array.writeMany("(" ++ tok.comptime_keyword ++ tok.spec_name ++ tok.colon_operator ++ tok.generic_spec_type_name);
-    gen.fmt.ud64(impl_variant.spec).formatWrite(array);
+    gen.fmt.ud64(impl_variant.ctn).formatWrite(array);
     array.writeMany(")type{\nreturn(struct{\n");
     writeFields(array, impl_variant);
     writeDeclarations(array, impl_variant);
