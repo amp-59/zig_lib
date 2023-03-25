@@ -6,6 +6,7 @@ const builtin = gen.builtin;
 
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
+const types = @import("./types.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
 
@@ -342,13 +343,13 @@ const Init = struct {
         return packMore(.call_member, exprs[0..idx]);
     }
     pub fn impl(allocator: anytype, any_detail: anytype, impl_fn_info: *const impl_fn.Fn) Expr {
-        if (@TypeOf(any_detail.*) == attr.Implementation) {
+        if (@TypeOf(any_detail.*) == types.Implementation) {
             return impl0(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument));
         } else {
             return impl1(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument), Tokens.determine(impl_fn_info));
         }
     }
-    pub fn intr(allocator: anytype, ctn_detail: *const attr.Container, ctn_fn_info: *const ctn_fn.Fn) Expr {
+    pub fn intr(allocator: anytype, ctn_detail: *const types.Container, ctn_fn_info: *const ctn_fn.Fn) Expr {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 1);
         var idx: u64 = 0;
