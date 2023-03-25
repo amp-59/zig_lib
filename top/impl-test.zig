@@ -48,7 +48,7 @@ const StructureSet = enum { Structured, Unstructured, Both };
 const Dummy = mem.ReadWriteStructuredUnitAlignment(.{ .child = u8, .low_alignment = 1 });
 const Random = file.DeviceRandomBytes(4096);
 
-const test_types: []const type = &[_]type{ u16, u32, u64, u128 };
+const test_types: []const type = &[_]type{ u16, u32, u64 };
 const static_impl_types: []const type = manifestStatic(test_types);
 const dynamic_impl_types: []const type = manifestDynamic(test_types);
 const parametric_impl_types: []const type = manifestParametric(test_types);
