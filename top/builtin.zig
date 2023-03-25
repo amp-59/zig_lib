@@ -833,8 +833,8 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
         .Pointer => |pointer_info| {
             switch (pointer_info.size) {
                 .Many => {
-                    const len1: usize = length(arg1);
-                    const len2: usize = length(arg2);
+                    const len1: usize = indexOfSentinel(arg1);
+                    const len2: usize = indexOfSentinel(arg2);
                     assertEqual(usize, len1, len2);
                     for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
                         assertEqualMemory(pointer_info.child, value1, value2);
