@@ -1,5 +1,6 @@
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
+const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
@@ -290,7 +291,92 @@ pub fn serialize(allocator: anytype, pathname: [:0]const u8, sets: anytype) !voi
     try file.write(write_spec, fd, bytes);
     try file.close(close_spec, fd);
 }
-pub fn deserialize(comptime S: type, allocator: anytype, pathname: [:0]const u8) !S {
+
+pub const SerializerSpec = struct {
+    Allocator: type,
+    errors: SerializerErrors = .{},
+    logging: SerializerLogging = .{},
+    const SerializerLogging = struct {
+        create: builtin.Logging.AcquireErrorFault = .{},
+        open: builtin.Logging.AcquireErrorFault = .{},
+        stat: builtin.Logging.SuccessErrorFault = .{},
+        read: builtin.Logging.SuccessErrorFault = .{},
+        close: builtin.Logging.ReleaseErrorFault = .{},
+    };
+    const SerializerErrors = struct {
+        create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+        open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+        stat: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
+        read: sys.ErrorPolicy = .{ .throw = sys.read_errors },
+        close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
+    };
+    fn create(comptime spec: SerializerSpec) file.CreateSpec {
+        return .{ .logging = spec.logging.create, .errors = spec.errors.create };
+    }
+    fn open(comptime spec: SerializerSpec) file.CreateSpec {
+        return .{ .logging = spec.logging.open, .errors = spec.errors.open };
+    }
+    fn stat(comptime spec: SerializerSpec) file.CreateSpec {
+        return .{ .logging = spec.logging.stat, .errors = spec.errors.stat };
+    }
+    fn read(comptime spec: SerializerSpec) file.CreateSpec {
+        return .{ .logging = spec.logging.read, .errors = spec.errors.read };
+    }
+    fn close(comptime spec: SerializerSpec) file.CreateSpec {
+        return .{ .logging = spec.logging.close, .errors = spec.errors.close };
+    }
+    const Type = struct {
+        fn serial_write(comptime spec: SerializerSpec) sys.ErrorPolicy {
+            return .{
+                .throw = spec.create.errors.throw ++
+                    spec.open.errors.throw ++
+                    spec.write.errors.throw ++
+                    spec.close.errors.throw,
+                .abort = spec.create.errors.abort ++
+                    spec.open.errors.abort ++
+                    spec.write.errors.abort ++
+                    spec.close.errors.abort,
+            };
+        }
+        fn serial_read(comptime spec: SerializerSpec) sys.ErrorPolicy {
+            return .{
+                .throw = spec.create.errors.throw ++
+                    spec.open.errors.throw ++
+                    spec.read.errors.throw ++
+                    spec.close.errors.throw,
+                .abort = spec.create.errors.abort ++
+                    spec.open.errors.abort ++
+                    spec.read.errors.abort ++
+                    spec.close.errors.abort,
+            };
+        }
+    };
+    pub fn serialWrite(comptime spec: SerializerSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8, value: S) void {
+        const save = allocator.save();
+        defer allocator.restore(save);
+        const s_ab_addr: u64 = allocator.alignAbove(16);
+        const bytes: []const u8 = try meta.wrap(
+            genericSerializeInternal(allocator, s_ab_addr, value),
+        );
+        const fd: u64 = try file.create(spec.create(), pathname);
+        try meta.wrap(file.write(spec.write(), fd, bytes));
+        try meta.wrap(file.close(spec.close(), fd));
+    }
+    pub fn serialRead(comptime spec: SerializerSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8) meta.Mutable(S) {
+        const fd: u64 = try file.open(open_spec, pathname);
+        const t_ab_addr: u64 = allocator.alignAbove(16);
+        const st: file.Stat = try meta.wrap(file.fstat(spec.stat(), fd));
+        const buf: []u8 = try meta.wrap(
+            allocator.allocateIrreversible(u8, st.size),
+        );
+        try meta.wrap(file.read(spec.read(), fd, buf, st.size));
+        try meta.wrap(file.close(spec.close(), fd));
+        return try meta.wrap(
+            genericDeserializeInternal(meta.Mutable(S), t_ab_addr),
+        );
+    }
+};
+pub fn deserialize(comptime S: type, allocator: anytype, pathname: [:0]const u8) !meta.Mutable(S) {
     const fd: u64 = try file.open(open_spec, pathname);
     const t_ab_addr: u64 = allocator.alignAbove(16);
     const st: file.Stat = try file.fstat(stat_spec, fd);
@@ -300,7 +386,7 @@ pub fn deserialize(comptime S: type, allocator: anytype, pathname: [:0]const u8)
     try file.read(read_spec, fd, buf, st.size);
     try file.close(close_spec, fd);
     return try meta.wrap(
-        genericDeserializeInternal(S, t_ab_addr),
+        genericDeserializeInternal(meta.Mutable(S), t_ab_addr),
     );
 }
 fn allocateFile(allocator: anytype, pathname: [:0]const u8) !void {
