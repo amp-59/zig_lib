@@ -31,7 +31,6 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .options = .{},
 });
 const Array = mem.StaticString(1024 * 1024);
-const ContainerDetails = Allocator.StructuredVector(attr.Container);
 const ImplementationDetails = Allocator.StructuredVector(attr.Implementation);
 const verify_all_serial: bool = false;
 const serialise_extra: bool = false;
@@ -281,6 +280,47 @@ fn writeSpecificationFieldName(array: *Array, s_v_field: attr.Specifier) void {
         .optional_variant => |optional_variant| array.writeMany(@tagName(optional_variant.tag)),
         .decl_optional_derived => |decl_optional_derived| array.writeMany(@tagName(decl_optional_derived.decl_tag)),
         .decl_optional_variant => |decl_optional_variant| array.writeMany(@tagName(decl_optional_variant.decl_tag)),
+        .stripped => unreachable,
+    }
+}
+fn writeSpecificationFieldValue(array: *Array, s_v_field: attr.Specifier) void {
+    switch (s_v_field) {
+        .default => |default| {
+            array.writeMany("spec.");
+            array.writeMany(@tagName(default.tag));
+        },
+        .derived => |derived| array.writeMany(@tagName(derived.tag)),
+        .optional_derived => |optional_derived| {
+            const tag_name: []const u8 = @tagName(optional_derived.tag);
+            array.writeMany("spec.");
+            array.writeMany(tag_name);
+            array.writeMany(" orelse ");
+            array.writeMany(optional_derived.fn_name);
+            array.writeMany("(spec)");
+        },
+        .optional_variant => |optional_variant| array.writeMany(@tagName(optional_variant.tag)),
+        .decl_optional_derived => |decl_optional_derived| {
+            const ctn_name: []const u8 = @tagName(decl_optional_derived.ctn_tag);
+            const decl_name: []const u8 = @tagName(decl_optional_derived.decl_tag);
+            const fn_name: []const u8 = decl_optional_derived.fn_name;
+            array.writeMany("@hasDecl(");
+            array.writeMany(ctn_name);
+            array.writeMany(",\"");
+            array.writeMany(decl_name);
+            array.writeMany("\")");
+            array.writeMany(ctn_name);
+            array.writeMany(".");
+            array.writeMany(decl_name);
+            array.writeMany(" else ");
+            array.writeMany(fn_name);
+            array.writeMany("(spec)");
+        },
+        .decl_optional_variant => |decl_optional_variant| {
+            array.writeMany("spec.");
+            array.writeMany(@tagName(decl_optional_variant.ctn_tag));
+            array.writeMany(".");
+            array.writeMany(@tagName(decl_optional_variant.decl_tag));
+        },
         .stripped => unreachable,
     }
 }
