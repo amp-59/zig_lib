@@ -283,13 +283,6 @@ fn constructInitializer(allocator: *Allocator, impl_variant: *const attr.Impleme
     }
     return dupe(allocator, expr.initializer(expr.list(buf[0..len])));
 }
-
-const render_spec = .{
-    .infer_type_names = true,
-    .ignore_formatter_decls = true,
-    .address_view = true,
-};
-
 fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const attr.Implementation, impl_fn_info: Fn, info: *Info) void {
     const allocated_byte_address_fn_info: *const Fn = impl_fn.get(.allocated_byte_address);
     const aligned_byte_address_fn_info: *const Fn = impl_fn.get(.aligned_byte_address);
