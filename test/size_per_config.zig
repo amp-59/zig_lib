@@ -2,7 +2,11 @@ const srg = @import("zig_lib");
 const mem = srg.mem;
 const sys = srg.sys;
 const mach = srg.mach;
+const meta = srg.meta;
 const preset = srg.preset;
+const builtin = srg.builtin;
+
+pub usingnamespace mach;
 
 // pub const AddressSpace = mem.GenericRegularAddressSpace(.{
 //    .lb_addr = 0x0,
@@ -30,20 +34,45 @@ const unmap_spec: mem.UnmapSpec = .{
     .logging = .{ .Release = false, .Error = false, .Fault = false },
 };
 
-noinline fn main() !void {
+//inline fn subPerc(x: u64, y: u64) u64 {
+inline fn subPerc(x: u64, y: u64) u64 {
+    return x -% y;
+}
+//inline fn sub(x: u64, y: u64) u64 {
+fn sub(x: u64, y: u64) u64 {
+    return x - y;
+}
+noinline fn testImpactOfTrivialForwardedOperations() !void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    var x: u64 = 0;
+    comptime var i: u64 = 0;
+    x -%= 1;
+    inline while (i != 0x1000) : (i +%= 1) {
+        //x -= 1;
+        //x = sub(x, 1);
+        x = subPerc(x, 1);
+        //x -%= 1;
+        //x -= 1;
+    }
+}
+noinline fn testDifferenceBetweenHighAndLowLevelMemoryManagement() !void {
     @setAlignStack(16);
     @setEvalBranchQuota(~@as(u32, 0));
     comptime var i: u64 = 0;
     inline while (i != 1000) : (i +%= 1) {
+        // High:
         var address_space: AddressSpace = .{};
         var allocator: Allocator = Allocator.init(&address_space);
         allocator.deinit(&address_space);
 
+        // Low:
         //mem.map(map_spec, 0x40000000, 4096);
         //mem.unmap(unmap_spec, 0x40000000, 4096);
     }
 }
 pub export fn _start() void {
-    main() catch {};
+    try meta.wrap(testImpactOfTrivialForwardedOperations());
+    //try meta.wrap(testDifferenceBetweenHighAndLowLevelMemoryManagement());
+
     sys.call(.exit, .{}, noreturn, .{0});
 }
