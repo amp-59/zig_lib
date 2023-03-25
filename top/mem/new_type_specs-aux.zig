@@ -436,7 +436,7 @@ fn writeOptionalSwitchOpen(array: *Array, tag_name: []const u8) void {
     array.writeMany("){\n");
 }
 fn writeReturnImplementation(array: *Array, detail: attr.Implementation, specs: []const attr.Specifier) void {
-    array.writeMany("return ");
+    array.writeMany("return reference.");
     array.writeFormat(detail);
     array.writeMany("(");
     writeInitExpr(array, specs);
@@ -647,7 +647,6 @@ fn validateAllSerial(
     spec_sets: []const []const []const attr.Specifier,
     tech_sets: []const []const []const attr.Technique,
     impl_details: ImplementationDetails,
-    ctn_details: ContainerDetails,
 ) !void {
     if (!verify_all_serial) {
         return;
@@ -711,17 +710,10 @@ fn validateAllSerial(
         }
     }
     const f_impl_details = try meta.wrap(serial.deserialize([]attr.Implementation, allocator, gen.auxiliaryFile("impl_detail")));
-    const f_ctn_details = try meta.wrap(serial.deserialize([]attr.Container, allocator, gen.auxiliaryFile("ctn_detail")));
     for (f_impl_details, impl_details.readAll(), 0..) |x, y, idx_0| {
         const xy = .{ ": ", (meta.uniformData(x)), " == ", (meta.uniformData(y)), '\n' };
         if (!builtin.testEqual(@TypeOf(x), x, y)) {
             testing.print(.{ "impl: non-equal indices: ", idx_0 } ++ xy);
-        }
-    }
-    for (f_ctn_details, ctn_details.readAll(), 0..) |x, y, idx_0| {
-        const xy = .{ ": ", (meta.uniformData(x)), " == ", (meta.uniformData(y)), '\n' };
-        if (!builtin.testEqual(@TypeOf(x), x, y)) {
-            testing.print(.{ "ctn: non-equal indices: ", idx_0 } ++ xy);
         }
     }
     testing.print("all verified\n");
