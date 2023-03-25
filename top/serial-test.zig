@@ -42,6 +42,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .logging = preset.allocator.logging.silent,
     .errors = preset.allocator.errors.noexcept,
 });
+const spec_sets_a: []const attr.AbstractSpecification = &attr.abstract_specs;
 const spec_sets_0: []const []const []const attr.Specifier = &.{ &.{ &.{ .{ .default = .{
     .tag = .child,
     .type = .{ .type_name = "type" },
@@ -2520,6 +2521,23 @@ pub fn testVarietyStructure() !void {
 
     builtin.assertEqualMemory(Return, u, t);
 }
+pub fn testLargeStructure() !void {
+    var address_space: AddressSpace = .{};
+    var allocator: Allocator = Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+
+    try serial.serialize(&allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a);
+    const spec_sets_b: []const attr.AbstractSpecification =
+        try serial.deserialize([]attr.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"));
+    try serial.serialize(&allocator, builtin.absolutePath("zig-out/bin/variety_1"), spec_sets_b);
+    const spec_sets_c: []const attr.AbstractSpecification =
+        try serial.deserialize([]attr.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_1"));
+    testing.print(fmt.any(spec_sets_a));
+    testing.print(fmt.any(spec_sets_b));
+    testing.print(fmt.any(spec_sets_c));
+
+    builtin.assertEqualMemory([]const attr.AbstractSpecification, spec_sets_b, spec_sets_c);
+}
 pub fn testSingleComplexCase() !void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
@@ -2546,5 +2564,6 @@ pub fn testSingleComplexCase() !void {
 }
 pub fn main() !void {
     try meta.wrap(testSingleComplexCase());
+    try meta.wrap(testLargeStructure());
     try meta.wrap(testVarietyStructure());
 }
