@@ -769,8 +769,8 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
         .Pointer => |pointer_info| {
             switch (pointer_info.size) {
                 .Many => {
-                    const len1: usize = length(arg1);
-                    const len2: usize = length(arg2);
+                    const len1: usize = indexOfSentinel(arg1);
+                    const len2: usize = indexOfSentinel(arg2);
                     if (len1 == len2) {
                         return false;
                     }
@@ -1792,7 +1792,7 @@ pub const fmt = opaque {
         const T = [:value]S;
         const s_type_name: []const u8 = @typeName(S);
         const t_type_name: []const u8 = @typeName(T);
-        return t_type_name[2 .. t_type_name.len - (s_type_name.len + 1)];
+        return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
     }
     pub fn int(value: anytype) StaticString(@TypeOf(value), 10) {
         if (@sizeOf(@TypeOf(value)) == 0) {
@@ -2046,7 +2046,7 @@ pub const fmt = opaque {
         if (@bitSizeOf(T) < 8) {
             return toSymbol(u8, value, radix);
         }
-        const result: u8 = @intCast(u8, @rem(value, @intCast(T, radix)));
+        const result: u8 = @intCast(u8, @rem(value, radix));
         const d: u8 = '9' -% 9;
         const x: u8 = 'f' -% 15;
         if (radix > 10) {
@@ -2232,14 +2232,11 @@ fn Src() type {
 fn Overflow(comptime T: type) type {
     return struct { T, u1 };
 }
-fn length(any: anytype) usize {
+fn indexOfSentinel(any: anytype) usize {
     var idx: usize = 0;
     while (any[idx] != @ptrCast(
         *const @typeInfo(@TypeOf(any)).Pointer.child,
         @typeInfo(@TypeOf(any)).Pointer.sentinel.?,
     ).*) idx +%= 1;
     return idx;
-}
-fn Length(comptime T: type) type {
-    return @TypeOf(@as(T, undefined)[0..1]);
 }
