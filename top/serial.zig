@@ -291,7 +291,6 @@ pub fn serialize(allocator: anytype, pathname: [:0]const u8, sets: anytype) !voi
     try file.write(write_spec, fd, bytes);
     try file.close(close_spec, fd);
 }
-
 pub const SerializerSpec = struct {
     Allocator: type,
     errors: SerializerErrors = .{},
