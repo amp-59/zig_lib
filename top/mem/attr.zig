@@ -44,29 +44,38 @@ pub const abstract_specs: [32]AbstractSpecification = [_]AbstractSpecification{
 pub const ctn_details: []const Container = blk: {
     var res: []const meta.Child(Container) = &.{};
     for (abstract_specs) |abstract_spec| {
-        const ctn_detail_val: meta.Child(Container) =
-            meta.leastBitCast(Container.init(abstract_spec));
+        const ctn_detail: meta.Child(Container) = meta.leastBitCast(Container.init(abstract_spec));
         for (res) |unique_ctn_detail| {
-            if (ctn_detail_val == unique_ctn_detail) {
+            if (ctn_detail == unique_ctn_detail) {
                 break;
             }
         } else {
-            res = res ++ .{ctn_detail_val};
+            res = res ++ .{ctn_detail};
         }
     }
     break :blk @ptrCast([]const Container, res);
 };
-pub const ctn_groups: [ctn_details.len][]const AbstractSpecification = blk: {
-    @setEvalBranchQuota(10000);
-    var res: [ctn_details.len][]const AbstractSpecification = .{&.{}} ** ctn_details.len;
-    for (@ptrCast([]const meta.Child(Container), ctn_details), 0..) |ctn_detail, ctn_index| {
-        for (abstract_specs) |abstract_spec| {
+pub const ctn_groups: []const []const AbstractSpecification = blk: {
+    @setEvalBranchQuota(4000);
+    var buf: [abstract_specs.len][]const AbstractSpecification = .{&.{}} ** abstract_specs.len;
+    var len: u64 = 0;
+    var idx: u64 = 0;
+    var taken: [abstract_specs.len]bool = [1]bool{false} ** abstract_specs.len;
+    for (@ptrCast([]const meta.Child(Container), ctn_details)) |ctn_detail| {
+        for (abstract_specs, 0..) |abstract_spec, spec_index| {
+            if (taken[spec_index]) {
+                continue;
+            }
             if (ctn_detail == meta.leastBitCast(Container.init(abstract_spec))) {
-                res[ctn_index] = res[ctn_index] ++ .{abstract_spec};
+                taken[spec_index] = true;
+                buf[idx] = buf[idx] ++ .{abstract_spec};
             }
         }
+        if (buf[idx].len != 0) {
+            len +%= 1;
+        }
     }
-    break :blk res;
+    break :blk buf[0..len];
 };
 pub const AbstractSpecification = struct {
     kind: Kind,
