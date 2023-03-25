@@ -489,6 +489,11 @@ inline fn shrx(comptime T: type, value: T, shift_amt: T) T {
           [shift_amt] "r" (shift_amt),
     );
 }
+
+const is_small = @import("builtin").mode == .ReleaseSmall;
+const is_debug = @import("builtin").mode == .Debug;
+const is_test = @import("builtin").is_test;
+
 pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
     return asmTestEqualMany8(
         l_values.ptr,
@@ -497,11 +502,7 @@ pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
         r_values.len,
     );
 }
-
-const is_small = @import("builtin").mode == .ReleaseSmall;
-const is_debug = @import("builtin").mode == .Debug;
-
-extern fn asmTestEqualMany8(l_values: [*]const u8, l_len: u64, r_values: [*]const u8, r_len: u64) callconv(.C) bool;
+extern fn asmTestEqualMany8(_: [*]const u8, _: u64, _: [*]const u8, _: u64) callconv(.C) bool;
 comptime {
     asm (
         \\.intel_syntax noprefix
@@ -530,10 +531,6 @@ comptime {
         \\  xor    eax,  eax
         \\  ret
     );
-}
-pub inline fn assert(b: bool, comptime msg: [:0]const u8) void {
-    const full: [:0]const u8 = "fault:          " ++ msg ++ "\n";
-    asmAssert(b, full.ptr, full.len);
 }
 extern fn asmAssert(b: bool, buf_ptr: [*]const u8, buf_len: u64) callconv(.C) void;
 comptime {
@@ -612,4 +609,5 @@ comptime {
         \\  ret
     );
 }
+
 pub export fn __zig_probe_stack() callconv(.C) void {}
