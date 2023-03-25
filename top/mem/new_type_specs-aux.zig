@@ -354,15 +354,7 @@ fn writeSpecificationTypeName(array: *Array, s_v_field: attr.Specifier) void {
 }
 fn writeDeclExpr(array: *Array, p_field: attr.Specifier) void {
     switch (p_field) {
-        .default => |default| {
-            array.writeMany("const ");
-            array.writeMany(@tagName(default.tag));
-            array.writeMany(":");
-            array.writeFormat(default.type);
-            array.writeMany("=spec.");
-            array.writeMany(@tagName(default.tag));
-            array.writeMany(";\n");
-        },
+        .default => {},
         .derived => |derived| {
             const tag_name: []const u8 = @tagName(derived.tag);
             array.writeMany("const ");
@@ -377,18 +369,7 @@ fn writeDeclExpr(array: *Array, p_field: attr.Specifier) void {
             array.writeMany("(spec);\n");
         },
         .stripped => {},
-        .optional_derived => |optional_derived| {
-            const tag_name: []const u8 = @tagName(optional_derived.tag);
-            array.writeMany("const ");
-            array.writeMany(tag_name);
-            array.writeMany(":");
-            array.writeFormat(optional_derived.type);
-            array.writeMany("=spec.");
-            array.writeMany(tag_name);
-            array.writeMany(" orelse ");
-            array.writeMany(optional_derived.fn_name);
-            array.writeMany("(spec);\n");
-        },
+        .optional_derived => {},
         .optional_variant => |optional_variant| {
             const tag_name: []const u8 = @tagName(optional_variant.tag);
             array.writeMany("if(spec.");
@@ -416,13 +397,11 @@ fn writeDeclExpr(array: *Array, p_field: attr.Specifier) void {
         .decl_optional_variant => |decl_optional_variant| {
             const ctn_name: []const u8 = @tagName(decl_optional_variant.ctn_tag);
             const decl_name: []const u8 = @tagName(decl_optional_variant.decl_tag);
-            array.writeMany("if(spec.");
+            array.writeMany("if(@hasDecl(spec.");
             array.writeMany(ctn_name);
-            array.writeMany(".");
+            array.writeMany(",\"");
             array.writeMany(decl_name);
-            array.writeMany(")|");
-            array.writeMany(decl_name);
-            array.writeMany("|{\n");
+            array.writeMany("\")){\n");
         },
     }
 }
@@ -432,7 +411,7 @@ fn writeInitExpr(array: *Array, s_v_info: []const attr.Specifier) void {
         array.writeMany(".");
         writeSpecificationFieldName(array, s_v_field);
         array.writeMany("=");
-        writeSpecificationFieldName(array, s_v_field);
+        writeSpecificationFieldValue(array, s_v_field);
         array.writeMany(",");
     }
     array.writeMany("}");
