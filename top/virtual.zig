@@ -4,7 +4,7 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
-const word_size: u8 = @bitSizeOf(u64);
+const word_bit_size: u8 = @bitSizeOf(u64);
 
 pub const ResourceError = error{ UnderSupply, OverSupply };
 pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
@@ -24,18 +24,18 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
         const Index: type = meta.LeastRealBitSize(bits);
         pub fn get(bit_set: BitSet, index: Index) bool {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
-            return bit_set.bits[index / word_size] & bit_mask != 0;
+            return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
         pub fn indexToShiftAmount(index: Index) u8 {
-            return builtin.sub(u8, word_size -% 1, builtin.rem(u8, index, word_size));
+            return builtin.sub(u8, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size));
         }
         pub fn set(bit_set: *BitSet, index: Index) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
-            bit_set.bits[index / word_size] |= bit_mask;
+            bit_set.bits[index / word_bit_size] |= bit_mask;
         }
         pub fn unset(bit_set: *BitSet, index: Index) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
-            bit_set.bits[index / word_size] &= ~bit_mask;
+            bit_set.bits[index / word_bit_size] &= ~bit_mask;
         }
     };
     const Int = extern struct {
