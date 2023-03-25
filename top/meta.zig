@@ -562,7 +562,19 @@ pub fn SliceChild(comptime T: type) type {
 pub fn sliceProperty(comptime T: type) SliceProperty {
     return .{ sliceLevel(T), SliceChild(T) };
 }
-
+pub fn Mutable(comptime T: type) type {
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Pointer) {
+        var ret: builtin.Type = type_info;
+        const child_type_info: builtin.Type = @typeInfo(type_info.Pointer.child);
+        ret.Pointer.is_const = false;
+        if (child_type_info == .Pointer) {
+            ret.Pointer.child = Mutable(type_info.Pointer.child);
+        }
+        return @Type(.{ .Pointer = ret.Pointer });
+    }
+    return T;
+}
 pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
     const T: type = @TypeOf(any);
     const type_info: builtin.Type = @typeInfo(T);
