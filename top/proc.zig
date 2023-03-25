@@ -606,7 +606,7 @@ const static = opaque {
 pub noinline fn callMain() noreturn {
     @setAlignStack(16);
     if (builtin.zig.output_mode != .Exe) {
-        return;
+        unreachable;
     }
     const Main: type = @TypeOf(builtin.root.main);
     const main: Main = builtin.root.main;
