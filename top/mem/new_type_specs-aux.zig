@@ -723,38 +723,42 @@ pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
     defer allocator.deinit(&address_space);
-    @setEvalBranchQuota(4000);
+    @setEvalBranchQuota(3000);
 
     comptime var x_p_infos: []const []const attr.Specifier = &.{};
     comptime var x_q_infos: []const []const attr.Technique = &.{};
     comptime var spec_sets: []const []const []const attr.Specifier = &.{};
     comptime var tech_sets: []const []const []const attr.Technique = &.{};
-    inline for (attr.abstract_specs) |abstract_spec| {
-        const x_info: [3][]const attr.Specifier = comptime populateParameters(abstract_spec);
-        const spec_set: []const []const attr.Specifier = comptime populateSpecifiers(x_info[1], x_info[2]);
-        const tech_set: []const []const attr.Technique = comptime populateTechniques(abstract_spec);
-        const q_info: []const attr.Technique = comptime populateUniqueTechniqueKeys(tech_set);
-        x_p_infos = x_p_infos ++ [1][]const attr.Specifier{x_info[0]};
-        x_q_infos = x_q_infos ++ [1][]const attr.Technique{q_info};
-        spec_sets = spec_sets ++ [1][]const []const attr.Specifier{spec_set};
-        tech_sets = tech_sets ++ [1][]const []const attr.Technique{tech_set};
+    inline for (attr.ctn_groups) |abstract_specs| {
+        inline for (abstract_specs) |abstract_spec| {
+            const x_info: [3][]const attr.Specifier = comptime populateParameters(abstract_spec);
+            const spec_set: []const []const attr.Specifier = comptime populateSpecifiers(x_info[1], x_info[2]);
+            const tech_set: []const []const attr.Technique = comptime populateTechniques(abstract_spec);
+            const q_info: []const attr.Technique = comptime populateUniqueTechniqueKeys(tech_set);
+            x_p_infos = x_p_infos ++ [1][]const attr.Specifier{x_info[0]};
+            x_q_infos = x_q_infos ++ [1][]const attr.Technique{q_info};
+            spec_sets = spec_sets ++ [1][]const []const attr.Specifier{spec_set};
+            tech_sets = tech_sets ++ [1][]const []const attr.Technique{tech_set};
+        }
     }
     var array: Array = undefined;
     array.undefineAll();
     try meta.wrap(writeSpecifications(&allocator, &array, x_p_infos, x_q_infos, spec_sets, tech_sets));
     var indices: attr.Implementation.Indices = limits(spec_sets, tech_sets);
     var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, indices.impl));
-    var ctn_details: ContainerDetails = try meta.wrap(ContainerDetails.init(&allocator, indices.ctn));
     indices = .{};
-    for (attr.abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
-        for (spec_set) |specs| {
-            for (tech_set) |techs| {
-                impl_details.writeOne(attr.Implementation.init(abstract_spec, specs, techs, indices));
-                indices.impl +%= 1;
+
+    for (attr.ctn_groups) |abstract_specs| {
+        for (abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
+            for (spec_set) |specs| {
+                for (tech_set) |techs| {
+                    impl_details.writeOne(attr.Implementation.init(abstract_spec, specs, techs, indices));
+                    indices.impl +%= 1;
+                }
+                indices.ctn +%= 1;
             }
-            indices.ctn +%= 1;
+            indices.spec +%= 1;
         }
-        indices.spec +%= 1;
     }
     if (serialise_extra) {
         try serial.serialize(&allocator, gen.auxiliaryFile("options"), x_q_infos);
@@ -765,6 +769,6 @@ pub fn newNewTypeSpecs() !void {
     try serial.serialize(&allocator, gen.auxiliaryFile("ctn_detail"), attr.ctn_details);
     try serial.serialize(&allocator, gen.auxiliaryFile("impl_detail"), impl_details.readAll());
 
-    try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details, ctn_details);
+    try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details);
 }
 pub const main = newNewTypeSpecs;
