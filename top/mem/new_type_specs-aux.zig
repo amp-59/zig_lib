@@ -748,17 +748,15 @@ pub fn newNewTypeSpecs() !void {
     var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, indices.impl));
     indices = .{};
 
-    for (attr.ctn_groups) |abstract_specs| {
-        for (abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
-            for (spec_set) |specs| {
-                for (tech_set) |techs| {
-                    impl_details.writeOne(attr.Implementation.init(abstract_spec, specs, techs, indices));
-                    indices.impl +%= 1;
-                }
-                indices.ctn +%= 1;
+    for (attr.abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
+        for (spec_set) |specs| {
+            for (tech_set) |techs| {
+                impl_details.writeOne(attr.Implementation.init(abstract_spec, specs, techs, indices));
+                indices.impl +%= 1;
             }
-            indices.spec +%= 1;
+            indices.ctn +%= 1;
         }
+        indices.spec +%= 1;
     }
     if (serialise_extra) {
         try serial.serialize(&allocator, gen.auxiliaryFile("options"), x_q_infos);
