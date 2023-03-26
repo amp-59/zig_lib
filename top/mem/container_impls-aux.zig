@@ -17,25 +17,15 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
-//const alloc_fn = @import("./alloc_fn.zig");
+
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
 
-const Allocator = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
-    .options = preset.allocator.options.small,
-    .AddressSpace = AddressSpace,
-});
-const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .logging = preset.address_space.logging.silent,
-    .errors = preset.address_space.errors.noexcept,
-    .options = .{},
-});
+const Allocator = config.Allocator;
+const AddressSpace = config.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
 const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
@@ -157,7 +147,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
                 expr.symbol(tok.count_name),
             );
             var pointer_count_deref: [2]Expr = expr.dereference(expr.call(&pointer_count));
-
             mul_sub_address_count_address.* = if (is_defined) expr.join(&undefined_byte_address) else expr.join(&unstreamed_byte_address);
             mul_sub_address_count_address.* = expr.join(&undefined_byte_address);
             array.writeMany(tok.return_keyword);
@@ -742,7 +731,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
             array.writeFormat(expr.call(&div_count_size));
             return array.writeMany(tok.end_expr);
         },
-
         // return count of defined of type subtract amount of type
         .__len => {
             const len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
@@ -754,7 +742,6 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
             array.writeFormat(expr.call(&sub_len_offset));
             return array.writeMany(tok.end_expr);
         },
-
         // return aligned address offset above amount of type
         .__at => {
             mul_add_address_offset_address.* = expr.join(&aligned_byte_address);
@@ -906,7 +893,6 @@ fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const types.Containe
         expr.impl(allocator, ctn_detail, impl_fn_info),
     );
 }
-
 fn functionBodyUndefinedNotice(ctn_detail: *const types.Container, ctn_fn_info: Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
@@ -917,7 +903,6 @@ fn functionBodyUndefinedNotice(ctn_detail: *const types.Container, ctn_fn_info: 
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
-
 fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
     for (ctn_fn.key) |ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
@@ -950,7 +935,6 @@ fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const types.Cont
     array.writeMany(") ");
     array.writeMany(list.ret);
 }
-
 fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
@@ -1009,15 +993,13 @@ pub fn generateContainers() !void {
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    const details: []types.Container = try serial.deserialize([]types.Container, &allocator, gen.auxiliaryFile("ctn_detail"));
-
+    const details: []const types.Container = attr.getCtnDetails(&allocator);
     var ctn_index: u64 = 0;
     while (ctn_index != details.len) : (ctn_index +%= 1) {
         const save: Allocator.Save = allocator.save();
         defer allocator.restore(save);
-
         writeTypeFunction(&allocator, &array, &details[ctn_index]);
     }
-    gen.appendSourceFile(gen.primaryFile("containers.zig"), array.readAll());
+    gen.appendSourceFile(config.container_path, array.readAll());
 }
 pub const main = generateContainers;
