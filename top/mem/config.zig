@@ -1,6 +1,7 @@
 //! Control various aspects of `memgen`
 const mem = @import("../mem.zig");
 const preset = @import("../preset.zig");
+const builtin = @import("../builtin.zig");
 
 pub const word_size_type: type = u64;
 
@@ -38,16 +39,27 @@ pub const user_defined_length: bool = true;
 
 pub const debug_argument_substitution_match_fail: bool = false;
 
-pub const build_root: [:0]const u8 = @cImport({}).build_root;
-pub const zig_out_dir: [:0]const u8 = build_root ++ "/top/mem/zig-out";
+/// Auxiliary products of memory implementation generator go here. These are
+/// generated source files (src) or serialised data (bin). They exist to speed
+/// subsequent steps and will be replaced whenever missing.
+pub const zig_out_dir: [:0]const u8 = builtin.buildRoot() ++ "/top/mem/zig-out";
 pub const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
 pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
 
+/// Currently all containers are written to this file. Later, each container
+/// will be given its own file.
 pub const container_path: [:0]const u8 = primarySourceFile("container.zig");
-pub const reference_path: [:0]const u8 = primarySourceFile("references.zig");
+
+/// Currently all references are written to this file. Later, each specification
+/// group will be given its own file.
+pub const reference_path: [:0]const u8 = primarySourceFile("reference.zig");
+/// Contains the hand-written part of the container end-product.
 pub const container_template_path: [:0]const u8 = primarySourceFile("container-template.zig");
+/// Contains the hand-written part of the reference end-product.
 pub const reference_template_path: [:0]const u8 = primarySourceFile("reference-template.zig");
+/// Contains the hand-written part of the allocator end-product.
 pub const allocator_template_path: [:0]const u8 = primarySourceFile("allocator-template.zig");
+
 pub const container_kinds_path: [:0]const u8 = auxiliarySourceFile("container_kinds.zig");
 pub const reference_kinds_path: [:0]const u8 = auxiliarySourceFile("reference_kinds.zig");
 pub const spec_sets_path: [:0]const u8 = auxiliaryDataFile("spec_sets");
@@ -59,7 +71,7 @@ pub const impl_detail_path: [:0]const u8 = auxiliaryDataFile("impl_detail");
 pub const ctn_detail_path: [:0]const u8 = auxiliaryDataFile("ctn_detail");
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
-    return if (name[0] != '/') build_root ++ "/top/mem/" ++ name else name;
+    return if (name[0] != '/') builtin.buildRoot() ++ "/top/mem/" ++ name else name;
 }
 pub fn auxiliarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') zig_out_src_dir ++ "/" ++ name else name;
