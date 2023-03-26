@@ -357,7 +357,7 @@ pub inline fn getImplDetails(allocator: *config.Allocator) []const types.Impleme
     return ret;
 }
 pub inline fn getCtnDetails(allocator: *config.Allocator) []const types.Container {
-    var ret: []types.Implementation = undefined;
+    var ret: []types.Container = undefined;
     deserializeCtnDetail(allocator, &ret);
     return ret;
 }
