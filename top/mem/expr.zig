@@ -41,13 +41,12 @@ pub const Expr = struct {
     fn more(expr: Expr) []Expr {
         return @intToPtr([*]Expr, expr.data1)[0 .. expr.data2 & mask];
     }
-    pub fn @"type"(expr: Expr) *const gen.TypeDescrFormat {
-        return @intToPtr(*const gen.TypeDescrFormat, expr.data1);
+    pub fn @"type"(expr: Expr) *const types.TypeDescr {
+        return @intToPtr(*const types.TypeDescr, expr.data1);
     }
     pub fn tag(expr: Expr) ExprTag {
         return @intToEnum(ExprTag, expr.data2 >> 56);
     }
-
     fn formatLengthCallMember(format: Expr) u64 {
         const fn_args: []const Expr = format.more()[1..];
         var len: u64 = 0;
