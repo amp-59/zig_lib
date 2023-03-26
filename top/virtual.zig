@@ -11,10 +11,16 @@ pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 
+pub const CompoundSetSpec = struct {
+    elements: u16,
+    tag_type: type,
+};
 // Maybe make generic on Endian.
 // Right now it is difficult to get Zig vectors to produce consistent results,
 // so this is not an option.
-pub fn DiscreteBitSet(comptime bits: u16) type {
+pub fn DiscreteBitSet(comptime spec: CompoundSetSpec) type {
+    const tag_bit_size: u16 = @bitSizeOf(spec.tag_type);
+    const bits: u16 = spec.elements * tag_bit_size;
     const Data: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(Data);
     const Array = extern struct {
@@ -61,12 +67,12 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
     };
     return if (data_info == .Array) Array else Int;
 }
-pub fn ThreadSafeSet(comptime elements: u16) type {
+pub fn ThreadSafeSet(comptime spec: CompoundSetSpec) type {
     return (extern struct {
-        bytes: Data = .{0} ** elements,
+        bytes: Data = .{0} ** spec.elements,
         pub const SafeSet: type = @This();
-        const Data: type = [elements]u8;
-        const Index: type = meta.LeastRealBitSize(elements);
+        const Data: type = [spec.elements]u8;
+        const Index: type = meta.LeastRealBitSize(spec.elements);
         pub fn get(safe_set: SafeSet, index: Index) bool {
             return safe_set.bytes[index] == 255;
         }
@@ -95,6 +101,24 @@ pub fn ThreadSafeSet(comptime elements: u16) type {
                 \\sete          %[ret]
                 : [ret] "=r" (-> bool),
                 : [ptr] "p" (&safe_set.bytes[index]),
+                : "rax", "rdx", "memory"
+            );
+        }
+        pub fn atomicTransform(
+            safe_set: *SafeSet,
+            index: Index,
+            comptime if_state: spec.tag_type,
+            comptime to_state: spec.tag_type,
+        ) bool {
+            return asm volatile (
+                \\mov           %[if_state],    %al
+                \\mov           %[to_state],    %dl
+                \\lock cmpxchg  %dl,            %[ptr]
+                \\sete          %[ret]
+                : [ret] "=r" (-> bool),
+                : [ptr] "p" (&safe_set.bytes[index]),
+                  [if_state] "i" (if_state),
+                  [to_state] "i" (to_state),
                 : "rax", "rdx", "memory"
             );
         }
@@ -227,6 +251,7 @@ pub const DiscreteMultiArena = struct {
     label: ?[]const u8 = null,
     list: []const Arena,
     subspace: ?[]const meta.Generic = null,
+    tag_type: type = enum(u1) { set, unset },
 
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
@@ -277,10 +302,16 @@ pub const DiscreteMultiArena = struct {
             thread_safe_state = super_arena.options.thread_safe;
         }
         if (thread_safe_state) {
-            const T: type = ThreadSafeSet(arena_index +% 1);
+            const T: type = ThreadSafeSet(.{
+                .elements = arena_index +% 1,
+                .tag_type = multi_arena.tag_type,
+            });
             fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         } else {
-            const T: type = DiscreteBitSet(arena_index +% 1);
+            const T: type = DiscreteBitSet(.{
+                .elements = arena_index +% 1,
+                .tag_type = multi_arena.tag_type,
+            });
             fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         }
         if (fields.len == 1) {
@@ -380,6 +411,7 @@ pub const RegularMultiArena = struct {
     divisions: u64 = 64,
     alignment: u64 = 4096,
     subspace: ?[]const meta.Generic = null,
+    tag_type: type = enum(u1) { unset, set },
 
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
@@ -390,11 +422,18 @@ pub const RegularMultiArena = struct {
         return meta.LeastRealBitSize(multi_arena.divisions);
     }
     fn Implementation(comptime multi_arena: MultiArena) type {
-        const extra: u16 = @boolToInt(multi_arena.options.require_map);
-        if (multi_arena.options.thread_safe) {
-            return ThreadSafeSet(multi_arena.divisions + extra);
+        if (multi_arena.options.thread_safe or
+            @bitSizeOf(multi_arena.tag_type) == 8)
+        {
+            return ThreadSafeSet(.{
+                .elements = multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
+                .tag_type = multi_arena.tag_type,
+            });
         } else {
-            return DiscreteBitSet(multi_arena.divisions + extra);
+            return DiscreteBitSet(.{
+                .elements = multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
+                .tag_type = multi_arena.tag_type,
+            });
         }
     }
     pub inline fn addressable_byte_address(comptime multi_arena: MultiArena) u64 {
@@ -669,6 +708,15 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
             return spec.options.thread_safe and address_space.impl.atomicSet(index);
         }
+        pub fn atomicTransform(
+            address_space: *RegularAddressSpace,
+            index: Index,
+            comptime if_state: spec.tag_type,
+            comptime to_state: spec.tag_type,
+        ) bool {
+            return spec.options.thread_safe and
+                address_space.impl.atomicTransform(index, if_state, to_state);
+        }
         pub fn low(index: Index) u64 {
             return spec.low(index);
         }
@@ -720,6 +768,15 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         }
         pub fn atomicSet(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             return spec.list[index].options.thread_safe and address_space.impl.atomicSet(index);
+        }
+        pub fn atomicTransform(
+            address_space: *DiscreteAddressSpace,
+            comptime index: Index,
+            comptime if_state: spec.tag_type,
+            comptime to_state: spec.tag_type,
+        ) bool {
+            return spec.list[index].options.thread_safe and
+                address_space.impl.atomicTransform(index, if_state, to_state);
         }
         pub fn low(comptime index: Index) u64 {
             return spec.low(index);
