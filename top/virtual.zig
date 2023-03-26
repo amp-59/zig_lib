@@ -61,12 +61,12 @@ pub fn DiscreteBitSet(comptime bits: u16) type {
     };
     return if (data_info == .Array) Array else Int;
 }
-pub fn ThreadSafeSet(comptime divisions: u16) type {
+pub fn ThreadSafeSet(comptime elements: u16) type {
     return (extern struct {
-        bytes: Data = .{0} ** divisions,
+        bytes: Data = .{0} ** elements,
         pub const SafeSet: type = @This();
-        const Data: type = [divisions]u8;
-        const Index: type = meta.LeastRealBitSize(divisions);
+        const Data: type = [elements]u8;
+        const Index: type = meta.LeastRealBitSize(elements);
         pub fn get(safe_set: SafeSet, index: Index) bool {
             return safe_set.bytes[index] == 255;
         }
