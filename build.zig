@@ -26,7 +26,8 @@ const fast_spec: build.TargetSpec =     .{ .mode = .ReleaseFast,    .mods = modu
 const parser_spec_a: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = lib_parser_macros };
 const parser_spec_b: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = std_parser_macros };
 const build_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = modules, .deps = deps };
-const gen_spec: build.TargetSpec =      .{ .fmt = true, .run = false, .build = false };
+const gen_spec: build.TargetSpec =      .{ .fmt = true, .run = false, .build = null };
+const obj_spec: build.TargetSpec =      .{ .mode = .ReleaseSmall, .build = .obj, .run = false, .fmt = false };
 
 pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const examples: *build.Group            = builder.addGroup(allocator,               "examples");
@@ -61,27 +62,44 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,       "generate_build",       "top/build/generate_build.zig");
     const mg_aux: *build.Group              = builder.addGroup(allocator,               "memgen_auxiliary");
     const mg_touch: *build.Target           = mg_aux.addTarget(small_spec, allocator,   "mg_touch",             "top/mem/touch-aux.zig");
-    const mg_new_type_specs: *build.Target  = mg_aux.addTarget(small_spec, allocator,   "mg_new_type_specs",    "top/mem/new_type_specs-aux.zig");
-    const mg_new_specs: *build.Target       = mg_aux.addTarget(small_spec, allocator,   "mg_new_specs",         "top/mem/new_specs-aux.zig");
-    const mg_reference_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
-    const mg_container_impls: *build.Target = mg_aux.addTarget(small_spec, allocator,   "mg_container_impls",   "top/mem/container_impls-aux.zig");
-    const mg_container_kinds: *build.Target = mg_aux.addTarget(debug_spec, allocator,   "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
-    const mg: *build.Group                      = builder.addGroup(allocator,           "memgen");
-    const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_references",  "top/mem/references.zig");
-    const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,     "generate_containers",  "top/mem/containers.zig");
-    const memgen_test: *build.Target            = mg.addTarget(debug_spec, allocator,   "memgen_test",          "top/mem/memgen-test.zig");
+
+    const mg_serial_specs: *build.Target            = mg_aux.addTarget(obj_spec, allocator, "mg_serial_specs",          "top/mem/serial_specs.zig");
+    const mg_serial_techs: *build.Target            = mg_aux.addTarget(obj_spec, allocator, "mg_serial_techs",          "top/mem/serial_techs.zig");
+    const mg_serial_params: *build.Target           = mg_aux.addTarget(obj_spec, allocator, "mg_serial_params",         "top/mem/serial_params.zig");
+    const mg_serial_options: *build.Target          = mg_aux.addTarget(obj_spec, allocator, "mg_serial_options",        "top/mem/serial_options.zig");
+    const mg_serial_abstract_specs: *build.Target   = mg_aux.addTarget(obj_spec, allocator, "mg_serial_abstract_specs", "top/mem/serial_abstract_specs.zig");
+    const mg_serial_impl_detail: *build.Target      = mg_aux.addTarget(obj_spec, allocator, "mg_serial_impl_detail",    "top/mem/serial_impl_detail.zig");
+    const mg_serial_ctn_detail: *build.Target       = mg_aux.addTarget(obj_spec, allocator, "mg_serial_ctn_detail",     "top/mem/serial_ctn_detail.zig");
+    const mg_new_type_specs: *build.Target      = mg_aux.addTarget(debug_spec, allocator,   "mg_new_type_specs",    "top/mem/new_type_specs-aux.zig");
+    const mg_reference_impls: *build.Target     = mg_aux.addTarget(small_spec, allocator,   "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
+    const mg_container_impls: *build.Target     = mg_aux.addTarget(small_spec, allocator,   "mg_container_impls",   "top/mem/container_impls-aux.zig");
+    const mg_container_kinds: *build.Target     = mg_aux.addTarget(debug_spec, allocator,   "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
+    const mg: *build.Group                      = builder.addGroup(allocator,               "memgen");
+    const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_references",  "top/mem/references.zig");
+    const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_containers",  "top/mem/containers.zig");
 
     build_test.dependOnRun(allocator,           generate_build);
+
     mg_new_type_specs.dependOnRun(allocator,    mg_touch);
-    mg_reference_impls.dependOnRun(allocator,   mg_touch);
+    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_specs);
+    mg_new_type_specs.addFile(allocator,        mg_serial_specs.binPath());
+    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_techs);
+    mg_new_type_specs.addFile(allocator,        mg_serial_techs.binPath());
+    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_impl_detail);
+    mg_new_type_specs.addFile(allocator,        mg_serial_impl_detail.binPath());
+    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_ctn_detail);
+    mg_new_type_specs.addFile(allocator,        mg_serial_ctn_detail.binPath());
+
+    mg_reference_impls.dependOnRun(allocator,   mg_new_type_specs);
+    mg_reference_impls.addFile(allocator,       mg_serial_impl_detail.binPath());
+
     mg_container_kinds.dependOnRun(allocator,   mg_touch);
-    mg_new_specs.dependOnRun(allocator,         mg_new_type_specs);
     mg_container_impls.dependOnRun(allocator,   mg_new_type_specs);
     mg_container_impls.dependOnRun(allocator,   mg_container_kinds);
-    mg_reference_impls.dependOnRun(allocator,   mg_new_type_specs);
-    generate_containers.dependOnRun(allocator,  mg_reference_impls);
+    mg_container_impls.addFile(allocator,       mg_serial_ctn_detail.binPath());
+
+    generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
-    memgen_test.dependOnRun(allocator,          mg_new_type_specs);
 
     generate_references.fmt_cmd.ast_check = false;
     generate_containers.fmt_cmd.ast_check = false;
@@ -91,6 +109,9 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     build_test.run_cmd.addRunArgument(builder.cacheDirPath());
     build_test.run_cmd.addRunArgument(builder.globalCacheDirPath());
 
+    _ = mg_serial_params;
+    _ = mg_serial_options;
+    _ = mg_serial_abstract_specs;
     _ = readdir;
     _ = dynamic;
     _ = mca;
