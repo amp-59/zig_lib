@@ -13,6 +13,7 @@ const testing = gen.testing;
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const attr = @import("./attr.zig");
+const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
@@ -39,7 +40,7 @@ const Array = Allocator.StructuredVector(u8);
 const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
 
-fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container, ctn_fn_info: Fn) void {
+fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container, ctn_fn_info: Fn) void {
     if (Expr.debug.show_expressions) {
         Expr.debug.showFunction(ctn_fn_info);
     }
@@ -898,7 +899,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const at
         },
     }
 }
-fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const attr.Container, impl_fn_info: *const impl_fn.Fn) [3]Expr {
+fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const types.Container, impl_fn_info: *const impl_fn.Fn) [3]Expr {
     // Using array_impl in expr.impl would be better.
     return expr.fieldAccess(
         expr.symbol(tok.array_name),
@@ -906,7 +907,7 @@ fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const attr.Container
     );
 }
 
-fn functionBodyUndefinedNotice(ctn_detail: *const attr.Container, ctn_fn_info: Fn) void {
+fn functionBodyUndefinedNotice(ctn_detail: *const types.Container, ctn_fn_info: Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     array.writeMany("function body undefined: ");
@@ -917,7 +918,7 @@ fn functionBodyUndefinedNotice(ctn_detail: *const attr.Container, ctn_fn_info: F
     builtin.debug.write(array.readAll());
 }
 
-fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container) void {
+fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
     for (ctn_fn.key) |ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
@@ -936,7 +937,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const attr.
         }
     }
 }
-fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const attr.Container) void {
+fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const types.Container) void {
     const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
     if (ctn_fn.kind.helper(ctn_fn_info)) {
         array.writeMany("fn ");
@@ -950,7 +951,7 @@ fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const attr.Conta
     array.writeMany(list.ret);
 }
 
-fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container) void {
+fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
     const const_decl: *expr.ConstDecl = allocator.duplicateIrreversible(expr.ConstDecl, .{
@@ -991,7 +992,7 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const at
     };
     array.writeFormat(const_decl.*);
 }
-fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const attr.Container) void {
+fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
     array.writeMany("pub fn ");
     ctn_detail.formatWrite(array);
     array.writeMany("(comptime " ++ tok.spec_name ++ ":");
@@ -1008,7 +1009,7 @@ pub fn generateContainers() !void {
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    const details: []attr.Container = try serial.deserialize([]attr.Container, &allocator, gen.auxiliaryFile("ctn_detail"));
+    const details: []types.Container = try serial.deserialize([]types.Container, &allocator, gen.auxiliaryFile("ctn_detail"));
 
     var ctn_index: u64 = 0;
     while (ctn_index != details.len) : (ctn_index +%= 1) {
