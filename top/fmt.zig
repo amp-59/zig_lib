@@ -1,9 +1,10 @@
 const lit = @import("./lit.zig");
+const zig = @import("./zig.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const time = @import("./time.zig");
-const parse = @import("./parse.zig");
+const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 
 const _render = @import("./render.zig");
@@ -1196,29 +1197,44 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
     });
 }
 
-const ListFormatSpec = struct {
+pub const ListFormatSpec = struct {
+    item: type,
+    transform: ?meta.Generic = null,
     separator: []const u8 = ", ",
     omit_trailing_separator: bool = true,
+    reinterpret: mem.ReinterpretSpec = preset.reinterpret.fmt,
 };
 pub fn ListFormat(comptime spec: ListFormatSpec) type {
     return (struct {
-        values: []const []const u8,
+        values: []const spec.item,
 
         const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
             if (spec.omit_trailing_separator) {
                 if (format.values.len != 0) {
-                    array.writeMany(format.values[0]);
+                    if (spec.transform) |transform| {
+                        array.writeFormat(meta.typeCast(transform)(format.values[0]));
+                    } else {
+                        array.writeMany(format.values[0]);
+                    }
                 }
                 if (format.values.len != 1) {
                     for (format.values[1..]) |value| {
-                        array.writeMany(spec.separator);
-                        array.writeMany(value);
+                        array.writeAny(spec.reinterpret, spec.separator);
+                        if (spec.transform) |transform| {
+                            array.writeFormat(meta.typeCast(transform)(value));
+                        } else {
+                            array.writeMany(value);
+                        }
                     }
                 }
             } else {
                 for (format.values) |value| {
-                    array.writeMany(value);
+                    if (spec.transform) |transform| {
+                        array.writeFormat(meta.typeCast(transform)(value));
+                    } else {
+                        array.writeMany(value);
+                    }
                     array.writeMany(spec.separator);
                 }
             }
@@ -1227,18 +1243,31 @@ pub fn ListFormat(comptime spec: ListFormatSpec) type {
             var len: u64 = 0;
             if (spec.omit_trailing_separator) {
                 if (format.values.len != 0) {
-                    len +%= format.values[0].len;
+                    len +%= mem.ReinterpretSpec.lengthAny(spec.reinterpret, spec.separator);
+                    if (spec.transform) |transform| {
+                        len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(format.values[0]));
+                    } else {
+                        len +%= format.values.len;
+                    }
                 }
                 if (format.values.len != 1) {
                     for (format.values[1..]) |value| {
-                        len +%= spec.separator.len;
-                        len +%= value.len;
+                        len +%= mem.ReinterpretSpec.lengthAny(spec.reinterpret, spec.separator);
+                        if (spec.transform) |transform| {
+                            len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(value));
+                        } else {
+                            len +%= format.value.len;
+                        }
                     }
                 }
             } else {
                 for (format.values) |value| {
-                    len +%= value.len;
-                    len +%= spec.separator.len;
+                    if (spec.transform) |transform| {
+                        len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(value));
+                    } else {
+                        len +%= format.value.len;
+                    }
+                    len +%= mem.ReinterpretSpec.lengthAny(spec.reinterpret, spec.separator);
                 }
             }
             return len;
@@ -1310,7 +1339,7 @@ pub const IdentifierFormat = struct {
     value: []const u8,
     const Format: type = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        if (parse.isValidId(format.value)) {
+        if (isValidId(format.value)) {
             array.writeMany(format.value);
         } else {
             array.writeMany("@\"");
@@ -1320,7 +1349,7 @@ pub const IdentifierFormat = struct {
     }
     pub fn formatLength(format: Format) usize {
         var len: usize = 0;
-        if (parse.isValidId(format.value)) {
+        if (isValidId(format.value)) {
             len +%= format.value.len;
         } else {
             len +%= 2;
@@ -1398,6 +1427,24 @@ pub fn typeName(comptime T: type) []const u8 {
         },
         else => return type_name,
     };
+}
+pub fn isValidId(values: []const u8) bool {
+    if (values.len == 0) return false;
+    if (mem.testEqualMany(u8, "_", values)) {
+        return false;
+    }
+    for (values, 0..) |c, i| {
+        switch (c) {
+            '_', 'a'...'z', 'A'...'Z' => {},
+            '0'...'9' => if (i == 0) {
+                return false;
+            },
+            else => {
+                return false;
+            },
+        }
+    }
+    return zig.Token.getKeyword(values) == null;
 }
 pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
     var len: u64 = 0;
