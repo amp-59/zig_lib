@@ -134,7 +134,11 @@ pub const Builder = struct {
         comptime pathname: [:0]const u8,
     ) *Target {
         const emit_bin: bool = builder.options.emit_bin;
-        const bin_path: [:0]const u8 = "zig-out/bin/" ++ name;
+        const bin_path: [:0]const u8 = if (spec.build) |kind| switch (kind) {
+            .exe => "zig-out/bin/" ++ name,
+            .obj => "zig-out/bin/" ++ name ++ ".o",
+            .lib => "zig-out/bin/" ++ name ++ ".so",
+        } else "";
         const emit_asm: bool = builder.options.emit_asm;
         const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
         const mode: builtin.Mode = builder.options.mode orelse spec.mode;
@@ -196,14 +200,7 @@ pub const Builder = struct {
     fn buildLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const BuildCommand = target.build_cmd;
         var len: u64 = 4;
-        switch (cmd.kind) {
-            .lib, .exe, .obj => {
-                len += 6 + @tagName(cmd.kind).len + 1;
-            },
-            .run => {
-                len += @tagName(cmd.kind).len + 1;
-            },
-        }
+        len +%= 6 +% @tagName(cmd.kind).len +% 1;
         len +%= Macro.formatLength(builder.zigExePathMacro());
         len +%= Macro.formatLength(builder.buildRootPathMacro());
         len +%= Macro.formatLength(builder.cacheDirPathMacro());
@@ -216,18 +213,9 @@ pub const Builder = struct {
     }
     fn buildWrite(builder: *Builder, target: *const Target, array: anytype) void {
         const cmd: *const BuildCommand = target.build_cmd;
-        array.writeMany("zig\x00");
-        switch (cmd.kind) {
-            .lib, .exe, .obj => {
-                array.writeMany("build-");
-                array.writeMany(@tagName(cmd.kind));
-                array.writeOne('\x00');
-            },
-            .run => {
-                array.writeMany(@tagName(cmd.kind));
-                array.writeOne('\x00');
-            },
-        }
+        array.writeMany("zig\x00build-");
+        array.writeMany(@tagName(cmd.kind));
+        array.writeOne('\x00');
         array.writeFormat(builder.zigExePathMacro());
         array.writeFormat(builder.buildRootPathMacro());
         array.writeFormat(builder.cacheDirPathMacro());
@@ -262,10 +250,10 @@ pub const Builder = struct {
             builder.depth +%= 1;
             try invokeDependencies(builder, target);
             var array: ArgsString = undefined;
-            var build_time: time.TimeSpec = undefined;
-            var build_args: ArgsPointers = undefined;
             array.undefineAll();
+            var build_args: ArgsPointers = undefined;
             build_args.undefineAll();
+            var build_time: time.TimeSpec = undefined;
             const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
             const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
             builder.buildWrite(target, &array);
@@ -274,7 +262,7 @@ pub const Builder = struct {
             const new_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
             builder.depth -%= 1;
             if (builder.depth <= max_relevant_depth) {
-                debug.buildNotice(target.name, bin_path, build_time, old_size, new_size);
+                debug.buildNotice(target.name, build_time, old_size, new_size);
             }
             if (rc != 0) {
                 builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
@@ -287,10 +275,10 @@ pub const Builder = struct {
             target.do(.fmt);
             try invokeDependencies(builder, target);
             var array: ArgsString = undefined;
-            var format_args: ArgsPointers = undefined;
-            var format_time: time.TimeSpec = undefined;
             array.undefineAll();
+            var format_args: ArgsPointers = undefined;
             format_args.undefineAll();
+            var format_time: time.TimeSpec = undefined;
             builder.formatWrite(target, &array);
             makeArgs(&array, &format_args);
             const rc: u8 = try builder.exec(format_args.referAllDefined(), &format_time);
@@ -307,9 +295,9 @@ pub const Builder = struct {
         if (target.have(.run) and target.have(.build)) {
             target.do(.run);
             try build(builder, target);
-            var run_time: time.TimeSpec = undefined;
             var run_args: ArgsPointers = undefined;
             run_args.undefineAll();
+            var run_time: time.TimeSpec = undefined;
             makeArgs(&target.run_cmd.array, &run_args);
             const rc: u8 = try builder.system(run_args.referAllDefined(), &run_time);
             if (rc != 0 or builder.depth <= max_relevant_depth) {
@@ -332,7 +320,7 @@ pub const Builder = struct {
     }
 };
 pub const TargetSpec = struct {
-    build: bool = true,
+    build: ?OutputMode = .exe,
     run: bool = true,
     fmt: bool = false,
     mode: builtin.Mode = .Debug,
@@ -347,7 +335,7 @@ fn join(
     name: [:0]const u8,
     pathname: [:0]const u8,
     spec_fmt: bool,
-    spec_build: bool,
+    spec_build: ?OutputMode,
     spec_run: bool,
     mode: builtin.Mode,
     emit_bin: bool,
@@ -364,17 +352,17 @@ fn join(
         .deps = Target.DependencyList.init(allocator),
     });
     if (spec_fmt) ret.addFormat(allocator, .{});
-    if (spec_build) ret.addBuild(allocator, .{
+    if (spec_build) |kind| ret.addBuild(allocator, .{
         .main_pkg_path = builder.paths.build_root,
         .emit_bin = if (emit_bin) .{ .yes = builder.path(bin_path) } else null,
         .emit_asm = if (emit_asm) .{ .yes = builder.path(asm_path) } else null,
         .name = name,
-        .kind = .exe,
+        .kind = kind,
         .omit_frame_pointer = false,
         .single_threaded = true,
         .static = true,
         .enable_cache = true,
-        .gc_sections = true,
+        .gc_sections = kind == .exe,
         .function_sections = true,
         .compiler_rt = false,
         .strip = builder.options.strip,
@@ -388,7 +376,7 @@ fn join(
     if (spec_run) ret.addRun(allocator, .{});
     return ret;
 }
-pub const OutputMode = enum { exe, lib, obj, run };
+pub const OutputMode = enum { exe, lib, obj };
 
 pub const GroupList = GenericList(Group);
 pub const Group = struct {
@@ -403,7 +391,11 @@ pub const Group = struct {
         comptime pathname: [:0]const u8,
     ) *Target {
         const emit_bin: bool = group.builder.options.emit_bin;
-        const bin_path: [:0]const u8 = "zig-out/bin/" ++ name;
+        const bin_path: [:0]const u8 = if (spec.build) |kind| switch (kind) {
+            .exe => "zig-out/bin/" ++ name,
+            .obj => "zig-out/bin/" ++ name ++ ".o",
+            .lib => "zig-out/bin/" ++ name ++ ".so",
+        } else "";
         const emit_asm: bool = group.builder.options.emit_asm;
         const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
@@ -433,11 +425,11 @@ pub const Target = struct {
         run,
         fn have(comptime tag: Tag) u8 {
             const shift_amt: u8 = @enumToInt(tag);
-            return 1 << (2 * shift_amt);
+            return 1 << (2 *% shift_amt);
         }
         fn done(comptime tag: Tag) u8 {
             const shift_amt: u8 = @enumToInt(tag);
-            return 1 << (2 * shift_amt + 1);
+            return 1 << (2 *% shift_amt +% 1);
         }
     };
     inline fn give(target: *Target, comptime tag: Tag) void {
@@ -458,33 +450,28 @@ pub const Target = struct {
     inline fn done(target: *Target, comptime tag: Tag) bool {
         return (target.flags & comptime Tag.done(tag)) != 0;
     }
-    inline fn assertHave(target: *Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
+    inline fn assertHave(target: *const Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
         mach.assert(target.have(tag), src.fn_name ++ ": missing " ++ @tagName(tag));
     }
-    inline fn assertDone(target: *Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
+    inline fn assertDone(target: *const Target, comptime tag: Tag, comptime src: builtin.SourceLocation) void {
         mach.assert(target.have(tag), src.fn_name ++ ": outstanding " ++ @tagName(tag));
     }
     const DependencyList = GenericList(Dependency);
     /// All dependencies are build dependencies
     pub const Dependency = struct { tag: Tag, target: *Target };
-    fn getAsmPath(target: *const Target) Path {
-        target.assertHave(.build, @src());
+    pub fn asmPath(target: *const Target) Path {
         return target.build_cmd.emit_asm.?.yes.?;
     }
-    fn getBinPath(target: *const Target) Path {
-        target.assertHave(.build, @src());
+    pub fn binPath(target: *const Target) Path {
         return target.build_cmd.emit_bin.?.yes.?;
     }
-    fn getAnalysisPath(target: *const Target) Path {
-        target.assertHave(.build, @src());
+    pub fn analysisPath(target: *const Target) Path {
         return target.build_cmd.emit_analysis.?.yes.?;
     }
-    fn getLlvmIrPath(target: *const Target) Path {
-        target.assertHave(.build, @src());
+    pub fn llvmIrPath(target: *const Target) Path {
         return target.build_cmd.emit_llvm_ir.?.yes.?;
     }
-    fn getLlvmBcPath(target: *const Target) Path {
-        target.assertHave(.build, @src());
+    pub fn llvmBcPath(target: *const Target) Path {
         return target.build_cmd.emit_llvm_bc.?.yes.?;
     }
     pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
@@ -501,18 +488,31 @@ pub const Target = struct {
         target.run_cmd.array.writeOne(0);
         target.give(.run);
     }
-    pub fn addFiles(target: *Target, allocator: *Allocator, files: []const []const u8) void {
-        _ = allocator;
-        target.build_cmd.files = .{ .paths = files };
+    pub fn addFile(target: *Target, allocator: *Allocator, path: Path) void {
+        if (target.build_cmd.files) |*files| {
+            files.paths[files.len] = path;
+            files.len +%= 1;
+        } else {
+            target.build_cmd.files = .{ .paths = allocator.allocateIrreversible(Path, 128) };
+            target.addFile(allocator, path);
+        }
+    }
+    pub fn addFiles(target: *Target, allocator: *Allocator, paths: []const Path) void {
+        for (paths) |path| {
+            target.addFile(allocator, path);
+        }
     }
     pub fn dependOnBuild(target: *Target, allocator: *Allocator, dependency: *Target) void {
-        return target.deps.save(allocator, .{ .target = dependency, .tag = .build });
+        target.deps.save(allocator, .{ .target = dependency, .tag = .build });
     }
     pub fn dependOnRun(target: *Target, allocator: *Allocator, dependency: *Target) void {
-        return target.deps.save(allocator, .{ .target = dependency, .tag = .run });
+        target.deps.save(allocator, .{ .target = dependency, .tag = .run });
     }
     pub fn dependOnFormat(target: *Target, allocator: *Allocator, dependency: *Target) void {
-        return target.deps.save(allocator, .{ .target = dependency, .tag = .fmt });
+        target.deps.save(allocator, .{ .target = dependency, .tag = .fmt });
+    }
+    pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
+        target.deps.save(allocator, .{ .target = dependency, .tag = .build });
     }
     pub fn dependOn(target: *Target, allocator: *Allocator, dependency: *Dependency) void {
         target.deps.create(allocator, .{ .target = dependency, .tag = .fmt });
@@ -722,18 +722,19 @@ pub const Path = struct {
     }
 };
 pub const Files = struct {
-    paths: []const []const u8,
+    paths: []Path,
+    len: u64 = 0,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        for (format.paths) |name| {
-            array.writeMany(name);
+        for (format.paths[0..format.len]) |path| {
+            array.writeFormat(path);
             array.writeOne(0);
         }
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        for (format.paths) |name| {
-            len +%= name.len;
+        for (format.paths[0..format.len]) |path| {
+            len +%= path.formatLength();
             len +%= 1;
         }
         return len;
@@ -747,26 +748,16 @@ pub fn GenericList(comptime T: type) type {
         pos: u64 = 0,
         const List = @This();
         const Node = struct { this: *T, next: *Node };
+
         fn create(list: *List, allocator: *Allocator, value: T) *T {
             list.tail();
             const ret: *T = allocator.duplicateIrreversible(T, value);
-            const node: *Node = allocator.createIrreversible(Node);
-            list.node.next = node;
-            list.node.this = ret;
-            list.node = node;
-            list.pos +%= 1;
-            list.len +%= 1;
+            add(list, allocator, ret);
             return ret;
         }
         fn save(list: *List, allocator: *Allocator, value: T) void {
             list.tail();
-            const saved: *T = allocator.duplicateIrreversible(T, value);
-            const node: *Node = allocator.createIrreversible(Node);
-            list.node.next = node;
-            list.node.this = saved;
-            list.node = node;
-            list.pos +%= 1;
-            list.len +%= 1;
+            add(list, allocator, allocator.duplicateIrreversible(T, value));
         }
         fn add(list: *List, allocator: *Allocator, value: *T) void {
             list.tail();
@@ -804,6 +795,7 @@ pub fn GenericList(comptime T: type) type {
         }
     };
 }
+
 const debug = struct {
     const about_run_s: [:0]const u8 = builtin.debug.about("run");
     const about_build_s: [:0]const u8 = builtin.debug.about("build");
@@ -812,12 +804,8 @@ const debug = struct {
         .dec_style = "\x1b[92m-",
         .inc_style = "\x1b[91m+",
     });
-    fn buildNotice(name: [:0]const u8, bin_path: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
+    fn buildNotice(name: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
         var array: mem.StaticString(4096) = undefined;
-        array.undefineAll();
-        array.writeMany(bin_path);
-        array.writeOne(0);
-        array.undefine(1);
         array.undefineAll();
         array.writeMany(about_build_s);
         array.writeMany(name);
