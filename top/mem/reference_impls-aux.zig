@@ -12,6 +12,7 @@ const builtin = gen.builtin;
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const attr = @import("./attr.zig");
+const types = @import("./types.zig");
 const config = @import("./config.zig");
 const impl_fn = @import("./impl_fn.zig");
 
@@ -37,7 +38,7 @@ const Info = struct {
     }
 };
 
-fn resizeInitializer(allocator: *Allocator, impl_variant: *const attr.Implementation) *[3]Expr {
+fn resizeInitializer(allocator: *Allocator, impl_variant: *const types.Implementation) *[3]Expr {
     var buf: []Expr = allocator.allocateIrreversible(Expr, 8);
     var len: u64 = 0;
     const andn_undefined_65535: *[3]Expr = dupe(allocator, expr.andn(
@@ -97,7 +98,7 @@ fn resizeInitializer(allocator: *Allocator, impl_variant: *const attr.Implementa
 
     return dupe(allocator, expr.initializer(expr.list(buf[0..len])));
 }
-fn constructInitializer(allocator: *Allocator, impl_variant: *const attr.Implementation, impl_fn_info: Fn) *[3]Expr {
+fn constructInitializer(allocator: *Allocator, impl_variant: *const types.Implementation, impl_fn_info: Fn) *[3]Expr {
     const source_aligned_byte_address_name: [:0]const u8 = blk: {
         if (impl_fn_info == .allocate) {
             break :blk tok.source_aligned_byte_address_name;
@@ -272,7 +273,7 @@ fn constructInitializer(allocator: *Allocator, impl_variant: *const attr.Impleme
     }
     return dupe(allocator, expr.initializer(expr.list(buf[0..len])));
 }
-fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const attr.Implementation, impl_fn_info: Fn, info: *Info) void {
+fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation, impl_fn_info: Fn, info: *Info) void {
     const allocated_byte_address_fn_info: *const Fn = impl_fn.get(.allocated_byte_address);
     const aligned_byte_address_fn_info: *const Fn = impl_fn.get(.aligned_byte_address);
     const unstreamed_byte_address_fn_info: *const Fn = impl_fn.get(.unstreamed_byte_address);
@@ -840,7 +841,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
     }
 }
 
-fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const attr.Implementation) void {
+fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation) void {
     for (impl_fn.key) |impl_fn_info| {
         if (impl_fn_info == .deallocate) {
             continue;
@@ -856,7 +857,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const att
         writeSimpleRedecl(array, &impl_fn_info, &info);
     }
 }
-fn writeDeclarations(array: *Array, impl_variant: *const attr.Implementation) void {
+fn writeDeclarations(array: *Array, impl_variant: *const types.Implementation) void {
     const no_type_expr: Expr = expr.scrub(1);
     var const_decl: [7]Expr = expr.constDecl(
         expr.symbol(tok.impl_type_name),
@@ -905,7 +906,7 @@ fn writeSimpleRedecl(array: *Array, impl_fn_info: *const Fn, info: *Info) void {
         info.alias = null;
     }
 }
-inline fn writeComptimeField(array: *Array, impl_variant: *const attr.Implementation, impl_fn_info: Fn) void {
+inline fn writeComptimeField(array: *Array, impl_variant: *const types.Implementation, impl_fn_info: Fn) void {
     const args_list: gen.ArgList = impl_fn_info.argList(impl_variant, .Parameter);
     if (args_list.comptimeField()) {
         array.writeMany(tok.comptime_keyword);
@@ -919,7 +920,7 @@ inline fn writeComptimeField(array: *Array, impl_variant: *const attr.Implementa
         array.writeMany(tok.end_elem);
     }
 }
-inline fn writeFields(array: *Array, impl_variant: *const attr.Implementation) void {
+inline fn writeFields(array: *Array, impl_variant: *const types.Implementation) void {
     writeComptimeField(array, impl_variant, Fn.allocated_byte_address);
     writeComptimeField(array, impl_variant, Fn.aligned_byte_address);
     writeComptimeField(array, impl_variant, Fn.unallocated_byte_address);
@@ -952,7 +953,7 @@ inline fn writeFields(array: *Array, impl_variant: *const attr.Implementation) v
     writeComptimeField(array, impl_variant, Fn.writable_byte_count);
     writeComptimeField(array, impl_variant, Fn.aligned_byte_count);
 }
-inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: *const attr.Implementation) void {
+inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation) void {
     array.writeMany("fn ");
     impl_variant.formatWrite(array);
     array.writeMany("(" ++ tok.comptime_keyword ++ tok.spec_name ++ tok.colon_operator ++ tok.generic_spec_type_name);
@@ -970,11 +971,11 @@ pub fn generateReferences() void {
 
     var array: Array = Array.init(&allocator, 1);
 
-    const details: []const attr.Implementation = attr.getImplDetails(&allocator);
+    const details: []const types.Implementation = attr.getImplDetails(&allocator);
 
     for (details) |*impl_detail| {
         writeTypeFunction(&allocator, &array, impl_detail);
     }
-    gen.writeSourceFile(gen.primaryFile("references.zig"), u8, array.readAll());
+    gen.writeSourceFile(config.reference_path, u8, array.readAll());
 }
 pub const main = generateReferences;
