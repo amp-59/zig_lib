@@ -18,21 +18,10 @@ const impl_fn = @import("./impl_fn.zig");
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
-var errors: u64 = 0;
 
-const Allocator = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
-    .options = preset.allocator.options.small,
-    .AddressSpace = AddressSpace,
-});
-const AddressSpace = mem.GenericRegularAddressSpace(.{
-    .lb_offset = 0x40000000,
-    .divisions = 128,
-    .errors = preset.address_space.errors.noexcept,
-    .logging = preset.address_space.logging.silent,
-});
+const Allocator = config.Allocator;
+const AddressSpace = Allocator.AddressSpace;
+
 const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
 const Fn = impl_fn.Fn;
 const Expr = expr.Expr;
@@ -974,18 +963,18 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: 
     writeFunctions(allocator, array, impl_variant);
     array.writeMany("});\n}\n");
 }
-pub fn generateReferences() !u8 {
+pub fn generateReferences() void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
     var array: Array = Array.init(&allocator, 1);
 
-    const details: []const attr.Implementation = try serial.deserialize([]attr.Implementation, &allocator, gen.auxiliaryFile("impl_detail"));
+    const details: []const attr.Implementation = attr.getImplDetails(&allocator);
+
     for (details) |*impl_detail| {
         writeTypeFunction(&allocator, &array, impl_detail);
     }
     gen.writeSourceFile(gen.primaryFile("references.zig"), u8, array.readAll());
-    return @boolToInt(errors != 0);
 }
 pub const main = generateReferences;
