@@ -607,6 +607,7 @@ pub fn ManyToSlice(comptime T: type) type {
     type_info.Pointer.size = .Slice;
     return @Type(type_info);
 }
+
 /// A useful meta type for representing bit fields with uncertain values.
 /// Properly rendered by `fmt.any`. E must be an enumeration type.
 pub fn EnumBitField(comptime E: type) type {
@@ -654,6 +655,43 @@ pub fn tagNameList(comptime E: type, comptime tag_list: []const E) []const []con
     }
     return &ret;
 }
+pub fn GenericStructOfBool(comptime Struct: type) type {
+    return struct {
+        const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
+        pub const Tag = blk: {
+            var fields: []const builtin.Type.EnumField = &.{};
+            var value: u64 = 1;
+            inline for (@typeInfo(Struct).Struct.fields) |field| {
+                fields = fields ++ [1]builtin.Type.EnumField{.{
+                    .name = field.name,
+                    .value = value,
+                }};
+                value <<= 1;
+            }
+            break :blk @Type(.{ .Enum = .{
+                .fields = fields,
+                .tag_type = tag_type,
+                .decls = &.{},
+                .is_exhaustive = true,
+            } });
+        };
+        pub fn detail(tags: []const Tag) Struct {
+            var int: tag_type = 0;
+            for (tags) |tag| {
+                int |= @enumToInt(tag);
+            }
+            return @bitCast(Struct, int);
+        }
+        pub const tag_list: []const Tag = tagList(Tag);
+        pub fn countTrue(bit_field: Struct) u64 {
+            var ret: u64 = 0;
+            inline for (@typeInfo(Struct).Struct.fields) |field| {
+                ret +%= @boolToInt(@field(bit_field, field.name));
+            }
+            return ret;
+        }
+    };
+}
 pub fn TaggedUnion(comptime Union: type) type {
     var tag_type_fields: []const builtin.Type.EnumField = empty;
     var value: comptime_int = 0;
@@ -666,7 +704,6 @@ pub fn TaggedUnion(comptime Union: type) type {
     }
     return @Type(.{ .Enum = .{ .fields = tag_type_fields } });
 }
-
 pub fn Var(comptime T: type) type {
     return @TypeOf(@constCast(@as(T, undefined)));
 }
