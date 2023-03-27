@@ -488,7 +488,7 @@ fn writeDeductionCompareEnumerationInternal(
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
-    s_v_info: []const types.Specifier,
+    p_info: []const types.Specifier,
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
@@ -497,18 +497,16 @@ fn writeDeductionCompareEnumerationInternal(
     if (q_info[0].mutually_exclusive.tech_tags.len == tag_index) return;
     const tech: types.Techniques.Tag = q_info[0].mutually_exclusive.tech_tags[tag_index];
     const tech_tag_name: []const u8 = @tagName(tech);
-    const save: Allocator.Save = allocator.save();
-    defer allocator.restore(save);
     const filtered: BinaryFilterPayload([]const types.Technique) = try meta.wrap(
         haveTechB(allocator, tech_set, tech),
     );
     writeSwitchProngOpen(array, tech_tag_name);
     try meta.wrap(
-        writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices),
+        writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, p_info, filtered[1], q_info[1..], indices),
     );
     array.writeMany("},\n");
     try meta.wrap(
-        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info, indices, tag_index + 1),
+        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, filtered[0], q_info, indices, tag_index + 1),
     );
 }
 fn writeDeductionCompareEnumeration(
@@ -516,30 +514,30 @@ fn writeDeductionCompareEnumeration(
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
-    s_v_info: []const types.Specifier,
+    p_info: []const types.Specifier,
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
     writeSwitchOpen(array, q_info[0].optTagName());
     try meta.wrap(
-        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices, 0),
+        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices, 0),
     );
     array.writeMany("}\n");
 }
-fn writeDeductionCompareOptionalEnumeration(
+inline fn writeDeductionCompareOptionalEnumeration(
     allocator: *Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
-    spec_set: []const types.Specifier,
+    p_info: []const types.Specifier,
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
     writeOptionalSwitchOpen(array, q_info[0].optTagName());
     try meta.wrap(
-        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, spec_set, tech_set, q_info, indices, 0),
+        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices, 0),
     );
     array.writeMany("}\n}\n");
 }
@@ -554,11 +552,7 @@ fn writeImplementationDeduction(
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
     if (q_info.len == 0 or tech_set.len == 1) {
-        writeReturnImplementation(
-            array,
-            types.Implementation.init(abstract_spec, s_v_info, tech_set[0], indices.*),
-            s_v_info,
-        );
+        writeReturnImplementation(array, types.Implementation.init(abstract_spec, s_v_info, tech_set[0], indices.*), s_v_info);
         indices.impl +%= 1;
     } else switch (q_info[0].usage(tech_set_top)) {
         .test_boolean => {
@@ -589,8 +583,6 @@ fn writeSpecificationDeductionInternal(
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
-    const save: Allocator.Save = allocator.save();
-    defer allocator.restore(save);
     const filtered: BinaryFilterPayload([]const types.Specifier) = try meta.wrap(
         haveSpec(allocator, spec_set, p_info[0]),
     );
@@ -642,8 +634,6 @@ fn writeSpecificationDeduction(
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
-    const save: Allocator.Save = allocator.save();
-    defer allocator.restore(save);
     array.writeMany("const Specification");
     array.writeFormat(fmt.ud64(indices.spec));
     array.writeMany("=struct{\n");
@@ -665,6 +655,8 @@ fn writeSpecifications(
     gen.copySourceFile(array, config.container_template_path);
     var indices: types.Implementation.Indices = .{};
     for (attr.abstract_specs, x_p_infos, spec_sets, tech_sets, x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
+        const save: Allocator.Save = allocator.save();
+        defer allocator.restore(save);
         try meta.wrap(
             writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices),
         );
