@@ -1,5 +1,5 @@
 pub usingnamespace struct {
-    pub const build = if (true) @import("build/build-aux.zig").main else buildMain;
+    pub const build = if (false) @import("build/build-aux.zig").main else buildMain;
 };
 
 pub const srg = @import("./zig_lib.zig");
@@ -27,6 +27,7 @@ const parser_spec_a: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modu
 const parser_spec_b: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = std_parser_macros };
 const build_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = modules, .deps = deps };
 const gen_spec: build.TargetSpec =      .{ .fmt = true, .run = false, .build = null };
+const asm_spec: build.TargetSpec =      .{ .run = false, .build = null };
 const obj_spec: build.TargetSpec =      .{ .mode = .ReleaseSmall, .build = .obj, .run = false, .fmt = false };
 
 pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
@@ -75,8 +76,8 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg_container_impls: *build.Target     = mg_aux.addTarget(small_spec, allocator,   "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *build.Target     = mg_aux.addTarget(debug_spec, allocator,   "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg: *build.Group                      = builder.addGroup(allocator,               "memgen");
-    const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_references",  "top/mem/references.zig");
-    const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_containers",  "top/mem/containers.zig");
+    const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_references",  "top/mem/reference.zig");
+    const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_containers",  "top/mem/container.zig");
 
     build_test.dependOnRun(allocator,           generate_build);
 
