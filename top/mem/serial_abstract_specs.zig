@@ -1,7 +1,14 @@
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const serial = @import("../serial.zig");
-
+const builtin = @import("../builtin.zig");
+pub const logging_override: builtin.Logging.Override = .{
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = false,
+};
 export fn serializeAbstractSpecs(allocator: *config.Allocator, val: *const []const types.AbstractSpecification) void {
     serial.serialize(allocator, config.abstract_specs_path, val.*) catch return undefined;
 }
