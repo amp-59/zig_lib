@@ -270,10 +270,6 @@ pub const BuildCommandOptions = opaque {
         .string = "-ofmt",
         .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
     };
-    pub const files: OptionSpec = .{
-        .arg_type = types.Files,
-        .arg_type_name = "Files",
-    };
     pub const dirafter: OptionSpec = .{
         .string = "-dirafter",
         .arg_type = []const u8,
@@ -393,6 +389,10 @@ pub const BuildCommandOptions = opaque {
     pub const z: OptionSpec = .{
         .string = "-z",
         .arg_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro },
+    };
+    pub const files: OptionSpec = .{
+        .arg_type = types.Files,
+        .arg_type_name = "Files",
     };
     const test_filter: OptionSpec = .{
         .string = "--test-filter",
@@ -529,6 +529,13 @@ pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void 
     array.writeMany(" = @import(\"");
     array.writeMany(pathname);
     array.writeMany("\");\n");
+}
+pub fn writeAsm(array: anytype, pathname: []const u8) void {
+    array.writeMany("comptime {\n");
+    array.writeMany("    asm (@embedFile(\"");
+    array.writeMany(pathname);
+    array.writeMany("\"));\n");
+    array.writeMany("}\n");
 }
 pub fn writeIndent(array: *Array, width: u64, values: []const u8) void {
     try array.increment(values.len * 6);
@@ -1542,6 +1549,7 @@ pub fn main() !void {
     var build_src: []u8 = @constCast(subTemplate(template_src, "build-struct.zig").?);
     var types_src: []u8 = @constCast(subTemplate(template_src, "build-types.zig").?);
     var option_fn_src: []u8 = @constCast(subTemplate(template_src, "option-functions.zig").?);
+    var mach_src: []u8 = @constCast(subTemplate(template_src, "mach.zig").?);
 
     const build_members_offset: u64 = try guessSourceOffset(build_src, build_members_loc_token, 1467);
     const format_members_offset: u64 = try guessSourceOffset(build_src, format_members_loc_token, 1534);
@@ -1560,6 +1568,7 @@ pub fn main() !void {
     writeImport(&array, "time", "./time.zig");
     writeImport(&array, "preset", "./preset.zig");
     writeImport(&array, "builtin", "./builtin.zig");
+    writeAsm(&array, "./build/build-template.s");
 
     array.writeMany(killIndent(build_src[0..build_members_offset]));
     writeStructMembers(BuildCommandOptions, &array);
@@ -1578,6 +1587,7 @@ pub fn main() !void {
     if (!prefer_inline) {
         array.writeMany(option_fn_src);
     }
+    array.writeMany(mach_src);
     if (commit_write) {
         try writeFile(allocator, array, build_root ++ "/top/build.zig");
     } else {
