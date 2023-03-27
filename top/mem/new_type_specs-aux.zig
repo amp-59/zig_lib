@@ -54,7 +54,7 @@ fn populateUniqueTechniqueKeys(comptime tech_set: []const []const types.Techniqu
                         break;
                     }
                 } else {
-                    ret = ret ++ .{v_i_field};
+                    ret = ret ++ [1]types.Technique{v_i_field};
                 }
             } else {
                 for (ret) |u_field| {
@@ -64,7 +64,7 @@ fn populateUniqueTechniqueKeys(comptime tech_set: []const []const types.Techniqu
                         break;
                     }
                 } else {
-                    ret = ret ++ .{v_i_field};
+                    ret = ret ++ [1]types.Technique{v_i_field};
                 }
             }
         }
@@ -78,18 +78,18 @@ fn populateParameters(comptime abstract_spec: types.AbstractSpecification) [3][]
     for (abstract_spec.v_specs) |v_spec| {
         switch (v_spec) {
             .derived => {
-                static = static ++ .{v_spec};
+                static = static ++ [1]types.Specifier{v_spec};
             },
             .stripped => {
-                params = params ++ .{v_spec};
+                params = params ++ [1]types.Specifier{v_spec};
             },
             .default, .optional_derived, .decl_optional_derived => {
-                params = params ++ .{v_spec};
-                static = static ++ .{v_spec};
+                params = params ++ [1]types.Specifier{v_spec};
+                static = static ++ [1]types.Specifier{v_spec};
             },
             .optional_variant, .decl_optional_variant => {
-                params = params ++ .{v_spec};
-                variant = variant ++ .{v_spec};
+                params = params ++ [1]types.Specifier{v_spec};
+                variant = variant ++ [1]types.Specifier{v_spec};
             },
         }
     }
@@ -101,7 +101,9 @@ fn populateTechniques(comptime abstract_spec: types.AbstractSpecification) []con
         switch (v_tech) {
             .standalone => {
                 for (tech_set) |i_info| {
-                    tech_set = tech_set ++ .{i_info ++ .{v_tech}};
+                    tech_set = tech_set ++
+                        [1][]const types.Technique{i_info ++
+                        [1]types.Technique{v_tech}};
                 }
             },
             .mutually_exclusive => |mutually_exclusive| {
@@ -109,7 +111,9 @@ fn populateTechniques(comptime abstract_spec: types.AbstractSpecification) []con
                     .optional => {
                         for (tech_set) |i_info| {
                             for (mutually_exclusive.tech_tags) |j_info| {
-                                tech_set = tech_set ++ .{i_info ++ .{v_tech.resolve(j_info)}};
+                                tech_set = tech_set ++
+                                    [1][]const types.Technique{i_info ++
+                                    [1]types.Technique{v_tech.resolve(j_info)}};
                             }
                         }
                     },
@@ -117,7 +121,9 @@ fn populateTechniques(comptime abstract_spec: types.AbstractSpecification) []con
                         var j_infos: []const []const types.Technique = &.{};
                         for (tech_set) |i_info| {
                             for (mutually_exclusive.tech_tags) |j_info| {
-                                j_infos = j_infos ++ .{i_info ++ .{v_tech.resolve(j_info)}};
+                                j_infos = j_infos ++
+                                    [1][]const types.Technique{i_info ++
+                                    [1]types.Technique{v_tech.resolve(j_info)}};
                             }
                         }
                         tech_set = j_infos;
@@ -133,10 +139,12 @@ fn populateSpecifiers(
     comptime v_info: []const types.Specifier,
 ) []const []const types.Specifier {
     var spec_set: []const []const types.Specifier = &.{};
-    spec_set = spec_set ++ .{s_info};
+    spec_set = spec_set ++ [1][]const types.Specifier{s_info};
     for (v_info) |v_field| {
         for (spec_set) |s_v_info| {
-            spec_set = spec_set ++ .{s_v_info ++ .{v_field}};
+            spec_set = spec_set ++
+                [1][]const types.Specifier{s_v_info ++
+                [1]types.Specifier{v_field}};
         }
     }
     return spec_set;
@@ -155,19 +163,18 @@ fn populateDetails(
         for (tech_set, 0..) |v_i_info, i_idx| {
             detail.impl_idx = i_idx;
             detail.techs = types.Techniques.detail(types.techniqueTags(v_i_info));
-            details = details ++ .{detail};
+            details = details ++ [1]types.Technique{detail};
         }
     }
     return details;
 }
 fn BinaryFilter(comptime T: type) type {
+    return Allocator.allocate_payload(BinaryFilterPayload(T));
+}
+fn BinaryFilterPayload(comptime T: type) type {
     return struct { []const T, []const T };
 }
-fn haveSpec(
-    allocator: *Allocator,
-    spec_set: []const []const types.Specifier,
-    p_field: types.Specifier,
-) Allocator.allocate_payload(BinaryFilter([]const types.Specifier)) {
+fn haveSpec(allocator: *Allocator, spec_set: []const []const types.Specifier, p_field: types.Specifier) BinaryFilter([]const types.Specifier) {
     var t: [][]const types.Specifier =
         try meta.wrap(allocator.allocateIrreversible([]const types.Specifier, spec_set.len));
     var t_len: u64 = 0;
@@ -188,11 +195,7 @@ fn haveSpec(
     }
     return .{ f[0..f_len], t[0..t_len] };
 }
-fn haveStandAloneTech(
-    allocator: *Allocator,
-    tech_set: []const []const types.Technique,
-    u_field: types.Technique,
-) Allocator.allocate_payload(BinaryFilter([]const types.Technique)) {
+fn haveTechA(allocator: *Allocator, tech_set: []const []const types.Technique, u_field: types.Technique) BinaryFilter([]const types.Technique) {
     var t: [][]const types.Technique =
         try meta.wrap(allocator.allocateIrreversible([]const types.Technique, tech_set.len));
     var t_len: u64 = 0;
@@ -215,11 +218,7 @@ fn haveStandAloneTech(
     }
     return .{ f[0..f_len], t[0..t_len] };
 }
-fn haveMutuallyExclusiveTech(
-    allocator: *Allocator,
-    tech_set: []const []const types.Technique,
-    u_tech: types.Techniques.Tag,
-) Allocator.allocate_payload(BinaryFilter([]const types.Technique)) {
+fn haveTechB(allocator: *Allocator, tech_set: []const []const types.Technique, u_tech: types.Techniques.Tag) BinaryFilter([]const types.Technique) {
     var t: [][]const types.Technique =
         try meta.wrap(allocator.allocateIrreversible([]const types.Technique, tech_set.len));
     var t_len: u64 = 0;
@@ -443,7 +442,9 @@ fn writeDeductionTestBoolean(
 ) Allocator.allocate_void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    const filtered: BinaryFilter([]const types.Technique) = try meta.wrap(haveStandAloneTech(allocator, tech_set, q_info[0]));
+    const filtered: BinaryFilterPayload([]const types.Technique) = try meta.wrap(
+        haveTechA(allocator, tech_set, q_info[0]),
+    );
     array.writeMany("if(spec.");
     array.writeMany(q_info[0].techTagName());
     array.writeMany("){");
@@ -452,7 +453,9 @@ fn writeDeductionTestBoolean(
             writeReturnImplementation(array, types.Implementation.init(abstract_spec, s_v_info, filtered[1][0], indices.*), s_v_info);
             indices.impl +%= 1;
         } else {
-            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices));
+            try meta.wrap(
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices),
+            );
         }
     }
     if (filtered[0].len != 0) {
@@ -463,7 +466,9 @@ fn writeDeductionTestBoolean(
             writeReturnImplementation(array, types.Implementation.init(abstract_spec, s_v_info, filtered[0][0], indices.*), s_v_info);
             indices.impl +%= 1;
         } else {
-            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info[1..], indices));
+            try meta.wrap(
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info[1..], indices),
+            );
         }
     }
     if (filtered[1].len != 0) {
@@ -486,11 +491,17 @@ fn writeDeductionCompareEnumerationInternal(
     const tech_tag_name: []const u8 = @tagName(tech);
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    const filtered: BinaryFilter([]const types.Technique) = try meta.wrap(haveMutuallyExclusiveTech(allocator, tech_set, tech));
+    const filtered: BinaryFilterPayload([]const types.Technique) = try meta.wrap(
+        haveTechB(allocator, tech_set, tech),
+    );
     writeSwitchProngOpen(array, tech_tag_name);
-    try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices));
+    try meta.wrap(
+        writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices),
+    );
     array.writeMany("},\n");
-    try meta.wrap(writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info, indices, tag_index + 1));
+    try meta.wrap(
+        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info, indices, tag_index + 1),
+    );
 }
 fn writeDeductionCompareEnumeration(
     allocator: *Allocator,
@@ -503,7 +514,9 @@ fn writeDeductionCompareEnumeration(
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
     writeSwitchOpen(array, q_info[0].optTagName());
-    try meta.wrap(writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices, 0));
+    try meta.wrap(
+        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices, 0),
+    );
     array.writeMany("}\n");
 }
 fn writeDeductionCompareOptionalEnumeration(
@@ -517,7 +530,9 @@ fn writeDeductionCompareOptionalEnumeration(
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
     writeOptionalSwitchOpen(array, q_info[0].optTagName());
-    try meta.wrap(writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, spec_set, tech_set, q_info, indices, 0));
+    try meta.wrap(
+        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, spec_set, tech_set, q_info, indices, 0),
+    );
     array.writeMany("}\n}\n");
 }
 fn writeImplementationDeduction(
@@ -539,13 +554,19 @@ fn writeImplementationDeduction(
         indices.impl +%= 1;
     } else switch (q_info[0].usage(tech_set_top)) {
         .test_boolean => {
-            try meta.wrap(writeDeductionTestBoolean(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices));
+            try meta.wrap(
+                writeDeductionTestBoolean(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices),
+            );
         },
         .compare_enumeration => {
-            try meta.wrap(writeDeductionCompareEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices));
+            try meta.wrap(
+                writeDeductionCompareEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices),
+            );
         },
         .compare_optional_enumeration => {
-            try meta.wrap(writeDeductionCompareOptionalEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices));
+            try meta.wrap(
+                writeDeductionCompareOptionalEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices),
+            );
         },
         else => return,
     }
@@ -562,14 +583,20 @@ fn writeSpecificationDeductionInternal(
 ) Allocator.allocate_void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    const filtered: BinaryFilter([]const types.Specifier) = try meta.wrap(haveSpec(allocator, spec_set, p_info[0]));
+    const filtered: BinaryFilterPayload([]const types.Specifier) = try meta.wrap(
+        haveSpec(allocator, spec_set, p_info[0]),
+    );
     if (filtered[1].len != 0) {
         writeDeclExpr(array, p_info[0]);
         if (filtered[1].len == 1) {
-            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[1][0], tech_set, q_info, indices));
+            try meta.wrap(
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[1][0], tech_set, q_info, indices),
+            );
             indices.ctn +%= 1;
         } else {
-            try meta.wrap(writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[1], tech_set, q_info, indices));
+            try meta.wrap(
+                writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[1], tech_set, q_info, indices),
+            );
         }
     }
     if (filtered[0].len != 0) {
@@ -580,10 +607,14 @@ fn writeSpecificationDeductionInternal(
             array.writeMany("}else{\n");
         }
         if (filtered[0].len == 1) {
-            try meta.wrap(writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[0][0], tech_set, q_info, indices));
+            try meta.wrap(
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[0][0], tech_set, q_info, indices),
+            );
             indices.ctn +%= 1;
         } else {
-            try meta.wrap(writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[0], tech_set, q_info, indices));
+            try meta.wrap(
+                writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[0], tech_set, q_info, indices),
+            );
         }
     }
     if (filtered[1].len != 0 and
@@ -610,21 +641,25 @@ fn writeSpecificationDeduction(
     array.writeMany("=struct{\n");
     writeFields(array, p_info);
     array.writeMany("const Specification=@This();\nfn Implementation(spec:Specification)type{\n");
-    try meta.wrap(writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, indices));
+    try meta.wrap(
+        writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, indices),
+    );
     array.writeMany("}\n};\n");
 }
 fn writeSpecifications(
     allocator: *Allocator,
     array: *Array,
     x_p_infos: []const []const types.Specifier,
-    x_q_infos: []const []const types.Technique,
     spec_sets: []const []const []const types.Specifier,
     tech_sets: []const []const []const types.Technique,
+    x_q_infos: []const []const types.Technique,
 ) Allocator.allocate_void {
     gen.copySourceFile(array, config.container_template_path);
     var indices: types.Implementation.Indices = .{};
     for (attr.abstract_specs, x_p_infos, spec_sets, tech_sets, x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
-        try meta.wrap(writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices));
+        try meta.wrap(
+            writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices),
+        );
         indices.spec +%= 1;
     }
     gen.writeSourceFile(config.container_path, u8, array.readAll());
@@ -673,36 +708,9 @@ fn validateAllSerial(
     if (!verify_all_serial) {
         return;
     }
-    var f_spec_sets: []const []const []const types.Specifier = types.getSpecs(allocator);
-    var f_tech_sets: []const []const []const types.Technique = types.getTechs(allocator);
     var f_x_p_infos: []const []const types.Specifier = types.getParams(allocator);
     var f_x_q_infos: []const []const types.Technique = types.getOptions(allocator);
     var f_impl_details: []const types.Implementation = types.getImplDetails(allocator);
-    var i: u64 = 0;
-    while (i != spec_sets.len) : (i +%= 1) {
-        var j: u64 = 0;
-        while (j != spec_sets[i].len) : (j +%= 1) {
-            var k: u64 = 0;
-            while (k != spec_sets[i][j].len) : (k +%= 1) {
-                if (!builtin.testEqualMemory(@TypeOf(f_spec_sets[i][j][k]), f_spec_sets[i][j][k], spec_sets[i][j][k])) {
-                    nonEqualIndices3("specs", i, j, k);
-                }
-            }
-        }
-    }
-    i = 0;
-
-    while (i != tech_sets.len) : (i +%= 1) {
-        var j: u64 = 0;
-        while (j != tech_sets[i].len) : (j +%= 1) {
-            var k: u64 = 0;
-            while (k != tech_sets[i][j].len) : (k +%= 1) {
-                if (!builtin.testEqualMemory(@TypeOf(f_tech_sets[i][j][k]), f_tech_sets[i][j][k], tech_sets[i][j][k])) {
-                    nonEqualIndices3("techs", i, j, k);
-                }
-            }
-        }
-    }
     for (f_x_p_infos, x_p_infos, 0..) |xx, yy, idx_0| {
         for (xx, yy, 0..) |x, y, idx_1| {
             if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
@@ -722,14 +730,46 @@ fn validateAllSerial(
             nonEqualIndices("details", idx_0);
         }
     }
+    var f_spec_sets: []const []const []const types.Specifier = types.getSpecs(allocator);
+    var f_tech_sets: []const []const []const types.Technique = types.getTechs(allocator);
+    var i: u64 = 0;
+    while (i != spec_sets.len) : (i +%= 1) {
+        var j: u64 = 0;
+        while (j != spec_sets[i].len) : (j +%= 1) {
+            var k: u64 = 0;
+            while (k != spec_sets[i][j].len) : (k +%= 1) {
+                if (!builtin.testEqualMemory(
+                    @TypeOf(f_spec_sets[i][j][k]),
+                    f_spec_sets[i][j][k],
+                    spec_sets[i][j][k],
+                )) {
+                    nonEqualIndices3("specs", i, j, k);
+                }
+            }
+        }
+    }
+    i = 0;
+    while (i != tech_sets.len) : (i +%= 1) {
+        var j: u64 = 0;
+        while (j != tech_sets[i].len) : (j +%= 1) {
+            var k: u64 = 0;
+            while (k != tech_sets[i][j].len) : (k +%= 1) {
+                if (!builtin.testEqualMemory(
+                    @TypeOf(f_tech_sets[i][j][k]),
+                    f_tech_sets[i][j][k],
+                    tech_sets[i][j][k],
+                )) {
+                    nonEqualIndices3("techs", i, j, k);
+                }
+            }
+        }
+    }
 }
-
 pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
     defer allocator.deinit(&address_space);
     @setEvalBranchQuota(3000);
-
     comptime var x_p_infos: []const []const types.Specifier = &.{};
     comptime var x_q_infos: []const []const types.Technique = &.{};
     comptime var spec_sets: []const []const []const types.Specifier = &.{};
@@ -748,7 +788,7 @@ pub fn newNewTypeSpecs() !void {
     }
     var array: Array = undefined;
     array.undefineAll();
-    try meta.wrap(writeSpecifications(&allocator, &array, x_p_infos, x_q_infos, spec_sets, tech_sets));
+    try meta.wrap(writeSpecifications(&allocator, &array, x_p_infos, spec_sets, tech_sets, x_q_infos));
     var indices: types.Implementation.Indices = limits(spec_sets, tech_sets);
     var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, indices.impl));
     indices = .{};
