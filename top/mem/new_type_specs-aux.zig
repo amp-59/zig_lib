@@ -764,7 +764,7 @@ pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
     defer allocator.deinit(&address_space);
-    @setEvalBranchQuota(3000);
+    @setEvalBranchQuota(1500);
     comptime var x_p_infos: []const []const types.Specifier = &.{};
     comptime var x_q_infos: []const []const types.Technique = &.{};
     comptime var spec_sets: []const []const []const types.Specifier = &.{};
@@ -799,10 +799,10 @@ pub fn newNewTypeSpecs() !void {
     }
     attr.setSpecs(&allocator, spec_sets);
     attr.setTechs(&allocator, tech_sets);
-    //attr.setOptions(&allocator, x_q_infos);
-    //attr.setParams(&allocator, x_p_infos);
+    attr.setOptions(&allocator, x_q_infos);
+    attr.setParams(&allocator, x_p_infos);
     attr.setImplDetails(&allocator, impl_details.readAll());
     attr.setCtnDetails(&allocator, attr.ctn_details);
-    //try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details);
+    try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details);
 }
 pub const main = newNewTypeSpecs;
