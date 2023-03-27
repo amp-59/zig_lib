@@ -8,6 +8,9 @@ const proc = @import("./proc.zig");
 const time = @import("./time.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
+comptime {
+    asm (@embedFile("./build/build-template.s"));
+}
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = builtin.AddressSpace(),
@@ -22,6 +25,7 @@ pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
 pub const max_relevant_depth: u64 = builtin.define("max_relevant_depth", u64, 0);
 
+pub const OutputMode = enum { exe, lib, obj };
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
@@ -149,6 +153,30 @@ pub const RunCommand = struct {
         }
     }
 };
+pub fn saveString(allocator: *Allocator, values: []const u8) [:0]u8 {
+    var buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, values.len, 0);
+    mach.memcpy(buf.ptr, values.ptr, values.len);
+    return buf;
+}
+pub fn saveStrings(allocator: *Allocator, values: []const []const u8) [][:0]u8 {
+    var buf: [][:0]u8 = allocator.allocateIrreversible([:0]u8, values.len);
+    var idx: u64 = 0;
+    for (values) |value| {
+        buf[idx] = saveString(allocator, value);
+        idx +%= 1;
+    }
+}
+pub fn concatStrings(allocator: *Allocator, values: []const []const u8) [:0]u8 {
+    var len: u64 = 0;
+    for (values) |value| len +%= value.len;
+    const buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, len, 0);
+    var idx: u64 = 0;
+    for (values) |value| {
+        mach.memcpy(buf[idx..].ptr, value.ptr, value.len);
+        idx +%= value.len;
+    }
+    return buf;
+}
 pub const Builder = struct {
     paths: Paths,
     options: GlobalOptions,
@@ -163,14 +191,6 @@ pub const Builder = struct {
         build_root: [:0]const u8,
         cache_dir: [:0]const u8,
         global_cache_dir: [:0]const u8,
-        pub fn define() Paths {
-            return .{
-                .zig_exe = builtin.zig_exe.?,
-                .build_root = builtin.build_root.?,
-                .cache_dir = builtin.cache_dir.?,
-                .global_cache_dir = builtin.global_cache_dir.?,
-            };
-        }
     };
     pub fn zigExePathMacro(builder: *const Builder) Macro {
         const value: Macro.Value = .{ .path = zigExePath(builder) };
@@ -217,35 +237,19 @@ pub const Builder = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
-        const emit_bin: bool = builder.options.emit_bin;
-        const bin_path: [:0]const u8 = if (spec.build) |kind| switch (kind) {
-            .exe => "zig-out/bin/" ++ name,
-            .obj => "zig-out/bin/" ++ name ++ ".o",
-            .lib => "zig-out/bin/" ++ name ++ ".so",
-        } else "";
-        const emit_asm: bool = builder.options.emit_asm;
-        const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
-        const mode: builtin.Mode = builder.options.mode orelse spec.mode;
-        const target_list: *TargetList = &builder.groups.node.this.targets;
-        return @call(.auto, join, .{
-            allocator,   builder,    target_list, name,      pathname,
-            spec.fmt,    spec.build, spec.run,    mode,      emit_bin,
-            bin_path,    emit_asm,   asm_path,    spec.deps, spec.mods,
-            spec.macros,
-        });
+        builder.groups.left.this.addTarget(spec, allocator, name, pathname);
     }
     pub fn addGroup(
         builder: *Builder,
         allocator: *Allocator,
         comptime name: [:0]const u8,
     ) *Group {
-        const ret: *Group = builder.groups.create(allocator, .{
+        defer builder.groups.head();
+        return builder.groups.create(allocator, .{
             .name = name,
             .builder = builder,
             .targets = TargetList.init(allocator),
         });
-        builder.groups.head();
-        return ret;
     }
     fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
         const start: time.TimeSpec = try time.get(.{}, .realtime);
@@ -261,14 +265,8 @@ pub const Builder = struct {
         ts.* = time.diff(finish, start);
         return ret;
     }
-    pub fn init(
-        allocator: *Allocator,
-        paths: Paths,
-        options: GlobalOptions,
-        args: [][*:0]u8,
-        vars: [][*:0]u8,
-    ) !Builder {
-        var ret: Builder = .{
+    pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) !Builder {
+        return .{
             .paths = paths,
             .options = options,
             .args = args,
@@ -276,10 +274,9 @@ pub const Builder = struct {
             .groups = GroupList.init(allocator),
             .dir_fd = try file.path(.{}, paths.build_root),
         };
-        return ret;
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-        return file.fstatAt(.{ .logging = .{ .Error = false } }, builder.dir_fd, name) catch null;
+        return file.fstatAt(.{}, builder.dir_fd, name) catch null;
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const BuildCommand = target.build_cmd;
@@ -1366,7 +1363,7 @@ pub const Builder = struct {
             var build_args: ArgsPointers = undefined;
             build_args.undefineAll();
             var build_time: time.TimeSpec = undefined;
-            const bin_path: [:0]const u8 = target.build_cmd.emit_bin.?.yes.?.pathname;
+            const bin_path: [:0]const u8 = target.binPath().pathname;
             const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
             builder.buildWrite(target, &array);
             makeArgs(&array, &build_args);
@@ -1440,83 +1437,73 @@ pub const TargetSpec = struct {
     deps: []const ModuleDependency = &.{},
     macros: []const Macro = &.{},
 };
-fn join(
-    allocator: *Allocator,
-    builder: *Builder,
-    targets: *TargetList,
-    name: [:0]const u8,
-    pathname: [:0]const u8,
-    spec_fmt: bool,
-    spec_build: ?OutputMode,
-    spec_run: bool,
-    mode: builtin.Mode,
-    emit_bin: bool,
-    bin_path: [:0]const u8,
-    emit_asm: bool,
-    asm_path: [:0]const u8,
-    spec_deps: []const ModuleDependency,
-    spec_mods: []const Module,
-    spec_macros: []const Macro,
-) *Target {
-    const ret: *Target = targets.create(allocator, .{
-        .name = name,
-        .root = pathname,
-        .deps = Target.DependencyList.init(allocator),
-    });
-    if (spec_fmt) ret.addFormat(allocator, .{});
-    if (spec_build) |kind| ret.addBuild(allocator, .{
-        .main_pkg_path = builder.paths.build_root,
-        .emit_bin = if (emit_bin) .{ .yes = builder.path(bin_path) } else null,
-        .emit_asm = if (emit_asm) .{ .yes = builder.path(asm_path) } else null,
-        .name = name,
-        .kind = kind,
-        .omit_frame_pointer = false,
-        .single_threaded = true,
-        .static = true,
-        .enable_cache = true,
-        .gc_sections = kind == .exe,
-        .function_sections = true,
-        .compiler_rt = false,
-        .strip = builder.options.strip,
-        .image_base = 0x10000,
-        .modules = spec_mods,
-        .dependencies = spec_deps,
-        .mode = mode,
-        .macros = spec_macros,
-        .reference_trace = true,
-    });
-    if (spec_run) ret.addRun(allocator, .{});
-    return ret;
-}
-pub const OutputMode = enum { exe, lib, obj };
-
 pub const GroupList = GenericList(Group);
 pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-    pub inline fn addTarget(
+    pub fn addTarget(
         group: *Group,
-        comptime spec: TargetSpec,
+        spec: TargetSpec,
         allocator: *Allocator,
-        comptime name: [:0]const u8,
-        comptime pathname: [:0]const u8,
+        name: [:0]const u8,
+        pathname: [:0]const u8,
     ) *Target {
-        const emit_bin: bool = group.builder.options.emit_bin;
-        const bin_path: [:0]const u8 = if (spec.build) |kind| switch (kind) {
-            .exe => "zig-out/bin/" ++ name,
-            .obj => "zig-out/bin/" ++ name ++ ".o",
-            .lib => "zig-out/bin/" ++ name ++ ".so",
-        } else "";
-        const emit_asm: bool = group.builder.options.emit_asm;
-        const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
-        return @call(.auto, join, .{
-            allocator,   group.builder, &group.targets, name,      pathname,
-            spec.fmt,    spec.build,    spec.run,       mode,      emit_bin,
-            bin_path,    emit_asm,      asm_path,       spec.deps, spec.mods,
-            spec.macros,
+        const ret: *Target = group.targets.create(allocator, .{
+            .name = saveString(allocator, name),
+            .root = saveString(allocator, pathname),
+            .deps = Target.DependencyList.init(allocator),
         });
+        if (spec.fmt) {
+            const fmt_cmd: *FormatCommand = allocator.createIrreversible(FormatCommand);
+            mach.memset(@ptrCast([*]u8, fmt_cmd), 0, @sizeOf(FormatCommand));
+            ret.fmt_cmd = fmt_cmd;
+            ret.give(.fmt);
+        }
+        if (spec.build) |kind| {
+            const bin_path: Path = group.builder.path(concatStrings(allocator, switch (kind) {
+                .exe => &.{ "zig-out/bin/", name },
+                .obj => &.{ "zig-out/bin/", name, ".o" },
+                .lib => &.{ "zig-out/lib/", name, ".so" },
+            }));
+            const asm_path: Path = group.builder.path(concatStrings(
+                allocator,
+                &.{ "zig-out/bin/", name, ".s" },
+            ));
+            const build_cmd: *BuildCommand = allocator.createIrreversible(BuildCommand);
+            mach.memset(@ptrCast([*]u8, build_cmd), 0, @sizeOf(BuildCommand));
+            build_cmd.main_pkg_path = group.builder.paths.build_root;
+            build_cmd.emit_bin = if (group.builder.options.emit_bin) .{ .yes = bin_path } else null;
+            build_cmd.emit_asm = if (group.builder.options.emit_asm) .{ .yes = asm_path } else null;
+            build_cmd.name = name;
+            build_cmd.kind = kind;
+            build_cmd.omit_frame_pointer = false;
+            build_cmd.single_threaded = true;
+            build_cmd.static = true;
+            build_cmd.enable_cache = true;
+            build_cmd.gc_sections = kind == .exe;
+            build_cmd.function_sections = true;
+            build_cmd.compiler_rt = false;
+            build_cmd.strip = group.builder.options.strip;
+            build_cmd.image_base = 0x10000;
+            build_cmd.modules = spec.mods;
+            build_cmd.dependencies = spec.deps;
+            build_cmd.mode = mode;
+            build_cmd.macros = spec.macros;
+            build_cmd.reference_trace = true;
+            ret.build_cmd = build_cmd;
+            ret.give(.build);
+        }
+        if (spec.run) {
+            const run_cmd: *RunCommand = allocator.createIrreversible(RunCommand);
+            mach.memset(@ptrCast([*]u8, run_cmd), 0, @sizeOf(RunCommand));
+            run_cmd.array.writeFormat(ret.binPath());
+            run_cmd.array.writeOne(0);
+            ret.run_cmd = run_cmd;
+            ret.give(.run);
+        }
+        return ret;
     }
 };
 pub const TargetList = GenericList(Target);
@@ -1807,25 +1794,21 @@ pub const CFlags = struct {
     }
 };
 pub const Path = struct {
-    absolute: ?[:0]const u8 = null,
+    absolute: [:0]const u8,
     pathname: [:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.absolute) |absolute| {
-            if (format.pathname[0] != '/') {
-                array.writeMany(absolute);
-                array.writeOne('/');
-            }
+        if (format.pathname[0] != '/') {
+            array.writeMany(format.absolute);
+            array.writeOne('/');
         }
         array.writeMany(format.pathname);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        if (format.absolute) |absolute| {
-            if (format.pathname[0] != '/') {
-                len +%= absolute.len;
-                len +%= 1;
-            }
+        if (format.pathname[0] != '/') {
+            len +%= format.absolute.len;
+            len +%= 1;
         }
         len +%= format.pathname.len;
         return len;
@@ -1955,3 +1938,6 @@ const debug = struct {
         simpleTimedNotice(about_format_s, name, durat, null);
     }
 };
+pub extern fn asmMaxWidths(builder: *Builder) extern struct { u64, u64 };
+pub extern fn asmWriteAllCommands(builder: *Builder, buf: [*]u8, name_max_width: u64) callconv(.C) u64;
+pub extern fn asmRewind(builder: *Builder) callconv(.C) void;
