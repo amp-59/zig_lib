@@ -762,8 +762,8 @@ pub fn newNewTypeSpecs() !void {
         }
         indices.spec +%= 1;
     }
-    //attr.setSpecs(&allocator, spec_sets);
-    //attr.setTechs(&allocator, tech_sets);
+    attr.setSpecs(&allocator, spec_sets);
+    attr.setTechs(&allocator, tech_sets);
     //attr.setOptions(&allocator, x_q_infos);
     //attr.setParams(&allocator, x_p_infos);
     attr.setImplDetails(&allocator, impl_details.readAll());
