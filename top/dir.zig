@@ -14,9 +14,9 @@ pub const DirStreamSpec = struct {
     const Specification = @This();
 };
 pub const DirStreamErrors = struct {
-    getdents: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
     open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
+    getdents: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
 };
 pub const DirStreamOptions = struct {
     init_read_all: bool = true,
@@ -69,27 +69,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             pub fn name(dirent: *const Entry) [:0]const u8 {
                 return @intToPtr([*:0]u8, @ptrToInt(dirent) + 11)[0..dirent.len() :0];
             }
-            pub fn isDirectory(dirent: *const Entry) bool {
-                return dirent.kind == .directory;
-            }
-            pub fn isCharacterSpecial(dirent: *const Entry) bool {
-                return dirent.kind == .character_special;
-            }
-            pub fn isBlockSpecial(dirent: *const Entry) bool {
-                return dirent.kind == .block_special;
-            }
-            pub fn isRegular(dirent: Entry) bool {
-                return dirent.kind == .regular;
-            }
-            pub fn isNamedPipe(dirent: *const Entry) bool {
-                return dirent.kind == .named_pipe;
-            }
-            pub fn isSymbolicLink(dirent: *const Entry) bool {
-                return dirent.kind == .symbolic_link;
-            }
-            pub fn isSocket(dirent: *const Entry) bool {
-                return dirent.kind == .socket;
-            }
         };
         fn links(blk: Block) ListView.Links {
             return .{
@@ -107,7 +86,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             .errors = dir_spec.errors.close,
             .logging = dir_spec.logging.close,
         };
-
         pub fn list(dir: *DirStream) ListView {
             return .{ .links = links(dir.blk), .count = dir.count, .index = 0 };
         }
@@ -121,25 +99,23 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
                 dir.blk.undefined_byte_count(),
             });
         }
-        fn grow(dir: *DirStream, allocator: *Allocator) !void {
+        fn grow(dir: *DirStream, allocator: *Allocator) Allocator.allocate_void {
             const s_bytes: u64 = dir.blk.writable_byte_count();
             const t_bytes: u64 = s_bytes * 2;
             const s_impl: Block = dir.blk;
             try meta.wrap(allocator.resizeManyAbove(Block, &dir.blk, .{ .bytes = t_bytes }));
             clear(s_impl.unwritable_byte_address(), dir.blk.unwritable_byte_address() - s_impl.unwritable_byte_address());
         }
-        fn shrink(dir: *DirStream, allocator: *Allocator) !void {
-            const t_bytes: u64 = mach.alignA(dir.blk.defined_byte_count() + 48, 8);
-            allocator.resizeManyBelow(Block, &dir.blk, .{ .bytes = t_bytes });
-        }
         fn readAll(dir: *DirStream, allocator: *Allocator) !void {
             dir.blk.define(try dir.getDirectoryEntries());
             while (dir.blk.undefined_byte_count() < 528) {
-                try dir.grow(allocator);
-                dir.blk.define(try dir.getDirectoryEntries());
+                try meta.wrap(dir.grow(allocator));
+                dir.blk.define(try meta.wrap(dir.getDirectoryEntries()));
             }
             if (dir_spec.options.shrink_after_read) {
-                try dir.shrink(allocator);
+                allocator.resizeManyBelow(Block, &dir.blk, .{
+                    .bytes = mach.alignA(dir.blk.defined_byte_count() + 48, 8),
+                });
             }
         }
         pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !DirStream {
