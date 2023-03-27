@@ -123,38 +123,19 @@ pub inline fn cmovxZ(b: bool, t_value: anytype) ?@TypeOf(t_value) {
     return if (b) t_value else null;
 }
 // Unused, but potentially useful for testing.
-const simple_generic = struct {
-    inline fn sub(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 -% arg2) {
+pub const generic = struct {
+    pub inline fn sub(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 -% arg2) {
         return arg1 -% arg2;
     }
-    inline fn add(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 +% arg2) {
+    pub inline fn add(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 +% arg2) {
         return arg1 +% arg2;
     }
-    inline fn mul(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 *% arg2) {
+    pub inline fn mul(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 *% arg2) {
         return arg1 *% arg2;
     }
-    inline fn div(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 / arg2) {
+    pub inline fn div(arg1: anytype, arg2: @TypeOf(arg1)) @TypeOf(arg1 / arg2) {
         return arg1 / arg2;
     }
-    pub const sub64 = sub;
-    pub const add64 = add;
-    pub const mul64 = mul;
-    pub const div64 = div;
-
-    pub const sub32 = sub;
-    pub const add32 = add;
-    pub const mul32 = mul;
-    pub const div32 = div;
-
-    pub const sub16 = sub;
-    pub const add16 = add;
-    pub const mul16 = mul;
-    pub const div16 = div;
-
-    pub const sub8 = sub;
-    pub const add8 = add;
-    pub const mul8 = mul;
-    pub const div8 = div;
 };
 pub inline fn sub64(arg1: u64, arg2: u64) u64 {
     return arg1 -% arg2;
