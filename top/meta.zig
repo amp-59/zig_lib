@@ -657,7 +657,7 @@ pub fn tagNameList(comptime E: type, comptime tag_list: []const E) []const []con
 }
 pub fn GenericStructOfBool(comptime Struct: type) type {
     return struct {
-        const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
+        pub const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
         pub const Tag = blk: {
             var fields: []const builtin.Type.EnumField = &.{};
             var value: u64 = 1;
