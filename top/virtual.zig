@@ -11,16 +11,15 @@ pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 
-pub const CompoundSetSpec = struct {
-    elements: u16,
-    tag_type: type,
-};
 // Maybe make generic on Endian.
 // Right now it is difficult to get Zig vectors to produce consistent results,
 // so this is not an option.
-pub fn DiscreteBitSet(comptime spec: CompoundSetSpec) type {
-    const tag_bit_size: u16 = @bitSizeOf(spec.tag_type);
-    const bits: u16 = spec.elements * tag_bit_size;
+pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type) type {
+    const val_bit_size: u16 = @bitSizeOf(val_type);
+    if (val_bit_size != 1) {
+        @compileError("not yet implemented");
+    }
+    const bits: u16 = elements * val_bit_size;
     const Data: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(Data);
     const Array = extern struct {
@@ -67,12 +66,12 @@ pub fn DiscreteBitSet(comptime spec: CompoundSetSpec) type {
     };
     return if (data_info == .Array) Array else Int;
 }
-pub fn ThreadSafeSet(comptime spec: CompoundSetSpec) type {
-    return (extern struct {
-        bytes: Data = .{0} ** spec.elements,
+pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type) type {
+    const Binary = extern struct {
+        bytes: Data = .{0} ** elements,
         pub const SafeSet: type = @This();
-        const Data: type = [spec.elements]u8;
-        const Index: type = meta.LeastRealBitSize(spec.elements);
+        const Data: type = [elements]u8;
+        const Index: type = meta.LeastRealBitSize(elements);
         pub fn get(safe_set: SafeSet, index: Index) bool {
             return safe_set.bytes[index] == 255;
         }
@@ -104,11 +103,20 @@ pub fn ThreadSafeSet(comptime spec: CompoundSetSpec) type {
                 : "rax", "rdx", "memory"
             );
         }
+    };
+    const Compound = extern struct {
+        bytes: Data = .{@intToEnum(val_type, 0)} ** elements,
+        pub const SafeSet: type = @This();
+        const Data: type = [elements]val_type;
+        const Index: type = meta.LeastRealBitSize(elements);
+        pub fn get(safe_set: SafeSet, index: Index) val_type {
+            return safe_set.bytes[index];
+        }
         pub fn atomicTransform(
             safe_set: *SafeSet,
             index: Index,
-            comptime if_state: spec.tag_type,
-            comptime to_state: spec.tag_type,
+            comptime if_state: val_type,
+            comptime to_state: val_type,
         ) bool {
             return asm volatile (
                 \\mov           %[if_state],    %al
@@ -122,7 +130,8 @@ pub fn ThreadSafeSet(comptime spec: CompoundSetSpec) type {
                 : "rax", "rdx", "memory"
             );
         }
-    });
+    };
+    return if (val_type == bool) Binary else Compound;
 }
 fn GenericMultiSet(
     comptime spec: DiscreteAddressSpaceSpec,
@@ -251,7 +260,7 @@ pub const DiscreteMultiArena = struct {
     label: ?[]const u8 = null,
     list: []const Arena,
     subspace: ?[]const meta.Generic = null,
-    tag_type: type = enum(u1) { set, unset },
+    val_type: type = bool,
 
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
@@ -286,12 +295,12 @@ pub const DiscreteMultiArena = struct {
         var arena_index: Index(multi_arena) = 0;
         for (multi_arena.list, 0..) |super_arena, index| {
             if (thread_safe_state and !super_arena.options.thread_safe) {
-                const T: type = ThreadSafeSet(arena_index +% 1);
+                const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.val_type);
                 fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else if (!thread_safe_state and super_arena.options.thread_safe) {
-                const T: type = DiscreteBitSet(arena_index +% 1);
+                const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.val_type);
                 fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
@@ -302,16 +311,10 @@ pub const DiscreteMultiArena = struct {
             thread_safe_state = super_arena.options.thread_safe;
         }
         if (thread_safe_state) {
-            const T: type = ThreadSafeSet(.{
-                .elements = arena_index +% 1,
-                .tag_type = multi_arena.tag_type,
-            });
+            const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.val_type);
             fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         } else {
-            const T: type = DiscreteBitSet(.{
-                .elements = arena_index +% 1,
-                .tag_type = multi_arena.tag_type,
-            });
+            const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.val_type);
             fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         }
         if (fields.len == 1) {
@@ -411,7 +414,7 @@ pub const RegularMultiArena = struct {
     divisions: u64 = 64,
     alignment: u64 = 4096,
     subspace: ?[]const meta.Generic = null,
-    tag_type: type = enum(u1) { unset, set },
+    val_type: type = bool,
 
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
@@ -423,17 +426,17 @@ pub const RegularMultiArena = struct {
     }
     fn Implementation(comptime multi_arena: MultiArena) type {
         if (multi_arena.options.thread_safe or
-            @bitSizeOf(multi_arena.tag_type) == 8)
+            @bitSizeOf(multi_arena.val_type) == 8)
         {
-            return ThreadSafeSet(.{
-                .elements = multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
-                .tag_type = multi_arena.tag_type,
-            });
+            return ThreadSafeSet(
+                multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
+                multi_arena.val_type,
+            );
         } else {
-            return DiscreteBitSet(.{
-                .elements = multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
-                .tag_type = multi_arena.tag_type,
-            });
+            return DiscreteBitSet(
+                multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
+                multi_arena.val_type,
+            );
         }
     }
     pub inline fn addressable_byte_address(comptime multi_arena: MultiArena) u64 {
@@ -684,7 +687,7 @@ fn Specs(comptime AddressSpace: type) type {
 ///     * Thread safety is all-or-nothing, which increases the metadata size
 ///       required by each arena from 1 to 8 bits.
 pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
-    return (extern struct {
+    return extern struct {
         impl: RegularAddressSpaceSpec.Implementation(spec) align(8) = defaultValue(spec),
         pub const RegularAddressSpace = @This();
         pub const Index: type = RegularAddressSpaceSpec.Index(spec);
@@ -711,8 +714,8 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn atomicTransform(
             address_space: *RegularAddressSpace,
             index: Index,
-            comptime if_state: spec.tag_type,
-            comptime to_state: spec.tag_type,
+            comptime if_state: spec.val_type,
+            comptime to_state: spec.val_type,
         ) bool {
             return spec.options.thread_safe and
                 address_space.impl.atomicTransform(index, if_state, to_state);
@@ -737,7 +740,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub usingnamespace Specs(RegularAddressSpace);
         pub usingnamespace RegularTypes(RegularAddressSpace);
         pub usingnamespace GenericAddressSpace(RegularAddressSpace);
-    });
+    };
 }
 /// Discrete:
 /// Good:
@@ -772,8 +775,8 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub fn atomicTransform(
             address_space: *DiscreteAddressSpace,
             comptime index: Index,
-            comptime if_state: spec.tag_type,
-            comptime to_state: spec.tag_type,
+            comptime if_state: spec.val_type,
+            comptime to_state: spec.val_type,
         ) bool {
             return spec.list[index].options.thread_safe and
                 address_space.impl.atomicTransform(index, if_state, to_state);
