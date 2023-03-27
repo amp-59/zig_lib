@@ -517,7 +517,7 @@ pub const ReadLinkSpec = struct {
     }
 };
 pub const MapSpec = struct {
-    options: Options,
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
     logging: builtin.Logging.AcquireErrorFault = .{},
