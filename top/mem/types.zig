@@ -37,7 +37,7 @@ pub const Modes = packed struct(u3) {
     read_write: bool = false,
     resize: bool = false,
     stream: bool = false,
-    pub usingnamespace GenericStructOfBool(Modes);
+    pub usingnamespace meta.GenericStructOfBool(Modes);
 };
 pub const Fields = packed struct(u5) {
     automatic_storage: bool = false,
@@ -45,7 +45,7 @@ pub const Fields = packed struct(u5) {
     undefined_byte_address: bool = false,
     unallocated_byte_address: bool = false,
     unstreamed_byte_address: bool = false,
-    pub usingnamespace GenericStructOfBool(Fields);
+    pub usingnamespace meta.GenericStructOfBool(Fields);
 };
 pub const Managers = packed struct(u5) {
     allocatable: bool = false,
@@ -53,7 +53,7 @@ pub const Managers = packed struct(u5) {
     resizable: bool = false,
     movable: bool = false,
     convertible: bool = false,
-    pub usingnamespace GenericStructOfBool(Managers);
+    pub usingnamespace meta.GenericStructOfBool(Managers);
 };
 pub const Specifiers = packed struct(u7) {
     child: bool = false,
@@ -63,7 +63,7 @@ pub const Specifiers = packed struct(u7) {
     high_alignment: bool = false,
     Allocator: bool = false,
     arena: bool = false,
-    pub usingnamespace GenericStructOfBool(Specifiers);
+    pub usingnamespace meta.GenericStructOfBool(Specifiers);
 };
 pub const Techniques = packed struct(u8) {
     auto_alignment: bool = false,
@@ -74,12 +74,12 @@ pub const Techniques = packed struct(u8) {
     double_packed_approximate_capacity: bool = false,
     arena_relative: bool = false,
     address_space_relative: bool = false,
-    pub usingnamespace GenericStructOfBool(Techniques);
+    pub usingnamespace meta.GenericStructOfBool(Techniques);
     pub const Options = packed struct(u3) {
         alignment: bool = false,
         capacity: bool = false,
         relative: bool = false,
-        pub usingnamespace GenericStructOfBool(Techniques.Options);
+        pub usingnamespace meta.GenericStructOfBool(Techniques.Options);
     };
 };
 pub const Specifier = union(enum) {
@@ -547,69 +547,6 @@ pub fn techniqueTags(options: []const Technique) Techniques {
         }
     }
     return @bitCast(Techniques, int);
-}
-pub fn GenericStructOfBool(comptime Struct: type) type {
-    return struct {
-        const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
-        pub const Tag = blk: {
-            var fields: []const builtin.Type.EnumField = &.{};
-            var value: u64 = 1;
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                fields = fields ++ [1]builtin.Type.EnumField{.{
-                    .name = field.name,
-                    .value = value,
-                }};
-                value <<= 1;
-            }
-            break :blk @Type(.{ .Enum = .{
-                .fields = fields,
-                .tag_type = tag_type,
-                .decls = &.{},
-                .is_exhaustive = true,
-            } });
-        };
-        pub fn detail(tags: []const Tag) Struct {
-            var int: tag_type = 0;
-            for (tags) |tag| {
-                int |= @enumToInt(tag);
-            }
-            return @bitCast(Struct, int);
-        }
-        pub const tag_list: []const Tag = meta.tagList(Tag);
-        pub fn countTrue(bit_field: Struct) u64 {
-            var ret: u64 = 0;
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                ret +%= @boolToInt(@field(bit_field, field.name));
-            }
-            return ret;
-        }
-        pub fn formatWrite(format: Struct, array: anytype) void {
-            if (countTrue(format) == 0) {
-                array.writeMany(".{}");
-            } else {
-                array.writeMany(".{");
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        array.writeMany("." ++ field.name ++ "=true,");
-                    }
-                }
-                array.undefine(1);
-                array.writeOne('}');
-            }
-        }
-        pub fn formatLength(format: Struct) u64 {
-            var len: u64 = 3;
-            if (countTrue(format) != 0) {
-                len -%= 1;
-                inline for (@typeInfo(Struct).Struct.fields) |field| {
-                    if (@field(format, field.name)) {
-                        len +%= 1 +% field.name.len +% 6;
-                    }
-                }
-            }
-            return len;
-        }
-    };
 }
 pub const Option = struct {
     kind: Option.Kind,
