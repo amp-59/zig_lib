@@ -47,41 +47,27 @@ const list: []const mem.Arena = meta.slice(mem.Arena, .{
 });
 
 const PrintArray = mem.StaticString(4096);
+const three_state: type = enum(u8) {
+    unset = 0,
+    working = 1,
+    set = 255,
+};
 
 fn testThreadSafeRegular() !void {
     const AddressSpace = mem.GenericDiscreteAddressSpace(.{
         .label = "super",
-        .list = meta.slice(mem.Arena, .{
-            .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
-            .{ .lb_addr = 0x10000000000, .up_addr = 0x20000000000 },
-            .{ .lb_addr = 0x20000000000, .up_addr = 0x30000000000 },
-            .{ .lb_addr = 0x30000000000, .up_addr = 0x40000000000 },
-            .{ .lb_addr = 0x40000000000, .up_addr = 0x50000000000 },
-            .{ .lb_addr = 0x50000000000, .up_addr = 0x60000000000 },
-            .{ .lb_addr = 0x60000000000, .up_addr = 0x70000000000 },
-            .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
-            .{ .lb_addr = 0x80000000000, .up_addr = 0x90000000000 },
-        }),
+        .list = discrete_list,
         .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
             .label = "thread",
-            .tag_type = enum(u8) {
-                unset = 0,
-                working = 0b1010101,
-                set = 255,
-            },
+            .val_type = three_state,
             .lb_addr = 0x10000000000,
             .up_addr = 0x40400000000,
             .divisions = 16,
             .options = .{ .thread_safe = true },
-            //.list = list,
         })}),
     });
     const ThreadSpace = AddressSpace.SubSpace(0);
-
-    var address_space: AddressSpace = .{};
-    _ = address_space;
     var thread_space: ThreadSpace = .{};
-
     var thread_index: u8 = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
         if (thread_space.atomicTransform(thread_index, .unset, .set)) {}
@@ -94,9 +80,6 @@ fn testThreadSafeRegular() !void {
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
         try builtin.expect(thread_space.atomicTransform(thread_index, .working, .unset));
     }
-
-    var array: PrintArray = .{};
-    _ = array;
 }
 fn testThreadSafeDiscrete() !void {
     const AddressSpace = mem.GenericDiscreteAddressSpace(.{
@@ -104,20 +87,12 @@ fn testThreadSafeDiscrete() !void {
         .list = discrete_list,
         .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
             .label = "thread",
-            .tag_type = enum(u8) {
-                unset = 0,
-                working = 1,
-                set = 255,
-            },
+            .val_type = three_state,
             .list = list,
         })}),
     });
     const ThreadSpace = AddressSpace.SubSpace(0);
-
-    var address_space: AddressSpace = .{};
-    _ = address_space;
     var thread_space: ThreadSpace = .{};
-
     comptime var thread_index: u8 = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
         if (thread_space.atomicTransform(thread_index, .unset, .set)) {}
@@ -130,11 +105,7 @@ fn testThreadSafeDiscrete() !void {
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
         try builtin.expect(thread_space.atomicTransform(thread_index, .working, .unset));
     }
-
-    var array: PrintArray = .{};
-    _ = array;
 }
-
 pub fn main() !void {
     try meta.wrap(testThreadSafeDiscrete());
     try meta.wrap(testThreadSafeDiscrete());
