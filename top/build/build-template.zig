@@ -23,6 +23,7 @@ pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
 pub const max_relevant_depth: u64 = builtin.define("max_relevant_depth", u64, 0);
 
+pub const OutputMode = enum { exe, lib, obj };
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
@@ -65,6 +66,30 @@ pub const RunCommand = struct {
         }
     }
 };
+pub fn saveString(allocator: *Allocator, values: []const u8) [:0]u8 {
+    var buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, values.len, 0);
+    mach.memcpy(buf.ptr, values.ptr, values.len);
+    return buf;
+}
+pub fn saveStrings(allocator: *Allocator, values: []const []const u8) [][:0]u8 {
+    var buf: [][:0]u8 = allocator.allocateIrreversible([:0]u8, values.len);
+    var idx: u64 = 0;
+    for (values) |value| {
+        buf[idx] = saveString(allocator, value);
+        idx +%= 1;
+    }
+}
+pub fn concatStrings(allocator: *Allocator, values: []const []const u8) [:0]u8 {
+    var len: u64 = 0;
+    for (values) |value| len +%= value.len;
+    const buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, len, 0);
+    var idx: u64 = 0;
+    for (values) |value| {
+        mach.memcpy(buf[idx..].ptr, value.ptr, value.len);
+        idx +%= value.len;
+    }
+    return buf;
+}
 pub const Builder = struct {
     paths: Paths,
     options: GlobalOptions,
@@ -79,14 +104,6 @@ pub const Builder = struct {
         build_root: [:0]const u8,
         cache_dir: [:0]const u8,
         global_cache_dir: [:0]const u8,
-        pub fn define() Paths {
-            return .{
-                .zig_exe = builtin.zig_exe.?,
-                .build_root = builtin.build_root.?,
-                .cache_dir = builtin.cache_dir.?,
-                .global_cache_dir = builtin.global_cache_dir.?,
-            };
-        }
     };
     pub fn zigExePathMacro(builder: *const Builder) Macro {
         const value: Macro.Value = .{ .path = zigExePath(builder) };
@@ -133,35 +150,19 @@ pub const Builder = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
-        const emit_bin: bool = builder.options.emit_bin;
-        const bin_path: [:0]const u8 = if (spec.build) |kind| switch (kind) {
-            .exe => "zig-out/bin/" ++ name,
-            .obj => "zig-out/bin/" ++ name ++ ".o",
-            .lib => "zig-out/bin/" ++ name ++ ".so",
-        } else "";
-        const emit_asm: bool = builder.options.emit_asm;
-        const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
-        const mode: builtin.Mode = builder.options.mode orelse spec.mode;
-        const target_list: *TargetList = &builder.groups.node.this.targets;
-        return @call(.auto, join, .{
-            allocator,   builder,    target_list, name,      pathname,
-            spec.fmt,    spec.build, spec.run,    mode,      emit_bin,
-            bin_path,    emit_asm,   asm_path,    spec.deps, spec.mods,
-            spec.macros,
-        });
+        builder.groups.left.this.addTarget(spec, allocator, name, pathname);
     }
     pub fn addGroup(
         builder: *Builder,
         allocator: *Allocator,
         comptime name: [:0]const u8,
     ) *Group {
-        const ret: *Group = builder.groups.create(allocator, .{
+        defer builder.groups.head();
+        return builder.groups.create(allocator, .{
             .name = name,
             .builder = builder,
             .targets = TargetList.init(allocator),
         });
-        builder.groups.head();
-        return ret;
     }
     fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
         const start: time.TimeSpec = try time.get(.{}, .realtime);
@@ -177,14 +178,8 @@ pub const Builder = struct {
         ts.* = time.diff(finish, start);
         return ret;
     }
-    pub fn init(
-        allocator: *Allocator,
-        paths: Paths,
-        options: GlobalOptions,
-        args: [][*:0]u8,
-        vars: [][*:0]u8,
-    ) !Builder {
-        var ret: Builder = .{
+    pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) !Builder {
+        return .{
             .paths = paths,
             .options = options,
             .args = args,
@@ -192,7 +187,6 @@ pub const Builder = struct {
             .groups = GroupList.init(allocator),
             .dir_fd = try file.path(.{}, paths.build_root),
         };
-        return ret;
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
         return file.fstatAt(.{}, builder.dir_fd, name) catch null;
@@ -328,83 +322,73 @@ pub const TargetSpec = struct {
     deps: []const ModuleDependency = &.{},
     macros: []const Macro = &.{},
 };
-fn join(
-    allocator: *Allocator,
-    builder: *Builder,
-    targets: *TargetList,
-    name: [:0]const u8,
-    pathname: [:0]const u8,
-    spec_fmt: bool,
-    spec_build: ?OutputMode,
-    spec_run: bool,
-    mode: builtin.Mode,
-    emit_bin: bool,
-    bin_path: [:0]const u8,
-    emit_asm: bool,
-    asm_path: [:0]const u8,
-    spec_deps: []const ModuleDependency,
-    spec_mods: []const Module,
-    spec_macros: []const Macro,
-) *Target {
-    const ret: *Target = targets.create(allocator, .{
-        .name = name,
-        .root = pathname,
-        .deps = Target.DependencyList.init(allocator),
-    });
-    if (spec_fmt) ret.addFormat(allocator, .{});
-    if (spec_build) |kind| ret.addBuild(allocator, .{
-        .main_pkg_path = builder.paths.build_root,
-        .emit_bin = if (emit_bin) .{ .yes = builder.path(bin_path) } else null,
-        .emit_asm = if (emit_asm) .{ .yes = builder.path(asm_path) } else null,
-        .name = name,
-        .kind = kind,
-        .omit_frame_pointer = false,
-        .single_threaded = true,
-        .static = true,
-        .enable_cache = true,
-        .gc_sections = kind == .exe,
-        .function_sections = true,
-        .compiler_rt = false,
-        .strip = builder.options.strip,
-        .image_base = 0x10000,
-        .modules = spec_mods,
-        .dependencies = spec_deps,
-        .mode = mode,
-        .macros = spec_macros,
-        .reference_trace = true,
-    });
-    if (spec_run) ret.addRun(allocator, .{});
-    return ret;
-}
-pub const OutputMode = enum { exe, lib, obj };
-
 pub const GroupList = GenericList(Group);
 pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-    pub inline fn addTarget(
+    pub fn addTarget(
         group: *Group,
-        comptime spec: TargetSpec,
+        spec: TargetSpec,
         allocator: *Allocator,
-        comptime name: [:0]const u8,
-        comptime pathname: [:0]const u8,
+        name: [:0]const u8,
+        pathname: [:0]const u8,
     ) *Target {
-        const emit_bin: bool = group.builder.options.emit_bin;
-        const bin_path: [:0]const u8 = if (spec.build) |kind| switch (kind) {
-            .exe => "zig-out/bin/" ++ name,
-            .obj => "zig-out/bin/" ++ name ++ ".o",
-            .lib => "zig-out/bin/" ++ name ++ ".so",
-        } else "";
-        const emit_asm: bool = group.builder.options.emit_asm;
-        const asm_path: [:0]const u8 = "zig-out/bin/" ++ name ++ ".s";
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
-        return @call(.auto, join, .{
-            allocator,   group.builder, &group.targets, name,      pathname,
-            spec.fmt,    spec.build,    spec.run,       mode,      emit_bin,
-            bin_path,    emit_asm,      asm_path,       spec.deps, spec.mods,
-            spec.macros,
+        const ret: *Target = group.targets.create(allocator, .{
+            .name = saveString(allocator, name),
+            .root = saveString(allocator, pathname),
+            .deps = Target.DependencyList.init(allocator),
         });
+        if (spec.fmt) {
+            const fmt_cmd: *FormatCommand = allocator.createIrreversible(FormatCommand);
+            mach.memset(@ptrCast([*]u8, fmt_cmd), 0, @sizeOf(FormatCommand));
+            ret.fmt_cmd = fmt_cmd;
+            ret.give(.fmt);
+        }
+        if (spec.build) |kind| {
+            const bin_path: Path = group.builder.path(concatStrings(allocator, switch (kind) {
+                .exe => &.{ "zig-out/bin/", name },
+                .obj => &.{ "zig-out/bin/", name, ".o" },
+                .lib => &.{ "zig-out/lib/", name, ".so" },
+            }));
+            const asm_path: Path = group.builder.path(concatStrings(
+                allocator,
+                &.{ "zig-out/bin/", name, ".s" },
+            ));
+            const build_cmd: *BuildCommand = allocator.createIrreversible(BuildCommand);
+            mach.memset(@ptrCast([*]u8, build_cmd), 0, @sizeOf(BuildCommand));
+            build_cmd.main_pkg_path = group.builder.paths.build_root;
+            build_cmd.emit_bin = if (group.builder.options.emit_bin) .{ .yes = bin_path } else null;
+            build_cmd.emit_asm = if (group.builder.options.emit_asm) .{ .yes = asm_path } else null;
+            build_cmd.name = name;
+            build_cmd.kind = kind;
+            build_cmd.omit_frame_pointer = false;
+            build_cmd.single_threaded = true;
+            build_cmd.static = true;
+            build_cmd.enable_cache = true;
+            build_cmd.gc_sections = kind == .exe;
+            build_cmd.function_sections = true;
+            build_cmd.compiler_rt = false;
+            build_cmd.strip = group.builder.options.strip;
+            build_cmd.image_base = 0x10000;
+            build_cmd.modules = spec.mods;
+            build_cmd.dependencies = spec.deps;
+            build_cmd.mode = mode;
+            build_cmd.macros = spec.macros;
+            build_cmd.reference_trace = true;
+            ret.build_cmd = build_cmd;
+            ret.give(.build);
+        }
+        if (spec.run) {
+            const run_cmd: *RunCommand = allocator.createIrreversible(RunCommand);
+            mach.memset(@ptrCast([*]u8, run_cmd), 0, @sizeOf(RunCommand));
+            run_cmd.array.writeFormat(ret.binPath());
+            run_cmd.array.writeOne(0);
+            ret.run_cmd = run_cmd;
+            ret.give(.run);
+        }
+        return ret;
     }
 };
 pub const TargetList = GenericList(Target);
@@ -962,385 +946,6 @@ fn writeHow(array: anytype, option: anytype) void {
 // finish-document option-functions.zig
 // start-document mach.zig
 pub extern fn asmMaxWidths(builder: *Builder) extern struct { u64, u64 };
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\asmMaxWidths:
-        \\  push    r15
-        \\  push    r14
-        \\  push    rbx
-        \\  mov     rcx, qword ptr [rdi + 72]
-        \\  mov     r8, qword ptr [rdi + 80]
-        \\  mov     r9, qword ptr [rdi + 88]
-        \\  xor     edx, edx
-        \\  xor     eax, eax
-        \\1:
-        \\  cmp     r9, r8
-        \\  je      2f
-        \\  mov     r10, qword ptr [rcx + 8]
-        \\  test    r10, r10
-        \\  je      3f
-        \\  mov     rsi, qword ptr [rcx]
-        \\  mov     r15, rdx
-        \\  mov     rdi, rax
-        \\  mov     rcx, qword ptr [rsi + 24]
-        \\  mov     r11, qword ptr [rsi + 32]
-        \\  mov     r14, qword ptr [rsi + 40]
-        \\6:
-        \\  cmp     r14, r11
-        \\  je      7f
-        \\  mov     rbx, qword ptr [rcx + 8]
-        \\  test    rbx, rbx
-        \\  je      9f
-        \\  mov     rcx, qword ptr [rcx]
-        \\  mov     rsi, qword ptr [rcx + 8]
-        \\  mov     rcx, qword ptr [rcx + 24]
-        \\  cmp     rdi, rsi
-        \\  cmovbe  rdi, rsi
-        \\  cmp     r15, rcx
-        \\  cmovbe  r15, rcx
-        \\  mov     rcx, rbx
-        \\  jmp     6b
-        \\7:
-        \\  mov     rcx, r10
-        \\  jmp     1b
-        \\9:
-        \\  mov     rcx, r10
-        \\  mov     rdx, r15
-        \\  mov     rax, rdi
-        \\  jmp     1b
-        \\2:
-        \\  xor     edx, edx
-        \\  xor     eax, eax
-        \\3:
-        \\  add     rax, 8
-        \\  add     rdx, 8
-        \\  and     rax, -8
-        \\  and     rdx, -8
-        \\  pop     rbx
-        \\  pop     r14
-        \\  pop     r15
-        \\  ret
-    );
-}
 pub extern fn asmWriteAllCommands(builder: *Builder, buf: [*]u8, name_max_width: u64) callconv(.C) u64;
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\asmWriteAllCommands:
-        \\  push    rbp
-        \\  push    r15
-        \\  push    r14
-        \\  push    r13
-        \\  push    r12
-        \\  push    rbx
-        \\  mov     rax, qword ptr [rdi + 88]
-        \\  cmp     rax, qword ptr [rdi + 80]
-        \\  je      .asmWriteAllCommands58
-        \\  mov     r9, qword ptr [rdi + 72]
-        \\  mov     rcx, qword ptr [r9 + 8]
-        \\  test    rcx, rcx
-        \\  je      .asmWriteAllCommands58
-        \\  lea     rdi, [rsi + 96]
-        \\  lea     rbp, [rsi + rdx + 4]
-        \\  lea     rax, [rsi + 4]
-        \\  lea     r10, [rsi + 100]
-        \\  xor     r8d, r8d
-        \\  mov     qword ptr [rsp - 32], rdi
-        \\  lea     rdi, [rsi + rdx + 100]
-        \\  mov     qword ptr [rsp - 40], rax
-        \\  mov     qword ptr [rsp - 16], r10
-        \\  mov     qword ptr [rsp - 48], rbp
-        \\  mov     qword ptr [rsp - 24], rdi
-        \\  jmp     .asmWriteAllCommands4
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands3:
-        \\  mov     r9, qword ptr [rsp - 8]
-        \\  mov     rcx, qword ptr [r9 + 8]
-        \\  test    rcx, rcx
-        \\  je      .asmWriteAllCommands59
-        \\.asmWriteAllCommands4:
-        \\  mov     rax, qword ptr [r9]
-        \\  mov     qword ptr [rsp - 8], rcx
-        \\  lea     rcx, [rsi + r8]
-        \\  mov     r10, qword ptr [rax + 8]
-        \\  test    r10, r10
-        \\  je      .asmWriteAllCommands18
-        \\  mov     rbx, qword ptr [rax]
-        \\  cmp     r10, 16
-        \\  jb      .asmWriteAllCommands7
-        \\  mov     rax, rcx
-        \\  sub     rax, rbx
-        \\  cmp     rax, 128
-        \\  jae     .asmWriteAllCommands8
-        \\.asmWriteAllCommands7:
-        \\  xor     edi, edi
-        \\  jmp     .asmWriteAllCommands16
-        \\.asmWriteAllCommands8:
-        \\  cmp     r10, 128
-        \\  jae     .asmWriteAllCommands10
-        \\  xor     edi, edi
-        \\  jmp     .asmWriteAllCommands14
-        \\.asmWriteAllCommands10:
-        \\  mov     rax, qword ptr [rsp - 32]
-        \\  mov     rdi, r10
-        \\  xor     ebp, ebp
-        \\  and     rdi, -128
-        \\  add     rax, r8
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands11:
-        \\  vmovups ymm0, ymmword ptr [rbx + rbp]
-        \\  vmovups ymm1, ymmword ptr [rbx + rbp + 32]
-        \\  vmovups ymm2, ymmword ptr [rbx + rbp + 64]
-        \\  vmovups ymm3, ymmword ptr [rbx + rbp + 96]
-        \\  vmovups ymmword ptr [rax + rbp - 96], ymm0
-        \\  vmovups ymmword ptr [rax + rbp - 64], ymm1
-        \\  vmovups ymmword ptr [rax + rbp - 32], ymm2
-        \\  vmovups ymmword ptr [rax + rbp], ymm3
-        \\  sub     rbp, -128
-        \\  cmp     rdi, rbp
-        \\  jne     .asmWriteAllCommands11
-        \\  mov     rbp, qword ptr [rsp - 48]
-        \\  cmp     r10, rdi
-        \\  je      .asmWriteAllCommands18
-        \\  test    r10b, 112
-        \\  je      .asmWriteAllCommands16
-        \\.asmWriteAllCommands14:
-        \\  mov     rax, rdi
-        \\  mov     rdi, r10
-        \\  and     rdi, -16
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands15:
-        \\  vmovups xmm0, xmmword ptr [rbx + rax]
-        \\  vmovups xmmword ptr [rcx + rax], xmm0
-        \\  add     rax, 16
-        \\  cmp     rdi, rax
-        \\  jne     .asmWriteAllCommands15
-        \\  jmp     .asmWriteAllCommands17
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands16:
-        \\  movzx   eax, byte ptr [rbx + rdi]
-        \\  mov     byte ptr [rcx + rdi], al
-        \\  inc     rdi
-        \\.asmWriteAllCommands17:
-        \\  cmp     r10, rdi
-        \\  jne     .asmWriteAllCommands16
-        \\.asmWriteAllCommands18:
-        \\  mov     word ptr [rcx + r10], 2618
-        \\  lea     r8, [r8 + r10 + 2]
-        \\  mov     rax, qword ptr [r9]
-        \\  mov     r13, qword ptr [rax + 32]
-        \\  mov     r9, qword ptr [rax + 40]
-        \\  cmp     r9, r13
-        \\  je      .asmWriteAllCommands3
-        \\  mov     r14, qword ptr [rax + 24]
-        \\  jmp     .asmWriteAllCommands22
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands20:
-        \\  xor     eax, eax
-        \\.asmWriteAllCommands21:
-        \\  lea     rcx, [rax + r15]
-        \\  lea     r8, [rax + r15 + 1]
-        \\  mov     r14, r10
-        \\  mov     byte ptr [rsi + rcx], 10
-        \\  cmp     r9, r13
-        \\  je      .asmWriteAllCommands3
-        \\.asmWriteAllCommands22:
-        \\  mov     r10, qword ptr [r14 + 8]
-        \\  test    r10, r10
-        \\  je      .asmWriteAllCommands3
-        \\  mov     dword ptr [rsi + r8], 538976288
-        \\  lea     r15, [r8 + 4]
-        \\  mov     rcx, qword ptr [r14]
-        \\  mov     r11, qword ptr [rcx + 8]
-        \\  test    r11, r11
-        \\  je      .asmWriteAllCommands26
-        \\  mov     rcx, qword ptr [rcx]
-        \\  cmp     r11, 16
-        \\  jb      .asmWriteAllCommands25
-        \\  mov     rax, qword ptr [rsp - 40]
-        \\  lea     r12, [rax + r8]
-        \\  mov     rdi, r12
-        \\  sub     rdi, rcx
-        \\  cmp     rdi, 128
-        \\  jae     .asmWriteAllCommands29
-        \\.asmWriteAllCommands25:
-        \\  xor     edi, edi
-        \\.asmWriteAllCommands38:
-        \\  mov     rax, qword ptr [rsp - 40]
-        \\  lea     rbx, [rax + r8]
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands39:
-        \\  movzx   eax, byte ptr [rcx + rdi]
-        \\  mov     byte ptr [rbx + rdi], al
-        \\  inc     rdi
-        \\  cmp     r11, rdi
-        \\  jne     .asmWriteAllCommands39
-        \\.asmWriteAllCommands40:
-        \\  mov     rax, qword ptr [r14]
-        \\  mov     rdi, qword ptr [rax + 8]
-        \\  jmp     .asmWriteAllCommands41
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands26:
-        \\  xor    edi, edi
-        \\.asmWriteAllCommands41:
-        \\  mov    rcx, rdx
-        \\  mov    al, 32
-        \\  sub    rcx, rdi
-        \\  add    rdi, r15
-        \\  add    r15, rdx
-        \\  add    rdi, rsi
-        \\  rep     stosb    byte ptr es:[rdi], al
-        \\  mov     rcx, qword ptr [r14]
-        \\  mov     rax, qword ptr [rcx + 24]
-        \\  test    rax, rax
-        \\  je      .asmWriteAllCommands20
-        \\  mov     rcx, qword ptr [rcx + 16]
-        \\  cmp     rax, 16
-        \\  jb      .asmWriteAllCommands43
-        \\  lea     r12, [rbp + r8]
-        \\  mov     rdi, r12
-        \\  sub     rdi, rcx
-        \\  cmp     rdi, 128
-        \\  jae     .asmWriteAllCommands46
-        \\.asmWriteAllCommands43:
-        \\  xor     edi, edi
-        \\.asmWriteAllCommands55:
-        \\  add     r8, rbp
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands56:
-        \\  movzx   ebx, byte ptr [rcx + rdi]
-        \\  mov     byte ptr [r8 + rdi], bl
-        \\  inc     rdi
-        \\  cmp     rax, rdi
-        \\  jne     .asmWriteAllCommands56
-        \\.asmWriteAllCommands57:
-        \\  mov     rax, qword ptr [r14]
-        \\  mov     rax, qword ptr [rax + 24]
-        \\  jmp     .asmWriteAllCommands21
-        \\.asmWriteAllCommands29:
-        \\  cmp     r11, 128
-        \\  jae     .asmWriteAllCommands31
-        \\  xor     edi, edi
-        \\  jmp     .asmWriteAllCommands35
-        \\.asmWriteAllCommands46:
-        \\  cmp     rax, 128
-        \\  jae     .asmWriteAllCommands48
-        \\  xor     edi, edi
-        \\  jmp     .asmWriteAllCommands52
-        \\.asmWriteAllCommands31:
-        \\  mov     rax, qword ptr [rsp - 16]
-        \\  mov     rdi, r11
-        \\  xor     ebp, ebp
-        \\  and     rdi, -128
-        \\  lea     rbx, [rax + r8]
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands32:
-        \\  vmovups ymm0, ymmword ptr [rcx + rbp]
-        \\  vmovups ymm1, ymmword ptr [rcx + rbp + 32]
-        \\  vmovups ymm2, ymmword ptr [rcx + rbp + 64]
-        \\  vmovups ymm3, ymmword ptr [rcx + rbp + 96]
-        \\  vmovups ymmword ptr [rbx + rbp - 96], ymm0
-        \\  vmovups ymmword ptr [rbx + rbp - 64], ymm1
-        \\  vmovups ymmword ptr [rbx + rbp - 32], ymm2
-        \\  vmovups ymmword ptr [rbx + rbp], ymm3
-        \\  sub     rbp, -128
-        \\  cmp     rdi, rbp
-        \\  jne     .asmWriteAllCommands32
-        \\  mov     rbp, qword ptr [rsp - 48]
-        \\  cmp     r11, rdi
-        \\  je      .asmWriteAllCommands40
-        \\  test    r11b, 112
-        \\  je      .asmWriteAllCommands38
-        \\.asmWriteAllCommands35:
-        \\  mov     rbx, rdi
-        \\  mov     rdi, r11
-        \\  and     rdi, -16
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands36:
-        \\  vmovups xmm0, xmmword ptr [rcx + rbx]
-        \\  vmovups xmmword ptr [r12 + rbx], xmm0
-        \\  add     rbx, 16
-        \\  cmp     rdi, rbx
-        \\  jne     .asmWriteAllCommands36
-        \\  cmp     r11, rdi
-        \\  je      .asmWriteAllCommands40
-        \\  jmp     .asmWriteAllCommands38
-        \\.asmWriteAllCommands48:
-        \\  mov     rbp, qword ptr [rsp - 24]
-        \\  mov     rdi, rax
-        \\  xor     ebx, ebx
-        \\  and     rdi, -128
-        \\  add     rbp, r8
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands49:
-        \\  vmovups ymm0, ymmword ptr [rcx + rbx]
-        \\  vmovups ymm1, ymmword ptr [rcx + rbx + 32]
-        \\  vmovups ymm2, ymmword ptr [rcx + rbx + 64]
-        \\  vmovups ymm3, ymmword ptr [rcx + rbx + 96]
-        \\  vmovups ymmword ptr [rbp + rbx - 96], ymm0
-        \\  vmovups ymmword ptr [rbp + rbx - 64], ymm1
-        \\  vmovups ymmword ptr [rbp + rbx - 32], ymm2
-        \\  vmovups ymmword ptr [rbp + rbx], ymm3
-        \\  sub     rbx, -128
-        \\  cmp     rdi, rbx
-        \\  jne     .asmWriteAllCommands49
-        \\  mov     rbp, qword ptr [rsp - 48]
-        \\  cmp     rax, rdi
-        \\  je      .asmWriteAllCommands57
-        \\  test    al, 112
-        \\  je      .asmWriteAllCommands55
-        \\.asmWriteAllCommands52:
-        \\  mov     rbx, rdi
-        \\  mov     rdi, rax
-        \\  and     rdi, -16
-        \\  .p2align    4, 0x90
-        \\.asmWriteAllCommands53:
-        \\  vmovups xmm0, xmmword ptr [rcx + rbx]
-        \\  vmovups xmmword ptr [r12 + rbx], xmm0
-        \\  add     rbx, 16
-        \\  cmp     rdi, rbx
-        \\  jne     .asmWriteAllCommands53
-        \\  cmp     rax, rdi
-        \\  je      .asmWriteAllCommands57
-        \\  jmp     .asmWriteAllCommands55
-        \\.asmWriteAllCommands58:
-        \\  xor     r8d, r8d
-        \\.asmWriteAllCommands59:
-        \\  mov     rax, r8
-        \\  pop     rbx
-        \\  pop     r12
-        \\  pop     r13
-        \\  pop     r14
-        \\  pop     r15
-        \\  pop     rbp
-        \\  vzeroupper
-        \\  ret
-    );
-}
 pub extern fn asmRewind(builder: *Builder) callconv(.C) void;
-comptime {
-    asm (
-        \\  .intel_syntax noprefix
-        \\asmRewind:
-        \\  cmp     qword ptr [rdi + 80], 0
-        \\  je      4f
-        \\  mov     rax, qword ptr [rdi + 64]
-        \\  mov     rcx, qword ptr [rax + 8]
-        \\  test    rcx, rcx
-        \\  je      4f
-        \\  .p2align    4, 0x90
-        \\2:
-        \\  mov     rax, qword ptr [rax]
-        \\  mov     rdx, qword ptr [rax + 16]
-        \\  mov     qword ptr [rax + 24], rdx
-        \\  mov     qword ptr [rax + 40], 0
-        \\  mov     rax, rcx
-        \\  mov     rcx, qword ptr [rcx + 8]
-        \\  test    rcx, rcx
-        \\  jne     2b
-        \\4:
-        \\  ret
-    );
-}
 // finish-document mach.zig
