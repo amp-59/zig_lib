@@ -84,7 +84,7 @@ pub const Fd = meta.EnumBitField(enum(u64) {
     const MFD = sys.MFD;
 });
 pub const MapSpec = struct {
-    options: Options,
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
     logging: builtin.Logging.AcquireErrorFault = .{},
@@ -140,7 +140,7 @@ pub const MapSpec = struct {
     }
 };
 pub const MoveSpec = struct {
-    options: Options,
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
@@ -169,7 +169,7 @@ pub const UnmapSpec = struct {
     const Specification = @This();
 };
 pub const ProtectSpec = struct {
-    options: Options,
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mprotect_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
@@ -206,7 +206,7 @@ pub const ProtectSpec = struct {
     }
 };
 pub const AdviseSpec = struct {
-    options: Options,
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
