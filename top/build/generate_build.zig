@@ -282,6 +282,9 @@ pub const BuildCommandOptions = opaque {
         .string = "-I",
         .arg_type = []const u8,
     };
+    pub const link_libc: OptionSpec = .{
+        .string = "-lc",
+    };
     pub const libc: OptionSpec = .{
         .string = "--libc",
         .arg_type = []const u8,
