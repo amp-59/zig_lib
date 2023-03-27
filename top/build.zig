@@ -237,7 +237,7 @@ pub const Builder = struct {
         comptime name: [:0]const u8,
         comptime pathname: [:0]const u8,
     ) *Target {
-        builder.groups.left.this.addTarget(spec, allocator, name, pathname);
+        return builder.groups.left.this.addTarget(spec, allocator, name, pathname);
     }
     pub fn addGroup(
         builder: *Builder,
