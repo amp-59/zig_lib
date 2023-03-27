@@ -143,9 +143,9 @@ fn populateSpecifiers(
     var spec_set: []const []const types.Specifier = &.{};
     spec_set = spec_set ++ [1][]const types.Specifier{s_info};
     for (v_info) |v_field| {
-        for (spec_set) |s_v_info| {
+        for (spec_set) |p_info| {
             spec_set = spec_set ++
-                [1][]const types.Specifier{s_v_info ++
+                [1][]const types.Specifier{p_info ++
                 [1]types.Specifier{v_field}};
         }
     }
@@ -159,8 +159,8 @@ fn populateDetails(
 ) []const types.Implementation {
     var details: []const types.Implementation = &.{};
     var detail: types.Implementation = types.Implementation.init(spec, p_idx);
-    for (spec_set, 0..) |s_v_info, s_idx| {
-        detail.specs = types.Specifiers.detail(types.specifiersTags(s_v_info));
+    for (spec_set, 0..) |p_info, s_idx| {
+        detail.specs = types.Specifiers.detail(types.specifiersTags(p_info));
         detail.spec_idx = s_idx;
         for (tech_set, 0..) |v_i_info, i_idx| {
             detail.impl_idx = i_idx;
@@ -185,15 +185,15 @@ fn haveSpec(allocator: *Allocator, spec_set: []const []const types.Specifier, p_
         allocator.allocateIrreversible([]const types.Specifier, spec_set.len),
     );
     var f_len: u64 = 0;
-    for (spec_set) |s_v_info| {
-        for (s_v_info) |s_v_field| {
+    for (spec_set) |p_info| {
+        for (p_info) |s_v_field| {
             if (builtin.testEqual(types.Specifier, p_field, s_v_field)) {
-                t[t_len] = s_v_info;
+                t[t_len] = p_info;
                 t_len +%= 1;
                 break;
             }
         } else {
-            f[f_len] = s_v_info;
+            f[f_len] = p_info;
             f_len +%= 1;
         }
     }
@@ -401,9 +401,9 @@ fn writeDeclExpr(array: *Array, p_field: types.Specifier) void {
         },
     }
 }
-fn writeInitExpr(array: *Array, s_v_info: []const types.Specifier) void {
+fn writeInitExpr(array: *Array, p_info: []const types.Specifier) void {
     array.writeMany(".{");
-    for (s_v_info) |s_v_field| {
+    for (p_info) |s_v_field| {
         array.writeMany(".");
         writeSpecificationFieldName(array, s_v_field);
         array.writeMany("=");
@@ -443,7 +443,7 @@ fn writeDeductionTestBoolean(
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
-    s_v_info: []const types.Specifier,
+    p_info: []const types.Specifier,
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
@@ -458,11 +458,11 @@ fn writeDeductionTestBoolean(
     array.writeMany("){");
     if (filtered[1].len != 0) {
         if (filtered[1].len == 1) {
-            writeReturnImplementation(array, types.Implementation.init(abstract_spec, s_v_info, filtered[1][0], indices.*), s_v_info);
+            writeReturnImplementation(array, types.Implementation.init(abstract_spec, p_info, filtered[1][0], indices.*), p_info);
             indices.impl +%= 1;
         } else {
             try meta.wrap(
-                writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[1], q_info[1..], indices),
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, p_info, filtered[1], q_info[1..], indices),
             );
         }
     }
@@ -471,11 +471,11 @@ fn writeDeductionTestBoolean(
             array.writeMany("}else{\n");
         }
         if (filtered[0].len == 1) {
-            writeReturnImplementation(array, types.Implementation.init(abstract_spec, s_v_info, filtered[0][0], indices.*), s_v_info);
+            writeReturnImplementation(array, types.Implementation.init(abstract_spec, p_info, filtered[0][0], indices.*), p_info);
             indices.impl +%= 1;
         } else {
             try meta.wrap(
-                writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, s_v_info, filtered[0], q_info[1..], indices),
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, p_info, filtered[0], q_info[1..], indices),
             );
         }
     }
@@ -546,28 +546,28 @@ fn writeImplementationDeduction(
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
-    s_v_info: []const types.Specifier,
+    p_info: []const types.Specifier,
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
     if (q_info.len == 0 or tech_set.len == 1) {
-        writeReturnImplementation(array, types.Implementation.init(abstract_spec, s_v_info, tech_set[0], indices.*), s_v_info);
+        writeReturnImplementation(array, types.Implementation.init(abstract_spec, p_info, tech_set[0], indices.*), p_info);
         indices.impl +%= 1;
     } else switch (q_info[0].usage(tech_set_top)) {
         .test_boolean => {
             try meta.wrap(
-                writeDeductionTestBoolean(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices),
+                writeDeductionTestBoolean(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices),
             );
         },
         .compare_enumeration => {
             try meta.wrap(
-                writeDeductionCompareEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices),
+                writeDeductionCompareEnumeration(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices),
             );
         },
         .compare_optional_enumeration => {
             try meta.wrap(
-                writeDeductionCompareOptionalEnumeration(allocator, array, abstract_spec, tech_set_top, s_v_info, tech_set, q_info, indices),
+                writeDeductionCompareOptionalEnumeration(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices),
             );
         },
         else => return,
