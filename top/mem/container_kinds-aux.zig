@@ -5,6 +5,7 @@ const algo = gen.algo;
 const preset = gen.preset;
 const builtin = gen.builtin;
 const attr = @import("./attr.zig");
+const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 
 pub usingnamespace proc.start;
@@ -109,5 +110,6 @@ pub fn main() void {
     writeKind(ctn_fn.Fn, &array, .relative_reverse, defined[1] ++ streamed[1]);
     writeKind(ctn_fn.Fn, &array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
     writeKind(ctn_fn.Fn, &array, .special, helper[0]);
-    gen.writeSourceFile(gen.auxiliaryFile("container_kinds.zig"), u8, array.readAll());
+
+    gen.writeSourceFile(config.container_kinds_path, u8, array.readAll());
 }
