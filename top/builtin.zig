@@ -687,7 +687,7 @@ pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
 
 pub fn assert(b: bool) void {
     if (!b) {
-        debug.logFault("assertion failed");
+        debug.logFault("assertion failed\n");
     }
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
@@ -1419,7 +1419,7 @@ pub const debug = opaque {
         logFaultAIO(&buf, &[_][]const u8{
             debug.about_exit_1_s, "access of union field '",
             @tagName(wanted),     "' while field '",
-            @tagName(active),     "' is active",
+            @tagName(active),     "' is active\n",
         });
         proc.exit(2);
     }
@@ -1750,13 +1750,8 @@ pub const fmt = opaque {
     fn StaticStringMemo(comptime max_len: u64) type {
         return struct {
             auto: [max_len]u8 align(8),
-            len: u64 = max_len,
+            len: u64,
             const Array = @This();
-            fn init() Array {
-                var ret: Array = undefined;
-                ret.len = max_len;
-                return ret;
-            }
             fn writeOneBackwards(array: *Array, v: u8) void {
                 array.len -%= 1;
                 array.auto[array.len] = v;
@@ -1794,7 +1789,8 @@ pub const fmt = opaque {
     pub fn bin(comptime Int: type, value: Int) StaticString(Int, 2) {
         const Array = StaticString(Int, 2);
         const Abs = Absolute(Int);
-        var array: Array = Array.init();
+        var array: Array = undefined;
+        array.len = array.auto.len;
         if (value == 0) {
             while (array.len != 3) {
                 array.writeOneBackwards('0');
@@ -1820,7 +1816,8 @@ pub const fmt = opaque {
     pub fn oct(comptime Int: type, value: Int) StaticString(Int, 8) {
         const Array = StaticString(Int, 8);
         const Abs = Absolute(Int);
-        var array: Array = Array.init();
+        var array: Array = undefined;
+        array.len = array.auto.len;
         if (value == 0) {
             array.writeOneBackwards('0');
             array.writeOneBackwards('o');
@@ -1841,7 +1838,8 @@ pub const fmt = opaque {
     pub fn dec(comptime Int: type, value: Int) StaticString(Int, 10) {
         const Array = StaticString(Int, 10);
         const Abs = Absolute(Int);
-        var array: Array = Array.init();
+        var array: Array = undefined;
+        array.len = array.auto.len;
         if (value == 0) {
             array.writeOneBackwards('0');
             return array;
@@ -1858,7 +1856,8 @@ pub const fmt = opaque {
     pub fn hex(comptime Int: type, value: Int) StaticString(Int, 16) {
         const Array = StaticString(Int, 16);
         const Abs = Absolute(Int);
-        var array: Array = Array.init();
+        var array: Array = undefined;
+        array.len = array.auto.len;
         if (value == 0) {
             array.writeOneBackwards('0');
             array.writeOneBackwards('x');
