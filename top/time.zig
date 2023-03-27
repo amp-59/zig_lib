@@ -66,7 +66,6 @@ pub fn nanoSleepA(req: TimeSpec) !TimeSpec {
 const SleepSpec = struct {
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
-    pub usingnamespace sys.FunctionInterfaceSpec(SleepSpec);
 };
 pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) sys.Call(spec.errors, void) {
     meta.wrap(sys.call(.nanosleep, spec.errors, spec.return_type, .{ @ptrToInt(&ts), 0 })) catch |nanosleep_error| {
