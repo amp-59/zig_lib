@@ -22,7 +22,9 @@ const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
 const Array = mem.StaticString(1024 * 1024);
 const ImplementationDetails = Allocator.StructuredVector(types.Implementation);
-const verify_all_serial: bool = false;
+
+const validate_all_serial: bool = false;
+
 pub fn limits(
     spec_sets: []const []const []const types.Specifier,
     tech_sets: []const []const []const types.Technique,
@@ -175,11 +177,13 @@ fn BinaryFilterPayload(comptime T: type) type {
     return struct { []const T, []const T };
 }
 fn haveSpec(allocator: *Allocator, spec_set: []const []const types.Specifier, p_field: types.Specifier) BinaryFilter([]const types.Specifier) {
-    var t: [][]const types.Specifier =
-        try meta.wrap(allocator.allocateIrreversible([]const types.Specifier, spec_set.len));
+    var t: [][]const types.Specifier = try meta.wrap(
+        allocator.allocateIrreversible([]const types.Specifier, spec_set.len),
+    );
     var t_len: u64 = 0;
-    var f: [][]const types.Specifier =
-        try meta.wrap(allocator.allocateIrreversible([]const types.Specifier, spec_set.len));
+    var f: [][]const types.Specifier = try meta.wrap(
+        allocator.allocateIrreversible([]const types.Specifier, spec_set.len),
+    );
     var f_len: u64 = 0;
     for (spec_set) |s_v_info| {
         for (s_v_info) |s_v_field| {
@@ -196,11 +200,13 @@ fn haveSpec(allocator: *Allocator, spec_set: []const []const types.Specifier, p_
     return .{ f[0..f_len], t[0..t_len] };
 }
 fn haveTechA(allocator: *Allocator, tech_set: []const []const types.Technique, u_field: types.Technique) BinaryFilter([]const types.Technique) {
-    var t: [][]const types.Technique =
-        try meta.wrap(allocator.allocateIrreversible([]const types.Technique, tech_set.len));
+    var t: [][]const types.Technique = try meta.wrap(
+        allocator.allocateIrreversible([]const types.Technique, tech_set.len),
+    );
     var t_len: u64 = 0;
-    var f: [][]const types.Technique =
-        try meta.wrap(allocator.allocateIrreversible([]const types.Technique, tech_set.len));
+    var f: [][]const types.Technique = try meta.wrap(
+        allocator.allocateIrreversible([]const types.Technique, tech_set.len),
+    );
     var f_len: u64 = 0;
     for (tech_set) |v_i_info| {
         for (v_i_info) |v_i_field| {
@@ -219,11 +225,13 @@ fn haveTechA(allocator: *Allocator, tech_set: []const []const types.Technique, u
     return .{ f[0..f_len], t[0..t_len] };
 }
 fn haveTechB(allocator: *Allocator, tech_set: []const []const types.Technique, u_tech: types.Techniques.Tag) BinaryFilter([]const types.Technique) {
-    var t: [][]const types.Technique =
-        try meta.wrap(allocator.allocateIrreversible([]const types.Technique, tech_set.len));
+    var t: [][]const types.Technique = try meta.wrap(
+        allocator.allocateIrreversible([]const types.Technique, tech_set.len),
+    );
     var t_len: u64 = 0;
-    var f: [][]const types.Technique =
-        try meta.wrap(allocator.allocateIrreversible([]const types.Technique, tech_set.len));
+    var f: [][]const types.Technique = try meta.wrap(
+        allocator.allocateIrreversible([]const types.Technique, tech_set.len),
+    );
     var f_len: u64 = 0;
     for (tech_set) |v_i_info| {
         for (v_i_info) |v_i_field| {
