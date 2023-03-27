@@ -167,6 +167,11 @@ fn GenericMultiSet(
             const field_index: Index = directory[index].field_index;
             return multi_set.fields[field_index].atomicUnset(arena_index);
         }
+        pub fn atomicTransform(multi_set: *MultiSet, comptime index: Index, if_state: spec.val_type, to_state: spec.val_type) bool {
+            const arena_index: Index = directory[index].arena_index;
+            const field_index: Index = directory[index].field_index;
+            return multi_set.fields[field_index].atomicTransform(arena_index, if_state, to_state);
+        }
     });
 }
 pub const ArenaOptions = extern struct {
