@@ -96,6 +96,7 @@ pub const BuildCommand = struct {
     dirafter: ?[]const u8 = null,
     system: ?[]const u8 = null,
     include: ?[]const u8 = null,
+    link_libc: bool = false,
     libc: ?[]const u8 = null,
     library: ?[]const u8 = null,
     library_directory: ?[]const u8 = null,
@@ -266,17 +267,19 @@ pub const Builder = struct {
         return ret;
     }
     pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) !Builder {
+        const dir_fd: u64 = try file.path(.{}, paths.build_root);
+        try writeEnv(allocator, paths);
         return .{
             .paths = paths,
             .options = options,
             .args = args,
             .vars = vars,
             .groups = GroupList.init(allocator),
-            .dir_fd = try file.path(.{}, paths.build_root),
+            .dir_fd = dir_fd,
         };
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-        return file.fstatAt(.{}, builder.dir_fd, name) catch null;
+        return file.fstatAt(.{ .logging = preset.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const BuildCommand = target.build_cmd;
@@ -633,6 +636,9 @@ pub const Builder = struct {
             len +%= 3;
             len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
             len +%= 1;
+        }
+        if (cmd.link_libc) {
+            len +%= 4;
         }
         if (cmd.libc) |how| {
             len +%= 7;
@@ -1145,6 +1151,9 @@ pub const Builder = struct {
             array.writeAny(preset.reinterpret.print, how);
             array.writeOne('\x00');
         }
+        if (cmd.link_libc) {
+            array.writeMany("-lc\x00");
+        }
         if (cmd.libc) |how| {
             array.writeMany("--libc\x00");
             array.writeAny(preset.reinterpret.print, how);
@@ -1442,13 +1451,7 @@ pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-    pub fn addTarget(
-        group: *Group,
-        spec: TargetSpec,
-        allocator: *Allocator,
-        name: [:0]const u8,
-        pathname: [:0]const u8,
-    ) *Target {
+    pub fn addTarget(group: *Group, spec: TargetSpec, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) *Target {
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
         const ret: *Target = group.targets.create(allocator, .{
             .name = saveString(allocator, name),
@@ -1473,9 +1476,6 @@ pub const Group = struct {
             ));
             const build_cmd: *BuildCommand = allocator.createIrreversible(BuildCommand);
             mach.memset(@ptrCast([*]u8, build_cmd), 0, @sizeOf(BuildCommand));
-            build_cmd.main_pkg_path = group.builder.paths.build_root;
-            build_cmd.emit_bin = if (group.builder.options.emit_bin) .{ .yes = bin_path } else null;
-            build_cmd.emit_asm = if (group.builder.options.emit_asm) .{ .yes = asm_path } else null;
             build_cmd.name = name;
             build_cmd.kind = kind;
             build_cmd.omit_frame_pointer = false;
@@ -1493,6 +1493,9 @@ pub const Group = struct {
             build_cmd.macros = spec.macros;
             build_cmd.reference_trace = true;
             ret.build_cmd = build_cmd;
+            build_cmd.main_pkg_path = group.builder.paths.build_root;
+            build_cmd.emit_bin = if (group.builder.options.emit_bin) .{ .yes = bin_path } else null;
+            build_cmd.emit_asm = if (group.builder.options.emit_asm) .{ .yes = asm_path } else null;
             ret.give(.build);
         }
         if (spec.run) {
@@ -1610,11 +1613,12 @@ pub const Target = struct {
     pub fn dependOnFormat(target: *Target, allocator: *Allocator, dependency: *Target) void {
         target.deps.save(allocator, .{ .target = dependency, .tag = .fmt });
     }
-    pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
-        target.deps.save(allocator, .{ .target = dependency, .tag = .build });
-    }
     pub fn dependOn(target: *Target, allocator: *Allocator, dependency: *Dependency) void {
         target.deps.create(allocator, .{ .target = dependency, .tag = .fmt });
+    }
+    pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
+        target.dependOnBuild(allocator, dependency);
+        target.addFile(allocator, dependency.binPath());
     }
 };
 fn countArgs(array: anytype) u64 {
@@ -1902,9 +1906,9 @@ const debug = struct {
         array.undefineAll();
         array.writeMany(about_build_s);
         array.writeMany(name);
-        array.writeMany(", ");
+        array.writeMany(",\t");
         array.writeFormat(ChangedSize.init(old_size, new_size));
-        array.writeMany(", ");
+        array.writeMany(",\t");
         array.writeFormat(fmt.ud64(durat.sec));
         array.writeMany(".");
         array.writeFormat(fmt.nsec(durat.nsec));
@@ -1917,18 +1921,17 @@ const debug = struct {
         array.undefineAll();
         array.writeMany(about);
         array.writeMany(name);
-        array.writeMany(", ");
+        array.writeMany(",\t");
+        if (rc) |return_code| {
+            array.writeMany("rc=");
+            array.writeFormat(fmt.ud8(return_code));
+            array.writeMany(",\t");
+        }
         array.writeFormat(fmt.ud64(durat.sec));
         array.writeMany(".");
         array.writeFormat(fmt.nsec(durat.nsec));
         array.undefine(6);
-        if (rc) |return_code| {
-            array.writeMany("s, ->");
-            array.writeFormat(fmt.ud8(return_code));
-        } else {
-            array.writeMany("s");
-        }
-        array.writeMany("\n");
+        array.writeMany("s\n");
         builtin.debug.write(array.readAll());
     }
     inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
@@ -1938,6 +1941,17 @@ const debug = struct {
         simpleTimedNotice(about_format_s, name, durat, null);
     }
 };
+fn writeEnv(allocator: *Allocator, paths: Builder.Paths) !void {
+    file.makeDir(.{ .errors = .{} }, paths.cache_dir);
+    const env_pathname: [:0]const u8 = concatStrings(allocator, &.{ paths.cache_dir, "/env.zig" });
+    const env_fd: u64 = try file.create(.{ .options = .{ .exclusive = false, .write = .truncate } }, env_pathname);
+    try file.write(.{}, env_fd, concatStrings(allocator, &.{
+        "pub const zig_exe: [:0]const u8 = \"",          paths.zig_exe,          "\";\n",
+        "pub const build_root: [:0]const u8 = \"",       paths.build_root,       "\";\n",
+        "pub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,        "\";\n",
+        "pub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir, "\";\n",
+    }));
+}
 pub extern fn asmMaxWidths(builder: *Builder) extern struct { u64, u64 };
 pub extern fn asmWriteAllCommands(builder: *Builder, buf: [*]u8, name_max_width: u64) callconv(.C) u64;
 pub extern fn asmRewind(builder: *Builder) callconv(.C) void;
