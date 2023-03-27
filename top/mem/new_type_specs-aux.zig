@@ -664,36 +664,31 @@ fn writeSpecifications(
     }
     gen.writeSourceFile(config.container_path, u8, array.readAll());
 }
-fn nonEqualIndices2(name: []const u8, i: u64, j: u64) void {
+fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     array.writeMany(name);
-    array.writeMany(": non-equal indices: ");
-    array.writeFormat(fmt.ud64(i));
-    array.writeOne(' ');
-    array.writeFormat(fmt.ud64(j));
-    array.writeOne('\n');
-    builtin.debug.write(array.readAll());
-}
-fn nonEqualIndices3(name: []const u8, i: u64, j: u64, k: u64) void {
-    var array: mem.StaticString(4096) = undefined;
-    array.undefineAll();
-    array.writeMany(name);
-    array.writeMany(": non-equal indices: ");
-    array.writeFormat(fmt.ud64(i));
-    array.writeOne(' ');
-    array.writeFormat(fmt.ud64(j));
-    array.writeOne(' ');
-    array.writeFormat(fmt.ud64(k));
-    array.writeOne('\n');
-    builtin.debug.write(array.readAll());
-}
-fn nonEqualIndices(name: []const u8, i: u64) void {
-    var array: mem.StaticString(4096) = undefined;
-    array.undefineAll();
-    array.writeMany(name);
-    array.writeMany(": non-equal indices: ");
-    array.writeFormat(fmt.ud64(i));
+    switch (any.len) {
+        else => {
+            array.writeMany(": non-equal indices: ");
+            array.writeFormat(fmt.ud64(any[0]));
+            array.writeOne('\n');
+        },
+        2 => {
+            array.writeMany(": non-equal indices: ");
+            array.writeFormat(fmt.ud64(any[0]));
+            array.writeOne(' ');
+            array.writeFormat(fmt.ud64(any[1]));
+        },
+        3 => {
+            array.writeMany(": non-equal indices: ");
+            array.writeFormat(fmt.ud64(any[0]));
+            array.writeOne(' ');
+            array.writeFormat(fmt.ud64(any[1]));
+            array.writeOne(' ');
+            array.writeFormat(fmt.ud64(any[2]));
+        },
+    }
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
@@ -705,33 +700,33 @@ fn validateAllSerial(
     tech_sets: []const []const []const types.Technique,
     impl_details: ImplementationDetails,
 ) !void {
-    if (!verify_all_serial) {
+    if (!validate_all_serial) {
         return;
     }
-    var f_x_p_infos: []const []const types.Specifier = types.getParams(allocator);
-    var f_x_q_infos: []const []const types.Technique = types.getOptions(allocator);
-    var f_impl_details: []const types.Implementation = types.getImplDetails(allocator);
+    var f_x_p_infos: []const []const types.Specifier = attr.getParams(allocator);
+    var f_x_q_infos: []const []const types.Technique = attr.getOptions(allocator);
+    var f_impl_details: []const types.Implementation = attr.getImplDetails(allocator);
     for (f_x_p_infos, x_p_infos, 0..) |xx, yy, idx_0| {
         for (xx, yy, 0..) |x, y, idx_1| {
             if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
-                nonEqualIndices2("params", idx_0, idx_1);
+                nonEqualIndices("params", .{ idx_0, idx_1 });
             }
         }
     }
     for (f_x_q_infos, x_q_infos, 0..) |xx, yy, idx_0| {
         for (xx, yy, 0..) |x, y, idx_1| {
             if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
-                nonEqualIndices2("options", idx_0, idx_1);
+                nonEqualIndices("options", .{ idx_0, idx_1 });
             }
         }
     }
     for (f_impl_details, impl_details.readAll(), 0..) |x, y, idx_0| {
         if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
-            nonEqualIndices("details", idx_0);
+            nonEqualIndices("details", .{idx_0});
         }
     }
-    var f_spec_sets: []const []const []const types.Specifier = types.getSpecs(allocator);
-    var f_tech_sets: []const []const []const types.Technique = types.getTechs(allocator);
+    var f_spec_sets: []const []const []const types.Specifier = attr.getSpecs(allocator);
+    var f_tech_sets: []const []const []const types.Technique = attr.getTechs(allocator);
     var i: u64 = 0;
     while (i != spec_sets.len) : (i +%= 1) {
         var j: u64 = 0;
@@ -743,7 +738,7 @@ fn validateAllSerial(
                     f_spec_sets[i][j][k],
                     spec_sets[i][j][k],
                 )) {
-                    nonEqualIndices3("specs", i, j, k);
+                    nonEqualIndices("specs", .{ i, j, k });
                 }
             }
         }
@@ -759,7 +754,7 @@ fn validateAllSerial(
                     f_tech_sets[i][j][k],
                     tech_sets[i][j][k],
                 )) {
-                    nonEqualIndices3("techs", i, j, k);
+                    nonEqualIndices("techs", .{ i, j, k });
                 }
             }
         }
