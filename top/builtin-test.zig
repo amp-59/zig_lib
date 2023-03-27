@@ -272,8 +272,8 @@ fn testMinMax() !void {
     try builtin.expect(builtin.testEqual(S, t, builtin.max(S, t, s)));
 }
 fn testTestEqual() !void {
-    const Specifier = @import("mem/attr.zig").Specifier;
-    const Technique = @import("mem/attr.zig").Technique;
+    const Specifier = @import("mem/types.zig").Specifier;
+    const Technique = @import("mem/types.zig").Technique;
     {
         var x: Specifier = undefined;
         var y: Specifier = undefined;
