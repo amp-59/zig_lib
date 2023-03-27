@@ -29,9 +29,9 @@ pub fn ExternalError(comptime E: type) type {
     static.assert(@hasDecl(E, "errorName"));
     return (struct {
         /// Throw error if unwrapping yields any of these values
-        throw: ?[]const E = null,
+        throw: ?[]const E = &.{},
         /// Abort the program if unwrapping yields any of these values
-        abort: ?[]const E = null,
+        abort: ?[]const E = &.{},
         pub const Enum = E;
     });
 }
@@ -81,6 +81,18 @@ pub inline fn createErrorPolicy(
     var value: *InternalError(S.Error) = ptr(InternalError(S.Error));
     value.* = new;
     return value;
+}
+pub inline fn mergeExternalErrorPolicies(
+    comptime E: type,
+    comptime policies: []const ExternalError(E),
+) ExternalError(E) {
+    var throw: []const E = &.{};
+    var abort: []const E = &.{};
+    for (policies) |policy| {
+        throw = throw ++ policy.throw;
+        abort = abort ++ policy.abort;
+    }
+    return .{ .throw = throw, .abort = abort };
 }
 pub fn BitCount(comptime T: type) type {
     if (@sizeOf(T) == 0) {
