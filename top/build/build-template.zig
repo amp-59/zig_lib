@@ -179,17 +179,19 @@ pub const Builder = struct {
         return ret;
     }
     pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) !Builder {
+        const dir_fd: u64 = try file.path(.{}, paths.build_root);
+        try writeEnv(allocator, paths);
         return .{
             .paths = paths,
             .options = options,
             .args = args,
             .vars = vars,
             .groups = GroupList.init(allocator),
-            .dir_fd = try file.path(.{}, paths.build_root),
+            .dir_fd = dir_fd,
         };
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-        return file.fstatAt(.{}, builder.dir_fd, name) catch null;
+        return file.fstatAt(.{ .logging = preset.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const BuildCommand = target.build_cmd;
@@ -495,11 +497,12 @@ pub const Target = struct {
     pub fn dependOnFormat(target: *Target, allocator: *Allocator, dependency: *Target) void {
         target.deps.save(allocator, .{ .target = dependency, .tag = .fmt });
     }
-    pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
-        target.deps.save(allocator, .{ .target = dependency, .tag = .build });
-    }
     pub fn dependOn(target: *Target, allocator: *Allocator, dependency: *Dependency) void {
         target.deps.create(allocator, .{ .target = dependency, .tag = .fmt });
+    }
+    pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
+        target.dependOnBuild(allocator, dependency);
+        target.addFile(allocator, dependency.binPath());
     }
 };
 fn countArgs(array: anytype) u64 {
@@ -805,17 +808,16 @@ const debug = struct {
         array.writeMany(about);
         array.writeMany(name);
         array.writeMany(", ");
+        if (rc) |return_code| {
+            array.writeMany("rc=");
+            array.writeFormat(fmt.ud8(return_code));
+            array.writeMany(", ");
+        }
         array.writeFormat(fmt.ud64(durat.sec));
         array.writeMany(".");
         array.writeFormat(fmt.nsec(durat.nsec));
         array.undefine(6);
-        if (rc) |return_code| {
-            array.writeMany("s, ->");
-            array.writeFormat(fmt.ud8(return_code));
-        } else {
-            array.writeMany("s");
-        }
-        array.writeMany("\n");
+        array.writeMany("s\n");
         builtin.debug.write(array.readAll());
     }
     inline fn runNotice(name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
@@ -825,6 +827,17 @@ const debug = struct {
         simpleTimedNotice(about_format_s, name, durat, null);
     }
 };
+fn writeEnv(allocator: *Allocator, paths: Builder.Paths) !void {
+    file.makeDir(.{ .errors = .{} }, paths.cache_dir);
+    const env_pathname: [:0]const u8 = concatStrings(allocator, &.{ paths.cache_dir, "/env.zig" });
+    const env_fd: u64 = try file.create(.{ .options = .{ .exclusive = false, .write = .truncate } }, env_pathname);
+    try file.write(.{}, env_fd, concatStrings(allocator, &.{
+        "pub const zig_exe: [:0]const u8 = \"",          paths.zig_exe,          "\";\n",
+        "pub const build_root: [:0]const u8 = \"",       paths.build_root,       "\";\n",
+        "pub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,        "\";\n",
+        "pub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir, "\";\n",
+    }));
+}
 // finish-document build-types.zig
 // start-document option-functions.zig
 fn lengthOptionalWhatNoArgWhatNot(option: anytype, len_equ: u64, len_yes: u64, len_no: u64) u64 {
