@@ -329,13 +329,7 @@ pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-    pub fn addTarget(
-        group: *Group,
-        spec: TargetSpec,
-        allocator: *Allocator,
-        name: [:0]const u8,
-        pathname: [:0]const u8,
-    ) *Target {
+    pub fn addTarget(group: *Group, spec: TargetSpec, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) *Target {
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
         const ret: *Target = group.targets.create(allocator, .{
             .name = saveString(allocator, name),
@@ -360,9 +354,6 @@ pub const Group = struct {
             ));
             const build_cmd: *BuildCommand = allocator.createIrreversible(BuildCommand);
             mach.memset(@ptrCast([*]u8, build_cmd), 0, @sizeOf(BuildCommand));
-            build_cmd.main_pkg_path = group.builder.paths.build_root;
-            build_cmd.emit_bin = if (group.builder.options.emit_bin) .{ .yes = bin_path } else null;
-            build_cmd.emit_asm = if (group.builder.options.emit_asm) .{ .yes = asm_path } else null;
             build_cmd.name = name;
             build_cmd.kind = kind;
             build_cmd.omit_frame_pointer = false;
@@ -380,6 +371,9 @@ pub const Group = struct {
             build_cmd.macros = spec.macros;
             build_cmd.reference_trace = true;
             ret.build_cmd = build_cmd;
+            build_cmd.main_pkg_path = group.builder.paths.build_root;
+            build_cmd.emit_bin = if (group.builder.options.emit_bin) .{ .yes = bin_path } else null;
+            build_cmd.emit_asm = if (group.builder.options.emit_asm) .{ .yes = asm_path } else null;
             ret.give(.build);
         }
         if (spec.run) {
@@ -572,10 +566,8 @@ pub const Module = struct {
 pub const ModuleDependency = struct {
     import: ?[]const u8 = null,
     name: []const u8,
-
     var w_leader: bool = true;
     var l_leader: bool = true;
-
     pub fn formatWrite(mod_dep: ModuleDependency, array: anytype) void {
         defer w_leader = false;
         if (w_leader) {
