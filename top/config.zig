@@ -43,43 +43,39 @@ pub const signal_handlers: SignalHandlers = define(
 );
 
 // These are defined by the library builder
-const zig_exe: [:0]const u8 = env.zig_exe; //define("zig_exe", [:0]const u8, undefined);
-const build_root: [:0]const u8 = env.build_root; //define("build_root", [:0]const u8, undefined);
-const cache_dir: [:0]const u8 = env.cache_dir; // define("cache_dir", [:0]const u8, undefined);
-const global_cache_dir: [:0]const u8 = env.global_cache_dir; //define("global_cache_dir", [:0]const u8, undefined);
 const root_src_file: [:0]const u8 = define("root_src_file", [:0]const u8, undefined);
 
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
-    return build_root ++ "/" ++ relative;
+    return env.build_root ++ "/" ++ relative;
 }
 /// Returns an absolute path to the compiler used to compile this program.
 pub fn zigExe() [:0]const u8 {
-    if (zig_exe[0] != '/') {
-        @compileError("'" ++ zig_exe ++ "' must be an absolute path");
+    if (env.zig_exe[0] != '/') {
+        @compileError("'" ++ env.zig_exe ++ "' must be an absolute path");
     }
-    return zig_exe;
+    return env.zig_exe;
 }
 /// Returns an absolute path to the project root directory.
 pub fn buildRoot() [:0]const u8 {
-    if (build_root[0] != '/') {
-        @compileError("'" ++ build_root ++ "' must be an absolute path");
+    if (env.build_root[0] != '/') {
+        @compileError("'" ++ env.build_root ++ "' must be an absolute path");
     }
-    return build_root;
+    return env.build_root;
 }
 /// Returns an absolute path to the project cache directory.
 pub fn cacheDir() [:0]const u8 {
-    if (cache_dir[0] != '/') {
-        @compileError("'" ++ cache_dir ++ "' must be an absolute path");
+    if (env.cache_dir[0] != '/') {
+        @compileError("'" ++ env.cache_dir ++ "' must be an absolute path");
     }
-    return cache_dir;
+    return env.cache_dir;
 }
 /// Returns an absolute path to the user (global) cache directory.
 pub fn globalCacheDir() [:0]const u8 {
-    if (global_cache_dir[0] != '/') {
-        @compileError("'" ++ global_cache_dir ++ "' must be an absolute path");
+    if (env.global_cache_dir[0] != '/') {
+        @compileError("'" ++ env.global_cache_dir ++ "' must be an absolute path");
     }
-    return global_cache_dir;
+    return env.global_cache_dir;
 }
 /// The primary reason that these constants exist is to distinguish between
 /// reports from the build runner and reports from a run command.
