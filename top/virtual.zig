@@ -566,9 +566,9 @@ fn RegularTypes(comptime AddressSpace: type) type {
     return struct {
         pub const acquire_void: type = blk: {
             if (AddressSpace.addr_spec.options.require_map and
-                AddressSpace.addr_spec.errors.map.throw != null)
+                AddressSpace.addr_spec.errors.map.throw.len != 0)
             {
-                const MMapError = sys.Error(AddressSpace.addr_spec.errors.map.throw.?);
+                const MMapError = sys.Error(AddressSpace.addr_spec.errors.map.throw);
                 if (AddressSpace.addr_spec.errors.acquire == .throw) {
                     break :blk (MMapError || ResourceError)!void;
                 }
@@ -581,9 +581,9 @@ fn RegularTypes(comptime AddressSpace: type) type {
         };
         pub const release_void: type = blk: {
             if (AddressSpace.addr_spec.options.require_unmap and
-                AddressSpace.addr_spec.errors.unmap.throw != null)
+                AddressSpace.addr_spec.errors.unmap.throw.len != 0)
             {
-                const MUnmapError = sys.Error(AddressSpace.addr_spec.errors.unmap.throw.?);
+                const MUnmapError = sys.Error(AddressSpace.addr_spec.errors.unmap.throw);
                 if (AddressSpace.addr_spec.errors.release == .throw) {
                     break :blk (MUnmapError || ResourceError)!void;
                 }
@@ -596,17 +596,17 @@ fn RegularTypes(comptime AddressSpace: type) type {
         };
         pub const map_void: type = blk: {
             if (AddressSpace.addr_spec.options.require_map and
-                AddressSpace.addr_spec.errors.map.throw != null)
+                AddressSpace.addr_spec.errors.map.throw.len != 0)
             {
-                break :blk sys.Error(AddressSpace.addr_spec.errors.map.throw.?)!void;
+                break :blk sys.Error(AddressSpace.addr_spec.errors.map.throw)!void;
             }
             break :blk void;
         };
         pub const unmap_void: type = blk: {
             if (AddressSpace.addr_spec.options.require_unmap and
-                AddressSpace.addr_spec.errors.unmap.throw != null)
+                AddressSpace.addr_spec.errors.unmap.throw.len != 0)
             {
-                break :blk sys.Error(AddressSpace.addr_spec.errors.unmap.throw.?)!void;
+                break :blk sys.Error(AddressSpace.addr_spec.errors.unmap.throw)!void;
             }
             break :blk void;
         };
@@ -616,9 +616,9 @@ fn DiscreteTypes(comptime AddressSpace: type) type {
     return struct {
         pub fn acquire_void(comptime index: AddressSpace.Index) type {
             if (AddressSpace.addr_spec.options(index).require_map and
-                AddressSpace.addr_spec.errors.map.throw != null)
+                AddressSpace.addr_spec.errors.map.throw.len != 0)
             {
-                const MMapError = sys.Error(AddressSpace.addr_spec.errors.map.throw.?);
+                const MMapError = sys.Error(AddressSpace.addr_spec.errors.map.throw);
                 if (AddressSpace.addr_spec.errors.acquire == .throw) {
                     return (MMapError || ResourceError)!void;
                 }
@@ -631,9 +631,9 @@ fn DiscreteTypes(comptime AddressSpace: type) type {
         }
         pub fn release_void(comptime index: AddressSpace.Index) type {
             if (AddressSpace.addr_spec.options(index).require_unmap and
-                AddressSpace.addr_spec.errors.unmap.throw != null)
+                AddressSpace.addr_spec.errors.unmap.throw.len != 0)
             {
-                const MUnmapError = sys.Error(AddressSpace.addr_spec.errors.unmap.throw.?);
+                const MUnmapError = sys.Error(AddressSpace.addr_spec.errors.unmap.throw);
                 if (AddressSpace.addr_spec.errors.release == .throw) {
                     return (MUnmapError || ResourceError)!void;
                 }
@@ -646,17 +646,17 @@ fn DiscreteTypes(comptime AddressSpace: type) type {
         }
         pub fn map_void(comptime index: AddressSpace.Index) type {
             if (AddressSpace.addr_spec.options(index).require_map and
-                AddressSpace.addr_spec.errors.map.throw != null)
+                AddressSpace.addr_spec.errors.map.throw.len != 0)
             {
-                return sys.Error(AddressSpace.addr_spec.errors.map.throw.?)!void;
+                return sys.Error(AddressSpace.addr_spec.errors.map.throw)!void;
             }
             return void;
         }
         pub fn unmap_void(comptime index: AddressSpace.Index) type {
             if (AddressSpace.addr_spec.options(index).require_unmap and
-                AddressSpace.addr_spec.errors.unmap.throw != null)
+                AddressSpace.addr_spec.errors.unmap.throw.len != 0)
             {
-                return sys.Error(AddressSpace.addr_spec.errors.unmap.throw.?)!void;
+                return sys.Error(AddressSpace.addr_spec.errors.unmap.throw)!void;
             }
             return void;
         }
@@ -687,7 +687,7 @@ fn Specs(comptime AddressSpace: type) type {
 ///       operations from a thread-unsafe address space yields a compile error.
 /// Bad:
 ///     * Poor flexibility.
-///     * params results must be tightly constrained or checked.
+///     * Results must be tightly constrained or checked.
 ///     * Arenas can not be independently configured.
 ///     * Thread safety is all-or-nothing, which increases the metadata size
 ///       required by each arena from 1 to 8 bits.
