@@ -67,6 +67,15 @@ pub fn assertHasField(comptime T: type, field_name: []const u8) void {
         }
     }
 }
+pub fn assertContinuousEnumeration(comptime E: type) void {
+    var value: @typeInfo(E).Enum.tag_type = 0;
+    inline for (@typeInfo(E).Enum.fields) |field| {
+        if (field.value != value) {
+            debug.enumFieldValueNotContinuous(E, value, field.name, field.value);
+        }
+        value +%= 1;
+    }
+}
 /// If the input is a union return the active field else return the input.
 pub inline fn resolve(comptime any: anytype) if (@typeInfo(@TypeOf(any)) == .Union)
     @TypeOf(comptime @field(any, @tagName(any)))
@@ -704,9 +713,6 @@ pub fn TaggedUnion(comptime Union: type) type {
     }
     return @Type(.{ .Enum = .{ .fields = tag_type_fields } });
 }
-pub fn Var(comptime T: type) type {
-    return @TypeOf(@constCast(@as(T, undefined)));
-}
 pub fn Field(comptime T: type, comptime field_name: []const u8) type {
     return @TypeOf(@field(@as(T, undefined), field_name));
 }
@@ -1175,6 +1181,10 @@ const debug = opaque {
     }
     fn initializeComptimeFieldError(comptime T: type, comptime field: builtin.Type.StructField) noreturn {
         @compileError("cannot initialize comptime field '" ++ field.name ++ "' in " ++ @typeName(T));
+    }
+    fn enumFieldValueNotContinuous(comptime T: type, value: anytype, field_name: []const u8, field_value: anytype) noreturn {
+        @compileError("field '" ++ field_name ++ "' of index tag type '" ++ @typeName(T) ++
+            "' is not continuous: expected value " ++ builtin.fmt.ci(value) ++ ", found value " ++ builtin.fmt.ci(field_value));
     }
     fn unexpectedVariantError(comptime T: type, value: anytype, yes: anytype, no: anytype) noreturn {
         if (no.len != 0) {
