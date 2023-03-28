@@ -590,7 +590,10 @@ comptime {
         \\  ret
     );
 }
-pub fn __zig_probe_stack() callconv(.C) void {}
+extern fn __zig_probe_stack() callconv(.C) void;
 comptime {
-    @export(__zig_probe_stack, .{ .name = "__zig_probe_stack", .visibility = .default, .linkage = .Weak });
+    asm (
+        \\__zig_probe_stack:
+        \\ret
+    );
 }
