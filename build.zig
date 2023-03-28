@@ -1,5 +1,5 @@
 pub usingnamespace struct {
-    pub const build = if (true) @import("build/build-aux.zig").main else buildMain;
+    pub const build = if (false) @import("build/build-aux.zig").main else buildMain;
 };
 
 pub const srg = @import("./zig_lib.zig");
@@ -11,12 +11,30 @@ const builtin = srg.builtin;
 
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
-pub const max_relevant_depth: u64 = if (builtin.testEqual(builtin.Logging.Override, logging_override, preset.logging.override.verbose)) 255 else 1;
+pub const max_relevant_depth: u64 = 255;
 
-const deps: []const build.ModuleDependency = &.{ .{ .name = "zig_lib" }, .{ .name = "@build" } };
-const modules: []const build.Module = &.{ .{ .name = "zig_lib", .path = "./zig_lib.zig" }, .{ .name = "@build", .path = "./build.zig" } };
-const lib_parser_macros: []const build.Macro = &.{.{ .name = "test_subject", .value = .{ .string = "lib" } }};
-const std_parser_macros: []const build.Macro = &.{.{ .name = "test_subject", .value = .{ .string = "std" } }};
+const deps: []const build.ModuleDependency = &.{
+    .{ .name = "zig_lib" },
+    .{ .name = "env" },
+};
+const build_test_deps: []const build.ModuleDependency = deps ++ .{
+    .{ .name = "@build" },
+};
+const modules: []const build.Module = &.{
+    .{ .name = "zig_lib", .path = "./zig_lib.zig" },
+    .{ .name = "env", .path = "./zig-cache/env.zig" },
+};
+const build_test_modules: []const build.Module = modules ++ .{
+    .{ .name = "@build", .path = "./build.zig" },
+};
+const lib_parser_macros: []const build.Macro = &.{.{
+    .name = "test_subject",
+    .value = .{ .string = "lib" },
+}};
+const std_parser_macros: []const build.Macro = &.{.{
+    .name = "test_subject",
+    .value = .{ .string = "std" },
+}};
 
 // zig fmt: off
 const debug_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = modules, .deps = deps };
@@ -25,10 +43,10 @@ const small_spec: build.TargetSpec =    .{ .mode = .ReleaseSmall,   .mods = modu
 const fast_spec: build.TargetSpec =     .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps };
 const parser_spec_a: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = lib_parser_macros };
 const parser_spec_b: build.TargetSpec = .{ .mode = .ReleaseFast,    .mods = modules, .deps = deps, .macros = std_parser_macros };
-const build_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = modules, .deps = deps };
+const build_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = build_test_modules, .deps = build_test_deps };
+const obj_spec: build.TargetSpec =      .{ .mode = .ReleaseSmall,   .build = .obj, .run = false, .fmt = false };
 const gen_spec: build.TargetSpec =      .{ .fmt = true, .run = false, .build = null };
 const asm_spec: build.TargetSpec =      .{ .run = false, .build = null };
-const obj_spec: build.TargetSpec =      .{ .mode = .ReleaseSmall, .build = .obj, .run = false, .fmt = false };
 
 pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const examples: *build.Group            = builder.addGroup(allocator,               "examples");
@@ -59,11 +77,12 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const impl_test: *build.Target          = tests.addTarget(debug_spec, allocator,    "impl_test",            "top/impl-test.zig");
     const size_test: *build.Target          = tests.addTarget(debug_spec, allocator,    "size_test",            "test/size_per_config.zig");
     const container_test: *build.Target     = tests.addTarget(debug_spec, allocator,    "container_test",       "top/container-test.zig");
+    const zig_program: *build.Target        = builder.addTarget(debug_spec, allocator,  "zig_program",          "test/zig_program.zig");
+    const c_program: *build.Target          = builder.addTarget(obj_spec, allocator,    "c_program",            "test/c_program.c");
     const bg: *build.Group                  = builder.addGroup(allocator,               "buildgen");
     const generate_build: *build.Target     = bg.addTarget(small_spec, allocator,       "generate_build",       "top/build/generate_build.zig");
     const mg_aux: *build.Group              = builder.addGroup(allocator,               "memgen_auxiliary");
     const mg_touch: *build.Target           = mg_aux.addTarget(small_spec, allocator,   "mg_touch",             "top/mem/touch-aux.zig");
-
     const mg_serial_specs: *build.Target            = mg_aux.addTarget(obj_spec, allocator, "mg_serial_specs",          "top/mem/serial_specs.zig");
     const mg_serial_techs: *build.Target            = mg_aux.addTarget(obj_spec, allocator, "mg_serial_techs",          "top/mem/serial_techs.zig");
     const mg_serial_params: *build.Target           = mg_aux.addTarget(obj_spec, allocator, "mg_serial_params",         "top/mem/serial_params.zig");
@@ -79,39 +98,42 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_references",  "top/mem/reference.zig");
     const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_containers",  "top/mem/container.zig");
 
+    zig_program.dependOnObject(allocator,       c_program);
     build_test.dependOnRun(allocator,           generate_build);
-
     mg_new_type_specs.dependOnRun(allocator,    mg_touch);
-    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_specs);
-    mg_new_type_specs.addFile(allocator,        mg_serial_specs.binPath());
-    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_techs);
-    mg_new_type_specs.addFile(allocator,        mg_serial_techs.binPath());
-    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_impl_detail);
-    mg_new_type_specs.addFile(allocator,        mg_serial_impl_detail.binPath());
-    mg_new_type_specs.dependOnBuild(allocator,  mg_serial_ctn_detail);
-    mg_new_type_specs.addFile(allocator,        mg_serial_ctn_detail.binPath());
-
+    mg_new_type_specs.dependOnObject(allocator, mg_serial_specs);
+    mg_new_type_specs.dependOnObject(allocator, mg_serial_techs);
+    mg_new_type_specs.dependOnObject(allocator, mg_serial_params);
+    mg_new_type_specs.dependOnObject(allocator, mg_serial_options);
+    mg_new_type_specs.dependOnObject(allocator, mg_serial_impl_detail);
+    mg_new_type_specs.dependOnObject(allocator, mg_serial_ctn_detail);
     mg_reference_impls.dependOnRun(allocator,   mg_new_type_specs);
     mg_reference_impls.addFile(allocator,       mg_serial_impl_detail.binPath());
-
     mg_container_kinds.dependOnRun(allocator,   mg_touch);
     mg_container_impls.dependOnRun(allocator,   mg_new_type_specs);
     mg_container_impls.dependOnRun(allocator,   mg_container_kinds);
     mg_container_impls.addFile(allocator,       mg_serial_ctn_detail.binPath());
-
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
-
-    generate_references.fmt_cmd.ast_check = false;
-    generate_containers.fmt_cmd.ast_check = false;
-
     build_test.run_cmd.addRunArgument(builder.zigExePath());
     build_test.run_cmd.addRunArgument(builder.buildRootPath());
     build_test.run_cmd.addRunArgument(builder.cacheDirPath());
     build_test.run_cmd.addRunArgument(builder.globalCacheDirPath());
 
-    _ = mg_serial_params;
-    _ = mg_serial_options;
+    c_program.build_cmd.link_libc = true;
+    c_program.build_cmd.function_sections = true;
+
+    zig_program.build_cmd.link_libc = true;
+    zig_program.build_cmd.static = false;
+    zig_program.build_cmd.mode = .ReleaseSmall;
+
+    c_program.build_cmd.macros = &.{};
+    zig_program.build_cmd.macros = &.{};
+
+    generate_references.fmt_cmd.ast_check = false;
+    generate_containers.fmt_cmd.ast_check = false;
+
+    // zig fmt: on
     _ = mg_serial_abstract_specs;
     _ = readdir;
     _ = dynamic;
