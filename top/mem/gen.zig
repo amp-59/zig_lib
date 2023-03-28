@@ -12,7 +12,6 @@ pub usingnamespace top;
 
 const tok = @import("./tok.zig");
 
-const build_root = @cImport({}).build_root;
 pub const ListKind = enum { Parameter, Argument };
 
 const open_read_spec: file.OpenSpec = .{
