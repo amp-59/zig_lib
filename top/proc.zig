@@ -764,11 +764,11 @@ pub noinline fn callClone(
             ::: "rax", "rdi");
         unreachable;
     }
-    if (spec.errors.throw) |errors| {
-        if (rc < 0) return meta.zigErrorThrow(errors, rc);
+    if (spec.errors.throw.len != 0) {
+        if (rc < 0) return meta.zigErrorThrow(spec.errors.throw, rc);
     }
-    if (spec.errors.abort) |errors| {
-        if (rc < 0) return meta.zigErrorAbort(errors, rc);
+    if (spec.errors.abort.len != 0) {
+        if (rc < 0) return meta.zigErrorAbort(spec.errors.abort, rc);
     }
     if (spec.return_type == void) {
         return;
