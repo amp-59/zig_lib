@@ -230,7 +230,7 @@ pub const Builder = struct {
         return builder.path(root);
     }
     pub fn path(builder: *const Builder, name: [:0]const u8) Path {
-        return .{ .absolute = builder.paths.build_root, .pathname = name };
+        return .{ .absolute = builder.paths.build_root, .relative = name };
     }
     pub inline fn addTarget(
         builder: *Builder,
@@ -1377,7 +1377,7 @@ pub const Builder = struct {
             var build_args: ArgsPointers = undefined;
             build_args.undefineAll();
             var build_time: time.TimeSpec = undefined;
-            const bin_path: [:0]const u8 = target.binPath().pathname;
+            const bin_path: [:0]const u8 = target.binPath().relative.?;
             const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
             builder.buildWrite(target, &array);
             makeArgs(&array, &build_args);
@@ -1802,22 +1802,22 @@ pub const CFlags = struct {
 };
 pub const Path = struct {
     absolute: [:0]const u8,
-    pathname: [:0]const u8,
+    relative: ?[:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.pathname[0] != '/') {
-            array.writeMany(format.absolute);
+        array.writeMany(format.absolute);
+        if (format.relative) |relative| {
             array.writeOne('/');
+            array.writeMany(relative);
         }
-        array.writeMany(format.pathname);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        if (format.pathname[0] != '/') {
-            len +%= format.absolute.len;
+        len +%= format.absolute.len;
+        if (format.relative) |relative| {
             len +%= 1;
+            len +% relative.len;
         }
-        len +%= format.pathname.len;
         return len;
     }
 };
