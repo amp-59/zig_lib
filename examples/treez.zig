@@ -52,6 +52,8 @@ const Status = packed struct {
 fn done(status: *const volatile Status) bool {
     return status.flag != 0;
 }
+// user config begin
+const max_pathname_args: u16 = 128;
 const plain_print: bool = false;
 const read_link: bool = true;
 const count_files: bool = false;
@@ -62,21 +64,11 @@ const compact_arrows: bool = true;
 const track_max_depth: bool = false;
 const quit_on_error: bool = false;
 const print_in_second_thread: bool = true;
-const format_in_second_thread: bool = false;
-const max_pathname_args: u16 = 128;
-const map_spec: thread.MapSpec = .{
-    .errors = .{},
-    .options = .{},
-};
-const thread_spec: proc.CloneSpec = .{
-    .errors = .{},
-    .options = .{},
-    .return_type = u64,
-};
+
+// config constants derived from above options
 const what_s: [:0]const u8 = if (compact_arrows) "?" else "???";
 const endl_s: [:0]const u8 = if (plain_print) "\x00" else "\n";
 const del_s: [:0]const u8 = if (compact_arrows) "\x08\x08" else "\x08\x08\x08\x08";
-
 const spc_s: [:0]const u8 = if (compact_arrows) "  " else "    ";
 const bar_s: [:0]const u8 = if (compact_arrows) "| " else "|   ";
 const links_to_s: [:0]const u8 = if (plain_print) "\x00L\x00" else if (compact_arrows) " -> " else " --> ";
@@ -88,36 +80,51 @@ const dir_arrow_s: [:0]const u8 = del_s ++ if (compact_arrows) "|-+ " else "|---
 const last_dir_arrow_s: [:0]const u8 = del_s ++ if (compact_arrows) "`-+ " else "`---+ ";
 const empty_dir_arrow_s: [:0]const u8 = del_s ++ "|-- ";
 const last_empty_dir_arrow_s: [:0]const u8 = del_s ++ "`-- ";
-const about_dirs_s: [:0]const u8 = "dirs:           ";
-const about_files_s: [:0]const u8 = "files:          ";
-const about_links_s: [:0]const u8 = "links:          ";
-const about_depth_s: [:0]const u8 = "depth:          ";
-const about_errors_s: [:0]const u8 = "errors:         ";
 
+// config constants derived by `message_style` library configuration
+const about_dirs_s: [:0]const u8 = builtin.debug.about("dirs");
+const about_files_s: [:0]const u8 = builtin.debug.about("files");
+const about_links_s: [:0]const u8 = builtin.debug.about("links");
+const about_depth_s: [:0]const u8 = builtin.debug.about("depth");
+const about_errors_s: [:0]const u8 = builtin.debug.about("errors");
+
+// user config end
+const write_spec: file.WriteSpec = .{
+    .errors = .{},
+};
+const map_spec: thread.MapSpec = .{
+    .errors = .{},
+    .options = .{},
+};
+const thread_spec: proc.CloneSpec = .{
+    .errors = .{},
+    .options = .{},
+    .return_type = u64,
+};
 fn show(status: Status) void {
     var array: PrintArray = .{};
     if (count_dirs) {
-        array.writeMany(about_dirs_s);
+        array.writeMany(Status.about_dirs_s);
         array.writeFormat(fmt.udh(status.dir_count));
         array.writeOne('\n');
     }
     if (count_files) {
-        array.writeMany(about_files_s);
+        array.writeMany(Status.about_files_s);
         array.writeFormat(fmt.udh(status.file_count));
         array.writeOne('\n');
     }
     if (count_links) {
-        array.writeMany(about_links_s);
+        array.writeMany(Status.about_links_s);
         array.writeFormat(fmt.udh(status.link_count));
         array.writeOne('\n');
     }
     if (track_max_depth) {
-        array.writeMany(about_depth_s);
+        array.writeMany(Status.about_depth_s);
         array.writeFormat(fmt.udh(status.max_depth));
         array.writeOne('\n');
     }
     if (count_errors) {
-        array.writeMany(about_errors_s);
+        array.writeMany(Status.about_errors_s);
         array.writeFormat(fmt.udh(status.errors));
         array.writeOne('\n');
     }
@@ -127,19 +134,19 @@ inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: Array) 
     const many: []u8 = array.referManyAt(allocator, array.index(allocator));
     if (plain_print) {
         if (many.len > (n -% 1)) {
-            file.write(.{ .errors = .{} }, 1, many);
+            file.write(write_spec, 1, many);
             if (n == 1) {
-                file.write(.{ .errors = .{} }, 1, "\n");
+                file.write(write_spec, 1, "\n");
             }
             return many.len;
         }
     } else {
         if (many.len > (n -% 1)) {
             if (n == 1) {
-                file.write(.{ .errors = .{} }, 1, many);
+                file.write(write_spec, 1, many);
                 return many.len;
             } else if (many[many.len -% 1] == '\n') {
-                file.write(.{ .errors = .{} }, 1, many);
+                file.write(write_spec, 1, many);
                 return many.len;
             }
         }
@@ -148,7 +155,7 @@ inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: Array) 
 }
 noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *Array) void {
     while (true) {
-        array.stream(printIfNAvail(1, allocator.*, array.*));
+        array.stream(printIfNAvail(56, allocator.*, array.*));
         if (done(status)) break;
     }
     if (array.index(allocator.*) < array.len(allocator.*)) {
