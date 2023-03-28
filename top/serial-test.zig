@@ -2529,19 +2529,22 @@ pub fn testLargeStructure() !void {
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
-    if (test_specification) {
-        const spec: serial.SerializerSpec = .{
+    if (true) {
+        const spec: serial.SerialSpec = .{
             .Allocator = Allocator,
-            .logging = .{},
-            .errors = .{},
+            .logging = preset.serializer.logging.silent,
+            .errors = preset.serializer.errors.noexcept,
         };
-        serial.serialWrite(spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a);
+        try meta.wrap(serial.serialWrite(spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a));
         const spec_sets_b: []const types.AbstractSpecification =
-            serial.serialRead(.{}, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"));
-        serial.serialWrite(.{}, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b);
+            try meta.wrap(serial.serialRead(spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+        try meta.wrap(serial.serialWrite(spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
         const spec_sets_c: []const types.AbstractSpecification =
-            serial.serialRead(.{}, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"));
-        _ = spec_sets_c;
+            try meta.wrap(serial.serialRead(spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+        testing.print(fmt.any(spec_sets_a));
+        testing.print(fmt.any(spec_sets_b));
+        testing.print(fmt.any(spec_sets_c));
+        builtin.assertEqualMemory([]const types.AbstractSpecification, spec_sets_b, spec_sets_c);
     } else {
         try serial.serialize(&allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a);
         const spec_sets_b: []const types.AbstractSpecification =
