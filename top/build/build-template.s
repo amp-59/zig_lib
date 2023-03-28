@@ -1,4 +1,5 @@
-        .intel_syntax noprefix
+    .section .text.
+    .intel_syntax noprefix
 asmMaxWidths:
     push    r15
     push    r14
@@ -364,3 +365,115 @@ asmRewind:
   jne     2b
 4:
   ret
+
+asmWriteEnv:
+    push	rbp
+    push	r15
+    push	r14
+    push	r13
+    push	r12
+    push	rbx
+    mov	rbx, rdi
+    mov	rdi, qword ptr [rdi + 32]
+    mov	eax, 83
+    mov	esi, 488
+    syscall
+    mov	eax, 2
+    mov	esi, 2818048
+    xor	edx, edx
+    mov	rdi, qword ptr [rbx + 32]
+    syscall
+    mov	r8, rax
+    lea	rsi, [rip + env]
+    mov	eax, 257
+    mov	edx, 524865
+    mov	rdi, r8
+    syscall
+    mov	rdi, rax
+    lea	rsi, [rip + zig_exe]
+    mov	edx, 35
+    mov	rax, qword ptr [rbx + 48]
+    mov	rbp, qword ptr [rbx]
+    mov	r9, qword ptr [rbx + 8]
+    mov	r12, qword ptr [rbx + 16]
+    mov	r13, qword ptr [rbx + 24]
+    mov	r14, qword ptr [rbx + 32]
+    mov	r15, qword ptr [rbx + 40]
+    mov	r10, qword ptr [rbx + 56]
+    lea	rbx, [rip + dq_sc_lf]
+    mov	qword ptr [rsp - 8], rax
+    mov	eax, 1
+    syscall
+    mov	eax, 1
+    mov	rsi, rbp
+    mov	rdx, r9
+    syscall
+    mov	eax, 1
+    mov	edx, 3
+    mov	rsi, rbx
+    syscall
+    lea	rsi, [rip + build_root]
+    mov	eax, 1
+    mov	edx, 38
+    syscall
+    mov	eax, 1
+    mov	rsi, r12
+    mov	rdx, r13
+    syscall
+    mov	eax, 1
+    mov	edx, 3
+    mov	rsi, rbx
+    syscall
+    lea	rsi, [rip + cache_dir]
+    mov	eax, 1
+    mov	edx, 37
+    syscall
+    mov	eax, 1
+    mov	rsi, r14
+    mov	rdx, r15
+    syscall
+    mov	eax, 1
+    mov	edx, 3
+    mov	rsi, rbx
+    syscall
+    lea	rsi, [rip + global_cache_dir]
+    mov	eax, 1
+    mov	edx, 44
+    syscall
+    mov	eax, 1
+    mov	rdx, r10
+    mov	rsi, qword ptr [rsp - 8]
+    syscall
+    mov	eax, 1
+    mov	edx, 3
+    mov	rsi, rbx
+    syscall
+    mov	eax, 3
+    mov	rdi, r8
+    syscall
+    pop	rbx
+    pop	r12
+    pop	r13
+    pop	r14
+    pop	r15
+    pop	rbp
+    ret
+
+env:
+    .asciz  "env.zig"
+    .size   env, 8
+zig_exe:
+    .asciz   "pub const zig_exe: [:0]const u8 = \""
+    .size    zig_exe, 36
+dq_sc_lf:
+    .asciz   "\";\n"
+    .size    dq_sc_lf, 4
+build_root:
+    .asciz   "pub const build_root: [:0]const u8 = \""
+    .size    build_root, 39
+cache_dir:
+    .asciz   "pub const cache_dir: [:0]const u8 = \""
+    .size    cache_dir, 38
+global_cache_dir:
+    .asciz   "pub const global_cache_dir: [:0]const u8 = \""
+    .size    global_cache_dir, 45

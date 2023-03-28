@@ -1,5 +1,6 @@
 pub const zig = @import("builtin");
 pub const root = @import("root");
+pub const env = @import("env");
 
 pub const native_endian = zig.cpu.arch.endian();
 pub const is_little: bool = native_endian == .Little;
@@ -42,10 +43,10 @@ pub const signal_handlers: SignalHandlers = define(
 );
 
 // These are defined by the library builder
-const zig_exe: [:0]const u8 = define("zig_exe", [:0]const u8, undefined);
-const build_root: [:0]const u8 = define("build_root", [:0]const u8, undefined);
-const cache_dir: [:0]const u8 = define("cache_dir", [:0]const u8, undefined);
-const global_cache_dir: [:0]const u8 = define("global_cache_dir", [:0]const u8, undefined);
+const zig_exe: [:0]const u8 = env.zig_exe; //define("zig_exe", [:0]const u8, undefined);
+const build_root: [:0]const u8 = env.build_root; //define("build_root", [:0]const u8, undefined);
+const cache_dir: [:0]const u8 = env.cache_dir; // define("cache_dir", [:0]const u8, undefined);
+const global_cache_dir: [:0]const u8 = env.global_cache_dir; //define("global_cache_dir", [:0]const u8, undefined);
 const root_src_file: [:0]const u8 = define("root_src_file", [:0]const u8, undefined);
 
 /// Return an absolute path to a project file.
