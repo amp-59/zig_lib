@@ -43,6 +43,13 @@ pub const logging_default: builtin.Logging.Default =
     .Error = true,
     .Fault = true,
 };
+pub const signal_handlers: builtin.SignalHandlers =
+    if (@hasDecl(root, "signal_handlers")) root.signal_handlers else .{
+    .segmentation_fault = true,
+    .floating_point_error = false,
+    .illegal_instruction = false,
+    .bus_error = false,
+};
 pub const runtime_assertions: bool =
     if (@hasDecl(root, "runtime_assertions")) root.runtime_assertions else false;
 pub const max_relevant_depth: u64 =
