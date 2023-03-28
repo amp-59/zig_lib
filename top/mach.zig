@@ -522,10 +522,10 @@ comptime {
         \\  jne     0f
         \\  mov     eax, 1
         \\  mov     edi, 2
-        \\  syscall
+        \\  syscall # write
         \\  mov     eax, 60
         \\  mov     edi, 2
-        \\  syscall
+        \\  syscall # exit
         \\0:
         \\  ret
     );
