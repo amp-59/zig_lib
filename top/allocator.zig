@@ -361,7 +361,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
 fn Types(comptime Allocator: type) type {
     return struct {
         /// This policy is applied to `init` return types.
-        const map_error_policy: sys.ErrorPolicy = blk: {
+        pub const map_error_policy: sys.ErrorPolicy = blk: {
             if (Allocator.allocator_spec.isMapper()) {
                 break :blk Allocator.allocator_spec.errors.map;
             } else {
@@ -369,7 +369,7 @@ fn Types(comptime Allocator: type) type {
             }
         };
         /// This policy is applied to `deinit` return types.
-        const unmap_error_policy: sys.ErrorPolicy = blk: {
+        pub const unmap_error_policy: sys.ErrorPolicy = blk: {
             if (Allocator.allocator_spec.isMapper()) {
                 break :blk Allocator.allocator_spec.errors.unmap;
             } else {
@@ -379,7 +379,7 @@ fn Types(comptime Allocator: type) type {
         };
         /// This policy is applied to any operation which may result in an
         /// increase to the amount of memory reserved by the allocator.
-        const resize_error_policy: sys.ErrorPolicy = blk: {
+        pub const resize_error_policy: sys.ErrorPolicy = blk: {
             if (Allocator.allocator_spec.isMapper()) {
                 if (Allocator.allocator_spec.options.prefer_remap) {
                     break :blk Allocator.allocator_spec.errors.remap;
@@ -390,8 +390,8 @@ fn Types(comptime Allocator: type) type {
             break :blk .{};
         };
         pub const acquire_allocator: type = blk: {
-            if (map_error_policy.throw != null) {
-                const MMapError = sys.Error(map_error_policy.throw.?);
+            if (map_error_policy.throw.len != 0) {
+                const MMapError = sys.Error(map_error_policy.throw);
                 if (Allocator.AddressSpace.addr_spec.errors.acquire == .throw) {
                     break :blk (MMapError || mem.ResourceError)!Allocator;
                 }
@@ -403,8 +403,8 @@ fn Types(comptime Allocator: type) type {
             break :blk Allocator;
         };
         pub const release_allocator: type = blk: {
-            if (unmap_error_policy.throw != null) {
-                const MUnmapError = sys.Error(unmap_error_policy.throw.?);
+            if (unmap_error_policy.throw.len != 0) {
+                const MUnmapError = sys.Error(unmap_error_policy.throw);
                 if (Allocator.AddressSpace.addr_spec.errors.release == .throw) {
                     break :blk (MUnmapError || mem.ResourceError)!void;
                 }
@@ -415,30 +415,14 @@ fn Types(comptime Allocator: type) type {
             }
             break :blk void;
         };
+        /// For allocation operations which return a value
         pub fn allocate_payload(comptime s_impl_type: type) type {
-            if (resize_error_policy.throw != null) {
-                return sys.Call(resize_error_policy, s_impl_type);
-            }
-            return s_impl_type;
+            return sys.Call(resize_error_policy, s_impl_type);
         }
-        pub const init_void: type = blk: {
-            if (map_error_policy.throw != null) {
-                break :blk sys.Call(map_error_policy, void);
-            }
-            break :blk void;
-        };
-        pub const allocate_void: type = blk: {
-            if (resize_error_policy.throw != null) {
-                break :blk sys.Call(resize_error_policy, void);
-            }
-            break :blk void;
-        };
-        pub const deallocate_void: type = blk: {
-            if (unmap_error_policy.throw != null) {
-                break :blk sys.Call(unmap_error_policy, void);
-            }
-            break :blk void;
-        };
+        pub const init_void: type = sys.Call(map_error_policy, void);
+        /// For allocation operations which do not return a value
+        pub const allocate_void: type = sys.Call(resize_error_policy, void);
+        pub const deallocate_void: type = sys.Call(unmap_error_policy, void);
     };
 }
 fn Specs(comptime Allocator: type) type {
