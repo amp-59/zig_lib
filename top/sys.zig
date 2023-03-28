@@ -2089,12 +2089,12 @@ inline fn syscall6(comptime sysno: usize, args: [6]usize) isize {
     );
 }
 pub fn Call(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
-    if (error_policy.throw) |throw| {
+    if (error_policy.throw.len != 0) {
         if (@typeInfo(return_type) == .ErrorUnion) {
-            return (builtin.ZigError(ErrorCode, throw) ||
+            return (builtin.ZigError(ErrorCode, error_policy.throw) ||
                 @typeInfo(return_type).ErrorUnion.error_set)!@typeInfo(return_type).ErrorUnion.payload;
         } else {
-            return builtin.ZigError(ErrorCode, throw)!return_type;
+            return builtin.ZigError(ErrorCode, error_policy.throw)!return_type;
         }
     }
     return return_type;
@@ -2113,11 +2113,11 @@ pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type
     if (return_type == noreturn) {
         unreachable;
     }
-    if (errors.throw) |throw| {
-        try builtin.zigErrorThrow(ErrorCode, throw, ret);
+    if (errors.throw.len != 0) {
+        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
     }
-    if (errors.abort) |abort| {
-        builtin.zigErrorAbort(ErrorCode, abort, ret);
+    if (errors.abort.len != 0) {
+        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
     }
     if (return_type != void) {
         return @intCast(return_type, ret);
