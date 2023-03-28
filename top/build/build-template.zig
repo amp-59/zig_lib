@@ -22,6 +22,7 @@ pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 
 pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
 pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
 pub const max_relevant_depth: u64 = builtin.define("max_relevant_depth", u64, 0);
+pub const fallback_env_decls: bool = false;
 
 pub const OutputMode = enum { exe, lib, obj };
 pub const GlobalOptions = struct {
@@ -141,7 +142,7 @@ pub const Builder = struct {
         return builder.path(root);
     }
     pub fn path(builder: *const Builder, name: [:0]const u8) Path {
-        return .{ .absolute = builder.paths.build_root, .pathname = name };
+        return .{ .absolute = builder.paths.build_root, .relative = name };
     }
     pub inline fn addTarget(
         builder: *Builder,
@@ -180,7 +181,7 @@ pub const Builder = struct {
     }
     pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) !Builder {
         const dir_fd: u64 = try file.path(.{}, paths.build_root);
-        try writeEnv(allocator, paths);
+        asmWriteEnv(&paths);
         return .{
             .paths = paths,
             .options = options,
@@ -197,10 +198,12 @@ pub const Builder = struct {
         const cmd: *const BuildCommand = target.build_cmd;
         var len: u64 = 4;
         len +%= 6 +% @tagName(cmd.kind).len +% 1;
-        len +%= Macro.formatLength(builder.zigExePathMacro());
-        len +%= Macro.formatLength(builder.buildRootPathMacro());
-        len +%= Macro.formatLength(builder.cacheDirPathMacro());
-        len +%= Macro.formatLength(builder.globalCacheDirPathMacro());
+        if (fallback_env_decls) {
+            len +%= Macro.formatLength(builder.zigExePathMacro());
+            len +%= Macro.formatLength(builder.buildRootPathMacro());
+            len +%= Macro.formatLength(builder.cacheDirPathMacro());
+            len +%= Macro.formatLength(builder.globalCacheDirPathMacro());
+        }
         cmd = buildLength;
         len +%= Path.formatLength(builder.sourceRootPath(target.root));
         len +%= 1;
@@ -212,10 +215,12 @@ pub const Builder = struct {
         array.writeMany("zig\x00build-");
         array.writeMany(@tagName(cmd.kind));
         array.writeOne('\x00');
-        array.writeFormat(builder.zigExePathMacro());
-        array.writeFormat(builder.buildRootPathMacro());
-        array.writeFormat(builder.cacheDirPathMacro());
-        array.writeFormat(builder.globalCacheDirPathMacro());
+        if (fallback_env_decls) {
+            array.writeFormat(builder.zigExePathMacro());
+            array.writeFormat(builder.buildRootPathMacro());
+            array.writeFormat(builder.cacheDirPathMacro());
+            array.writeFormat(builder.globalCacheDirPathMacro());
+        }
         cmd = buildWrite;
         array.writeFormat(builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
@@ -250,7 +255,7 @@ pub const Builder = struct {
             var build_args: ArgsPointers = undefined;
             build_args.undefineAll();
             var build_time: time.TimeSpec = undefined;
-            const bin_path: [:0]const u8 = target.binPath().pathname;
+            const bin_path: [:0]const u8 = target.binPath().relative.?;
             const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
             builder.buildWrite(target, &array);
             makeArgs(&array, &build_args);
@@ -677,22 +682,22 @@ pub const CFlags = struct {
 };
 pub const Path = struct {
     absolute: [:0]const u8,
-    pathname: [:0]const u8,
+    relative: ?[:0]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.pathname[0] != '/') {
-            array.writeMany(format.absolute);
+        array.writeMany(format.absolute);
+        if (format.relative) |relative| {
             array.writeOne('/');
+            array.writeMany(relative);
         }
-        array.writeMany(format.pathname);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        if (format.pathname[0] != '/') {
-            len +%= format.absolute.len;
+        len +%= format.absolute.len;
+        if (format.relative) |relative| {
             len +%= 1;
+            len +% relative.len;
         }
-        len +%= format.pathname.len;
         return len;
     }
 };
@@ -819,17 +824,7 @@ const debug = struct {
         simpleTimedNotice(about_format_s, name, durat, null);
     }
 };
-fn writeEnv(allocator: *Allocator, paths: Builder.Paths) !void {
-    file.makeDir(.{ .errors = .{} }, paths.cache_dir);
-    const env_pathname: [:0]const u8 = concatStrings(allocator, &.{ paths.cache_dir, "/env.zig" });
-    const env_fd: u64 = try file.create(.{ .options = .{ .exclusive = false, .write = .truncate } }, env_pathname);
-    try file.write(.{}, env_fd, concatStrings(allocator, &.{
-        "pub const zig_exe: [:0]const u8 = \"",          paths.zig_exe,          "\";\n",
-        "pub const build_root: [:0]const u8 = \"",       paths.build_root,       "\";\n",
-        "pub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,        "\";\n",
-        "pub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir, "\";\n",
-    }));
-}
+
 // finish-document build-types.zig
 // start-document option-functions.zig
 fn lengthOptionalWhatNoArgWhatNot(option: anytype, len_equ: u64, len_yes: u64, len_no: u64) u64 {
@@ -953,4 +948,5 @@ fn writeHow(array: anytype, option: anytype) void {
 pub extern fn asmMaxWidths(builder: *Builder) extern struct { u64, u64 };
 pub extern fn asmWriteAllCommands(builder: *Builder, buf: [*]u8, name_max_width: u64) callconv(.C) u64;
 pub extern fn asmRewind(builder: *Builder) callconv(.C) void;
+pub extern fn asmWriteEnv(paths: *const Builder.Paths) callconv(.C) void;
 // finish-document mach.zig
