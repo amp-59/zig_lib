@@ -3,6 +3,7 @@ const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const preset = @This();
+const serial = @import("./serial.zig");
 const builtin = @import("./builtin.zig");
 
 pub const address_space = opaque {
@@ -354,15 +355,48 @@ pub const allocator = opaque {
             .remap = .{},
             .unmap = .{},
         };
-        pub const uniform: mem.AllocatorErrors = .{
-            .map = .{ .throw = &.{} },
-            .remap = .{ .throw = &.{} },
-            .unmap = .{ .abort = &.{} },
-        };
         pub const critical: mem.AllocatorErrors = .{
             .map = .{ .throw = mmap.errors.mem },
             .remap = .{ .throw = mremap.errors.all },
             .unmap = .{ .throw = munmap.errors.all },
+        };
+    };
+};
+pub const serializer = opaque {
+    pub const errors = opaque {
+        pub const noexcept: serial.SerialSpec.Errors = .{
+            .create = .{},
+            .open = .{},
+            .close = .{},
+            .stat = .{},
+            .read = .{},
+            .write = .{},
+        };
+        pub const critical: serial.SerialSpec.Errors = .{
+            .create = open.errors.all,
+            .open = open.errors.all,
+            .close = close.errors.all,
+            .stat = stat.errors.all,
+            .read = read.errors.all,
+            .write = write.errors.all,
+        };
+    };
+    pub const logging = opaque {
+        pub const verbose: serial.SerialSpec.Logging = .{
+            .create = preset.logging.acquire_error_fault.verbose,
+            .open = preset.logging.acquire_error_fault.verbose,
+            .close = preset.logging.release_error_fault.verbose,
+            .stat = preset.logging.success_error_fault.verbose,
+            .read = preset.logging.success_error_fault.verbose,
+            .write = preset.logging.success_error_fault.verbose,
+        };
+        pub const silent: serial.SerialSpec.Logging = .{
+            .create = preset.logging.acquire_error_fault.silent,
+            .open = preset.logging.acquire_error_fault.silent,
+            .close = preset.logging.release_error_fault.silent,
+            .stat = preset.logging.success_error_fault.silent,
+            .read = preset.logging.success_error_fault.silent,
+            .write = preset.logging.success_error_fault.silent,
         };
     };
 };
