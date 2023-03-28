@@ -1101,7 +1101,6 @@ pub const debug = opaque {
     const about_error_p0_s: [:0]const u8 = about("error");
     const about_fault_p1_s: [:0]const u8 = about(" assertion failed");
     const about_error_p1_s: [:0]const u8 = about(" unexpected result");
-
     pub fn about(comptime s: [:0]const u8) [:0]const u8 {
         var lhs: [:0]const u8 = s;
         lhs = config.message_prefix ++ lhs;
@@ -1123,15 +1122,15 @@ pub const debug = opaque {
     }
     fn exitNotice(rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_0_s, fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ debug.about_exit_0_s, "rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitError(symbol: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, "(", symbol, ")", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, "(", symbol, "), rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitFault(message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
