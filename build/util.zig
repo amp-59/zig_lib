@@ -14,6 +14,7 @@ pub const Context = opaque {
     var install_step: *build.Step = undefined;
     var fmt_step: *build.Step = undefined;
     var srg: *std.build.Module = undefined;
+    var env: *std.build.Module = undefined;
     const always_strip: bool = true;
     pub fn init(b: *build.Builder) void {
         builder = b;
@@ -24,10 +25,24 @@ pub const Context = opaque {
         Context.test_all_step.dependOn(Context.test_step);
         Context.run_step = builder.step("run", "Run programs");
         Context.srg = b.createModule(.{ .source_file = .{ .path = "zig_lib.zig" } });
+        Context.env = b.createModule(.{ .source_file = .{ .path = "zig-cache/env.zig" } });
         Context.build_mode_explicit = build_mode != .Debug;
     }
 };
-
+pub fn writeEnv(builder: *const build.Builder) !void {
+    std.os.mkdir(builder.cache_root.path.?, 0o770) catch {};
+    const dir_fd = try std.os.open(builder.cache_root.path.?, std.os.O.PATH, 0);
+    defer std.os.close(dir_fd);
+    const env_fd = try std.os.openat(dir_fd, "env.zig", std.os.O.WRONLY | std.os.O.CREAT | std.os.O.TRUNC, 0o770);
+    for ([_][]const u8{
+        "pub const zig_exe: [:0]const u8 = \"",          builder.zig_exe,                  "\";\n",
+        "pub const build_root: [:0]const u8 = \"",       builder.build_root.path.?,        "\";\n",
+        "pub const cache_dir: [:0]const u8 = \"",        builder.cache_root.path.?,        "\";\n",
+        "pub const global_cache_dir: [:0]const u8 = \"", builder.global_cache_root.path.?, "\";\n",
+    }) |str| {
+        _ = try std.os.write(env_fd, str);
+    }
+}
 const Utility = opaque {
     fn endsWith(end: anytype, seq: anytype) bool {
         if (end.len > seq.len) {
@@ -138,8 +153,8 @@ pub fn addProjectExecutable(builder: *build.Builder, comptime name: [:0]const u8
     if (args.is_perf) |is_perf| {
         defineConfig(ret, "is_perf", is_perf);
     }
-
     ret.addModule("zig_lib", Context.srg);
+    ret.addModule("env", Context.env);
     ret.install();
     ret.link_gc_sections = true;
     ret.link_function_sections = true;
