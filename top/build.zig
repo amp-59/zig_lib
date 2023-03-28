@@ -1686,10 +1686,8 @@ pub const Module = struct {
 pub const ModuleDependency = struct {
     import: ?[]const u8 = null,
     name: []const u8,
-
     var w_leader: bool = true;
     var l_leader: bool = true;
-
     pub fn formatWrite(mod_dep: ModuleDependency, array: anytype) void {
         defer w_leader = false;
         if (w_leader) {
@@ -1906,9 +1904,9 @@ const debug = struct {
         array.undefineAll();
         array.writeMany(about_build_s);
         array.writeMany(name);
-        array.writeMany(",\t");
+        array.writeMany(", ");
         array.writeFormat(ChangedSize.init(old_size, new_size));
-        array.writeMany(",\t");
+        array.writeMany(", ");
         array.writeFormat(fmt.ud64(durat.sec));
         array.writeMany(".");
         array.writeFormat(fmt.nsec(durat.nsec));
@@ -1921,11 +1919,11 @@ const debug = struct {
         array.undefineAll();
         array.writeMany(about);
         array.writeMany(name);
-        array.writeMany(",\t");
+        array.writeMany(", ");
         if (rc) |return_code| {
             array.writeMany("rc=");
             array.writeFormat(fmt.ud8(return_code));
-            array.writeMany(",\t");
+            array.writeMany(", ");
         }
         array.writeFormat(fmt.ud64(durat.sec));
         array.writeMany(".");
