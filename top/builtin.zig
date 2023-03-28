@@ -27,20 +27,22 @@ pub fn InternalError(comptime E: type) type {
 pub fn ExternalError(comptime E: type) type {
     static.assert(@typeInfo(E) == .Enum);
     static.assert(@hasDecl(E, "errorName"));
-    return (struct {
+    return struct {
         /// Throw error if unwrapping yields any of these values
-        throw: ?[]const E = &.{},
+        throw: []const E = &.{},
         /// Abort the program if unwrapping yields any of these values
-        abort: ?[]const E = &.{},
+        abort: []const E = &.{},
         pub const Enum = E;
-    });
+    };
 }
 pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type {
-    var error_set: []const Type.Error = &.{};
+    var error_set: type = error{};
     for (return_codes) |error_code| {
-        error_set = error_set ++ [1]Type.Error{.{ .name = error_code.errorName() }};
+        error_set = error_set || @Type(.{
+            .ErrorSet = &[1]Type.Error{.{ .name = error_code.errorName() }},
+        });
     }
-    return @Type(.{ .ErrorSet = error_set });
+    return error_set;
 }
 /// Attempt to match a return value against a set of error codes--returning the
 /// corresponding zig error on success.
