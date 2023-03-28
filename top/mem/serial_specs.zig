@@ -10,8 +10,8 @@ pub const logging_override: builtin.Logging.Override = .{
     .Fault = false,
 };
 export fn serializeSpecs(allocator: *config.Allocator, val: *const []const []const []const types.Specifier) void {
-    serial.serialize(allocator, config.spec_sets_path, val.*) catch return undefined;
+    serial.serialWrite(config.serial_spec, @TypeOf(val.*), allocator, config.spec_sets_path, val.*);
 }
 export fn deserializeSpecs(allocator: *config.Allocator, ptr: *[][][]types.Specifier) void {
-    ptr.* = serial.deserialize([][][]types.Specifier, allocator, config.spec_sets_path) catch return undefined;
+    ptr.* = serial.serialRead(config.serial_spec, [][][]types.Specifier, allocator, config.spec_sets_path);
 }

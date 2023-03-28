@@ -10,8 +10,8 @@ pub const logging_override: builtin.Logging.Override = .{
     .Fault = false,
 };
 export fn serializeCtnDetail(allocator: *config.Allocator, val: *const []const types.Container) void {
-    serial.serialize(allocator, config.ctn_detail_path, val.*) catch return undefined;
+    serial.serialWrite(config.serial_spec, @TypeOf(val.*), allocator, config.ctn_detail_path, val.*);
 }
 export fn deserializeCtnDetail(allocator: *config.Allocator, ptr: *[]types.Container) void {
-    ptr.* = serial.deserialize([]types.Container, allocator, config.ctn_detail_path) catch return undefined;
+    ptr.* = serial.serialRead(config.serial_spec, []types.Container, allocator, config.ctn_detail_path);
 }
