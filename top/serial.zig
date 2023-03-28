@@ -88,10 +88,9 @@ fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offs
 }
 fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
-    const sentinel: pointer_info.child = mem.pointerOpaque(pointer_info.child, pointer_info.sentinel.?).*;
     var len: u64 = offset;
     var idx: u64 = 0;
-    while (next[idx] != sentinel) idx +%= 1;
+    while (next[idx] != mem.pointerOpaque(pointer_info.child, pointer_info.sentinel.?).*) idx +%= 1;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
     len +%= @sizeOf(pointer_info.child) *% (idx +% 1);
     for (next[0..idx]) |*value| {
@@ -386,31 +385,6 @@ pub fn serialRead(comptime spec: SerialSpec, comptime S: type, allocator: *spec.
     try meta.wrap(
         file.close(comptime spec.close(), fd),
     );
-    return try meta.wrap(
-        genericDeserializeInternal(meta.Mutable(S), t_ab_addr),
-    );
-}
-pub fn serialize(allocator: anytype, pathname: [:0]const u8, sets: anytype) !void {
-    const save = allocator.save();
-    defer allocator.restore(save);
-    const s_ab_addr: u64 = allocator.alignAbove(16);
-    const bytes: []const u8 = try meta.wrap(
-        genericSerializeInternal(allocator, s_ab_addr, sets),
-    );
-    const fd: u64 = try file.create(create_spec, pathname);
-    try file.write(write_spec, fd, bytes);
-    try file.close(close_spec, fd);
-}
-
-pub fn deserialize(comptime S: type, allocator: anytype, pathname: [:0]const u8) !meta.Mutable(S) {
-    const fd: u64 = try file.open(open_spec, pathname);
-    const t_ab_addr: u64 = allocator.alignAbove(16);
-    const st: file.Stat = try file.fstat(stat_spec, fd);
-    const buf: []u8 = try meta.wrap(
-        allocator.allocateIrreversible(u8, st.size),
-    );
-    try file.read(read_spec, fd, buf, st.size);
-    try file.close(close_spec, fd);
     return try meta.wrap(
         genericDeserializeInternal(meta.Mutable(S), t_ab_addr),
     );
