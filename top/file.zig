@@ -787,6 +787,22 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) sys.Call(spec.e
         return open_error;
     }
 }
+pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const flags: Open = comptime spec.flags();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val }))) |fd| {
+        if (logging.Acquire) {
+            debug.createAtNotice(dir_fd, name, fd);
+        }
+        return fd;
+    } else |open_error| {
+        if (logging.Error) {
+            debug.createAtError(open_error, dir_fd, name);
+        }
+        return open_error;
+    }
+}
 pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors, spec.return_type) {
     const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.close, spec.errors, spec.return_type, .{fd}))) {
@@ -1143,12 +1159,12 @@ pub fn home(vars: [][*:0]u8) ![:0]const u8 {
     return error.NoHomeInEnvironment;
 }
 const debug = opaque {
+    const about_stat_0_s: [:0]const u8 = builtin.debug.about("stat");
     const about_open_0_s: [:0]const u8 = builtin.debug.about("open");
     const about_open_1_s: [:0]const u8 = builtin.debug.about("open-error");
     const about_read_0_s: [:0]const u8 = builtin.debug.about("read");
     const about_read_1_s: [:0]const u8 = builtin.debug.about("read-error");
     const about_stat_1_s: [:0]const u8 = builtin.debug.about("stat-error");
-    const about_fstat_1_s: [:0]const u8 = builtin.debug.about("fstat-error");
     const about_close_0_s: [:0]const u8 = builtin.debug.about("close");
     const about_close_1_s: [:0]const u8 = builtin.debug.about("close-error");
     const about_mkdir_0_s: [:0]const u8 = builtin.debug.about("mkdir");
@@ -1161,17 +1177,13 @@ const debug = opaque {
     const about_create_1_s: [:0]const u8 = builtin.debug.about("create-error");
     const about_getcwd_0_s: [:0]const u8 = builtin.debug.about("getcwd");
     const about_getcwd_1_s: [:0]const u8 = builtin.debug.about("getcwd-error");
-    const about_openat_0_s: [:0]const u8 = builtin.debug.about("openat");
-    const about_openat_1_s: [:0]const u8 = builtin.debug.about("openat-error");
     const about_unlink_0_s: [:0]const u8 = builtin.debug.about("unlink");
     const about_unlink_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
     const about_socket_0: [:0]const u8 = builtin.debug.about("socket");
     const about_socket_1: [:0]const u8 = builtin.debug.about("socket-error");
-    const about_fstatat_0_s: [:0]const u8 = builtin.debug.about("fstatat");
-    const about_fstatat_1_s: [:0]const u8 = builtin.debug.about("fstatat-error");
     const about_fexecve_1_s: [:0]const u8 = builtin.debug.about("fexecve-error");
-    const about_unlinkat_0_s: [:0]const u8 = builtin.debug.about("unlinkat");
-    const about_unlinkat_1_s: [:0]const u8 = builtin.debug.about("unlinkat-error");
+    const about_unlinkat_0_s: [:0]const u8 = builtin.debug.about("unlink");
+    const about_unlinkat_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
     const about_readlink_1_s: [:0]const u8 = builtin.debug.about("readlink-error");
     const about_truncate_0_s: [:0]const u8 = builtin.debug.about("truncate");
     const about_truncate_1_s: [:0]const u8 = builtin.debug.about("truncate-error");
@@ -1203,7 +1215,12 @@ const debug = opaque {
     fn openAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_openat_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
+    }
+    fn createAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
     fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
         var buf: [4096]u8 = undefined;
@@ -1258,7 +1275,7 @@ const debug = opaque {
         _ = st;
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fstatat_0_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
     fn statNotice(_: [:0]const u8, _: *FileStatus) void {}
     fn readError(read_error: anytype, fd: u64) void {
@@ -1276,7 +1293,7 @@ const debug = opaque {
     fn openAtError(open_error: anytype, dir_fd: u64, name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_openat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(open_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_open_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(open_error), ")\n" });
     }
     fn createError(open_error: anytype, pathname: [:0]const u8, comptime summary: []const u8) void {
         var buf: [4096 + 512 + summary.len]u8 = undefined;
@@ -1314,12 +1331,12 @@ const debug = opaque {
     }
     fn fstatError(stat_error: anytype, fd: u64) void {
         var buf: [16 + 32 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fstat_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", (", @errorName(stat_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", (", @errorName(stat_error), ")\n" });
     }
     fn fstatAtError(stat_error: anytype, dir_fd: u64, name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fstatat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(stat_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(stat_error), ")\n" });
     }
     fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
