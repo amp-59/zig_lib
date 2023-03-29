@@ -375,12 +375,18 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
     const S: type = @TypeOf(any);
     const s_type_info: builtin.Type = @typeInfo(S);
     const t_type_info: builtin.Type = @typeInfo(T);
+    if (t_type_info == .Enum) {
+        if (s_type_info == .Int) {
+            return @intToEnum(T, any);
+        }
+    }
     if (s_type_info == .Enum) {
         if (t_type_info == .Struct) {
             const i: t_type_info.Struct.backing_integer.? = @enumToInt(any);
             return @bitCast(T, i);
         }
     }
+    @compileError("uncased combination of types: '" ++ @typeName(S) ++ "' and '" ++ @typeName(T) ++ "'");
 }
 pub inline fn leastBitCast(any: anytype) @Type(.{ .Int = .{
     .bits = @bitSizeOf(@TypeOf(any)),
@@ -439,7 +445,10 @@ pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@Ty
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Struct, .Union });
+            debug.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Int, .Struct, .Union });
+        },
+        .Int => {
+            return T;
         },
         .Enum => |enum_info| {
             return enum_info.tag_type;
