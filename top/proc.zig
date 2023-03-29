@@ -297,7 +297,7 @@ pub const ExecuteSpec = struct {
 pub const CloneSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.clone_errors },
-    return_type: type = isize,
+    return_type: type = usize,
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Options = struct {
         address_space: bool = true,
@@ -584,13 +584,13 @@ pub const exception = opaque {
         switch (builtin.zig.zig_backend) {
             .stage2_c => return asm volatile (
                 \\ movl %[number], %%eax
-                \\ syscall
+                \\ syscall # rt_sigreturn
                 \\ retq
                 :
                 : [number] "i" (15),
                 : "rcx", "r11", "memory"
             ),
-            else => return asm volatile ("syscall"
+            else => return asm volatile ("syscall # rt_sigreturn"
                 :
                 : [number] "{rax}" (15),
                 : "rcx", "r11", "memory"
@@ -701,6 +701,7 @@ pub noinline fn callClone(
     function: anytype,
     args: anytype,
 ) sys.Call(spec.errors, spec.return_type) {
+    @setRuntimeSafety(false);
     const Fn: type = @TypeOf(function);
     const cl_args: CloneArgs = spec.args(stack_addr);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
@@ -715,7 +716,7 @@ pub noinline fn callClone(
         @intToPtr(*@TypeOf(result_ptr), stack_addr +% ret_off).* = result_ptr;
     }
     const rc: i64 = asm volatile (
-        \\syscall
+        \\syscall # clone3
         : [ret] "={rax}" (-> i64),
         : [cl_sysno] "{rax}" (cl_sysno),
           [cl_args_addr] "{rdi}" (cl_args_addr),
@@ -760,7 +761,7 @@ pub noinline fn callClone(
         asm volatile (
             \\movq  $60,    %rax
             \\movq  $0,     %rdi
-            \\syscall
+            \\syscall # exit
             ::: "rax", "rdi");
         unreachable;
     }
