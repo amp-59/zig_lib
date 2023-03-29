@@ -103,10 +103,10 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     mg_container_impls.addFile(allocator,       mg_ctn_detail.binPath());
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
-    build_test.run_cmd.addRunArgument(builder.paths.zig_exe);
-    build_test.run_cmd.addRunArgument(builder.paths.build_root);
-    build_test.run_cmd.addRunArgument(builder.paths.cache_dir);
-    build_test.run_cmd.addRunArgument(builder.paths.global_cache_dir);
+    build_test.run_cmd.addRunArgument(builder.zigExePath());
+    build_test.run_cmd.addRunArgument(builder.buildRootPath());
+    build_test.run_cmd.addRunArgument(builder.cacheDirPath());
+    build_test.run_cmd.addRunArgument(builder.globalCacheDirPath());
 
     c_program.build_cmd.link_libc = true;
     c_program.build_cmd.function_sections = true;
