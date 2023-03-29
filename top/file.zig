@@ -367,23 +367,23 @@ pub const SocketSpec = struct {
     }
 };
 pub const MakeDirSpec = struct {
-    mode: ModeSpec = ModeSpec.dir_mode,
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
 };
 pub const MakePathSpec = struct {
-    mode: ModeSpec = ModeSpec.dir_mode,
-    errors: struct {
+    errors: MakePathErrors = .{},
+    logging: MakePathLogging = .{},
+    const Specification = @This();
+    const MakePathErrors = struct {
         stat: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
         mkdir: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
-    },
-    logging: struct {
+    };
+    const MakePathLogging = struct {
         stat: builtin.Logging.SuccessErrorFault = .{},
         mkdir: builtin.Logging.SuccessErrorFault = .{},
-    },
-    const Specification = @This();
+    };
     fn statSpec(comptime spec: MakePathSpec) StatSpec {
         return .{
             .errors = spec.errors.stat,
@@ -400,7 +400,6 @@ pub const MakePathSpec = struct {
 };
 pub const CreateSpec = struct {
     options: Options = .{},
-    mode: ModeSpec = ModeSpec.file_mode,
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
     logging: builtin.Logging.AcquireErrorFault = .{},
