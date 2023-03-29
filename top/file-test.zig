@@ -64,9 +64,9 @@ const make_path_spec: file.MakePathSpec = .{
 };
 
 fn testFileOperationsRound1() !void {
-    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test"));
+    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
-    const fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test"));
+    const fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test", file.file_mode));
     try meta.wrap(file.close(close_spec, fd));
     try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test"));
 }
@@ -87,13 +87,13 @@ pub fn testSocketOpenAndClose() !void {
 fn testFileOperationsRound2() !void {
     var buf: [4096]u8 = undefined;
     _ = try meta.wrap(file.getCwd(getcwd_spec, &buf));
-    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test"));
+    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
     var st: file.Stat = try meta.wrap(file.stat(stat_spec, "/run/user/1000/file_test"));
     builtin.assert(st.isDirectory());
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, "/run/user/1000/file_test"));
-    try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test"));
+    try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.dir_mode));
     const path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
-    try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test"))));
+    try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test", file.file_mode))));
     const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
@@ -112,7 +112,7 @@ fn testPathOperations() !void {
     try meta.wrap(testing.expectEqualMany(u8, "/run/user/1000", file.dirname("/run/user/1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "////run/user/1000//", file.dirname("////run/user/1000///file_test///")));
 
-    try file.makePath(make_path_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
+    try file.makePath(make_path_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here", file.dir_mode);
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something");
 }
