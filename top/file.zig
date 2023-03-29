@@ -6,12 +6,6 @@ const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
 const _dir = @import("./dir.zig");
 pub usingnamespace _dir;
-const dmode_owner: Perms = .{ .read = true, .write = true, .execute = true };
-const dmode_group: Perms = .{ .read = true, .write = false, .execute = true };
-const dmode_other: Perms = .{ .read = false, .write = false, .execute = false };
-const fmode_owner: Perms = .{ .read = true, .write = true, .execute = false };
-const fmode_group: Perms = .{ .read = true, .write = false, .execute = false };
-const fmode_other: Perms = .{ .read = false, .write = false, .execute = false };
 pub const Open = meta.EnumBitField(enum(u64) {
     no_cache = OPEN.DIRECT,
     no_atime = OPEN.NOATIME,
@@ -228,20 +222,20 @@ pub const TerminalAttributes = extern struct {
     }
 };
 const Perms = struct { read: bool, write: bool, execute: bool };
+pub const dir_mode: ModeSpec = .{
+    .owner = .{ .read = true, .write = true, .execute = true },
+    .group = .{ .read = true, .write = true, .execute = true },
+    .other = .{ .read = false, .write = false, .execute = false },
+};
+pub const file_mode: ModeSpec = .{
+    .owner = .{ .read = true, .write = true, .execute = false },
+    .group = .{ .read = true, .write = false, .execute = false },
+    .other = .{ .read = false, .write = false, .execute = false },
+};
 pub const ModeSpec = struct {
     owner: Perms,
     group: Perms,
     other: Perms,
-    pub const file_mode: ModeSpec = .{
-        .owner = fmode_owner,
-        .group = fmode_group,
-        .other = fmode_other,
-    };
-    pub const dir_mode: ModeSpec = .{
-        .owner = dmode_owner,
-        .group = dmode_group,
-        .other = dmode_other,
-    };
     fn mode(comptime mode_spec: ModeSpec) Mode {
         comptime var mode_bitfield: Mode = .{ .val = 0 };
         if (mode_spec.owner.read) {

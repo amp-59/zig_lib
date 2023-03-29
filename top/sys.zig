@@ -2018,44 +2018,44 @@ pub const no_errors: []const ErrorCode = &[_]ErrorCode{};
 //    x32           rdi   rsi   rdx   r10   r8    r9    -
 //    xtensa        a6    a3    a4    a5    a8    a9    -
 
-inline fn syscall0(comptime sysno: usize, _: [0]usize) isize {
-    return asm volatile ("syscall"
+inline fn syscall0(comptime sys_fn_info: Fn, _: [0]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sysno),
+        : [_] "{rax}" (sys_fn_info),
         : "rax", "rcx", "r11", "memory"
     );
 }
-inline fn syscall1(comptime sysno: usize, args: [1]usize) isize {
-    return asm volatile ("syscall"
+inline fn syscall1(comptime sys_fn_info: Fn, args: [1]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sysno),
+        : [_] "{rax}" (sys_fn_info),
           [_] "{rdi}" (args[0]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall2(comptime sysno: usize, args: [2]usize) isize {
-    return asm volatile ("syscall"
+inline fn syscall2(comptime sys_fn_info: Fn, args: [2]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sysno),
+        : [_] "{rax}" (sys_fn_info),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall3(comptime sysno: usize, args: [3]usize) isize {
-    return asm volatile ("syscall"
+inline fn syscall3(comptime sys_fn_info: Fn, args: [3]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sysno),
+        : [_] "{rax}" (sys_fn_info),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall4(comptime sysno: usize, args: [4]usize) isize {
-    return asm volatile ("syscall"
+inline fn syscall4(comptime sys_fn_info: Fn, args: [4]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [_] "={rax}" (-> isize),
-        : [_] "{rax}" (sysno),
+        : [_] "{rax}" (sys_fn_info),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
@@ -2063,10 +2063,10 @@ inline fn syscall4(comptime sysno: usize, args: [4]usize) isize {
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall5(comptime sysno: usize, args: [5]usize) isize {
-    return asm volatile ("syscall"
+inline fn syscall5(comptime sys_fn_info: Fn, args: [5]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sysno),
+        : [_] "{rax}" (sys_fn_info),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
@@ -2075,10 +2075,10 @@ inline fn syscall5(comptime sysno: usize, args: [5]usize) isize {
         : "rcx", "r11", "memory"
     );
 }
-inline fn syscall6(comptime sysno: usize, args: [6]usize) isize {
-    return asm volatile ("syscall"
+inline fn syscall6(comptime sys_fn_info: Fn, args: [6]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sysno),
+        : [_] "{rax}" (sys_fn_info),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
@@ -2109,7 +2109,7 @@ const syscalls = .{
     syscall6,
 };
 pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors, return_type) {
-    const ret: isize = syscalls[tag.args()](@enumToInt(tag), args);
+    const ret: isize = syscalls[tag.args()](tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
