@@ -1,6 +1,6 @@
 const mach = @import("../mach.zig");
 const file = @import("../file.zig");
-const build = @import("../build.zig");
+const build = @import("./build-template.zig");
 const builtin = @import("../builtin.zig");
 
 export fn rewind(builder: *build.Builder) callconv(.C) void {
@@ -32,16 +32,13 @@ export fn writeAllCommands(builder: *build.Builder, buf: *[1024 * 1024]u8, name_
     }
     return len;
 }
-export fn asmWriteEnv(paths: *const build.Builder.Paths) void {
-    file.makeDir(.{ .errors = .{} }, paths.cache_dir);
-    const dir_fd: u64 = file.path(.{ .errors = .{} }, paths.cache_dir);
-    defer file.close(.{ .errors = .{} }, dir_fd);
-    const env_fd: u64 = file.createAt(.{ .errors = .{}, .options = .{ .exclusive = false, .write = .truncate } }, dir_fd, "env.zig");
-    for ([_][]const u8{
-        "pub const zig_exe: [:0]const u8 = \"",          paths.zig_exe,          "\";\n",
-        "pub const build_root: [:0]const u8 = \"",       paths.build_root,       "\";\n",
-        "pub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,        "\";\n",
-        "pub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir, "\";\n",
+export fn asmWriteEnv(env_fd: u64, paths: *const build.Builder.Paths) void {
+    for (&[_][]const u8{
+        "pub const zig_exe: [:0]const u8 = \"",               paths.zig_exe,
+        "\";\npub const build_root: [:0]const u8 = \"",       paths.build_root,
+        "\";\npub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,
+        "\";\npub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir,
+        "\";\n",
     }) |s| {
         file.write(.{ .errors = .{} }, env_fd, s);
     }
