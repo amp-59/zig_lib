@@ -25,10 +25,10 @@ const close_spec: file.CloseSpec = .{
 };
 
 pub fn main() void {
-    file.makeDir(mkdir_spec, config.zig_out_dir);
-    file.makeDir(mkdir_spec, config.zig_out_src_dir);
-    file.close(close_spec, file.create(create_spec, config.container_path));
-    file.close(close_spec, file.create(create_spec, config.reference_path));
-    file.close(close_spec, file.create(create_spec, config.container_kinds_path));
-    file.close(close_spec, file.create(create_spec, config.reference_kinds_path));
+    file.makeDir(mkdir_spec, config.zig_out_dir, file.dir_mode);
+    file.makeDir(mkdir_spec, config.zig_out_src_dir, file.dir_mode);
+    file.close(close_spec, file.create(create_spec, config.container_path, file.file_mode));
+    file.close(close_spec, file.create(create_spec, config.reference_path, file.file_mode));
+    file.close(close_spec, file.create(create_spec, config.container_kinds_path, file.file_mode));
+    file.close(close_spec, file.create(create_spec, config.reference_kinds_path, file.file_mode));
 }
