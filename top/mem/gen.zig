@@ -59,7 +59,7 @@ pub fn writeSourceFile(comptime pathname: [:0]const u8, comptime T: type, buf: [
     if (pathname[0] != '/') {
         @compileError("update usage of " ++ @src().fn_name ++ " for output: '" ++ pathname ++ "'");
     }
-    const fd: u64 = file.create(create_spec, pathname);
+    const fd: u64 = file.create(create_spec, pathname, file.file_mode);
     defer file.close(close_spec, fd);
     file.write(.{ .errors = .{}, .child = T }, fd, buf);
 }
