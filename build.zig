@@ -84,7 +84,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const mg: *build.Group                      = builder.addGroup(allocator,               "memgen");
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_references",  "top/mem/reference.zig");
     const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_containers",  "top/mem/container.zig");
-    const threaded_builder_test: *build.Target  = undefined;
+    //const threaded_builder_test: *build.Target  = tests.addTarget(build_spec, allocator,    "threaded_build_test",  "top/threaded_builder-test.zig");
 
     zig_program.dependOnObject(allocator,       c_program);
     build_test.dependOnRun(allocator,           generate_build);
@@ -103,10 +103,10 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     mg_container_impls.addFile(allocator,       mg_ctn_detail.binPath());
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
-    build_test.run_cmd.addRunArgument(builder.zigExePath());
-    build_test.run_cmd.addRunArgument(builder.buildRootPath());
-    build_test.run_cmd.addRunArgument(builder.cacheDirPath());
-    build_test.run_cmd.addRunArgument(builder.globalCacheDirPath());
+    build_test.run_cmd.addRunArgument(builder.paths.zig_exe);
+    build_test.run_cmd.addRunArgument(builder.paths.build_root);
+    build_test.run_cmd.addRunArgument(builder.paths.cache_dir);
+    build_test.run_cmd.addRunArgument(builder.paths.global_cache_dir);
 
     c_program.build_cmd.link_libc = true;
     c_program.build_cmd.function_sections = true;
@@ -126,7 +126,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
         readdir,   mg_abstract_specs,
         dynamic,   address_space,
         treez,     allocators,
-        itos,      threaded_builder_test,
+        itos,      thread_test,
         readelf,   pathsplit,
         declprint, builtin_test,
         meta_test, mem_test,
@@ -136,6 +136,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
         catz,      virtual_test,
         impl_test, size_test,
         algo_test, render_test,
-        hello,     thread_test,
+        hello,
     };
 }
