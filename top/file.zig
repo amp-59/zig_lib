@@ -646,7 +646,7 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val }))) |fd| {
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, 0 }))) |fd| {
         if (logging.Acquire) {
             debug.openAtNotice(dir_fd, name, fd);
         }
@@ -737,7 +737,7 @@ fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
     buf[pathname.len] = 0;
     return buf[0..pathname.len :0];
 }
-fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
+fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: ModeSpec) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
     const stat_spec: StatSpec = spec.statSpec();
     const make_dir_spec: MakeDirSpec = spec.makeDirSpec();
     const st: FileStatus = stat(stat_spec, pathname) catch |err| blk: {
@@ -746,45 +746,44 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8) sys.Call(spec
             builtin.assertEqual(u8, pathname[idx], '/');
             if (idx != 0) {
                 pathname[idx] = 0;
-                try makePathInternal(spec, pathname[0..idx :0]);
+                try makePathInternal(spec, pathname[0..idx :0], mode);
                 pathname[idx] = '/';
             }
         }
-        try makeDir(make_dir_spec, pathname);
+        try makeDir(make_dir_spec, pathname, mode);
         break :blk try stat(stat_spec, pathname);
     };
     if (!st.isDirectory()) {
         return error.NotADirectory;
     }
 }
-pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
+pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode: ModeSpec) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
     var buf: [4096:0]u8 = undefined;
     const name: [:0]u8 = writePath(&buf, pathname);
-    return makePathInternal(spec, name);
+    return makePathInternal(spec, name, mode);
 }
 
-pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
-    const mode: Mode = spec.mode.mode();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, mode.val }))) |fd| {
+    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, comptime mode.mode().val }))) |fd| {
         if (logging.Acquire) {
-            debug.createNotice(pathname, fd, debug.describeMode(spec.mode));
+            debug.createNotice(pathname, fd, debug.describeMode(mode));
         }
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.createError(open_error, pathname, debug.describeMode(spec.mode));
+            debug.createError(open_error, pathname, debug.describeMode(mode));
         }
         return open_error;
     }
 }
-pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val }))) |fd| {
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, comptime mode.mode().val }))) |fd| {
         if (logging.Acquire) {
             debug.createAtNotice(dir_fd, name, fd);
         }
@@ -809,13 +808,12 @@ pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors, spec.retur
         return close_error;
     }
 }
-pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const mode: Mode = spec.mode.mode();
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, mode.val }))) {
+    if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, comptime mode.mode().val }))) {
         if (logging.Success) {
-            debug.makeDirNotice(pathname, debug.describeMode(spec.mode));
+            debug.makeDirNotice(pathname, debug.describeMode(mode));
         }
     } else |mkdir_error| {
         if (logging.Error) {
@@ -824,17 +822,16 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8) sys.Call(spec
         return mkdir_error;
     }
 }
-pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const mode: Mode = spec.mode.mode();
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, mode.val }))) {
+    if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, comptime mode.mode().val }))) {
         if (logging.Success) {
-            debug.makeDirAtNotice(dir_fd, name, debug.describeMode(spec.mode));
+            debug.makeDirAtNotice(dir_fd, name, debug.describeMode(mode));
         }
     } else |mkdir_error| {
         if (logging.Error) {
-            debug.makeDirAtError(mkdir_error, dir_fd, name, debug.describeMode(spec.mode));
+            debug.makeDirAtError(mkdir_error, dir_fd, name, debug.describeMode(mode));
         }
         return mkdir_error;
     }
