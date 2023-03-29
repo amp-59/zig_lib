@@ -30,6 +30,7 @@ pub const OutputMode = enum { exe, lib, obj };
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
+    sections: bool = true,
     verbose: bool = false,
     cmd: Target.Tag = .build,
     emit_bin: bool = true,
@@ -267,9 +268,16 @@ pub const Builder = struct {
         ts.* = time.diff(finish, start);
         return ret;
     }
+    fn writeEnv(paths: Paths) void {
+        file.makeDir(.{ .errors = .{} }, paths.cache_dir, file.dir_mode);
+        const dir_fd: u64 = file.path(.{ .errors = .{} }, paths.cache_dir);
+        defer file.close(.{ .errors = .{} }, dir_fd);
+        const env_fd: u64 = file.createAt(.{ .errors = .{}, .options = .{ .exclusive = false, .write = .truncate } }, dir_fd, "env.zig", file.file_mode);
+        asmWriteEnv(env_fd, &paths);
+    }
     pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) !Builder {
         const dir_fd: u64 = try file.path(.{}, paths.build_root);
-        asmWriteEnv(&paths);
+        writeEnv(paths);
         return .{
             .paths = paths,
             .options = options,
@@ -1900,17 +1908,25 @@ const debug = struct {
     const about_run_s: [:0]const u8 = builtin.debug.about("run");
     const about_build_s: [:0]const u8 = builtin.debug.about("build");
     const about_format_s: [:0]const u8 = builtin.debug.about("format");
+    const new_style: [:0]const u8 = "\x1b[93m";
     const ChangedSize = fmt.ChangedBytesFormat(.{
         .dec_style = "\x1b[92m-",
         .inc_style = "\x1b[91m+",
     });
+    const no_style: [:0]const u8 = "*\x1b[0m";
     fn buildNotice(name: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
         var array: mem.StaticString(4096) = undefined;
         array.undefineAll();
         array.writeMany(about_build_s);
         array.writeMany(name);
         array.writeMany(", ");
-        array.writeFormat(ChangedSize.init(old_size, new_size));
+        if (old_size == 0) {
+            array.writeMany(new_style);
+            array.writeFormat(fmt.bytes(new_size));
+            array.writeMany(no_style);
+        } else {
+            array.writeFormat(ChangedSize.init(old_size, new_size));
+        }
         array.writeMany(", ");
         array.writeFormat(fmt.ud64(durat.sec));
         array.writeMany(".");
@@ -1948,4 +1964,4 @@ const debug = struct {
 pub extern fn asmMaxWidths(builder: *Builder) extern struct { u64, u64 };
 pub extern fn asmWriteAllCommands(builder: *Builder, buf: [*]u8, name_max_width: u64) callconv(.C) u64;
 pub extern fn asmRewind(builder: *Builder) callconv(.C) void;
-pub extern fn asmWriteEnv(paths: *const Builder.Paths) callconv(.C) void;
+pub extern fn asmWriteEnv(env_fd: u64, paths: *const Builder.Paths) callconv(.C) void;
