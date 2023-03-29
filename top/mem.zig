@@ -838,7 +838,7 @@ pub const debug = opaque {
             " bytes\n",
         });
     }
-    fn arenaAcquireNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaAcquireNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_acq_0_s, label orelse "arena",
@@ -849,7 +849,7 @@ pub const debug = opaque {
             " bytes\n",
         });
     }
-    fn arenaReleaseNotice(index: u8, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn arenaReleaseNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         @setCold(true);
         var buf: [4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
