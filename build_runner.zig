@@ -123,7 +123,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .cache_dir = cache_dir,
         .global_cache_dir = global_cache_dir,
     };
-    var builder: build.Builder = try build.Builder.init(&allocator, paths, options, args, vars);
+    var builder: build.Builder = try meta.wrap(build.Builder.init(&allocator, paths, options, args, vars));
     _ = builder.addGroup(&allocator, "all");
     try build_fn(&allocator, &builder);
     build.asmRewind(&builder);
