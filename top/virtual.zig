@@ -287,10 +287,18 @@ fn GenericMultiSet(
             return multi_set.fields[fieldIndex(index)].atomicTransform(arenaIndex(index), if_state, to_state);
         }
         inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
-            return @intToEnum(spec.idx_type, directory[if (is_tagged) @enumToInt(index) else index].arena_index);
+            if (is_tagged) {
+                return @intToEnum(spec.idx_type, directory[@enumToInt(index)].arena_index);
+            } else {
+                return directory[index].arena_index;
+            }
         }
         inline fn fieldIndex(comptime index: spec.idx_type) usize {
-            return directory[if (is_tagged) @enumToInt(index) else index].field_index;
+            if (is_tagged) {
+                return directory[@enumToInt(index)].field_index;
+            } else {
+                return directory[index].field_index;
+            }
         }
     });
 }
