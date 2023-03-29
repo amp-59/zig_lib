@@ -86,7 +86,7 @@ const File = struct {
         filesystem.fd = try file.open(open_spec, filesystem.pathname);
     }
     fn create(filesystem: *File, comptime file_spec: file.CreateSpec) !void {
-        filesystem.fd = try file.create(file_spec, filesystem.pathname);
+        filesystem.fd = try file.create(file_spec, filesystem.pathname, file.file_mode);
     }
     fn close(filesystem: *File, comptime close_spec: file.CloseSpec) void {
         if (filesystem.fd) |fd| {
@@ -345,7 +345,7 @@ fn processRequest(options: *const Options, allocator_0: *Allocator, name: [:0]co
     var file_buf: FixedString = try fileBuf(allocator_0, name);
     var exports = try parseInput(allocator_0, file_buf);
 
-    const fd: u64 = if (options.output) |output| try file.create(output_file_spec, output) else 1;
+    const fd: u64 = if (options.output) |output| try file.create(output_file_spec, output, file.file_mode) else 1;
     defer if (options.output != null) file.close(output_close_spec, fd);
     try writeOutput(allocator_0, fd, file_buf, &exports);
     exports.deinit(allocator_0);
