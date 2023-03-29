@@ -158,16 +158,16 @@ pub const Builder = struct {
         return .{ .name = "root", .value = .{ .path = builder.sourceRootPath(root) } };
     }
     pub fn zigExePath(builder: *const Builder) Path {
-        return builder.path(builder.paths.zig_exe);
+        return .{ .absolute = builder.paths.zig_exe };
     }
     pub fn buildRootPath(builder: *const Builder) Path {
-        return builder.path(builder.paths.build_root);
+        return .{ .absolute = builder.paths.build_root };
     }
     pub fn cacheDirPath(builder: *const Builder) Path {
-        return builder.path(builder.paths.cache_dir);
+        return .{ .absolute = builder.paths.cache_dir };
     }
     pub fn globalCacheDirPath(builder: *const Builder) Path {
-        return builder.path(builder.paths.global_cache_dir);
+        return .{ .absolute = builder.paths.global_cache_dir };
     }
     pub fn sourceRootPath(builder: *const Builder, root: [:0]const u8) Path {
         return builder.path(root);
@@ -728,7 +728,7 @@ pub const CFlags = struct {
 };
 pub const Path = struct {
     absolute: [:0]const u8,
-    relative: ?[:0]const u8,
+    relative: ?[:0]const u8 = null,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany(format.absolute);
