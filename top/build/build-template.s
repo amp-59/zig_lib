@@ -249,4 +249,3 @@ dq_sc_lf:
 c_lf:
     .asciz  ":\n"
     .size   c_lf, 3
-

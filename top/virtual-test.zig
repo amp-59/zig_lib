@@ -16,31 +16,33 @@ const root = opaque {
     pub const AddressSpace = preset.address_space.regular_128;
 };
 
-const PrintArray = mem.StaticString(16384);
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 
-pub const is_verbose: bool = false;
+const PrintArray = mem.StaticString(16384);
+var print_array: PrintArray = undefined;
+
 pub const runtime_assertions: bool = true;
-pub const render_type_names: bool = false;
 pub const render_radix: u16 = 10;
-pub const trivial_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
+
+pub const trivial_list: []const virtual.Arena = &.{
     .{ .lb_addr = 0x000004000000, .up_addr = 0x010000000000 },
     .{ .lb_addr = 0x010000000000, .up_addr = 0x110000000000 },
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
-});
-pub const simple_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
+};
+pub const simple_list: []const virtual.Arena = &.{
     .{ .lb_addr = 0x000040000000, .up_addr = 0x010000000000 },
     .{ .lb_addr = 0x100000000000, .up_addr = 0x110000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x120000000000, .up_addr = 0x130000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x7f0000000000, .up_addr = 0x800000000000 },
-});
-pub const rare_sub_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
+};
+pub const rare_sub_list: []const virtual.Arena = &.{
     .{ .lb_addr = 0x000040000000, .up_addr = 0x010000000000 },
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x7f0000000000, .up_addr = 0x800000000000 },
-});
+};
 // zig fmt: off
-pub const complex_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
+pub const complex_list: []const virtual.Arena = &.{
     .{ .lb_addr = 0x0f0000000000, .up_addr = 0x100000000000 },
     .{ .lb_addr = 0x100000000000, .up_addr = 0x110000000000, .options = .{ .thread_safe = true } }, // [X]
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
@@ -88,7 +90,7 @@ pub const complex_list: []const virtual.Arena = meta.slice(virtual.Arena, .{
     .{ .lb_addr = 0x5a0000000000, .up_addr = 0x5b0000000000 }, // [X]
     .{ .lb_addr = 0x5b0000000000, .up_addr = 0x5c0000000000 },
     .{ .lb_addr = 0x5c0000000000, .up_addr = 0x5d0000000000 },
-});
+};
 // zig fmt: on
 
 /// Initial concern by increased binary size switching to new (formulaic)
@@ -101,167 +103,108 @@ fn arenaToBits(arena: virtual.Arena) u64 {
     return mach.shl64(mach.shl64(1, arena.up_addr - arena.lb_addr) - 1, arena.lb_addr);
 }
 fn testArenaIntersection() !void {
-    const a: virtual.Arena = arenaFromBits(0b000000000111111111110000000000000);
-    const b: virtual.Arena = arenaFromBits(0b000000000000000111111111110000000);
-    const x: virtual.Arena.Intersection = a.intersection2(b).?;
-    var array: PrintArray = .{};
-    array.writeMany("a:\t");
-    array.writeFormat(fmt.any(a));
-    array.writeMany("\t -> ");
-    array.writeFormat(fmt.ub64(arenaToBits(a)));
-    array.writeMany("\nb:\t");
-    array.writeFormat(fmt.any(b));
-    array.writeMany("\t -> ");
-    array.writeFormat(fmt.ub64(arenaToBits(b)));
-    array.writeMany("\nx.l:\t");
-    array.writeFormat(fmt.any(x.l));
-    array.writeMany("\t -> ");
-    array.writeFormat(fmt.ub64(arenaToBits(x.l)));
-    array.writeMany("\nx.x:\t");
-    array.writeFormat(fmt.any(x.x));
-    array.writeMany("\t -> ");
-    array.writeFormat(fmt.ub64(arenaToBits(x.x)));
-    array.writeMany("\nx.h:\t");
-    array.writeFormat(fmt.any(x.h));
-    array.writeMany("\t -> ");
-    array.writeFormat(fmt.ub64(arenaToBits(x.h)));
-    builtin.debug.write(array.readAll());
+    var a: virtual.Arena = arenaFromBits(0b000000000111111111110000000000000);
+    var b: virtual.Arena = arenaFromBits(0b000000000000000111111111110000000);
+    var x: virtual.Arena.Intersection = a.intersection2(b).?;
+    try builtin.expectEqual(u64, arenaToBits(x.l), 0b0000000000000000000000000000000000000000000000000001111110000000);
+    try builtin.expectEqual(u64, arenaToBits(x.x), 0b0000000000000000000000000000000000000000000000111110000000000000);
+    try builtin.expectEqual(u64, arenaToBits(x.h), 0b0000000000000000000000000000000000000000111111000000000000000000);
 }
 fn testRegularAddressSpace() !void {
     const AddressSpace = virtual.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
     var address_space: AddressSpace = .{};
     const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
-    const Array = Allocator.StructuredVector(u8);
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: Array = try Array.init(&allocator, 8192);
-    defer array.deinit(&allocator);
     var i: u8 = 1;
-    try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
     while (i != AddressSpace.addr_spec.divisions) : (i += 1) {
         try mem.acquire(AddressSpace, &address_space, i);
-        try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
-        builtin.debug.write(array.readAll());
-        array.undefineAll();
+    }
+}
+
+fn acquireStaticSet(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
+    if (comptime AddressSpace.arena(index).options.thread_safe) {
+        return address_space.atomicSet(index);
+    } else {
+        return address_space.set(index);
     }
 }
 fn testDiscreteAddressSpace(comptime list: anytype) !void {
     const AddressSpace = virtual.GenericDiscreteAddressSpace(.{ .list = list });
+
     var address_space: AddressSpace = .{};
     const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = AddressSpace });
-    const Array = Allocator.StructuredVector(u8);
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    var array: Array = try Array.init(&allocator, 8192);
-    defer array.deinit(&allocator);
     comptime var i: u8 = 1;
-    try array.appendAny(preset.reinterpret.fmt, &allocator, .{ fmt.any(address_space), '\n' });
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
         try mem.acquireStatic(AddressSpace, &address_space, i);
-        try array.appendFormat(&allocator, fmt.any(address_space));
-        try array.appendMany(&allocator, "\n");
-        builtin.debug.write(array.readAll());
-        array.undefineAll();
     }
-    builtin.debug.write(array.readAll());
     i = 1;
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
         mem.releaseStatic(AddressSpace, &address_space, i);
-        try array.appendFormat(&allocator, fmt.any(address_space));
-        try array.appendMany(&allocator, "\n");
-        builtin.debug.write(array.readAll());
-        array.undefineAll();
     }
 }
 fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.DiscreteAddressSpaceSpec) !void {
-    const render_spec: fmt.RenderSpec = .{ .radix = 2, .ignore_container_decls = true, .ignore_formatter_decls = true };
     const AddressSpace = comptime blk: {
         var tmp = sup_spec;
         tmp.subspace = meta.slice(meta.Generic, .{virtual.generic(sub_spec)});
         break :blk virtual.GenericDiscreteAddressSpace(tmp);
     };
     const SubAddressSpace = AddressSpace.SubSpace(0);
-    var address_space: AddressSpace = .{};
     var sub_space: SubAddressSpace = .{};
-
     const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
     const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace });
     const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace });
-    const Array0 = Allocator0.StructuredVector(u8);
-    const Array1 = Allocator1.StructuredVector(u8);
-    const Array2 = Allocator2.StructuredVector(u8);
     var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
     defer allocator_0.deinit(&sub_space);
-    var array_0: Array0 = try Array0.init(&allocator_0, 2048);
-    defer array_0.deinit(&allocator_0);
-    try array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{
-        fmt.render(render_spec, address_space), '\n',
-        fmt.render(render_spec, sub_space),     '\n',
-    });
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
     defer allocator_1.deinit(&sub_space);
-    var array_1: Array1 = try Array1.init(&allocator_1, 2048);
-    defer array_1.deinit(&allocator_1);
-    try array_1.appendFormat(&allocator_1, fmt.render(render_spec, sub_space));
-    try array_1.appendMany(&allocator_1, "\n");
     var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
     defer allocator_2.deinit(&sub_space);
-    var array_2: Array2 = try Array2.init(&allocator_2, 2048);
-    defer array_2.deinit(&allocator_2);
-    try array_2.appendFormat(&allocator_2, fmt.render(render_spec, sub_space));
-    try array_2.appendMany(&allocator_2, "\n");
-    builtin.debug.write(array_0.readAll());
-    array_0.undefineAll();
-    builtin.debug.write(array_1.readAll());
-    array_1.undefineAll();
-    builtin.debug.write(array_2.readAll());
-    array_2.undefineAll();
 }
 fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec) !void {
-    const render_spec: fmt.RenderSpec = .{ .radix = 2, .ignore_container_decls = true, .ignore_formatter_decls = true };
     const AddressSpace = sup_spec.instantiate();
     const SubAddressSpace = AddressSpace.SubSpace(0);
-    var address_space: AddressSpace = .{};
     var sub_space: SubAddressSpace = .{};
     const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubAddressSpace });
     const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubAddressSpace });
     const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubAddressSpace });
-    const Array0 = Allocator0.StructuredHolder(u8);
-    const Array1 = Allocator1.StructuredHolder(u8);
-    const Array2 = Allocator2.StructuredHolder(u8);
     var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
     defer allocator_0.deinit(&sub_space);
-    var array_0: Array0 = Array0.init(&allocator_0);
-    defer array_0.deinit(&allocator_0);
-    try array_0.appendAny(preset.reinterpret.fmt, &allocator_0, .{
-        fmt.render(render_spec, address_space), '\n',
-        fmt.render(render_spec, sub_space),     '\n',
-    });
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
     defer allocator_1.deinit(&sub_space);
-    var array_1: Array1 = Array1.init(&allocator_1);
-    defer array_1.deinit(&allocator_1);
-    try array_1.appendFormat(&allocator_1, fmt.render(render_spec, sub_space));
-    try array_1.appendMany(&allocator_1, "\n");
     var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
     defer allocator_2.deinit(&sub_space);
-    var array_2: Array2 = Array2.init(&allocator_2);
-    defer array_2.deinit(&allocator_2);
-    try array_2.appendFormat(&allocator_2, fmt.render(render_spec, sub_space));
-    try array_2.appendMany(&allocator_2, "\n");
-    builtin.debug.write(array_0.readAll(allocator_0));
-    array_0.undefineAll(allocator_0);
-    builtin.debug.write(array_1.readAll(allocator_1));
-    array_1.undefineAll(allocator_1);
-    builtin.debug.write(array_2.readAll(allocator_2));
-    array_2.undefineAll(allocator_2);
+}
+
+fn testTaggedSets() !void {
+    const E = enum { a, b, c, d };
+    const K = virtual.GenericDiscreteAddressSpace(.{
+        .label = "tagged",
+        .idx_type = E,
+        .list = &.{
+            .{ .lb_addr = 0x40000000, .up_addr = 0x80000000 },
+            .{ .lb_addr = 0x80000000, .up_addr = 0x100000000 },
+            .{ .lb_addr = 0x100000000, .up_addr = 0x200000000, .options = .{ .thread_safe = true } },
+            .{ .lb_addr = 0x200000000, .up_addr = 0x400000000 },
+        },
+    });
+    var k: K = .{};
+    try builtin.expect(k.set(.a));
+    try builtin.expect(k.set(.b));
+    try builtin.expect(k.set(.c));
+    try builtin.expect(k.set(.d));
+
+    testing.print(fmt.any(k));
 }
 pub fn main() !void {
     try meta.wrap(testArenaIntersection());
+    try meta.wrap(testRegularAddressSpace());
+    try meta.wrap(testTaggedSets());
     try meta.wrap(testDiscreteAddressSpace(trivial_list));
     try meta.wrap(testDiscreteAddressSpace(complex_list));
     try meta.wrap(testDiscreteAddressSpace(simple_list));
-    try meta.wrap(testRegularAddressSpace());
     try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{
         .list = complex_list,
         .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
