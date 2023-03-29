@@ -42,13 +42,44 @@ pub const BuilderSpec = struct {
         path: builtin.Logging.AcquireErrorFault = .{},
         fstatat: builtin.Logging.SuccessErrorFault = .{},
         command: builtin.Logging.SuccessErrorFault = .{},
+        create: builtin.Logging.AcquireErrorFault = .{},
+        close: builtin.Logging.ReleaseErrorFault = .{},
+        mkdir: builtin.Logging.SuccessErrorFault = .{},
     },
     errors: struct {
-        path: sys.ErrorPolicy = sys.open_errors,
-        fstatat: sys.ErrorPolicy = sys.stat_errors,
-        command: sys.ErrorPolicy = sys.execve_errors,
-        gettime: sys.ErrorPolicy = sys.clock_get_errors,
+        path: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+        fstatat: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
+        command: sys.ErrorPolicy = .{ .throw = sys.command_errors },
+        gettime: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
+        create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+        mkdir: sys.ErrorPolicy = .{ .throw = sys.mkdir_noexcl_errors },
+        close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
     },
+    fn path(comptime spec: BuilderSpec) file.PathSpec {
+        return .{ .errors = spec.errors.path, .logging = spec.logging.path };
+    }
+    fn fstatat(comptime spec: BuilderSpec) file.StatSpec {
+        return .{ .errors = spec.errors.fstatat, .logging = spec.logging.fstatat };
+    }
+    fn command(comptime spec: BuilderSpec) proc.ExecuteSpec {
+        return .{ .errors = spec.errors.command, .logging = spec.logging.command };
+    }
+    fn gettime(comptime spec: BuilderSpec) time.ClockSpec {
+        return .{ .errors = spec.errors.gettime };
+    }
+    fn makeDir(comptime spec: BuilderSpec) file.MakeDirSpec {
+        return .{ .errors = spec.errors.mkdir, .logging = spec.logging.mkdir };
+    }
+    fn create(comptime spec: BuilderSpec) file.CreateSpec {
+        return .{
+            .errors = spec.errors.create,
+            .logging = spec.logging.create,
+            .options = .{ .exclusive = false, .write = .truncate },
+        };
+    }
+    fn close(comptime spec: BuilderSpec) file.CloseSpec {
+        return .{ .errors = spec.errors.close, .logging = spec.logging.close };
+    }
 };
 pub const BuildCommand = struct {
     kind: OutputMode,
@@ -180,6 +211,10 @@ pub fn concatStrings(allocator: *Allocator, values: []const []const u8) [:0]u8 {
     }
     return buf;
 }
+const build_spec: BuilderSpec = .{
+    .errors = .{},
+    .logging = .{},
+};
 pub const Builder = struct {
     paths: Paths,
     options: GlobalOptions,
@@ -196,24 +231,19 @@ pub const Builder = struct {
         global_cache_dir: [:0]const u8,
     };
     pub fn zigExePathMacro(builder: *const Builder) Macro {
-        const value: Macro.Value = .{ .path = zigExePath(builder) };
-        return .{ .name = "zig_exe", .value = value };
+        return .{ .name = "zig_exe", .value = .{ .path = zigExePath(builder) } };
     }
     pub fn buildRootPathMacro(builder: *const Builder) Macro {
-        const value: Macro.Value = .{ .path = buildRootPath(builder) };
-        return .{ .name = "build_root", .value = value };
+        return .{ .name = "build_root", .value = .{ .path = buildRootPath(builder) } };
     }
     pub fn cacheDirPathMacro(builder: *const Builder) Macro {
-        const value: Macro.Value = .{ .path = cacheDirPath(builder) };
-        return .{ .name = "cache_dir", .value = value };
+        return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(builder) } };
     }
     pub fn globalCacheDirPathMacro(builder: *const Builder) Macro {
-        const value: Macro.Value = .{ .path = globalCacheDirPath(builder) };
-        return .{ .name = "global_cache_dir", .value = value };
+        return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(builder) } };
     }
     pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) Macro {
-        const value: Macro.Value = .{ .path = builder.sourceRootPath(root) };
-        return .{ .name = "root", .value = value };
+        return .{ .name = "root", .value = .{ .path = builder.sourceRootPath(root) } };
     }
     pub fn zigExePath(builder: *const Builder) Path {
         return builder.path(builder.paths.zig_exe);
@@ -242,11 +272,7 @@ pub const Builder = struct {
     ) *Target {
         return builder.groups.left.this.addTarget(spec, allocator, name, pathname);
     }
-    pub fn addGroup(
-        builder: *Builder,
-        allocator: *Allocator,
-        comptime name: [:0]const u8,
-    ) *Group {
+    pub fn addGroup(builder: *Builder, allocator: *Allocator, comptime name: [:0]const u8) *Group {
         defer builder.groups.head();
         return builder.groups.create(allocator, .{
             .name = name,
@@ -254,38 +280,39 @@ pub const Builder = struct {
             .targets = TargetList.init(allocator),
         });
     }
-    fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
-        const start: time.TimeSpec = try time.get(.{}, .realtime);
-        const rc: u8 = try proc.command(.{}, builder.paths.zig_exe, args, builder.vars);
-        const finish: time.TimeSpec = try time.get(.{}, .realtime);
+    fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
+        .throw = build_spec.errors.command.throw ++ build_spec.errors.gettime.throw,
+        .abort = build_spec.errors.command.abort ++ build_spec.errors.gettime.abort,
+    }, u8) {
+        const start: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
+        const rc: u8 = try meta.wrap(proc.command(comptime build_spec.command(), builder.paths.zig_exe, args, builder.vars));
+        const finish: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
         ts.* = time.diff(finish, start);
         return rc;
     }
-    fn system(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) !u8 {
-        const start: time.TimeSpec = try time.get(.{}, .realtime);
-        const ret: u8 = try proc.command(.{}, meta.manyToSlice(args[0]), args, builder.vars);
-        const finish: time.TimeSpec = try time.get(.{}, .realtime);
+    fn system(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
+        .throw = build_spec.errors.command.throw ++ build_spec.errors.gettime.throw,
+        .abort = build_spec.errors.command.abort ++ build_spec.errors.gettime.abort,
+    }, u8) {
+        const start: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
+        const ret: u8 = try meta.wrap(proc.command(comptime build_spec.command(), meta.manyToSlice(args[0]), args, builder.vars));
+        const finish: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
         ts.* = time.diff(finish, start);
         return ret;
     }
-    fn writeEnv(paths: Paths) void {
-        file.makeDir(.{ .errors = .{} }, paths.cache_dir, file.dir_mode);
-        const dir_fd: u64 = file.path(.{ .errors = .{} }, paths.cache_dir);
-        defer file.close(.{ .errors = .{} }, dir_fd);
-        const env_fd: u64 = file.createAt(.{ .errors = .{}, .options = .{ .exclusive = false, .write = .truncate } }, dir_fd, "env.zig", file.file_mode);
+    pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) sys.Call(.{
+        .throw = Allocator.map_error_policy.throw ++ build_spec.errors.mkdir.throw ++ build_spec.errors.path.throw ++
+            build_spec.errors.close.throw ++ build_spec.errors.create.throw,
+        .abort = Allocator.map_error_policy.abort ++ build_spec.errors.mkdir.abort ++ build_spec.errors.path.abort ++
+            build_spec.errors.close.abort ++ build_spec.errors.create.abort,
+    }, Builder) {
+        try meta.wrap(file.makeDir(comptime build_spec.makeDir(), paths.cache_dir, file.dir_mode));
+        var dir_fd: u64 = try meta.wrap(file.path(comptime build_spec.path(), paths.cache_dir));
+        const env_fd: u64 = try meta.wrap(file.createAt(comptime build_spec.create(), dir_fd, "env.zig", file.file_mode));
         asmWriteEnv(env_fd, &paths);
-    }
-    pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) !Builder {
-        const dir_fd: u64 = try file.path(.{}, paths.build_root);
-        writeEnv(paths);
-        return .{
-            .paths = paths,
-            .options = options,
-            .args = args,
-            .vars = vars,
-            .groups = GroupList.init(allocator),
-            .dir_fd = dir_fd,
-        };
+        try meta.wrap(file.close(comptime build_spec.close(), dir_fd));
+        dir_fd = try meta.wrap(file.path(comptime build_spec.path(), paths.build_root));
+        return .{ .paths = paths, .options = options, .args = args, .vars = vars, .groups = GroupList.init(allocator), .dir_fd = dir_fd };
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
         return file.fstatAt(.{ .logging = preset.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
@@ -1449,6 +1476,17 @@ pub const Builder = struct {
             }
         }
     }
+    fn writeEnvDecls(env_fd: u64, paths: *const Builder.Paths) void {
+        for (&[_][]const u8{
+            "pub const zig_exe: [:0]const u8 = \"",               paths.zig_exe,
+            "\";\npub const build_root: [:0]const u8 = \"",       paths.build_root,
+            "\";\npub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,
+            "\";\npub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir,
+            "\";\n",
+        }) |s| {
+            file.write(.{ .errors = .{} }, env_fd, s);
+        }
+    }
 };
 pub const TargetSpec = struct {
     build: ?OutputMode = .exe,
@@ -1464,7 +1502,7 @@ pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-    pub fn addTarget(group: *Group, spec: TargetSpec, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) *Target {
+    pub fn addTarget(group: *Group, spec: TargetSpec, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) Allocator.allocate_payload(*Target) {
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
         const ret: *Target = group.targets.create(allocator, .{
             .name = saveString(allocator, name),
