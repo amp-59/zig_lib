@@ -30,10 +30,10 @@ pub const Context = opaque {
     }
 };
 pub fn writeEnv(builder: *const build.Builder) !void {
-    std.os.mkdir(builder.cache_root.path.?, 0o770) catch {};
+    std.os.mkdir(builder.cache_root.path.?, 0o777) catch {};
     const dir_fd = try std.os.open(builder.cache_root.path.?, std.os.O.PATH, 0);
     defer std.os.close(dir_fd);
-    const env_fd = try std.os.openat(dir_fd, "env.zig", std.os.O.WRONLY | std.os.O.CREAT | std.os.O.TRUNC, 0o770);
+    const env_fd = try std.os.openat(dir_fd, "env.zig", std.os.O.RDWR | std.os.O.CREAT | std.os.O.TRUNC, 0o777);
     for ([_][]const u8{
         "pub const zig_exe: [:0]const u8 = \"",          builder.zig_exe,                  "\";\n",
         "pub const build_root: [:0]const u8 = \"",       builder.build_root.path.?,        "\";\n",
