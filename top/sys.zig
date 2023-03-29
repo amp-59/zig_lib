@@ -1880,6 +1880,7 @@ pub const execveat_errors: []const ErrorCode = &[_]ErrorCode{
 pub const fork_errors: []const ErrorCode = &[_]ErrorCode{
     .NOSYS, .AGAIN, .NOMEM, .RESTART,
 };
+pub const command_errors: []const ErrorCode = execve_errors ++ fork_errors ++ wait_errors;
 pub const getcwd_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
 };
@@ -1919,6 +1920,10 @@ pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
 };
 pub const mprotect_errors: []const ErrorCode = &[_]ErrorCode{ .ACCES, .INVAL, .NOMEM };
 
+pub const mkdir_noexcl_errors: []const ErrorCode = &[_]ErrorCode{
+    .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
+    .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
+};
 pub const mkdir_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
     .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
