@@ -1518,7 +1518,7 @@ fn srcArray(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticA
     return ret;
 }
 fn writeFile(allocator: Allocator, array: Array, pathname: [:0]const u8) !void {
-    const build_fd: u64 = try file.create(create_spec, pathname);
+    const build_fd: u64 = try file.create(create_spec, pathname, file.file_mode);
     defer file.close(close_spec, build_fd);
     try file.write(.{}, build_fd, array.readAll(allocator));
 }
