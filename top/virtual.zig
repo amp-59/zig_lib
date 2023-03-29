@@ -14,74 +14,132 @@ pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
 // Maybe make generic on Endian.
 // Right now it is difficult to get Zig vectors to produce consistent results,
 // so this is not an option.
-pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type) type {
+pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
     const val_bit_size: u16 = @bitSizeOf(val_type);
     if (val_bit_size != 1) {
         @compileError("not yet implemented");
     }
     const bits: u16 = elements * val_bit_size;
-    const Data: type = meta.UniformData(bits);
-    const data_info: builtin.Type = @typeInfo(Data);
+    const data_type: type = meta.UniformData(bits);
+    const data_info: builtin.Type = @typeInfo(data_type);
+    const idx_info: builtin.Type = @typeInfo(idx_type);
     const Array = extern struct {
-        bits: Data = [1]u64{0} ** data_info.Array.len,
+        bits: data_type = [1]u64{0} ** data_info.Array.len,
         pub const BitSet: type = @This();
         const Word: type = data_info.Array.child;
-        const Index: type = meta.LeastRealBitSize(bits);
-        pub fn get(bit_set: BitSet, index: Index) bool {
+        const Shift: type = builtin.ShiftAmount(Word);
+        pub fn indexToShiftAmount(index: idx_type) Shift {
+            return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
+        }
+        pub fn get(bit_set: BitSet, index: idx_type) val_type {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
-        pub fn indexToShiftAmount(index: Index) u8 {
-            return builtin.sub(u8, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size));
-        }
-        pub fn set(bit_set: *BitSet, index: Index) void {
+        pub fn set(bit_set: *BitSet, index: idx_type) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             bit_set.bits[index / word_bit_size] |= bit_mask;
         }
-        pub fn unset(bit_set: *BitSet, index: Index) void {
+        pub fn unset(bit_set: *BitSet, index: idx_type) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             bit_set.bits[index / word_bit_size] &= ~bit_mask;
         }
     };
+    if (data_info == .Array and idx_info != .Enum) {
+        return Array;
+    }
     const Int = extern struct {
-        bits: Data = 0,
+        bits: data_type = 0,
         pub const BitSet: type = @This();
-        const Word: type = Data;
-        const Index: type = meta.LeastRealBitSize(bits);
-        pub fn get(bit_set: BitSet, index: Index) bool {
+        const Word: type = data_type;
+        const Shift: type = builtin.ShiftAmount(Word);
+
+        pub fn indexToShiftAmount(index: idx_type) Shift {
+            return builtin.intCast(Shift, builtin.sub(idx_type, data_info.Int.bits -% 1, index));
+        }
+        pub fn get(bit_set: BitSet, index: idx_type) val_type {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             return bit_set.bits & bit_mask != 0;
         }
-        pub fn indexToShiftAmount(index: Index) u8 {
-            return builtin.sub(u8, data_info.Int.bits -% 1, index);
-        }
-        pub fn set(bit_set: *BitSet, index: Index) void {
+        pub fn set(bit_set: *BitSet, index: idx_type) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             bit_set.bits |= bit_mask;
         }
-        pub fn unset(bit_set: *BitSet, index: Index) void {
+        pub fn unset(bit_set: *BitSet, index: idx_type) void {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             bit_set.bits &= ~bit_mask;
         }
     };
-    return if (data_info == .Array) Array else Int;
+    if (data_info == .Int and idx_info != .Enum) {
+        return Int;
+    }
+    const tag_type: type = @typeInfo(idx_type).Enum.tag_type;
+    _ = tag_type;
+    const TaggedArray = extern struct {
+        bits: data_type = [1]u64{0} ** data_info.Array.len,
+        pub const BitSet: type = @This();
+        const Word: type = data_info.Array.child;
+        const Shift: type = builtin.ShiftAmount(Word);
+        pub fn indexToShiftAmount(index: idx_type) Shift {
+            return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
+        }
+        pub fn get(bit_set: BitSet, index: idx_type) val_type {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            return bit_set.bits[index / word_bit_size] & bit_mask != 0;
+        }
+        pub fn set(bit_set: *BitSet, index: idx_type) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            bit_set.bits[index / word_bit_size] |= bit_mask;
+        }
+        pub fn unset(bit_set: *BitSet, index: idx_type) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            bit_set.bits[index / word_bit_size] &= ~bit_mask;
+        }
+    };
+    if (data_info == .Array and idx_info == .Enum) {
+        return TaggedArray;
+    }
+    const TaggedInt = extern struct {
+        bits: data_type = 0,
+        pub const BitSet: type = @This();
+        const Word: type = data_type;
+        const Shift: type = builtin.ShiftAmount(Word);
+
+        pub fn indexToShiftAmount(index: idx_type) Shift {
+            return builtin.intCast(Shift, builtin.sub(data_type, data_info.Int.bits -% 1, @enumToInt(index)));
+        }
+        pub fn get(bit_set: BitSet, index: idx_type) val_type {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            return bit_set.bits & bit_mask != 0;
+        }
+        pub fn set(bit_set: *BitSet, index: idx_type) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            bit_set.bits |= bit_mask;
+        }
+        pub fn unset(bit_set: *BitSet, index: idx_type) void {
+            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            bit_set.bits &= ~bit_mask;
+        }
+    };
+    if (data_info == .Int and idx_info == .Enum) {
+        return TaggedInt;
+    }
 }
-pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type) type {
+pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
+    const idx_info: builtin.Type = @typeInfo(idx_type);
     const Binary = extern struct {
-        bytes: Data = .{0} ** elements,
+        bytes: data_type = .{0} ** elements,
         pub const SafeSet: type = @This();
-        const Data: type = [elements]u8;
-        const Index: type = meta.LeastRealBitSize(elements);
-        pub fn get(safe_set: SafeSet, index: Index) bool {
+        const data_type: type = [elements]u8;
+        pub fn get(safe_set: SafeSet, index: idx_type) bool {
             return safe_set.bytes[index] == 255;
         }
-        pub fn set(safe_set: *SafeSet, index: Index) void {
+        pub fn set(safe_set: *SafeSet, index: idx_type) void {
             safe_set.bytes[index] = 255;
         }
-        pub fn unset(safe_set: *SafeSet, index: Index) void {
+        pub fn unset(safe_set: *SafeSet, index: idx_type) void {
             safe_set.bytes[index] = 0;
         }
-        pub fn atomicSet(safe_set: *SafeSet, index: Index) bool {
+        pub fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
             return asm volatile (
                 \\mov           $0,     %al
                 \\mov           $255,   %dl
@@ -92,7 +150,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type) type {
                 : "rax", "rdx", "memory"
             );
         }
-        pub fn atomicUnset(safe_set: *SafeSet, index: Index) bool {
+        pub fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
             return asm volatile (
                 \\mov           $255,   %al
                 \\mov           $0,     %dl
@@ -104,20 +162,57 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type) type {
             );
         }
     };
-    const Compound = extern struct {
-        bytes: Data = .{@intToEnum(val_type, 0)} ** elements,
+    if (val_type == bool and idx_info != .Enum) {
+        return Binary;
+    }
+    const TaggedBinary = extern struct {
+        bytes: data_type = .{0} ** elements,
         pub const SafeSet: type = @This();
-        const Data: type = [elements]val_type;
-        const Index: type = meta.LeastRealBitSize(elements);
-        pub fn get(safe_set: SafeSet, index: Index) val_type {
+        const data_type: type = [elements]u8;
+        pub fn get(safe_set: SafeSet, index: idx_type) bool {
+            return safe_set.bytes[@enumToInt(index)] == 255;
+        }
+        pub fn set(safe_set: *SafeSet, index: idx_type) void {
+            safe_set.bytes[@enumToInt(index)] = 255;
+        }
+        pub fn unset(safe_set: *SafeSet, index: idx_type) void {
+            safe_set.bytes[@enumToInt(index)] = 0;
+        }
+        pub fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
+            return asm volatile (
+                \\mov           $0,     %al
+                \\mov           $255,   %dl
+                \\lock cmpxchg  %dl,    %[ptr]
+                \\sete          %[ret]
+                : [ret] "=r" (-> bool),
+                : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
+                : "rax", "rdx", "memory"
+            );
+        }
+        pub fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
+            return asm volatile (
+                \\mov           $255,   %al
+                \\mov           $0,     %dl
+                \\lock cmpxchg  %dl,    %[ptr]
+                \\sete          %[ret]
+                : [ret] "=r" (-> bool),
+                : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
+                : "rax", "rdx", "memory"
+            );
+        }
+    };
+    if (val_type == bool and idx_info == .Enum) {
+        return TaggedBinary;
+    }
+    const Compound = extern struct {
+        bytes: data_type = .{@intToEnum(val_type, 0)} ** elements,
+        pub const SafeSet: type = @This();
+        const data_type: type = [elements]val_type;
+
+        pub fn get(safe_set: SafeSet, index: idx_type) val_type {
             return safe_set.bytes[index];
         }
-        pub fn atomicTransform(
-            safe_set: *SafeSet,
-            index: Index,
-            comptime if_state: val_type,
-            comptime to_state: val_type,
-        ) bool {
+        pub fn atomicTransform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
             return asm volatile (
                 \\mov           %[if_state],    %al
                 \\mov           %[to_state],    %dl
@@ -125,13 +220,40 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type) type {
                 \\sete          %[ret]
                 : [ret] "=r" (-> bool),
                 : [ptr] "p" (&safe_set.bytes[index]),
-                  [if_state] "i" (if_state),
-                  [to_state] "i" (to_state),
+                  [if_state] "r" (if_state),
+                  [to_state] "r" (to_state),
                 : "rax", "rdx", "memory"
             );
         }
     };
-    return if (val_type == bool) Binary else Compound;
+    if (val_type != bool and idx_info != .Enum) {
+        return Compound;
+    }
+    const TaggedCompound = extern struct {
+        bytes: data_type = .{@intToEnum(val_type, 0)} ** elements,
+        pub const SafeSet: type = @This();
+        const data_type: type = [elements]val_type;
+
+        pub fn get(safe_set: SafeSet, index: idx_type) val_type {
+            return safe_set.bytes[@enumToInt(index)];
+        }
+        pub fn atomicTransform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
+            return asm volatile (
+                \\mov           %[if_state],    %al
+                \\mov           %[to_state],    %dl
+                \\lock cmpxchg  %dl,            %[ptr]
+                \\sete          %[ret]
+                : [ret] "=r" (-> bool),
+                : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
+                  [if_state] "r" (if_state),
+                  [to_state] "r" (to_state),
+                : "rax", "rdx", "memory"
+            );
+        }
+    };
+    if (val_type != bool and idx_info == .Enum) {
+        return TaggedCompound;
+    }
 }
 fn GenericMultiSet(
     comptime spec: DiscreteAddressSpaceSpec,
@@ -141,36 +263,34 @@ fn GenericMultiSet(
     return (extern struct {
         fields: Fields = .{},
         pub const MultiSet: type = @This();
-        const Index: type = DiscreteAddressSpaceSpec.Index(spec);
-        pub fn get(multi_set: MultiSet, comptime index: Index) bool {
-            const arena_index: Index = directory[index].arena_index;
-            const field_index: Index = directory[index].field_index;
-            return multi_set.fields[field_index].get(arena_index);
+        const is_tagged: bool = @typeInfo(spec.idx_type) == .Enum;
+
+        pub fn get(multi_set: MultiSet, comptime index: spec.idx_type) spec.val_type {
+            return multi_set.fields[fieldIndex(index)].get(arenaIndex(index));
         }
-        pub fn set(multi_set: *MultiSet, comptime index: Index) void {
-            const arena_index: Index = directory[index].arena_index;
-            const field_index: Index = directory[index].field_index;
-            return multi_set.fields[field_index].set(arena_index);
+        pub fn set(multi_set: *MultiSet, comptime index: spec.idx_type) void {
+            multi_set.fields[fieldIndex(index)].set(arenaIndex(index));
         }
-        pub fn unset(multi_set: *MultiSet, comptime index: Index) void {
-            const arena_index: Index = directory[index].arena_index;
-            const field_index: Index = directory[index].field_index;
-            return multi_set.fields[field_index].unset(arena_index);
+        pub fn transform(multi_set: *MultiSet, comptime index: spec.idx_type, if_state: spec.val_type, to_state: spec.val_type) bool {
+            return multi_set.fields[fieldIndex(index)].transform(arenaIndex(index), if_state, to_state);
         }
-        pub fn atomicSet(multi_set: *MultiSet, comptime index: Index) bool {
-            const arena_index: Index = directory[index].arena_index;
-            const field_index: Index = directory[index].field_index;
-            return multi_set.fields[field_index].atomicSet(arena_index);
+        pub fn unset(multi_set: *MultiSet, comptime index: spec.idx_type) void {
+            multi_set.fields[fieldIndex(index)].unset(arenaIndex(index));
         }
-        pub fn atomicUnset(multi_set: *MultiSet, comptime index: Index) bool {
-            const arena_index: Index = directory[index].arena_index;
-            const field_index: Index = directory[index].field_index;
-            return multi_set.fields[field_index].atomicUnset(arena_index);
+        pub fn atomicSet(multi_set: *MultiSet, comptime index: spec.idx_type) bool {
+            return multi_set.fields[fieldIndex(index)].atomicSet(arenaIndex(index));
         }
-        pub fn atomicTransform(multi_set: *MultiSet, comptime index: Index, if_state: spec.val_type, to_state: spec.val_type) bool {
-            const arena_index: Index = directory[index].arena_index;
-            const field_index: Index = directory[index].field_index;
-            return multi_set.fields[field_index].atomicTransform(arena_index, if_state, to_state);
+        pub fn atomicUnset(multi_set: *MultiSet, comptime index: spec.idx_type) bool {
+            return multi_set.fields[fieldIndex(index)].atomicUnset(arenaIndex(index));
+        }
+        pub fn atomicTransform(multi_set: *MultiSet, comptime index: spec.idx_type, if_state: spec.val_type, to_state: spec.val_type) bool {
+            return multi_set.fields[fieldIndex(index)].atomicTransform(arenaIndex(index), if_state, to_state);
+        }
+        inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
+            return @intToEnum(spec.idx_type, directory[if (is_tagged) @enumToInt(index) else index].arena_index);
+        }
+        inline fn fieldIndex(comptime index: spec.idx_type) usize {
+            return directory[if (is_tagged) @enumToInt(index) else index].field_index;
         }
     });
 }
@@ -266,46 +386,33 @@ pub const DiscreteMultiArena = struct {
     list: []const Arena,
     subspace: ?[]const meta.Generic = null,
     val_type: type = bool,
+    idx_type: type = u16,
 
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
 
     pub const MultiArena: type = @This();
 
-    fn Index(comptime multi_arena: MultiArena) type {
-        return meta.LeastRealBitSize(multi_arena.list.len);
-    }
     fn Directory(comptime multi_arena: MultiArena) type {
         return [multi_arena.list.len]struct {
-            field_index: Index(multi_arena),
-            arena_index: Index(multi_arena),
+            field_index: comptime_int,
+            arena_index: comptime_int,
         };
-    }
-    pub fn Metadata(comptime multi_arena: MultiArena) type {
-        var mapping_directory: [multi_arena.list.len]Index(multi_arena) = undefined;
-        var bit_index: u16 = 0;
-        for (multi_arena.list, 0..) |super_arena, index| {
-            if (super_arena.options.require_map) {
-                mapping_directory[index] = bit_index;
-                bit_index +%= 1;
-            }
-        }
-        return mapping_directory;
     }
     pub fn Implementation(comptime multi_arena: MultiArena) type {
         builtin.static.assertNotEqual(u64, multi_arena.list.len, 0);
         var directory: Directory(multi_arena) = undefined;
         var fields: []const builtin.Type.StructField = meta.empty;
         var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;
-        var arena_index: Index(multi_arena) = 0;
+        var arena_index: comptime_int = 0;
         for (multi_arena.list, 0..) |super_arena, index| {
             if (thread_safe_state and !super_arena.options.thread_safe) {
-                const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.val_type);
+                const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.val_type, multi_arena.idx_type);
                 fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else if (!thread_safe_state and super_arena.options.thread_safe) {
-                const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.val_type);
+                const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.val_type, multi_arena.idx_type);
                 fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
@@ -315,13 +422,9 @@ pub const DiscreteMultiArena = struct {
             }
             thread_safe_state = super_arena.options.thread_safe;
         }
-        if (thread_safe_state) {
-            const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.val_type);
-            fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
-        } else {
-            const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.val_type);
-            fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
-        }
+        const GenericSet = if (thread_safe_state) ThreadSafeSet else DiscreteBitSet;
+        const T: type = GenericSet(arena_index +% 1, multi_arena.val_type, multi_arena.idx_type);
+        fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
         if (fields.len == 1) {
             return fields[0].type;
         }
@@ -331,7 +434,7 @@ pub const DiscreteMultiArena = struct {
     }
     fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
-        var s_index: Index(multi_arena) = 0;
+        var s_index: multi_arena.idx_type = 0;
         while (s_index <= multi_arena.list.len) : (s_index += 1) {
             const super_arena: Arena = multi_arena.list[s_index];
             if (super_arena.low() > sub_arena.high()) {
@@ -348,9 +451,9 @@ pub const DiscreteMultiArena = struct {
     }
     fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
-        var t_index: Index(multi_arena) = 0;
+        var t_index: multi_arena.idx_type = 0;
         while (t_index != sub_list.len) : (t_index += 1) {
-            var s_index: Index(multi_arena) = 0;
+            var s_index: multi_arena.idx_type = 0;
             while (s_index != multi_arena.list.len) : (s_index += 1) {
                 const s_arena: Arena = multi_arena.list[s_index];
                 const t_arena: Arena = sub_list[t_index];
@@ -367,11 +470,11 @@ pub const DiscreteMultiArena = struct {
     pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
         return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
     }
-    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) u64 {
+    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: multi_arena.idx_type) u64 {
         return multi_arena.list[index].capacity();
     }
-    pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
-        var index: Index(multi_arena) = 0;
+    pub fn invert(comptime multi_arena: MultiArena, addr: u64) multi_arena.idx_type {
+        var index: multi_arena.idx_type = 0;
         while (index != multi_arena.list.len) : (index += 1) {
             if (addr >= multi_arena.list[index].low() and
                 addr < multi_arena.list[index].high())
@@ -381,22 +484,22 @@ pub const DiscreteMultiArena = struct {
         }
         unreachable;
     }
-    pub fn arena(comptime multi_arena: MultiArena, index: Index(multi_arena)) Arena {
+    pub fn arena(comptime multi_arena: MultiArena, index: multi_arena.idx_type) Arena {
         return multi_arena.list[index];
     }
-    pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
+    pub fn count(comptime multi_arena: MultiArena) comptime_int {
         return multi_arena.list.len;
     }
-    pub fn low(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) u64 {
+    pub fn low(comptime multi_arena: MultiArena, comptime index: multi_arena.idx_type) u64 {
         return multi_arena.list[index].low();
     }
-    pub fn high(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) u64 {
+    pub fn high(comptime multi_arena: MultiArena, comptime index: multi_arena.idx_type) u64 {
         return multi_arena.list[index].high();
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
         return GenericDiscreteAddressSpace(multi_arena);
     }
-    pub fn options(comptime multi_arena: MultiArena, comptime index: Index(multi_arena)) ArenaOptions {
+    pub fn options(comptime multi_arena: MultiArena, comptime index: multi_arena.idx_type) ArenaOptions {
         return multi_arena.list[index].options;
     }
 };
@@ -420,6 +523,7 @@ pub const RegularMultiArena = struct {
     alignment: u64 = 4096,
     subspace: ?[]const meta.Generic = null,
     val_type: type = bool,
+    idx_type: type = u16,
 
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
@@ -427,7 +531,7 @@ pub const RegularMultiArena = struct {
 
     pub const MultiArena = @This();
     fn Index(comptime multi_arena: MultiArena) type {
-        return meta.LeastRealBitSize(multi_arena.divisions);
+        return multi_arena.idx_type;
     }
     fn Implementation(comptime multi_arena: MultiArena) type {
         if (multi_arena.options.thread_safe or
@@ -436,11 +540,13 @@ pub const RegularMultiArena = struct {
             return ThreadSafeSet(
                 multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
                 multi_arena.val_type,
+                multi_arena.idx_type,
             );
         } else {
             return DiscreteBitSet(
                 multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
                 multi_arena.val_type,
+                multi_arena.idx_type,
             );
         }
     }
@@ -695,9 +801,10 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
     return extern struct {
         impl: RegularAddressSpaceSpec.Implementation(spec) align(8) = defaultValue(spec),
         pub const RegularAddressSpace = @This();
-        pub const Index: type = RegularAddressSpaceSpec.Index(spec);
+        pub const Index: type = spec.idx_type;
+        pub const Value: type = spec.val_type;
         pub const addr_spec: RegularAddressSpaceSpec = spec;
-        pub fn get(address_space: *RegularAddressSpace, index: Index) bool {
+        pub fn get(address_space: *RegularAddressSpace, index: Index) Value {
             return address_space.impl.get(index);
         }
         pub fn unset(address_space: *RegularAddressSpace, index: Index) bool {
@@ -708,6 +815,16 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn set(address_space: *RegularAddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.get(index);
             if (!ret) address_space.impl.set(index);
+            return !ret;
+        }
+        pub fn transform(
+            address_space: *RegularAddressSpace,
+            index: Index,
+            if_state: Value,
+            to_state: Value,
+        ) bool {
+            const ret: Value = address_space.impl.get(index);
+            if (ret == if_state) address_space.impl.set(index, to_state);
             return !ret;
         }
         pub fn atomicUnset(address_space: *RegularAddressSpace, index: Index) bool {
@@ -759,17 +876,27 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
     return (extern struct {
         impl: DiscreteAddressSpaceSpec.Implementation(spec) = defaultValue(spec),
         pub const DiscreteAddressSpace = @This();
-        pub const Index: type = DiscreteAddressSpaceSpec.Index(spec);
+        pub const Index: type = spec.idx_type;
+        pub const Value: type = spec.val_type;
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
+
+        pub fn get(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+            return address_space.impl.get(index);
+        }
         pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
-            const ret: bool = address_space.impl.get(index);
+            const ret: spec.val_type = address_space.get(index);
             if (ret) address_space.impl.unset(index);
             return ret;
         }
         pub fn set(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
-            const ret: bool = !address_space.impl.get(index);
+            const ret: spec.val_type = !address_space.get(index);
             if (ret) address_space.impl.set(index);
             return ret;
+        }
+        pub fn transform(address_space: *DiscreteAddressSpace, comptime index: Index, if_state: Value, to_state: Value) bool {
+            const ret: Value = address_space.get(index);
+            if (ret == if_state) address_space.impl.transform(index, if_state, to_state);
+            return !ret;
         }
         pub fn atomicUnset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             return spec.list[index].options.thread_safe and address_space.impl.atomicUnset(index);
@@ -908,8 +1035,8 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             return GenericSubSpace(AddressSpace.addr_spec.subspace.?, label_or_index);
         }
         const debug = struct {
-            const about_set_0_s: []const u8 = "set:            ";
-            const about_set_1_s: []const u8 = "unset:          ";
+            const about_set_0_s: []const u8 = builtin.debug.about("set");
+            const about_set_1_s: []const u8 = builtin.debug.about("unset");
             fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
                 var arena_index: AddressSpace.Index = 0;
                 array.writeMany(about_set_0_s);
@@ -971,7 +1098,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 comptime var arena_index: AddressSpace.Index = 0;
                 len += about_set_0_s.len;
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                    if (address_space.impl.get(arena_index)) {
+                    if (address_space.impl.get(AddressSpace.Index, arena_index)) {
                         len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
                         len += 2;
                     }
@@ -979,7 +1106,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 arena_index = 0;
                 len += about_set_1_s.len;
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
-                    if (!address_space.impl.get(arena_index)) {
+                    if (!address_space.impl.get(AddressSpace.Index, arena_index)) {
                         len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
                         len += 2;
                     }
