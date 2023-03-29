@@ -42,7 +42,18 @@ inline fn subPerc(x: u64, y: u64) u64 {
 fn sub(x: u64, y: u64) u64 {
     return x - y;
 }
-
+noinline fn testImpactOfTrivialForwardedOperations() !void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    var x: u64 = 0;
+    comptime var i: u64 = 0;
+    inline while (i != 0x1000) : (i +%= 1) {
+        //x -= 1;
+        //x = sub(x, 1);
+        x = subPerc(x, 1);
+        //x -%= 1;
+        //x -= 1;
+    }
+}
 pub fn mut(comptime T: type) type {
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info == .Pointer) {
@@ -65,18 +76,6 @@ pub fn mut2(comptime T: type) type {
     return @Type(ret);
 }
 
-noinline fn testImpactOfTrivialForwardedOperations() !void {
-    @setEvalBranchQuota(~@as(u32, 0));
-    var x: u64 = 0;
-    comptime var i: u64 = 0;
-    inline while (i != 0x1000) : (i +%= 1) {
-        //x -= 1;
-        //x = sub(x, 1);
-        x = subPerc(x, 1);
-        //x -%= 1;
-        //x -= 1;
-    }
-}
 noinline fn testDifferenceBetweenMutMethods() !void {
     @setEvalBranchQuota(~@as(u32, 0));
     comptime var i: u64 = 0;
