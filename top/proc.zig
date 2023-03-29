@@ -277,7 +277,7 @@ pub const ForkSpec = struct {
 };
 pub const ExecuteSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
+    errors: sys.ErrorPolicy = .{ .throw = sys.command_errors },
     return_type: type = void,
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
