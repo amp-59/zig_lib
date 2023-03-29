@@ -8,20 +8,6 @@ const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
-const create_spec: file.CreateSpec = .{ .options = .{
-    .exclusive = false,
-    .read = false,
-    .write = .truncate,
-} };
-const read_spec: file.ReadSpec = .{ .return_value = void };
-const open_spec: file.OpenSpec = .{ .options = .{
-    .read = true,
-    .write = null,
-} };
-const write_spec: file.WriteSpec = .{};
-const stat_spec: file.StatSpec = .{};
-const close_spec: file.CloseSpec = .{};
-
 pub fn length(comptime T: type, any: anytype) u64 {
     const S = @TypeOf(any);
     if (T == S) {
@@ -341,11 +327,17 @@ pub const SerialSpec = struct {
         };
     }
 };
-pub fn serialWrite(comptime spec: SerialSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8, value: S) sys.Call(.{
-    .throw = spec.Allocator.map_error_policy.throw ++
-        spec.errors.create.throw ++ spec.errors.open.throw ++ spec.errors.write.throw ++ spec.errors.close.throw,
-    .abort = spec.Allocator.map_error_policy.abort ++
-        spec.errors.create.abort ++ spec.errors.open.abort ++ spec.errors.write.abort ++ spec.errors.close.abort,
+pub fn serialWrite(
+    comptime spec: SerialSpec,
+    comptime S: type,
+    allocator: *spec.Allocator,
+    pathname: [:0]const u8,
+    value: S,
+) sys.Call(.{
+    .throw = spec.Allocator.map_error_policy.throw ++ spec.errors.create.throw ++
+        spec.errors.open.throw ++ spec.errors.write.throw ++ spec.errors.close.throw,
+    .abort = spec.Allocator.map_error_policy.abort ++ spec.errors.create.abort ++
+        spec.errors.open.abort ++ spec.errors.write.abort ++ spec.errors.close.abort,
 }, void) {
     const save = allocator.save();
     defer allocator.restore(save);
@@ -354,7 +346,7 @@ pub fn serialWrite(comptime spec: SerialSpec, comptime S: type, allocator: *spec
         genericSerializeInternal(allocator, s_ab_addr, value),
     );
     const fd: u64 = try meta.wrap(
-        file.create(comptime spec.create(), pathname),
+        file.create(comptime spec.create(), pathname, file.file_mode),
     );
     try meta.wrap(
         file.write(comptime spec.write(), fd, bytes),
@@ -363,7 +355,12 @@ pub fn serialWrite(comptime spec: SerialSpec, comptime S: type, allocator: *spec
         file.close(comptime spec.close(), fd),
     );
 }
-pub fn serialRead(comptime spec: SerialSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8) sys.Call(.{
+pub fn serialRead(
+    comptime spec: SerialSpec,
+    comptime S: type,
+    allocator: *spec.Allocator,
+    pathname: [:0]const u8,
+) sys.Call(.{
     .throw = spec.Allocator.map_error_policy.throw ++
         spec.errors.open.throw ++ spec.errors.read.throw ++ spec.errors.close.throw,
     .abort = spec.Allocator.map_error_policy.abort ++
@@ -388,13 +385,4 @@ pub fn serialRead(comptime spec: SerialSpec, comptime S: type, allocator: *spec.
     return try meta.wrap(
         genericDeserializeInternal(meta.Mutable(S), t_ab_addr),
     );
-}
-fn allocateFile(allocator: anytype, pathname: [:0]const u8) !void {
-    const fd: u64 = try file.open(open_spec, pathname);
-    const st: file.Stat = try file.fstat(stat_spec, fd);
-    const buf: []u8 = try meta.wrap(
-        allocator.allocateIrreversible(u8, st.size),
-    );
-    try file.read(read_spec, fd, buf, st.size);
-    try file.close(close_spec, fd);
 }
