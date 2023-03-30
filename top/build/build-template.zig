@@ -447,9 +447,9 @@ pub const Target = struct {
     name: [:0]const u8,
     root: [:0]const u8,
     descr: ?[:0]const u8 = null,
-    build_cmd: *BuildCommand = undefined,
-    fmt_cmd: *FormatCommand = undefined,
-    run_cmd: *RunCommand = undefined,
+    build_cmd: *BuildCommand,
+    fmt_cmd: *FormatCommand,
+    run_cmd: *RunCommand,
     deps: DependencyList,
     flags: u8 = 0,
 
@@ -494,19 +494,19 @@ pub const Target = struct {
     const DependencyList = GenericList(Dependency);
     /// All dependencies are build dependencies
     pub const Dependency = struct { tag: Tag, target: *Target };
-    pub fn asmPath(target: *const Target) Path {
+    pub fn asmPath(target: *const Target) types.Path {
         return target.build_cmd.emit_asm.?.yes.?;
     }
-    pub fn binPath(target: *const Target) Path {
+    pub fn binPath(target: *const Target) types.Path {
         return target.build_cmd.emit_bin.?.yes.?;
     }
-    pub fn analysisPath(target: *const Target) Path {
+    pub fn analysisPath(target: *const Target) types.Path {
         return target.build_cmd.emit_analysis.?.yes.?;
     }
-    pub fn llvmIrPath(target: *const Target) Path {
+    pub fn llvmIrPath(target: *const Target) types.Path {
         return target.build_cmd.emit_llvm_ir.?.yes.?;
     }
-    pub fn llvmBcPath(target: *const Target) Path {
+    pub fn llvmBcPath(target: *const Target) types.Path {
         return target.build_cmd.emit_llvm_bc.?.yes.?;
     }
     pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
