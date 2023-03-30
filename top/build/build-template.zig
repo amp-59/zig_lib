@@ -8,7 +8,9 @@ const proc = @import("../proc.zig");
 const time = @import("../time.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
+const types = @import("../types.zig");
 // start-document build-struct.zig
+pub usingnamespace types;
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = builtin.AddressSpace(),
@@ -16,15 +18,8 @@ pub const Allocator = mem.GenericArenaAllocator(.{
     .errors = preset.allocator.errors.noexcept,
     .options = preset.allocator.options.small,
 });
-pub const ArgsString = mem.StructuredAutomaticVector(u8, &@as(u8, 0), max_len, 8, .{});
-pub const ArgsPointers = mem.StructuredAutomaticVector([*:0]u8, null, max_args, 8, .{});
-
-pub const max_len: u64 = builtin.define("max_command_len", u64, 65536);
-pub const max_args: u64 = builtin.define("max_command_args", u64, 512);
-pub const max_relevant_depth: u64 = builtin.define("max_relevant_depth", u64, 0);
-pub const fallback_env_decls: bool = false;
-
-pub const OutputMode = enum { exe, lib, obj };
+pub const ArgsString = mem.StructuredVector(u8, &@as(u8, 0), 8, Allocator, .{});
+pub const ArgsPointers = mem.StructuredVector([*:0]u8, null, 8, Allocator, .{});
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
