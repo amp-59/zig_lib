@@ -29,6 +29,9 @@ pub const ArenaAllocatorOptions = struct {
     require_map: bool = true,
     /// Allocator is required to unreserve memory on deinit.
     require_unmap: bool = true,
+    /// Abort the program if an allocation can not be resized and can not return
+    /// an error.
+    require_resize: bool = true,
     /// Use mremap instead of mmap where possible.
     prefer_remap: bool = true,
     /// Populate (prefault) mappings
