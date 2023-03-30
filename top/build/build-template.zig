@@ -245,44 +245,32 @@ pub const Builder = struct {
         const cmd: *const BuildCommand = target.build_cmd;
         var len: u64 = 4;
         len +%= 6 +% @tagName(cmd.kind).len +% 1;
-        if (fallback_env_decls) {
-            len +%= Macro.formatLength(builder.zigExePathMacro());
-            len +%= Macro.formatLength(builder.buildRootPathMacro());
-            len +%= Macro.formatLength(builder.cacheDirPathMacro());
-            len +%= Macro.formatLength(builder.globalCacheDirPathMacro());
-        }
         cmd = buildLength;
-        len +%= Path.formatLength(builder.sourceRootPath(target.root));
+        len +%= types.Path.formatLength(builder.sourceRootPath(target.root));
         len +%= 1;
-        ModuleDependency.l_leader = true;
+        types.ModuleDependency.l_leader = true;
         return len;
     }
-    fn buildWrite(builder: *Builder, target: *const Target, array: anytype) void {
+    fn buildWrite(builder: *Builder, target: *const Target, array: *ArgsString) void {
         const cmd: *const BuildCommand = target.build_cmd;
         array.writeMany("zig\x00build-");
         array.writeMany(@tagName(cmd.kind));
         array.writeOne('\x00');
-        if (fallback_env_decls) {
-            array.writeFormat(builder.zigExePathMacro());
-            array.writeFormat(builder.buildRootPathMacro());
-            array.writeFormat(builder.cacheDirPathMacro());
-            array.writeFormat(builder.globalCacheDirPathMacro());
-        }
         cmd = buildWrite;
         array.writeFormat(builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
         array.undefine(1);
-        ModuleDependency.w_leader = true;
+        types.ModuleDependency.w_leader = true;
     }
     fn formatLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const FormatCommand = target.fmt_cmd;
         var len: u64 = 8;
         cmd = formatLength;
-        len +%= Path.formatLength(builder.sourceRootPath(target.root));
+        len +%= types.Path.formatLength(builder.sourceRootPath(target.root));
         len +%= 1;
         return len;
     }
-    fn formatWrite(builder: *Builder, target: *const Target, array: anytype) void {
+    fn formatWrite(builder: *Builder, target: *const Target, array: *ArgsString) void {
         const cmd: *const FormatCommand = target.fmt_cmd;
         array.writeMany("zig\x00fmt\x00");
         cmd = formatWrite;
