@@ -519,20 +519,19 @@ pub const Target = struct {
     }
     pub fn addRun(target: *Target, allocator: *Allocator, run_cmd: RunCommand) void {
         target.run_cmd = allocator.duplicateIrreversible(RunCommand, run_cmd);
-        target.run_cmd.array.writeFormat(target.build_cmd.emit_bin.?.yes.?);
-        target.run_cmd.array.writeOne(0);
+        target.run_cmd.addRunArgument(target.binPath());
         target.give(.run);
     }
-    pub fn addFile(target: *Target, allocator: *Allocator, path: Path) void {
+    pub fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
         if (target.build_cmd.files) |*files| {
             files.paths[files.len] = path;
             files.len +%= 1;
         } else {
-            target.build_cmd.files = .{ .paths = allocator.allocateIrreversible(Path, 128) };
+            target.build_cmd.files = .{ .paths = allocator.allocateIrreversible(types.Path, 128) };
             target.addFile(allocator, path);
         }
     }
-    pub fn addFiles(target: *Target, allocator: *Allocator, paths: []const Path) void {
+    pub fn addFiles(target: *Target, allocator: *Allocator, paths: []const types.Path) void {
         for (paths) |path| {
             target.addFile(allocator, path);
         }
