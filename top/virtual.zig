@@ -307,59 +307,74 @@ pub const ArenaOptions = extern struct {
     require_map: bool = false,
     require_unmap: bool = false,
 };
-pub const Arena = struct {
+pub fn Intersection(comptime A: type) type {
+    return extern struct { l: A, x: A, h: A };
+}
+pub const Bounds = extern struct {
     lb_addr: u64,
     up_addr: u64,
-    options: ArenaOptions = .{},
-    pub const Intersection = struct {
-        l: Arena,
-        x: Arena,
-        h: Arena,
+};
+pub fn bounds(any: anytype) Bounds {
+    return .{
+        .lb_addr = @ptrToInt(any.ptr),
+        .up_addr = @ptrToInt(any.ptr) + any.len,
     };
-    pub fn intersection2(s_arena: Arena, t_arena: Arena) ?Intersection {
-        if (intersection(s_arena, t_arena)) |x_arena| {
-            return .{
-                .l = .{
-                    .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
-                    .up_addr = x_arena.lb_addr,
-                    .options = if (s_arena.lb_addr < t_arena.lb_addr)
-                        s_arena.options
-                    else
-                        t_arena.options,
-                },
-                .x = x_arena,
-                .h = .{
-                    .lb_addr = x_arena.up_addr,
-                    .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
-                    .options = if (t_arena.up_addr > s_arena.up_addr)
-                        t_arena.options
-                    else
-                        s_arena.options,
-                },
-            };
-        }
-        return null;
-    }
-    pub fn intersection(s_arena: Arena, t_arena: Arena) ?Arena {
-        if (builtin.int2v(
-            bool,
-            t_arena.up_addr -% 1 < s_arena.lb_addr,
-            s_arena.up_addr -% 1 < t_arena.lb_addr,
-        )) {
-            return null;
-        }
+}
+pub fn intersection2(comptime A: type, s_arena: A, t_arena: A) ?Intersection(A) {
+    if (intersection(A, s_arena, t_arena)) |x_arena| {
         return .{
-            .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
-            .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
-            .options = .{
-                .thread_safe = builtin.int2v(
-                    bool,
-                    s_arena.options.thread_safe,
-                    t_arena.options.thread_safe,
-                ),
+            .l = if (@hasField(A, "options")) .{
+                .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
+                .up_addr = x_arena.lb_addr,
+                .options = if (s_arena.lb_addr < t_arena.lb_addr)
+                    s_arena.options
+                else
+                    t_arena.options,
+            } else .{
+                .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
+                .up_addr = x_arena.lb_addr,
+            },
+            .x = x_arena,
+            .h = if (@hasField(A, "options")) .{
+                .lb_addr = x_arena.up_addr,
+                .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
+                .options = if (t_arena.up_addr > s_arena.up_addr)
+                    t_arena.options
+                else
+                    s_arena.options,
+            } else .{
+                .lb_addr = x_arena.up_addr,
+                .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
             },
         };
     }
+    return null;
+}
+pub fn intersection(comptime A: type, s_arena: Arena, t_arena: Arena) ?A {
+    if (builtin.int2v(
+        bool,
+        t_arena.up_addr -% 1 < s_arena.lb_addr,
+        s_arena.up_addr -% 1 < t_arena.lb_addr,
+    )) {
+        return null;
+    }
+    return .{
+        .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
+        .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
+        .options = .{
+            .thread_safe = builtin.int2v(
+                bool,
+                s_arena.options.thread_safe,
+                t_arena.options.thread_safe,
+            ),
+        },
+    };
+}
+
+pub const Arena = extern struct {
+    lb_addr: u64,
+    up_addr: u64,
+    options: ArenaOptions = .{},
     pub fn low(arena: Arena) u64 {
         return arena.lb_addr;
     }
