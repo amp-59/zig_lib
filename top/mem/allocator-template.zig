@@ -1731,7 +1731,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             return ret;
         }
 
-        pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) Allocator.allocate_payload([]T) {
+        pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, buf: []T, count: u64) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = @ptrToInt(buf.ptr);
             const s_aligned_bytes: u64 = @sizeOf(T) *% buf.len;
@@ -1746,7 +1746,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 }
                 allocator.allocate(t_up_addr);
                 Graphics.showWithReference(allocator, @src());
-                showReallocate(T, buf, buf[0..count]);
+                showReallocate(T, buf, buf.ptr[0..count], null);
                 return buf.ptr[0..count];
             }
             const ret: []T = allocator.allocateIrreversible(T, count);
@@ -1788,6 +1788,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                     @ptrToInt(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @boolToInt(sentinel != null)),
                     @ptrToInt(t_buf.ptr),
                     @ptrToInt(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @boolToInt(sentinel != null)),
+                    sentinel,
                     sentinel,
                     @src(),
                     @returnAddress(),
