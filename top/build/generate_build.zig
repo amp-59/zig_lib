@@ -7,7 +7,7 @@ const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./build-template.zig");
+const types = @import("./types.zig");
 
 pub usingnamespace proc.start;
 
@@ -15,12 +15,11 @@ pub const AddressSpace = preset.address_space.regular_128;
 pub const is_verbose: bool = false;
 pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
-const is_function_type: bool = @typeInfo(types.Builder) == .Fn;
 const prefer_inline: bool = true;
 const write_fn_name: bool = false;
 const commit_write: bool = true;
 const build_root: [:0]const u8 = builtin.buildRoot();
-const initial_indent: u64 = if (is_function_type) 2 else 1;
+const initial_indent: u64 = if (false) 2 else 1;
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 24,
     .options = preset.allocator.options.small,
@@ -91,6 +90,27 @@ pub const BuildCommandOptions = opaque {
     pub const watch: OptionSpec = .{
         .string = "--watch",
     };
+    pub const show_builtin: OptionSpec = .{
+        .string = "--show-builtin",
+    };
+    pub const builtin: OptionSpec = .{
+        .string = "-fbuiltin",
+    };
+    pub const link_libc: OptionSpec = .{
+        .string = "-lc",
+    };
+    pub const rdynamic: OptionSpec = .{
+        .string = "-rdynamic",
+    };
+    pub const dynamic: OptionSpec = .{
+        .string = "-dynamic",
+    };
+    pub const static: OptionSpec = .{
+        .string = "-static",
+    };
+    pub const symbolic: OptionSpec = .{
+        .string = "-Bsymbolic",
+    };
     pub const color: OptionSpec = .{
         .string = "--color",
         .arg_type = enum { on, off, auto },
@@ -143,7 +163,6 @@ pub const BuildCommandOptions = opaque {
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-implib" },
     };
-    pub const show_builtin: OptionSpec = .{ .string = "--show-builtin" };
     pub const cache_dir: OptionSpec = .{
         .string = "--cache-dir",
         .arg_type = []const u8,
@@ -253,7 +272,6 @@ pub const BuildCommandOptions = opaque {
         .string = "-fsingle-threaded",
         .and_no = &.{ .string = "-fno-single-threaded" },
     };
-    pub const builtin: OptionSpec = .{ .string = "-fbuiltin" };
     pub const function_sections: OptionSpec = .{
         .string = "-ffunction-sections",
         .and_no = &.{ .string = "-fno-function-sections" },
@@ -282,9 +300,7 @@ pub const BuildCommandOptions = opaque {
         .string = "-I",
         .arg_type = []const u8,
     };
-    pub const link_libc: OptionSpec = .{
-        .string = "-lc",
-    };
+
     pub const libc: OptionSpec = .{
         .string = "--libc",
         .arg_type = []const u8,
@@ -331,7 +347,6 @@ pub const BuildCommandOptions = opaque {
         .string = "-fcompiler-rt",
         .and_no = &.{ .string = "-fno-compiler-rt" },
     };
-    pub const rdynamic: OptionSpec = .{ .string = "-rdynamic" };
     pub const rpath: OptionSpec = .{
         .string = "-rpath",
         .arg_type = []const u8,
@@ -347,15 +362,6 @@ pub const BuildCommandOptions = opaque {
     pub const build_id: OptionSpec = .{
         .string = "-fbuild-id",
         .and_no = &.{ .string = "-fno-build-id" },
-    };
-    pub const dynamic: OptionSpec = .{
-        .string = "-dynamic",
-    };
-    pub const static: OptionSpec = .{
-        .string = "-static",
-    };
-    pub const symbolic: OptionSpec = .{
-        .string = "-Bsymbolic",
     };
     pub const compress_debug_sections: OptionSpec = .{
         .string = "--compress-debug-sections",
@@ -375,15 +381,15 @@ pub const BuildCommandOptions = opaque {
     };
     pub const macros: OptionSpec = .{
         .arg_type = []const types.Macro,
-        .arg_type_name = "[]const Macro",
+        .arg_type_name = "[]const types.Macro",
     };
     pub const modules: OptionSpec = .{
         .arg_type = []const types.Module,
-        .arg_type_name = "[]const Module",
+        .arg_type_name = "[]const types.Module",
     };
     pub const dependencies: OptionSpec = .{
         .arg_type = []const types.ModuleDependency,
-        .arg_type_name = "[]const ModuleDependency",
+        .arg_type_name = "[]const types.ModuleDependency",
     };
     pub const cflags: OptionSpec = .{
         .arg_type = types.CFlags,
@@ -1410,24 +1416,22 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
     const width: u64 = 4;
     inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
         const opt_spec: OptionSpec = @field(Namespace, decl.name);
-
         const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name;
         array.writeMany(ws[0..width] ++ what_field ++ ": ");
         switch (@typeInfo(field_type)) {
             .Bool => {
                 if (opt_spec.default_value) |default_value| {
-                    array.writeMany(@typeName(field_type) ++ " = " ++
-                        if (comptime mem.pointerOpaque(bool, default_value).*) "true" else "false");
+                    array.writeMany(@typeName(field_type) ++ " = " ++ comptime builtin.fmt.cx(default_value) ++ ", // T0\n");
                 } else {
-                    array.writeMany(@typeName(field_type) ++ " = false");
+                    array.writeMany(@typeName(field_type) ++ " = false, // T1\n");
                 }
             },
             .Optional => |optional_info| {
                 array.writeOne('?');
                 if (opt_spec.arg_type_name) |type_name| {
                     if (!@hasDecl(types, type_name)) {
-                        array.writeMany(type_name ++ " = null");
+                        array.writeMany(type_name ++ " = null, // T2\n");
                     } else {
                         const import_type: type = @field(types, type_name);
                         switch (@typeInfo(optional_info.child)) {
@@ -1435,15 +1439,15 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                                 if (!@hasDecl(optional_info.child, "formatWrite")) {
                                     formatCompositeLiteral(array, optional_info.child, .{
                                         .import_type = ?import_type,
-                                        .type_name = "?" ++ type_name,
+                                        .type_name = "?types." ++ type_name,
                                     });
                                 } else {
-                                    array.writeMany(opt_spec.arg_type_name.?);
+                                    array.writeMany("types." ++ opt_spec.arg_type_name.?);
                                 }
-                                array.writeMany(" = null");
+                                array.writeMany(" = null, // T3\n");
                             },
                             else => {
-                                array.writeMany(type_name ++ " = null");
+                                array.writeMany(type_name ++ " = null, // T5\n");
                             },
                         }
                     }
@@ -1455,10 +1459,10 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                             } else {
                                 array.writeMany(opt_spec.arg_type_name);
                             }
-                            array.writeMany(" = null");
+                            array.writeMany(" = null, // T6\n");
                         },
                         else => {
-                            array.writeMany(@typeName(optional_info.child) ++ " = null");
+                            array.writeMany(@typeName(optional_info.child) ++ " = null, // T7\n");
                         },
                     }
                 }
@@ -1474,14 +1478,14 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                                 if (!@hasDecl(opt_spec.arg_type.?, "formatWrite")) {
                                     formatCompositeLiteral(array, field_type, .{
                                         .import_type = import_type,
-                                        .type_name = type_name,
+                                        .type_name = "types." ++ type_name,
                                     });
                                 } else {
-                                    array.writeMany(opt_spec.arg_type_name);
+                                    array.writeMany("types." ++ opt_spec.arg_type_name ++ ", // T8\n");
                                 }
                             },
                             else => {
-                                array.writeMany(type_name);
+                                array.writeMany("types." ++ type_name ++ ", // T9\n");
                             },
                         }
                     }
@@ -1491,17 +1495,16 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                             if (!@hasDecl(field_type.child, "formatWrite")) {
                                 formatCompositeLiteral(array, field_type, null);
                             } else {
-                                array.writeMany(opt_spec.arg_type_name);
+                                array.writeMany("types." ++ opt_spec.arg_type_name ++ ", // T10\n");
                             }
                         },
                         else => {
-                            array.writeMany(@typeName(field_type));
+                            array.writeMany(@typeName(field_type) ++ ", // T11\n");
                         },
                     }
                 }
             },
         }
-        array.writeMany(",\n");
     }
 }
 const Options = struct {
@@ -1571,6 +1574,7 @@ pub fn main() !void {
     writeImport(&array, "time", "./time.zig");
     writeImport(&array, "preset", "./preset.zig");
     writeImport(&array, "builtin", "./builtin.zig");
+    writeImport(&array, "types", "./build/types.zig");
     writeAsm(&array, "./build/build-template.s");
 
     array.writeMany(killIndent(build_src[0..build_members_offset]));
