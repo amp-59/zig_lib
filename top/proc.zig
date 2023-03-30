@@ -277,11 +277,12 @@ pub const ForkSpec = struct {
 };
 pub const ExecuteSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.command_errors },
+    errors: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
+    logging: builtin.Logging.SuccessErrorFault = .{},
     return_type: type = void,
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
-    logging: builtin.Logging.SuccessErrorFault = .{},
+
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
