@@ -27,6 +27,9 @@ pub const ArenaAllocatorOptions = struct {
     require_map: bool = true,
     /// Allocator is required to unreserve memory on deinit.
     require_unmap: bool = true,
+    /// Abort the program if an allocation can not be resized and can not return
+    /// an error.
+    require_resize: bool = true,
     /// Use mremap instead of mmap where possible.
     prefer_remap: bool = true,
     /// Populate (prefault) mappings
@@ -152,7 +155,7 @@ pub const ArenaAllocatorSpec = struct {
             @compileError("invalid address space for this allocator");
         };
         if (allocator_is_mapper and address_space_is_mapper) {
-            unreachable;
+            @compileError("both allocator and address space are mappers");
         }
         return spec.options.require_map;
     }
@@ -172,7 +175,7 @@ pub const ArenaAllocatorSpec = struct {
             @compileError("invalid address space for this allocator");
         };
         if (allocator_is_unmapper and address_space_is_unmapper) {
-            unreachable;
+            @compileError("both allocator and address space are unmappers");
         }
         return spec.options.require_unmap;
     }
@@ -188,7 +191,7 @@ pub const RtArenaAllocatorSpec = struct {
         const allocator_is_mapper: bool = spec.options.require_map;
         const address_space_is_mapper: bool = spec.AddressSpace.addr_spec.options.require_map;
         if (allocator_is_mapper and address_space_is_mapper) {
-            unreachable;
+            @compileError("both allocator and address space are mappers");
         }
         return spec.options.require_map;
     }
@@ -198,7 +201,7 @@ pub const RtArenaAllocatorSpec = struct {
         const allocator_is_unmapper: bool = spec.options.require_unmap;
         const address_space_is_unmapper: bool = spec.AddressSpace.addr_spec.options.require_unmap;
         if (allocator_is_unmapper and address_space_is_unmapper) {
-            unreachable;
+            @compileError("both allocator and address space are unmappers");
         }
         return spec.options.require_unmap;
     }
@@ -673,7 +676,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             showAllocate(T, ret, &sentinel);
             return ret;
         }
-        pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, count: u64, buf: []T) Allocator.allocate_payload([]T) {
+        pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, buf: []T, count: u64) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = @ptrToInt(buf.ptr);
             const s_aligned_bytes: u64 = @sizeOf(T) *% buf.len;
@@ -688,7 +691,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 }
                 allocator.allocate(t_up_addr);
                 Graphics.showWithReference(allocator, @src());
-                showReallocate(T, buf, buf[0..count]);
+                showReallocate(T, buf, buf.ptr[0..count], null);
                 return buf.ptr[0..count];
             }
             const ret: []T = allocator.allocateIrreversible(T, count);
@@ -730,6 +733,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                     @ptrToInt(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @boolToInt(sentinel != null)),
                     @ptrToInt(t_buf.ptr),
                     @ptrToInt(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @boolToInt(sentinel != null)),
+                    sentinel,
                     sentinel,
                     @src(),
                     @returnAddress(),
@@ -2351,7 +2355,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
                 }
             } else if (Allocator.allocate_void != void) {
                 return error.CannotAllocateMemory;
-            } else {
+            } else if (Allocator.allocator_spec.options.require_resize) {
                 @breakpoint();
             }
         }
@@ -2364,7 +2368,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
                 }
             } else if (Allocator.allocate_void != void) {
                 return error.CannotAllocateMemory;
-            } else {
+            } else if (Allocator.allocator_spec.options.require_resize) {
                 @breakpoint();
             }
         }
@@ -2487,7 +2491,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
                 }
             } else if (Allocator.allocate_void != void) {
                 return error.OpaqueSystemError;
-            } else {
+            } else if (Allocator.allocator_spec.options.require_resize) {
                 @breakpoint();
             }
         }
@@ -2500,7 +2504,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
                 }
             } else if (Allocator.allocate_void != void) {
                 return error.OpaqueSystemError;
-            } else {
+            } else if (Allocator.allocator_spec.options.require_resize) {
                 @breakpoint();
             }
         }
