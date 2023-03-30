@@ -93,7 +93,7 @@ pub const reinterpret = opaque {
 };
 pub const builder = opaque {
     pub const errors = opaque {
-        pub const noexcept = .{
+        pub const noexcept: build.BuilderSpec.Errors = .{
             .command = .{
                 .fork = .{},
                 .execve = .{},
@@ -101,12 +101,13 @@ pub const builder = opaque {
             },
             .path = .{},
             .fstatat = .{},
-            .gettime = .{},
+            .clock = .{},
+            .sleep = .{},
             .create = .{},
             .mkdir = .{},
             .close = .{},
         };
-        pub const zen = .{
+        pub const zen: build.BuilderSpec.Errors = .{
             .command = .{
                 .fork = .{ .throw = sys.fork_errors },
                 .execve = .{ .throw = sys.execve_errors },
@@ -114,12 +115,13 @@ pub const builder = opaque {
             },
             .path = sys.open_errors,
             .fstatat = .{ .throw = sys.stat_errors },
-            .gettime = .{ .throw = sys.clock_get_errors },
+            .clock = .{ .throw = sys.clock_get_errors },
+            .sleep = .{ .throw = sys.nanosleep_errors },
             .create = .{ .throw = sys.open_errors },
             .mkdir = .{ .throw = sys.mkdir_noexcl_errors },
             .close = .{ .abort = sys.close_errors },
         };
-        pub const critical = .{
+        pub const critical: build.BuilderSpec.Errors = .{
             .command = .{
                 .fork = .{ .throw = sys.fork_errors },
                 .execve = .{ .throw = sys.execve_errors },
@@ -127,7 +129,8 @@ pub const builder = opaque {
             },
             .path = sys.open_errors,
             .fstatat = .{ .throw = sys.stat_errors },
-            .gettime = .{ .throw = sys.clock_get_errors },
+            .sleep = .{ .throw = sys.nanosleep_errors },
+            .clock = .{ .throw = sys.clock_get_errors },
             .create = .{ .throw = sys.open_errors },
             .mkdir = .{ .throw = sys.mkdir_noexcl_errors },
             .close = .{ .throw = sys.close_errors },
