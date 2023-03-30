@@ -84,18 +84,6 @@ pub inline fn createErrorPolicy(
     value.* = new;
     return value;
 }
-pub inline fn mergeExternalErrorPolicies(
-    comptime E: type,
-    comptime policies: []const ExternalError(E),
-) ExternalError(E) {
-    var throw: []const E = &.{};
-    var abort: []const E = &.{};
-    for (policies) |policy| {
-        throw = throw ++ policy.throw;
-        abort = abort ++ policy.abort;
-    }
-    return .{ .throw = throw, .abort = abort };
-}
 pub fn BitCount(comptime T: type) type {
     if (@sizeOf(T) == 0) {
         return comptime_int;
