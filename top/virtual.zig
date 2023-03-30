@@ -237,6 +237,11 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         pub fn get(safe_set: SafeSet, index: idx_type) val_type {
             return safe_set.bytes[@enumToInt(index)];
         }
+        pub fn transform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
+            const ret: bool = safe_set.get(index) == if_state;
+            if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
+            return ret;
+        }
         pub fn atomicTransform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
             return asm volatile (
                 \\mov           %[if_state],    %al
