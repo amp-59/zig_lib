@@ -502,25 +502,23 @@ pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors, spec.return_type) {
         return fork_error;
     }
 }
-pub fn command(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u8 {
-    const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const args_addr: u64 = @ptrToInt(args.ptr);
-    const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const pid: u64 = try fork(.{});
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(.{
+    .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
+    .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
+}, u8) {
+    const fork_spec: ForkSpec = comptime spec.fork();
+    const exec_spec: ExecuteSpec = comptime spec.exec();
+    const wait_spec: WaitSpec = comptime spec.waitPid();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.execve.override();
+    const pid: u64 = try meta.wrap(fork(fork_spec));
     if (pid == 0) {
-        meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr })) catch |execve_error| {
-            if (logging.Error) {
-                debug.executeError(execve_error, pathname, args);
-            }
-            return execve_error;
-        };
+        try meta.wrap(exec(exec_spec, pathname, args, vars));
     }
     var status: u32 = 0;
     if (logging.Success) {
         debug.executeNotice(pathname, args);
     }
-    try waitPid(.{ .return_type = void }, .{ .pid = pid }, &status);
+    try meta.wrap(waitPid(wait_spec, .{ .pid = pid }, &status));
     return Status.exitStatus(status);
 }
 pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) !u8 {
