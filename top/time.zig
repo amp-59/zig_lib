@@ -63,7 +63,7 @@ pub fn nanoSleepA(req: TimeSpec) !TimeSpec {
     try sys.nanosleep(@ptrToInt(&req), @ptrToInt(&rem));
     return rem;
 }
-const SleepSpec = struct {
+pub const SleepSpec = struct {
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
 };
