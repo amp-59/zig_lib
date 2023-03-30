@@ -553,7 +553,7 @@ pub const Target = struct {
         target.addFile(allocator, dependency.binPath());
     }
 };
-fn countArgs(array: anytype) u64 {
+fn countArgs(array: *ArgsString) u64 {
     var count: u64 = 0;
     for (array.readAll()) |value| {
         if (value == 0) {
@@ -562,7 +562,7 @@ fn countArgs(array: anytype) u64 {
     }
     return count +% 1;
 }
-fn makeArgs(array: anytype, args: anytype) void {
+fn makeArgs(array: *ArgsString, args: anytype) void {
     var idx: u64 = 0;
     for (array.readAll(), 0..) |c, i| {
         if (c == 0) {
@@ -576,199 +576,6 @@ fn makeArgs(array: anytype, args: anytype) void {
 }
 // finish-document build-struct.zig
 // start-document build-types.zig
-pub const Module = struct {
-    name: []const u8,
-    path: []const u8,
-    deps: ?[]const []const u8 = null,
-    pub fn formatWrite(mod: Module, array: anytype) void {
-        array.writeMany("--mod\x00");
-        array.writeMany(mod.name);
-        array.writeOne(':');
-        if (mod.deps) |deps| {
-            for (deps) |dep_name| {
-                array.writeMany(dep_name);
-                array.writeOne(',');
-            }
-            if (deps.len != 0) {
-                array.undefine(1);
-            }
-        }
-        array.writeOne(':');
-        array.writeMany(mod.path);
-        array.writeOne(0);
-    }
-    pub fn formatLength(mod: Module) u64 {
-        var len: u64 = 0;
-        len +%= 6;
-        len +%= mod.name.len;
-        len +%= 1;
-        if (mod.deps) |deps| {
-            for (deps) |dep_name| {
-                len +%= dep_name.len;
-                len +%= 1;
-            }
-            if (deps.len != 0) {
-                len -%= 1;
-            }
-        }
-        len +%= 1;
-        len +%= mod.path.len;
-        len +%= 1;
-        return len;
-    }
-};
-pub const ModuleDependency = struct {
-    import: ?[]const u8 = null,
-    name: []const u8,
-    var w_leader: bool = true;
-    var l_leader: bool = true;
-    pub fn formatWrite(mod_dep: ModuleDependency, array: anytype) void {
-        defer w_leader = false;
-        if (w_leader) {
-            array.writeMany("--deps\x00");
-        } else {
-            array.overwriteOneBack(',');
-        }
-        if (mod_dep.import) |name| {
-            array.writeMany(name);
-            array.writeOne('=');
-        }
-        array.writeMany(mod_dep.name);
-        array.writeOne(0);
-    }
-    pub fn formatLength(mod_dep: ModuleDependency) u64 {
-        defer l_leader = false;
-        var len: u64 = 0;
-        if (l_leader) {
-            len +%= 7;
-        }
-        if (mod_dep.import) |name| {
-            len +%= name.len +% 1;
-        }
-        len +%= mod_dep.name.len +% 1;
-        return len;
-    }
-};
-pub const Macro = struct {
-    name: []const u8,
-    value: Value,
-    const Format = @This();
-    const Value = union(enum) {
-        string: [:0]const u8,
-        symbol: [:0]const u8,
-        constant: usize,
-        path: Path,
-    };
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany("-D");
-        array.writeMany(format.name);
-        array.writeMany("=");
-        switch (format.value) {
-            .constant => |constant| {
-                array.writeAny(preset.reinterpret.print, constant);
-            },
-            .string => |string| {
-                array.writeOne('"');
-                array.writeMany(string);
-                array.writeOne('"');
-            },
-            .path => |path| {
-                array.writeOne('"');
-                array.writeFormat(path);
-                array.writeOne('"');
-            },
-            .symbol => |symbol| {
-                array.writeMany(symbol);
-            },
-        }
-        array.writeOne(0);
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        len +%= 2;
-        len +%= format.name.len;
-        len +%= 1;
-        switch (format.value) {
-            .constant => |constant| {
-                len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, constant);
-            },
-            .string => |string| {
-                len +%= 1 +% string.len +% 1;
-            },
-            .path => |path| {
-                len +%= 1 +% path.formatLength() +% 1;
-            },
-            .symbol => |symbol| {
-                len +%= symbol.len;
-            },
-        }
-        len +%= 1;
-        return len;
-    }
-};
-pub const CFlags = struct {
-    flags: []const []const u8,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany("-cflags");
-        array.writeOne(0);
-        for (format.flags) |flag| {
-            array.writeMany(flag);
-            array.writeOne(0);
-        }
-        array.writeMany("--\x00");
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        len +%= 8;
-        for (format.flags) |flag| {
-            len +%= flag.len;
-            len +%= 1;
-        }
-        len +%= 3;
-        return len;
-    }
-};
-pub const Path = struct {
-    absolute: [:0]const u8,
-    relative: ?[:0]const u8 = null,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany(format.absolute);
-        if (format.relative) |relative| {
-            array.writeOne('/');
-            array.writeMany(relative);
-        }
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        len +%= format.absolute.len;
-        if (format.relative) |relative| {
-            len +%= 1;
-            len +% relative.len;
-        }
-        return len;
-    }
-};
-pub const Files = struct {
-    paths: []Path,
-    len: u64 = 0,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        for (format.paths[0..format.len]) |path| {
-            array.writeFormat(path);
-            array.writeOne(0);
-        }
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        for (format.paths[0..format.len]) |path| {
-            len +%= path.formatLength();
-            len +%= 1;
-        }
-        return len;
-    }
-};
 pub fn GenericList(comptime T: type) type {
     return struct {
         left: *Node,
@@ -777,18 +584,11 @@ pub fn GenericList(comptime T: type) type {
         pos: u64 = 0,
         const List = @This();
         const Node = struct { this: *T, next: *Node };
-
-        fn create(list: *List, allocator: *Allocator, value: T) *T {
-            list.tail();
-            const ret: *T = allocator.duplicateIrreversible(T, value);
-            add(list, allocator, ret);
-            return ret;
-        }
-        fn save(list: *List, allocator: *Allocator, value: T) void {
+        fn save(list: *List, allocator: *Allocator, value: T) Allocator.allocate_void {
             list.tail();
             add(list, allocator, allocator.duplicateIrreversible(T, value));
         }
-        fn add(list: *List, allocator: *Allocator, value: *T) void {
+        fn add(list: *List, allocator: *Allocator, value: *T) Allocator.allocate_void {
             list.tail();
             const node: *Node = allocator.createIrreversible(Node);
             list.node.next = node;
@@ -818,13 +618,12 @@ pub fn GenericList(comptime T: type) type {
                 list.node = list.node.next;
             }
         }
-        fn init(allocator: *Allocator) List {
-            const node: *Node = allocator.createIrreversible(Node);
+        fn init(allocator: *Allocator) Allocator.allocate_payload(List) {
+            const node: *Node = try meta.wrap(allocator.createIrreversible(Node));
             return .{ .left = node, .node = node };
         }
     };
 }
-
 const debug = struct {
     const about_run_s: [:0]const u8 = builtin.debug.about("run");
     const about_build_s: [:0]const u8 = builtin.debug.about("build");
@@ -881,7 +680,17 @@ const debug = struct {
         simpleTimedNotice(about_format_s, name, durat, null);
     }
 };
-
+fn writeEnvDecls(env_fd: u64, paths: *const Builder.Paths) void {
+    for ([_][]const u8{
+        "pub const zig_exe: [:0]const u8 = \"",               paths.zig_exe,
+        "\";\npub const build_root: [:0]const u8 = \"",       paths.build_root,
+        "\";\npub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,
+        "\";\npub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir,
+        "\";\n",
+    }) |s| {
+        file.write(.{ .errors = .{} }, env_fd, s);
+    }
+}
 // finish-document build-types.zig
 // start-document option-functions.zig
 fn lengthOptionalWhatNoArgWhatNot(option: anytype, len_equ: u64, len_yes: u64, len_no: u64) u64 {
