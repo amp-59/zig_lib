@@ -31,37 +31,61 @@ pub const GlobalOptions = struct {
     pub const Map = proc.GenericOptions(GlobalOptions);
 };
 pub const BuilderSpec = struct {
-    logging: struct {
+    options: Options = .{},
+    logging: Logging = .{},
+    errors: Errors = .{},
+    pub const Options = struct {
+        max_command_line: u64 = 65536,
+        max_command_args: u64 = 1024,
+        max_relevant_depth: u64 = 1,
+    };
+    pub const Logging = struct {
+        command: proc.CommandSpec.Logging = .{},
         path: builtin.Logging.AcquireErrorFault = .{},
         fstatat: builtin.Logging.SuccessErrorFault = .{},
-        command: builtin.Logging.SuccessErrorFault = .{},
         create: builtin.Logging.AcquireErrorFault = .{},
         close: builtin.Logging.ReleaseErrorFault = .{},
         mkdir: builtin.Logging.SuccessErrorFault = .{},
-    },
-    errors: struct {
+        write: builtin.Logging.SuccessErrorFault = .{},
+    };
+    pub const Errors = struct {
+        command: proc.CommandSpec.Errors = .{},
         path: sys.ErrorPolicy = .{ .throw = sys.open_errors },
         fstatat: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
-        command: sys.ErrorPolicy = .{ .throw = sys.command_errors },
-        gettime: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
+        clock: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
+        sleep: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
         create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
         mkdir: sys.ErrorPolicy = .{ .throw = sys.mkdir_noexcl_errors },
         close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
-    },
+        write: sys.ErrorPolicy = .{ .abort = sys.write_errors },
+        clone: sys.ErrorPolicy = .{},
+    };
     fn path(comptime spec: BuilderSpec) file.PathSpec {
         return .{ .errors = spec.errors.path, .logging = spec.logging.path };
     }
     fn fstatat(comptime spec: BuilderSpec) file.StatSpec {
         return .{ .errors = spec.errors.fstatat, .logging = spec.logging.fstatat };
     }
-    fn command(comptime spec: BuilderSpec) proc.ExecuteSpec {
+    fn command(comptime spec: BuilderSpec) proc.CommandSpec {
         return .{ .errors = spec.errors.command, .logging = spec.logging.command };
     }
-    fn gettime(comptime spec: BuilderSpec) time.ClockSpec {
-        return .{ .errors = spec.errors.gettime };
+    fn clock(comptime spec: BuilderSpec) time.ClockSpec {
+        return .{ .errors = spec.errors.clock };
     }
-    fn makeDir(comptime spec: BuilderSpec) file.MakeDirSpec {
+    fn sleep(comptime spec: BuilderSpec) time.SleepSpec {
+        return .{ .errors = spec.errors.sleep };
+    }
+    fn mkdir(comptime spec: BuilderSpec) file.MakeDirSpec {
         return .{ .errors = spec.errors.mkdir, .logging = spec.logging.mkdir };
+    }
+    fn write(comptime spec: BuilderSpec) file.WriteSpec {
+        return .{ .errors = spec.errors.write, .logging = spec.logging.write };
+    }
+    fn close(comptime spec: BuilderSpec) file.CloseSpec {
+        return .{ .errors = spec.errors.close, .logging = spec.logging.close };
+    }
+    fn clone(comptime spec: BuilderSpec) proc.CloneSpec {
+        return .{ .return_type = void, .errors = spec.errors.clone };
     }
     fn create(comptime spec: BuilderSpec) file.CreateSpec {
         return .{
