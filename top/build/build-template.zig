@@ -94,28 +94,22 @@ pub const BuilderSpec = struct {
             .options = .{ .exclusive = false, .write = .truncate },
         };
     }
-    fn close(comptime spec: BuilderSpec) file.CloseSpec {
-        return .{ .errors = spec.errors.close, .logging = spec.logging.close };
-    }
 };
+
 pub const BuildCommand = struct {
-    kind: OutputMode,
+    kind: types.OutputMode,
     __compile_command: void,
 };
 pub const FormatCommand = struct {
     __format_command: void,
 };
 pub const RunCommand = struct {
-    array: ArgsString = undefined,
-    pub fn addRunArgument(run_cmd: *RunCommand, any: anytype) void {
-        if (@typeInfo(@TypeOf(any)) == .Struct) {
-            run_cmd.array.writeAny(preset.reinterpret.fmt, any);
-        } else {
-            run_cmd.array.writeMany(any);
-        }
-        if (run_cmd.array.readOneBack() != 0) {
-            run_cmd.array.writeOne(0);
-        }
+    args: ArgsPointers,
+    pub fn addRunArgument(run_cmd: *RunCommand, allocator: *Allocator, any: anytype) void {
+        const len: u64 = mem.reinterpret.lengthAny(u8, preset.reinterpret.print, any);
+        var arg: ArgsString = ArgsString.init(allocator, len);
+        arg.writeAny(preset.reinterpret.print, any);
+        run_cmd.args.writeOne(arg.referAllDefinedWithSentinel(0));
     }
 };
 pub fn saveString(allocator: *Allocator, values: []const u8) [:0]u8 {
