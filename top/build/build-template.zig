@@ -137,8 +137,9 @@ pub fn concatStrings(allocator: *Allocator, values: []const []const u8) [:0]u8 {
     return buf;
 }
 const build_spec: BuilderSpec = .{
-    .errors = .{},
-    .logging = .{},
+    .options = .{},
+    .errors = preset.builder.errors.noexcept,
+    .logging = preset.builder.logging.silent,
 };
 pub const Builder = struct {
     paths: Paths,
