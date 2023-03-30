@@ -158,7 +158,7 @@ pub const ArenaAllocatorSpec = struct {
             @compileError("invalid address space for this allocator");
         };
         if (allocator_is_mapper and address_space_is_mapper) {
-            unreachable;
+            @compileError("both allocator and address space are mappers");
         }
         return spec.options.require_map;
     }
@@ -178,7 +178,7 @@ pub const ArenaAllocatorSpec = struct {
             @compileError("invalid address space for this allocator");
         };
         if (allocator_is_unmapper and address_space_is_unmapper) {
-            unreachable;
+            @compileError("both allocator and address space are unmappers");
         }
         return spec.options.require_unmap;
     }
@@ -194,7 +194,7 @@ pub const RtArenaAllocatorSpec = struct {
         const allocator_is_mapper: bool = spec.options.require_map;
         const address_space_is_mapper: bool = spec.AddressSpace.addr_spec.options.require_map;
         if (allocator_is_mapper and address_space_is_mapper) {
-            unreachable;
+            @compileError("both allocator and address space are mappers");
         }
         return spec.options.require_map;
     }
@@ -204,7 +204,7 @@ pub const RtArenaAllocatorSpec = struct {
         const allocator_is_unmapper: bool = spec.options.require_unmap;
         const address_space_is_unmapper: bool = spec.AddressSpace.addr_spec.options.require_unmap;
         if (allocator_is_unmapper and address_space_is_unmapper) {
-            unreachable;
+            @compileError("both allocator and address space are unmappers");
         }
         return spec.options.require_unmap;
     }
