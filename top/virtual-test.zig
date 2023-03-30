@@ -105,7 +105,7 @@ fn arenaToBits(arena: virtual.Arena) u64 {
 fn testArenaIntersection() !void {
     var a: virtual.Arena = arenaFromBits(0b000000000111111111110000000000000);
     var b: virtual.Arena = arenaFromBits(0b000000000000000111111111110000000);
-    var x: virtual.Arena.Intersection = a.intersection2(b).?;
+    var x: virtual.Intersection(virtual.Arena) = virtual.intersection2(virtual.Arena, a, b).?;
     try builtin.expectEqual(u64, arenaToBits(x.l), 0b0000000000000000000000000000000000000000000000000001111110000000);
     try builtin.expectEqual(u64, arenaToBits(x.x), 0b0000000000000000000000000000000000000000000000111110000000000000);
     try builtin.expectEqual(u64, arenaToBits(x.h), 0b0000000000000000000000000000000000000000111111000000000000000000);
