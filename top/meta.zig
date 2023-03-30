@@ -854,6 +854,18 @@ pub fn ErrorUnion(comptime any_function: anytype) type {
         },
     }
 }
+pub inline fn mergeExternalErrorPolicies(
+    comptime E: type,
+    comptime any: anytype,
+) builtin.ExternalError(E) {
+    var throw: []const E = &.{};
+    var abort: []const E = &.{};
+    inline for (@typeInfo(@TypeOf(any)).Struct.fields) |field| {
+        throw = throw ++ @field(field.name, any).throw;
+        abort = abort ++ @field(field.name, any).abort;
+    }
+    return .{ .throw = throw, .abort = abort };
+}
 /// Return the length of the longest field name in a container type
 pub fn maxNameLength(comptime T: type) u64 {
     var len: u64 = 0;
