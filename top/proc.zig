@@ -335,7 +335,7 @@ pub const CommandSpec = struct {
     }
 };
 pub const CloneSpec = struct {
-    options: Options,
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.clone_errors },
     return_type: type = usize,
     logging: builtin.Logging.SuccessErrorFault = .{},
