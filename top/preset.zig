@@ -2,6 +2,7 @@ const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
+const build = @import("./build.zig");
 const preset = @This();
 const serial = @import("./serial.zig");
 const builtin = @import("./builtin.zig");
@@ -89,6 +90,75 @@ pub const reinterpret = opaque {
         rs_1.reference.dereference = &rs_0;
         return rs_1;
     }
+};
+pub const builder = opaque {
+    pub const errors = opaque {
+        pub const noexcept = .{
+            .command = .{
+                .fork = .{},
+                .execve = .{},
+                .waitpid = .{},
+            },
+            .path = .{},
+            .fstatat = .{},
+            .gettime = .{},
+            .create = .{},
+            .mkdir = .{},
+            .close = .{},
+        };
+        pub const zen = .{
+            .command = .{
+                .fork = .{ .throw = sys.fork_errors },
+                .execve = .{ .throw = sys.execve_errors },
+                .waitpid = .{ .throw = sys.wait_errors },
+            },
+            .path = sys.open_errors,
+            .fstatat = .{ .throw = sys.stat_errors },
+            .gettime = .{ .throw = sys.clock_get_errors },
+            .create = .{ .throw = sys.open_errors },
+            .mkdir = .{ .throw = sys.mkdir_noexcl_errors },
+            .close = .{ .abort = sys.close_errors },
+        };
+        pub const critical = .{
+            .command = .{
+                .fork = .{ .throw = sys.fork_errors },
+                .execve = .{ .throw = sys.execve_errors },
+                .waitpid = .{ .throw = sys.wait_errors },
+            },
+            .path = sys.open_errors,
+            .fstatat = .{ .throw = sys.stat_errors },
+            .gettime = .{ .throw = sys.clock_get_errors },
+            .create = .{ .throw = sys.open_errors },
+            .mkdir = .{ .throw = sys.mkdir_noexcl_errors },
+            .close = .{ .throw = sys.close_errors },
+        };
+    };
+    pub const logging = opaque {
+        pub const verbose: build.BuilderSpec.Logging = .{
+            .command = .{
+                .fork = preset.logging.success_error_fault.verbose,
+                .execve = preset.logging.success_error_fault.verbose,
+                .waitpid = preset.logging.success_error_fault.verbose,
+            },
+            .path = preset.logging.acquire_error_fault.verbose,
+            .fstatat = preset.logging.success_error_fault.verbose,
+            .create = preset.logging.acquire_error_fault.verbose,
+            .close = preset.logging.release_error_fault.verbose,
+            .mkdir = preset.logging.success_error_fault.verbose,
+        };
+        pub const silent: build.BuilderSpec.Logging = .{
+            .command = .{
+                .fork = preset.logging.success_error_fault.silent,
+                .execve = preset.logging.success_error_fault.silent,
+                .waitpid = preset.logging.success_error_fault.silent,
+            },
+            .path = preset.logging.acquire_error_fault.silent,
+            .fstatat = preset.logging.success_error_fault.silent,
+            .create = preset.logging.acquire_error_fault.silent,
+            .close = preset.logging.release_error_fault.silent,
+            .mkdir = preset.logging.success_error_fault.silent,
+        };
+    };
 };
 pub const logging = opaque {
     pub const default = opaque {
