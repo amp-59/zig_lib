@@ -278,102 +278,109 @@ pub const Builder = struct {
         array.writeMany("\x00\x00");
         array.undefine(1);
     }
-    pub fn build(builder: *Builder, target: *Target) !void {
-        try format(builder, target);
+    pub fn build(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
+        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    }, void) {
+        try meta.wrap(format(builder, allocator, target));
+        if (!target.have(.build)) return;
         if (target.done(.build)) return;
-        if (target.have(.build)) {
-            target.do(.build);
-            builder.depth +%= 1;
-            try invokeDependencies(builder, target);
-            var array: ArgsString = undefined;
-            array.undefineAll();
-            var build_args: ArgsPointers = undefined;
-            build_args.undefineAll();
-            var build_time: time.TimeSpec = undefined;
-            const bin_path: [:0]const u8 = target.binPath().relative.?;
-            const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
-            builder.buildWrite(target, &array);
-            makeArgs(&array, &build_args);
-            const rc: u8 = try builder.exec(build_args.referAllDefined(), &build_time);
-            const new_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
-            builder.depth -%= 1;
-            if (builder.depth <= max_relevant_depth) {
-                debug.buildNotice(target.name, build_time, old_size, new_size);
-            }
-            if (rc != 0) {
-                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
-            }
+        target.do(.build);
+        builder.depth +%= 1;
+        try meta.wrap(invokeDependencies(builder, allocator, target));
+        var array: ArgsString = try meta.wrap(ArgsString.init(allocator, build_spec.options.max_command_line));
+        var build_args: ArgsPointers = try meta.wrap(ArgsPointers.init(allocator, build_spec.options.max_command_args));
+        const bin_path: [:0]const u8 = target.binPath().relative.?;
+        const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
+        builder.buildWrite(target, &array);
+        makeArgs(&array, &build_args);
+        var build_time: time.TimeSpec = undefined;
+        const rc: u8 = try meta.wrap(builder.exec(build_args.referAllDefined(), &build_time));
+        const new_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
+        builder.depth -%= 1;
+        if (builder.depth <= build_spec.options.max_relevant_depth) {
+            debug.buildNotice(target.name, build_time, old_size, new_size);
+        }
+        if (rc != 0) {
+            builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
         }
     }
-    pub fn format(builder: *Builder, target: *Target) !void {
+    pub fn format(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
+        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    }, void) {
+        if (!target.have(.fmt)) return;
         if (target.done(.fmt)) return;
-        if (target.have(.fmt)) {
-            target.do(.fmt);
-            try invokeDependencies(builder, target);
-            var array: ArgsString = undefined;
-            array.undefineAll();
-            var format_args: ArgsPointers = undefined;
-            format_args.undefineAll();
-            var format_time: time.TimeSpec = undefined;
-            builder.formatWrite(target, &array);
-            makeArgs(&array, &format_args);
-            const rc: u8 = try builder.exec(format_args.referAllDefined(), &format_time);
-            if (builder.depth <= max_relevant_depth) {
-                debug.formatNotice(target.name, format_time);
-            }
-            if (rc != 0) {
-                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
-            }
+        target.do(.fmt);
+        try meta.wrap(invokeDependencies(builder, allocator, target));
+        var array: ArgsString = try meta.wrap(ArgsString.init(allocator, build_spec.options.max_command_line));
+        var format_args: ArgsPointers = try meta.wrap(ArgsPointers.init(allocator, build_spec.options.max_command_args));
+        builder.formatWrite(target, &array);
+        makeArgs(&array, &format_args);
+        var format_time: time.TimeSpec = undefined;
+        const rc: u8 = try meta.wrap(builder.exec(format_args.referAllDefined(), &format_time));
+        if (builder.depth <= build_spec.options.max_relevant_depth) {
+            debug.formatNotice(target.name, format_time);
+        }
+        if (rc != 0) {
+            builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
         }
     }
-    pub fn run(builder: *Builder, target: *Target) !void {
+    pub fn run(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
+        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    }, void) {
+        if (!target.have(.run)) return;
+        if (!target.have(.build)) return;
         if (target.done(.run)) return;
-        if (target.have(.run) and target.have(.build)) {
-            target.do(.run);
-            try build(builder, target);
-            var run_args: ArgsPointers = undefined;
-            run_args.undefineAll();
-            var run_time: time.TimeSpec = undefined;
-            makeArgs(&target.run_cmd.array, &run_args);
-            const rc: u8 = try builder.system(run_args.referAllDefined(), &run_time);
-            if (rc != 0 or builder.depth <= max_relevant_depth) {
-                debug.runNotice(target.name, run_time, rc);
-            }
-            if (rc != 0) {
-                builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
-            }
+        target.do(.run);
+        try meta.wrap(build(builder, allocator, target));
+        var run_time: time.TimeSpec = undefined;
+        for (builder.run_args) |run_arg| {
+            target.run_cmd.addRunArgument(allocator, run_arg);
+        }
+        const rc: u8 = try meta.wrap(builder.system(target.run_cmd.args.referAllDefined(), &run_time));
+        if (rc != 0 or builder.depth <= build_spec.options.max_relevant_depth) {
+            debug.runNotice(target.name, run_time, rc);
+        }
+        if (rc != 0) {
+            builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
         }
     }
-    fn invokeDependencies(builder: *Builder, target: *Target) anyerror!void {
+    fn invokeDependencies(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
+        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    }, void) {
         target.deps.head();
         while (target.deps.next()) |node| : (target.deps.node = node) {
             switch (target.deps.node.this.tag) {
-                .build => try build(builder, target.deps.node.this.target),
-                .run => try run(builder, target.deps.node.this.target),
-                .fmt => try format(builder, target.deps.node.this.target),
+                .build => try meta.wrap(build(builder, allocator, target.deps.node.this.target)),
+                .run => try meta.wrap(run(builder, allocator, target.deps.node.this.target)),
+                .fmt => try meta.wrap(format(builder, allocator, target.deps.node.this.target)),
             }
         }
     }
-    fn writeEnvDecls(env_fd: u64, paths: *const Builder.Paths) void {
-        for (&[_][]const u8{
-            "pub const zig_exe: [:0]const u8 = \"",               paths.zig_exe,
-            "\";\npub const build_root: [:0]const u8 = \"",       paths.build_root,
-            "\";\npub const cache_dir: [:0]const u8 = \"",        paths.cache_dir,
-            "\";\npub const global_cache_dir: [:0]const u8 = \"", paths.global_cache_dir,
-            "\";\n",
-        }) |s| {
-            file.write(.{ .errors = .{} }, env_fd, s);
-        }
+    pub fn addTarget(builder: *Builder, spec: TargetSpec, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) Allocator.allocate_payload(*Target) {
+        return builder.groups.left.this.addTarget(spec, allocator, name, pathname);
+    }
+    pub fn addGroup(builder: *Builder, allocator: *Allocator, comptime name: [:0]const u8) Allocator.allocate_payload(*Group) {
+        defer builder.groups.head();
+        const ret: *Group = try meta.wrap(allocator.createIrreversible(Group));
+        try meta.wrap(builder.groups.add(allocator, ret));
+        ret.name = name;
+        ret.builder = builder;
+        ret.targets = try meta.wrap(TargetList.init(allocator));
+        return ret;
     }
 };
 pub const TargetSpec = struct {
-    build: ?OutputMode = .exe,
+    build: ?types.OutputMode = .exe,
     run: bool = true,
     fmt: bool = false,
     mode: builtin.Mode = .Debug,
-    mods: []const Module = &.{},
-    deps: []const ModuleDependency = &.{},
-    macros: []const Macro = &.{},
+    mods: []const types.Module = &.{},
+    deps: []const types.ModuleDependency = &.{},
+    macros: []const types.Macro = &.{},
 };
 pub const GroupList = GenericList(Group);
 pub const Group = struct {
