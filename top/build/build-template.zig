@@ -751,7 +751,7 @@ fn lengthHow(option: anytype) u64 {
     }
     return 0;
 }
-fn writeOptionalWhatNoArgWhatNot(array: anytype, option: anytype, equ_switch: []const u8, yes_switch: []const u8, no_switch: []const u8) void {
+fn writeOptionalWhatNoArgWhatNot(array: *ArgsString, option: anytype, equ_switch: []const u8, yes_switch: []const u8, no_switch: []const u8) void {
     if (option) |value| {
         switch (value) {
             .yes => |yes_optional_arg| {
@@ -769,7 +769,7 @@ fn writeOptionalWhatNoArgWhatNot(array: anytype, option: anytype, equ_switch: []
         }
     }
 }
-fn writeNonOptionalWhatNoArgWhatNot(array: anytype, option: anytype, yes_switch: []const u8, no_switch: []const u8) void {
+fn writeNonOptionalWhatNoArgWhatNot(array: *ArgsString, option: anytype, yes_switch: []const u8, no_switch: []const u8) void {
     if (option) |value| {
         switch (value) {
             .yes => |yes_arg| {
@@ -783,7 +783,7 @@ fn writeNonOptionalWhatNoArgWhatNot(array: anytype, option: anytype, yes_switch:
         }
     }
 }
-fn writeWhatOrWhatNot(array: anytype, option: anytype, yes_switch: []const u8, no_switch: []const u8) void {
+fn writeWhatOrWhatNot(array: *ArgsString, option: anytype, yes_switch: []const u8, no_switch: []const u8) void {
     if (option) |value| {
         if (value) {
             array.writeMany(yes_switch);
@@ -792,19 +792,19 @@ fn writeWhatOrWhatNot(array: anytype, option: anytype, yes_switch: []const u8, n
         }
     }
 }
-fn writeWhatHow(array: anytype, option: anytype, yes_switch: []const u8) void {
+fn writeWhatHow(array: *ArgsString, option: anytype, yes_switch: []const u8) void {
     if (option) |value| {
         array.writeMany(yes_switch);
         array.writeAny(preset.reinterpret.print, value);
         array.writeOne('\x00');
     }
 }
-fn writeWhat(array: anytype, option: bool, yes_switch: []const u8) void {
+fn writeWhat(array: *ArgsString, option: bool, yes_switch: []const u8) void {
     if (option) {
         array.writeMany(yes_switch);
     }
 }
-fn writeHow(array: anytype, option: anytype) void {
+fn writeHow(array: *ArgsString, option: anytype) void {
     if (option) |how| {
         array.writeAny(preset.reinterpret.print, how);
     }
@@ -814,5 +814,4 @@ fn writeHow(array: anytype, option: anytype) void {
 pub extern fn asmMaxWidths(builder: *Builder) extern struct { u64, u64 };
 pub extern fn asmWriteAllCommands(builder: *Builder, buf: [*]u8, name_max_width: u64) callconv(.C) u64;
 pub extern fn asmRewind(builder: *Builder) callconv(.C) void;
-pub extern fn asmWriteEnv(env_fd: u64, paths: *const Builder.Paths) callconv(.C) void;
 // finish-document mach.zig
