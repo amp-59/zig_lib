@@ -156,89 +156,87 @@ pub const Builder = struct {
         cache_dir: [:0]const u8,
         global_cache_dir: [:0]const u8,
     };
-    pub fn zigExePathMacro(builder: *const Builder) Macro {
+    pub fn zigExePathMacro(builder: *const Builder) types.Macro {
         return .{ .name = "zig_exe", .value = .{ .path = zigExePath(builder) } };
     }
-    pub fn buildRootPathMacro(builder: *const Builder) Macro {
+    pub fn buildRootPathMacro(builder: *const Builder) types.Macro {
         return .{ .name = "build_root", .value = .{ .path = buildRootPath(builder) } };
     }
-    pub fn cacheDirPathMacro(builder: *const Builder) Macro {
+    pub fn cacheDirPathMacro(builder: *const Builder) types.Macro {
         return .{ .name = "cache_dir", .value = .{ .path = cacheDirPath(builder) } };
     }
-    pub fn globalCacheDirPathMacro(builder: *const Builder) Macro {
+    pub fn globalCacheDirPathMacro(builder: *const Builder) types.Macro {
         return .{ .name = "global_cache_dir", .value = .{ .path = globalCacheDirPath(builder) } };
     }
-    pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) Macro {
+    pub fn sourceRootPathMacro(builder: *const Builder, root: [:0]const u8) types.Macro {
         return .{ .name = "root", .value = .{ .path = builder.sourceRootPath(root) } };
     }
-    pub fn zigExePath(builder: *const Builder) Path {
+    pub fn zigExePath(builder: *const Builder) types.Path {
         return .{ .absolute = builder.paths.zig_exe };
     }
-    pub fn buildRootPath(builder: *const Builder) Path {
+    pub fn buildRootPath(builder: *const Builder) types.Path {
         return .{ .absolute = builder.paths.build_root };
     }
-    pub fn cacheDirPath(builder: *const Builder) Path {
+    pub fn cacheDirPath(builder: *const Builder) types.Path {
         return .{ .absolute = builder.paths.cache_dir };
     }
-    pub fn globalCacheDirPath(builder: *const Builder) Path {
+    pub fn globalCacheDirPath(builder: *const Builder) types.Path {
         return .{ .absolute = builder.paths.global_cache_dir };
     }
-    pub fn sourceRootPath(builder: *const Builder, root: [:0]const u8) Path {
+    pub fn sourceRootPath(builder: *const Builder, root: [:0]const u8) types.Path {
         return builder.path(root);
     }
-    pub fn path(builder: *const Builder, name: [:0]const u8) Path {
+    pub fn path(builder: *const Builder, name: [:0]const u8) types.Path {
         return .{ .absolute = builder.paths.build_root, .relative = name };
     }
-    pub inline fn addTarget(
-        builder: *Builder,
-        comptime spec: TargetSpec,
-        allocator: *Allocator,
-        comptime name: [:0]const u8,
-        comptime pathname: [:0]const u8,
-    ) *Target {
-        return builder.groups.left.this.addTarget(spec, allocator, name, pathname);
-    }
-    pub fn addGroup(builder: *Builder, allocator: *Allocator, comptime name: [:0]const u8) *Group {
-        defer builder.groups.head();
-        return builder.groups.create(allocator, .{
-            .name = name,
-            .builder = builder,
-            .targets = TargetList.init(allocator),
-        });
-    }
-    fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
-        .throw = build_spec.errors.command.throw ++ build_spec.errors.gettime.throw,
-        .abort = build_spec.errors.command.abort ++ build_spec.errors.gettime.abort,
-    }, u8) {
-        const start: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
-        const rc: u8 = try meta.wrap(proc.command(comptime build_spec.command(), builder.paths.zig_exe, args, builder.vars));
-        const finish: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
-        ts.* = time.diff(finish, start);
-        return rc;
-    }
-    fn system(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
-        .throw = build_spec.errors.command.throw ++ build_spec.errors.gettime.throw,
-        .abort = build_spec.errors.command.abort ++ build_spec.errors.gettime.abort,
-    }, u8) {
-        const start: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
-        const ret: u8 = try meta.wrap(proc.command(comptime build_spec.command(), meta.manyToSlice(args[0]), args, builder.vars));
-        const finish: time.TimeSpec = try meta.wrap(time.get(comptime build_spec.gettime(), .realtime));
-        ts.* = time.diff(finish, start);
-        return ret;
-    }
-    pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) sys.Call(.{
+    const exec_error_policy: sys.ErrorPolicy = .{
+        .throw = build_spec.errors.command.fork.throw ++ build_spec.errors.command.execve.throw ++
+            build_spec.errors.command.waitpid.throw ++ build_spec.errors.clock.throw,
+        .abort = build_spec.errors.command.fork.abort ++ build_spec.errors.command.execve.abort ++
+            build_spec.errors.command.waitpid.abort ++ build_spec.errors.clock.throw,
+    };
+    const init_error_policy: sys.ErrorPolicy = .{
         .throw = Allocator.map_error_policy.throw ++ build_spec.errors.mkdir.throw ++ build_spec.errors.path.throw ++
             build_spec.errors.close.throw ++ build_spec.errors.create.throw,
         .abort = Allocator.map_error_policy.abort ++ build_spec.errors.mkdir.abort ++ build_spec.errors.path.abort ++
             build_spec.errors.close.abort ++ build_spec.errors.create.abort,
-    }, Builder) {
-        try meta.wrap(file.makeDir(comptime build_spec.makeDir(), paths.cache_dir, file.dir_mode));
-        var dir_fd: u64 = try meta.wrap(file.path(comptime build_spec.path(), paths.cache_dir));
-        const env_fd: u64 = try meta.wrap(file.createAt(comptime build_spec.create(), dir_fd, "env.zig", file.file_mode));
-        asmWriteEnv(env_fd, &paths);
-        try meta.wrap(file.close(comptime build_spec.close(), dir_fd));
-        dir_fd = try meta.wrap(file.path(comptime build_spec.path(), paths.build_root));
-        return .{ .paths = paths, .options = options, .args = args, .vars = vars, .groups = GroupList.init(allocator), .dir_fd = dir_fd };
+    };
+    fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(exec_error_policy, u8) {
+        const clock_spec: time.ClockSpec = comptime build_spec.clock();
+        const command_spec: proc.CommandSpec = comptime build_spec.command();
+        const start: time.TimeSpec = try meta.wrap(time.get(clock_spec, .realtime));
+        const rc: u8 = try meta.wrap(proc.command(command_spec, builder.paths.zig_exe, args, builder.vars));
+        const finish: time.TimeSpec = try meta.wrap(time.get(clock_spec, .realtime));
+        ts.* = time.diff(finish, start);
+        return rc;
+    }
+    fn system(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(exec_error_policy, u8) {
+        const clock_spec: time.ClockSpec = comptime build_spec.clock();
+        const command_spec: proc.CommandSpec = comptime build_spec.command();
+        const start: time.TimeSpec = try meta.wrap(time.get(clock_spec, .realtime));
+        const ret: u8 = try meta.wrap(proc.command(command_spec, meta.manyToSlice(args[0]), args, builder.vars));
+        const finish: time.TimeSpec = try meta.wrap(time.get(clock_spec, .realtime));
+        ts.* = time.diff(finish, start);
+        return ret;
+    }
+    pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) sys.Call(init_error_policy, Builder) {
+        const mkdir_spec: file.MakeDirSpec = comptime build_spec.mkdir();
+        const path_spec: file.PathSpec = comptime build_spec.path();
+        const create_spec: file.CreateSpec = comptime build_spec.create();
+        const close_spec: file.CloseSpec = comptime build_spec.close();
+        try meta.wrap(file.makeDir(mkdir_spec, paths.cache_dir, file.dir_mode));
+        var dir_fd: u64 = try meta.wrap(file.path(path_spec, paths.cache_dir));
+        const env_fd: u64 = try meta.wrap(file.createAt(create_spec, dir_fd, "env.zig", file.file_mode));
+        writeEnvDecls(env_fd, &paths);
+        try meta.wrap(file.close(close_spec, dir_fd));
+        return .{
+            .paths = paths,
+            .options = options,
+            .args = args,
+            .vars = vars,
+            .groups = try meta.wrap(GroupList.init(allocator)),
+            .dir_fd = try meta.wrap(file.path(comptime build_spec.path(), paths.build_root)),
+        };
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
         return file.fstatAt(.{ .logging = preset.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
