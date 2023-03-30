@@ -804,10 +804,10 @@ pub noinline fn callClone(
         unreachable;
     }
     if (spec.errors.throw.len != 0) {
-        if (rc < 0) return meta.zigErrorThrow(spec.errors.throw, rc);
+        if (rc < 0) return builtin.zigErrorThrow(sys.ErrorCode, spec.errors.throw, rc);
     }
     if (spec.errors.abort.len != 0) {
-        if (rc < 0) return meta.zigErrorAbort(spec.errors.abort, rc);
+        if (rc < 0) return builtin.zigErrorAbort(sys.ErrorCode, spec.errors.abort, rc);
     }
     if (spec.return_type == void) {
         return;
