@@ -295,6 +295,45 @@ pub const ExecuteSpec = struct {
         return flags_bitfield;
     }
 };
+pub const CommandSpec = struct {
+    options: Options = .{},
+    errors: Errors = .{},
+    logging: Logging = .{},
+    return_type: type = void,
+    args_type: type = []const [*:0]u8,
+    vars_type: type = []const [*:0]u8,
+    const Specification = @This();
+
+    pub const Logging = struct {
+        execve: builtin.Logging.SuccessErrorFault = .{},
+        fork: builtin.Logging.SuccessErrorFault = .{},
+        waitpid: builtin.Logging.SuccessErrorFault = .{},
+    };
+    pub const Errors = struct {
+        execve: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
+        fork: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
+        waitpid: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
+    };
+    fn exec(comptime spec: CommandSpec) ExecuteSpec {
+        return .{ .errors = spec.errors.execve, .logging = spec.logging.execve };
+    }
+    fn fork(comptime spec: CommandSpec) ForkSpec {
+        return .{ .errors = spec.errors.fork, .logging = spec.logging.fork };
+    }
+    fn waitPid(comptime spec: CommandSpec) WaitSpec {
+        return .{ .errors = spec.errors.waitpid, .logging = spec.logging.waitpid, .return_type = void };
+    }
+    const Options = struct {
+        no_follow: bool = false,
+    };
+    fn flags(comptime spec: CommandSpec) Execute {
+        var flags_bitfield: Execute = .{ .val = 0 };
+        if (spec.options.no_follow) {
+            flags_bitfield.set(.no_follow);
+        }
+        return flags_bitfield;
+    }
+};
 pub const CloneSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.clone_errors },
