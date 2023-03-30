@@ -124,7 +124,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         .global_cache_dir = global_cache_dir,
     };
     var builder: build.Builder = try meta.wrap(build.Builder.init(&allocator, paths, options, args, vars));
-    _ = builder.addGroup(&allocator, "all");
+    _ = try meta.wrap(builder.addGroup(&allocator, "all"));
     try build_fn(&allocator, &builder);
     build.asmRewind(&builder);
     var index: u64 = 0;
@@ -140,13 +140,13 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         var groups: build.GroupList = builder.groups;
         group: while (groups.next()) |group_node| : (groups.node = group_node) {
             if (mach.testEqualMany8(name, groups.node.this.name)) {
-                try invokeTargetGroup(&builder, groups);
+                try invokeTargetGroup(&builder, &allocator, groups);
                 break :group;
             } else {
                 var targets: build.TargetList = groups.node.this.targets;
                 while (targets.next()) |target_node| : (targets.node = target_node) {
                     if (mach.testEqualMany8(name, targets.node.this.name)) {
-                        try invokeTarget(&builder, targets.node.this);
+                        try invokeTarget(&builder, &allocator, targets.node.this);
                         break :group;
                     }
                 }
@@ -158,16 +158,16 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
         index +%= 1;
     }
 }
-fn invokeTargetGroup(builder: *build.Builder, groups: build.GroupList) !void {
+fn invokeTargetGroup(builder: *build.Builder, allocator: *build.Allocator, groups: build.GroupList) !void {
     var targets: build.TargetList = groups.node.this.targets.itr();
     while (targets.next()) |target_node| : (targets.node = target_node) {
-        try invokeTarget(builder, targets.node.this);
+        try meta.wrap(invokeTarget(builder, allocator, targets.node.this));
     }
 }
-fn invokeTarget(builder: *build.Builder, target: *build.Target) !void {
+fn invokeTarget(builder: *build.Builder, allocator: *build.Allocator, target: *build.Target) !void {
     switch (builder.options.cmd) {
-        .fmt => return builder.format(target),
-        .run => return builder.run(target),
-        .build => return builder.build(target),
+        .fmt => return meta.wrap(builder.format(allocator, target)),
+        .run => return meta.wrap(builder.run(allocator, target)),
+        .build => return meta.wrap(builder.build(allocator, target)),
     }
 }
