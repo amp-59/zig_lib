@@ -7,6 +7,13 @@ const preset = @This();
 const serial = @import("./serial.zig");
 const builtin = @import("./builtin.zig");
 
+fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
+    var ret: @TypeOf(args1) = args1;
+    inline for (@typeInfo(@TypeOf(args2)).Struct.fiels) |field| {
+        @field(ret, field.name) = @field(args2, field.name);
+    }
+    return ret;
+}
 pub const address_space = opaque {
     pub const regular_128 = mem.GenericRegularAddressSpace(.{
         .lb_addr = 0,
@@ -32,12 +39,7 @@ pub const address_space = opaque {
             .map = preset.logging.acquire_error_fault.verbose,
             .unmap = preset.logging.release_error_fault.verbose,
         };
-        pub const silent: mem.AddressSpaceLogging = .{
-            .acquire = preset.logging.acquire_error_fault.silent,
-            .release = preset.logging.release_error_fault.silent,
-            .map = preset.logging.acquire_error_fault.silent,
-            .unmap = preset.logging.release_error_fault.silent,
-        };
+        pub const silent: mem.AddressSpaceLogging = builtin.zero(mem.AddressSpaceLogging);
     };
     pub const errors = opaque {
         pub const noexcept: mem.AddressSpaceErrors = .{
@@ -125,20 +127,10 @@ pub const builder = opaque {
             .mkdir = .{ .throw = sys.mkdir_noexcl_errors },
             .close = .{ .abort = sys.close_errors },
         };
-        pub const critical: build.BuilderSpec.Errors = .{
-            .command = .{
-                .fork = .{ .throw = sys.fork_errors },
-                .execve = .{ .throw = sys.execve_errors },
-                .waitpid = .{ .throw = sys.wait_errors },
-            },
-            .path = .{ .throw = sys.open_errors },
-            .stat = .{ .throw = sys.stat_errors },
-            .sleep = .{ .throw = sys.nanosleep_errors },
-            .clock = .{ .throw = sys.clock_get_errors },
-            .create = .{ .throw = sys.open_errors },
-            .mkdir = .{ .throw = sys.mkdir_noexcl_errors },
+        pub const critical: build.BuilderSpec.Errors = add(zen, .{
             .close = .{ .throw = sys.close_errors },
-        };
+            .unmap = .{ .throw = sys.munmap_errors },
+        });
     };
     pub const logging = opaque {
         pub const verbose: build.BuilderSpec.Logging = .{
@@ -153,18 +145,7 @@ pub const builder = opaque {
             .close = preset.logging.release_error_fault.verbose,
             .mkdir = preset.logging.success_error_fault.verbose,
         };
-        pub const silent: build.BuilderSpec.Logging = .{
-            .command = .{
-                .fork = preset.logging.success_error_fault.silent,
-                .execve = preset.logging.success_error_fault.silent,
-                .waitpid = preset.logging.success_error_fault.silent,
-            },
-            .path = preset.logging.acquire_error_fault.silent,
-            .stat = preset.logging.success_error_fault.silent,
-            .create = preset.logging.acquire_error_fault.silent,
-            .close = preset.logging.release_error_fault.silent,
-            .mkdir = preset.logging.success_error_fault.silent,
-        };
+        pub const silent: build.BuilderSpec.Logging = builtin.zero(build.BuilderSpec.Logging);
     };
 };
 pub const logging = opaque {
