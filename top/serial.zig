@@ -290,7 +290,7 @@ pub const SerialSpec = struct {
         return .{ .logging = spec.logging.stat, .errors = spec.errors.stat };
     }
     fn read(comptime spec: SerialSpec) file.ReadSpec {
-        return .{ .return_value = void, .logging = spec.logging.read, .errors = spec.errors.read };
+        return .{ .return_type = void, .logging = spec.logging.read, .errors = spec.errors.read };
     }
     fn write(comptime spec: SerialSpec) file.WriteSpec {
         return .{ .logging = spec.logging.read, .errors = spec.errors.read };

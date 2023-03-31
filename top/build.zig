@@ -33,6 +33,7 @@ pub const GlobalOptions = struct {
     pub const Map = proc.GenericOptions(GlobalOptions);
 };
 pub const BuilderSpec = @import("./build2.zig").BuilderSpec;
+
 pub const BuildCommand = struct {
     kind: types.OutputMode,
     watch: bool = false, // T1
