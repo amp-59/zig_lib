@@ -108,7 +108,7 @@ pub const SignalHandlers = packed struct {
     bus_error: bool,
     floating_point_error: bool,
 };
-pub const Logging = struct {
+pub const Logging = packed struct {
     pub const Default = packed struct {
         /// Report major successful actions
         Success: bool,
