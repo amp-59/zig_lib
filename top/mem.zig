@@ -667,7 +667,7 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
     const mmap_prot: Prot = comptime spec.prot();
     const mmap_flags: Map = comptime spec.flags();
-    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) |ret| {
         if (logging.Acquire) {
             debug.mapNotice(addr, len);
@@ -684,7 +684,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors, sp
 }
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors, spec.return_type) {
     const mremap_flags: Remap = comptime spec.flags();
-    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
         if (logging.Success) {
             debug.remapNotice(old_addr, old_len, new_addr, null);
