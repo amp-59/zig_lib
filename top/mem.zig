@@ -668,9 +668,12 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.Call(spec.errors, sp
     const mmap_prot: Prot = comptime spec.prot();
     const mmap_flags: Map = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
-    if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
+    if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) |ret| {
         if (logging.Acquire) {
             debug.mapNotice(addr, len);
+        }
+        if (spec.return_type != void) {
+            return ret;
         }
     } else |map_error| {
         if (logging.Error) {
