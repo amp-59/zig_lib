@@ -304,7 +304,7 @@ pub const CommandSpec = struct {
     vars_type: type = []const [*:0]u8,
     const Specification = @This();
 
-    pub const Logging = struct {
+    pub const Logging = packed struct {
         execve: builtin.Logging.SuccessErrorFault = .{},
         fork: builtin.Logging.SuccessErrorFault = .{},
         waitpid: builtin.Logging.SuccessErrorFault = .{},
