@@ -541,8 +541,9 @@ pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
-pub fn nullPointer(comptime T: type) *allowzero T {
-    return @intToPtr(*allowzero T, 0);
+pub fn zero(comptime T: type) T {
+    const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{0} ** @sizeOf(T);
+    return @ptrCast(*const T, &data).*;
 }
 pub inline fn identity(any: anytype) @TypeOf(any) {
     return any;
@@ -1677,8 +1678,8 @@ pub const parse = opaque {
             return Error.BadParse;
         }
         var idx: u64 = int(u64, signed);
-        const zero: bool = str[idx] == '0';
-        idx += int(u64, zero);
+        const is_zero: bool = str[idx] == '0';
+        idx += int(u64, is_zero);
         if (idx == str.len) {
             return 0;
         }
