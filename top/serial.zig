@@ -339,6 +339,9 @@ pub fn serialWrite(
     .abort = spec.Allocator.map_error_policy.abort ++ spec.errors.create.abort ++
         spec.errors.open.abort ++ spec.errors.write.abort ++ spec.errors.close.abort,
 }, void) {
+    const create_spec: file.CreateSpec = comptime spec.create();
+    const write_spec: file.WriteSpec = comptime spec.write();
+    const close_spec: file.CloseSpec = comptime spec.close();
     const save = allocator.save();
     defer allocator.restore(save);
     const s_ab_addr: u64 = allocator.alignAbove(16);
@@ -346,13 +349,13 @@ pub fn serialWrite(
         genericSerializeInternal(allocator, s_ab_addr, value),
     );
     const fd: u64 = try meta.wrap(
-        file.create(comptime spec.create(), pathname, file.file_mode),
+        file.create(create_spec, pathname, file.file_mode),
     );
     try meta.wrap(
-        file.write(comptime spec.write(), fd, bytes),
+        file.write(write_spec, fd, bytes),
     );
     try meta.wrap(
-        file.close(comptime spec.close(), fd),
+        file.close(close_spec, fd),
     );
 }
 pub fn serialRead(
@@ -366,21 +369,25 @@ pub fn serialRead(
     .abort = spec.Allocator.map_error_policy.abort ++
         spec.errors.open.abort ++ spec.errors.read.abort ++ spec.errors.close.abort,
 }, meta.Mutable(S)) {
+    const open_spec: file.OpenSpec = comptime spec.open();
+    const stat_spec: file.StatSpec = comptime spec.stat();
+    const read_spec: file.ReadSpec = comptime spec.read();
+    const close_spec: file.CloseSpec = comptime spec.close();
     const fd: u64 = try meta.wrap(
-        file.open(comptime spec.open(), pathname),
+        file.open(open_spec, pathname),
     );
     const t_ab_addr: u64 = allocator.alignAbove(16);
     const st: file.Stat = try meta.wrap(
-        file.fstat(comptime spec.stat(), fd),
+        file.fstat(stat_spec, fd),
     );
     const buf: []u8 = try meta.wrap(
         allocator.allocateIrreversible(u8, st.size),
     );
     try meta.wrap(
-        file.read(comptime spec.read(), fd, buf, st.size),
+        file.read(read_spec, fd, buf, st.size),
     );
     try meta.wrap(
-        file.close(comptime spec.close(), fd),
+        file.close(close_spec, fd),
     );
     return try meta.wrap(
         genericDeserializeInternal(meta.Mutable(S), t_ab_addr),
