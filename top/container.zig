@@ -89,6 +89,8 @@ pub const ReinterpretSpec = struct {
         format: bool = false,
         /// Iterate over tuple argments
         iterate: bool = true,
+        /// Map input types to formatter types
+        map: ?[]const struct { in: type, out: type } = null,
     };
     const Reference = struct {
         /// Resubmit dereferenced value with new anytype
@@ -271,6 +273,13 @@ pub const reinterpret = opaque {
         {
             return memory.writeOne(any);
         }
+        if (comptime write_spec.composite.map) |map| {
+            inline for (map) |kv| {
+                if (comptime src_type == kv.in) {
+                    return memory.writeAny(write_spec, kv.out{ .value = any });
+                }
+            }
+        }
         if (comptime write_spec.reference.coerce.many) {
             if (src_type_info == .Pointer and
                 src_type_info.Pointer.size == .Many)
@@ -348,7 +357,7 @@ pub const reinterpret = opaque {
                 }(src_type, any).readAll());
             }
         }
-        return memory.writeAny(write_spec, @as(dst_type, any));
+        builtin.static.assert(src_type == dst_type);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
         const dst_type: type = child;
@@ -408,6 +417,13 @@ pub const reinterpret = opaque {
             isEquivalent(child, write_spec, dst_type, src_type))
         {
             return memory.writeOne(child, any);
+        }
+        if (comptime write_spec.composite.map) |map| {
+            inline for (map) |kv| {
+                if (comptime src_type == kv.in) {
+                    return memory.writeAny(write_spec, kv.out{ .value = any });
+                }
+            }
         }
         if (comptime write_spec.reference.coerce.many) {
             if (src_type_info == .Pointer and
@@ -486,7 +502,7 @@ pub const reinterpret = opaque {
                 }(src_type, any).readAll());
             }
         }
-        return memory.writeAny(child, write_spec, @as(dst_type, any));
+        builtin.static.assert(src_type == dst_type);
     }
     pub inline fn writeArgsStructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, args: anytype) void {
         inline for (args) |arg| {
@@ -598,6 +614,13 @@ pub const reinterpret = opaque {
         {
             return 1;
         }
+        if (comptime write_spec.composite.map) |map| {
+            inline for (map) |kv| {
+                if (comptime src_type == kv.in) {
+                    return lengthAny(child, write_spec, kv.out{ .value = any });
+                }
+            }
+        }
         if (comptime write_spec.reference.coerce.many) {
             if (src_type_info == .Pointer and
                 src_type_info.Pointer.size == .Many)
@@ -685,7 +708,7 @@ pub const reinterpret = opaque {
                 }(src_type, any).readAll().len;
             }
         }
-        return lengthAny(child, write_spec, @as(dst_type, any));
+        builtin.static.assert(src_type == dst_type);
     }
     pub fn lengthFormat(comptime child: type, format: anytype) u64 {
         const Format: type = @TypeOf(format);
