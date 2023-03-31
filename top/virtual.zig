@@ -390,12 +390,13 @@ pub const Arena = extern struct {
         return arena.up_addr -% arena.lb_addr;
     }
 };
-pub const AddressSpaceLogging = struct {
+pub const AddressSpaceLogging = packed struct {
     acquire: builtin.Logging.AcquireErrorFault = .{},
     release: builtin.Logging.ReleaseErrorFault = .{},
     map: builtin.Logging.AcquireErrorFault = .{},
     unmap: builtin.Logging.ReleaseErrorFault = .{},
 };
+
 pub const AddressSpaceErrors = struct {
     acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },
     release: ResourceErrorPolicy = .abort,
