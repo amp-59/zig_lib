@@ -52,6 +52,29 @@ fn readUnion(comptime union_info: builtin.Type.Union, addr: u64, offset: u64, an
     }
     return offset;
 }
+fn writeStruct(comptime struct_info: builtin.Type.Struct, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    const T: type = @TypeOf(any);
+    var ret: T = any;
+    inline for (struct_info.fields) |field| {
+        @field(ret, field.name) = try meta.wrap(
+            write(allocator, addr, @field(any, field.name)),
+        );
+    }
+    return ret;
+}
+fn writeUnion(comptime union_info: builtin.Type.Union, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    const T: type = @TypeOf(any);
+    if (union_info.tag_type) |tag_type| {
+        inline for (union_info.fields) |field| {
+            if (any == @field(tag_type, field.name)) {
+                return @unionInit(T, field.name, try meta.wrap(
+                    write(allocator, addr, @field(any, field.name)),
+                ));
+            }
+        }
+    }
+    return any;
+}
 fn readPointerOne(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
@@ -84,29 +107,6 @@ fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offse
     }
     any.* = next;
     return len;
-}
-fn writeStruct(comptime struct_info: builtin.Type.Struct, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
-    const T: type = @TypeOf(any);
-    var ret: T = any;
-    inline for (struct_info.fields) |field| {
-        @field(ret, field.name) = try meta.wrap(
-            write(allocator, addr, @field(any, field.name)),
-        );
-    }
-    return ret;
-}
-fn writeUnion(comptime union_info: builtin.Type.Union, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
-    const T: type = @TypeOf(any);
-    if (union_info.tag_type) |tag_type| {
-        inline for (union_info.fields) |field| {
-            if (any == @field(tag_type, field.name)) {
-                return @unionInit(T, field.name, try meta.wrap(
-                    write(allocator, addr, @field(any, field.name)),
-                ));
-            }
-        }
-    }
-    return any;
 }
 fn writePointerOne(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
     const ret: @TypeOf(any) = try meta.wrap(
@@ -193,7 +193,7 @@ fn genericSerializeSlicesLoop(comptime T: type, comptime lvl: u64, s_ab_addr: u6
     var t_ab_addr: u64 = s_ab_addr;
     if (lvl == 0) {
         mem.pointerCount(u64, t_ab_addr, 2).* = .{ 0, any.len };
-        return t_ab_addr +% @sizeOf([2]u64);
+        return t_ab_addr +% @sizeOf([]const void);
     } else for (any) |value| {
         t_ab_addr = genericSerializeSlicesLoop(T, lvl - 1, t_ab_addr, value);
     }
