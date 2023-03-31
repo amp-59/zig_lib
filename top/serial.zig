@@ -265,7 +265,6 @@ pub fn genericDeserializeInternal(comptime S: type, s_ab_addr: u64) S {
     }
     return ret.*;
 }
-
 pub const SerialSpec = struct {
     Allocator: type,
     errors: Errors = .{},
@@ -287,6 +286,18 @@ pub const SerialSpec = struct {
         write: sys.ErrorPolicy = .{ .throw = sys.write_errors },
         close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
     };
+    fn stat(comptime spec: SerialSpec) file.StatSpec {
+        return .{ .logging = spec.logging.stat, .errors = spec.errors.stat };
+    }
+    fn read(comptime spec: SerialSpec) file.ReadSpec {
+        return .{ .return_value = void, .logging = spec.logging.read, .errors = spec.errors.read };
+    }
+    fn write(comptime spec: SerialSpec) file.WriteSpec {
+        return .{ .logging = spec.logging.read, .errors = spec.errors.read };
+    }
+    fn close(comptime spec: SerialSpec) file.CloseSpec {
+        return .{ .logging = spec.logging.close, .errors = spec.errors.close };
+    }
     fn create(comptime spec: SerialSpec) file.CreateSpec {
         return .{
             .logging = spec.logging.create,
@@ -301,39 +312,8 @@ pub const SerialSpec = struct {
             .options = .{ .read = true, .write = null },
         };
     }
-    fn stat(comptime spec: SerialSpec) file.StatSpec {
-        return .{
-            .logging = spec.logging.stat,
-            .errors = spec.errors.stat,
-        };
-    }
-    fn read(comptime spec: SerialSpec) file.ReadSpec {
-        return .{
-            .return_value = void,
-            .logging = spec.logging.read,
-            .errors = spec.errors.read,
-        };
-    }
-    fn write(comptime spec: SerialSpec) file.WriteSpec {
-        return .{
-            .logging = spec.logging.read,
-            .errors = spec.errors.read,
-        };
-    }
-    fn close(comptime spec: SerialSpec) file.CloseSpec {
-        return .{
-            .logging = spec.logging.close,
-            .errors = spec.errors.close,
-        };
-    }
 };
-pub fn serialWrite(
-    comptime spec: SerialSpec,
-    comptime S: type,
-    allocator: *spec.Allocator,
-    pathname: [:0]const u8,
-    value: S,
-) sys.Call(.{
+pub fn serialWrite(comptime spec: SerialSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8, value: S) sys.Call(.{
     .throw = spec.Allocator.map_error_policy.throw ++ spec.errors.create.throw ++
         spec.errors.open.throw ++ spec.errors.write.throw ++ spec.errors.close.throw,
     .abort = spec.Allocator.map_error_policy.abort ++ spec.errors.create.abort ++
@@ -358,12 +338,7 @@ pub fn serialWrite(
         file.close(close_spec, fd),
     );
 }
-pub fn serialRead(
-    comptime spec: SerialSpec,
-    comptime S: type,
-    allocator: *spec.Allocator,
-    pathname: [:0]const u8,
-) sys.Call(.{
+pub fn serialRead(comptime spec: SerialSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8) sys.Call(.{
     .throw = spec.Allocator.map_error_policy.throw ++
         spec.errors.open.throw ++ spec.errors.read.throw ++ spec.errors.close.throw,
     .abort = spec.Allocator.map_error_policy.abort ++
@@ -373,10 +348,10 @@ pub fn serialRead(
     const stat_spec: file.StatSpec = comptime spec.stat();
     const read_spec: file.ReadSpec = comptime spec.read();
     const close_spec: file.CloseSpec = comptime spec.close();
+    const t_ab_addr: u64 = allocator.alignAbove(16);
     const fd: u64 = try meta.wrap(
         file.open(open_spec, pathname),
     );
-    const t_ab_addr: u64 = allocator.alignAbove(16);
     const st: file.Stat = try meta.wrap(
         file.fstat(stat_spec, fd),
     );
