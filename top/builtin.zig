@@ -65,6 +65,7 @@ pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: 
         }
     }
 }
+//
 /// `S` must be a container type.
 pub inline fn setErrorPolicy(
     comptime S: type,
@@ -542,7 +543,7 @@ pub fn isComptime() bool {
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
 pub fn zero(comptime T: type) T {
-    const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{0} ** @sizeOf(T);
+    const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
 pub inline fn identity(any: anytype) @TypeOf(any) {
