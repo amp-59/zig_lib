@@ -15,11 +15,12 @@ const Radix = enum(u5) {
     oct = 8,
     dec = 10,
     hex = 16,
+    char,
 };
 
 const single_switch: bool = false;
 
-fn noSuchOption(opt_arg: []const u8) void {
+fn noOption(opt_arg: []const u8) void {
     var print_array: mem.StaticString(4096) = undefined;
     print_array.undefineAll();
     print_array.writeAny(preset.reinterpret.ptr, [3][]const u8{
@@ -27,7 +28,7 @@ fn noSuchOption(opt_arg: []const u8) void {
         opt_arg,
         "'\n-o, --output=     x,d,o,b\n",
     });
-    builtin.debug.write(print_array.readAll());
+    builtin.proc.exitWithFault(print_array.readAll());
 }
 const Options = struct {
     output: Radix = .hex,
@@ -62,18 +63,21 @@ const Options = struct {
         {
             options.output = .oct;
         } else {
-            noSuchOption(opt_arg);
-            sys.exit(2);
+            noOption(opt_arg);
         }
     }
 };
+fn outputChar() []const u8 {
+    return "";
+}
 const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch) .{
     .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
 } else .{
-    .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .action = Options.setOutputHex } },
-    .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .action = Options.setOutputDec } },
-    .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .action = Options.setOutputOct } },
-    .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .action = Options.setOutputBin } },
+    .{ .field_name = "output", .short = "-c", .long = "--char", .assign = .{ .any = &(.char) } },
+    .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .any = &(.hex) } },
+    .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .any = &(.dec) } },
+    .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .any = &(.oct) } },
+    .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .any = &(.bin) } },
 });
 fn loopInner(options: Options, arg: []const u8) !void {
     file.write(.{ .errors = .{} }, 1, switch (options.output) {
@@ -81,6 +85,7 @@ fn loopInner(options: Options, arg: []const u8) !void {
         .dec => builtin.fmt.ud64(try builtin.parse.any(u64, arg)).readAll(),
         .oct => builtin.fmt.uo64(try builtin.parse.any(u64, arg)).readAll(),
         .bin => builtin.fmt.ub64(try builtin.parse.any(u64, arg)).readAll(),
+        .char => outputChar(),
     });
     file.write(.{ .errors = .{} }, 1, "\n");
 }
