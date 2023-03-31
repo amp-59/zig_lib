@@ -1693,24 +1693,6 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             showAllocate(T, ret, null);
             return ret;
         }
-        pub fn allocateSentinelIrreversible(allocator: *Allocator, comptime T: type, buf: []T, comptime sentinel: T) Allocator.allocate_payload([:sentinel]T) {
-            defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = @ptrToInt(buf.ptr);
-            const s_aligned_bytes: u64 = @sizeOf(T) *% buf.len;
-            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
-            const t_up_addr: u64 = s_up_addr +% @sizeOf(T);
-            if (allocator.unallocated_byte_address() == s_up_addr) {
-                if (Allocator.allocator_spec.options.require_map and
-                    t_up_addr > allocator.unmapped_byte_address())
-                {
-                    try meta.wrap(allocator.mapBelow(t_up_addr));
-                }
-                allocator.allocate(t_up_addr);
-            }
-            buf.ptr[buf.len] = sentinel;
-            showAllocate(T, buf, &sentinel);
-            return buf.ptr[0..buf.len :sentinel];
-        }
         pub fn allocateWithSentinelIrreversible(allocator: *Allocator, comptime T: type, count: u64, comptime sentinel: T) Allocator.allocate_payload([:sentinel]T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_aligned_bytes: u64 = @sizeOf(T) *% (count +% 1);
@@ -1723,12 +1705,13 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
-            const ret: [:sentinel]T = @intToPtr([*]T, s_ab_addr)[0..count :sentinel];
+            const ret: [:sentinel]T = @intToPtr([*]T, s_ab_addr)[0..count];
+            ret.ptr[count] = sentinel;
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
             }
             showAllocate(T, ret, &sentinel);
-            return ret;
+            return ret.ptr[0..count :sentinel];
         }
 
         pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, buf: []T, count: u64) Allocator.allocate_payload([]T) {
@@ -1750,7 +1733,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 return buf.ptr[0..count];
             }
             const ret: []T = allocator.allocateIrreversible(T, count);
-            mem.copy(@ptrToInt(ret.ptr), @ptrToInt(buf.ptr), buf.len, @alignOf(T));
+            mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), @sizeOf(T) *% buf.len);
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= t_aligned_bytes -% s_aligned_bytes;
             }

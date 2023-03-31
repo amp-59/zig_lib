@@ -651,14 +651,13 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
-            @intToPtr(*T, s_up_addr);
-            const ret: [:sentinel]T = @intToPtr([*]T, s_ab_addr)[0..count];
+            const ret: []T = @intToPtr([*]T, s_ab_addr)[0..count];
             ret.ptr[count] = sentinel;
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
             }
             showAllocate(T, ret, &sentinel);
-            return ret[0..count :sentinel];
+            return ret.ptr[0..count :sentinel];
         }
         pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, buf: []T, count: u64) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
