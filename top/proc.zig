@@ -1116,7 +1116,7 @@ const debug = opaque {
         var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
         const bad_opt: []const u8 = getBadOpt(arg);
-        len += builtin.debug.writeMulti(buf[len..], &[_][]const u8{ about_opt_1_s, bad_opt, "'\n" });
+        len += builtin.debug.writeMulti(buf[len..], &[_][]const u8{ about_opt_1_s, "'", bad_opt, "'\n" });
         for (all_options) |option| {
             const min: u64 = len;
             if (option.long) |long_switch| {
@@ -1124,8 +1124,7 @@ const debug = opaque {
                 if (builtin.diff(u64, mats, long_switch.len) < 3) {
                     len += builtin.debug.writeMany(buf[len..], about_opt_0_s);
                     if (option.short) |short_switch| {
-                        len += builtin.debug.writeMany(buf[len..], short_switch);
-                        len += builtin.debug.writeMany(buf[len..], "', '");
+                        len += builtin.debug.writeMulti(buf[len..], &.{ "'", short_switch, "', '" });
                     }
                     len += builtin.debug.writeMany(buf[len..], long_switch);
                 }
