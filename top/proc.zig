@@ -763,9 +763,9 @@ pub noinline fn callClone(
     );
     if (rc == 0) {
         const tl_stack_addr: u64 = asm volatile (
-            \\xorq  %rbp,   %rbp
-            \\subq  $4096,  %rsp
-            \\movq  %rsp,   %[tl_stack_addr]
+            \\xorq  %%rbp,  %%rbp
+            \\subq  $4096,  %%rsp
+            \\movq  %%rsp,  %[tl_stack_addr]
             : [tl_stack_addr] "=r" (-> u64),
             :
             : "rbp", "rsp", "memory"
