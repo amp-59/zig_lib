@@ -21,12 +21,6 @@ pub const message_style: [:0]const u8 =
     if (@hasDecl(root, "message_style")) root.message_style else "\x1b[2m";
 
 pub usingnamespace proc.start;
-pub const AddressSpace = mem.GenericRegularAddressSpace(.{
-    .lb_addr = 0,
-    .lb_offset = 0x40000000,
-    .divisions = 64,
-    .logging = preset.address_space.logging.silent,
-});
 pub const logging_override: builtin.Logging.Override =
     if (@hasDecl(root, "logging_override")) root.logging_override else .{
     .Success = null,
@@ -104,9 +98,9 @@ const opts_map: []const Options.Map = meta.slice(proc.GenericOptions(Options), .
 // zig fmt: on
 
 pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
-    var address_space: AddressSpace = .{};
-    var allocator: build.Allocator = try build.Allocator.init(&address_space);
-    defer allocator.deinit(&address_space);
+    var address_space: build.AddressSpace = .{};
+    var allocator: build.Allocator = build.Allocator.init(&address_space, 0);
+    defer allocator.deinit(&address_space, 0);
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opts_map);
     if (args.len < 5) {
