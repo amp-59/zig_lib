@@ -31,11 +31,7 @@ const Array = Allocator.StructuredHolder(u8);
 const Variant = enum(u1) { length, write };
 
 const create_spec: file.CreateSpec = .{
-    .options = .{
-        .write = .truncate,
-        .read = false,
-        .exclusive = false,
-    },
+    .options = .{ .write = .truncate, .read = false, .exclusive = false },
     .logging = .{},
 };
 const close_spec: file.CloseSpec = .{

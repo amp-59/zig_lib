@@ -8,20 +8,21 @@ const proc = @import("./proc.zig");
 const time = @import("./time.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
-const types = @import("./build/types.zig");
+const types = @import("./build/types2.zig");
+const tasks = @import("./build/tasks.zig");
 comptime {
     asm (@embedFile("./build/build-template.s"));
 }
 pub usingnamespace types;
-pub const Allocator = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .AddressSpace = builtin.AddressSpace(),
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
-    .options = preset.allocator.options.small,
-});
-pub const ArgsString = mem.StructuredVector(u8, &@as(u8, 0), 8, Allocator, .{});
-pub const ArgsPointers = mem.StructuredVector([*:0]u8, null, 8, Allocator, .{});
+
+const reinterpret_spec: mem.ReinterpretSpec = blk: {
+    var tmp: mem.ReinterpretSpec = preset.reinterpret.print;
+    tmp.composite.map = &.{
+        .{ .in = []const types.ModuleDependency, .out = types.ModuleDependencies },
+    };
+    break :blk tmp;
+};
+
 pub const GlobalOptions = struct {
     mode: ?builtin.Mode = null,
     strip: bool = true,
@@ -34,114 +35,12 @@ pub const GlobalOptions = struct {
 };
 pub const BuilderSpec = @import("./build2.zig").BuilderSpec;
 
-pub const BuildCommand = struct {
-    kind: types.OutputMode,
-    watch: bool = false, // T1
-    show_builtin: bool = false, // T1
-    builtin: bool = false, // T1
-    link_libc: bool = false, // T1
-    rdynamic: bool = false, // T1
-    dynamic: bool = false, // T1
-    static: bool = false, // T1
-    symbolic: bool = false, // T1
-    color: ?enum(u2) { on = 0, off = 1, auto = 2 } = null, // T6
-    emit_bin: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    emit_asm: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    emit_llvm_ir: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    emit_llvm_bc: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    emit_h: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    emit_docs: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    emit_analysis: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    emit_implib: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
-    cache_dir: ?[]const u8 = null, // T7
-    global_cache_dir: ?[]const u8 = null, // T7
-    zig_lib_dir: ?[]const u8 = null, // T7
-    enable_cache: bool = true, // T0
-    target: ?[]const u8 = null, // T7
-    cpu: ?[]const u8 = null, // T7
-    code_model: ?enum(u3) { default = 0, tiny = 1, small = 2, kernel = 3, medium = 4, large = 5 } = null, // T6
-    red_zone: ?bool = null, // T7
-    omit_frame_pointer: ?bool = null, // T7
-    exec_model: ?[]const u8 = null, // T7
-    name: ?[]const u8 = null, // T7
-    mode: ?@TypeOf(builtin.zig.mode) = null, // T2
-    main_pkg_path: ?[]const u8 = null, // T7
-    pic: ?bool = null, // T7
-    pie: ?bool = null, // T7
-    lto: ?bool = null, // T7
-    stack_check: ?bool = null, // T7
-    sanitize_c: ?bool = null, // T7
-    valgrind: ?bool = null, // T7
-    sanitize_thread: ?bool = null, // T7
-    dll_export_fns: ?bool = null, // T7
-    unwind_tables: ?bool = null, // T7
-    llvm: ?bool = null, // T7
-    clang: ?bool = null, // T7
-    reference_trace: ?bool = null, // T7
-    error_trace: ?bool = null, // T7
-    single_threaded: ?bool = null, // T7
-    function_sections: ?bool = null, // T7
-    strip: ?bool = null, // T7
-    formatted_panics: ?bool = null, // T7
-    fmt: ?enum(u4) { elf = 0, c = 1, wasm = 2, coff = 3, macho = 4, spirv = 5, plan9 = 6, hex = 7, raw = 8 } = null, // T6
-    dirafter: ?[]const u8 = null, // T7
-    system: ?[]const u8 = null, // T7
-    include: ?[]const u8 = null, // T7
-    libc: ?[]const u8 = null, // T7
-    library: ?[]const u8 = null, // T7
-    library_directory: ?[]const u8 = null, // T7
-    link_script: ?[]const u8 = null, // T7
-    version_script: ?[]const u8 = null, // T7
-    dynamic_linker: ?[]const u8 = null, // T7
-    sysroot: ?[]const u8 = null, // T7
-    version: bool = false, // T1
-    entry: ?[]const u8 = null, // T7
-    soname: ?union(enum) { yes: []const u8, no: void } = null, // T6
-    lld: ?bool = null, // T7
-    compiler_rt: ?bool = null, // T7
-    rpath: ?[]const u8 = null, // T7
-    each_lib_rpath: ?bool = null, // T7
-    allow_shlib_undefined: ?bool = null, // T7
-    build_id: ?bool = null, // T7
-    compress_debug_sections: ?enum(u1) { none = 0, zlib = 1 } = null, // T6
-    gc_sections: ?bool = null, // T7
-    stack: ?u64 = null, // T7
-    image_base: ?u64 = null, // T7
-    macros: ?[]const types.Macro = null, // T2
-    modules: ?[]const types.Module = null, // T2
-    dependencies: ?[]const types.ModuleDependency = null, // T2
-    cflags: ?types.CFlags = null, // T3
-    z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null, // T6
-    files: ?types.Files = null, // T3
-    test_filter: ?[]const u8 = null, // T7
-    test_name_prefix: ?[]const u8 = null, // T7
-    test_cmd: bool = false, // T1
-    test_cmd_bin: bool = false, // T1
-    test_evented_io: bool = false, // T1
-    test_no_exec: bool = false, // T1
-};
-pub const FormatCommand = struct {
-    color: ?enum(u2) { auto = 0, off = 1, on = 2 } = null, // T6
-    stdin: bool = false, // T1
-    check: bool = false, // T1
-    ast_check: bool = true, // T0
-    exclude: ?[]const u8 = null, // T7
-};
-pub const RunCommand = struct {
-    args: ArgsPointers,
-    pub fn addRunArgument(run_cmd: *RunCommand, allocator: *Allocator, any: anytype) void {
-        const len: u64 = mem.reinterpret.lengthAny(u8, preset.reinterpret.print, any);
-        var arg: ArgsString = ArgsString.init(allocator, len);
-        arg.writeAny(preset.reinterpret.print, any);
-        run_cmd.args.writeOne(arg.referAllDefinedWithSentinel(0));
-    }
-};
-pub fn saveString(allocator: *Allocator, values: []const u8) [:0]u8 {
+pub fn saveString(allocator: *types.Allocator, values: []const u8) [:0]u8 {
     var buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, values.len, 0);
     mach.memcpy(buf.ptr, values.ptr, values.len);
     return buf;
 }
-pub fn saveStrings(allocator: *Allocator, values: []const []const u8) [][:0]u8 {
+pub fn saveStrings(allocator: *types.Allocator, values: []const []const u8) [][:0]u8 {
     var buf: [][:0]u8 = allocator.allocateIrreversible([:0]u8, values.len);
     var idx: u64 = 0;
     for (values) |value| {
@@ -149,7 +48,7 @@ pub fn saveStrings(allocator: *Allocator, values: []const []const u8) [][:0]u8 {
         idx +%= 1;
     }
 }
-pub fn concatStrings(allocator: *Allocator, values: []const []const u8) [:0]u8 {
+pub fn concatStrings(allocator: *types.Allocator, values: []const []const u8) [:0]u8 {
     var len: u64 = 0;
     for (values) |value| len +%= value.len;
     const buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, len, 0);
@@ -159,6 +58,28 @@ pub fn concatStrings(allocator: *Allocator, values: []const []const u8) [:0]u8 {
         idx +%= value.len;
     }
     return buf;
+}
+fn makeArgPtrs(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
+    const ptrs: [][*:0]u8 = argsPointers(allocator, args);
+    var len: u64 = 0;
+    var idx: u64 = 0;
+    var pos: u64 = 0;
+    while (idx != args.len) : (idx +%= 1) {
+        if (args[idx] == 0) {
+            ptrs[len] = args[pos..idx :0];
+            len +%= 1;
+            pos = idx +% 1;
+        }
+    }
+    ptrs[len] = builtin.zero([*:0]u8);
+    return ptrs[0..len];
+}
+fn argsPointers(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
+    var count: u64 = 0;
+    for (args) |value| {
+        count +%= @boolToInt(value == 0);
+    }
+    return allocator.allocateIrreversible([*:0]u8, count +% 1);
 }
 const build_spec: BuilderSpec = .{
     .options = .{},
@@ -220,9 +141,9 @@ pub const Builder = struct {
             build_spec.errors.command.waitpid.abort ++ build_spec.errors.clock.throw,
     };
     const init_error_policy: sys.ErrorPolicy = .{
-        .throw = Allocator.map_error_policy.throw ++ build_spec.errors.mkdir.throw ++ build_spec.errors.path.throw ++
+        .throw = types.Allocator.map_error_policy.throw ++ build_spec.errors.mkdir.throw ++ build_spec.errors.path.throw ++
             build_spec.errors.close.throw ++ build_spec.errors.create.throw,
-        .abort = Allocator.map_error_policy.abort ++ build_spec.errors.mkdir.abort ++ build_spec.errors.path.abort ++
+        .abort = types.Allocator.map_error_policy.abort ++ build_spec.errors.mkdir.abort ++ build_spec.errors.path.abort ++
             build_spec.errors.close.abort ++ build_spec.errors.create.abort,
     };
     fn exec(builder: Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(exec_error_policy, u8) {
@@ -243,7 +164,7 @@ pub const Builder = struct {
         ts.* = time.diff(finish, start);
         return ret;
     }
-    pub fn init(allocator: *Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) sys.Call(init_error_policy, Builder) {
+    pub fn init(allocator: *types.Allocator, paths: Paths, options: GlobalOptions, args: [][*:0]u8, vars: [][*:0]u8) sys.Call(init_error_policy, Builder) {
         const mkdir_spec: file.MakeDirSpec = comptime build_spec.mkdir();
         const path_spec: file.PathSpec = comptime build_spec.path();
         const create_spec: file.CreateSpec = comptime build_spec.create();
@@ -266,7 +187,7 @@ pub const Builder = struct {
         return file.fstatAt(.{ .logging = preset.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
-        const cmd: *const BuildCommand = target.build_cmd;
+        const cmd: *const tasks.BuildCommand = target.build_cmd;
         var len: u64 = 4;
         len +%= 6 +% @tagName(cmd.kind).len +% 1;
         if (cmd.watch) {
@@ -295,7 +216,7 @@ pub const Builder = struct {
         }
         if (cmd.color) |how| {
             len +%= 8;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.emit_bin) |emit_bin| {
@@ -303,7 +224,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 11;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 11;
@@ -319,7 +240,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 11;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 11;
@@ -335,7 +256,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 15;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 15;
@@ -351,7 +272,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 15;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 15;
@@ -367,7 +288,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 9;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 9;
@@ -383,7 +304,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 12;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 12;
@@ -399,7 +320,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 16;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 16;
@@ -415,7 +336,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         len +%= 14;
-                        len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                         len +%= 1;
                     } else {
                         len +%= 14;
@@ -428,17 +349,17 @@ pub const Builder = struct {
         }
         if (cmd.cache_dir) |how| {
             len +%= 12;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.global_cache_dir) |how| {
             len +%= 19;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.zig_lib_dir) |how| {
             len +%= 14;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.enable_cache) {
@@ -446,17 +367,17 @@ pub const Builder = struct {
         }
         if (cmd.target) |how| {
             len +%= 8;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.cpu) |how| {
             len +%= 6;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.code_model) |how| {
             len +%= 9;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.red_zone) |red_zone| {
@@ -475,22 +396,22 @@ pub const Builder = struct {
         }
         if (cmd.exec_model) |how| {
             len +%= 13;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.name) |how| {
             len +%= 7;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.mode) |how| {
             len +%= 3;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.main_pkg_path) |how| {
             len +%= 16;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.pic) |pic| {
@@ -614,57 +535,57 @@ pub const Builder = struct {
         }
         if (cmd.fmt) |how| {
             len +%= 6;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.dirafter) |how| {
             len +%= 10;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.system) |how| {
             len +%= 9;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.include) |how| {
             len +%= 3;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.libc) |how| {
             len +%= 7;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.library) |how| {
             len +%= 10;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.library_directory) |how| {
             len +%= 20;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.link_script) |how| {
             len +%= 9;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.version_script) |how| {
             len +%= 17;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.dynamic_linker) |how| {
             len +%= 17;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.sysroot) |how| {
             len +%= 10;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.version) {
@@ -672,14 +593,14 @@ pub const Builder = struct {
         }
         if (cmd.entry) |how| {
             len +%= 8;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.soname) |soname| {
             switch (soname) {
                 .yes => |yes_arg| {
                     len +%= 9;
-                    len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg);
+                    len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, yes_arg);
                     len +%= 1;
                 },
                 .no => {
@@ -703,7 +624,7 @@ pub const Builder = struct {
         }
         if (cmd.rpath) |how| {
             len +%= 7;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.each_lib_rpath) |each_lib_rpath| {
@@ -729,7 +650,7 @@ pub const Builder = struct {
         }
         if (cmd.compress_debug_sections) |how| {
             len +%= 26;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.gc_sections) |gc_sections| {
@@ -741,41 +662,41 @@ pub const Builder = struct {
         }
         if (cmd.stack) |how| {
             len +%= 8;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.image_base) |how| {
             len +%= 13;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.macros) |how| {
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         }
         if (cmd.modules) |how| {
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         }
         if (cmd.dependencies) |how| {
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         }
         if (cmd.cflags) |how| {
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         }
         if (cmd.z) |how| {
             len +%= 3;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.files) |how| {
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         }
         len +%= types.Path.formatLength(builder.sourceRootPath(target.root));
         len +%= 1;
         types.ModuleDependency.l_leader = true;
         return len;
     }
-    fn buildWrite(builder: *Builder, target: *const Target, array: *ArgsString) void {
-        const cmd: *const BuildCommand = target.build_cmd;
+    fn buildWrite(builder: *Builder, target: *const Target, array: *types.Args) void {
+        const cmd: *const tasks.BuildCommand = target.build_cmd;
         array.writeMany("zig\x00build-");
         array.writeMany(@tagName(cmd.kind));
         array.writeOne('\x00');
@@ -805,7 +726,7 @@ pub const Builder = struct {
         }
         if (cmd.color) |how| {
             array.writeMany("--color\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.emit_bin) |emit_bin| {
@@ -813,7 +734,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-bin=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-bin\x00");
@@ -829,7 +750,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-asm=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-asm\x00");
@@ -845,7 +766,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-llvm-ir=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-llvm-ir\x00");
@@ -861,7 +782,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-llvm-bc=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-llvm-bc\x00");
@@ -877,7 +798,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-h=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-h\x00");
@@ -893,7 +814,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-docs=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-docs\x00");
@@ -909,7 +830,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-analysis=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-analysis\x00");
@@ -925,7 +846,7 @@ pub const Builder = struct {
                 .yes => |yes_optional_arg| {
                     if (yes_optional_arg) |yes_arg| {
                         array.writeMany("-femit-implib=");
-                        array.writeAny(preset.reinterpret.print, yes_arg);
+                        array.writeAny(reinterpret_spec, yes_arg);
                         array.writeOne('\x00');
                     } else {
                         array.writeMany("-femit-implib\x00");
@@ -936,19 +857,19 @@ pub const Builder = struct {
                 },
             }
         }
-        if (cmd.cache_dir) |how| {
+        if (cmd.cache_root) |how| {
             array.writeMany("--cache-dir\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
-        if (cmd.global_cache_dir) |how| {
+        if (cmd.global_cache_root) |how| {
             array.writeMany("--global-cache-dir\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.zig_lib_dir) |how| {
             array.writeMany("--zig-lib-dir\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.enable_cache) {
@@ -956,17 +877,17 @@ pub const Builder = struct {
         }
         if (cmd.target) |how| {
             array.writeMany("-target\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.cpu) |how| {
             array.writeMany("-mcpu\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.code_model) |how| {
             array.writeMany("-mcmodel\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.red_zone) |red_zone| {
@@ -985,22 +906,22 @@ pub const Builder = struct {
         }
         if (cmd.exec_model) |how| {
             array.writeMany("-mexec-model\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.name) |how| {
             array.writeMany("--name\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.mode) |how| {
             array.writeMany("-O\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.main_pkg_path) |how| {
             array.writeMany("--main-pkg-path\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.pic) |pic| {
@@ -1124,57 +1045,57 @@ pub const Builder = struct {
         }
         if (cmd.fmt) |how| {
             array.writeMany("-ofmt\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.dirafter) |how| {
             array.writeMany("-dirafter\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.system) |how| {
             array.writeMany("-isystem\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.include) |how| {
             array.writeMany("-I\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.libc) |how| {
             array.writeMany("--libc\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.library) |how| {
             array.writeMany("--library\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.library_directory) |how| {
             array.writeMany("--library-directory\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.link_script) |how| {
             array.writeMany("--script\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.version_script) |how| {
             array.writeMany("--version-script\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.dynamic_linker) |how| {
             array.writeMany("--dynamic-linker\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.sysroot) |how| {
             array.writeMany("--sysroot\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.version) {
@@ -1182,14 +1103,14 @@ pub const Builder = struct {
         }
         if (cmd.entry) |how| {
             array.writeMany("--entry\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.soname) |soname| {
             switch (soname) {
                 .yes => |yes_arg| {
                     array.writeMany("-fsoname\x00");
-                    array.writeAny(preset.reinterpret.print, yes_arg);
+                    array.writeAny(reinterpret_spec, yes_arg);
                     array.writeOne('\x00');
                 },
                 .no => {
@@ -1213,7 +1134,7 @@ pub const Builder = struct {
         }
         if (cmd.rpath) |how| {
             array.writeMany("-rpath\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.each_lib_rpath) |each_lib_rpath| {
@@ -1239,7 +1160,7 @@ pub const Builder = struct {
         }
         if (cmd.compress_debug_sections) |how| {
             array.writeMany("--compress-debug-sections\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.gc_sections) |gc_sections| {
@@ -1251,45 +1172,44 @@ pub const Builder = struct {
         }
         if (cmd.stack) |how| {
             array.writeMany("--stack\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.image_base) |how| {
             array.writeMany("--image-base\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.macros) |how| {
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
         }
         if (cmd.modules) |how| {
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
         }
         if (cmd.dependencies) |how| {
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
         }
         if (cmd.cflags) |how| {
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
         }
         if (cmd.z) |how| {
             array.writeMany("-z\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.files) |how| {
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
         }
         array.writeFormat(builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
         array.undefine(1);
-        types.ModuleDependency.w_leader = true;
     }
     fn formatLength(builder: *Builder, target: *const Target) u64 {
-        const cmd: *const FormatCommand = target.fmt_cmd;
+        const cmd: *const tasks.FormatCommand = target.fmt_cmd;
         var len: u64 = 8;
         if (cmd.color) |how| {
             len +%= 8;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         if (cmd.stdin) {
@@ -1303,19 +1223,19 @@ pub const Builder = struct {
         }
         if (cmd.exclude) |how| {
             len +%= 10;
-            len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+            len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
             len +%= 1;
         }
         len +%= types.Path.formatLength(builder.sourceRootPath(target.root));
         len +%= 1;
         return len;
     }
-    fn formatWrite(builder: *Builder, target: *const Target, array: *ArgsString) void {
-        const cmd: *const FormatCommand = target.fmt_cmd;
+    fn formatWrite(builder: *Builder, target: *const Target, array: *types.Args) void {
+        const cmd: *const tasks.FormatCommand = target.fmt_cmd;
         array.writeMany("zig\x00fmt\x00");
         if (cmd.color) |how| {
             array.writeMany("--color\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         if (cmd.stdin) {
@@ -1329,16 +1249,16 @@ pub const Builder = struct {
         }
         if (cmd.exclude) |how| {
             array.writeMany("--exclude\x00");
-            array.writeAny(preset.reinterpret.print, how);
+            array.writeAny(reinterpret_spec, how);
             array.writeOne('\x00');
         }
         array.writeFormat(builder.sourceRootPath(target.root));
         array.writeMany("\x00\x00");
         array.undefine(1);
     }
-    pub fn build(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
-        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
-        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    pub fn build(builder: *Builder, allocator: *types.Allocator, target: *Target) sys.Call(.{
+        .throw = types.Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = types.Allocator.map_error_policy.abort ++ exec_error_policy.abort,
     }, void) {
         try meta.wrap(format(builder, allocator, target));
         if (!target.have(.build)) return;
@@ -1346,8 +1266,8 @@ pub const Builder = struct {
         target.do(.build);
         builder.depth +%= 1;
         try meta.wrap(invokeDependencies(builder, allocator, target));
-        var array: ArgsString = try meta.wrap(ArgsString.init(allocator, build_spec.options.max_command_line));
-        var build_args: ArgsPointers = try meta.wrap(ArgsPointers.init(allocator, build_spec.options.max_command_args));
+        var array: types.Args = try meta.wrap(types.Args.init(allocator, build_spec.options.max_command_line));
+        var build_args: types.Ptrs = try meta.wrap(types.Ptrs.init(allocator, build_spec.options.max_command_args));
         const bin_path: [:0]const u8 = target.binPath().relative.?;
         const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
         builder.buildWrite(target, &array);
@@ -1363,16 +1283,16 @@ pub const Builder = struct {
             builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
         }
     }
-    pub fn format(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
-        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
-        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    pub fn format(builder: *Builder, allocator: *types.Allocator, target: *Target) sys.Call(.{
+        .throw = types.Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = types.Allocator.map_error_policy.abort ++ exec_error_policy.abort,
     }, void) {
         if (!target.have(.fmt)) return;
         if (target.done(.fmt)) return;
         target.do(.fmt);
         try meta.wrap(invokeDependencies(builder, allocator, target));
-        var array: ArgsString = try meta.wrap(ArgsString.init(allocator, build_spec.options.max_command_line));
-        var format_args: ArgsPointers = try meta.wrap(ArgsPointers.init(allocator, build_spec.options.max_command_args));
+        var array: types.Args = try meta.wrap(types.Args.init(allocator, build_spec.options.max_command_line));
+        var format_args: types.Ptrs = try meta.wrap(types.Ptrs.init(allocator, build_spec.options.max_command_args));
         builder.formatWrite(target, &array);
         makeArgs(&array, &format_args);
         var format_time: time.TimeSpec = undefined;
@@ -1384,9 +1304,9 @@ pub const Builder = struct {
             builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
         }
     }
-    pub fn run(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
-        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
-        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    pub fn run(builder: *Builder, allocator: *types.Allocator, target: *Target) sys.Call(.{
+        .throw = types.Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = types.Allocator.map_error_policy.abort ++ exec_error_policy.abort,
     }, void) {
         if (!target.have(.run)) return;
         if (!target.have(.build)) return;
@@ -1397,7 +1317,7 @@ pub const Builder = struct {
         for (builder.run_args) |run_arg| {
             target.run_cmd.addRunArgument(allocator, run_arg);
         }
-        const rc: u8 = try meta.wrap(builder.system(target.run_cmd.args.referAllDefined(), &run_time));
+        const rc: u8 = try meta.wrap(builder.system(makeArgPtrs(allocator, target.run_cmd.args.referAllDefinedWithSentinel(0)), &run_time));
         if (rc != 0 or builder.depth <= build_spec.options.max_relevant_depth) {
             debug.runNotice(target.name, run_time, rc);
         }
@@ -1405,9 +1325,9 @@ pub const Builder = struct {
             builtin.proc.exitWithError(error.UnexpectedReturnCode, rc);
         }
     }
-    fn invokeDependencies(builder: *Builder, allocator: *Allocator, target: *Target) sys.Call(.{
-        .throw = Allocator.map_error_policy.throw ++ exec_error_policy.throw,
-        .abort = Allocator.map_error_policy.abort ++ exec_error_policy.abort,
+    fn invokeDependencies(builder: *Builder, allocator: *types.Allocator, target: *Target) sys.Call(.{
+        .throw = types.Allocator.map_error_policy.throw ++ exec_error_policy.throw,
+        .abort = types.Allocator.map_error_policy.abort ++ exec_error_policy.abort,
     }, void) {
         target.deps.head();
         while (target.deps.next()) |node| : (target.deps.node = node) {
@@ -1418,10 +1338,10 @@ pub const Builder = struct {
             }
         }
     }
-    pub fn addTarget(builder: *Builder, spec: TargetSpec, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) Allocator.allocate_payload(*Target) {
+    pub fn addTarget(builder: *Builder, spec: TargetSpec, allocator: *types.Allocator, name: [:0]const u8, pathname: [:0]const u8) types.Allocator.allocate_payload(*Target) {
         return builder.groups.left.this.addTarget(spec, allocator, name, pathname);
     }
-    pub fn addGroup(builder: *Builder, allocator: *Allocator, comptime name: [:0]const u8) Allocator.allocate_payload(*Group) {
+    pub fn addGroup(builder: *Builder, allocator: *types.Allocator, comptime name: [:0]const u8) types.Allocator.allocate_payload(*Group) {
         defer builder.groups.head();
         const ret: *Group = try meta.wrap(allocator.createIrreversible(Group));
         try meta.wrap(builder.groups.add(allocator, ret));
@@ -1432,7 +1352,7 @@ pub const Builder = struct {
     }
 };
 pub const TargetSpec = struct {
-    build: ?types.OutputMode = .exe,
+    build: ?tasks.OutputMode = .exe,
     run: bool = true,
     fmt: bool = false,
     mode: builtin.Mode = .Debug,
@@ -1445,7 +1365,7 @@ pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-    pub fn addTarget(group: *Group, spec: TargetSpec, allocator: *Allocator, name: [:0]const u8, pathname: [:0]const u8) Allocator.allocate_payload(*Target) {
+    pub fn addTarget(group: *Group, spec: TargetSpec, allocator: *types.Allocator, name: [:0]const u8, pathname: [:0]const u8) types.Allocator.allocate_payload(*Target) {
         const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
         const ret: *Target = allocator.createIrreversible(Target);
         ret.name = saveString(allocator, name);
@@ -1453,7 +1373,7 @@ pub const Group = struct {
         ret.deps = Target.DependencyList.init(allocator);
         group.targets.add(allocator, ret);
         if (spec.fmt) {
-            const fmt_cmd: *FormatCommand = allocator.createIrreversible(FormatCommand);
+            const fmt_cmd: *tasks.FormatCommand = allocator.createIrreversible(tasks.FormatCommand);
             ret.fmt_cmd = fmt_cmd;
             ret.give(.fmt);
         }
@@ -1467,7 +1387,7 @@ pub const Group = struct {
                 allocator,
                 &.{ "zig-out/bin/", name, ".s" },
             ));
-            const build_cmd: *BuildCommand = allocator.createIrreversible(BuildCommand);
+            const build_cmd: *tasks.BuildCommand = allocator.createIrreversible(tasks.BuildCommand);
             build_cmd.name = name;
             build_cmd.kind = kind;
             build_cmd.omit_frame_pointer = false;
@@ -1491,8 +1411,8 @@ pub const Group = struct {
             ret.build_cmd = build_cmd;
         }
         if (spec.run) {
-            const run_cmd: *RunCommand = allocator.createIrreversible(RunCommand);
-            run_cmd.args = ArgsPointers.init(allocator, build_spec.options.max_command_args);
+            const run_cmd: *tasks.RunCommand = allocator.createIrreversible(tasks.RunCommand);
+            run_cmd.args = types.Args.init(allocator, 65536);
             run_cmd.addRunArgument(allocator, ret.binPath());
             ret.give(.run);
             ret.run_cmd = run_cmd;
@@ -1505,9 +1425,9 @@ pub const Target = struct {
     name: [:0]const u8,
     root: [:0]const u8,
     descr: ?[:0]const u8 = null,
-    build_cmd: *BuildCommand,
-    fmt_cmd: *FormatCommand,
-    run_cmd: *RunCommand,
+    build_cmd: *tasks.BuildCommand,
+    fmt_cmd: *tasks.FormatCommand,
+    run_cmd: *tasks.RunCommand,
     deps: DependencyList,
     flags: u8 = 0,
 
@@ -1567,20 +1487,20 @@ pub const Target = struct {
     pub fn llvmBcPath(target: *const Target) types.Path {
         return target.build_cmd.emit_llvm_bc.?.yes.?;
     }
-    pub fn addFormat(target: *Target, allocator: *Allocator, fmt_cmd: FormatCommand) void {
-        target.fmt_cmd = allocator.duplicateIrreversible(FormatCommand, fmt_cmd);
+    pub fn addFormat(target: *Target, allocator: *types.Allocator, fmt_cmd: tasks.FormatCommand) void {
+        target.fmt_cmd = allocator.duplicateIrreversible(tasks.FormatCommand, fmt_cmd);
         target.give(.fmt);
     }
-    pub fn addBuild(target: *Target, allocator: *Allocator, build_cmd: BuildCommand) void {
-        target.build_cmd = allocator.duplicateIrreversible(BuildCommand, build_cmd);
+    pub fn addBuild(target: *Target, allocator: *types.Allocator, build_cmd: tasks.BuildCommand) void {
+        target.build_cmd = allocator.duplicateIrreversible(tasks.BuildCommand, build_cmd);
         target.give(.build);
     }
-    pub fn addRun(target: *Target, allocator: *Allocator, run_cmd: RunCommand) void {
-        target.run_cmd = allocator.duplicateIrreversible(RunCommand, run_cmd);
+    pub fn addRun(target: *Target, allocator: *types.Allocator, run_cmd: tasks.RunCommand) void {
+        target.run_cmd = allocator.duplicateIrreversible(tasks.RunCommand, run_cmd);
         target.run_cmd.addRunArgument(target.binPath());
         target.give(.run);
     }
-    pub fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
+    pub fn addFile(target: *Target, allocator: *types.Allocator, path: types.Path) void {
         if (target.build_cmd.files) |*files| {
             files.paths[files.len] = path;
             files.len +%= 1;
@@ -1589,29 +1509,29 @@ pub const Target = struct {
             target.addFile(allocator, path);
         }
     }
-    pub fn addFiles(target: *Target, allocator: *Allocator, paths: []const types.Path) void {
+    pub fn addFiles(target: *Target, allocator: *types.Allocator, paths: []const types.Path) void {
         for (paths) |path| {
             target.addFile(allocator, path);
         }
     }
-    pub fn dependOnBuild(target: *Target, allocator: *Allocator, dependency: *Target) void {
+    pub fn dependOnBuild(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
         target.deps.save(allocator, .{ .target = dependency, .tag = .build });
     }
-    pub fn dependOnRun(target: *Target, allocator: *Allocator, dependency: *Target) void {
+    pub fn dependOnRun(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
         target.deps.save(allocator, .{ .target = dependency, .tag = .run });
     }
-    pub fn dependOnFormat(target: *Target, allocator: *Allocator, dependency: *Target) void {
+    pub fn dependOnFormat(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
         target.deps.save(allocator, .{ .target = dependency, .tag = .fmt });
     }
-    pub fn dependOn(target: *Target, allocator: *Allocator, dependency: *Dependency) void {
+    pub fn dependOn(target: *Target, allocator: *types.Allocator, dependency: *Dependency) void {
         target.deps.create(allocator, .{ .target = dependency, .tag = .fmt });
     }
-    pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
+    pub fn dependOnObject(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
         target.dependOnBuild(allocator, dependency);
         target.addFile(allocator, dependency.binPath());
     }
 };
-fn countArgs(array: *ArgsString) u64 {
+fn countArgs(array: *type.Args) u64 {
     var count: u64 = 0;
     for (array.readAll()) |value| {
         if (value == 0) {
@@ -1620,7 +1540,7 @@ fn countArgs(array: *ArgsString) u64 {
     }
     return count +% 1;
 }
-fn makeArgs(array: *ArgsString, args: anytype) void {
+fn makeArgs(array: *types.Args, args: anytype) void {
     var idx: u64 = 0;
     for (array.readAll(), 0..) |c, i| {
         if (c == 0) {
@@ -1640,11 +1560,11 @@ pub fn GenericList(comptime T: type) type {
         pos: u64 = 0,
         const List = @This();
         const Node = struct { this: *T, next: *Node };
-        fn save(list: *List, allocator: *Allocator, value: T) Allocator.allocate_void {
+        fn save(list: *List, allocator: *types.Allocator, value: T) types.Allocator.allocate_void {
             list.tail();
             add(list, allocator, allocator.duplicateIrreversible(T, value));
         }
-        fn add(list: *List, allocator: *Allocator, value: *T) Allocator.allocate_void {
+        fn add(list: *List, allocator: *types.Allocator, value: *T) types.Allocator.allocate_void {
             list.tail();
             const node: *Node = allocator.createIrreversible(Node);
             list.node.next = node;
@@ -1674,7 +1594,7 @@ pub fn GenericList(comptime T: type) type {
                 list.node = list.node.next;
             }
         }
-        fn init(allocator: *Allocator) Allocator.allocate_payload(List) {
+        fn init(allocator: *types.Allocator) types.Allocator.allocate_payload(List) {
             const node: *Node = try meta.wrap(allocator.createIrreversible(Node));
             return .{ .left = node, .node = node };
         }
