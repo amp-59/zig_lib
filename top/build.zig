@@ -1317,7 +1317,8 @@ pub const Builder = struct {
         for (builder.run_args) |run_arg| {
             target.run_cmd.addRunArgument(allocator, run_arg);
         }
-        const rc: u8 = try meta.wrap(builder.system(makeArgPtrs(allocator, target.run_cmd.args.referAllDefinedWithSentinel(0)), &run_time));
+        const ptrs: [][*:0]u8 = makeArgPtrs(allocator, target.run_cmd.args.referAllDefinedWithSentinel(0));
+        const rc: u8 = try meta.wrap(builder.system(ptrs, &run_time));
         if (rc != 0 or builder.depth <= build_spec.options.max_relevant_depth) {
             debug.runNotice(target.name, run_time, rc);
         }
