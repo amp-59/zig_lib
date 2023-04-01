@@ -20,11 +20,9 @@ pub const State = enum(u8) {
     finished = 255,
 };
 pub const Task = enum(u8) {
-    format = 0,
-    build = 1,
-    run = 2,
+    build = 0,
+    run = 1,
 };
-
 pub const BuilderSpec = struct {
     options: Options = .{},
     logging: Logging = .{},
@@ -273,7 +271,14 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             root: [:0]const u8,
             comptime extra: anytype,
         ) Types.target_payload {
-            return builder.grps[0].addTarget(allocator, kind, name, root, extra);
+            const group: *Group = blk: {
+                if (builder.grps_len == 0) {
+                    break :blk builder.addGroup(allocator, "ungrouped");
+                } else {
+                    break :blk &builder.grps[0];
+                }
+            };
+            return group.addTarget(allocator, kind, name, root, extra);
         }
 
         pub fn init(
@@ -319,19 +324,19 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             .abort = types.Allocator.resize_error_policy.abort ++ decls.clock_spec.errors.abort ++ decls.map_spec.errors.abort,
         }, void) {
             if (types.thread_count == 0) {
-                doOperation(builder, allocator, target, task, depth);
+                executeCommand(builder, allocator, target, task, depth);
             } else {
                 var arena_index: types.AddressSpace.Index = 0;
                 while (arena_index != types.thread_count) : (arena_index +%= 1) {
                     if (thread_space.atomicSet(arena_index)) {
                         const stack_up_addr: u64 = types.ThreadSpace.high(arena_index);
                         const stack_ab_addr: u64 = stack_up_addr -% 4096;
-                        return proc.callClone(decls.clone_spec, stack_ab_addr, {}, doOperationThreaded, .{
+                        return proc.callClone(decls.clone_spec, stack_ab_addr, {}, executeCommandThreaded, .{
                             builder, address_space, thread_space, target, task, arena_index, depth,
                         });
                     }
                 }
-                doOperation(builder, allocator, target, task, depth);
+                executeCommand(builder, allocator, target, task, depth);
             }
         }
         pub fn acquireTargetLock(
@@ -381,29 +386,49 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             len +%= 1;
             return len;
         }
-        fn buildOperation(builder: *Builder, allocator: *types.Allocator, target: *Target, task: Task, depth: u64) bool {
-            _ = task;
+        fn runWrite(builder: *Builder, target: *Target) [:0]u8 {
+            for (builder.run_args) |run_arg| {
+                target.run_cmd.args.writeMany(meta.manyToSlice(run_arg));
+                target.run_cmd.args.writeOne(0);
+            }
+            return target.run_cmd.args.referAllDefinedWithSentinel(0);
+        }
+        fn runLength(builder: *Builder) u64 {
+            var len: u64 = 0;
+            for (builder.run_args) |run_arg| {
+                len +%= meta.manyToSlice(run_arg).len;
+                len +%= 1;
+            }
+            return len;
+        }
+        fn executeBuildCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) bool {
+            var build_time: time.TimeSpec = undefined;
             const save: types.Allocator.Save = allocator.save();
             defer allocator.restore(save);
-
             const bin_path: [:0]const u8 = target.binaryRelative(allocator);
             const root_path: types.Path = target.rootSourcePath(builder);
-
             const args: [:0]u8 = buildWrite(builder, target, allocator, root_path);
             const ptrs: [][*:0]u8 = makeArgPtrs(allocator, args);
-
             const old_size: u64 = builder.getFileSize(bin_path);
-
-            var cmd_time: time.TimeSpec = undefined;
-            const rc: u8 = try meta.wrap(builder.system(ptrs, &cmd_time));
-
+            const rc: u8 = try meta.wrap(builder.system(ptrs, &build_time));
             const new_size: u64 = builder.getFileSize(bin_path);
-            if (true or depth > spec.options.max_relevant_depth) {
-                debug.buildNotice(target.name, cmd_time, old_size, new_size);
+            if (depth > spec.options.max_relevant_depth) {
+                debug.buildNotice(target.name, build_time, old_size, new_size);
             }
             return rc == 0;
         }
-        fn doOperationThreaded(
+        fn executeRunCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) bool {
+            var run_time: time.TimeSpec = undefined;
+            builtin.assertEqual(State, target.lock.get(.build), .finished);
+            const args: [:0]u8 = runWrite(builder, target);
+            const ptrs: [][*:0]u8 = makeArgPtrs(allocator, args);
+            const rc: u8 = try meta.wrap(builder.system(ptrs, &run_time));
+            if (rc != 0 or depth <= spec.options.max_relevant_depth) {
+                debug.runNotice(target.name, run_time, rc);
+            }
+            return rc == 0;
+        }
+        fn executeCommandThreaded(
             builder: *Builder,
             address_space: *types.AddressSpace,
             thread_space: *types.ThreadSpace,
@@ -415,9 +440,8 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             var allocator: types.Allocator = types.Allocator.init(address_space, arena_index);
             defer allocator.deinit(address_space, arena_index);
             if (switch (task) {
-                .build => buildOperation(builder, &allocator, target, task, depth),
-                .format => unreachable,
-                .run => unreachable,
+                .build => executeBuildCommand(builder, &allocator, target, depth),
+                .run => executeRunCommand(builder, &allocator, target, depth),
             }) {
                 builtin.assert(target.lock.atomicTransform(task, .blocking, .finished));
                 builtin.assert(thread_space.atomicUnset(arena_index));
@@ -426,7 +450,7 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                 builtin.assert(thread_space.atomicUnset(arena_index));
             }
         }
-        fn doOperation(
+        fn executeCommand(
             builder: *Builder,
             allocator: *types.Allocator,
             target: *Target,
@@ -434,9 +458,8 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             depth: u64,
         ) void {
             if (switch (task) {
-                .build => buildOperation(builder, allocator, target, task, depth),
-                .format => unreachable,
-                .run => unreachable,
+                .build => executeBuildCommand(builder, allocator, target, depth),
+                .run => executeRunCommand(builder, allocator, target, depth),
             }) {
                 builtin.assert(target.lock.atomicTransform(task, .blocking, .finished));
             } else {
