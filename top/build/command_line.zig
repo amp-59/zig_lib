@@ -9,10 +9,14 @@ const reinterpret_spec: mem.ReinterpretSpec = blk: {
             .in = []const types.ModuleDependency,
             .out = types.ModuleDependencies,
         },
+        .{
+            .in = []const types.Path,
+            .out = types.Files,
+        },
     };
     break :blk tmp;
 };
-pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
+pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C)  u64 {
     var len: u64 = 0;
     if (cmd.watch) {
         len +%= 8;
