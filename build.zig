@@ -9,7 +9,6 @@ const build = srg.build;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const max_relevant_depth: u64 = 255;
 
