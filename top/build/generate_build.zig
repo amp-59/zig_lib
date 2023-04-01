@@ -7,7 +7,7 @@ const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./types.zig");
+const types = @import("./types2.zig");
 
 pub usingnamespace proc.start;
 
