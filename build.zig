@@ -1,5 +1,5 @@
 pub usingnamespace struct {
-    pub const build = if (false) @import("build/build-aux.zig").main else buildMain;
+    pub const build = if (true) @import("build/build-aux.zig").main else buildMain;
 };
 
 pub const srg = @import("./zig_lib.zig");
@@ -52,7 +52,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const pathsplit: *build.Target          = examples.addTarget(small_spec, allocator, "pathsplit",            "examples/pathsplit.zig");
     const declprint: *build.Target          = examples.addTarget(debug_spec, allocator, "declprint",            "examples/declprint.zig");
     const tests: *build.Group               = builder.addGroup(allocator,               "tests");
-    const build_test: *build.Target         = tests.addTarget(build_spec,   allocator,  "build_test",           "build_runner.zig");
+    // const build_test: *build.Target         = tests.addTarget(build_spec,   allocator,  "build_test",           "build_runner.zig");
     const builtin_test: *build.Target       = tests.addTarget(debug_spec,   allocator,  "builtin_test",         "top/builtin-test.zig");
     const meta_test: *build.Target          = tests.addTarget(debug_spec,   allocator,  "meta_test",            "top/meta-test.zig");
     const mem_test: *build.Target           = tests.addTarget(debug_spec,   allocator,  "mem_test",             "top/mem-test.zig");
@@ -67,8 +67,11 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const impl_test: *build.Target          = tests.addTarget(debug_spec,   allocator,  "impl_test",            "top/impl-test.zig");
     const size_test: *build.Target          = tests.addTarget(debug_spec,   allocator,  "size_test",            "test/size_per_config.zig");
     const container_test: *build.Target     = tests.addTarget(debug_spec,   allocator,  "container_test",       "top/container-test.zig");
-    const bg: *build.Group                  = builder.addGroup(allocator,               "buildgen");
-    const generate_build: *build.Target     = bg.addTarget(small_spec,      allocator,  "generate_build",       "top/build/generate_build.zig");
+    // const bg: *build.Group                  = builder.addGroup(allocator,               "buildgen");
+    const bg2: *build.Group                 = builder.addGroup(allocator,               "buildgen2");
+    // const generate_build: *build.Target     = bg.addTarget(small_spec,      allocator,  "generate_build",       "top/build/generate_build.zig");
+    const generate_build2: *build.Target    = bg2.addTarget(small_spec,     allocator,  "generate_build2",      "top/build/generate_build2.zig");
+    const build2_test: *build.Target        = tests.addTarget(build_spec,   allocator,  "build2_test",          "top/build2-test.zig");
 
     const mg_aux: *build.Group              = builder.addGroup(allocator,               "memgen_auxiliary");
     const mg_touch: *build.Target           = mg_aux.addTarget(small_spec,  allocator,  "mg_touch",             "top/mem/touch-aux.zig");
@@ -87,10 +90,9 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const generate_references: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_references",  "top/mem/reference.zig");
     const generate_containers: *build.Target    = mg.addTarget(gen_spec, allocator,         "generate_containers",  "top/mem/container.zig");
 
-    const threaded_builder_test: *build.Target  = tests.addTarget(build_spec, allocator,    "threaded_build_test",  "top/threaded_builder-test.zig");
 
     zig_program.dependOnObject(allocator,       c_program);
-    build_test.dependOnRun(allocator,           generate_build);
+    // build_test.dependOnRun(allocator,           generate_build);
     mg_new_type_specs.dependOnRun(allocator,    mg_touch);
     mg_new_type_specs.dependOnObject(allocator, mg_specs);
     mg_new_type_specs.dependOnObject(allocator, mg_techs);
@@ -106,10 +108,10 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     mg_container_impls.addFile(allocator,       mg_ctn_detail.binPath());
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
-    build_test.run_cmd.addRunArgument(allocator,    builder.zigExePath());
-    build_test.run_cmd.addRunArgument(allocator,    builder.buildRootPath());
-    build_test.run_cmd.addRunArgument(allocator,    builder.cacheDirPath());
-    build_test.run_cmd.addRunArgument(allocator,    builder.globalCacheDirPath());
+    // build_test.run_cmd.addRunArgument(allocator,    builder.zigExePath());
+    // build_test.run_cmd.addRunArgument(allocator,    builder.buildRootPath());
+    // build_test.run_cmd.addRunArgument(allocator,    builder.cacheDirPath());
+    // build_test.run_cmd.addRunArgument(allocator,    builder.globalCacheDirPath());
 
     c_program.build_cmd.link_libc = true;
     c_program.build_cmd.function_sections = true;
@@ -126,20 +128,20 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
 
     // zig fmt: on
     _ = .{
-        readdir,     mg_abstract_specs,
-        dynamic,     address_space,
-        treez,       threaded_builder_test,
-        itos,        allocators,
-        readelf,     thread_test,
-        pathsplit,   declprint,
-        meta_test,   builtin_test,
-        mem_test,    file_test,
-        list_test,   container_test,
-        mca,         serial_test,
-        catz,        fmt_test,
-        impl_test,   virtual_test,
-        algo_test,   hello,
-        render_test, size_test,
-        cleanup,
+        readdir,   mg_abstract_specs,
+        dynamic,   address_space,
+        treez,     build2_test,
+        itos,      allocators,
+        readelf,   thread_test,
+        pathsplit, declprint,
+        meta_test, builtin_test,
+        mem_test,  file_test,
+        list_test, container_test,
+        mca,       serial_test,
+        catz,      fmt_test,
+        impl_test, virtual_test,
+        algo_test, generate_build2,
+        hello,     render_test,
+        size_test, cleanup,
     };
 }
