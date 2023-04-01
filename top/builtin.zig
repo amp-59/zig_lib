@@ -56,7 +56,6 @@ pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: 
 }
 /// Attempt to match a return value against a set of error codes--aborting the
 /// program on success.
-/// This function is exceptional in this namespace for its use of system calls.
 pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     inline for (values) |value| {
         if (ret == @enumToInt(value)) {
