@@ -12,6 +12,7 @@ pub const RunCommand = struct {
     args: types.Args,
     pub fn addRunArgument(run_cmd: *RunCommand, allocator: *types.Allocator, any: anytype) void {
         run_cmd.args.appendAny(preset.reinterpret.fmt, allocator, any);
+        run_cmd.args.appendOne(allocator, 0);
     }
 };
 pub const BuildCommand = struct {
