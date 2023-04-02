@@ -17,10 +17,11 @@ const build = srg.build;
 const preset = srg.preset;
 const builtin = srg.builtin;
 
+pub usingnamespace proc.start;
+
 pub const message_style: [:0]const u8 =
     if (@hasDecl(root, "message_style")) root.message_style else "\x1b[2m";
 
-pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override =
     if (@hasDecl(root, "logging_override")) root.logging_override else .{
     .Success = null,
