@@ -218,18 +218,17 @@ pub const CFlags = struct {
     }
 };
 pub const Files = struct {
-    paths: []Path,
-    len: u64 = 0,
+    value: []const Path,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        for (format.paths[0..format.len]) |path| {
+        for (format.value) |path| {
             array.writeFormat(path);
             array.writeOne(0);
         }
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        for (format.paths[0..format.len]) |path| {
+        for (format.paths) |path| {
             len +%= path.formatLength();
             len +%= 1;
         }
