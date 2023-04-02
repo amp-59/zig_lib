@@ -103,13 +103,13 @@ pub const builder = opaque {
             },
             .path = .{},
             .map = .{},
-            .stat = .{},
             .unmap = .{},
             .clock = .{},
             .sleep = .{},
             .create = .{},
             .mkdir = .{},
             .close = .{},
+            .stat = .{},
         };
         pub const zen: build.BuilderSpec.Errors = .{
             .command = .{
