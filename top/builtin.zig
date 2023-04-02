@@ -1083,13 +1083,27 @@ pub const proc = struct {
 pub const debug = opaque {
     pub const itos = fmt.dec;
     const size: usize = 4096;
-    const about_exit_0_s: [:0]const u8 = about("exit");
-    const about_exit_1_s: [:0]const u8 = about_error_p0_s;
-    const about_exit_2_s: [:0]const u8 = about_fault_p0_s;
-    const about_fault_p0_s: [:0]const u8 = about("fault");
-    const about_error_p0_s: [:0]const u8 = about("error");
-    const about_fault_p1_s: [:0]const u8 = about(" assertion failed");
-    const about_error_p1_s: [:0]const u8 = about(" unexpected result");
+    pub const about_exit_0_s: [:0]const u8 = about("exit");
+    pub const about_exit_1_s: [:0]const u8 = about_error_p0_s;
+    pub const about_exit_2_s: [:0]const u8 = about_fault_p0_s;
+    pub const about_fault_p0_s: [:0]const u8 = blk: {
+        var lhs: [:0]const u8 = "fault";
+        lhs = config.message_prefix ++ lhs;
+        lhs = lhs ++ config.message_suffix;
+        const len: u64 = lhs.len;
+        lhs = "\x1b[91;1m" ++ lhs ++ config.message_no_style;
+        break :blk lhs ++ " " ** (config.message_indent - len);
+    };
+    pub const about_error_p0_s: [:0]const u8 = blk: {
+        var lhs: [:0]const u8 = "error";
+        lhs = config.message_prefix ++ lhs;
+        lhs = lhs ++ config.message_suffix;
+        const len: u64 = lhs.len;
+        lhs = "\x1b[91;1m" ++ lhs ++ config.message_no_style;
+        break :blk lhs ++ " " ** (config.message_indent - len);
+    };
+    pub const about_fault_p1_s: [:0]const u8 = about(" assertion failed");
+    pub const about_error_p1_s: [:0]const u8 = about(" unexpected result");
     pub fn about(comptime s: [:0]const u8) [:0]const u8 {
         var lhs: [:0]const u8 = s;
         lhs = config.message_prefix ++ lhs;
@@ -1103,10 +1117,10 @@ pub const debug = opaque {
         }
         return lhs ++ " " ** (config.message_indent - len);
     }
-    fn aboutFault(comptime T: type) []const u8 {
+    fn typeFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
     }
-    fn aboutError(comptime T: type) []const u8 {
+    fn typeError(comptime T: type) []const u8 {
         return about_error_p0_s ++ @typeName(T);
     }
     fn exitNotice(rc: u8) void {
@@ -1216,49 +1230,49 @@ pub const debug = opaque {
     fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = debug.subCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        const len: u64 = debug.subCausedOverflowString(T, typeFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
         proc.exit(2);
     }
     fn addCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = debug.addCausedOverflowString(T, aboutError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        const len: u64 = debug.addCausedOverflowString(T, typeError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logError(buf[0..len]);
         return error.AddCausedOverflow;
     }
     fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = debug.addCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        const len: u64 = debug.addCausedOverflowString(T, typeFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
         proc.exit(2);
     }
     fn mulCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = mulCausedOverflowString(T, aboutError(T), &buf, arg1, arg2);
+        const len: u64 = mulCausedOverflowString(T, typeError(T), &buf, arg1, arg2);
         logError(buf[0..len]);
         return error.MulCausedOverflow;
     }
     fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = mulCausedOverflowString(T, aboutFault(T), &buf, arg1, arg2);
+        const len: u64 = mulCausedOverflowString(T, typeFault(T), &buf, arg1, arg2);
         logFault(buf[0..len]);
         proc.exit(2);
     }
     fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, aboutError(T), &buf, arg1, arg2, result, remainder);
+        const len: u64 = exactDivisionWithRemainderString(T, typeError(T), &buf, arg1, arg2, result, remainder);
         logError(buf[0..len]);
         return error.DivisionWithRemainder;
     }
     fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, aboutFault(T), &buf, arg1, arg2, result, remainder);
+        const len: u64 = exactDivisionWithRemainderString(T, typeFault(T), &buf, arg1, arg2, result, remainder);
         logFault(buf[0..len]);
         proc.exit(2);
     }
@@ -1266,7 +1280,7 @@ pub const debug = opaque {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
-        const len: u64 = incorrectAlignmentString(T, aboutError(T), &buf, address, alignment, remainder);
+        const len: u64 = incorrectAlignmentString(T, typeError(T), &buf, address, alignment, remainder);
         logError(buf[0..len]);
         return error.IncorrectAlignment;
     }
@@ -1274,7 +1288,7 @@ pub const debug = opaque {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
-        const len: u64 = incorrectAlignmentString(T, aboutFault(T), &buf, address, alignment, remainder);
+        const len: u64 = incorrectAlignmentString(T, typeFault(T), &buf, address, alignment, remainder);
         logFault(buf[0..len]);
         proc.exit(2);
     }
@@ -1282,7 +1296,7 @@ pub const debug = opaque {
         @setCold(true);
         if (@typeInfo(T) == .Int) {
             var buf: [size]u8 = undefined;
-            const len: u64 = comparisonFailedString(T, aboutError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+            const len: u64 = comparisonFailedString(T, typeError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
             logError(buf[0..len]);
         }
         return error.UnexpectedValue;
@@ -1291,7 +1305,7 @@ pub const debug = opaque {
         @setCold(true);
         if (@typeInfo(T) == .Int) {
             var buf: [size]u8 = undefined;
-            var len: u64 = comparisonFailedString(T, aboutFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+            var len: u64 = comparisonFailedString(T, typeFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
             logFault(buf[0..len]);
         } else {
             logFault("assertion failed");
