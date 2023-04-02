@@ -8,6 +8,15 @@ pub const OutputMode = enum {
     lib,
     obj,
 };
+pub const AuxOutputMode = enum {
+    @"asm",
+    llvm_ir,
+    llvm_bc,
+    h,
+    docs,
+    analysis,
+    implib,
+};
 pub const RunCommand = struct {
     args: types.Args,
     pub fn addRunArgument(run_cmd: *RunCommand, allocator: *types.Allocator, any: anytype) void {
@@ -93,7 +102,7 @@ pub const BuildCommand = struct {
     dependencies: ?[]const types.ModuleDependency = null, // T2
     cflags: ?types.CFlags = null, // T3
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null, // T6
-    files: ?types.Files = null, // T3
+    files: ?[]const types.Path = null, // T2
     test_filter: ?[]const u8 = null, // T7
     test_name_prefix: ?[]const u8 = null, // T7
     test_cmd: bool = false, // T1
