@@ -16,7 +16,7 @@ const reinterpret_spec: mem.ReinterpretSpec = blk: {
     };
     break :blk tmp;
 };
-pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C)  u64 {
+pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
     var len: u64 = 0;
     if (cmd.watch) {
         len +%= 8;
