@@ -1503,11 +1503,11 @@ pub const Target = struct {
     }
     pub fn addFile(target: *Target, allocator: *types.Allocator, path: types.Path) void {
         if (target.build_cmd.files) |*files| {
-            files.paths[files.len] = path;
-            files.len +%= 1;
+            const buf: []types.Path = allocator.reallocateIrreversible(types.Path, @constCast(files.*), files.len +% 1);
+            buf[files.len] = path;
+            target.build_cmd.files = buf;
         } else {
-            target.build_cmd.files = .{ .paths = allocator.allocateIrreversible(types.Path, 128) };
-            target.addFile(allocator, path);
+            target.build_cmd.files = allocator.allocateIrreversible(types.Path, 1);
         }
     }
     pub fn addFiles(target: *Target, allocator: *types.Allocator, paths: []const types.Path) void {
