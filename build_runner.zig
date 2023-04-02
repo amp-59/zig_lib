@@ -122,14 +122,23 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
     _ = try meta.wrap(builder.addGroup(&allocator, "all"));
     try build_fn(&allocator, &builder);
     build.asmRewind(&builder);
-    var index: u64 = 0;
-    while (index != args.len) {
-        const name: [:0]const u8 = meta.manyToSlice(args[index]);
+    var idx: u64 = 0;
+    while (idx != args.len) {
+        const name: [:0]const u8 = meta.manyToSlice(args[idx]);
+        if (builtin.testEqualMemory([]const u8, name, "--")) {
+            builder.run_args = args[idx +% 1 ..];
+            break;
+        }
+        idx +%= 1;
+    }
+    const max_idx: u64 = idx;
+    idx = 0;
+    while (idx != max_idx) {
+        const name: [:0]const u8 = meta.manyToSlice(args[idx]);
         if (mach.testEqualMany8(name, "show")) {
             return showHelpAndCommands(&builder);
         }
-        if (mach.testEqualMany8(name, "--")) {
-            builder.run_args = args[index +% 1 ..];
+        if (builtin.testEqualMemory([]const u8, name, "--")) {
             break;
         }
         var groups: build.GroupList = builder.groups;
@@ -150,7 +159,7 @@ pub fn main(args_in: [][*:0]u8, vars: [][*:0]u8) !void {
             showHelpAndCommands(&builder);
             return error.CommandNotFound;
         }
-        index +%= 1;
+        idx +%= 1;
     }
 }
 fn invokeTargetGroup(builder: *build.Builder, allocator: *build.Allocator, groups: build.GroupList) !void {
