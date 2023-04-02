@@ -326,8 +326,8 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
             len +%= 21;
         }
     }
-    if (cmd.error_trace) |error_trace| {
-        if (error_trace) {
+    if (cmd.error_tracing) |error_tracing| {
+        if (error_tracing) {
             len +%= 14;
         } else {
             len +%= 17;
@@ -829,8 +829,8 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.
             array.writeMany("-fno-reference-trace\x00");
         }
     }
-    if (cmd.error_trace) |error_trace| {
-        if (error_trace) {
+    if (cmd.error_tracing) |error_tracing| {
+        if (error_tracing) {
             array.writeMany("-ferror-trace\x00");
         } else {
             array.writeMany("-fno-error-trace\x00");
