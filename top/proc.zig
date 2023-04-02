@@ -1045,7 +1045,7 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
 }
 const debug = opaque {
     const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
-    const about_fault_s: []const u8 = builtin.debug.about("fault");
+    const about_fault_s: []const u8 = builtin.debug.about_fault_p0_s;
     const about_opt_0_s: []const u8 = builtin.debug.about("opt");
     const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
     const about_fork_0_s: []const u8 = builtin.debug.about("fork");
