@@ -545,6 +545,11 @@ pub fn zero(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
+pub fn anyOpaque(comptime value: anytype) *const anyopaque {
+    const S: type = @TypeOf(value);
+    const T = [0:value]S;
+    return @typeInfo(T).Array.sentinel.?;
+}
 pub inline fn identity(any: anytype) @TypeOf(any) {
     return any;
 }
@@ -1091,7 +1096,7 @@ pub const debug = opaque {
         lhs = config.message_prefix ++ lhs;
         lhs = lhs ++ config.message_suffix;
         const len: u64 = lhs.len;
-        lhs = "\x1b[91;1m" ++ lhs ++ config.message_no_style;
+        lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
         break :blk lhs ++ " " ** (config.message_indent - len);
     };
     pub const about_error_p0_s: [:0]const u8 = blk: {
@@ -1099,7 +1104,7 @@ pub const debug = opaque {
         lhs = config.message_prefix ++ lhs;
         lhs = lhs ++ config.message_suffix;
         const len: u64 = lhs.len;
-        lhs = "\x1b[91;1m" ++ lhs ++ config.message_no_style;
+        lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
         break :blk lhs ++ " " ** (config.message_indent - len);
     };
     pub const about_fault_p1_s: [:0]const u8 = about(" assertion failed");
@@ -1361,6 +1366,7 @@ pub const debug = opaque {
         if (config.logging_general.Fault) write(buf);
     }
     pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
+        @setRuntimeSafety(false);
         var len: u64 = 0;
         len +%= writeMany(buf[len..], about_error_p0_s);
         len +%= about_error_p0_s.len;
@@ -1394,6 +1400,7 @@ pub const debug = opaque {
     }
     pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
         @setCold(true);
+        @setRuntimeSafety(false);
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
             logFaultAIO(&buf, &[_][]const u8{
@@ -1411,6 +1418,7 @@ pub const debug = opaque {
     }
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
+        @setRuntimeSafety(false);
         var buf: [1024]u8 = undefined;
         logFaultAIO(&buf, &[_][]const u8{
             debug.about_exit_1_s,        "sentinel mismatch: expected ",
@@ -1421,6 +1429,7 @@ pub const debug = opaque {
     }
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
+        @setRuntimeSafety(false);
         var buf: [1024]u8 = undefined;
         logFaultAIO(&buf, &[_][]const u8{
             debug.about_exit_1_s,      "start index ",
@@ -1769,10 +1778,12 @@ pub const fmt = opaque {
             len: u64,
             const Array = @This();
             fn writeOneBackwards(array: *Array, v: u8) void {
+                @setRuntimeSafety(false);
                 array.len -%= 1;
                 array.auto[array.len] = v;
             }
             pub fn readAll(array: *const Array) []const u8 {
+                @setRuntimeSafety(false);
                 return array.auto[array.len..];
             }
         };
@@ -2011,6 +2022,14 @@ pub const fmt = opaque {
     pub fn ixsize(value: isize) StaticString(isize, 16) {
         return hex(isize, value);
     }
+    pub fn nsec(value: u64) StaticString(u64, 10) {
+        @setRuntimeSafety(false);
+        var ret: StaticString(u64, 10) = ud64(value);
+        while (ret.auto.len - ret.len < 9) {
+            ret.writeOneBackwards('0');
+        }
+        return ret;
+    }
     fn Absolute(comptime Int: type) type {
         return @Type(.{ .Int = .{
             .bits = @max(@bitSizeOf(Int), 8),
@@ -2049,6 +2068,7 @@ pub const fmt = opaque {
         return @max(1, count);
     }
     pub fn toSymbol(comptime T: type, value: T, radix: u16) u8 {
+        @setRuntimeSafety(false);
         if (@bitSizeOf(T) < 8) {
             return toSymbol(u8, value, radix);
         }
