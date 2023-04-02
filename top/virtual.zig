@@ -31,7 +31,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub fn indexToShiftAmount(index: idx_type) Shift {
             return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
         }
-        pub fn get(bit_set: BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
@@ -56,7 +56,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub fn indexToShiftAmount(index: idx_type) Shift {
             return builtin.intCast(Shift, builtin.sub(idx_type, data_info.Int.bits -% 1, index));
         }
-        pub fn get(bit_set: BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             return bit_set.bits & bit_mask != 0;
         }
@@ -82,7 +82,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub fn indexToShiftAmount(index: idx_type) Shift {
             return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
         }
-        pub fn get(bit_set: BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
@@ -107,7 +107,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub fn indexToShiftAmount(index: idx_type) Shift {
             return builtin.intCast(Shift, builtin.sub(data_type, data_info.Int.bits -% 1, @enumToInt(index)));
         }
-        pub fn get(bit_set: BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
             const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
             return bit_set.bits & bit_mask != 0;
         }
@@ -130,7 +130,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         bytes: data_type = .{0} ** elements,
         pub const SafeSet: type = @This();
         const data_type: type = [elements]u8;
-        pub fn get(safe_set: SafeSet, index: idx_type) bool {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) bool {
             return safe_set.bytes[index] == 255;
         }
         pub fn set(safe_set: *SafeSet, index: idx_type) void {
@@ -169,7 +169,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         bytes: data_type = .{0} ** elements,
         pub const SafeSet: type = @This();
         const data_type: type = [elements]u8;
-        pub fn get(safe_set: SafeSet, index: idx_type) bool {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) bool {
             return safe_set.bytes[@enumToInt(index)] == 255;
         }
         pub fn set(safe_set: *SafeSet, index: idx_type) void {
@@ -209,8 +209,11 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         pub const SafeSet: type = @This();
         const data_type: type = [elements]val_type;
 
-        pub fn get(safe_set: SafeSet, index: idx_type) val_type {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) val_type {
             return safe_set.bytes[index];
+        }
+        pub fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
+            return &safe_set.bytes[index];
         }
         pub fn atomicTransform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
             return asm volatile (
@@ -234,15 +237,18 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         pub const SafeSet: type = @This();
         const data_type: type = [elements]val_type;
 
-        pub fn get(safe_set: SafeSet, index: idx_type) val_type {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) val_type {
             return safe_set.bytes[@enumToInt(index)];
         }
         pub fn transform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-            const ret: bool = safe_set.get(index) == if_state;
+            const ret: bool = safe_set.bytes[@enumToInt(index)] == if_state;
             if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
             return ret;
         }
-        pub fn atomicTransform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
+        pub fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
+            return &safe_set.bytes[index];
+        }
+        pub fn atomicTransform(safe_set: *volatile SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
             return asm volatile (
                 \\mov           %[if_state],    %al
                 \\mov           %[to_state],    %dl
@@ -270,7 +276,7 @@ fn GenericMultiSet(
         pub const MultiSet: type = @This();
         const is_tagged: bool = @typeInfo(spec.idx_type) == .Enum;
 
-        pub fn get(multi_set: MultiSet, comptime index: spec.idx_type) spec.val_type {
+        pub fn get(multi_set: *const MultiSet, comptime index: spec.idx_type) spec.val_type {
             return multi_set.fields[fieldIndex(index)].get(arenaIndex(index));
         }
         pub fn set(multi_set: *MultiSet, comptime index: spec.idx_type) void {
@@ -833,7 +839,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub const Index: type = spec.idx_type;
         pub const Value: type = spec.val_type;
         pub const addr_spec: RegularAddressSpaceSpec = spec;
-        pub fn get(address_space: *RegularAddressSpace, index: Index) Value {
+        pub fn get(address_space: *const RegularAddressSpace, index: Index) Value {
             return address_space.impl.get(index);
         }
         pub fn unset(address_space: *RegularAddressSpace, index: Index) bool {
@@ -909,7 +915,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub const Value: type = spec.val_type;
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
 
-        pub fn get(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+        pub fn get(address_space: *const DiscreteAddressSpace, comptime index: Index) bool {
             return address_space.impl.get(index);
         }
         pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
@@ -981,7 +987,7 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
         comptime low: fn () u64 = low,
         pub const ElementaryAddressSpace = @This();
         pub const addr_spec: ElementaryAddressSpaceSpec = spec;
-        pub fn get(address_space: *ElementaryAddressSpace) bool {
+        pub fn get(address_space: *const ElementaryAddressSpace) bool {
             return address_space.impl;
         }
         pub fn unset(address_space: *ElementaryAddressSpace) bool {
