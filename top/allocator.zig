@@ -3248,8 +3248,8 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
 }
 const special = opaque {
     fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
-        const mmap_prot: mem.Prot = spec.prot();
-        const mmap_flags: mem.Map = spec.flags();
+        const mmap_prot: mem.Prot = comptime spec.prot();
+        const mmap_flags: mem.Map = comptime spec.flags();
         const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
             if (logging.Acquire) {
@@ -3395,8 +3395,8 @@ const special = opaque {
     }
     pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
         const spec = AddressSpace.addr_spec;
-        const lb_addr: u64 = AddressSpace.low(index);
-        const up_addr: u64 = AddressSpace.high(index);
+        const lb_addr: u64 = comptime AddressSpace.low(index);
+        const up_addr: u64 = comptime AddressSpace.high(index);
         const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
         if (acquireStaticSet(AddressSpace, address_space, index)) {
             if (logging.Acquire) {
