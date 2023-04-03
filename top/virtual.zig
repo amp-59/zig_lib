@@ -833,7 +833,7 @@ fn Specs(comptime AddressSpace: type) type {
 ///     * Thread safety is all-or-nothing, which increases the metadata size
 ///       required by each arena from 1 to 8 bits.
 pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
-    return extern struct {
+    const Type = extern struct {
         impl: RegularAddressSpaceSpec.Implementation(spec) align(8) = defaultValue(spec),
         pub const RegularAddressSpace = @This();
         pub const Index: type = spec.idx_type;
@@ -898,6 +898,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub usingnamespace RegularTypes(RegularAddressSpace);
         pub usingnamespace GenericAddressSpace(RegularAddressSpace);
     };
+    return Type;
 }
 /// Discrete:
 /// Good:
@@ -908,7 +909,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
 ///     * Inversion is expensive.
 ///     * Constructing the bit set fields can be expensive at compile time.
 pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type {
-    return (extern struct {
+    const Type = extern struct {
         impl: DiscreteAddressSpaceSpec.Implementation(spec) = defaultValue(spec),
         pub const DiscreteAddressSpace = @This();
         pub const Index: type = spec.idx_type;
@@ -968,7 +969,8 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub usingnamespace Specs(DiscreteAddressSpace);
         pub usingnamespace DiscreteTypes(DiscreteAddressSpace);
         pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
-    });
+    };
+    return Type;
 }
 pub const ElementaryAddressSpaceSpec = struct {
     label: ?[]const u8 = null,
@@ -981,7 +983,7 @@ pub const ElementaryAddressSpaceSpec = struct {
 };
 /// Elementary:
 pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) type {
-    return struct {
+    const Type = struct {
         impl: bool = false,
         comptime high: fn () u64 = high,
         comptime low: fn () u64 = low,
@@ -1046,6 +1048,7 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
         pub usingnamespace RegularTypes(ElementaryAddressSpace);
         pub usingnamespace GenericAddressSpace(ElementaryAddressSpace);
     };
+    return Type;
 }
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
