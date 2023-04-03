@@ -126,7 +126,7 @@ pub fn concatEquPtr(comptime T: type, arg1: *[]const T, arg2: anytype) void {
     arg1.* = concat(T, arg1.*, @ptrCast(*const T, @alignCast(@alignOf(T), arg2)).*);
 }
 /// A wrapped value can be unwrapped using `try`
-pub fn wrap(any: anytype) blk: {
+pub inline fn wrap(any: anytype) blk: {
     const T: type = @TypeOf(any);
     if (@typeInfo(T) == .ErrorUnion) {
         break :blk T;
