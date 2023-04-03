@@ -735,13 +735,9 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
         };
         pub const debug = struct {
             const ChangedSize = fmt.ChangedBytesFormat(.{
-                .dec_style = dec_style,
-                .inc_style = inc_style,
+                .dec_style = "\x1b[92m-",
+                .inc_style = "\x1b[91m+",
             });
-            const new_style: [:0]const u8 = "\x1b[93m*";
-            const dec_style: [:0]const u8 = "\x1b[92m-";
-            const inc_style: [:0]const u8 = "\x1b[91m+";
-            const no_style: [:0]const u8 = "\x1b[0m";
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_state_s: [:0]const u8 = builtin.debug.about("state");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
@@ -817,9 +813,38 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                     "\n",
                 });
             }
+            pub fn writeAndWalk(target: *Target) void {
+                var buf0: [1024 * 1024]u8 = undefined;
+                var buf1: [4096]u8 = undefined;
+                mach.memcpy(&buf0, target.name.ptr, target.name.len);
+                var len: u64 = target.name.len;
+                len = writeAndWalkInternal(&buf0, len, &buf1, 0, target);
+                builtin.debug.logAlways(buf0[0..len]);
+            }
+            fn writeAndWalkInternal(buf0: *[1024 * 1024]u8, len0: u64, buf1: *[4096]u8, len1: u64, target: *Builder.Target) u64 {
+                @setRuntimeSafety(false);
+                const deps: []Builder.Dependency = target.dependencies();
+                var len: u64 = len0;
+                buf0[len] = '\n';
+                len = len +% 1;
+                for (deps, 0..) |dep, idx| {
+                    mach.memcpy(buf1[len1..].ptr, if (idx == deps.len -% 1) "  " else "| ", 2);
+                    mach.memcpy(buf0[len..].ptr, buf1, len1 +% 2);
+                    len = len +% len1 +% 2;
+                    mach.memcpy(buf0[len..].ptr, if (idx == deps.len -% 1) "\x08\x08`-> " else "\x08\x08|-> ", 6);
+                    len = len +% len1 +% 8;
+                    mach.memcpy(buf0[len..].ptr, dep.target.name.ptr, dep.target.name.len);
+                    len = len +% target.name.len;
+                    len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.target);
+                }
+                return len;
+            }
             pub fn builderCommandNotice(builder: *Builder) void {
                 @setRuntimeSafety(false);
                 const alignment: u64 = 8;
+                var buf0: [1024 * 1024]u8 = undefined;
+                var buf1: [4096]u8 = undefined;
+                var len: u64 = 0;
                 var name_max_width: u64 = 0;
                 for (builder.groups()) |*group| {
                     for (group.targets()) |*target| {
@@ -828,25 +853,27 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                 }
                 name_max_width += alignment;
                 name_max_width &= ~(alignment - 1);
-                var buf: [1024 * 1024]u8 = undefined;
-                var len: u64 = 0;
+                mach.memset(&buf1, ' ', 4);
                 for (builder.groups()) |*group| {
-                    len +%= builtin.debug.writeMulti(buf[len..], &.{ group.name, ":\n" });
-                    for (group.targets()) |target| {
-                        mach.memset(buf[len..].ptr, ' ', 4);
+                    len +%= builtin.debug.writeMulti(buf0[len..], &.{ group.name, ":\n" });
+                    for (group.targets()) |*target| {
+                        mach.memset(buf0[len..].ptr, ' ', 4);
                         len +%= 4;
-                        mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
+                        mach.memcpy(buf0[len..].ptr, target.name.ptr, target.name.len);
                         len +%= target.name.len;
                         const count: u64 = name_max_width - target.name.len;
-                        mach.memset(buf[len..].ptr, ' ', count);
+                        mach.memset(buf0[len..].ptr, ' ', count);
                         len +%= count;
-                        mach.memcpy(buf[len..].ptr, target.root.ptr, target.root.len);
+                        mach.memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
                         len +%= target.root.len;
-                        buf[len] = '\n';
-                        len +%= 1;
+                        mach.memcpy(buf0[len..].ptr, "\x1b[2m", 4);
+                        len +%= 4;
+                        len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
+                        mach.memcpy(buf0[len..].ptr, "\x1b[0m", 4);
+                        len +%= 4;
                     }
                 }
-                builtin.debug.logAlways(buf[0..len]);
+                builtin.debug.logAlways(buf0[0..len]);
             }
         };
     };
