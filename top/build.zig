@@ -180,6 +180,7 @@ pub const Builder = struct {
         return file.fstatAt(.{ .logging = spec.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
+        if (build_spec.options.max_command_line) |len| return len;
         const cmd: *const tasks.BuildCommand = target.build_cmd;
         var len: u64 = 4;
         len +%= 6 +% @tagName(cmd.kind).len +% 1;
@@ -200,6 +201,7 @@ pub const Builder = struct {
         array.undefine(1);
     }
     fn formatLength(builder: *Builder, target: *const Target) u64 {
+        if (build_spec.options.max_command_line) |len| return len;
         const cmd: *const tasks.FormatCommand = target.fmt_cmd;
         var len: u64 = 8;
         len +%= command_line.formatLength(cmd);
@@ -225,8 +227,8 @@ pub const Builder = struct {
         target.do(.build);
         builder.depth +%= 1;
         try meta.wrap(invokeDependencies(builder, allocator, target));
-        var array: types.Args = try meta.wrap(types.Args.init(allocator, build_spec.options.max_command_line));
-        var build_args: types.Ptrs = try meta.wrap(types.Ptrs.init(allocator, build_spec.options.max_command_args));
+        var array: types.Args = try meta.wrap(types.Args.init(allocator, buildLength(builder, target)));
+        var build_args: types.Ptrs = try meta.wrap(types.Ptrs.init(allocator, countArgs(&array)));
         const bin_path: [:0]const u8 = target.binPath().relative.?;
         const old_size: u64 = if (builder.stat(bin_path)) |st| st.size else 0;
         builder.buildWrite(target, &array);
@@ -250,8 +252,8 @@ pub const Builder = struct {
         if (target.done(.fmt)) return;
         target.do(.fmt);
         try meta.wrap(invokeDependencies(builder, allocator, target));
-        var array: types.Args = try meta.wrap(types.Args.init(allocator, build_spec.options.max_command_line));
-        var format_args: types.Ptrs = try meta.wrap(types.Ptrs.init(allocator, build_spec.options.max_command_args));
+        var array: types.Args = try meta.wrap(types.Args.init(allocator, formatLength(builder, target)));
+        var format_args: types.Ptrs = try meta.wrap(types.Ptrs.init(allocator, countArgs(&array)));
         builder.formatWrite(target, &array);
         makeArgs(&array, &format_args);
         var format_time: time.TimeSpec = undefined;
@@ -493,7 +495,7 @@ pub const Target = struct {
         target.addFile(allocator, dependency.binPath());
     }
 };
-fn countArgs(array: *type.Args) u64 {
+fn countArgs(array: *types.Args) u64 {
     var count: u64 = 0;
     for (array.readAll()) |value| {
         if (value == 0) {
