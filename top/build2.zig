@@ -459,8 +459,8 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             var allocator: types.Allocator = types.Allocator.init(address_space, arena_index);
             defer allocator.deinit(address_space, arena_index);
             if (switch (task) {
-                .build => executeBuildCommand(builder, &allocator, target, depth) catch false,
-                .run => executeRunCommand(builder, &allocator, target, depth) catch false,
+                .build => meta.wrap(executeBuildCommand(builder, &allocator, target, depth)) catch false,
+                .run => meta.wrap(executeRunCommand(builder, &allocator, target, depth)) catch false,
             }) {
                 builtin.assert(target.transform(task, .blocking, .finished));
             } else {
@@ -476,8 +476,8 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             depth: u64,
         ) !void {
             if (switch (task) {
-                .build => try executeBuildCommand(builder, allocator, target, depth),
-                .run => try executeRunCommand(builder, allocator, target, depth),
+                .build => try meta.wrap(executeBuildCommand(builder, allocator, target, depth)),
+                .run => try meta.wrap(executeRunCommand(builder, allocator, target, depth)),
             }) {
                 builtin.assert(target.transform(task, .blocking, .finished));
             } else {
