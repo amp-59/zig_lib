@@ -23,6 +23,8 @@ const modules: []const build.Module = &.{
     .{ .name = "env", .path = "./zig-cache/env.zig" },
 };
 
+pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+
 // zig fmt: off
 const debug_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = modules, .deps = deps };
 const safe_spec: build.TargetSpec =     .{ .mode = .ReleaseSafe,    .mods = modules, .deps = deps };
@@ -107,10 +109,11 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     mg_container_impls.addFile(allocator,       mg_ctn_detail.binPath());
     generate_containers.dependOnRun(allocator,  mg_container_impls);
     generate_references.dependOnRun(allocator,  mg_reference_impls);
-    // build_test.run_cmd.addRunArgument(allocator,    builder.zigExePath());
-    // build_test.run_cmd.addRunArgument(allocator,    builder.buildRootPath());
-    // build_test.run_cmd.addRunArgument(allocator,    builder.cacheDirPath());
-    // build_test.run_cmd.addRunArgument(allocator,    builder.globalCacheDirPath());
+
+    build2_test.run_cmd.addRunArgument(allocator,   builder.zigExePath());
+    build2_test.run_cmd.addRunArgument(allocator,   builder.buildRootPath());
+    build2_test.run_cmd.addRunArgument(allocator,   builder.cacheDirPath());
+    build2_test.run_cmd.addRunArgument(allocator,   builder.globalCacheDirPath());
 
     c_program.build_cmd.link_libc = true;
     c_program.build_cmd.function_sections = true;
