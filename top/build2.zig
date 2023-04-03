@@ -526,7 +526,12 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             len +%= 1;
             return len;
         }
-        fn executeBuildCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) !bool {
+        fn executeBuildCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) sys.Call(.{
+            .throw = spec.errors.command.fork.throw ++ spec.errors.command.execve.throw ++
+                spec.errors.command.waitpid.throw ++ spec.errors.clock.throw,
+            .abort = spec.errors.command.fork.abort ++ spec.errors.command.execve.abort ++
+                spec.errors.command.waitpid.abort ++ spec.errors.clock.throw,
+        }, bool) {
             var build_time: time.TimeSpec = undefined;
             const bin_path: [:0]const u8 = try meta.wrap(
                 target.binaryRelative(allocator),
@@ -549,7 +554,12 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             builtin.assert(target.transform(.run, .unavailable, .ready));
             return rc == 0;
         }
-        fn executeRunCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) !bool {
+        fn executeRunCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) sys.Call(.{
+            .throw = spec.errors.command.fork.throw ++ spec.errors.command.execve.throw ++
+                spec.errors.command.waitpid.throw ++ spec.errors.clock.throw,
+            .abort = spec.errors.command.fork.abort ++ spec.errors.command.execve.abort ++
+                spec.errors.command.waitpid.abort ++ spec.errors.clock.throw,
+        }, bool) {
             var run_time: time.TimeSpec = undefined;
             const args: [:0]u8 = builder.runWrite(target);
             const ptrs: [][*:0]u8 = try meta.wrap(
