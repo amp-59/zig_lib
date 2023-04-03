@@ -3,7 +3,7 @@ const mach = @import("../mach.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
 
-pub const arena_count: u64 = thread_count + 8;
+pub const arena_count: u64 = if (thread_count == 0) 4 else thread_count + 1;
 pub const thread_count: u64 = 16;
 pub const stack_aligned_bytes: u64 = 8 * 1024 * 1024;
 pub const arena_aligned_bytes: u64 = 8 * 1024 * 1024;
@@ -136,6 +136,7 @@ pub const ModuleDependencies = struct {
             }
             len +%= mod_dep.name.len +% 1;
         }
+        return len;
     }
 };
 pub const Macro = struct {
@@ -229,7 +230,7 @@ pub const Files = struct {
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
-        for (format.paths) |path| {
+        for (format.value) |path| {
             len +%= path.formatLength();
             len +%= 1;
         }
