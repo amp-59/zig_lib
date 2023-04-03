@@ -182,7 +182,7 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                 allocator: *types.Allocator,
                 builder: *Builder,
                 task: Task,
-                arena_index: ?types.AddressSpace.Index,
+                arena_index: types.AddressSpace.Index,
                 depth: u64,
             ) sys.Call(.{
                 .throw = types.Allocator.resize_error_policy.throw ++ decls.clock_spec.errors.throw ++ decls.map_spec.errors.throw ++
@@ -190,8 +190,8 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                 .abort = types.Allocator.resize_error_policy.abort ++ decls.clock_spec.errors.abort ++ decls.map_spec.errors.abort ++
                     decls.clone_spec.errors.abort ++ decls.sleep_spec.errors.abort,
             }, void) {
-                if (task == .run) {
-                    target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, depth);
+                if (task == .run and target.build_cmd.kind == .exe) {
+                    target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0);
                 }
                 if (target.transform(task, .ready, .blocking)) {
                     for (target.deps[0..target.deps_len]) |dep| {
