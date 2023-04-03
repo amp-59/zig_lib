@@ -106,7 +106,8 @@ fn testThreadSafeDiscrete() !void {
         try builtin.expect(thread_space.atomicTransform(thread_index, .working, .unset));
     }
 }
+
 pub fn main() !void {
-    try meta.wrap(testThreadSafeDiscrete());
+    try meta.wrap(testThreadSafeRegular());
     try meta.wrap(testThreadSafeDiscrete());
 }

@@ -1,13 +1,14 @@
+    .intel_syntax noprefix
     .section    .rodata.cst16,"aM",@progbits,16
     .p2align    4
 SPEC_0:
     .quad    4080
     .quad    4088
 SPEC_1:
-    .long    20516608
-    .long    0
-    .long    0
-    .long    0
+    .quad    20516608
+    .quad    0
+    .quad    0
+    .quad    0
     .text
 forwardToExecuteCloneThreaded:
     push            rbp
@@ -65,4 +66,3 @@ forwardToExecuteCloneThreaded:
     mov             rax, 60
     mov             rdi, 0
     syscall         # exit
-
