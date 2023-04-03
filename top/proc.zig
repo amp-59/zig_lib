@@ -354,7 +354,7 @@ pub const CloneSpec = struct {
     };
     const Specification = @This();
     const CLONE = sys.CLONE;
-    pub fn flags(comptime spec: CloneSpec) Clone {
+    pub inline fn flags(comptime spec: CloneSpec) Clone {
         var clone_flags: Clone = .{ .val = 0 };
         if (spec.options.address_space) {
             clone_flags.set(.vm);
@@ -386,16 +386,17 @@ pub const CloneSpec = struct {
         if (spec.options.io) {
             clone_flags.set(.io);
         }
+
         return clone_flags;
     }
     pub inline fn args(comptime spec: CloneSpec, stack_addr: u64) CloneArgs {
         return .{
             .flags = spec.flags(),
-            .child_tid_addr = builtin.add(u64, stack_addr, 0x1000 - 0x10),
-            .parent_tid_addr = builtin.add(u64, stack_addr, 0x1000 - 0x8),
+            .child_tid_addr = mach.add64(stack_addr, 0x1000 - 0x10),
+            .parent_tid_addr = mach.add64(stack_addr, 0x1000 - 0x8),
             .stack_addr = stack_addr,
             .stack_len = 0x1000,
-            .tls_addr = builtin.add(u64, stack_addr, 0x8),
+            .tls_addr = mach.add64(stack_addr, 0x8),
         };
     }
 };
@@ -642,6 +643,7 @@ const static = opaque {
     var stack_addr: u64 = 0;
 };
 pub noinline fn callMain() noreturn {
+    @setRuntimeSafety(false);
     @setAlignStack(16);
     if (builtin.zig.output_mode != .Exe) {
         unreachable;
@@ -804,10 +806,10 @@ pub noinline fn callClone(
         unreachable;
     }
     if (spec.errors.throw.len != 0) {
-        if (rc < 0) return builtin.zigErrorThrow(sys.ErrorCode, spec.errors.throw, rc);
+        if (rc < 0) try builtin.zigErrorThrow(sys.ErrorCode, spec.errors.throw, rc);
     }
     if (spec.errors.abort.len != 0) {
-        if (rc < 0) return builtin.zigErrorAbort(sys.ErrorCode, spec.errors.abort, rc);
+        if (rc < 0) builtin.zigErrorAbort(sys.ErrorCode, spec.errors.abort, rc);
     }
     if (spec.return_type == void) {
         return;
