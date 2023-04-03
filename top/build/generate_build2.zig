@@ -7,7 +7,7 @@ const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const preset = @import("../preset.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./types.zig");
+const types = @import("./types2.zig");
 
 pub usingnamespace proc.start;
 
@@ -257,9 +257,9 @@ pub const BuildCommandOptions = opaque {
         .string = "-freference-trace",
         .and_no = &.{ .string = "-fno-reference-trace" },
     };
-    pub const error_trace: OptionSpec = .{
-        .string = "-ferror-trace",
-        .and_no = &.{ .string = "-fno-error-trace" },
+    pub const error_tracing: OptionSpec = .{
+        .string = "-ferror-tracing",
+        .and_no = &.{ .string = "-fno-error-tracing" },
     };
     pub const single_threaded: OptionSpec = .{
         .string = "-fsingle-threaded",
