@@ -10,9 +10,10 @@ const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
 const tasks = @import("./build/tasks.zig");
-const command_line = @import("./build/command_line.zig");
 
 pub const types = @import("./build/types2.zig");
+pub const command_line = @import("./build/command_line.zig");
+
 pub const State = enum(u8) {
     unavailable = 0,
     failed = 1,
