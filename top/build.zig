@@ -6,7 +6,7 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
 const time = @import("./time.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const types = @import("./build/types2.zig");
 const tasks = @import("./build/tasks.zig");
@@ -16,9 +16,16 @@ comptime {
 pub usingnamespace types;
 
 const reinterpret_spec: mem.ReinterpretSpec = blk: {
-    var tmp: mem.ReinterpretSpec = preset.reinterpret.print;
+    var tmp: mem.ReinterpretSpec = spec.reinterpret.print;
     tmp.composite.map = &.{
-        .{ .in = []const types.ModuleDependency, .out = types.ModuleDependencies },
+        .{
+            .in = []const types.ModuleDependency,
+            .out = types.ModuleDependencies,
+        },
+        .{
+            .in = []const types.Path,
+            .out = types.Files,
+        },
     };
     break :blk tmp;
 };
@@ -83,8 +90,8 @@ fn argsPointers(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
 }
 const build_spec: BuilderSpec = .{
     .options = .{},
-    .errors = preset.builder.errors.noexcept,
-    .logging = preset.builder.logging.silent,
+    .errors = spec.builder.errors.noexcept,
+    .logging = spec.builder.logging.silent,
 };
 pub const Builder = struct {
     paths: Paths,
@@ -184,7 +191,7 @@ pub const Builder = struct {
         };
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-        return file.fstatAt(.{ .logging = preset.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
+        return file.fstatAt(.{ .logging = spec.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const tasks.BuildCommand = target.build_cmd;
@@ -1339,8 +1346,8 @@ pub const Builder = struct {
             }
         }
     }
-    pub fn addTarget(builder: *Builder, spec: TargetSpec, allocator: *types.Allocator, name: [:0]const u8, pathname: [:0]const u8) types.Allocator.allocate_payload(*Target) {
-        return builder.groups.left.this.addTarget(spec, allocator, name, pathname);
+    pub fn addTarget(builder: *Builder, target_spec: TargetSpec, allocator: *types.Allocator, name: [:0]const u8, pathname: [:0]const u8) types.Allocator.allocate_payload(*Target) {
+        return builder.groups.left.this.addTarget(target_spec, allocator, name, pathname);
     }
     pub fn addGroup(builder: *Builder, allocator: *types.Allocator, comptime name: [:0]const u8) types.Allocator.allocate_payload(*Group) {
         defer builder.groups.head();
@@ -1366,19 +1373,19 @@ pub const Group = struct {
     name: [:0]const u8,
     targets: TargetList,
     builder: *Builder,
-    pub fn addTarget(group: *Group, spec: TargetSpec, allocator: *types.Allocator, name: [:0]const u8, pathname: [:0]const u8) types.Allocator.allocate_payload(*Target) {
-        const mode: builtin.Mode = group.builder.options.mode orelse spec.mode;
+    pub fn addTarget(group: *Group, target_spec: TargetSpec, allocator: *types.Allocator, name: [:0]const u8, pathname: [:0]const u8) types.Allocator.allocate_payload(*Target) {
+        const mode: builtin.Mode = group.builder.options.mode orelse target_spec.mode;
         const ret: *Target = allocator.createIrreversible(Target);
         ret.name = saveString(allocator, name);
         ret.root = saveString(allocator, pathname);
         ret.deps = Target.DependencyList.init(allocator);
         group.targets.add(allocator, ret);
-        if (spec.fmt) {
+        if (target_spec.fmt) {
             const fmt_cmd: *tasks.FormatCommand = allocator.createIrreversible(tasks.FormatCommand);
             ret.fmt_cmd = fmt_cmd;
             ret.give(.fmt);
         }
-        if (spec.build) |kind| {
+        if (target_spec.build) |kind| {
             const bin_path: types.Path = group.builder.path(concatStrings(allocator, switch (kind) {
                 .exe => &.{ "zig-out/bin/", name },
                 .obj => &.{ "zig-out/bin/", name, ".o" },
@@ -1400,10 +1407,10 @@ pub const Group = struct {
             build_cmd.compiler_rt = false;
             build_cmd.strip = group.builder.options.strip;
             build_cmd.image_base = 0x10000;
-            build_cmd.modules = spec.mods;
-            build_cmd.dependencies = spec.deps;
+            build_cmd.modules = target_spec.mods;
+            build_cmd.dependencies = target_spec.deps;
             build_cmd.mode = mode;
-            build_cmd.macros = spec.macros;
+            build_cmd.macros = target_spec.macros;
             build_cmd.reference_trace = true;
             build_cmd.main_pkg_path = group.builder.paths.build_root;
             build_cmd.emit_bin = if (group.builder.options.emit_bin) .{ .yes = bin_path } else null;
@@ -1411,7 +1418,7 @@ pub const Group = struct {
             ret.give(.build);
             ret.build_cmd = build_cmd;
         }
-        if (spec.run) {
+        if (target_spec.run) {
             const run_cmd: *tasks.RunCommand = allocator.createIrreversible(tasks.RunCommand);
             run_cmd.args = types.Args.init(allocator, 65536);
             run_cmd.addRunArgument(allocator, ret.binPath());
