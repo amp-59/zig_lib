@@ -498,8 +498,8 @@ pub const Builder = struct {
                 len +%= 21;
             }
         }
-        if (cmd.error_trace) |error_trace| {
-            if (error_trace) {
+        if (cmd.error_tracing) |error_tracing| {
+            if (error_tracing) {
                 len +%= 14;
             } else {
                 len +%= 17;
@@ -1008,11 +1008,11 @@ pub const Builder = struct {
                 array.writeMany("-fno-reference-trace\x00");
             }
         }
-        if (cmd.error_trace) |error_trace| {
-            if (error_trace) {
-                array.writeMany("-ferror-trace\x00");
+        if (cmd.error_tracing) |error_tracing| {
+            if (error_tracing) {
+                array.writeMany("-ferror-tracing\x00");
             } else {
-                array.writeMany("-fno-error-trace\x00");
+                array.writeMany("-fno-error-tracing\x00");
             }
         }
         if (cmd.single_threaded) |single_threaded| {
@@ -1392,11 +1392,11 @@ pub const Group = struct {
             build_cmd.name = name;
             build_cmd.kind = kind;
             build_cmd.omit_frame_pointer = false;
-            build_cmd.single_threaded = true;
             build_cmd.static = true;
             build_cmd.enable_cache = true;
             build_cmd.gc_sections = kind == .exe;
             build_cmd.function_sections = true;
+            build_cmd.error_tracing = false;
             build_cmd.compiler_rt = false;
             build_cmd.strip = group.builder.options.strip;
             build_cmd.image_base = 0x10000;
