@@ -16,6 +16,7 @@ pub const preset = @import("./top/preset.zig");
 pub const thread = @import("./top/thread.zig");
 pub const serial = @import("./top/serial.zig");
 pub const build = @import("./top/build.zig");
+pub const build2 = @import("./top/build2.zig");
 pub const testing = @import("./top/testing.zig");
 pub const virtual = @import("./top/virtual.zig");
 pub const abstract = @import("./top/abstract.zig");
