@@ -9,9 +9,10 @@ const proc = @import("./proc.zig");
 const preset = @import("./preset.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
-const types = @import("./build/types2.zig");
 const tasks = @import("./build/tasks.zig");
 const command_line = @import("./build/command_line.zig");
+
+pub const types = @import("./build/types2.zig");
 pub const State = enum(u8) {
     unavailable = 0,
     failed = 1,
@@ -30,7 +31,7 @@ pub const BuilderSpec = struct {
     pub const Options = struct {
         max_command_line: u64 = 65536,
         max_command_args: u64 = 1024,
-        max_relevant_depth: u64 = 2,
+        max_relevant_depth: u64 = 255,
     };
     pub const Logging = packed struct {
         command: proc.CommandSpec.Logging = .{},
