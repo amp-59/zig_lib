@@ -8,9 +8,19 @@ pub const OutputMode = enum {
     lib,
     obj,
 };
+pub const AuxOutputMode = enum {
+    @"asm",
+    llvm_ir,
+    llvm_bc,
+    h,
+    docs,
+    analysis,
+    implib,
+};
 pub const RunCommand = struct {
     args: types.Args,
     pub fn addRunArgument(run_cmd: *RunCommand, allocator: *types.Allocator, any: anytype) void {
         run_cmd.args.appendAny(preset.reinterpret.fmt, allocator, any);
+        run_cmd.args.appendOne(allocator, 0);
     }
 };
