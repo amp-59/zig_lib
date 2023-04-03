@@ -7,7 +7,7 @@ const fmt = @import("./fmt.zig");
 const lit = @import("./lit.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 
 fn arrayOfCharsLength(s: []const u8) u64 {
@@ -233,7 +233,7 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
 }
 
 const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, blk: {
-    var tmp: mem.ReinterpretSpec = preset.reinterpret.fmt;
+    var tmp: mem.ReinterpretSpec = spec.reinterpret.fmt;
     tmp.integral = .{ .format = .dec };
     break :blk tmp;
 });
@@ -251,9 +251,9 @@ pub fn printN(comptime n: usize, any: anytype) void {
 const Static = struct {
     const Allocator = mem.GenericArenaAllocator(.{
         .arena_index = 48,
-        .errors = preset.allocator.errors.noexcept,
-        .logging = preset.allocator.logging.silent,
-        .AddressSpace = preset.address_space.regular_128,
+        .errors = spec.allocator.errors.noexcept,
+        .logging = spec.allocator.logging.silent,
+        .AddressSpace = spec.address_space.regular_128,
     });
     const Array = Allocator.StructuredVector(u8);
     var address_space: Allocator.allocator_spec.AddressSpace = .{};

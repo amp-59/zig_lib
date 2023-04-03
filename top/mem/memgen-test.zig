@@ -4,7 +4,7 @@ const fmt = gen.fmt;
 const proc = gen.proc;
 const file = gen.file;
 const meta = gen.meta;
-const preset = gen.preset;
+const spec = gen.spec;
 const serial = gen.serial;
 const builtin = gen.builtin;
 const testing = gen.testing;
@@ -15,7 +15,7 @@ const attr = @import("./attr.zig");
 pub usingnamespace proc.start;
 
 pub const render_spec = .{ .radix = 16 };
-pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 pub const runtime_assertions: bool = false;
 

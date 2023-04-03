@@ -12,15 +12,15 @@ const proc = srg.proc;
 const mach = srg.mach;
 const meta = srg.meta;
 const build = srg.build2;
-const preset = srg.preset;
+const spec = srg.spec;
 
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = false;
 
 const Builder = build.types.GenericBuilder(.{
-    .errors = preset.builder.errors.noexcept,
-    .logging = preset.builder.logging.silent,
+    .errors = spec.builder.errors.noexcept,
+    .logging = spec.builder.logging.silent,
 });
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {

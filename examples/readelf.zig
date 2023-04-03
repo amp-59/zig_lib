@@ -8,7 +8,7 @@ const time = srg.time;
 const meta = srg.meta;
 const mach = srg.mach;
 const proc = srg.proc;
-const preset = srg.preset;
+const spec = srg.spec;
 const build = srg.build;
 const builtin = srg.builtin;
 
@@ -22,7 +22,7 @@ pub const logging_default: builtin.Logging.Default = .{
     .Error = true,
     .Fault = true,
 };
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 
 const PrimaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 24 });
 const SecondaryAllocator = mem.GenericArenaAllocator(.{ .arena_index = 32 });
@@ -54,7 +54,7 @@ const so_open_spec: file.OpenSpec = .{
     .logging = .{},
 };
 const so_map_spec: file.MapSpec = .{
-    .options = preset.mmap.options.object,
+    .options = spec.mmap.options.object,
     .logging = .{},
 };
 const close_spec: file.CloseSpec = .{
@@ -315,7 +315,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0
         }
     };
     var so_path: StaticPath = tmp_dir_path;
-    so_path.writeAny(preset.reinterpret.fmt, .{ "/elf", fmt.ux16(random.readOne(u16)), ".so" });
+    so_path.writeAny(spec.reinterpret.fmt, .{ "/elf", fmt.ux16(random.readOne(u16)), ".so" });
 
     if (options.direct_lookup) {
         if (args.len > 2) {
@@ -323,7 +323,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0
         }
     } else if (options.jit_mode) {
         var src_path: StaticPath = tmp_dir_path;
-        src_path.writeAny(preset.reinterpret.fmt, .{ "/src", fmt.ux16(random.readOne(u16)), ".zig" });
+        src_path.writeAny(spec.reinterpret.fmt, .{ "/src", fmt.ux16(random.readOne(u16)), ".zig" });
         const fd: u64 = try file.create(.{ .options = .{ .exclusive = true }, .logging = .{} }, src_path.readAllWithSentinel(0));
         defer {
             file.close(close_spec, fd);
@@ -350,7 +350,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0
         try compile(vars, src_path.readAllWithSentinel(0), so_path.readAllWithSentinel(0));
         const dlfn: *fn () callconv(.C) u64 = try load(so_path.readAllWithSentinel(0), "__call", *fn () callconv(.C) u64);
         const result: u64 = @call(.auto, dlfn, .{});
-        result_array.writeAny(preset.reinterpret.fmt, .{ '\n', fn_name, ": ", fmt.ud64(result), "\n\n" });
+        result_array.writeAny(spec.reinterpret.fmt, .{ '\n', fn_name, ": ", fmt.ud64(result), "\n\n" });
     } else {
         switch (args.len) {
             1 => {
@@ -362,7 +362,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0
                 }
                 const dlfn: *fn () callconv(.C) u64 = try load(so_path.readAllWithSentinel(0), "relativeJumpA", *fn () callconv(.C) u64);
                 const result: u64 = dlfn();
-                result_array.writeAny(preset.reinterpret.fmt, .{ fmt.ud64(result), '\n' });
+                result_array.writeAny(spec.reinterpret.fmt, .{ fmt.ud64(result), '\n' });
             },
             2 => {
                 try file.write(2, "test command usage: <zig_source_with_exports> <name_of_exported_function> [function args ... ]\n");
@@ -378,7 +378,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0
                 }
                 const dlfn: *fn () callconv(.C) u64 =
                     try load(so_path.readAllWithSentinel(0), fn_name, *fn () callconv(.C) u64);
-                result_array.writeAny(preset.reinterpret.fmt, .{ fmt.ud64(dlfn()), '\n' });
+                result_array.writeAny(spec.reinterpret.fmt, .{ fmt.ud64(dlfn()), '\n' });
             },
             4 => {
                 const src_root: [:0]const u8 = meta.manyToSlice(args[1]);
@@ -394,7 +394,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0
                 const dlfn: *fn (u64) callconv(.C) u64 =
                     try load(so_path.readAllWithSentinel(0), fn_name, *fn (u64) callconv(.C) u64);
                 const result: u64 = dlfn(arg0);
-                result_array.writeAny(preset.reinterpret.fmt, .{ fmt.ud64(result), '\n' });
+                result_array.writeAny(spec.reinterpret.fmt, .{ fmt.ud64(result), '\n' });
             },
             5 => {
                 const src_root: [:0]const u8 = meta.manyToSlice(args[1]);
@@ -412,7 +412,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8, vars: [][*:0
                 const dlfn: *fn (u64, u64) callconv(.C) u64 =
                     try load(so_path.readAllWithSentinel(0), fn_name, *fn (u64, u64) callconv(.C) u64);
                 const result: u64 = dlfn(arg0, arg1);
-                result_array.writeAny(preset.reinterpret.fmt, .{ fmt.ud64(result), '\n' });
+                result_array.writeAny(spec.reinterpret.fmt, .{ fmt.ud64(result), '\n' });
             },
             else => {},
         }

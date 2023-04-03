@@ -1,7 +1,7 @@
 const mach = @import("../mach.zig");
 const file = @import("../file.zig");
 const proc = @import("../proc.zig");
-const preset = @import("../preset.zig");
+const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 
 const build = @import("./build-template.zig");
@@ -126,8 +126,8 @@ export fn targetErrorInternal(builder: *build.Builder, arg: [*:0]const u8, arg_l
     builtin.debug.write(buf[0..len]);
 }
 const Builder = build.GenericBuilder(.{
-    .errors = preset.builder.errors.noexcept,
-    .logging = preset.builder.logging.silent,
+    .errors = spec.builder.errors.noexcept,
+    .logging = spec.builder.logging.silent,
 });
 export fn forwardToExecuteCloneThreaded(
     builder: *Builder,

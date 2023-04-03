@@ -5,8 +5,8 @@ pub usingnamespace struct {
 pub const srg = @import("./zig_lib.zig");
 const mem = srg.mem;
 const meta = srg.meta;
+const spec = srg.spec;
 const build = srg.build;
-const preset = srg.preset;
 const builtin = srg.builtin;
 
 pub const runtime_assertions: bool = false;
@@ -23,7 +23,7 @@ const modules: []const build.Module = &.{
     .{ .name = "env", .path = "./zig-cache/env.zig" },
 };
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 // zig fmt: off
 const debug_spec: build.TargetSpec =    .{ .mode = .Debug,          .mods = modules, .deps = deps };
@@ -68,9 +68,7 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
     const impl_test: *build.Target          = tests.addTarget(debug_spec,   allocator,  "impl_test",            "top/impl-test.zig");
     const size_test: *build.Target          = tests.addTarget(debug_spec,   allocator,  "size_test",            "test/size_per_config.zig");
     const container_test: *build.Target     = tests.addTarget(debug_spec,   allocator,  "container_test",       "top/container-test.zig");
-    // const bg: *build.Group                  = builder.addGroup(allocator,               "buildgen");
     const bg2: *build.Group                 = builder.addGroup(allocator,               "buildgen2");
-    // const generate_build: *build.Target     = bg.addTarget(small_spec,      allocator,  "generate_build",       "top/build/generate_build.zig");
     const generate_build2: *build.Target    = bg2.addTarget(small_spec,     allocator,  "generate_build2",      "top/build/generate_build2.zig");
     const build2_test: *build.Target        = tests.addTarget(build_spec,   allocator,  "build2_test",          "top/build2-test.zig");
 
@@ -93,7 +91,6 @@ pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
 
 
     zig_program.dependOnObject(allocator,       c_program);
-    // build_test.dependOnRun(allocator,           generate_build);
     mg_new_type_specs.dependOnRun(allocator,    mg_touch);
     mg_new_type_specs.dependOnObject(allocator, mg_specs);
     mg_new_type_specs.dependOnObject(allocator, mg_techs);

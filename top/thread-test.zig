@@ -8,13 +8,13 @@ const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const time = @import("./time.zig");
 const thread = @import("./thread.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const virtual = @import("./virtual.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 const discrete_list: []const mem.Arena = meta.slice(mem.Arena, .{
     .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },

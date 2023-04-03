@@ -2,7 +2,7 @@ const gen = @import("./gen.zig");
 const fmt = gen.fmt;
 const mem = gen.mem;
 const proc = gen.proc;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 const testing = gen.testing;
 
@@ -28,12 +28,12 @@ const Allocator = mem.GenericArenaAllocator(.{
             .lb_addr = 0x40000000,
             .up_addr = 0x50000000,
         }},
-        .logging = preset.address_space.logging.silent,
-        .errors = preset.address_space.errors.noexcept,
+        .logging = spec.address_space.logging.silent,
+        .errors = spec.address_space.errors.noexcept,
     }),
-    .options = preset.allocator.options.small,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
+    .options = spec.allocator.options.small,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
 });
 const Array = mem.StaticString(1024 * 1024);
 

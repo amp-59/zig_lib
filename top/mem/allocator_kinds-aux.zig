@@ -2,13 +2,13 @@ const gen = @import("./gen.zig");
 const mem = gen.mem;
 const proc = gen.proc;
 const algo = gen.algo;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const alloc_fn = @import("./alloc_fn.zig");
 
 pub usingnamespace proc.start;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const Array = mem.StaticString(1024 * 1024);
 pub fn main() void {

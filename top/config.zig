@@ -96,7 +96,7 @@ pub fn AddressSpace() type {
     if (!@hasDecl(root, "AddressSpace")) {
         @compileError(
             "toplevel address space required:\n" ++
-                debug.title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.regular_128;' in program root\n" ++
+                debug.title_s ++ "declare 'pub const AddressSpace = <zig_lib>.spec.address_space.regular_128;' in program root\n" ++
                 debug.title_s ++ "address spaces are required by high level features with managed memory",
         );
     }
@@ -291,7 +291,7 @@ const debug = struct {
                     "expected field 'AddressSpace' in '" ++ @typeName(Struct) ++ "'"
                 else
                     "toplevel address space required by default field value:\n" ++
-                        title_s ++ "declare 'pub const AddressSpace = <zig_lib>.preset.address_space.regular_128;' in program root\n" ++
+                        title_s ++ "declare 'pub const AddressSpace = <zig_lib>.spec.address_space.regular_128;' in program root\n" ++
                         point_s ++ "initialize field 'AddressSpace' in '" ++ @typeName(Struct) ++ "' explicitly\n" ++
                         title_s ++ "address spaces are required by high level features with managed memory",
             );

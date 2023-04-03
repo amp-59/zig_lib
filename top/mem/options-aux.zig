@@ -2,11 +2,11 @@
 const gen = @import("./gen.zig");
 const mem = gen.mem;
 const proc = gen.proc;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 pub usingnamespace proc.start;
 

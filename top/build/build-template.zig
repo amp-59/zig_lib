@@ -6,7 +6,7 @@ const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
 const proc = @import("../proc.zig");
 const time = @import("../time.zig");
-const preset = @import("../preset.zig");
+const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("../types.zig");
 // start-document build-struct.zig
@@ -14,9 +14,9 @@ pub usingnamespace types;
 pub const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = builtin.AddressSpace(),
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
-    .options = preset.allocator.options.small,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
+    .options = spec.allocator.options.small,
 });
 pub const ArgsString = mem.StructuredVector(u8, &@as(u8, 0), 8, Allocator, .{});
 pub const ArgsPointers = mem.StructuredVector([*:0]u8, null, 8, Allocator, .{});
@@ -42,9 +42,9 @@ pub const FormatCommand = struct {
 pub const RunCommand = struct {
     args: ArgsPointers,
     pub fn addRunArgument(run_cmd: *RunCommand, allocator: *Allocator, any: anytype) void {
-        const len: u64 = mem.reinterpret.lengthAny(u8, preset.reinterpret.print, any);
+        const len: u64 = mem.reinterpret.lengthAny(u8, spec.reinterpret.print, any);
         var arg: ArgsString = ArgsString.init(allocator, len);
-        arg.writeAny(preset.reinterpret.print, any);
+        arg.writeAny(spec.reinterpret.print, any);
         run_cmd.args.writeOne(arg.referAllDefinedWithSentinel(0));
     }
 };
@@ -74,8 +74,8 @@ pub fn concatStrings(allocator: *Allocator, values: []const []const u8) [:0]u8 {
 }
 const build_spec: BuilderSpec = .{
     .options = .{},
-    .errors = preset.builder.errors.noexcept,
-    .logging = preset.builder.logging.silent,
+    .errors = spec.builder.errors.noexcept,
+    .logging = spec.builder.logging.silent,
 };
 pub const Builder = struct {
     paths: Paths,
@@ -175,7 +175,7 @@ pub const Builder = struct {
         };
     }
     fn stat(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-        return file.fstatAt(.{ .logging = preset.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
+        return file.fstatAt(.{ .logging = spec.logging.success_error_fault.silent }, builder.dir_fd, name) catch null;
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
         const cmd: *const BuildCommand = target.build_cmd;
@@ -634,7 +634,7 @@ fn lengthOptionalWhatNoArgWhatNot(option: anytype, len_equ: u64, len_yes: u64, l
         switch (value) {
             .yes => |yes_optional_arg| {
                 if (yes_optional_arg) |yes_arg| {
-                    return len_equ +% mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg) +% 1;
+                    return len_equ +% mem.reinterpret.lengthAny(u8, spec.reinterpret.print, yes_arg) +% 1;
                 } else {
                     return len_yes;
                 }
@@ -650,7 +650,7 @@ fn lengthNonOptionalWhatNoArgWhatNot(option: anytype, len_yes: u64, len_no: u64)
     if (option) |value| {
         switch (value) {
             .yes => |yes_arg| {
-                return len_yes +% mem.reinterpret.lengthAny(u8, preset.reinterpret.print, yes_arg) +% 1;
+                return len_yes +% mem.reinterpret.lengthAny(u8, spec.reinterpret.print, yes_arg) +% 1;
             },
             .no => {
                 return len_no;
@@ -671,7 +671,7 @@ fn lengthWhatOrWhatNot(option: anytype, len_yes: u64, len_no: u64) u64 {
 }
 fn lengthWhatHow(option: anytype, len_yes: u64) u64 {
     if (option) |how| {
-        return len_yes +% mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how) +% 1;
+        return len_yes +% mem.reinterpret.lengthAny(u8, spec.reinterpret.print, how) +% 1;
     }
     return 0;
 }
@@ -683,7 +683,7 @@ fn lengthWhat(option: bool, len_yes: u64) u64 {
 }
 fn lengthHow(option: anytype) u64 {
     if (option) |how| {
-        return mem.reinterpret.lengthAny(u8, preset.reinterpret.print, how);
+        return mem.reinterpret.lengthAny(u8, spec.reinterpret.print, how);
     }
     return 0;
 }
@@ -693,7 +693,7 @@ fn writeOptionalWhatNoArgWhatNot(array: *ArgsString, option: anytype, equ_switch
             .yes => |yes_optional_arg| {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany(equ_switch);
-                    array.writeAny(preset.reinterpret.print, yes_arg);
+                    array.writeAny(spec.reinterpret.print, yes_arg);
                     array.writeOne('\x00');
                 } else {
                     array.writeMany(yes_switch);
@@ -710,7 +710,7 @@ fn writeNonOptionalWhatNoArgWhatNot(array: *ArgsString, option: anytype, yes_swi
         switch (value) {
             .yes => |yes_arg| {
                 array.writeMany(yes_switch);
-                array.writeAny(preset.reinterpret.print, yes_arg);
+                array.writeAny(spec.reinterpret.print, yes_arg);
                 array.writeOne('\x00');
             },
             .no => {
@@ -731,7 +731,7 @@ fn writeWhatOrWhatNot(array: *ArgsString, option: anytype, yes_switch: []const u
 fn writeWhatHow(array: *ArgsString, option: anytype, yes_switch: []const u8) void {
     if (option) |value| {
         array.writeMany(yes_switch);
-        array.writeAny(preset.reinterpret.print, value);
+        array.writeAny(spec.reinterpret.print, value);
         array.writeOne('\x00');
     }
 }
@@ -742,7 +742,7 @@ fn writeWhat(array: *ArgsString, option: bool, yes_switch: []const u8) void {
 }
 fn writeHow(array: *ArgsString, option: anytype) void {
     if (option) |how| {
-        array.writeAny(preset.reinterpret.print, how);
+        array.writeAny(spec.reinterpret.print, how);
     }
 }
 // finish-document option-functions.zig

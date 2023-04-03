@@ -3,7 +3,7 @@ const mem = @import("./mem.zig");
 const proc = @import("./proc.zig");
 const file = @import("./file.zig");
 const build = @import("./build.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
@@ -13,7 +13,7 @@ pub const runtime_assertions: bool = true;
 pub const is_silent: bool = false;
 pub const is_verbose: bool = false;
 
-pub const AddressSpace = preset.address_space.exact_8;
+pub const AddressSpace = spec.address_space.exact_8;
 
 const exec_spec: proc.ExecuteSpec = .{ .options = .{} };
 

@@ -3,7 +3,7 @@ const mem = srg.mem;
 const sys = srg.sys;
 const mach = srg.mach;
 const meta = srg.meta;
-const preset = srg.preset;
+const spec = srg.spec;
 const builtin = srg.builtin;
 
 pub usingnamespace mach;
@@ -13,15 +13,15 @@ pub usingnamespace mach;
 //    .lb_offset = 0x40000000,
 //    .divisions = 64,
 pub const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .errors = preset.address_space.errors.noexcept,
-    .logging = preset.address_space.logging.silent,
+    .errors = spec.address_space.errors.noexcept,
+    .logging = spec.address_space.logging.silent,
     .options = .{},
 });
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     //.arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
+    .logging = spec.allocator.logging.silent,
 });
 
 const map_spec: mem.MapSpec = .{

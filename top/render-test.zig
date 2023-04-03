@@ -5,7 +5,7 @@ const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const render = @import("./render.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const tokenizer = @import("./tokenizer.zig");
@@ -14,8 +14,8 @@ const virtual_test = @import("./virtual-test.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
-pub const AddressSpace = preset.address_space.regular_128;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = true;
 
 const FakeAllocator = struct {
@@ -24,8 +24,8 @@ const FakeAllocator = struct {
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = AddressSpace,
-    .logging = preset.allocator.logging.silent,
-    .options = preset.allocator.options.small,
+    .logging = spec.allocator.logging.silent,
+    .options = spec.allocator.options.small,
 });
 
 const Array = Allocator.StructuredHolder(u8);
@@ -58,7 +58,7 @@ fn testLoopFormatAgainstStandard(comptime ThisAddressSpace: type) anyerror!void 
         if (use_std) {
             writer.print("s: {}:\t{}\n", .{ arena_index, AddressSpace.arena(arena_index) }) catch {};
         } else {
-            array.writeAny(preset.reinterpret.fmt, .{
+            array.writeAny(spec.reinterpret.fmt, .{
                 "s: ", fmt.render(render_spec, arena_index),
                 ":\t", fmt.render(render_spec, AddressSpace.arena(arena_index)),
                 "'\n",

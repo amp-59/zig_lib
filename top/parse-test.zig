@@ -7,7 +7,7 @@ const meta = @import("./meta.zig");
 const time = @import("./time.zig");
 const mach = @import("./mach.zig");
 const parse = @import("./parse.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const testing = @import("./testing.zig");
 const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
@@ -18,7 +18,7 @@ pub usingnamespace proc.start;
 // Just this once.
 const std = @import("std");
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
 
@@ -39,7 +39,7 @@ const targets: [8][:0]const u8 = .{
 };
 fn debug(any: anytype) void {
     var array: mem.StaticString(16384) = .{};
-    array.writeAny(preset.reinterpret.fmt, any);
+    array.writeAny(spec.reinterpret.fmt, any);
     builtin.debug.write(array.readAll());
 }
 fn fileBuf(allocator: *zig.Allocator.Node, pathname: [:0]const u8) !zig.SourceArray {
@@ -229,7 +229,7 @@ pub fn main(args: [][*:0]u8) !void {
                     for (indices.readAll()) |index| {
                         const loc: abstract.SyntaxTree.Location = ast.tokenLocation(0, ast.firstToken(index));
                         var array: PrintArray = .{};
-                        array.writeAny(preset.reinterpret.fmt, .{ '\n', arg, ": line: ", fmt.ud(loc.line), ", column: ", fmt.ud(loc.column), '\n' });
+                        array.writeAny(spec.reinterpret.fmt, .{ '\n', arg, ": line: ", fmt.ud(loc.line), ", column: ", fmt.ud(loc.column), '\n' });
                         builtin.debug.write(array.readAll());
                         builtin.debug.write(ast.getNodeSource(index));
                     }

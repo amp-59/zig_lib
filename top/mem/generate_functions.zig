@@ -2,7 +2,7 @@ const gen = @import("./gen.zig");
 const attr = @import("./attr.zig");
 const mem = gen.mem;
 const proc = gen.proc;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 
 pub usingnamespace proc.start;
@@ -19,14 +19,14 @@ const out = struct {
 };
 
 pub const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .errors = preset.address_space.errors.noexcept,
-    .logging = preset.address_space.logging.silent,
+    .errors = spec.address_space.errors.noexcept,
+    .logging = spec.address_space.logging.silent,
     .options = .{},
 });
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
+    .logging = spec.allocator.logging.silent,
 });
 const Array = Allocator.StructuredVector(u8);
 

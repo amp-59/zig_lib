@@ -4,7 +4,7 @@ const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 const mach = @import("./mach.zig");
 const file = @import("./file.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const virtual = @import("./virtual.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
@@ -13,10 +13,10 @@ pub usingnamespace proc.start;
 pub usingnamespace root;
 
 const root = opaque {
-    pub const AddressSpace = preset.address_space.regular_128;
+    pub const AddressSpace = spec.address_space.regular_128;
 };
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const PrintArray = mem.StaticString(16384);
 var print_array: PrintArray = undefined;

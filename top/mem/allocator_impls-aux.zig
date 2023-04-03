@@ -1,7 +1,7 @@
 const gen = @import("./gen.zig");
 const mem = gen.mem;
 const proc = gen.proc;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 
 const tok = @import("./tok.zig");
@@ -12,7 +12,7 @@ const alloc_fn = @import("./alloc_fn.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
 

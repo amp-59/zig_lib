@@ -14,7 +14,7 @@ const proc = srg.proc;
 const mach = srg.mach;
 const meta = srg.meta;
 const build = srg.build;
-const preset = srg.preset;
+const spec = srg.spec;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;

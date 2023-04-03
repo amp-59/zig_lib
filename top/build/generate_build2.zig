@@ -5,15 +5,15 @@ const proc = @import("../proc.zig");
 const mach = @import("../mach.zig");
 const file = @import("../file.zig");
 const meta = @import("../meta.zig");
-const preset = @import("../preset.zig");
+const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types2.zig");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
 const prefer_inline: bool = true;
 const write_fn_name: bool = false;
@@ -22,9 +22,9 @@ const build_root: [:0]const u8 = builtin.buildRoot();
 const initial_indent: u64 = 0;
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 24,
-    .options = preset.allocator.options.small,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
+    .options = spec.allocator.options.small,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
     .AddressSpace = AddressSpace,
 });
 const Array = Allocator.StructuredHolder(u8);

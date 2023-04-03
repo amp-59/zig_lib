@@ -6,11 +6,11 @@ const file = srg.file;
 const meta = srg.meta;
 const mach = srg.mach;
 const proc = srg.proc;
-const preset = srg.preset;
+const spec = srg.spec;
 const thread = srg.thread;
 const builtin = srg.builtin;
 pub usingnamespace proc.start;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
@@ -20,16 +20,16 @@ pub const AddressSpace = mem.GenericRegularAddressSpace(.{
 const Allocator0 = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
-    .options = preset.allocator.options.small,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
+    .options = spec.allocator.options.small,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 1,
-    .options = preset.allocator.options.small,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
+    .options = spec.allocator.options.small,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
 });
 const PrintArray = mem.StaticString(4096);
 const Array = Allocator1.StructuredStreamHolder(u8);
@@ -37,7 +37,7 @@ const String0 = Allocator0.StructuredHolder(u8);
 const DirStream = file.GenericDirStream(.{
     .Allocator = Allocator0,
     .options = .{},
-    .logging = preset.dir.logging.silent,
+    .logging = spec.dir.logging.silent,
 });
 const Filter = meta.EnumBitField(file.Kind);
 const Names = mem.StaticArray([:0]const u8, max_pathname_args);
@@ -190,9 +190,9 @@ fn writeReadLink(
     const buf: []u8 = link_buf.referManyUndefined(4096);
     if (read_link) {
         if (file.readLinkAt(.{}, dir_fd, base_name, buf)) |link_pathname| {
-            array.appendAny(preset.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
+            array.appendAny(spec.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
         } else |readlink_err| {
-            array.appendAny(preset.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+            array.appendAny(spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
             if (quit_on_error) {
                 return readlink_err;
             }
@@ -201,7 +201,7 @@ fn writeReadLink(
             }
         }
     } else {
-        array.appendAny(preset.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+        array.appendAny(spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
     }
 }
 fn getSymbol(kind: file.Kind) [:0]const u8 {
@@ -254,20 +254,20 @@ fn writeAndWalkPlain(
                 if (count_links) {
                     status.link_count +%= 1;
                 }
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
+                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
                 try writeReadLink(allocator_1, array, link_buf, status, dir.fd, entry.name());
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
                 if (count_files) {
                     status.file_count +%= 1;
                 }
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
+                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
             },
             .directory => |kind| {
                 if (count_dirs) {
                     status.dir_count +%= 1;
                 }
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
+                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
                 if (track_max_depth) {
                     status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
                 }
@@ -311,7 +311,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_link_arrow_s else link_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.symbolic_link);
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
+                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
                 try writeReadLink(allocator_1, array, link_buf, status, dir.fd, basename);
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
@@ -320,7 +320,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_file_arrow_s else file_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(kind);
-                array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
+                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
             },
             .directory => {
                 if (count_dirs) {
@@ -328,7 +328,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.directory);
-                try meta.wrap(array.appendAny(preset.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
+                try meta.wrap(array.appendAny(spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
                 if (track_max_depth) {
                     status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
                 }

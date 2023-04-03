@@ -5,7 +5,7 @@ const fmt = gen.fmt;
 const proc = gen.proc;
 const file = gen.file;
 const meta = gen.meta;
-const preset = gen.preset;
+const spec = gen.spec;
 const serial = gen.serial;
 const testing = gen.testing;
 const builtin = gen.builtin;
@@ -18,7 +18,7 @@ const impl_fn = @import("./impl_fn.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;

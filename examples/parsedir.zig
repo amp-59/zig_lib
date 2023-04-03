@@ -9,7 +9,7 @@ const time = srg.time;
 const file = srg.file;
 const meta = srg.meta;
 const proc = srg.proc;
-const preset = srg.preset;
+const spec = srg.spec;
 const thread = srg.thread;
 const builtin = srg.builtin;
 const abstract = srg.abstract;
@@ -18,7 +18,7 @@ const std = @import("std");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = false;
 pub const is_verbose: bool = false;
 pub const is_silent: bool = false;
@@ -50,7 +50,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .trace_state = false,
         .count_branches = false,
     },
-    .logging = preset.allocator.logging.silent,
+    .logging = spec.allocator.logging.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
@@ -62,7 +62,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .trace_state = false,
         .count_branches = false,
     },
-    .logging = preset.allocator.logging.silent,
+    .logging = spec.allocator.logging.silent,
 });
 
 const test_subject_name: []const u8 = builtin.define("test_subject", []const u8, "lib");
@@ -206,7 +206,7 @@ fn parseAndWalk(address_space: *AddressSpace, arg: [:0]const u8) !u64 {
     for (ast_array.referAllDefined(allocator_1)) |*root| {
         if (test_standard) {
             const lines: u64 = countLines(root.ast.source);
-            print_array.writeAny(preset.reinterpret.fmt, .{
+            print_array.writeAny(spec.reinterpret.fmt, .{
                 "path: '",   root.name.readAll(),   "', bytes: ", fmt.udh(root.ast.source.len),
                 ", lines: ", fmt.udh(lines),        ", nodes: ",  fmt.udh(root.ast.nodes.len),
                 ", nanos: ", fmt.udh(root.ts.nsec), '\n',
@@ -214,7 +214,7 @@ fn parseAndWalk(address_space: *AddressSpace, arg: [:0]const u8) !u64 {
             root.ast.deinit(allocator_e);
         } else {
             const lines: u64 = countLines(root.ast.source.readAll());
-            print_array.writeAny(preset.reinterpret.fmt, .{
+            print_array.writeAny(spec.reinterpret.fmt, .{
                 "path: '",   root.name.readAll(),   "', bytes: ", fmt.udh(root.ast.source.len()),
                 ", lines: ", fmt.udh(lines),        ", nodes: ",  fmt.udh(root.ast.nodes.len()),
                 ", nanos: ", fmt.udh(root.ts.nsec), '\n',
@@ -227,7 +227,7 @@ fn parseAndWalk(address_space: *AddressSpace, arg: [:0]const u8) !u64 {
         }
         print_array.undefineAll();
     }
-    print_array.writeAny(preset.reinterpret.fmt, .{
+    print_array.writeAny(spec.reinterpret.fmt, .{
         lit.position.save,
         .{ if (test_standard) "standard " else "library ", "nanos: ", fmt.udh(nanos), ", " },
         .{ fmt.ud(Test.sample), '/', fmt.ud(Test.sample_size) },
@@ -260,7 +260,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
             }
         }
         var print_array: PrintArray = .{};
-        print_array.writeAny(preset.reinterpret.fmt, .{
+        print_array.writeAny(spec.reinterpret.fmt, .{
             "\naverage for ", @typeName(Ast),
             ": ",             fmt.udh(sum.? / Test.sample_size),
             '\n',

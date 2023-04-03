@@ -1,6 +1,6 @@
 const mem = @import("../mem.zig");
 const mach = @import("../mach.zig");
-const preset = @import("../preset.zig");
+const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 
 pub const arena_count: u64 = if (thread_count == 0) 4 else thread_count + 1;
@@ -18,8 +18,8 @@ pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .divisions = arena_count,
     .lb_addr = arena_lb_addr,
     .up_addr = arena_up_addr,
-    .errors = preset.address_space.errors.noexcept,
-    .logging = preset.address_space.logging.silent,
+    .errors = spec.address_space.errors.noexcept,
+    .logging = spec.address_space.logging.silent,
     .options = .{ .thread_safe = true, .require_map = true, .require_unmap = true },
 });
 pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
@@ -28,16 +28,16 @@ pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
     .divisions = thread_count,
     .lb_addr = stack_lb_addr,
     .up_addr = stack_up_addr,
-    .errors = preset.address_space.errors.noexcept,
-    .logging = preset.address_space.logging.silent,
+    .errors = spec.address_space.errors.noexcept,
+    .logging = spec.address_space.logging.silent,
     .options = .{ .thread_safe = true },
 });
 
 pub const Allocator = mem.GenericRtArenaAllocator(.{
     .AddressSpace = AddressSpace,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
-    .options = preset.allocator.options.small_composed,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
+    .options = spec.allocator.options.small_composed,
 });
 pub const Args = mem.StructuredVector(u8, &@as(u8, 0), 8, Allocator, .{});
 pub const Ptrs = mem.StructuredVector([*:0]u8, builtin.anyOpaque(builtin.zero([*:0]u8)), 8, Allocator, .{});
@@ -155,7 +155,7 @@ pub const Macro = struct {
         array.writeMany("=");
         switch (format.value) {
             .constant => |constant| {
-                array.writeAny(preset.reinterpret.print, constant);
+                array.writeAny(spec.reinterpret.print, constant);
             },
             .string => |string| {
                 array.writeOne('"');
@@ -180,7 +180,7 @@ pub const Macro = struct {
         len +%= 1;
         switch (format.value) {
             .constant => |constant| {
-                len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, constant);
+                len +%= mem.reinterpret.lengthAny(u8, spec.reinterpret.print, constant);
             },
             .string => |string| {
                 len +%= 1 +% string.len +% 1;

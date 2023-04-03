@@ -3,12 +3,12 @@ const mem = zig_lib.mem;
 const file = zig_lib.file;
 const proc = zig_lib.proc;
 const meta = zig_lib.meta;
-const preset = zig_lib.preset;
+const spec = zig_lib.spec;
 const builtin = zig_lib.builtin;
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.exact_8;
+pub const AddressSpace = spec.address_space.exact_8;
 
 pub const runtime_assertions: bool = false;
 
@@ -24,7 +24,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
     .options = .{ .require_filo_free = false },
-    .logging = preset.allocator.logging.silent,
+    .logging = spec.allocator.logging.silent,
 });
 const DirStream = file.GenericDirStream(.{ .Allocator = Allocator });
 

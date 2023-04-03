@@ -4,7 +4,7 @@ const fmt = gen.fmt;
 const proc = gen.proc;
 const meta = gen.meta;
 const file = gen.file;
-const preset = gen.preset;
+const spec = gen.spec;
 const serial = gen.serial;
 const builtin = gen.builtin;
 const testing = gen.testing;
@@ -15,7 +15,7 @@ const config = @import("./config.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 
 const Allocator = config.Allocator;
@@ -152,13 +152,13 @@ fn populateSpecifiers(
     return spec_set;
 }
 fn populateDetails(
-    comptime spec: types.AbstractSpecification,
+    comptime abstract_spec: types.AbstractSpecification,
     comptime p_idx: u8,
     comptime spec_set: []const []const types.Specifier,
     comptime tech_set: []const []const types.Technique,
 ) []const types.Implementation {
     var details: []const types.Implementation = &.{};
-    var detail: types.Implementation = types.Implementation.init(spec, p_idx);
+    var detail: types.Implementation = types.Implementation.init(abstract_spec, p_idx);
     for (spec_set, 0..) |p_info, s_idx| {
         detail.specs = types.Specifiers.detail(types.specifiersTags(p_info));
         detail.spec_idx = s_idx;

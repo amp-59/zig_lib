@@ -5,16 +5,16 @@ const proc = @import("./proc.zig");
 const algo = @import("./algo.zig");
 const file = @import("./file.zig");
 const time = @import("./time.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 const show_best_cases: bool = false;
 fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     var len: u64 = 0;
@@ -28,10 +28,10 @@ fn print(buf: []u8, off: u64, ss: []const []const u8) void {
     file.write(.{ .errors = .{} }, 1, buf[0 .. off + write(buf, off, ss)]);
 }
 const Allocator = mem.GenericArenaAllocator(.{
-    .AddressSpace = preset.address_space.regular_128,
+    .AddressSpace = spec.address_space.regular_128,
     .arena_index = 1,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
 });
 const S = struct {
     fn asc(x: anytype, y: anytype) bool {

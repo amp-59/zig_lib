@@ -2,7 +2,7 @@ const gen = @import("./gen.zig");
 const mem = gen.mem;
 const fmt = gen.fmt;
 const proc = gen.proc;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
@@ -17,14 +17,14 @@ pub usingnamespace proc.start;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
-    .options = preset.allocator.options.small,
+    .errors = spec.allocator.errors.noexcept,
+    .logging = spec.allocator.logging.silent,
+    .options = spec.allocator.options.small,
     .AddressSpace = AddressSpace,
 });
 const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .logging = preset.address_space.logging.silent,
-    .errors = preset.address_space.errors.noexcept,
+    .logging = spec.address_space.logging.silent,
+    .errors = spec.address_space.errors.noexcept,
     .options = .{},
 });
 

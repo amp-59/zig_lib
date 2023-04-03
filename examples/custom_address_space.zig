@@ -3,7 +3,7 @@ const mem = zig_lib.mem;
 const fmt = zig_lib.fmt;
 const proc = zig_lib.proc;
 const file = zig_lib.file;
-const preset = zig_lib.preset;
+const spec = zig_lib.spec;
 const virtual = zig_lib.virtual;
 const testing = zig_lib.testing;
 

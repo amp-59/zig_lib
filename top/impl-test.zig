@@ -6,12 +6,12 @@ const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.exact_8;
+pub const AddressSpace = spec.address_space.exact_8;
 pub const runtime_assertions: bool = true;
 pub const logging_default: builtin.Logging.Default = .{
     .Success = true,
@@ -39,7 +39,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .count_branches = false,
         .count_useful_bytes = false,
     },
-    .logging = preset.allocator.logging.verbose,
+    .logging = spec.allocator.logging.verbose,
 });
 
 const PrintArray = mem.StructuredAutomaticVector(u8, null, 4096, 1, .{});

@@ -4,13 +4,13 @@ const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.exact_8;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.verbose;
+pub const AddressSpace = spec.address_space.exact_8;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
 const Random = file.DeviceRandomBytes(4096);
@@ -36,7 +36,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = preset.allocator.logging.silent,
+    .logging = spec.allocator.logging.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 4,
@@ -51,7 +51,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = preset.allocator.logging.silent,
+    .logging = spec.allocator.logging.silent,
 });
 const Allocator = Allocator0;
 const LinkedList = mem.GenericLinkedList(.{

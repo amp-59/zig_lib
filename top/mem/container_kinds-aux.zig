@@ -2,25 +2,25 @@ const gen = @import("./gen.zig");
 const mem = gen.mem;
 const proc = gen.proc;
 const algo = gen.algo;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 
 pub usingnamespace proc.start;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
-    .options = preset.allocator.options.small,
+    .errors = spec.allocator.errors.noexcept,
+    .logging = spec.allocator.logging.silent,
+    .options = spec.allocator.options.small,
     .AddressSpace = AddressSpace,
 });
 const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .logging = preset.address_space.logging.silent,
-    .errors = preset.address_space.errors.noexcept,
+    .logging = spec.address_space.logging.silent,
+    .errors = spec.address_space.errors.noexcept,
     .options = .{},
 });
 const Array = mem.StaticString(1024 * 1024);

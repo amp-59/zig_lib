@@ -4,12 +4,12 @@ const fmt = srg.fmt;
 const proc = srg.proc;
 const file = srg.file;
 const meta = srg.meta;
-const preset = srg.preset;
+const spec = srg.spec;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 pub const logging_default: builtin.Logging.Default = .{
     .Success = true,
     .Acquire = true,
@@ -21,17 +21,15 @@ pub const logging_default: builtin.Logging.Default = .{
 pub const PathSplitSpec = struct {
     Allocator: type,
 };
-pub fn GenericPathSplit(comptime spec: PathSplitSpec) type {
+pub fn GenericPathSplit(comptime path_split_spec: PathSplitSpec) type {
     return struct {
         path: [:0]const u8,
         index: u16 = 0,
         max: u16 = 0,
         info: InfoArray,
-
         const PathSplit = @This();
-        const Allocator = spec.Allocator;
+        const Allocator = path_split_spec.Allocator;
         const InfoArray = Allocator.StructuredVector(struct { pos: u16 = 0, len: u16 = 0 });
-
         pub fn init(allocator: *Allocator, path: [:0]const u8) !PathSplit {
             var info: InfoArray = try InfoArray.init(allocator, 2048);
             var index: u16 = 0;
@@ -82,7 +80,7 @@ pub fn main(args: [][*:0]u8) !void {
         var path_split: PathSplit = try PathSplit.init(&allocator, meta.manyToSlice(arg));
         defer path_split.deinit(&allocator);
         var array: mem.StaticString(1024 * 512) = .{};
-        array.writeAny(preset.reinterpret.fmt, fmt.any(path_split));
+        array.writeAny(spec.reinterpret.fmt, fmt.any(path_split));
         builtin.debug.write(array.readAll());
     }
 }

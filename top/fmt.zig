@@ -4,7 +4,7 @@ const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const time = @import("./time.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 
 const _render = @import("./render.zig");
@@ -529,18 +529,18 @@ pub const PolynomialFormatSpec = struct {
     prefix: bool = true,
     separator: ?Separator = null,
 };
-pub fn PolynomialFormat(comptime spec: PolynomialFormatSpec) type {
+pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     return (struct {
         value: Int,
         const Format: type = @This();
         const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
-        pub const fmt_spec: PolynomialFormatSpec = spec;
         const min_abs_value: Abs = fmt_spec.range.min orelse 0;
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: u16 = builtin.fmt.length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, fmt_spec.radix);
         const prefix: []const u8 = lit.int_prefixes[fmt_spec.radix];
+        pub const spec: PolynomialFormatSpec = fmt_spec;
         const max_len: u64 = blk: {
             var len: u64 = prefix.len;
             if (fmt_spec.radix > max_abs_value) {
@@ -806,7 +806,7 @@ pub const ChangedIntFormatSpec = struct {
     no_style: []const u8 = lit.fx.none,
     arrow_style: []const u8 = " => ",
 };
-pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
+pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
     return (struct {
         old_value: Old,
         new_value: New,
@@ -816,7 +816,6 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
         const OldIntFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
         const NewIntFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
         const DeltaIntFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
-        pub const fmt_spec: ChangedIntFormatSpec = spec;
         pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +%
             OldIntFormat.max_len +% 1 +% DeltaIntFormat.max_len +% 5 +% fmt_spec.no_style.len +% NewIntFormat.max_len;
         fn formatWriteDelta(format: Format, array: anytype) void {
@@ -864,7 +863,7 @@ pub fn ChangedIntFormat(comptime spec: ChangedIntFormatSpec) type {
             const new_fmt: NewIntFormat = .{ .value = format.new_value };
             array.writeFormat(old_fmt);
             format.formatWriteDelta(array);
-            array.writeMany(spec.arrow_style);
+            array.writeMany(fmt_spec.arrow_style);
             array.writeFormat(new_fmt);
         }
         pub fn formatLength(format: Format) u64 {
@@ -945,17 +944,17 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
         }
     });
 }
-pub fn RangeFormat(comptime spec: PolynomialFormatSpec) type {
+pub fn RangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     return (struct {
         lower: SubFormat.Int,
         upper: SubFormat.Int,
         const Format: type = @This();
+        pub const spec: PolynomialFormatSpec = fmt_spec;
         pub const SubFormat = PolynomialFormat(blk: {
             var tmp: PolynomialFormatSpec = fmt_spec;
             tmp.prefix = false;
             break :blk tmp;
         });
-        pub const fmt_spec: PolynomialFormatSpec = spec;
         pub const max_len: u64 = (SubFormat.max_len) * 2 +% 4;
         pub fn formatLength(format: Format) u64 {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
@@ -1019,8 +1018,8 @@ pub fn ArenaRangeFormat(comptime arena_index: comptime_int) type {
     });
 }
 pub const ChangedAddressRangeFormat = ChangedRangeFormat(.{
-    .new_fmt_spec = AddressRangeFormat.fmt_spec,
-    .old_fmt_spec = AddressRangeFormat.fmt_spec,
+    .new_fmt_spec = AddressRangeFormat.spec,
+    .old_fmt_spec = AddressRangeFormat.spec,
     .del_fmt_spec = .{
         .bits = 64,
         .signedness = .unsigned,
@@ -1059,7 +1058,7 @@ pub const ChangedRangeFormatSpec = struct {
     upper_dec_style: []const u8 = lit.fx.color.fg.red ++ lit.fx.style.bold ++ "-",
     arrow_style: []const u8 = " => ",
 };
-pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
+pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
     return (struct {
         old_lower: OldPolynomialFormat.Int,
         old_upper: OldPolynomialFormat.Int,
@@ -1085,7 +1084,6 @@ pub fn ChangedRangeFormat(comptime spec: ChangedRangeFormatSpec) type {
             .inc_style = fmt_spec.upper_inc_style,
             .arrow_style = fmt_spec.arrow_style,
         });
-        pub const fmt_spec: ChangedRangeFormatSpec = spec;
         pub fn formatWrite(format: Format, array: anytype) void {
             const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
             const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
@@ -1202,17 +1200,17 @@ pub const ListFormatSpec = struct {
     transform: ?meta.Generic = null,
     separator: []const u8 = ", ",
     omit_trailing_separator: bool = true,
-    reinterpret: mem.ReinterpretSpec = preset.reinterpret.fmt,
+    reinterpret: mem.ReinterpretSpec = spec.reinterpret.fmt,
 };
-pub fn ListFormat(comptime spec: ListFormatSpec) type {
+pub fn ListFormat(comptime fmt_spec: ListFormatSpec) type {
     return (struct {
-        values: []const spec.item,
+        values: []const fmt_spec.item,
 
         const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
-            if (spec.omit_trailing_separator) {
+            if (fmt_spec.omit_trailing_separator) {
                 if (format.values.len != 0) {
-                    if (spec.transform) |transform| {
+                    if (fmt_spec.transform) |transform| {
                         array.writeFormat(meta.typeCast(transform)(format.values[0]));
                     } else {
                         array.writeMany(format.values[0]);
@@ -1220,8 +1218,8 @@ pub fn ListFormat(comptime spec: ListFormatSpec) type {
                 }
                 if (format.values.len != 1) {
                     for (format.values[1..]) |value| {
-                        array.writeAny(spec.reinterpret, spec.separator);
-                        if (spec.transform) |transform| {
+                        array.writeAny(fmt_spec.reinterpret, fmt_spec.separator);
+                        if (fmt_spec.transform) |transform| {
                             array.writeFormat(meta.typeCast(transform)(value));
                         } else {
                             array.writeMany(value);
@@ -1230,21 +1228,21 @@ pub fn ListFormat(comptime spec: ListFormatSpec) type {
                 }
             } else {
                 for (format.values) |value| {
-                    if (spec.transform) |transform| {
+                    if (fmt_spec.transform) |transform| {
                         array.writeFormat(meta.typeCast(transform)(value));
                     } else {
                         array.writeMany(value);
                     }
-                    array.writeMany(spec.separator);
+                    array.writeMany(fmt_spec.separator);
                 }
             }
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = 0;
-            if (spec.omit_trailing_separator) {
+            if (fmt_spec.omit_trailing_separator) {
                 if (format.values.len != 0) {
-                    len +%= mem.ReinterpretSpec.lengthAny(spec.reinterpret, spec.separator);
-                    if (spec.transform) |transform| {
+                    len +%= mem.ReinterpretSpec.lengthAny(fmt_spec.reinterpret, fmt_spec.separator);
+                    if (fmt_spec.transform) |transform| {
                         len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(format.values[0]));
                     } else {
                         len +%= format.values.len;
@@ -1252,8 +1250,8 @@ pub fn ListFormat(comptime spec: ListFormatSpec) type {
                 }
                 if (format.values.len != 1) {
                     for (format.values[1..]) |value| {
-                        len +%= mem.ReinterpretSpec.lengthAny(spec.reinterpret, spec.separator);
-                        if (spec.transform) |transform| {
+                        len +%= mem.ReinterpretSpec.lengthAny(fmt_spec.reinterpret, fmt_spec.separator);
+                        if (fmt_spec.transform) |transform| {
                             len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(value));
                         } else {
                             len +%= format.value.len;
@@ -1262,12 +1260,12 @@ pub fn ListFormat(comptime spec: ListFormatSpec) type {
                 }
             } else {
                 for (format.values) |value| {
-                    if (spec.transform) |transform| {
+                    if (fmt_spec.transform) |transform| {
                         len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(value));
                     } else {
                         len +%= format.value.len;
                     }
-                    len +%= mem.ReinterpretSpec.lengthAny(spec.reinterpret, spec.separator);
+                    len +%= mem.ReinterpretSpec.lengthAny(fmt_spec.reinterpret, fmt_spec.separator);
                 }
             }
             return len;

@@ -5,15 +5,15 @@ const proc = @import("../proc.zig");
 const mach = @import("../mach.zig");
 const file = @import("../file.zig");
 const meta = @import("../meta.zig");
-const preset = @import("../preset.zig");
+const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types2.zig");
 
 pub usingnamespace proc.start;
 
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 const prefer_inline: bool = true;
 const write_fn_name: bool = false;
@@ -22,9 +22,9 @@ const build_root: [:0]const u8 = builtin.buildRoot();
 const initial_indent: u64 = if (false) 2 else 1;
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 24,
-    .options = preset.allocator.options.small,
-    .logging = preset.allocator.logging.silent,
-    .errors = preset.allocator.errors.noexcept,
+    .options = spec.allocator.options.small,
+    .logging = spec.allocator.logging.silent,
+    .errors = spec.allocator.errors.noexcept,
     .AddressSpace = AddressSpace,
 });
 const Array = Allocator.StructuredHolder(u8);
@@ -765,13 +765,13 @@ fn writeArg(
     switch (variant) {
         .length => {
             array.writeMany(ws[0..width.*]);
-            array.writeMany("len +%= mem.reinterpret.lengthAny(u8, preset.reinterpret.print, ");
+            array.writeMany("len +%= mem.reinterpret.lengthAny(u8, spec.reinterpret.print, ");
             array.writeMany(what_arg);
             array.writeMany(");\n");
         },
         .write => {
             array.writeMany(ws[0..width.*]);
-            array.writeMany("array.writeAny(preset.reinterpret.print, ");
+            array.writeMany("array.writeAny(spec.reinterpret.print, ");
             array.writeMany(what_arg);
             array.writeMany(");\n");
         },
@@ -1568,7 +1568,7 @@ pub fn main() !void {
     writeImport(&array, "mach", "./mach.zig");
     writeImport(&array, "proc", "./proc.zig");
     writeImport(&array, "time", "./time.zig");
-    writeImport(&array, "preset", "./preset.zig");
+    writeImport(&array, "spec", "./spec.zig");
     writeImport(&array, "builtin", "./builtin.zig");
     writeImport(&array, "types", "./build/types.zig");
     writeAsm(&array, "./build/build-template.s");

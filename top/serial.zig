@@ -4,7 +4,7 @@ const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
@@ -286,42 +286,42 @@ pub const SerialSpec = struct {
         write: sys.ErrorPolicy = .{ .throw = sys.write_errors },
         close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
     };
-    fn stat(comptime spec: SerialSpec) file.StatSpec {
-        return .{ .logging = spec.logging.stat, .errors = spec.errors.stat };
+    fn stat(comptime serial_spec: SerialSpec) file.StatSpec {
+        return .{ .logging = serial_spec.logging.stat, .errors = serial_spec.errors.stat };
     }
-    fn read(comptime spec: SerialSpec) file.ReadSpec {
-        return .{ .return_type = void, .logging = spec.logging.read, .errors = spec.errors.read };
+    fn read(comptime serial_spec: SerialSpec) file.ReadSpec {
+        return .{ .return_type = void, .logging = serial_spec.logging.read, .errors = serial_spec.errors.read };
     }
-    fn write(comptime spec: SerialSpec) file.WriteSpec {
-        return .{ .logging = spec.logging.read, .errors = spec.errors.read };
+    fn write(comptime serial_spec: SerialSpec) file.WriteSpec {
+        return .{ .logging = serial_spec.logging.read, .errors = serial_spec.errors.read };
     }
-    fn close(comptime spec: SerialSpec) file.CloseSpec {
-        return .{ .logging = spec.logging.close, .errors = spec.errors.close };
+    fn close(comptime serial_spec: SerialSpec) file.CloseSpec {
+        return .{ .logging = serial_spec.logging.close, .errors = serial_spec.errors.close };
     }
-    fn create(comptime spec: SerialSpec) file.CreateSpec {
+    fn create(comptime serial_spec: SerialSpec) file.CreateSpec {
         return .{
-            .logging = spec.logging.create,
-            .errors = spec.errors.create,
+            .logging = serial_spec.logging.create,
+            .errors = serial_spec.errors.create,
             .options = .{ .exclusive = false, .read = false, .write = .truncate },
         };
     }
-    fn open(comptime spec: SerialSpec) file.OpenSpec {
+    fn open(comptime serial_spec: SerialSpec) file.OpenSpec {
         return .{
-            .logging = spec.logging.open,
-            .errors = spec.errors.open,
+            .logging = serial_spec.logging.open,
+            .errors = serial_spec.errors.open,
             .options = .{ .read = true, .write = null },
         };
     }
 };
-pub fn serialWrite(comptime spec: SerialSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8, value: S) sys.Call(.{
-    .throw = spec.Allocator.map_error_policy.throw ++ spec.errors.create.throw ++
-        spec.errors.open.throw ++ spec.errors.write.throw ++ spec.errors.close.throw,
-    .abort = spec.Allocator.map_error_policy.abort ++ spec.errors.create.abort ++
-        spec.errors.open.abort ++ spec.errors.write.abort ++ spec.errors.close.abort,
+pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator: *serial_spec.Allocator, pathname: [:0]const u8, value: S) sys.Call(.{
+    .throw = serial_spec.Allocator.map_error_policy.throw ++ serial_spec.errors.create.throw ++
+        serial_spec.errors.open.throw ++ serial_spec.errors.write.throw ++ serial_spec.errors.close.throw,
+    .abort = serial_spec.Allocator.map_error_policy.abort ++ serial_spec.errors.create.abort ++
+        serial_spec.errors.open.abort ++ serial_spec.errors.write.abort ++ serial_spec.errors.close.abort,
 }, void) {
-    const create_spec: file.CreateSpec = comptime spec.create();
-    const write_spec: file.WriteSpec = comptime spec.write();
-    const close_spec: file.CloseSpec = comptime spec.close();
+    const create_spec: file.CreateSpec = comptime serial_spec.create();
+    const write_spec: file.WriteSpec = comptime serial_spec.write();
+    const close_spec: file.CloseSpec = comptime serial_spec.close();
     const save = allocator.save();
     defer allocator.restore(save);
     const s_ab_addr: u64 = allocator.alignAbove(16);
@@ -338,16 +338,16 @@ pub fn serialWrite(comptime spec: SerialSpec, comptime S: type, allocator: *spec
         file.close(close_spec, fd),
     );
 }
-pub fn serialRead(comptime spec: SerialSpec, comptime S: type, allocator: *spec.Allocator, pathname: [:0]const u8) sys.Call(.{
-    .throw = spec.Allocator.map_error_policy.throw ++
-        spec.errors.open.throw ++ spec.errors.read.throw ++ spec.errors.close.throw,
-    .abort = spec.Allocator.map_error_policy.abort ++
-        spec.errors.open.abort ++ spec.errors.read.abort ++ spec.errors.close.abort,
+pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator: *serial_spec.Allocator, pathname: [:0]const u8) sys.Call(.{
+    .throw = serial_spec.Allocator.map_error_policy.throw ++
+        serial_spec.errors.open.throw ++ serial_spec.errors.read.throw ++ serial_spec.errors.close.throw,
+    .abort = serial_spec.Allocator.map_error_policy.abort ++
+        serial_spec.errors.open.abort ++ serial_spec.errors.read.abort ++ serial_spec.errors.close.abort,
 }, meta.Mutable(S)) {
-    const open_spec: file.OpenSpec = comptime spec.open();
-    const stat_spec: file.StatSpec = comptime spec.stat();
-    const read_spec: file.ReadSpec = comptime spec.read();
-    const close_spec: file.CloseSpec = comptime spec.close();
+    const open_spec: file.OpenSpec = comptime serial_spec.open();
+    const stat_spec: file.StatSpec = comptime serial_spec.stat();
+    const read_spec: file.ReadSpec = comptime serial_spec.read();
+    const close_spec: file.CloseSpec = comptime serial_spec.close();
     const t_ab_addr: u64 = allocator.alignAbove(16);
     const fd: u64 = try meta.wrap(
         file.open(open_spec, pathname),

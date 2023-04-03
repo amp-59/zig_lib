@@ -4,7 +4,7 @@ const fmt = srg.fmt;
 const proc = srg.proc;
 const meta = srg.meta;
 const file = srg.file;
-const preset = srg.preset;
+const spec = srg.spec;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
@@ -21,7 +21,7 @@ fn recursivePrint(comptime T: type) void {
                         .bits = int_info.bits,
                         .signedness = .unsigned,
                     } });
-                    array.writeAny(preset.reinterpret.fmt, .{
+                    array.writeAny(spec.reinterpret.fmt, .{
                         "pub const ",
                         fmt.IdentifierFormat{ .value = decl.name },
                         ": " ++ @typeName(I) ++ " = ",
@@ -40,7 +40,7 @@ fn recursivePrint(comptime T: type) void {
                         });
                         break :blk_0 IntFmt{ .value = tmp_0.value };
                     };
-                    array.writeAny(preset.reinterpret.fmt, .{
+                    array.writeAny(spec.reinterpret.fmt, .{
                         "pub const ",
                         fmt.IdentifierFormat{ .value = decl.name },
                         ": " ++ @typeName(@TypeOf(int_fmt.value)) ++ " = ",
@@ -50,7 +50,7 @@ fn recursivePrint(comptime T: type) void {
                     file.write(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .Struct, .Array, .Pointer => {
-                    array.writeAny(preset.reinterpret.fmt, .{
+                    array.writeAny(spec.reinterpret.fmt, .{
                         "pub const ",
                         fmt.IdentifierFormat{ .value = decl.name },
                         ": " ++ @typeName(Field) ++ " = ",
@@ -61,7 +61,7 @@ fn recursivePrint(comptime T: type) void {
                 },
                 .Type => {
                     if (comptime meta.isContainer(field)) {
-                        array.writeAny(preset.reinterpret.fmt, .{
+                        array.writeAny(spec.reinterpret.fmt, .{
                             "pub const ",
                             fmt.IdentifierFormat{ .value = decl.name },
                             " = " ++ comptime builtin.fmt.typeDeclSpecifier(@typeInfo(field)) ++ " {\n",

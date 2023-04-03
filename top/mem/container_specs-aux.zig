@@ -4,7 +4,7 @@ const fmt = gen.fmt;
 const mem = gen.mem;
 const proc = gen.proc;
 const meta = gen.meta;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 const testing = gen.testing;
 const tok = @import("./tok.zig");
@@ -24,13 +24,13 @@ const out = struct {
 };
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
-    .options = preset.allocator.options.small,
+    .errors = spec.allocator.errors.noexcept,
+    .logging = spec.allocator.logging.silent,
+    .options = spec.allocator.options.small,
     .AddressSpace = AddressSpace,
 });
 const AddressSpace = mem.GenericRegularAddressSpace(.{
@@ -38,7 +38,7 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_offset = 0x40000000,
     .divisions = 128,
     .errors = .{},
-    .logging = preset.address_space.logging.silent,
+    .logging = spec.address_space.logging.silent,
 });
 
 const Expr = expr.Expr;

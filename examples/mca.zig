@@ -6,7 +6,7 @@ const proc = srg.proc;
 const meta = srg.meta;
 const file = srg.file;
 const build = srg.build;
-const preset = srg.preset;
+const spec = srg.spec;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
@@ -18,7 +18,7 @@ pub const logging_override: builtin.Logging.Override = .{
     .Error = false,
     .Fault = false,
 };
-pub const AddressSpace = preset.address_space.regular_128;
+pub const AddressSpace = spec.address_space.regular_128;
 
 const prune_weak: bool = false;
 const prune_fmt: bool = true;
@@ -223,7 +223,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         for (jumps.readAll(), 0..) |idx_1, j| {
             if (j == 0) {
                 name_buf.undefineAll();
-                name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
+                name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
                 try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
                 if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
@@ -234,7 +234,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
                 name_buf.undefineAll();
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-                    name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], "\n" });
+                    name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], "\n" });
                 }
                 try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
@@ -245,7 +245,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 name_buf.undefineAll();
 
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-                    name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n' });
+                    name_buf.writeAny(spec.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n' });
                 }
                 try file.write(.{}, fd, name_buf.readAll());
             }
@@ -254,7 +254,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-            name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], '\n' });
+            name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], '\n' });
         }
         try file.write(.{}, fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[begin..x.body.end];
@@ -264,12 +264,12 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-            name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
+            name_buf.writeAny(spec.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
         }
         try file.write(.{}, fd, name_buf.readAll());
     } else {
         name_buf.undefineAll();
-        name_buf.writeAny(preset.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
+        name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
         try file.write(.{}, fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[x.body.begin..x.body.end];
         if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
@@ -277,7 +277,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         }
         try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
-        name_buf.writeAny(preset.reinterpret.ptr, .{ mca_end_s.*, name, '\n' });
+        name_buf.writeAny(spec.reinterpret.ptr, .{ mca_end_s.*, name, '\n' });
         try file.write(.{}, fd, name_buf.readAll());
     }
 }

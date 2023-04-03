@@ -2,7 +2,7 @@ const srg = @import("zig_lib");
 const mem = srg.mem;
 const proc = srg.proc;
 const meta = srg.meta;
-const preset = srg.preset;
+const spec = srg.spec;
 const builtin = srg.builtin;
 
 // Use zl startup code to speed compilation and reduce binary size.
@@ -30,7 +30,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         // This specification configures `writeAny` to dereference pointers with
         // the same child type as the container, and by default converts
         // sentinel-terminated-slices-to-many to full slices.
-        array.writeAny(srg.preset.reinterpret.ptr, .{ vars[idx], '\n' });
+        array.writeAny(srg.spec.reinterpret.ptr, .{ vars[idx], '\n' });
     }
     builtin.debug.write(array.readAll());
 }

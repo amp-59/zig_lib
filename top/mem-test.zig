@@ -4,7 +4,7 @@ const mem = @import("./mem.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
@@ -14,36 +14,36 @@ pub const runtime_assertions: bool = true;
 
 pub const itos = builtin.fmt.ux;
 
-pub const AddressSpace = preset.address_space.exact_8;
+pub const AddressSpace = spec.address_space.exact_8;
 
 const invalid_holder_state: u64 = (0b110000110000 << 48);
 
 const move_spec = .{
     .options = .{},
-    .logging = preset.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.mremap_errors },
 };
 const map_spec = .{
     .options = .{},
-    .logging = preset.logging.acquire_error_fault.verbose,
+    .logging = spec.logging.acquire_error_fault.verbose,
     .errors = .{ .abort = sys.mmap_errors },
 };
 const resize_spec = .{
-    .logging = preset.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.mremap_errors },
 };
 const unmap_spec = .{
-    .logging = preset.logging.release_error_fault.verbose,
+    .logging = spec.logging.release_error_fault.verbose,
     .errors = .{ .abort = sys.munmap_errors },
 };
 const advise_spec = .{
     .options = .{ .property = .{ .dump = true } },
-    .logging = preset.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.madvise_errors },
 };
 const protect_spec = .{
     .options = .{ .none = true },
-    .logging = preset.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error_fault.verbose,
     .errors = .{ .abort = sys.madvise_errors },
 };
 const wr_spec: mem.ReinterpretSpec = .{
@@ -87,8 +87,8 @@ fn testRtAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericRtArenaAllocator(.{
         .options = .{ .trace_state = true },
-        .logging = preset.allocator.logging.verbose,
-        .AddressSpace = preset.address_space.regular_128,
+        .logging = spec.allocator.logging.verbose,
+        .AddressSpace = spec.address_space.regular_128,
     });
     var address_space: Allocator.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space, 0);
@@ -139,7 +139,7 @@ fn testAllocatedImplementation() !void {
         // address space.
         .arena_index = 0,
         .options = .{ .trace_state = true },
-        .logging = preset.allocator.logging.verbose,
+        .logging = spec.allocator.logging.verbose,
         .AddressSpace = AddressSpace,
     });
     var address_space: builtin.AddressSpace() = .{};
@@ -211,9 +211,9 @@ fn testAutomaticImplementation() !void {
 
 const AllocatorX = mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .options = preset.allocator.options.small,
-    .errors = preset.allocator.errors.noexcept,
-    .logging = preset.allocator.logging.silent,
+    .options = spec.allocator.options.small,
+    .errors = spec.allocator.errors.noexcept,
+    .logging = spec.allocator.logging.silent,
     .AddressSpace = AddressSpace,
 });
 

@@ -3,7 +3,7 @@ const mem = gen.mem;
 const sys = gen.sys;
 const proc = gen.proc;
 const meta = gen.meta;
-const preset = gen.preset;
+const spec = gen.spec;
 const builtin = gen.builtin;
 const detail = @import("./detail.zig");
 const canonical = @import("./canonical.zig");
@@ -17,7 +17,7 @@ const out = struct {
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const Array = mem.StaticArray(u8, 1024 * 1024);
 

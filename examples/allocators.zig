@@ -3,7 +3,7 @@ const mem = srg.mem;
 const fmt = srg.fmt;
 const proc = srg.proc;
 const meta = srg.meta;
-const preset = srg.preset;
+const spec = srg.spec;
 const virtual = srg.virtual;
 const testing = srg.testing;
 
@@ -20,7 +20,7 @@ const finish: u64 = start + (size * count);
 
 const Allocator = mem.GenericRtArenaAllocator(.{
     .AddressSpace = AddressSpace,
-    .logging = preset.allocator.logging.verbose,
+    .logging = spec.allocator.logging.verbose,
     .options = .{
         .require_map = false,
         .require_unmap = false,
@@ -31,7 +31,7 @@ const multi_arena: virtual.RegularMultiArena = .{
     .lb_addr = start,
     .up_addr = finish,
     .divisions = count,
-    .logging = preset.address_space.logging.verbose,
+    .logging = spec.address_space.logging.verbose,
     .options = .{
         .require_map = true,
         .require_unmap = true,

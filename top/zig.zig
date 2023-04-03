@@ -1,40 +1,40 @@
 const mem = @import("./mem.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 
 pub const Index = u32;
 pub const Offset = u32;
 
 pub const Allocator = struct {
-    const preset_errors: mem.AllocatorErrors = .{};
+    const spec_errors: mem.AllocatorErrors = .{};
     const AddressSpace = builtin.AddressSpace();
     pub const Node = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 0,
-        .options = preset.allocator.options.small,
-        .logging = preset.allocator.logging.silent,
-        .errors = preset.allocator.errors.uniform,
+        .options = spec.allocator.options.small,
+        .logging = spec.allocator.logging.silent,
+        .errors = spec.allocator.errors.uniform,
     });
     pub const Error = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 1,
-        .options = preset.allocator.options.small,
-        .logging = preset.allocator.logging.silent,
-        .errors = preset.allocator.errors.uniform,
+        .options = spec.allocator.options.small,
+        .logging = spec.allocator.logging.silent,
+        .errors = spec.allocator.errors.uniform,
     });
     pub const Extra = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 2,
-        .options = preset.allocator.options.small,
-        .logging = preset.allocator.logging.silent,
-        .errors = preset.allocator.errors.uniform,
+        .options = spec.allocator.options.small,
+        .logging = spec.allocator.logging.silent,
+        .errors = spec.allocator.errors.uniform,
     });
     pub const State = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 3,
-        .options = preset.allocator.options.small,
-        .logging = preset.allocator.logging.silent,
-        .errors = preset.allocator.errors.uniform,
+        .options = spec.allocator.options.small,
+        .logging = spec.allocator.logging.silent,
+        .errors = spec.allocator.errors.uniform,
     });
 };
 

@@ -5,7 +5,7 @@ const proc = srg.proc;
 const mach = srg.mach;
 const meta = srg.meta;
 const file = srg.file;
-const preset = srg.preset;
+const spec = srg.spec;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
@@ -23,7 +23,7 @@ const single_switch: bool = false;
 fn noOption(opt_arg: []const u8) void {
     var print_array: mem.StaticString(4096) = undefined;
     print_array.undefineAll();
-    print_array.writeAny(preset.reinterpret.ptr, [3][]const u8{
+    print_array.writeAny(spec.reinterpret.ptr, [3][]const u8{
         "unrecognised output mode: '",
         opt_arg,
         "'\n-o, --output=     x,d,o,b\n",

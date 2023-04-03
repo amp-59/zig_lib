@@ -3,7 +3,7 @@ const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const build = @import("./build.zig");
-const preset = @This();
+const spec = @This();
 const serial = @import("./serial.zig");
 const builtin = @import("./builtin.zig");
 
@@ -34,10 +34,10 @@ pub const address_space = opaque {
     });
     pub const logging = opaque {
         pub const verbose: mem.AddressSpaceLogging = .{
-            .acquire = preset.logging.acquire_error_fault.verbose,
-            .release = preset.logging.release_error_fault.verbose,
-            .map = preset.logging.acquire_error_fault.verbose,
-            .unmap = preset.logging.release_error_fault.verbose,
+            .acquire = spec.logging.acquire_error_fault.verbose,
+            .release = spec.logging.release_error_fault.verbose,
+            .map = spec.logging.acquire_error_fault.verbose,
+            .unmap = spec.logging.release_error_fault.verbose,
         };
         pub const silent: mem.AddressSpaceLogging = builtin.zero(mem.AddressSpaceLogging);
     };
@@ -85,9 +85,9 @@ pub const reinterpret = opaque {
         } };
         break :blk rs_1;
     };
-    fn reinterpretRecursively(comptime spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
-        var rs_0: mem.ReinterpretSpec = spec;
-        var rs_1: mem.ReinterpretSpec = spec;
+    fn reinterpretRecursively(comptime reinterpret_spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
+        var rs_0: mem.ReinterpretSpec = reinterpret_spec;
+        var rs_1: mem.ReinterpretSpec = reinterpret_spec;
         rs_0.reference.dereference = &rs_1;
         rs_1.reference.dereference = &rs_0;
         return rs_1;
@@ -135,15 +135,15 @@ pub const builder = opaque {
     pub const logging = opaque {
         pub const verbose: build.BuilderSpec.Logging = .{
             .command = .{
-                .fork = preset.logging.success_error_fault.verbose,
-                .execve = preset.logging.success_error_fault.verbose,
-                .waitpid = preset.logging.success_error_fault.verbose,
+                .fork = spec.logging.success_error_fault.verbose,
+                .execve = spec.logging.success_error_fault.verbose,
+                .waitpid = spec.logging.success_error_fault.verbose,
             },
-            .path = preset.logging.acquire_error_fault.verbose,
-            .stat = preset.logging.success_error_fault.verbose,
-            .create = preset.logging.acquire_error_fault.verbose,
-            .close = preset.logging.release_error_fault.verbose,
-            .mkdir = preset.logging.success_error_fault.verbose,
+            .path = spec.logging.acquire_error_fault.verbose,
+            .stat = spec.logging.success_error_fault.verbose,
+            .create = spec.logging.acquire_error_fault.verbose,
+            .close = spec.logging.release_error_fault.verbose,
+            .mkdir = spec.logging.success_error_fault.verbose,
         };
         pub const silent: build.BuilderSpec.Logging = builtin.zero(build.BuilderSpec.Logging);
     };
@@ -295,14 +295,14 @@ pub const dir = opaque {
     };
     pub const logging = opaque {
         pub const silent: file.DirStreamLogging = .{
-            .open = preset.logging.acquire_error_fault.silent,
-            .close = preset.logging.release_error_fault.silent,
-            .getdents = preset.logging.success_error_fault.silent,
+            .open = spec.logging.acquire_error_fault.silent,
+            .close = spec.logging.release_error_fault.silent,
+            .getdents = spec.logging.success_error_fault.silent,
         };
         pub const verbose: file.DirStreamLogging = .{
-            .open = preset.logging.acquire_error_fault.verbose,
-            .close = preset.logging.release_error_fault.verbose,
-            .getdents = preset.logging.success_error_fault.verbose,
+            .open = spec.logging.acquire_error_fault.verbose,
+            .close = spec.logging.release_error_fault.verbose,
+            .getdents = spec.logging.success_error_fault.verbose,
         };
     };
     pub const errors = opaque {
@@ -378,10 +378,10 @@ pub const allocator = opaque {
             .sentinel = true,
             .metadata = true,
             .branches = true,
-            .map = preset.logging.acquire_error_fault.verbose,
-            .unmap = preset.logging.release_error_fault.verbose,
-            .remap = preset.logging.success_error_fault.verbose,
-            .advise = preset.logging.success_error_fault.verbose,
+            .map = spec.logging.acquire_error_fault.verbose,
+            .unmap = spec.logging.release_error_fault.verbose,
+            .remap = spec.logging.success_error_fault.verbose,
+            .advise = spec.logging.success_error_fault.verbose,
             .allocate = true,
             .reallocate = true,
             .reinterpret = true,
@@ -392,10 +392,10 @@ pub const allocator = opaque {
             .sentinel = false,
             .metadata = false,
             .branches = false,
-            .map = preset.logging.acquire_error_fault.silent,
-            .unmap = preset.logging.release_error_fault.silent,
-            .remap = preset.logging.success_error_fault.silent,
-            .advise = preset.logging.success_error_fault.silent,
+            .map = spec.logging.acquire_error_fault.silent,
+            .unmap = spec.logging.release_error_fault.silent,
+            .remap = spec.logging.success_error_fault.silent,
+            .advise = spec.logging.success_error_fault.silent,
             .allocate = false,
             .reallocate = false,
             .reinterpret = false,
@@ -441,20 +441,20 @@ pub const serializer = opaque {
     };
     pub const logging = opaque {
         pub const verbose: serial.SerialSpec.Logging = .{
-            .create = preset.logging.acquire_error_fault.verbose,
-            .open = preset.logging.acquire_error_fault.verbose,
-            .close = preset.logging.release_error_fault.verbose,
-            .stat = preset.logging.success_error_fault.verbose,
-            .read = preset.logging.success_error_fault.verbose,
-            .write = preset.logging.success_error_fault.verbose,
+            .create = spec.logging.acquire_error_fault.verbose,
+            .open = spec.logging.acquire_error_fault.verbose,
+            .close = spec.logging.release_error_fault.verbose,
+            .stat = spec.logging.success_error_fault.verbose,
+            .read = spec.logging.success_error_fault.verbose,
+            .write = spec.logging.success_error_fault.verbose,
         };
         pub const silent: serial.SerialSpec.Logging = .{
-            .create = preset.logging.acquire_error_fault.silent,
-            .open = preset.logging.acquire_error_fault.silent,
-            .close = preset.logging.release_error_fault.silent,
-            .stat = preset.logging.success_error_fault.silent,
-            .read = preset.logging.success_error_fault.silent,
-            .write = preset.logging.success_error_fault.silent,
+            .create = spec.logging.acquire_error_fault.silent,
+            .open = spec.logging.acquire_error_fault.silent,
+            .close = spec.logging.release_error_fault.silent,
+            .stat = spec.logging.success_error_fault.silent,
+            .read = spec.logging.success_error_fault.silent,
+            .write = spec.logging.success_error_fault.silent,
         };
     };
 };
@@ -472,7 +472,7 @@ pub const mmap = opaque {
         };
     };
     pub const options = opaque {
-        pub const object: preset.file.MapSpec.Options = .{
+        pub const object: spec.file.MapSpec.Options = .{
             .visibility = .private,
             .anonymous = false,
             .read = true,
@@ -482,7 +482,7 @@ pub const mmap = opaque {
             .grows_down = false,
             .sync = false,
         };
-        pub const file: preset.file.MapSpec.Options = .{
+        pub const file: spec.file.MapSpec.Options = .{
             .anonymous = false,
             .visibility = .shared,
             .read = true,

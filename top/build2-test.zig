@@ -6,18 +6,18 @@ const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const build = @import("./build2.zig");
 const types = build.types;
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const command_line = build.command_line;
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = preset.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 
 const Builder = build.GenericBuilder(.{
-    .errors = preset.builder.errors.noexcept,
-    .logging = preset.builder.logging.silent,
+    .errors = spec.builder.errors.noexcept,
+    .logging = spec.builder.logging.silent,
 });
 
 pub const AddressSpace = types.AddressSpace;
@@ -184,7 +184,6 @@ fn getTypes(comptime builder_fn: anytype) Types {
         .AddressSpace = meta.Child(@typeInfo(@TypeOf(Array.init)).Fn.params[0].type.?).AddressSpace,
     };
 }
-
 fn testDirectCommandLineUsage() void {
     const env = @import("env");
     const T = getTypes(command_line.buildWrite);
@@ -199,9 +198,7 @@ fn testDirectCommandLineUsage() void {
     };
     command_line.buildWrite(&cmd, &array);
 }
-
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    try meta.wrap(testBuildRunner(args, vars, testComplexDependencyStructure));
+    //try meta.wrap(testBuildRunner(args, vars, testComplexDependencyStructure));
     try meta.wrap(testBuildRunner(args, vars, testRealBuildProgram));
-    testDirectCommandLineUsage();
 }

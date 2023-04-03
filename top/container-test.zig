@@ -2,7 +2,7 @@ const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const Allocator = mem.GenericArenaAllocator(.{
@@ -10,18 +10,18 @@ const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
 });
 pub usingnamespace proc.start;
-pub const AddressSpace = preset.address_space.regular_128;
-fn testAutomaticAppend(comptime spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
+pub const AddressSpace = spec.address_space.regular_128;
+fn testAutomaticAppend(comptime reinterpret_spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
     const Array = mem.StaticArray(dst_type, 4096);
     var array: Array = .{};
-    array.writeAny(spec, any);
+    array.writeAny(reinterpret_spec, any);
     try testing.expectEqualMany(dst_type, array.readAll(), expected);
 }
-fn testDynamicAppend(comptime spec: mem.ReinterpretSpec, allocator: *Allocator, comptime dst_type: type, expected: []const dst_type, any: anytype) !void {
+fn testDynamicAppend(comptime reinterpret_spec: mem.ReinterpretSpec, allocator: *Allocator, comptime dst_type: type, expected: []const dst_type, any: anytype) !void {
     const Array = Allocator.StructuredVector(dst_type);
     var array: Array = try Array.init(allocator);
     defer array.deinit(allocator);
-    try array.appendAny(spec, any);
+    try array.appendAny(reinterpret_spec, any);
     try testing.expectEqualMany(dst_type, array.readAll(), expected);
 }
 fn unfairAndUnreasonableTestCases() !void {
@@ -49,20 +49,20 @@ fn unfairAndUnreasonableTestCases() !void {
         var v_4 = S.get(4);
         var src_0: [5:null]?[:S.sentinel]S = .{ &v_0, &v_1, &v_2, &v_3, &v_4 };
         var src_1 = @ptrCast([*:null]?[:S.sentinel]S, &src_0);
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{}, .dereference = &.{} } };
-        try testAutomaticAppend(spec, dst_type, src_1, .{ &v_0, &v_1, &v_2, &v_3, &v_4 });
-        try testDynamicAppend(spec, allocator, dst_type, src_1);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{}, .dereference = &.{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, src_1, .{ &v_0, &v_1, &v_2, &v_3, &v_4 });
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src_1);
     }
     {
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .dereference = &.{} } };
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .dereference = &.{} } };
         const dst_type: type = u8;
         const src_0: [11:0]u8 = "hello_world".*;
         const src_1: *const [11:0]u8 = &src_0;
         const src_2: [:0]const u8 = &src_0;
         const src_3: [*:0]const u8 = src_2.ptr;
         const src = .{ src_0, src_1, src_2, src_3 };
-        try testAutomaticAppend(spec, dst_type, 4, src);
-        try testDynamicAppend(spec, allocator, dst_type, src);
+        try testAutomaticAppend(reinterpret_spec, dst_type, 4, src);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src);
     }
     {
         // The desired response to the following parameters is to iterate over
@@ -77,9 +77,9 @@ fn unfairAndUnreasonableTestCases() !void {
         const src_2: [:0]const u8 = &src_0;
         const src_3: [*:0]const u8 = src_2.ptr;
         const src = .{ src_1, src_2, src_3 };
-        const spec = .{ .reference = .{ .dereference = &.{} } };
-        try testAutomaticAppend(spec, dst_type, src);
-        try testDynamicAppend(spec, allocator, dst_type, src);
+        const reinterpret_spec = .{ .reference = .{ .dereference = &.{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, src);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src);
     }
     {
         const dst_type: type = []const []align(8) const u8;
@@ -97,29 +97,29 @@ fn unfairAndUnreasonableTestCases() !void {
         var p2 = "world".*;
         const src_0 = &p0;
         const src_1 = .{ &p1, &p2 };
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{}, .dereference = &.{} } };
-        try testAutomaticAppend(spec, u8, src_0);
-        try testDynamicAppend(spec, allocator, u8, src_0);
-        try testAutomaticAppend(spec, u8, src_1);
-        try testDynamicAppend(spec, allocator, u8, src_1);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{}, .dereference = &.{} } };
+        try testAutomaticAppend(reinterpret_spec, u8, src_0);
+        try testDynamicAppend(reinterpret_spec, allocator, u8, src_0);
+        try testAutomaticAppend(reinterpret_spec, u8, src_1);
+        try testDynamicAppend(reinterpret_spec, allocator, u8, src_1);
     }
     {
         const dst_type: type = []u8;
         const src_type: type = [*:0]u8;
         var p0 = "hello_world".*;
         var p1 = @ptrCast(src_type, &p0);
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
-        try testAutomaticAppend(spec, dst_type, p1);
-        try testDynamicAppend(spec, allocator, dst_type, p1);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, p1);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, p1);
     }
     {
         const dst_type: type = [:'k']u8;
         const src_type: type = [:'k']u8;
         var src_0: [32:'k']u8 = .{'a'} ** 32;
         var src: src_type = &src_0;
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
-        try testAutomaticAppend(spec, dst_type, 1, src);
-        try testDynamicAppend(spec, allocator, dst_type, src);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, 1, src);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src);
     }
     {
         const S = struct { c: u8 = 'k', d: u8 = 'l' };
@@ -127,9 +127,9 @@ fn unfairAndUnreasonableTestCases() !void {
         const src_type: type = [:.{}]S;
         var src_0: [32:.{}]S = .{.{}} ** 32;
         const src: src_type = &src_0;
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
-        try testAutomaticAppend(spec, dst_type, 1, src);
-        try testDynamicAppend(spec, allocator, dst_type, src);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, 1, src);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src);
     }
     {
         const c: u8 = 'k';
@@ -141,24 +141,24 @@ fn unfairAndUnreasonableTestCases() !void {
         const v_3: u8 = 'd';
         var src_0: [4]*const u8 = [_]*const u8{ &v_0, &v_1, &v_2, &v_3, &c };
         var src: src_type = src_0[0..4 :&c];
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
-        try testAutomaticAppend(spec, dst_type, 1, src);
-        try testDynamicAppend(spec, allocator, dst_type, src);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, 1, src);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src);
     }
     {
         const dst_type: type = [*:0]u8;
         var src_0: [4:0]u8 = "abcd".*;
         const src: [*:0]u8 = @as([:0]u8, &src_0).ptr;
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
-        try testAutomaticAppend(spec, dst_type, 1, src);
-        try testDynamicAppend(spec, allocator, dst_type, src);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, 1, src);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src);
     }
     {
         const dst_type: type = u8;
         const src = @embedFile("./container-test.zig");
-        const spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{}, .dereference = &.{} } };
-        try testAutomaticAppend(spec, dst_type, 1, src);
-        try testDynamicAppend(spec, allocator, dst_type, src);
+        const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{}, .dereference = &.{} } };
+        try testAutomaticAppend(reinterpret_spec, dst_type, 1, src);
+        try testDynamicAppend(reinterpret_spec, allocator, dst_type, src);
     }
 }
 pub fn main() !void {

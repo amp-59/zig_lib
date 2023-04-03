@@ -3,14 +3,14 @@ const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const file = @import("./file.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 pub const ListSpec = struct {
     child: type,
     low_alignment: ?u64,
     Allocator: type,
 };
-pub fn GenericLinkedList(comptime spec: ListSpec) type {
+pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
     return (struct {
         links: Links,
         count: u64,
@@ -119,7 +119,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             const link_size: u64 = @sizeOf(u64);
             const link_alignment: u64 = @alignOf(u64);
             const unit_size: u64 = @sizeOf(child);
-            const low_alignment: u64 = spec.low_alignment orelse @alignOf(child);
+            const low_alignment: u64 = list_spec.low_alignment orelse @alignOf(child);
             const alignment: u64 = builtin.max(u64, link_alignment, low_alignment);
             const offset: u64 = builtin.max(u64, Link.end, Data.end);
             const size: u64 = mach.alignA64(offset, if (link_after) link_alignment else low_alignment);
@@ -180,7 +180,6 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 return i;
             }
         };
-        pub const list_spec: ListSpec = spec;
         const child = list_spec.child;
         const zero_block: Block = .{ .lb_word = 0 };
         pub fn this(list: *List) *child {
@@ -583,8 +582,8 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
                 .arena_index = AddressSpace.addr_spec.count() - 1,
-                .errors = preset.allocator.errors.noexcept,
-                .logging = preset.allocator.logging.silent,
+                .errors = spec.allocator.errors.noexcept,
+                .logging = spec.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.StructuredHolder(u8);
             pub fn show(list: List, address_space: *AddressSpace) !void {
@@ -595,7 +594,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                    array.appendAny(spec.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major.aligned_byte_address()),
                         "+",        fmt.ud64(tmp.links.major.alignment()),
@@ -607,7 +606,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        array.appendAny(spec.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.major.alignment()),
@@ -623,7 +622,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                         tmp.index += 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        array.appendAny(spec.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.prev().?.alignment()),
@@ -640,7 +639,7 @@ pub fn GenericLinkedList(comptime spec: ListSpec) type {
                         tmp.links = links;
                         tmp.index += 1;
                     } else {
-                        array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        array.appendAny(spec.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",         fmt.ud64(tmp.links.prev().?.alignment()),
@@ -663,7 +662,7 @@ pub const ListViewSpec = struct {
     child: type,
     low_alignment: u64,
 };
-pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
+pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
     return (struct {
         links: Links,
         count: u64,
@@ -829,7 +828,6 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
             }
         };
         const child: type = list_spec.child;
-        pub const list_spec: ListViewSpec = spec;
         pub fn this(list: *List) *child {
             return Node.Data.refer(list.links.major);
         }
@@ -1077,8 +1075,8 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
                 .arena_index = AddressSpace.addr_spec.count() - 1,
-                .errors = preset.allocator.errors.noexcept,
-                .logging = preset.allocator.logging.silent,
+                .errors = list_spec.allocator.errors.noexcept,
+                .logging = list_spec.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.Holder(u8);
             pub fn show(list: List, address_space: *AddressSpace) !void {
@@ -1089,7 +1087,7 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                    try array.appendAny(spec.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major),
                         ',',        fmt.ux64(tmp.links.minor),
@@ -1099,7 +1097,7 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        try array.appendAny(spec.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major),
                             ',',       fmt.ux64(tmp.links.minor),
@@ -1112,7 +1110,7 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
                         tmp.index += 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        try array.appendAny(spec.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?),
                             " <- (",   fmt.ux64(tmp.links.major),
@@ -1125,7 +1123,7 @@ pub fn GenericLinkedListView(comptime spec: ListViewSpec) type {
                         tmp.links = links;
                         tmp.index += 1;
                     } else {
-                        try array.appendAny(preset.reinterpret.fmt, &allocator, .{
+                        try array.appendAny(spec.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?),
                             " <- (",     fmt.ux64(tmp.links.major),

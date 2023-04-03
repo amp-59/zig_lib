@@ -6,7 +6,7 @@ const time = @import("./time.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
-const preset = @import("./preset.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
 const tasks = @import("./build/tasks.zig");
@@ -66,53 +66,53 @@ pub const BuilderSpec = struct {
         .exclusive = false,
         .write = .truncate,
     };
-    pub fn path(comptime spec: BuilderSpec) file.PathSpec {
-        return .{ .errors = spec.errors.path, .logging = spec.logging.path };
+    pub fn path(comptime builder_spec: BuilderSpec) file.PathSpec {
+        return .{ .errors = builder_spec.errors.path, .logging = builder_spec.logging.path };
     }
-    pub fn command(comptime spec: BuilderSpec) proc.CommandSpec {
-        return .{ .errors = spec.errors.command, .logging = spec.logging.command };
+    pub fn command(comptime builder_spec: BuilderSpec) proc.CommandSpec {
+        return .{ .errors = builder_spec.errors.command, .logging = builder_spec.logging.command };
     }
-    pub fn clock(comptime spec: BuilderSpec) time.ClockSpec {
-        return .{ .errors = spec.errors.clock };
+    pub fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
+        return .{ .errors = builder_spec.errors.clock };
     }
-    pub fn sleep(comptime spec: BuilderSpec) time.SleepSpec {
-        return .{ .errors = spec.errors.sleep };
+    pub fn sleep(comptime builder_spec: BuilderSpec) time.SleepSpec {
+        return .{ .errors = builder_spec.errors.sleep };
     }
-    pub fn mkdir(comptime spec: BuilderSpec) file.MakeDirSpec {
-        return .{ .errors = spec.errors.mkdir, .logging = spec.logging.mkdir };
+    pub fn mkdir(comptime builder_spec: BuilderSpec) file.MakeDirSpec {
+        return .{ .errors = builder_spec.errors.mkdir, .logging = builder_spec.logging.mkdir };
     }
-    pub fn write(comptime spec: BuilderSpec) file.WriteSpec {
-        return .{ .errors = spec.errors.write, .logging = spec.logging.write };
+    pub fn write(comptime builder_spec: BuilderSpec) file.WriteSpec {
+        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
     }
-    pub fn close(comptime spec: BuilderSpec) file.CloseSpec {
-        return .{ .errors = spec.errors.close, .logging = spec.logging.close };
+    pub fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
+        return .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
     }
-    pub fn clone(comptime spec: BuilderSpec) proc.CloneSpec {
-        return .{ .return_type = void, .errors = spec.errors.clone };
+    pub fn clone(comptime builder_spec: BuilderSpec) proc.CloneSpec {
+        return .{ .return_type = void, .errors = builder_spec.errors.clone };
     }
-    pub fn unmap(comptime spec: BuilderSpec) mem.UnmapSpec {
-        return .{ .errors = spec.errors.unmap, .logging = spec.logging.unmap };
+    pub fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
+        return .{ .errors = builder_spec.errors.unmap, .logging = builder_spec.logging.unmap };
     }
-    pub fn stat(comptime spec: BuilderSpec) file.StatSpec {
-        return .{ .errors = spec.errors.stat, .logging = spec.logging.stat };
+    pub fn stat(comptime builder_spec: BuilderSpec) file.StatSpec {
+        return .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
     }
-    pub fn map(comptime spec: BuilderSpec) mem.MapSpec {
+    pub fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
         return .{
-            .errors = spec.errors.map,
-            .logging = spec.logging.map,
+            .errors = builder_spec.errors.map,
+            .logging = builder_spec.logging.map,
             .options = map_options,
         };
     }
-    pub fn create(comptime spec: BuilderSpec) file.CreateSpec {
+    pub fn create(comptime builder_spec: BuilderSpec) file.CreateSpec {
         return .{
-            .errors = spec.errors.create,
-            .logging = spec.logging.create,
+            .errors = builder_spec.errors.create,
+            .logging = builder_spec.logging.create,
             .options = create_options,
         };
     }
 };
 
-pub fn GenericBuilder(comptime spec: BuilderSpec) type {
+pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const Type = struct {
         zig_exe: [:0]const u8,
         build_root: [:0]const u8,
@@ -424,10 +424,10 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             return builder.grps[0..builder.grps_len];
         }
         inline fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
-            .throw = spec.errors.command.fork.throw ++ spec.errors.command.execve.throw ++
-                spec.errors.command.waitpid.throw ++ spec.errors.clock.throw,
-            .abort = spec.errors.command.fork.abort ++ spec.errors.command.execve.abort ++
-                spec.errors.command.waitpid.abort ++ spec.errors.clock.throw,
+            .throw = builder_spec.errors.command.fork.throw ++ builder_spec.errors.command.execve.throw ++
+                builder_spec.errors.command.waitpid.throw ++ builder_spec.errors.clock.throw,
+            .abort = builder_spec.errors.command.fork.abort ++ builder_spec.errors.command.execve.abort ++
+                builder_spec.errors.command.waitpid.abort ++ builder_spec.errors.clock.throw,
         }, u8) {
             const start: time.TimeSpec = try meta.wrap(time.get(decls.clock_spec, .realtime));
             const ret: u8 = try meta.wrap(proc.command(decls.command_spec, meta.manyToSlice(args[0]), args, builder.vars));
@@ -528,10 +528,10 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             return len;
         }
         fn executeBuildCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) sys.Call(.{
-            .throw = spec.errors.command.fork.throw ++ spec.errors.command.execve.throw ++
-                spec.errors.command.waitpid.throw ++ spec.errors.clock.throw,
-            .abort = spec.errors.command.fork.abort ++ spec.errors.command.execve.abort ++
-                spec.errors.command.waitpid.abort ++ spec.errors.clock.throw,
+            .throw = builder_spec.errors.command.fork.throw ++ builder_spec.errors.command.execve.throw ++
+                builder_spec.errors.command.waitpid.throw ++ builder_spec.errors.clock.throw,
+            .abort = builder_spec.errors.command.fork.abort ++ builder_spec.errors.command.execve.abort ++
+                builder_spec.errors.command.waitpid.abort ++ builder_spec.errors.clock.throw,
         }, bool) {
             var build_time: time.TimeSpec = undefined;
             const bin_path: [:0]const u8 = try meta.wrap(
@@ -549,17 +549,17 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                 builder.system(ptrs, &build_time),
             );
             const new_size: u64 = builder.getFileSize(bin_path);
-            if (depth < spec.options.max_relevant_depth) {
+            if (depth < builder_spec.options.max_relevant_depth) {
                 debug.buildNotice(target.name, build_time, old_size, new_size);
             }
             builtin.assert(target.transform(.run, .unavailable, .ready));
             return rc == 0;
         }
         fn executeRunCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) sys.Call(.{
-            .throw = spec.errors.command.fork.throw ++ spec.errors.command.execve.throw ++
-                spec.errors.command.waitpid.throw ++ spec.errors.clock.throw,
-            .abort = spec.errors.command.fork.abort ++ spec.errors.command.execve.abort ++
-                spec.errors.command.waitpid.abort ++ spec.errors.clock.throw,
+            .throw = builder_spec.errors.command.fork.throw ++ builder_spec.errors.command.execve.throw ++
+                builder_spec.errors.command.waitpid.throw ++ builder_spec.errors.clock.throw,
+            .abort = builder_spec.errors.command.fork.abort ++ builder_spec.errors.command.execve.abort ++
+                builder_spec.errors.command.waitpid.abort ++ builder_spec.errors.clock.throw,
         }, bool) {
             var run_time: time.TimeSpec = undefined;
             const args: [:0]u8 = builder.runWrite(target);
@@ -569,16 +569,16 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             const rc: u8 = try meta.wrap(
                 builder.system(ptrs, &run_time),
             );
-            if (rc != 0 or depth <= spec.options.max_relevant_depth) {
+            if (rc != 0 or depth <= builder_spec.options.max_relevant_depth) {
                 debug.runNotice(target.name, run_time, rc);
             }
             return rc == 0;
         }
         pub fn init(args: [][*:0]u8, vars: [][*:0]u8) sys.Call(.{
-            .throw = types.Allocator.resize_error_policy.throw ++ spec.errors.mkdir.throw ++ spec.errors.path.throw ++
-                spec.errors.close.throw ++ spec.errors.create.throw,
-            .abort = types.Allocator.resize_error_policy.abort ++ spec.errors.mkdir.abort ++ spec.errors.path.abort ++
-                spec.errors.close.abort ++ spec.errors.create.abort,
+            .throw = types.Allocator.resize_error_policy.throw ++ builder_spec.errors.mkdir.throw ++ builder_spec.errors.path.throw ++
+                builder_spec.errors.close.throw ++ builder_spec.errors.create.throw,
+            .abort = types.Allocator.resize_error_policy.abort ++ builder_spec.errors.mkdir.abort ++ builder_spec.errors.path.abort ++
+                builder_spec.errors.close.abort ++ builder_spec.errors.create.abort,
         }, Builder) {
             @setRuntimeSafety(false);
             const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
@@ -700,18 +700,18 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             }
         }
         const decls = struct {
-            const path_spec: file.PathSpec = spec.path();
-            const close_spec: file.CloseSpec = spec.close();
-            const map_spec: mem.MapSpec = spec.map();
-            const stat_spec: file.StatSpec = spec.stat();
-            const unmap_spec: mem.UnmapSpec = spec.unmap();
-            const clock_spec: time.ClockSpec = spec.clock();
-            const sleep_spec: time.SleepSpec = spec.sleep();
-            const clone_spec: proc.CloneSpec = spec.clone();
-            const write_spec: file.WriteSpec = spec.write();
-            const create_spec: file.CreateSpec = spec.create();
-            const mkdir_spec: file.MakeDirSpec = spec.mkdir();
-            const command_spec: proc.CommandSpec = spec.command();
+            const path_spec: file.PathSpec = builder_spec.path();
+            const close_spec: file.CloseSpec = builder_spec.close();
+            const map_spec: mem.MapSpec = builder_spec.map();
+            const stat_spec: file.StatSpec = builder_spec.stat();
+            const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
+            const clock_spec: time.ClockSpec = builder_spec.clock();
+            const sleep_spec: time.SleepSpec = builder_spec.sleep();
+            const clone_spec: proc.CloneSpec = builder_spec.clone();
+            const write_spec: file.WriteSpec = builder_spec.write();
+            const create_spec: file.CreateSpec = builder_spec.create();
+            const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
+            const command_spec: proc.CommandSpec = builder_spec.command();
         };
         const tok = struct {
             const env_name: [:0]const u8 = "env.zig";
