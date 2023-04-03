@@ -690,9 +690,9 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             return false;
         }
         fn groupScan(group: *Group, task: Task) void {
-            while (true) {
+            lo: while (true) {
                 for (group.targets()) |*target| {
-                    if (target.lock.get(task) == .blocking) continue;
+                    if (target.lock.get(task) == .blocking) continue :lo;
                 } else {
                     break;
                 }
