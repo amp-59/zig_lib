@@ -328,9 +328,9 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
     }
     if (cmd.error_tracing) |error_tracing| {
         if (error_tracing) {
-            len +%= 14;
+            len +%= 16;
         } else {
-            len +%= 17;
+            len +%= 19;
         }
     }
     if (cmd.single_threaded) |single_threaded| {
@@ -831,9 +831,9 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.
     }
     if (cmd.error_tracing) |error_tracing| {
         if (error_tracing) {
-            array.writeMany("-ferror-trace\x00");
+            array.writeMany("-ferror-tracing\x00");
         } else {
-            array.writeMany("-fno-error-trace\x00");
+            array.writeMany("-fno-error-tracing\x00");
         }
     }
     if (cmd.single_threaded) |single_threaded| {
