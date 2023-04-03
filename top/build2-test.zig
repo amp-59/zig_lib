@@ -1,22 +1,14 @@
-const root = @import("@build");
-const build_fn: fn (*build.Allocator, *build.Builder) anyerror!void = root.buildMain;
-const srg = blk: {
-    if (@hasDecl(root, "srg")) {
-        break :blk root.srg;
-    }
-    if (@hasDecl(root, "zig_lib")) {
-        break :blk root.zig_lib;
-    }
-};
-const mem = srg.mem;
-const sys = srg.sys;
-const proc = srg.proc;
-const mach = srg.mach;
-const meta = srg.meta;
-const build = srg.build2;
+const mem = @import("./mem.zig");
+const sys = @import("./sys.zig");
+const proc = @import("./proc.zig");
+const mach = @import("./mach.zig");
+const meta = @import("./meta.zig");
+const file = @import("./file.zig");
+const build = @import("./build2.zig");
 const types = build.types;
-const preset = srg.preset;
-const builtin = srg.builtin;
+const preset = @import("./preset.zig");
+const builtin = @import("./builtin.zig");
+const command_line = build.command_line;
 
 pub usingnamespace proc.start;
 
@@ -55,7 +47,7 @@ const extra = .{
         .{ .name = "env", .path = "zig-cache/env.zig" },
     },
 };
-pub fn buildMainReal(allocator: *Allocator, builder: *Builder) !void {
+pub fn testRealBuildProgram(allocator: *Allocator, builder: *Builder) !void {
     const tests: *Builder.Group = builder.addGroup(allocator, "g0");
     const builtin_test: *Builder.Target = tests.addTarget(allocator, .exe, "builtin_test", "top/builtin-test.zig", extra);
     const meta_test: *Builder.Target = tests.addTarget(allocator, .exe, "meta_test", "top/meta-test.zig", extra);
@@ -125,8 +117,7 @@ pub fn buildMainReal(allocator: *Allocator, builder: *Builder) !void {
         virtual_test, size_test,         container_test,
     };
 }
-
-pub fn buildMain(allocator: *Allocator, builder: *Builder) !void {
+pub fn testComplexDependencyStructure(allocator: *Allocator, builder: *Builder) !void {
     const group = builder.addGroup(allocator, "group");
     const t2: *Builder.Target = group.addTarget(allocator, .obj, "obj0", "test/src/obj0.zig", extra);
     const t3: *Builder.Target = group.addTarget(allocator, .obj, "obj1", "test/src/obj1.zig", extra);
@@ -148,14 +139,14 @@ pub fn buildMain(allocator: *Allocator, builder: *Builder) !void {
     t.dependOnObject(allocator, t6);
     t.dependOnObject(allocator, t7);
 }
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+
+fn testBuildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime main_fn: fn (*types.Allocator, *Builder) anyerror!void) !void {
     var address_space: AddressSpace = .{};
     var thread_space: ThreadSpace = .{};
     var allocator: types.Allocator = types.Allocator.init(&address_space, types.thread_count);
     const cmds: [][*:0]u8 = args[5..];
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
-    try buildMain(&allocator, &builder);
-    try buildMainReal(&allocator, &builder);
+    try main_fn(&allocator, &builder);
     var target_task: build.Task = .build;
     for (cmds) |arg| {
         const command: []const u8 = meta.manyToSlice(arg);
@@ -175,4 +166,42 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
             }
         }
     }
+}
+
+const Types = struct {
+    TaskData: type,
+    Allocator: type,
+    AddressSpace: type,
+    Array: type,
+};
+fn getTypes(comptime builder_fn: anytype) Types {
+    const TaskData = @typeInfo(@TypeOf(builder_fn)).Fn.params[0].type;
+    const Array = meta.Child(@typeInfo(@TypeOf(builder_fn)).Fn.params[1].type.?);
+    return .{
+        .Array = Array,
+        .TaskData = meta.Child(TaskData.?),
+        .Allocator = meta.Child(@typeInfo(@TypeOf(Array.init)).Fn.params[0].type.?),
+        .AddressSpace = meta.Child(@typeInfo(@TypeOf(Array.init)).Fn.params[0].type.?).AddressSpace,
+    };
+}
+
+fn testDirectCommandLineUsage() void {
+    const env = @import("env");
+    const T = getTypes(command_line.buildWrite);
+    var address_space: T.AddressSpace = .{};
+    var allocator: T.Allocator = T.Allocator.init(&address_space, 0);
+    defer allocator.deinit(&address_space, 0);
+    var array: T.Array = T.Array.init(&allocator, 4096);
+    defer array.deinit(&allocator);
+    var cmd: T.TaskData = .{
+        .kind = .exe,
+        .emit_bin = .{ .yes = .{ .absolute = env.build_root, .relative = "zig-out/bin/test_output" } },
+    };
+    command_line.buildWrite(&cmd, &array);
+}
+
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    try meta.wrap(testBuildRunner(args, vars, testComplexDependencyStructure));
+    try meta.wrap(testBuildRunner(args, vars, testRealBuildProgram));
+    testDirectCommandLineUsage();
 }
