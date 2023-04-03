@@ -751,7 +751,7 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                 var buf: [4096]u8 = undefined;
                 var len: u64 = mach.memcpyMulti(&buf, &.{ about_build_s, name, ", " });
                 if (old_size == 0) {
-                    len +%= mach.memcpyMulti(buf[len..].ptr, &.{ "\x1b[93m*", builtin.fmt.ud64(new_size).readAll(), "\x1b[0m" });
+                    len +%= mach.memcpyMulti(buf[len..].ptr, &.{ "\x1b[93m", builtin.fmt.ud64(new_size).readAll(), "*\x1b[0m bytes " });
                 } else if (new_size == old_size) {
                     len +%= mach.memcpyMulti(buf[len..].ptr, &.{
                         builtin.fmt.ud64(new_size).readAll(), " bytes, ",
