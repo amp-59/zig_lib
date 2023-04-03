@@ -44,3 +44,24 @@ pub const Fn = enum(u16) {
         }
     }
 };
+
+pub fn branchName(comptime any: anytype) []const u8 {
+    const type_info: builtin.Type = @typeInfo(@TypeOf(any));
+    const name: []const u8 = blk: {
+        switch (@tagName(any)[0]) {
+            'A'...'Z' => |c| {
+                break :blk [1]u8{c + ('a' - 'A')} ++ @tagName(any)[1..];
+            },
+            else => {
+                break :blk @tagName(any);
+            },
+        }
+    };
+    if (type_info == .Union) {
+        return name ++ "." ++ branchName(@field(any, @tagName(any)));
+    }
+    if (type_info == .Enum) {
+        return name;
+    }
+    return meta.empty;
+}
