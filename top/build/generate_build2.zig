@@ -393,8 +393,8 @@ pub const BuildCommandOptions = opaque {
         .arg_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro },
     };
     pub const files: OptionSpec = .{
-        .arg_type = types.Files,
-        .arg_type_name = "Files",
+        .arg_type = []const types.Path,
+        .arg_type_name = "[]const types.Path",
     };
     const test_filter: OptionSpec = .{
         .string = "--test-filter",
@@ -1600,7 +1600,7 @@ pub fn main() !void {
     array.define(try file.read(.{}, fd, array.referAllUndefined(allocator), st.size));
     try file.close(.{}, fd);
 
-    array.writeMany("pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C)  u64 {\n");
+    array.writeMany("pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {\n");
     array.writeMany("    var len: u64 = 0;\n");
     writeFunctionBody(BuildCommandOptions, &array, .length);
     array.writeMany("    return len;\n");

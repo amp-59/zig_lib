@@ -12,6 +12,7 @@ pub const Exception = error{
     UnexpectedValue,
 };
 /// `E` must be an error type.
+//
 pub fn InternalError(comptime E: type) type {
     static.assert(@typeInfo(E) == .ErrorSet);
     return union(enum) {
@@ -1391,6 +1392,8 @@ pub const debug = opaque {
         logError(buf[0..writeMulti(buf, slices)]);
     }
     pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
         logFault(buf[0..writeMulti(buf, slices)]);
     }
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?usize) noreturn {
@@ -1773,7 +1776,7 @@ pub const parse = opaque {
 };
 pub const fmt = opaque {
     fn StaticStringMemo(comptime max_len: u64) type {
-        return struct {
+        return (extern struct {
             auto: [max_len]u8 align(8),
             len: u64,
             const Array = @This();
@@ -1786,7 +1789,7 @@ pub const fmt = opaque {
                 @setRuntimeSafety(false);
                 return array.auto[array.len..];
             }
-        };
+        });
     }
     fn StaticString(comptime T: type, comptime radix: u16) type {
         return StaticStringMemo(maxSigFig(T, radix) +% 1);
