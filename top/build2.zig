@@ -110,6 +110,7 @@ pub const BuilderSpec = struct {
         };
     }
 };
+
 pub fn GenericBuilder(comptime spec: BuilderSpec) type {
     const Type = struct {
         zig_exe: [:0]const u8,
@@ -141,7 +142,6 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             lock: Lock = .{},
             deps: []Dependency = &.{},
             deps_len: u64 = 0,
-
             pub const Lock = virtual.ThreadSafeSet(5, State, Task);
             fn acquireThread(
                 target: *Target,
@@ -165,9 +165,11 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                         if (thread_space.atomicSet(arena_index)) {
                             const stack_up_addr: u64 = types.ThreadSpace.high(arena_index);
                             const stack_ab_addr: u64 = stack_up_addr -% 4096;
-                            return proc.callClone(decls.clone_spec, stack_ab_addr, {}, executeCommandThreaded, .{
-                                builder, address_space, thread_space, target, task, arena_index, depth,
-                            });
+                            return forwardToExecuteCloneThreaded(builder, address_space, thread_space, target, task, arena_index, depth, stack_ab_addr);
+
+                            //return proc.callClone(decls.clone_spec, stack_ab_addr, {}, executeCommandThreaded, .{
+                            //    builder, address_space, thread_space, target, task, arena_index, depth,
+                            //});
                         }
                     }
                     try executeCommand(builder, allocator, target, task, depth);
