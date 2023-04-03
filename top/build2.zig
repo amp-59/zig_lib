@@ -30,9 +30,10 @@ pub const BuilderSpec = struct {
     logging: Logging = .{},
     errors: Errors = .{},
     pub const Options = struct {
-        max_command_line: u64 = 65536,
-        max_command_args: u64 = 1024,
+        max_command_line: ?u64 = 65536,
+        max_command_args: ?u64 = 1024,
         max_relevant_depth: u64 = 255,
+        dep_sleep_nsec: u64 = 50000,
     };
     pub const Logging = packed struct {
         command: proc.CommandSpec.Logging = .{},
@@ -167,10 +168,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             const stack_up_addr: u64 = types.ThreadSpace.high(arena_index);
                             const stack_ab_addr: u64 = stack_up_addr -% 4096;
                             return forwardToExecuteCloneThreaded(builder, address_space, thread_space, target, task, arena_index, depth, stack_ab_addr);
-
-                            //return proc.callClone(decls.clone_spec, stack_ab_addr, {}, executeCommandThreaded, .{
-                            //    builder, address_space, thread_space, target, task, arena_index, depth,
-                            //});
                         }
                     }
                     try executeCommand(builder, allocator, target, task, depth);
@@ -199,12 +196,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         try meta.wrap(dep.target.acquireLock(address_space, thread_space, allocator, builder, dep.task, arena_index, depth +% 1));
                     }
                     while (dependencyScan(address_space, thread_space, target, arena_index)) {
-                        try meta.wrap(time.sleep(decls.sleep_spec, .{ .nsec = 50000 }));
+                        try meta.wrap(time.sleep(decls.sleep_spec, .{ .nsec = builder_spec.options.dep_sleep_nsec }));
                     }
                     try meta.wrap(target.acquireThread(address_space, thread_space, allocator, builder, task, depth));
                 }
                 if (depth == 0) {
-                    while (target.lock.get(task) == .blocking) {}
+                    while (target.lock.get(task) == .blocking) {
+                        try meta.wrap(time.sleep(decls.sleep_spec, .{ .nsec = builder_spec.options.dep_sleep_nsec }));
+                    }
                 }
             }
             pub fn build(
@@ -487,7 +486,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn buildWrite(builder: *Builder, target: *Target, allocator: *types.Allocator, root_path: types.Path) [:0]u8 {
             @setRuntimeSafety(false);
-            var ret: types.Args = types.Args.init(allocator, 65536);
+            var ret: types.Args = types.Args.init(allocator, buildLength(builder, target, root_path));
             ret.writeMany(builder.zig_exe);
             ret.writeOne(0);
             ret.writeMany(tok.build_prefix);
@@ -511,6 +510,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return target.run_args.referAllDefinedWithSentinel(0);
         }
         fn buildLength(builder: *Builder, target: *Target, root_path: types.Path) u64 {
+            if (builder_spec.options.max_command_line) |len| return len;
             var len: u64 = builder.zig_exe.len +% 1;
             len +%= 6 +% @tagName(target.build_cmd.kind).len +% 1;
             len +%= command_line.buildLength(target.build_cmd);
@@ -519,6 +519,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return len;
         }
         fn runLength(builder: *Builder) u64 {
+            if (builder_spec.options.max_command_line) |len| return len;
             var len: u64 = 0;
             for (builder.run_args) |run_arg| {
                 len +%= meta.manyToSlice(run_arg).len;
