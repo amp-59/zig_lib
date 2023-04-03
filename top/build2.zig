@@ -658,25 +658,25 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             target: *Target,
             address_space: *types.AddressSpace,
             thread_space: *types.ThreadSpace,
-            arena_index: ?types.AddressSpace.Index,
+            arena_index: types.AddressSpace.Index,
             task: Task,
         ) void {
             if (target.lock.get(task) == .failed) {
                 builtin.assert(target.transform(task, .blocking, .failed));
-                if (arena_index) |index| {
-                    builtin.assert(address_space.atomicUnset(index));
-                    if (types.thread_count != 0) {
-                        builtin.assert(thread_space.atomicUnset(index));
+                if (types.thread_count != 0) {
+                    if (arena_index != types.thread_count) {
+                        builtin.assert(address_space.atomicUnset(arena_index));
+                        builtin.assert(thread_space.atomicUnset(arena_index));
+                        builtin.proc.exitWithError(error.DependencyFailed, 2);
                     }
                 }
-                builtin.proc.exitWithError(error.DependencyFailed, 2);
             }
         }
         fn dependencyScan(
             address_space: *types.AddressSpace,
             thread_space: *types.ThreadSpace,
             target: *Target,
-            arena_index: ?types.AddressSpace.Index,
+            arena_index: types.AddressSpace.Index,
         ) bool {
             @setRuntimeSafety(false);
             for (target.deps[0..target.deps_len]) |dep| {
