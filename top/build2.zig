@@ -294,14 +294,11 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             fn rootSourcePath(target: *Target, builder: *Builder) types.Path {
                 return .{ .absolute = builder.build_root, .relative = target.root };
             }
-            pub fn dependOnRun(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
-                target.addDependency(allocator, dependency, .run, .finished);
-            }
             pub fn dependOnBuild(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
                 target.addDependency(allocator, dependency, .build, .finished);
             }
-            pub fn dependOnFormat(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
-                target.addDependency(allocator, dependency, .format, .finished);
+            pub fn dependOnRun(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
+                target.addDependency(allocator, dependency, .run, .finished);
             }
             pub fn dependOnObject(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
                 target.dependOnBuild(allocator, dependency);
@@ -369,7 +366,7 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
                 task: Task,
             ) !void {
                 for (group.trgs[0..group.trgs_len]) |*target| {
-                    try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, null, 1));
+                    try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, types.thread_count, 1));
                 }
                 groupScan(group, task);
             }
@@ -437,7 +434,20 @@ pub fn GenericBuilder(comptime spec: BuilderSpec) type {
             ts.* = time.diff(finish, start);
             return ret;
         }
-        fn executeCommandThreaded(
+        extern fn forwardToExecuteCloneThreaded(
+            builder: *Builder,
+            address_space: *types.AddressSpace,
+            thread_space: *types.ThreadSpace,
+            target: *Builder.Target,
+            task: Task,
+            arena_index: types.AddressSpace.Index,
+            depth: u64,
+            stack_address: u64,
+        ) void;
+        comptime {
+            asm (@embedFile("./build/forwardToExecuteCloneThreaded.s"));
+        }
+        pub export fn executeCommandThreaded(
             builder: *Builder,
             address_space: *types.AddressSpace,
             thread_space: *types.ThreadSpace,
