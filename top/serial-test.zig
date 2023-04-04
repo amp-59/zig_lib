@@ -45,8 +45,8 @@ const Allocator = mem.GenericArenaAllocator(.{
     .logging = spec.allocator.logging.silent,
     .errors = spec.allocator.errors.noexcept,
 });
-const spec_sets_a: []const types.AbstractSpecification = &attr.abstract_specs;
-const spec_sets_0: []const []const []const types.Specifier = &.{ &.{ &.{ .{ .default = .{
+const spec_sets_a: []const mem_types.AbstractSpecification = &attr.abstract_specs;
+const spec_sets_0: []const []const []const mem_types.Specifier = &.{ &.{ &.{ .{ .default = .{
     .tag = .child,
     .type = .{ .type_name = "type" },
 } }, .{ .default = .{
@@ -1706,7 +1706,7 @@ const spec_sets_0: []const []const []const types.Specifier = &.{ &.{ &.{ .{ .def
         }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
     } } },
 } } } } };
-const tech_sets_0: []const []const []const types.Technique = &.{ &.{&.{}}, &.{&.{}}, &.{&.{}}, &.{&.{}}, &.{ &.{.{ .mutually_exclusive = .{
+const tech_sets_0: []const []const []const mem_types.Technique = &.{ &.{&.{}}, &.{&.{}}, &.{&.{}}, &.{&.{}}, &.{ &.{.{ .mutually_exclusive = .{
     .kind = .mandatory,
     .opt_tag = .alignment,
     .tech_tag = .lazy_alignment,
