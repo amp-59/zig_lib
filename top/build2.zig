@@ -9,9 +9,9 @@ const proc = @import("./proc.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
-const tasks = @import("./build/tasks.zig");
 
 pub const types = @import("./build/types2.zig");
+pub const tasks = @import("./build/tasks.zig");
 pub const command_line = @import("./build/command_line.zig");
 
 pub const State = enum(u8) {
@@ -195,7 +195,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     for (target.deps[0..target.deps_len]) |dep| {
                         try meta.wrap(dep.target.acquireLock(address_space, thread_space, allocator, builder, dep.task, arena_index, depth +% 1));
                     }
-                    while (dependencyScan(address_space, thread_space, target, arena_index)) {
+                    while (dependencyScan(address_space, thread_space, target, task, arena_index)) {
                         try meta.wrap(time.sleep(decls.sleep_spec, .{ .nsec = builder_spec.options.dep_sleep_nsec }));
                     }
                     try meta.wrap(target.acquireThread(address_space, thread_space, allocator, builder, task, depth));
@@ -678,6 +678,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             address_space: *types.AddressSpace,
             thread_space: *types.ThreadSpace,
             target: *Target,
+            task: Task,
             arena_index: types.AddressSpace.Index,
         ) bool {
             @setRuntimeSafety(false);
@@ -685,6 +686,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 targetScanInternal(dep.target, address_space, thread_space, arena_index, dep.task);
             }
             for (target.deps[0..target.deps_len]) |dep| {
+                if (dep.target.lock.get(dep.task) == .failed) {
+                    return target.transform(task, .blocking, .failed);
+                }
                 if (dep.target.lock.get(dep.task) != dep.state) {
                     return true;
                 }
@@ -744,6 +748,29 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_state_s: [:0]const u8 = builtin.debug.about("state");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
             const about_format_s: [:0]const u8 = builtin.debug.about("format");
+            pub fn transformNotice(target: *Target, task: Task, old_state: State, new_state: State) void {
+                @setRuntimeSafety(false);
+                var buf: [4096]u8 = undefined;
+                builtin.debug.logAlwaysAIO(&buf, &.{
+                    about_state_s, target.name,
+                    ".",           @tagName(task),
+                    ", ",          @tagName(old_state),
+                    " -> ",        @tagName(new_state),
+                    "\n",
+                });
+            }
+            pub fn noTransformNotice(target: *Target, task: Task, old_state: State, new_state: State) void {
+                @setRuntimeSafety(false);
+                var buf: [4096]u8 = undefined;
+                builtin.debug.logAlwaysAIO(&buf, &.{
+                    about_state_s, target.name,
+                    ".",           @tagName(task),
+                    ", (",         @tagName(target.lock.get(task)),
+                    ") ",          @tagName(old_state),
+                    " -!!-> ",     @tagName(new_state),
+                    "\n",
+                });
+            }
             fn buildNotice(name: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
@@ -792,29 +819,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
                 simpleTimedNotice(about_format_s, name, durat, null);
             }
-            pub fn transformNotice(target: *Target, task: Task, old_state: State, new_state: State) void {
-                @setRuntimeSafety(false);
-                var buf: [4096]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &.{
-                    about_state_s, target.name,
-                    ".",           @tagName(task),
-                    ", ",          @tagName(old_state),
-                    " -> ",        @tagName(new_state),
-                    "\n",
-                });
-            }
-            pub fn noTransformNotice(target: *Target, task: Task, old_state: State, new_state: State) void {
-                @setRuntimeSafety(false);
-                var buf: [4096]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &.{
-                    about_state_s, target.name,
-                    ".",           @tagName(task),
-                    ", (",         @tagName(target.lock.get(task)),
-                    ") ",          @tagName(old_state),
-                    " -!!-> ",     @tagName(new_state),
-                    "\n",
-                });
-            }
+
             pub fn writeAndWalk(target: *Target) void {
                 var buf0: [1024 * 1024]u8 = undefined;
                 var buf1: [4096]u8 = undefined;
