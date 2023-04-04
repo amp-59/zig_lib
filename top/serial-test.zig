@@ -2503,7 +2503,6 @@ pub fn testVarietyStructure() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-
     const v: []const []const []const []const Variety = &.{&.{&.{&.{
         .{ .x = &.{ "one,", "two,", "three," }, .y = "one,two,three\n" },
         .{ .x = &.{ "four,", "five,", "six," }, .y = "four,five,six\n\n" },
@@ -2516,7 +2515,6 @@ pub fn testVarietyStructure() !void {
     testing.print(v);
     testing.print(u);
     testing.print(t);
-
     builtin.assertEqualMemory(Return, u, t);
 }
 const serial_spec: serial.SerialSpec = .{
@@ -2539,7 +2537,22 @@ pub fn testLargeStructure() !void {
     testing.print(fmt.any(spec_sets_c));
     builtin.assertEqualMemory([]const types.AbstractSpecification, spec_sets_b, spec_sets_c);
 }
-pub fn testSingleComplexCase() !void {
+pub fn testLargeFlatStructure() !void {
+    var address_space: AddressSpace = .{};
+    var allocator: Allocator = Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+    try meta.wrap(serial.serialWrite(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a));
+    const spec_sets_b: []const types.AbstractSpecification =
+        try meta.wrap(serial.serialRead(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+    try meta.wrap(serial.serialWrite(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
+    const spec_sets_c: []const types.AbstractSpecification =
+        try meta.wrap(serial.serialRead(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+    testing.print(fmt.any(spec_sets_a));
+    testing.print(fmt.any(spec_sets_b));
+    testing.print(fmt.any(spec_sets_c));
+    builtin.assertEqualMemory([]const types.AbstractSpecification, spec_sets_b, spec_sets_c);
+}
+pub fn testLongComplexCase() !void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     var address_space: AddressSpace = .{};
@@ -2564,7 +2577,8 @@ pub fn testSingleComplexCase() !void {
     allocator.deinit(&address_space);
 }
 pub fn main() !void {
-    try meta.wrap(testSingleComplexCase());
+    try meta.wrap(testLongComplexCase());
     try meta.wrap(testLargeStructure());
+    try meta.wrap(testLargeFlatStructure());
     try meta.wrap(testVarietyStructure());
 }
