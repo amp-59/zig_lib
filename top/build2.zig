@@ -1,4 +1,5 @@
 const sys = @import("./sys.zig");
+const lit = @import("./lit.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
@@ -438,7 +439,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             builder: *Builder,
             address_space: *types.AddressSpace,
             thread_space: *types.ThreadSpace,
-            target: *Builder.Target,
+            target: *Target,
             task: Task,
             arena_index: types.AddressSpace.Index,
             depth: u64,
