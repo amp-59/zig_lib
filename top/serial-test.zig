@@ -2540,7 +2540,6 @@ pub fn testLargeStructure() !void {
     testing.print(fmt.any(spec_sets_c));
     builtin.assertEqualMemory([]const mem_types.AbstractSpecification, spec_sets_b, spec_sets_c);
 }
-
 const Builder = build.GenericBuilder(.{
     .errors = spec.builder.errors.noexcept,
     .logging = spec.builder.logging.silent,
