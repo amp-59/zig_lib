@@ -12,7 +12,6 @@ pub const Exception = error{
     UnexpectedValue,
 };
 /// `E` must be an error type.
-//
 pub fn InternalError(comptime E: type) type {
     static.assert(@typeInfo(E) == .ErrorSet);
     return union(enum) {
@@ -745,7 +744,7 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
         },
         .Union => |union_info| {
             if (union_info.tag_type) |tag_type| {
-                if (!testEqual(tag_type, arg1, arg2)) {
+                if (@as(tag_type, arg1) != @as(tag_type, arg2)) {
                     return false;
                 }
                 switch (arg1) {
@@ -764,7 +763,7 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
             return arg1 == null and arg2 == null;
         },
         .Array => |array_info| {
-            return testEqual([]const array_info.child, &arg1, &arg2);
+            return testEqualMemory([]const array_info.child, &arg1, &arg2);
         },
         .Pointer => |pointer_info| {
             switch (pointer_info.size) {
