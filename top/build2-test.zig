@@ -20,10 +20,6 @@ const Builder = build.GenericBuilder(.{
     .logging = spec.builder.logging.silent,
 });
 
-pub const AddressSpace = types.AddressSpace;
-pub const ThreadSpace = types.ThreadSpace;
-pub const Allocator = types.Allocator;
-
 const extra = .{
     .omit_frame_pointer = false,
     .single_threaded = true,
@@ -47,7 +43,7 @@ const extra = .{
         .{ .name = "env", .path = "zig-cache/env.zig" },
     },
 };
-pub fn testBuildProgram(allocator: *Allocator, builder: *Builder) !void {
+pub fn testBuildProgram(allocator: *types.Allocator, builder: *Builder) !void {
     const g0: *Builder.Group = builder.addGroup(allocator, "g0");
     const builtin_test: *Builder.Target = g0.addTarget(allocator, .exe, "builtin_test", "top/builtin-test.zig", extra);
     const meta_test: *Builder.Target = g0.addTarget(allocator, .exe, "meta_test", "top/meta-test.zig", extra);
@@ -138,9 +134,10 @@ pub fn testBuildProgram(allocator: *Allocator, builder: *Builder) !void {
 }
 
 fn testBuildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime main_fn: fn (*types.Allocator, *Builder) anyerror!void) !void {
-    var address_space: AddressSpace = .{};
-    var thread_space: ThreadSpace = .{};
+    var address_space: types.AddressSpace = .{};
+    var thread_space: types.ThreadSpace = .{};
     var allocator: types.Allocator = types.Allocator.init(&address_space, types.thread_count);
+    defer allocator.deinit(&address_space, types.thread_count);
     const cmds: [][*:0]u8 = args[5..];
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
     try main_fn(&allocator, &builder);
