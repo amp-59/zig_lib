@@ -2529,31 +2529,41 @@ pub fn testLargeStructure() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-    try meta.wrap(serial.serialWrite(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a));
-    const spec_sets_b: []const types.AbstractSpecification =
-        try meta.wrap(serial.serialRead(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
-    try meta.wrap(serial.serialWrite(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
-    const spec_sets_c: []const types.AbstractSpecification =
-        try meta.wrap(serial.serialRead(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+    try meta.wrap(serial.serialWrite(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a));
+    const spec_sets_b: []const mem_types.AbstractSpecification =
+        try meta.wrap(serial.serialRead(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+    try meta.wrap(serial.serialWrite(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
+    const spec_sets_c: []const mem_types.AbstractSpecification =
+        try meta.wrap(serial.serialRead(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
     testing.print(fmt.any(spec_sets_a));
     testing.print(fmt.any(spec_sets_b));
     testing.print(fmt.any(spec_sets_c));
-    builtin.assertEqualMemory([]const types.AbstractSpecification, spec_sets_b, spec_sets_c);
+    builtin.assertEqualMemory([]const mem_types.AbstractSpecification, spec_sets_b, spec_sets_c);
 }
-pub fn testLargeFlatStructure() !void {
-    var address_space: AddressSpace = .{};
-    var allocator: Allocator = Allocator.init(&address_space);
-    defer allocator.deinit(&address_space);
-    try meta.wrap(serial.serialWrite(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a));
-    const spec_sets_b: []const types.AbstractSpecification =
-        try meta.wrap(serial.serialRead(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
-    try meta.wrap(serial.serialWrite(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
-    const spec_sets_c: []const types.AbstractSpecification =
-        try meta.wrap(serial.serialRead(serial_spec, []const types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
-    testing.print(fmt.any(spec_sets_a));
-    testing.print(fmt.any(spec_sets_b));
-    testing.print(fmt.any(spec_sets_c));
-    builtin.assertEqualMemory([]const types.AbstractSpecification, spec_sets_b, spec_sets_c);
+
+const Builder = build.GenericBuilder(.{
+    .errors = spec.builder.errors.noexcept,
+    .logging = spec.builder.logging.silent,
+});
+pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
+    var address_space: build_types.AddressSpace = .{};
+    var thread_space: build_types.ThreadSpace = .{};
+    _ = thread_space;
+    var allocator: build_types.Allocator = build_types.Allocator.init(&address_space, build_types.thread_count);
+    defer allocator.deinit(&address_space, build_types.thread_count);
+    var builder: Builder = try meta.wrap(Builder.init(args, vars));
+    try @import("./build2-test.zig").testBuildProgram(&allocator, &builder);
+    var buf: [4096]u8 = undefined;
+    for (builder.groups(), 0..) |grp, grp_idx| {
+        const pathname: []const u8 = "zig-out/bin/groups";
+        for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
+            const s = allocator.save();
+            defer allocator.restore(s);
+            var len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
+            buf[len] = 0;
+            try serial.serialWrite(.{ .Allocator = build_types.Allocator }, build.tasks.BuildCommand, &allocator, buf[0..len :0], trg.build_cmd.*);
+        }
+    }
 }
 pub fn testLongComplexCase() !void {
     var array: mem.StaticString(4096) = undefined;
