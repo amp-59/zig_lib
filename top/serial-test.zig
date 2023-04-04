@@ -3,13 +3,16 @@ const fmt = @import("./fmt.zig");
 const proc = @import("./proc.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
-const serial = @import("./serial.zig");
 const spec = @import("./spec.zig");
+const build = @import("./build2.zig");
+const serial = @import("./serial.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
 const attr = @import("./mem/attr.zig");
-const types = @import("./mem/types.zig");
+const mem_types = @import("./mem/types.zig");
+
+const build_types = @import("./build/types2.zig");
 
 pub usingnamespace proc.start;
 
