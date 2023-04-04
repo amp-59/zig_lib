@@ -2547,8 +2547,6 @@ const Builder = build.GenericBuilder(.{
 });
 pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
     var address_space: build_types.AddressSpace = .{};
-    var thread_space: build_types.ThreadSpace = .{};
-    _ = thread_space;
     var allocator: build_types.Allocator = build_types.Allocator.init(&address_space, build_types.thread_count);
     defer allocator.deinit(&address_space, build_types.thread_count);
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
