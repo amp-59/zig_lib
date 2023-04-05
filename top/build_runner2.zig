@@ -1,5 +1,4 @@
 const root = @import("@build");
-const build_fn: fn (*build.Allocator, *build.Builder) anyerror!void = root.buildMain;
 const srg = blk: {
     if (@hasDecl(root, "srg")) {
         break :blk root.srg;
@@ -11,8 +10,8 @@ const srg = blk: {
 const proc = srg.proc;
 const mach = srg.mach;
 const meta = srg.meta;
-const build = srg.build2;
 const spec = srg.spec;
+const build = srg.build2;
 
 pub usingnamespace proc.start;
 
@@ -27,7 +26,11 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: build.types.AddressSpace = .{};
     var thread_space: build.types.ThreadSpace = .{};
     var allocator: build.types.Allocator = build.types.Allocator.init(&address_space, build.types.thread_count);
+    if (args.len < 5) {
+        return error.MissingEnvironmentPaths;
+    }
     const cmds: [][*:0]u8 = args[5..];
+    const build_fn: fn (*build.Allocator, *build.Builder) anyerror!void = root.buildMain;
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
     try build_fn(&allocator, &builder);
     var target_task: build.Task = .build;
