@@ -21,26 +21,26 @@ const Builder = build.GenericBuilder(.{
 });
 
 const extra = .{
-    .omit_frame_pointer = false,
-    .single_threaded = true,
-    .static = true,
-    .code_model = .small,
-    .enable_cache = true,
-    .function_sections = true,
-    .compiler_rt = false,
-    .strip = true,
     .image_base = 0x10000,
+    .code_model = .small,
     .mode = .ReleaseSmall,
+    .strip = true,
+    .static = true,
+    .compiler_rt = false,
+    .enable_cache = true,
     .reference_trace = true,
-    .dependencies = &.{
-        .{ .name = "zig_lib" },
-        .{ .name = "@build" },
-        .{ .name = "env" },
-    },
+    .single_threaded = true,
+    .function_sections = true,
+    .omit_frame_pointer = false,
     .modules = &.{
         .{ .name = "zig_lib", .path = "zig_lib.zig" },
         .{ .name = "@build", .path = "build.zig" },
         .{ .name = "env", .path = "zig-cache/env.zig" },
+    },
+    .dependencies = &.{
+        .{ .name = "zig_lib" },
+        .{ .name = "@build" },
+        .{ .name = "env" },
     },
 };
 pub fn testBuildProgram(allocator: *types.Allocator, builder: *Builder) !void {
@@ -58,7 +58,6 @@ pub fn testBuildProgram(allocator: *types.Allocator, builder: *Builder) !void {
     const virtual_test: *Builder.Target = g0.addTarget(allocator, .exe, "virtual_test", "top/virtual-test.zig", extra);
     const size_test: *Builder.Target = g0.addTarget(allocator, .exe, "size_test", "test/size_per_config.zig", extra);
     const container_test: *Builder.Target = g0.addTarget(allocator, .exe, "container_test", "top/container-test.zig", extra);
-
     const g1: *Builder.Group = builder.addGroup(allocator, "g1");
     const readdir: *Builder.Target = g1.addTarget(allocator, .exe, "readdir", "examples/iterate_dir_entries.zig", extra);
     const dynamic: *Builder.Target = g1.addTarget(allocator, .exe, "dynamic", "examples/dynamic_alloc.zig", extra);
@@ -73,7 +72,6 @@ pub fn testBuildProgram(allocator: *types.Allocator, builder: *Builder) !void {
     const readelf: *Builder.Target = g1.addTarget(allocator, .exe, "readelf", "examples/readelf.zig", extra);
     const pathsplit: *Builder.Target = g1.addTarget(allocator, .exe, "pathsplit", "examples/pathsplit.zig", extra);
     const declprint: *Builder.Target = g1.addTarget(allocator, .exe, "declprint", "examples/declprint.zig", extra);
-
     const mg_aux: *Builder.Group = builder.addGroup(allocator, "g2");
     const mg_touch: *Builder.Target = mg_aux.addTarget(allocator, .exe, "mg_touch", "top/mem/touch-aux.zig", extra);
     const mg_specs: *Builder.Target = mg_aux.addTarget(allocator, .obj, "mg_specs", "top/mem/serial_specs.zig", extra);
@@ -87,28 +85,16 @@ pub fn testBuildProgram(allocator: *types.Allocator, builder: *Builder) !void {
     const mg_container_kinds: *Builder.Target = mg_aux.addTarget(allocator, .exe, "mg_container_kinds", "top/mem/container_kinds-aux.zig", extra);
     const mg_reference_impls: *Builder.Target = mg_aux.addTarget(allocator, .exe, "mg_reference_impls", "top/mem/reference_impls-aux.zig", extra);
     const mg_container_impls: *Builder.Target = mg_aux.addTarget(allocator, .exe, "mg_container_impls", "top/mem/container_impls-aux.zig", extra);
-
-    const group = builder.addGroup(allocator, "g3");
-    const t2: *Builder.Target = group.addTarget(allocator, .obj, "obj0", "test/src/obj0.zig", extra);
-    const t3: *Builder.Target = group.addTarget(allocator, .obj, "obj1", "test/src/obj1.zig", extra);
-    const t4: *Builder.Target = group.addTarget(allocator, .obj, "obj2", "test/src/obj2.zig", extra);
-    const t5: *Builder.Target = group.addTarget(allocator, .obj, "obj3", "test/src/obj3.zig", extra);
-    const t6: *Builder.Target = group.addTarget(allocator, .obj, "obj4", "test/src/obj4.zig", extra);
-    const t7: *Builder.Target = group.addTarget(allocator, .obj, "obj5", "test/src/obj5.zig", extra);
-    const t1: *Builder.Target = group.addTarget(allocator, .obj, "lib0", "test/src/lib0.zig", extra);
-    t1.dependOnObject(allocator, t2);
-    t1.dependOnObject(allocator, t3);
-    t1.dependOnObject(allocator, t4);
-    const t0: *Builder.Target = group.addTarget(allocator, .obj, "lib1", "test/src/lib1.zig", extra);
-    t0.dependOnObject(allocator, t1);
-    t0.dependOnObject(allocator, t2);
-    t0.dependOnObject(allocator, t3);
-    const t: *Builder.Target = group.addTarget(allocator, .exe, "bin", "test/src/main.zig", extra);
-    t.dependOnObject(allocator, t0);
-    t.dependOnObject(allocator, t5);
-    t.dependOnObject(allocator, t6);
-    t.dependOnObject(allocator, t7);
-
+    const g3 = builder.addGroup(allocator, "g3");
+    const t2: *Builder.Target = g3.addTarget(allocator, .obj, "obj0", "test/src/obj0.zig", extra);
+    const t3: *Builder.Target = g3.addTarget(allocator, .obj, "obj1", "test/src/obj1.zig", extra);
+    const t4: *Builder.Target = g3.addTarget(allocator, .obj, "obj2", "test/src/obj2.zig", extra);
+    const t5: *Builder.Target = g3.addTarget(allocator, .obj, "obj3", "test/src/obj3.zig", extra);
+    const t6: *Builder.Target = g3.addTarget(allocator, .obj, "obj4", "test/src/obj4.zig", extra);
+    const t7: *Builder.Target = g3.addTarget(allocator, .obj, "obj5", "test/src/obj5.zig", extra);
+    const t1: *Builder.Target = g3.addTarget(allocator, .obj, "lib0", "test/src/lib0.zig", extra);
+    const t0: *Builder.Target = g3.addTarget(allocator, .obj, "lib1", "test/src/lib1.zig", extra);
+    const t: *Builder.Target = g3.addTarget(allocator, .exe, "bin", "test/src/main.zig", extra);
     mg_container_kinds.dependOnRun(allocator, mg_touch);
     mg_container_impls.dependOnRun(allocator, mg_container_kinds);
     mg_new_type_specs.dependOnObject(allocator, mg_options);
@@ -121,7 +107,16 @@ pub fn testBuildProgram(allocator: *types.Allocator, builder: *Builder) !void {
     mg_container_impls.dependOnObject(allocator, mg_impl_detail);
     mg_reference_impls.dependOnObject(allocator, mg_ctn_detail);
     mg_reference_impls.dependOnObject(allocator, mg_impl_detail);
-
+    t1.dependOnObject(allocator, t2);
+    t1.dependOnObject(allocator, t3);
+    t1.dependOnObject(allocator, t4);
+    t0.dependOnObject(allocator, t1);
+    t0.dependOnObject(allocator, t2);
+    t0.dependOnObject(allocator, t3);
+    t.dependOnObject(allocator, t0);
+    t.dependOnObject(allocator, t5);
+    t.dependOnObject(allocator, t6);
+    t.dependOnObject(allocator, t7);
     _ = .{
         readdir,      dynamic,           custom,         allocators,
         mca,          treez,             itos,           catz,
@@ -132,7 +127,6 @@ pub fn testBuildProgram(allocator: *types.Allocator, builder: *Builder) !void {
         virtual_test, size_test,         container_test,
     };
 }
-
 fn testBuildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime main_fn: fn (*types.Allocator, *Builder) anyerror!void) !void {
     var address_space: types.AddressSpace = .{};
     var thread_space: types.ThreadSpace = .{};
@@ -161,7 +155,6 @@ fn testBuildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime main_fn: fn (*type
         }
     }
 }
-
 const Types = struct {
     TaskData: type,
     Allocator: type,
@@ -192,8 +185,6 @@ fn testDirectCommandLineUsage() void {
     };
     command_line.buildWrite(&cmd, &array);
 }
-fn do_nothing(_: [][*:0]u8, _: [][*:0]u8) void {}
-
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     try testBuildRunner(args, vars, testBuildProgram);
 }
