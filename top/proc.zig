@@ -181,7 +181,7 @@ pub const CloneArgs = extern struct {
     /// Pointer to lowest byte of stack
     stack_addr: u64,
     /// Size of stack
-    stack_len: u64 = 4096,
+    stack_len: u64,
     /// Location of new TLS
     tls_addr: u64,
     /// Pointer to a pid_t array
@@ -389,14 +389,14 @@ pub const CloneSpec = struct {
 
         return clone_flags;
     }
-    pub inline fn args(comptime spec: CloneSpec, stack_addr: u64) CloneArgs {
+    pub inline fn args(comptime spec: CloneSpec, stack_addr: u64, comptime stack_len: u64) CloneArgs {
         return .{
             .flags = spec.flags(),
-            .child_tid_addr = mach.add64(stack_addr, 0x1000 - 0x10),
-            .parent_tid_addr = mach.add64(stack_addr, 0x1000 - 0x8),
             .stack_addr = stack_addr,
-            .stack_len = 0x1000,
-            .tls_addr = mach.add64(stack_addr, 0x8),
+            .stack_len = stack_len,
+            .child_tid_addr = mach.add64(stack_addr, 0x1000 - 0x10),
+            .parent_tid_addr = mach.add64(stack_addr, 0x1000 - 0x20),
+            .tls_addr = mach.add64(stack_addr, 0x1000 - 0x30),
         };
     }
 };
@@ -737,13 +737,14 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
 pub noinline fn callClone(
     comptime spec: CloneSpec,
     stack_addr: u64,
+    comptime stack_len: u64,
     result_ptr: anytype,
-    function: anytype,
+    comptime function: anytype,
     args: anytype,
 ) sys.Call(spec.errors, spec.return_type) {
     @setRuntimeSafety(false);
     const Fn: type = @TypeOf(function);
-    const cl_args: CloneArgs = spec.args(stack_addr);
+    const cl_args: CloneArgs = spec.args(stack_addr, stack_len);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
     const cl_sysno: u64 = @enumToInt(sys.Fn.clone3);
@@ -753,7 +754,7 @@ pub noinline fn callClone(
     @intToPtr(**const Fn, stack_addr +% call_off).* = &function;
     @intToPtr(*meta.Args(Fn), stack_addr +% args_off).* = args;
     if (@TypeOf(result_ptr) != void) {
-        @intToPtr(*@TypeOf(result_ptr), stack_addr +% ret_off).* = result_ptr;
+        @intToPtr(*u64, stack_addr +% ret_off).* = @ptrToInt(result_ptr);
     }
     const rc: i64 = asm volatile (
         \\syscall # clone3
@@ -766,15 +767,15 @@ pub noinline fn callClone(
     if (rc == 0) {
         const tl_stack_addr: u64 = asm volatile (
             \\xorq  %%rbp,  %%rbp
-            \\subq  $4096,  %%rsp
             \\movq  %%rsp,  %[tl_stack_addr]
             : [tl_stack_addr] "=r" (-> u64),
             :
             : "rbp", "rsp", "memory"
         );
-        const ret_addr: u64 = tl_stack_addr +% ret_off;
-        const call_addr: u64 = tl_stack_addr +% call_off;
-        const args_addr: u64 = tl_stack_addr +% args_off;
+        //
+        const ret_addr: u64 = (tl_stack_addr +% ret_off) - stack_len;
+        const call_addr: u64 = (tl_stack_addr +% call_off) - stack_len;
+        const args_addr: u64 = (tl_stack_addr +% args_off) - stack_len;
         if (@TypeOf(result_ptr) != void) {
             if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
                 @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)

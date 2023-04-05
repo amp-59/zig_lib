@@ -128,7 +128,6 @@ fn testBinarySize() void {
     array.writeFormat(fmt.ux64(@ptrToInt(&array)));
     builtin.debug.write(array.readAll());
 }
-
 pub fn main() !void {
     if (test_size) {
         try meta.wrap(testBinarySize());
