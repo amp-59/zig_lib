@@ -68,21 +68,41 @@ pub const BuildCommand = struct {
     omit_frame_pointer: ?bool = null, // T7
     /// (WASI) Execution model
     exec_model: ?[]const u8 = null, // T7
+    /// Override root name
     name: ?[]const u8 = null, // T7
+    /// Choose what to optimize for:
+    /// Debug          Optimizations off, safety on
+    /// ReleaseSafe    Optimizations on, safety on
+    /// ReleaseFast    Optimizations on, safety off
+    /// ReleaseSmall   Size optimizations on, safety off
     mode: ?@TypeOf(builtin.zig.mode) = null, // T2
+    /// Set the directory of the root package
     main_pkg_path: ?[]const u8 = null, // T7
+    /// Enable Position Independent Code
     pic: ?bool = null, // T7
+    /// Enable Position Independent Executable
     pie: ?bool = null, // T7
+    /// Enable Link Time Optimization
     lto: ?bool = null, // T7
+    /// Enable stack probing in unsafe builds
     stack_check: ?bool = null, // T7
+    /// Enable stack protection in unsafe builds
+    stack_protector: ?bool = null, // T7
+    /// Enable C undefined behaviour detection in unsafe builds
     sanitize_c: ?bool = null, // T7
+    /// Include valgrind client requests in release builds
     valgrind: ?bool = null, // T7
+    /// Enable thread sanitizer
     sanitize_thread: ?bool = null, // T7
-    dll_export_fns: ?bool = null, // T7
+    /// Always produce unwind table entries for all functions
     unwind_tables: ?bool = null, // T7
+    /// Use LLVM as the codegen backend
     llvm: ?bool = null, // T7
+    /// Use Clang as the C/C++ compilation backend
     clang: ?bool = null, // T7
+    /// How many lines of reference trace should be shown per compile error
     reference_trace: ?bool = null, // T7
+    /// Enable error tracing in `ReleaseFast` mode
     error_tracing: ?bool = null, // T7
     single_threaded: ?bool = null, // T7
     function_sections: ?bool = null, // T7
