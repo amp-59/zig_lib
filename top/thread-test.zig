@@ -7,14 +7,15 @@ const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const time = @import("./time.zig");
-const thread = @import("./thread.zig");
 const spec = @import("./spec.zig");
 const virtual = @import("./virtual.zig");
+const testing = @import("./testing.zig");
 const builtin = @import("./builtin.zig");
 
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const runtime_assertions: bool = true;
 
 const discrete_list: []const mem.Arena = meta.slice(mem.Arena, .{
     .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
@@ -48,9 +49,9 @@ const list: []const mem.Arena = meta.slice(mem.Arena, .{
 
 const PrintArray = mem.StaticString(4096);
 const three_state: type = enum(u8) {
-    unset = 0,
+    idle = 0,
     working = 1,
-    set = 255,
+    done = 255,
 };
 
 fn testThreadSafeRegular() !void {
@@ -70,15 +71,15 @@ fn testThreadSafeRegular() !void {
     var thread_space: ThreadSpace = .{};
     var thread_index: u8 = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        if (thread_space.atomicTransform(thread_index, .unset, .set)) {}
+        if (thread_space.atomicTransform(thread_index, .idle, .working)) {}
     }
     thread_index = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .set, .working));
+        try builtin.expect(thread_space.atomicTransform(thread_index, .working, .done));
     }
     thread_index = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .working, .unset));
+        try builtin.expect(thread_space.atomicTransform(thread_index, .done, .idle));
     }
 }
 fn testThreadSafeDiscrete() !void {
@@ -95,19 +96,46 @@ fn testThreadSafeDiscrete() !void {
     var thread_space: ThreadSpace = .{};
     comptime var thread_index: u8 = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        if (thread_space.atomicTransform(thread_index, .unset, .set)) {}
+        if (thread_space.atomicTransform(thread_index, .idle, .working)) {}
     }
     thread_index = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .set, .working));
+        try builtin.expect(thread_space.atomicTransform(thread_index, .working, .done));
     }
     thread_index = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .working, .unset));
+        try builtin.expect(thread_space.atomicTransform(thread_index, .done, .idle));
     }
+}
+fn testQuickThread() !void {
+    const ThreadSpace = mem.GenericRegularAddressSpace(.{
+        .label = "thread",
+        .val_type = three_state,
+        .lb_addr = 0x10000000000,
+        .up_addr = 0x10000000000 +% (16 *% 1024 * 1024),
+        .divisions = 16,
+        .options = .{ .thread_safe = true },
+    });
+    var thread_space: ThreadSpace = .{};
+    const S = struct {
+        export fn getIt(ts: *ThreadSpace, thread_index: ThreadSpace.Index, y: u64) u64 {
+            const ret: u64 = y;
+            builtin.assert(ts.atomicTransform(thread_index, .working, .done));
+            return ret;
+        }
+    };
+    var stack_buf: [16384]u8 = undefined;
+    var stack_addr: u64 = @ptrToInt(&stack_buf);
+    const res: u64 = stack_addr *% 2;
+    if (thread_space.atomicTransform(0, .idle, .working)) {
+        try proc.callClone(.{ .return_type = void }, stack_addr, stack_buf.len, &stack_addr, S.getIt, .{ &thread_space, 0, stack_addr });
+    }
+    try time.sleep(.{}, .{ .nsec = 100 });
+    builtin.assertEqual(u64, res, stack_addr);
 }
 
 pub fn main() !void {
     try meta.wrap(testThreadSafeRegular());
     try meta.wrap(testThreadSafeDiscrete());
+    try meta.wrap(testQuickThread());
 }
