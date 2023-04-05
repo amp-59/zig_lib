@@ -271,45 +271,13 @@ fn testMinMax() !void {
     try builtin.expect(builtin.testEqual(S, s, builtin.min(S, t, s)));
     try builtin.expect(builtin.testEqual(S, t, builtin.max(S, t, s)));
 }
-fn testTestEqual() !void {
-    const Specifier = @import("mem/types.zig").Specifier;
-    const Technique = @import("mem/types.zig").Technique;
-    {
-        var x: Specifier = undefined;
-        var y: Specifier = undefined;
-        builtin.assert(builtin.testEqual(Specifier, x, y));
-    }
-    {
-        var x: Specifier = undefined;
-        @ptrCast(*u64, &x).* +%= 1;
-        var y: Specifier = undefined;
-        builtin.assert(!builtin.testEqual(Specifier, x, y));
-    }
-    {
-        var x: Specifier = undefined;
-        @ptrCast(*u64, &x).* +%= 1;
-        var y: Specifier = undefined;
-        @ptrCast(*u64, &y).* +%= 1;
-        builtin.assert(builtin.testEqual(Specifier, x, y));
-    }
-    {
-        var x: Technique = undefined;
-        var y: Technique = undefined;
-        builtin.assert(builtin.testEqual(Technique, x, y));
-    }
-    {
-        var x: Technique = undefined;
-        @ptrCast(*u64, &x).* +%= 1;
-        var y: Technique = undefined;
-        builtin.assert(!builtin.testEqual(Technique, x, y));
-    }
-    {
-        var x: Technique = undefined;
-        @ptrCast(*u64, &x).* +%= 1;
-        var y: Technique = undefined;
-        @ptrCast(*u64, &y).* +%= 1;
-        builtin.assert(builtin.testEqual(Technique, x, y));
-    }
+fn showVariousErrorMessages() !void {
+    builtin.expectEqual(u64, 0, 1) catch {};
+    builtin.expectAbove(u64, 0, 1) catch {};
+    builtin.expectNotEqual(u64, 1, 1) catch {};
+    builtin.expectBelow(u64, 1, 0) catch {};
+    builtin.expectAboveOrEqual(u64, 0, 1) catch {};
+    builtin.expectBelowOrEqual(u64, 1, 0) catch {};
 }
 pub fn main() !void {
     try testIntToString();
@@ -317,5 +285,5 @@ pub fn main() !void {
     try testRuntimeAssertionsCompile();
     try testStaticAssertionsCompile();
     try testMinMax();
-    try testTestEqual();
+    try showVariousErrorMessages();
 }
