@@ -195,8 +195,16 @@ fn testTaggedSets() !void {
     try builtin.expect(k.set(.b));
     try builtin.expect(k.set(.c));
     try builtin.expect(k.set(.d));
-
     testing.print(fmt.any(k));
+}
+fn Clone(comptime function: anytype) type {
+    return struct {
+        const Fn = @TypeOf(function);
+        const Args = meta.Args(Fn);
+        const Value = meta.ReturnPayload(Fn);
+        const Error = meta.ReturnErrorSet(Fn);
+        const Return = Error!Value;
+    };
 }
 pub fn main() !void {
     try meta.wrap(testArenaIntersection());
