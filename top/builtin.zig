@@ -1121,10 +1121,10 @@ pub const debug = opaque {
         }
         return lhs ++ " " ** (config.message_indent - len);
     }
-    fn typeFault(comptime T: type) []const u8 {
+    inline fn typeFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
     }
-    fn typeError(comptime T: type) []const u8 {
+    inline fn typeError(comptime T: type) []const u8 {
         return about_error_p0_s ++ @typeName(T);
     }
     fn exitNotice(rc: u8) void {
@@ -1142,9 +1142,9 @@ pub const debug = opaque {
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = writeMulti(buf, &[_][]const u8{
-            what,                    " failed test: ",
-            itos(T, arg1).readAll(), symbol,
-            itos(T, arg2).readAll(), notation,
+            what,     itos(T, arg1).readAll(),
+            symbol,   itos(T, arg2).readAll(),
+            notation,
         });
         if (help_read) {
             if (arg1 > arg2) {
@@ -1296,14 +1296,24 @@ pub const debug = opaque {
         logFault(buf[0..len]);
         proc.exit(2);
     }
+    inline fn comparisonFailedErrorInt(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+        var buf: [size]u8 = undefined;
+        var len: u64 = comparisonFailedString(T, typeError(T) ++ " failed test: ", symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        logError(buf[0..len]);
+    }
     inline fn comparisonFailedFaultInt(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
         var buf: [size]u8 = undefined;
-        var len: u64 = comparisonFailedString(T, typeFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        var len: u64 = comparisonFailedString(T, typeFault(T) ++ " failed assertion: ", symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
+    }
+    inline fn comparisonFailedErrorEnum(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+        var buf: [size]u8 = undefined;
+        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeError(T) ++ " failed test: ", @tagName(arg1), symbol, @tagName(arg2) });
+        logError(buf[0..len]);
     }
     inline fn comparisonFailedFaultEnum(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
         var buf: [size]u8 = undefined;
-        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeFault(T), " failed test: ", @tagName(arg1), symbol, @tagName(arg2) });
+        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeFault(T) ++ " failed assertion: ", @tagName(arg1), symbol, @tagName(arg2) });
         logFault(buf[0..len]);
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
@@ -1311,26 +1321,16 @@ pub const debug = opaque {
         switch (@typeInfo(T)) {
             .Int => comparisonFailedFaultInt(T, symbol, arg1, arg2),
             .Enum => comparisonFailedFaultEnum(T, symbol, arg1, arg2),
-            else => logFault("assertion failed\n"),
+            else => logFault(about_fault_p0_s ++ "assertion failed\n"),
         }
         proc.exit(2);
-    }
-    inline fn comparisonFailedErrorInt(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
-        var buf: [size]u8 = undefined;
-        var len: u64 = comparisonFailedString(T, typeError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logError(buf[0..len]);
-    }
-    inline fn comparisonFailedErrorEnum(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
-        var buf: [size]u8 = undefined;
-        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeError(T), " failed test: ", @tagName(arg1), symbol, @tagName(arg2) });
-        logError(buf[0..len]);
     }
     fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Error {
         @setCold(true);
         switch (@typeInfo(T)) {
             .Int => comparisonFailedErrorInt(T, symbol, arg1, arg2),
             .Enum => comparisonFailedErrorEnum(T, symbol, arg1, arg2),
-            else => logError("unexpected value\n"),
+            else => logError(about_error_p0_s ++ "unexpected value\n"),
         }
         return error.UnexpectedValue;
     }
@@ -1348,8 +1348,8 @@ pub const debug = opaque {
     inline fn name(buf: []u8) u64 {
         const rc: i64 = asm volatile (
             \\syscall
-            : [rc] "={rax}" (-> isize),
-            : [sysno] "{rax}" (89), // linux readlink
+            : [_] "={rax}" (-> isize),
+            : [_] "{rax}" (89), // linux readlink
               [_] "{rdi}" ("/proc/self/exe"), // symlink to executable
               [_] "{rsi}" (buf.ptr), // message buf ptr
               [_] "{rdx}" (buf.len), // message buf len
@@ -1539,6 +1539,7 @@ pub const debug = opaque {
         }
         fn comparisonFailed(
             comptime T: type,
+            comptime how: []const u8,
             comptime symbol: []const u8,
             comptime arg1: T,
             comptime arg2: T,
@@ -1547,9 +1548,11 @@ pub const debug = opaque {
                 var buf: [size]u8 = undefined;
                 var len: u64 = 0;
                 for ([_][]const u8{
-                    @typeName(T),            " assertion failed: ",
-                    itos(T, arg1).readAll(), symbol,
-                    itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
+                    typeFault(T) ++ how,
+                    itos(T, arg1).readAll(),
+                    symbol,
+                    itos(T, arg2).readAll(),
+                    if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
                 }) |s| {
                     for (s, 0..) |c, idx| buf[len +% idx] = c;
                     len +%= s.len;
