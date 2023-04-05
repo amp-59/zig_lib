@@ -34,24 +34,39 @@ pub const BuildCommand = struct {
     dynamic: bool = false, // T1
     static: bool = false, // T1
     symbolic: bool = false, // T1
+    /// Enable or disable colored error messages
     color: ?enum(u2) { on = 0, off = 1, auto = 2 } = null, // T6
+    /// (default=yes) Output machine code
     emit_bin: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
+    /// (default=no) Output assembly code (.s)
     emit_asm: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
+    /// (default=no) Output optimized LLVM IR (.ll)
     emit_llvm_ir: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
+    /// (default=no) Output optimized LLVM BC (.bc)
     emit_llvm_bc: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
+    /// (default=no) Output a C header file (.h)
     emit_h: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
+    /// (default=no) Output documentation (.html)
     emit_docs: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
+    /// (default=no) Output analysis (.json)
     emit_analysis: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
+    /// (default=yes) Output an import when building a Windows DLL (.lib)
     emit_implib: ?union(enum) { yes: ?types.Path, no: void } = null, // T3
     cache_root: ?[]const u8 = null, // T7
     global_cache_root: ?[]const u8 = null, // T7
     zig_lib_dir: ?[]const u8 = null, // T7
     enable_cache: bool = true, // T0
+    /// <arch><sub>-<os>-<abi> see the targets command
     target: ?[]const u8 = null, // T7
+    /// Specify target CPU and feature set
     cpu: ?[]const u8 = null, // T7
+    /// Limit range of code and data virtual addresses
     code_model: ?enum(u3) { default = 0, tiny = 1, small = 2, kernel = 3, medium = 4, large = 5 } = null, // T6
+    /// Enable the "red-zone"
     red_zone: ?bool = null, // T7
+    /// Omit the stack frame pointer
     omit_frame_pointer: ?bool = null, // T7
+    /// (WASI) Execution model
     exec_model: ?[]const u8 = null, // T7
     name: ?[]const u8 = null, // T7
     mode: ?@TypeOf(builtin.zig.mode) = null, // T2
@@ -111,9 +126,14 @@ pub const BuildCommand = struct {
     test_no_exec: bool = false, // T1
 };
 pub const FormatCommand = struct {
+    /// Enable or disable colored error messages
     color: ?enum(u2) { auto = 0, off = 1, on = 2 } = null, // T6
+    /// Format code from stdin; output to stdout
     stdin: bool = false, // T1
+    /// List non-conforming files and exit with an error if the list is non-empty
     check: bool = false, // T1
+    /// Run zig ast-check on every file
     ast_check: bool = true, // T0
+    /// Exclude file or directory from formatting
     exclude: ?[]const u8 = null, // T7
 };
