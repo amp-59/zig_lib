@@ -104,46 +104,99 @@ pub const BuildCommand = struct {
     reference_trace: ?bool = null, // T7
     /// Enable error tracing in `ReleaseFast` mode
     error_tracing: ?bool = null, // T7
+    /// Code assumes there is only one thread
     single_threaded: ?bool = null, // T7
+    /// Places each function in a separate sections
     function_sections: ?bool = null, // T7
+    /// Omit debug symbols
     strip: ?bool = null, // T7
+    /// Enable formatted safety panics
     formatted_panics: ?bool = null, // T7
+    /// Override target object format:
+    /// elf                    Executable and Linking Format
+    /// c                      C source code
+    /// wasm                   WebAssembly
+    /// coff                   Common Object File Format (Windows)
+    /// macho                  macOS relocatables
+    /// spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    /// plan9                  Plan 9 from Bell Labs object format
+    /// hex (planned feature)  Intel IHEX
+    /// raw (planned feature)  Dump machine code directly
     fmt: ?enum(u4) { elf = 0, c = 1, wasm = 2, coff = 3, macho = 4, spirv = 5, plan9 = 6, hex = 7, raw = 8 } = null, // T6
+    /// Add directory to AFTER include search path
     dirafter: ?[]const u8 = null, // T7
+    /// Add directory to SYSTEM include search path
     system: ?[]const u8 = null, // T7
+    /// Add directory to include search path
     include: ?[]const u8 = null, // T7
+    /// Provide a file which specifies libc paths
     libc: ?[]const u8 = null, // T7
+    /// Link against system library (only if actually used)
     library: ?[]const u8 = null, // T7
+    /// Link against system library (even if unused)
+    needed_library: ?[]const u8 = null, // T7
+    /// Add a directory to the library search path
     library_directory: ?[]const u8 = null, // T7
+    /// Use a custom linker script
     link_script: ?[]const u8 = null, // T7
+    /// Provide a version .map file
     version_script: ?[]const u8 = null, // T7
+    /// Set the dynamic interpreter path
     dynamic_linker: ?[]const u8 = null, // T7
+    /// Set the system root directory
     sysroot: ?[]const u8 = null, // T7
     version: bool = false, // T1
+    /// Set the entrypoint symbol name
     entry: ?[]const u8 = null, // T7
+    /// Override the default SONAME value
     soname: ?union(enum) { yes: []const u8, no: void } = null, // T6
+    /// Use LLD as the linker
     lld: ?bool = null, // T7
+    /// (default) Include compiler-rt symbols in output
     compiler_rt: ?bool = null, // T7
+    /// Add directory to the runtime library search path
     rpath: ?[]const u8 = null, // T7
+    /// Ensure adding rpath for each used dynamic library
     each_lib_rpath: ?bool = null, // T7
+    /// Allow undefined symbols in shared libraries
     allow_shlib_undefined: ?bool = null, // T7
+    /// Help coordinate stripped binaries with debug symbols
     build_id: ?bool = null, // T7
+    /// Debug section compression:
+    /// none   No compression
+    /// zlib   Compression with deflate/inflate
     compress_debug_sections: ?enum(u1) { none = 0, zlib = 1 } = null, // T6
+    /// Force removal of functions and data that are unreachable
+    /// by the entry point or exported symbols
     gc_sections: ?bool = null, // T7
+    /// Override default stack size
     stack: ?u64 = null, // T7
+    /// Set base address for executable image
     image_base: ?u64 = null, // T7
+    /// Define C macros available within the `@cImport` namespace
     macros: ?[]const types.Macro = null, // T2
+    /// Define modules available as dependencies for the current target
     modules: ?[]const types.Module = null, // T2
+    /// Define module dependencies for the current target
     dependencies: ?[]const types.ModuleDependency = null, // T2
+    /// Set extra flags for the next position C source files
     cflags: ?types.CFlags = null, // T3
+    /// Set linker extension flags:
+    /// nodelete                   Indicate that the object cannot be deleted from a process
+    /// notext                     Permit read-only relocations in read-only segments
+    /// defs                       Force a fatal error if any undefined symbols remain
+    /// undefs                     Reverse of -z defs
+    /// origin                     Indicate that the object must have its origin processed
+    /// nocopyreloc                Disable the creation of copy relocations
+    /// now (default)              Force all relocations to be processed on load
+    /// lazy                       Don't force all relocations to be processed on load
+    /// relro (default)            Force all relocations to be read-only after processing
+    /// norelro                    Don't force all relocations to be read-only after processing
+    /// common-page-size=[bytes]   Set the common page size for ELF binaries
+    /// max-page-size=[bytes]      Set the max page size for ELF binaries
     z: ?enum(u4) { nodelete = 0, notext = 1, defs = 2, origin = 3, nocopyreloc = 4, now = 5, lazy = 6, relro = 7, norelro = 8 } = null, // T6
+    /// Add auxiliary files to the current target
     files: ?[]const types.Path = null, // T2
-    test_filter: ?[]const u8 = null, // T7
-    test_name_prefix: ?[]const u8 = null, // T7
-    test_cmd: bool = false, // T1
-    test_cmd_bin: bool = false, // T1
-    test_evented_io: bool = false, // T1
-    test_no_exec: bool = false, // T1
 };
 pub const FormatCommand = struct {
     /// Enable or disable colored error messages
