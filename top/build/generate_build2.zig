@@ -88,29 +88,29 @@ pub const FormatCommandOptions = opaque {
     };
 };
 pub const BuildCommandOptions = opaque {
-    pub const watch: OptionSpec = .{
-        .string = "--watch",
-    };
-    pub const show_builtin: OptionSpec = .{
-        .string = "--show-builtin",
-    };
     pub const builtin: OptionSpec = .{
         .string = "-fbuiltin",
+        .descr = &.{"Enable implicit builtin knowledge of functions"},
     };
     pub const link_libc: OptionSpec = .{
         .string = "-lc",
+        .descr = &.{"Link libc"},
     };
     pub const rdynamic: OptionSpec = .{
         .string = "-rdynamic",
+        .descr = &.{"Add all symbols to the dynamic symbol table"},
     };
     pub const dynamic: OptionSpec = .{
         .string = "-dynamic",
+        .descr = &.{"Force output to be dynamically linked"},
     };
     pub const static: OptionSpec = .{
         .string = "-static",
+        .descr = &.{"Force output to be statically linked"},
     };
     pub const symbolic: OptionSpec = .{
         .string = "-Bsymbolic",
+        .descr = &.{"Bind global references locally"},
     };
     pub const color: OptionSpec = .{
         .string = "--color",
@@ -176,14 +176,17 @@ pub const BuildCommandOptions = opaque {
     pub const cache_root: OptionSpec = .{
         .string = "--cache-dir",
         .arg_type = []const u8,
+        .descr = &.{"Override the local cache directory"},
     };
     pub const global_cache_root: OptionSpec = .{
         .string = "--global-cache-dir",
         .arg_type = []const u8,
+        .descr = &.{"Override the global cache directory"},
     };
-    pub const zig_lib_dir: OptionSpec = .{
+    pub const zig_lib_root: OptionSpec = .{
         .string = "--zig-lib-dir",
         .arg_type = []const u8,
+        .descr = &.{"Override Zig installation lib directory"},
     };
     pub const enable_cache: OptionSpec = .{
         .string = "--enable-cache",
@@ -1551,16 +1554,16 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
         switch (@typeInfo(field_type)) {
             .Bool => {
                 if (opt_spec.default_value) |default_value| {
-                    array.writeMany(@typeName(field_type) ++ " = " ++ comptime builtin.fmt.cx(default_value) ++ ", // T0\n");
+                    array.writeMany(@typeName(field_type) ++ " = " ++ comptime builtin.fmt.cx(default_value) ++ ",\n");
                 } else {
-                    array.writeMany(@typeName(field_type) ++ " = false, // T1\n");
+                    array.writeMany(@typeName(field_type) ++ " = false,\n");
                 }
             },
             .Optional => |optional_info| {
                 array.writeOne('?');
                 if (opt_spec.arg_type_name) |type_name| {
                     if (!@hasDecl(types, type_name)) {
-                        array.writeMany(type_name ++ " = null, // T2\n");
+                        array.writeMany(type_name ++ " = null,\n");
                     } else {
                         const import_type: type = @field(types, type_name);
                         switch (@typeInfo(optional_info.child)) {
@@ -1573,10 +1576,10 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                                 } else {
                                     array.writeMany("types." ++ opt_spec.arg_type_name.?);
                                 }
-                                array.writeMany(" = null, // T3\n");
+                                array.writeMany(" = null,\n");
                             },
                             else => {
-                                array.writeMany(type_name ++ " = null, // T5\n");
+                                array.writeMany(type_name ++ " = null,\n");
                             },
                         }
                     }
@@ -1588,10 +1591,10 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                             } else {
                                 array.writeMany(opt_spec.arg_type_name);
                             }
-                            array.writeMany(" = null, // T6\n");
+                            array.writeMany(" = null,\n");
                         },
                         else => {
-                            array.writeMany(@typeName(optional_info.child) ++ " = null, // T7\n");
+                            array.writeMany(@typeName(optional_info.child) ++ " = null,\n");
                         },
                     }
                 }
@@ -1610,11 +1613,11 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                                         .type_name = "types." ++ type_name,
                                     });
                                 } else {
-                                    array.writeMany("types." ++ opt_spec.arg_type_name ++ ", // T8\n");
+                                    array.writeMany("types." ++ opt_spec.arg_type_name ++ ",\n");
                                 }
                             },
                             else => {
-                                array.writeMany("types." ++ type_name ++ ", // T9\n");
+                                array.writeMany("types." ++ type_name ++ ",\n");
                             },
                         }
                     }
@@ -1624,11 +1627,11 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
                             if (!@hasDecl(field_type.child, "formatWrite")) {
                                 formatCompositeLiteral(array, field_type, null);
                             } else {
-                                array.writeMany("types." ++ opt_spec.arg_type_name ++ ", // T10\n");
+                                array.writeMany("types." ++ opt_spec.arg_type_name ++ ",\n");
                             }
                         },
                         else => {
-                            array.writeMany(@typeName(field_type) ++ ", // T11\n");
+                            array.writeMany(@typeName(field_type) ++ ",\n");
                         },
                     }
                 }
