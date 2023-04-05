@@ -18,12 +18,6 @@ const reinterpret_spec: mem.ReinterpretSpec = blk: {
 };
 pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
     var len: u64 = 0;
-    if (cmd.watch) {
-        len +%= 8;
-    }
-    if (cmd.show_builtin) {
-        len +%= 15;
-    }
     if (cmd.builtin) {
         len +%= 10;
     }
@@ -185,7 +179,7 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
         len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         len +%= 1;
     }
-    if (cmd.zig_lib_dir) |how| {
+    if (cmd.zig_lib_root) |how| {
         len +%= 14;
         len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         len +%= 1;
@@ -270,6 +264,13 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
             len +%= 17;
         }
     }
+    if (cmd.stack_protector) |stack_protector| {
+        if (stack_protector) {
+            len +%= 14;
+        } else {
+            len +%= 21;
+        }
+    }
     if (cmd.sanitize_c) |sanitize_c| {
         if (sanitize_c) {
             len +%= 13;
@@ -289,13 +290,6 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
             len +%= 18;
         } else {
             len +%= 21;
-        }
-    }
-    if (cmd.dll_export_fns) |dll_export_fns| {
-        if (dll_export_fns) {
-            len +%= 17;
-        } else {
-            len +%= 20;
         }
     }
     if (cmd.unwind_tables) |unwind_tables| {
@@ -388,6 +382,11 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
     }
     if (cmd.library) |how| {
         len +%= 10;
+        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
+        len +%= 1;
+    }
+    if (cmd.needed_library) |how| {
+        len +%= 17;
         len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         len +%= 1;
     }
@@ -521,12 +520,6 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {
     return len;
 }
 pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.C) void {
-    if (cmd.watch) {
-        array.writeMany("--watch\x00");
-    }
-    if (cmd.show_builtin) {
-        array.writeMany("--show-builtin\x00");
-    }
     if (cmd.builtin) {
         array.writeMany("-fbuiltin\x00");
     }
@@ -688,7 +681,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.
         array.writeAny(reinterpret_spec, how);
         array.writeOne('\x00');
     }
-    if (cmd.zig_lib_dir) |how| {
+    if (cmd.zig_lib_root) |how| {
         array.writeMany("--zig-lib-dir\x00");
         array.writeAny(reinterpret_spec, how);
         array.writeOne('\x00');
@@ -773,6 +766,13 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.
             array.writeMany("-fno-stack-check\x00");
         }
     }
+    if (cmd.stack_protector) |stack_protector| {
+        if (stack_protector) {
+            array.writeMany("-fstack-check\x00");
+        } else {
+            array.writeMany("-fno-stack-protector\x00");
+        }
+    }
     if (cmd.sanitize_c) |sanitize_c| {
         if (sanitize_c) {
             array.writeMany("-fsanitize-c\x00");
@@ -792,13 +792,6 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.
             array.writeMany("-fsanitize-thread\x00");
         } else {
             array.writeMany("-fno-sanitize-thread\x00");
-        }
-    }
-    if (cmd.dll_export_fns) |dll_export_fns| {
-        if (dll_export_fns) {
-            array.writeMany("-fdll-export-fns\x00");
-        } else {
-            array.writeMany("-fno-dll-export-fns\x00");
         }
     }
     if (cmd.unwind_tables) |unwind_tables| {
@@ -891,6 +884,11 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.
     }
     if (cmd.library) |how| {
         array.writeMany("--library\x00");
+        array.writeAny(reinterpret_spec, how);
+        array.writeOne('\x00');
+    }
+    if (cmd.needed_library) |how| {
+        array.writeMany("--needed-library\x00");
         array.writeAny(reinterpret_spec, how);
         array.writeOne('\x00');
     }
