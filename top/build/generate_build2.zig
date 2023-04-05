@@ -59,32 +59,32 @@ pub const OptionSpec = struct {
     /// allow the exception.
     default_value: ?*const anyopaque = null,
     /// Description to be inserted above the field as documentation comment
-    descr: ?[]const u8 = null,
+    descr: ?[]const []const u8 = null,
 };
 
 pub const FormatCommandOptions = opaque {
     pub const color: OptionSpec = .{
         .string = "--color",
         .arg_type = enum { auto, off, on },
-        .descr = "Enable or disable colored error messages",
+        .descr = &.{"Enable or disable colored error messages"},
     };
     pub const stdin: OptionSpec = .{
         .string = "--stdin",
-        .descr = "Format code from stdin; output to stdout",
+        .descr = &.{"Format code from stdin; output to stdout"},
     };
     pub const check: OptionSpec = .{
         .string = "--check",
-        .descr = "List non-conforming files and exit with an error if the list is non-empty",
+        .descr = &.{"List non-conforming files and exit with an error if the list is non-empty"},
     };
     pub const ast_check: OptionSpec = .{
         .string = "--ast-check",
         .default_value = &true,
-        .descr = "Run zig ast-check on every file",
+        .descr = &.{"Run zig ast-check on every file"},
     };
     pub const exclude: OptionSpec = .{
         .string = "--exclude",
         .arg_type = []const u8,
-        .descr = "Exclude file or directory from formatting",
+        .descr = &.{"Exclude file or directory from formatting"},
     };
 };
 pub const BuildCommandOptions = opaque {
@@ -115,63 +115,63 @@ pub const BuildCommandOptions = opaque {
     pub const color: OptionSpec = .{
         .string = "--color",
         .arg_type = enum { on, off, auto },
-        .descr = "Enable or disable colored error messages",
+        .descr = &.{"Enable or disable colored error messages"},
     };
     pub const emit_bin: OptionSpec = .{
         .string = "-femit-bin",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-bin" },
-        .descr = "(default=yes) Output machine code",
+        .descr = &.{"(default=yes) Output machine code"},
     };
     pub const emit_asm: OptionSpec = .{
         .string = "-femit-asm",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-asm" },
-        .descr = "(default=no) Output assembly code (.s)",
+        .descr = &.{"(default=no) Output assembly code (.s)"},
     };
     pub const emit_llvm_ir: OptionSpec = .{
         .string = "-femit-llvm-ir",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-ir" },
-        .descr = "(default=no) Output optimized LLVM IR (.ll)",
+        .descr = &.{"(default=no) Output optimized LLVM IR (.ll)"},
     };
     pub const emit_llvm_bc: OptionSpec = .{
         .string = "-femit-llvm-bc",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-bc" },
-        .descr = "(default=no) Output optimized LLVM BC (.bc)",
+        .descr = &.{"(default=no) Output optimized LLVM BC (.bc)"},
     };
     pub const emit_h: OptionSpec = .{
         .string = "-femit-h",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-h" },
-        .descr = "(default=no) Output a C header file (.h)",
+        .descr = &.{"(default=no) Output a C header file (.h)"},
     };
     pub const emit_docs: OptionSpec = .{
         .string = "-femit-docs",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-docs" },
-        .descr = "(default=no) Output documentation (.html)",
+        .descr = &.{"(default=no) Output documentation (.html)"},
     };
     pub const emit_analysis: OptionSpec = .{
         .string = "-femit-analysis",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-analysis" },
-        .descr = "(default=no) Output analysis (.json)",
+        .descr = &.{"(default=no) Output analysis (.json)"},
     };
     pub const emit_implib: OptionSpec = .{
         .string = "-femit-implib",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-implib" },
-        .descr = "(default=yes) Output an import when building a Windows DLL (.lib)",
+        .descr = &.{"(default=yes) Output an import when building a Windows DLL (.lib)"},
     };
     pub const cache_root: OptionSpec = .{
         .string = "--cache-dir",
@@ -192,97 +192,119 @@ pub const BuildCommandOptions = opaque {
     pub const target: OptionSpec = .{
         .string = "-target",
         .arg_type = []const u8,
-        .descr = "<arch><sub>-<os>-<abi> see the targets command",
+        .descr = &.{"<arch><sub>-<os>-<abi> see the targets command"},
     };
     pub const cpu: OptionSpec = .{
         .string = "-mcpu",
         .arg_type = []const u8,
-        .descr = "Specify target CPU and feature set",
+        .descr = &.{"Specify target CPU and feature set"},
     };
     pub const code_model: OptionSpec = .{
         .string = "-mcmodel",
         .arg_type = enum { default, tiny, small, kernel, medium, large },
-        .descr = "Limit range of code and data virtual addresses",
+        .descr = &.{"Limit range of code and data virtual addresses"},
     };
     pub const red_zone: OptionSpec = .{
         .string = "-mred-zone",
         .and_no = &.{ .string = "-mno-red-zone" },
-        .descr = "Enable the \"red-zone\"",
+        .descr = &.{"Enable the \"red-zone\""},
     };
     pub const omit_frame_pointer: OptionSpec = .{
         .string = "-fomit-frame-pointer",
         .and_no = &.{ .string = "-fno-omit-frame-pointer" },
-        .descr = "Omit the stack frame pointer",
+        .descr = &.{"Omit the stack frame pointer"},
     };
     pub const exec_model: OptionSpec = .{
         .string = "-mexec-model",
         .arg_type = []const u8,
-        .descr = "(WASI) Execution model",
+        .descr = &.{"(WASI) Execution model"},
     };
     pub const name: OptionSpec = .{
         .string = "--name",
         .arg_type = []const u8,
+        .descr = &.{"Override root name"},
     };
     pub const mode: OptionSpec = .{
         .string = "-O",
         .arg_type = @TypeOf(@import("builtin").mode),
         .arg_type_name = "@TypeOf(builtin.zig.mode)",
+        .descr = &.{
+            "Choose what to optimize for:",
+            "Debug          Optimizations off, safety on",
+            "ReleaseSafe    Optimizations on, safety on",
+            "ReleaseFast    Optimizations on, safety off",
+            "ReleaseSmall   Size optimizations on, safety off",
+        },
     };
     pub const main_pkg_path: OptionSpec = .{
         .string = "--main-pkg-path",
         .arg_type = []const u8,
+        .descr = &.{"Set the directory of the root package"},
     };
     pub const pic: OptionSpec = .{
         .string = "-fPIC",
         .and_no = &.{ .string = "-fno-PIC" },
+        .descr = &.{"Enable Position Independent Code"},
     };
     pub const pie: OptionSpec = .{
         .string = "-fPIE",
         .and_no = &.{ .string = "-fno-PIE" },
+        .descr = &.{"Enable Position Independent Executable"},
     };
     pub const lto: OptionSpec = .{
         .string = "-flto",
         .and_no = &.{ .string = "-fno-lto" },
+        .descr = &.{"Enable Link Time Optimization"},
     };
     pub const stack_check: OptionSpec = .{
         .string = "-fstack-check",
         .and_no = &.{ .string = "-fno-stack-check" },
+        .descr = &.{"Enable stack probing in unsafe builds"},
+    };
+    pub const stack_protector: OptionSpec = .{
+        .string = "-fstack-check",
+        .and_no = &.{ .string = "-fno-stack-protector" },
+        .descr = &.{"Enable stack protection in unsafe builds"},
     };
     pub const sanitize_c: OptionSpec = .{
         .string = "-fsanitize-c",
         .and_no = &.{ .string = "-fno-sanitize-c" },
+        .descr = &.{"Enable C undefined behaviour detection in unsafe builds"},
     };
     pub const valgrind: OptionSpec = .{
         .string = "-fvalgrind",
         .and_no = &.{ .string = "-fno-valgrind" },
+        .descr = &.{"Include valgrind client requests in release builds"},
     };
     pub const sanitize_thread: OptionSpec = .{
         .string = "-fsanitize-thread",
         .and_no = &.{ .string = "-fno-sanitize-thread" },
-    };
-    pub const dll_export_fns: OptionSpec = .{
-        .string = "-fdll-export-fns",
-        .and_no = &.{ .string = "-fno-dll-export-fns" },
+        .descr = &.{"Enable thread sanitizer"},
     };
     pub const unwind_tables: OptionSpec = .{
         .string = "-funwind-tables",
         .and_no = &.{ .string = "-fno-unwind-tables" },
+        .descr = &.{"Always produce unwind table entries for all functions"},
     };
     pub const llvm: OptionSpec = .{
         .string = "-fLLVM",
         .and_no = &.{ .string = "-fno-LLVM" },
+        .descr = &.{"Use LLVM as the codegen backend"},
     };
     pub const clang: OptionSpec = .{
         .string = "-fClang",
         .and_no = &.{ .string = "-fno-Clang" },
+        .descr = &.{"Use Clang as the C/C++ compilation backend"},
     };
     pub const reference_trace: OptionSpec = .{
         .string = "-freference-trace",
         .and_no = &.{ .string = "-fno-reference-trace" },
+        .descr = &.{"How many lines of reference trace should be shown per compile error"},
     };
     pub const error_tracing: OptionSpec = .{
         .string = "-ferror-tracing",
         .and_no = &.{ .string = "-fno-error-tracing" },
+        .descr = &.{"Enable error tracing in `ReleaseFast` mode"},
     };
     pub const single_threaded: OptionSpec = .{
         .string = "-fsingle-threaded",
@@ -1475,7 +1497,9 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
         const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name;
         if (@field(Namespace, decl.name).descr) |field_descr| {
-            array.writeMany(ws[0..width] ++ "/// " ++ field_descr ++ "\n");
+            inline for (field_descr) |line| {
+                array.writeMany(ws[0..width] ++ "/// " ++ line ++ "\n");
+            }
         }
         array.writeMany(ws[0..width] ++ what_field ++ ": ");
         switch (@typeInfo(field_type)) {
