@@ -58,25 +58,33 @@ pub const OptionSpec = struct {
     /// Maybe define default value of this field. Should be false or null, but
     /// allow the exception.
     default_value: ?*const anyopaque = null,
+    /// Description to be inserted above the field as documentation comment
+    descr: ?[]const u8 = null,
 };
+
 pub const FormatCommandOptions = opaque {
     pub const color: OptionSpec = .{
         .string = "--color",
         .arg_type = enum { auto, off, on },
+        .descr = "Enable or disable colored error messages",
     };
     pub const stdin: OptionSpec = .{
         .string = "--stdin",
+        .descr = "Format code from stdin; output to stdout",
     };
     pub const check: OptionSpec = .{
         .string = "--check",
+        .descr = "List non-conforming files and exit with an error if the list is non-empty",
     };
     pub const ast_check: OptionSpec = .{
         .string = "--ast-check",
         .default_value = &true,
+        .descr = "Run zig ast-check on every file",
     };
     pub const exclude: OptionSpec = .{
         .string = "--exclude",
         .arg_type = []const u8,
+        .descr = "Exclude file or directory from formatting",
     };
 };
 pub const BuildCommandOptions = opaque {
@@ -107,54 +115,63 @@ pub const BuildCommandOptions = opaque {
     pub const color: OptionSpec = .{
         .string = "--color",
         .arg_type = enum { on, off, auto },
+        .descr = "Enable or disable colored error messages",
     };
     pub const emit_bin: OptionSpec = .{
         .string = "-femit-bin",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-bin" },
+        .descr = "(default=yes) Output machine code",
     };
     pub const emit_asm: OptionSpec = .{
         .string = "-femit-asm",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-asm" },
+        .descr = "(default=no) Output assembly code (.s)",
     };
     pub const emit_llvm_ir: OptionSpec = .{
         .string = "-femit-llvm-ir",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-ir" },
+        .descr = "(default=no) Output optimized LLVM IR (.ll)",
     };
     pub const emit_llvm_bc: OptionSpec = .{
         .string = "-femit-llvm-bc",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-bc" },
+        .descr = "(default=no) Output optimized LLVM BC (.bc)",
     };
     pub const emit_h: OptionSpec = .{
         .string = "-femit-h",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-h" },
+        .descr = "(default=no) Output a C header file (.h)",
     };
     pub const emit_docs: OptionSpec = .{
         .string = "-femit-docs",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-docs" },
+        .descr = "(default=no) Output documentation (.html)",
     };
     pub const emit_analysis: OptionSpec = .{
         .string = "-femit-analysis",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-analysis" },
+        .descr = "(default=no) Output analysis (.json)",
     };
     pub const emit_implib: OptionSpec = .{
         .string = "-femit-implib",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-implib" },
+        .descr = "(default=yes) Output an import when building a Windows DLL (.lib)",
     };
     pub const cache_root: OptionSpec = .{
         .string = "--cache-dir",
@@ -1451,6 +1468,9 @@ pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
         const opt_spec: OptionSpec = @field(Namespace, decl.name);
         const field_type: type = getOptType(opt_spec);
         const what_field: []const u8 = decl.name;
+        if (@field(Namespace, decl.name).descr) |field_descr| {
+            array.writeMany(ws[0..width] ++ "/// " ++ field_descr ++ "\n");
+        }
         array.writeMany(ws[0..width] ++ what_field ++ ": ");
         switch (@typeInfo(field_type)) {
             .Bool => {
