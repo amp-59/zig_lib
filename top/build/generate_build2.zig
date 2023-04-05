@@ -13,7 +13,7 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = spec.address_space.regular_128;
 pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 const prefer_inline: bool = true;
 const write_fn_name: bool = false;
@@ -309,154 +309,210 @@ pub const BuildCommandOptions = opaque {
     pub const single_threaded: OptionSpec = .{
         .string = "-fsingle-threaded",
         .and_no = &.{ .string = "-fno-single-threaded" },
+        .descr = &.{"Code assumes there is only one thread"},
     };
     pub const function_sections: OptionSpec = .{
         .string = "-ffunction-sections",
         .and_no = &.{ .string = "-fno-function-sections" },
+        .descr = &.{"Places each function in a separate sections"},
     };
     pub const strip: OptionSpec = .{
         .string = "-fstrip",
         .and_no = &.{ .string = "-fno-strip" },
+        .descr = &.{"Omit debug symbols"},
     };
     pub const formatted_panics: OptionSpec = .{
         .string = "-fformatted-panics",
         .and_no = &.{ .string = "-fno-formatted-panics" },
+        .descr = &.{"Enable formatted safety panics"},
     };
     pub const fmt: OptionSpec = .{
         .string = "-ofmt",
         .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
+        .descr = &.{
+            "Override target object format:",
+            "elf                    Executable and Linking Format",
+            "c                      C source code",
+            "wasm                   WebAssembly",
+            "coff                   Common Object File Format (Windows)",
+            "macho                  macOS relocatables",
+            "spirv                  Standard, Portable Intermediate Representation V (SPIR-V)",
+            "plan9                  Plan 9 from Bell Labs object format",
+            "hex (planned feature)  Intel IHEX",
+            "raw (planned feature)  Dump machine code directly",
+        },
     };
     pub const dirafter: OptionSpec = .{
         .string = "-dirafter",
         .arg_type = []const u8,
+        .descr = &.{"Add directory to AFTER include search path"},
     };
     pub const system: OptionSpec = .{
         .string = "-isystem",
         .arg_type = []const u8,
+        .descr = &.{"Add directory to SYSTEM include search path"},
     };
     pub const include: OptionSpec = .{
         .string = "-I",
         .arg_type = []const u8,
+        .descr = &.{"Add directory to include search path"},
     };
-
     pub const libc: OptionSpec = .{
         .string = "--libc",
         .arg_type = []const u8,
+        .descr = &.{"Provide a file which specifies libc paths"},
     };
     pub const library: OptionSpec = .{
         .string = "--library",
         .arg_type = []const u8,
+        .descr = &.{"Link against system library (only if actually used)"},
+    };
+    pub const needed_library: OptionSpec = .{
+        .string = "--needed-library",
+        .arg_type = []const u8,
+        .descr = &.{"Link against system library (even if unused)"},
     };
     pub const library_directory: OptionSpec = .{
         .string = "--library-directory",
         .arg_type = []const u8,
+        .descr = &.{"Add a directory to the library search path"},
     };
     pub const link_script: OptionSpec = .{
         .string = "--script",
         .arg_type = []const u8,
+        .descr = &.{"Use a custom linker script"},
     };
     pub const version_script: OptionSpec = .{
         .string = "--version-script",
         .arg_type = []const u8,
+        .descr = &.{"Provide a version .map file"},
     };
     pub const dynamic_linker: OptionSpec = .{
         .string = "--dynamic-linker",
         .arg_type = []const u8,
+        .descr = &.{"Set the dynamic interpreter path"},
     };
     pub const sysroot: OptionSpec = .{
         .string = "--sysroot",
         .arg_type = []const u8,
+        .descr = &.{"Set the system root directory"},
     };
     pub const version: OptionSpec = .{ .string = "--version" };
     pub const entry: OptionSpec = .{
         .string = "--entry",
         .arg_type = []const u8,
+        .descr = &.{"Set the entrypoint symbol name"},
     };
     pub const soname: OptionSpec = .{
         .string = "-fsoname",
         .arg_type = []const u8,
         .and_no = &.{ .string = "-fno-soname" },
+        .descr = &.{"Override the default SONAME value"},
     };
     pub const lld: OptionSpec = .{
         .string = "-fLLD",
         .and_no = &.{ .string = "-fno-LLD" },
+        .descr = &.{"Use LLD as the linker"},
     };
     pub const compiler_rt: OptionSpec = .{
         .string = "-fcompiler-rt",
         .and_no = &.{ .string = "-fno-compiler-rt" },
+        .descr = &.{"(default) Include compiler-rt symbols in output"},
     };
     pub const rpath: OptionSpec = .{
         .string = "-rpath",
         .arg_type = []const u8,
+        .descr = &.{"Add directory to the runtime library search path"},
     };
     pub const each_lib_rpath: OptionSpec = .{
         .string = "-feach-lib-rpath",
         .and_no = &.{ .string = "-fno-each-lib-rpath" },
+        .descr = &.{"Ensure adding rpath for each used dynamic library"},
     };
     pub const allow_shlib_undefined: OptionSpec = .{
         .string = "-fallow-shlib-undefined",
         .and_no = &.{ .string = "-fno-allow-shlib-undefined" },
+        .descr = &.{"Allow undefined symbols in shared libraries"},
     };
     pub const build_id: OptionSpec = .{
         .string = "-fbuild-id",
         .and_no = &.{ .string = "-fno-build-id" },
+        .descr = &.{"Help coordinate stripped binaries with debug symbols"},
     };
     pub const compress_debug_sections: OptionSpec = .{
         .string = "--compress-debug-sections",
         .arg_type = enum { none, zlib },
+        .descr = &.{
+            "Debug section compression:",
+            "none   No compression",
+            "zlib   Compression with deflate/inflate",
+        },
     };
     pub const gc_sections: OptionSpec = .{
         .string = "--gc-sections",
         .and_no = &.{ .string = "--no-gc-sections" },
+        .descr = &.{
+            "Force removal of functions and data that are unreachable",
+            "by the entry point or exported symbols",
+        },
     };
     pub const stack: OptionSpec = .{
         .string = "--stack",
         .arg_type = u64,
+        .descr = &.{"Override default stack size"},
     };
     pub const image_base: OptionSpec = .{
         .string = "--image-base",
         .arg_type = u64,
+        .descr = &.{"Set base address for executable image"},
     };
     pub const macros: OptionSpec = .{
         .arg_type = []const types.Macro,
         .arg_type_name = "[]const types.Macro",
+        .descr = &.{"Define C macros available within the `@cImport` namespace"},
     };
     pub const modules: OptionSpec = .{
         .arg_type = []const types.Module,
         .arg_type_name = "[]const types.Module",
+        .descr = &.{"Define modules available as dependencies for the current target"},
     };
     pub const dependencies: OptionSpec = .{
         .arg_type = []const types.ModuleDependency,
         .arg_type_name = "[]const types.ModuleDependency",
+        .descr = &.{"Define module dependencies for the current target"},
     };
     pub const cflags: OptionSpec = .{
         .arg_type = types.CFlags,
         .arg_type_name = "CFlags",
+        .descr = &.{"Set extra flags for the next position C source files"},
     };
     pub const z: OptionSpec = .{
         .string = "-z",
         .arg_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro },
+        .descr = &.{
+            "Set linker extension flags:",
+            "nodelete                   Indicate that the object cannot be deleted from a process",
+            "notext                     Permit read-only relocations in read-only segments",
+            "defs                       Force a fatal error if any undefined symbols remain",
+            "undefs                     Reverse of -z defs",
+            "origin                     Indicate that the object must have its origin processed",
+            "nocopyreloc                Disable the creation of copy relocations",
+            "now (default)              Force all relocations to be processed on load",
+            "lazy                       Don't force all relocations to be processed on load",
+            "relro (default)            Force all relocations to be read-only after processing",
+            "norelro                    Don't force all relocations to be read-only after processing",
+            "common-page-size=[bytes]   Set the common page size for ELF binaries",
+            "max-page-size=[bytes]      Set the max page size for ELF binaries",
+        },
     };
     pub const files: OptionSpec = .{
         .arg_type = []const types.Path,
         .arg_type_name = "[]const types.Path",
+        .descr = &.{"Add auxiliary files to the current target"},
     };
-    const test_filter: OptionSpec = .{
-        .string = "--test-filter",
-        .arg_type = []const u8,
-    };
-    const test_name_prefix: OptionSpec = .{
-        .string = "--test-name-prefix",
-        .arg_type = []const u8,
-    };
-    const test_cmd: OptionSpec = .{ .string = "--test-cmd" };
-    const test_cmd_bin: OptionSpec = .{ .string = "--test-cmd-bin" };
-    const test_evented_io: OptionSpec = .{ .string = "--test-evented-io" };
-    const test_no_exec: OptionSpec = .{ .string = "--test-no-exec" };
-
     //   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
     //   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
-    //     -weak_library [lib]
+    //   -weak_library [lib]
     //   -framework [name]              (Darwin) link against framework
     //   -needed_framework [name]       (Darwin) link against framework (even if unused)
     //   -needed_library [lib]          (Darwin) link against system library (even if unused)
@@ -493,16 +549,6 @@ pub const BuildCommandOptions = opaque {
     //   --debug-log [scope]          Enable printing debug/info log messages for scope
     //   --debug-compile-errors       Crash with helpful diagnostics at the first compile error
     //   --debug-link-snapshot        Enable dumping of the linker's state in JSON
-    //   -z [arg]                       Set linker extension flags
-    //     nodelete                     Indicate that the object cannot be deleted from a process
-    //     notext                       Permit read-only relocations in read-only segments
-    //     defs                         Force a fatal error if any undefined symbols remain
-    //     origin                       Indicate that the object must have its origin processed
-    //     nocopyreloc                  Disable the creation of copy relocations
-    //     now                          (default) Force all relocations to be processed on load
-    //     lazy                         Don't force all relocations to be processed on load
-    //     relro                        (default) Force all relocations to be read-only after processing
-    //     norelro                      Don't force all relocations to be read-only after processing
 };
 /// These are the various states of definition of options. The 'how not' and
 /// 'maybe how not' do not have any examples, but it is easier to think about if
