@@ -857,6 +857,26 @@ pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry
     }
     return null;
 }
+pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]const u8 {
+    for (vars) |key_value| {
+        const key_len: u64 = blk: {
+            var idx: u64 = 0;
+            while (key_value[idx] != '=') idx +%= 1;
+            break :blk idx;
+        };
+        if (!mach.testEqualMany8(key, key_value[0..key_len])) {
+            continue;
+        }
+        const val_idx: u64 = key_len +% 1;
+        const end_idx: u64 = blk: {
+            var idx: u64 = val_idx;
+            while (key_value[idx] != 0) idx +%= 1;
+            break :blk idx;
+        };
+        return key_value[val_idx..end_idx :0];
+    }
+    return null;
+}
 pub fn GenericOptions(comptime Options: type) type {
     return struct {
         field_name: []const u8,
