@@ -192,26 +192,32 @@ pub const BuildCommandOptions = opaque {
     pub const target: OptionSpec = .{
         .string = "-target",
         .arg_type = []const u8,
+        .descr = "<arch><sub>-<os>-<abi> see the targets command",
     };
     pub const cpu: OptionSpec = .{
         .string = "-mcpu",
         .arg_type = []const u8,
+        .descr = "Specify target CPU and feature set",
     };
     pub const code_model: OptionSpec = .{
         .string = "-mcmodel",
         .arg_type = enum { default, tiny, small, kernel, medium, large },
+        .descr = "Limit range of code and data virtual addresses",
     };
     pub const red_zone: OptionSpec = .{
         .string = "-mred-zone",
         .and_no = &.{ .string = "-mno-red-zone" },
+        .descr = "Enable the \"red-zone\"",
     };
     pub const omit_frame_pointer: OptionSpec = .{
         .string = "-fomit-frame-pointer",
         .and_no = &.{ .string = "-fno-omit-frame-pointer" },
+        .descr = "Omit the stack frame pointer",
     };
     pub const exec_model: OptionSpec = .{
         .string = "-mexec-model",
         .arg_type = []const u8,
+        .descr = "(WASI) Execution model",
     };
     pub const name: OptionSpec = .{
         .string = "--name",
