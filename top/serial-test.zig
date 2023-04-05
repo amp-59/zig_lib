@@ -11,7 +11,7 @@ const testing = @import("./testing.zig");
 
 const attr = @import("./mem/attr.zig");
 const mem_types = @import("./mem/types.zig");
-
+const build_test = @import("./build2-test.zig");
 const build_types = @import("./build/types2.zig");
 
 pub usingnamespace proc.start;
@@ -2549,7 +2549,7 @@ pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
     var allocator: build_types.Allocator = build_types.Allocator.init(&address_space, build_types.thread_count);
     defer allocator.deinit(&address_space, build_types.thread_count);
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
-    try @import("./build2-test.zig").testBuildProgram(&allocator, &builder);
+    try build_test.testBuildProgram(&allocator, &builder);
     var buf: [4096]u8 = undefined;
     for (builder.groups(), 0..) |grp, grp_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
