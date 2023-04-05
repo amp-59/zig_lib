@@ -3,7 +3,7 @@ pub const config = @import("./config.zig");
 
 pub usingnamespace config;
 
-pub const Exception = error{
+pub const Error = error{
     SubCausedOverflow,
     AddCausedOverflow,
     MulCausedOverflow,
@@ -12,6 +12,7 @@ pub const Exception = error{
     UnexpectedValue,
 };
 /// `E` must be an error type.
+///
 pub fn InternalError(comptime E: type) type {
     static.assert(@typeInfo(E) == .ErrorSet);
     return union(enum) {
@@ -47,10 +48,10 @@ pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type
 /// Attempt to match a return value against a set of error codes--returning the
 /// corresponding zig error on success.
 pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: isize) ZigError(Value, values)!void {
-    const Error = ZigError(Value, values);
+    const E = ZigError(Value, values);
     inline for (values) |value| {
         if (ret == @enumToInt(value)) {
-            return @field(Error, value.errorName());
+            return @field(E, value.errorName());
         }
     }
 }
@@ -855,39 +856,39 @@ const FaultExtra = struct {
     src: SourceLocation,
     about: ?[]const u8 = null,
 };
-pub fn expect(b: bool) Exception!void {
+pub fn expect(b: bool) Error!void {
     if (!b) {
         return error.UnexpectedValue;
     }
 }
-pub fn expectBelow(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (config.runtime_assertions and arg1 >= arg2) {
-        return debug.comparisonFailedException(T, " < ", arg1, arg2);
+pub fn expectBelow(comptime T: type, arg1: T, arg2: T) Error!void {
+    if (arg1 >= arg2) {
+        return debug.comparisonFailedError(T, " < ", arg1, arg2);
     }
 }
-pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (config.runtime_assertions and arg1 > arg2) {
-        return debug.comparisonFailedException(T, " <= ", arg1, arg2);
+pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+    if (arg1 > arg2) {
+        return debug.comparisonFailedError(T, " <= ", arg1, arg2);
     }
 }
-pub fn expectEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (config.runtime_assertions and !testEqual(T, arg1, arg2)) {
-        return debug.comparisonFailedException(T, " == ", arg1, arg2);
+pub fn expectEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+    if (!testEqual(T, arg1, arg2)) {
+        return debug.comparisonFailedError(T, " == ", arg1, arg2);
     }
 }
-pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (config.runtime_assertions and testEqual(T, arg1, arg2)) {
-        return debug.comparisonFailedException(T, " != ", arg1, arg2);
+pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+    if (testEqual(T, arg1, arg2)) {
+        return debug.comparisonFailedError(T, " != ", arg1, arg2);
     }
 }
-pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (config.runtime_assertions and arg1 < arg2) {
-        return debug.comparisonFailedException(T, " >= ", arg1, arg2);
+pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+    if (arg1 < arg2) {
+        return debug.comparisonFailedError(T, " >= ", arg1, arg2);
     }
 }
-pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Exception!void {
-    if (config.runtime_assertions and arg1 <= arg2) {
-        return debug.comparisonFailedException(T, " > ", arg1, arg2);
+pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Error!void {
+    if (arg1 <= arg2) {
+        return debug.comparisonFailedError(T, " > ", arg1, arg2);
     }
 }
 pub fn intToPtr(comptime P: type, address: u64) P {
@@ -1107,8 +1108,6 @@ pub const debug = opaque {
         lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
         break :blk lhs ++ " " ** (config.message_indent - len);
     };
-    pub const about_fault_p1_s: [:0]const u8 = about(" assertion failed");
-    pub const about_error_p1_s: [:0]const u8 = about(" unexpected result");
     pub fn about(comptime s: [:0]const u8) [:0]const u8 {
         var lhs: [:0]const u8 = s;
         lhs = config.message_prefix ++ lhs;
@@ -1225,7 +1224,7 @@ pub const debug = opaque {
         logFault(buf[0..len]);
         proc.exit(2);
     }
-    fn subCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
+    fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
@@ -1239,7 +1238,7 @@ pub const debug = opaque {
         logFault(buf[0..len]);
         proc.exit(2);
     }
-    fn addCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
+    fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, typeError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
@@ -1253,7 +1252,7 @@ pub const debug = opaque {
         logFault(buf[0..len]);
         proc.exit(2);
     }
-    fn mulCausedOverflowException(comptime T: type, arg1: T, arg2: T) Exception {
+    fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, typeError(T), &buf, arg1, arg2);
@@ -1267,7 +1266,7 @@ pub const debug = opaque {
         logFault(buf[0..len]);
         proc.exit(2);
     }
-    fn exactDivisionWithRemainderException(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Exception {
+    fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, typeError(T), &buf, arg1, arg2, result, remainder);
@@ -1281,7 +1280,7 @@ pub const debug = opaque {
         logFault(buf[0..len]);
         proc.exit(2);
     }
-    fn incorrectAlignmentException(comptime T: type, address: usize, alignment: usize) Exception {
+    fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize) Error {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
@@ -1297,25 +1296,43 @@ pub const debug = opaque {
         logFault(buf[0..len]);
         proc.exit(2);
     }
-    fn comparisonFailedException(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Exception {
-        @setCold(true);
-        if (@typeInfo(T) == .Int) {
-            var buf: [size]u8 = undefined;
-            const len: u64 = comparisonFailedString(T, typeError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-            logError(buf[0..len]);
-        }
-        return error.UnexpectedValue;
+    inline fn comparisonFailedFaultInt(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+        var buf: [size]u8 = undefined;
+        var len: u64 = comparisonFailedString(T, typeFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        logFault(buf[0..len]);
+    }
+    inline fn comparisonFailedFaultEnum(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+        var buf: [size]u8 = undefined;
+        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeFault(T), " failed test: ", @tagName(arg1), symbol, @tagName(arg2) });
+        logFault(buf[0..len]);
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
         @setCold(true);
-        if (@typeInfo(T) == .Int) {
-            var buf: [size]u8 = undefined;
-            var len: u64 = comparisonFailedString(T, typeFault(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-            logFault(buf[0..len]);
-        } else {
-            logFault("assertion failed");
+        switch (@typeInfo(T)) {
+            .Int => comparisonFailedFaultInt(T, symbol, arg1, arg2),
+            .Enum => comparisonFailedFaultEnum(T, symbol, arg1, arg2),
+            else => logFault("assertion failed\n"),
         }
         proc.exit(2);
+    }
+    inline fn comparisonFailedErrorInt(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+        var buf: [size]u8 = undefined;
+        var len: u64 = comparisonFailedString(T, typeError(T), symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        logError(buf[0..len]);
+    }
+    inline fn comparisonFailedErrorEnum(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+        var buf: [size]u8 = undefined;
+        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeError(T), " failed test: ", @tagName(arg1), symbol, @tagName(arg2) });
+        logError(buf[0..len]);
+    }
+    fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Error {
+        @setCold(true);
+        switch (@typeInfo(T)) {
+            .Int => comparisonFailedErrorInt(T, symbol, arg1, arg2),
+            .Enum => comparisonFailedErrorEnum(T, symbol, arg1, arg2),
+            else => logError("unexpected value\n"),
+        }
+        return error.UnexpectedValue;
     }
     pub fn write(buf: []const u8) void {
         asm volatile (
@@ -1556,8 +1573,8 @@ pub const debug = opaque {
     };
 };
 pub const parse = opaque {
-    pub const Error = error{BadParse};
-    pub const error_policy: *InternalError(Error) = createErrorPolicy(parse, .{ .throw = Error.BadParse });
+    pub const E = error{BadParse};
+    pub const error_policy: *InternalError(E) = createErrorPolicy(parse, .{ .throw = E.BadParse });
 
     pub fn ub(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
