@@ -434,11 +434,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         pub fn executeCommand(
             builder: *Builder,
-            allocator: *types.Allocator,
+            allocator: *Allocator,
             target: *Target,
             task: Task,
             depth: u64,
-        ) !void {
+        ) sys.Call(.{
+            .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
+            .abort = decls.clock_spec.errors.throw ++ decls.command_spec.errors.abort(),
+        }, void) {
             if (switch (task) {
                 .build => try meta.wrap(executeBuildCommand(builder, allocator, target, depth)),
                 .run => try meta.wrap(executeRunCommand(builder, allocator, target, depth)),
@@ -448,9 +451,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.assertTransform(task, .blocking, .failed);
             }
         }
-        fn buildWrite(builder: *Builder, target: *Target, allocator: *types.Allocator, root_path: types.Path) [:0]u8 {
+        fn buildWrite(builder: *Builder, target: *Target, allocator: *Allocator, root_path: types.Path) [:0]u8 {
             @setRuntimeSafety(false);
-            var ret: types.Args = types.Args.init(allocator, buildLength(builder, target, root_path));
+            var ret: Args = Args.init(allocator, buildLength(builder, target, root_path));
             ret.writeMany(builder.zig_exe);
             ret.writeOne(0);
             ret.writeMany(tok.build_prefix);
@@ -463,16 +466,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ret.undefine(1);
             return ret.referAllDefinedWithSentinel(0);
         }
-        fn runWrite(builder: *Builder, target: *Target) [:0]u8 {
-            @setRuntimeSafety(false);
-            for (builder.run_args) |run_arg| {
-                target.run_args.writeMany(meta.manyToSlice(run_arg));
-                target.run_args.writeOne(0);
-            }
-            target.run_args.writeOne(0);
-            target.run_args.undefine(1);
-            return target.run_args.referAllDefinedWithSentinel(0);
-        }
         fn buildLength(builder: *Builder, target: *Target, root_path: types.Path) u64 {
             if (builder_spec.options.max_command_line) |len| return len;
             var len: u64 = builder.zig_exe.len +% 1;
@@ -482,17 +475,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             len +%= 1;
             return len;
         }
-        fn runLength(builder: *Builder) u64 {
-            if (builder_spec.options.max_command_line) |len| return len;
-            var len: u64 = 0;
-            for (builder.run_args) |run_arg| {
-                len +%= meta.manyToSlice(run_arg).len;
-                len +%= 1;
-            }
-            len +%= 1;
-            return len;
-        }
-        fn executeBuildCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) bool {
+        fn executeBuildCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
+            .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
+            .abort = decls.clock_spec.errors.abort ++ decls.command_spec.errors.abort(),
+        }, bool) {
             var build_time: time.TimeSpec = undefined;
             const bin_path: [:0]const u8 = try meta.wrap(
                 target.binaryRelative(allocator),
@@ -517,9 +503,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return rc == 0;
         }
-        fn executeRunCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) bool {
+        fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
+            .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
+            .abort = decls.clock_spec.errors.abort ++ decls.command_spec.errors.abort(),
+        }, bool) {
             var run_time: time.TimeSpec = undefined;
-            const args: [:0]u8 = builder.runWrite(target);
+            const args: [:0]u8 = target.run_args.referAllDefinedWithSentinel(0);
             const ptrs: [][*:0]u8 = try meta.wrap(
                 makeArgPtrs(allocator, args),
             );
