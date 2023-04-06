@@ -8,8 +8,7 @@ const proc = @import("./proc.zig");
 const time = @import("./time.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
-const types = @import("./build/types2.zig");
-const tasks = @import("./build/tasks.zig");
+const types = @import("./build/types.zig");
 comptime {
     asm (@embedFile("./build/build-template.s"));
 }
@@ -181,7 +180,7 @@ pub const Builder = struct {
     }
     fn buildLength(builder: *Builder, target: *const Target) u64 {
         if (build_spec.options.max_command_line) |len| return len;
-        const cmd: *const tasks.BuildCommand = target.build_cmd;
+        const cmd: *const types.BuildCommand = target.build_cmd;
         var len: u64 = 4;
         len +%= 6 +% @tagName(cmd.kind).len +% 1;
         len +%= command_line.buildLength(cmd);
@@ -191,7 +190,7 @@ pub const Builder = struct {
         return len;
     }
     fn buildWrite(builder: *Builder, target: *const Target, array: *types.Args) void {
-        const cmd: *const tasks.BuildCommand = target.build_cmd;
+        const cmd: *const types.BuildCommand = target.build_cmd;
         array.writeMany("zig\x00build-");
         array.writeMany(@tagName(cmd.kind));
         array.writeOne('\x00');
@@ -202,7 +201,7 @@ pub const Builder = struct {
     }
     fn formatLength(builder: *Builder, target: *const Target) u64 {
         if (build_spec.options.max_command_line) |len| return len;
-        const cmd: *const tasks.FormatCommand = target.fmt_cmd;
+        const cmd: *const types.FormatCommand = target.fmt_cmd;
         var len: u64 = 8;
         len +%= command_line.formatLength(cmd);
         len +%= types.Path.formatLength(builder.sourceRootPath(target.root));
@@ -210,7 +209,7 @@ pub const Builder = struct {
         return len;
     }
     fn formatWrite(builder: *Builder, target: *const Target, array: *types.Args) void {
-        const cmd: *const tasks.FormatCommand = target.fmt_cmd;
+        const cmd: *const types.FormatCommand = target.fmt_cmd;
         array.writeMany("zig\x00fmt\x00");
         command_line.formatWrite(cmd, array);
         array.writeFormat(builder.sourceRootPath(target.root));
@@ -314,7 +313,7 @@ pub const Builder = struct {
     }
 };
 pub const TargetSpec = struct {
-    build: ?tasks.OutputMode = .exe,
+    build: ?types.OutputMode = .exe,
     run: bool = true,
     fmt: bool = false,
     mode: builtin.Mode = .Debug,
@@ -335,7 +334,7 @@ pub const Group = struct {
         ret.deps = Target.DependencyList.init(allocator);
         group.targets.add(allocator, ret);
         if (target_spec.fmt) {
-            const fmt_cmd: *tasks.FormatCommand = allocator.createIrreversible(tasks.FormatCommand);
+            const fmt_cmd: *types.FormatCommand = allocator.createIrreversible(types.FormatCommand);
             ret.fmt_cmd = fmt_cmd;
             ret.give(.fmt);
         }
@@ -349,7 +348,7 @@ pub const Group = struct {
                 allocator,
                 &.{ "zig-out/bin/", name, ".s" },
             ));
-            const build_cmd: *tasks.BuildCommand = allocator.createIrreversible(tasks.BuildCommand);
+            const build_cmd: *types.BuildCommand = allocator.createIrreversible(types.BuildCommand);
             build_cmd.name = name;
             build_cmd.kind = kind;
             build_cmd.omit_frame_pointer = false;
@@ -373,7 +372,7 @@ pub const Group = struct {
             ret.build_cmd = build_cmd;
         }
         if (target_spec.run) {
-            const run_cmd: *tasks.RunCommand = allocator.createIrreversible(tasks.RunCommand);
+            const run_cmd: *types.RunCommand = allocator.createIrreversible(types.RunCommand);
             run_cmd.args = types.Args.init(allocator, 65536);
             run_cmd.addRunArgument(allocator, ret.binPath());
             ret.give(.run);
@@ -387,9 +386,9 @@ pub const Target = struct {
     name: [:0]const u8,
     root: [:0]const u8,
     descr: ?[:0]const u8 = null,
-    build_cmd: *tasks.BuildCommand,
-    fmt_cmd: *tasks.FormatCommand,
-    run_cmd: *tasks.RunCommand,
+    build_cmd: *types.BuildCommand,
+    fmt_cmd: *types.FormatCommand,
+    run_cmd: *types.RunCommand,
     deps: DependencyList,
     flags: u8 = 0,
 
@@ -449,16 +448,16 @@ pub const Target = struct {
     pub fn llvmBcPath(target: *const Target) types.Path {
         return target.build_cmd.emit_llvm_bc.?.yes.?;
     }
-    pub fn addFormat(target: *Target, allocator: *types.Allocator, fmt_cmd: tasks.FormatCommand) void {
-        target.fmt_cmd = allocator.duplicateIrreversible(tasks.FormatCommand, fmt_cmd);
+    pub fn addFormat(target: *Target, allocator: *types.Allocator, fmt_cmd: types.FormatCommand) void {
+        target.fmt_cmd = allocator.duplicateIrreversible(types.FormatCommand, fmt_cmd);
         target.give(.fmt);
     }
-    pub fn addBuild(target: *Target, allocator: *types.Allocator, build_cmd: tasks.BuildCommand) void {
-        target.build_cmd = allocator.duplicateIrreversible(tasks.BuildCommand, build_cmd);
+    pub fn addBuild(target: *Target, allocator: *types.Allocator, build_cmd: types.BuildCommand) void {
+        target.build_cmd = allocator.duplicateIrreversible(types.BuildCommand, build_cmd);
         target.give(.build);
     }
-    pub fn addRun(target: *Target, allocator: *types.Allocator, run_cmd: tasks.RunCommand) void {
-        target.run_cmd = allocator.duplicateIrreversible(tasks.RunCommand, run_cmd);
+    pub fn addRun(target: *Target, allocator: *types.Allocator, run_cmd: types.RunCommand) void {
+        target.run_cmd = allocator.duplicateIrreversible(types.RunCommand, run_cmd);
         target.run_cmd.addRunArgument(target.binPath());
         target.give(.run);
     }
