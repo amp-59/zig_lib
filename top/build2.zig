@@ -363,13 +363,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 group: *Group,
                 allocator: *types.Allocator,
                 name: [:0]const u8,
-                root: [:0]const u8,
+                root: ?[:0]const u8,
                 extra: Extra,
             ) Types.target_payload {
                 if (group.trgs_len == group.trgs.len) {
-                    group.trgs = allocator.reallocateIrreversible(Target, group.trgs, (group.trgs_len +% 1) *% 2);
+                    group.trgs = allocator.reallocateIrreversible(*Target, group.trgs, (group.trgs_len +% 1) *% 2);
                 }
-                const ret: *Target = &group.trgs[group.trgs_len];
+                const ret: *Target = group.builder.createTarget(allocator, name, root, extra);
+                group.trgs[group.trgs_len] = ret;
                 group.trgs_len +%= 1;
                 ret.* = .{
                     .root = root,
