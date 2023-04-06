@@ -819,8 +819,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     mach.memcpy(buf1[len1..].ptr, if (idx == deps.len -% 1) "  " else "| ", 2);
                     mach.memcpy(buf0[len..].ptr, buf1, len1 +% 2);
                     len = len +% len1 +% 2;
-                    mach.memcpy(buf0[len..].ptr, if (idx == deps.len -% 1) "\x08\x08`-> " else "\x08\x08|-> ", 6);
-                    len = len +% len1 +% 8;
+                    mach.memcpy(buf0[len..].ptr, if (idx == deps.len -% 1) "\x08\x08`-" else "\x08\x08|-", 4);
+                    len = len +% 4;
+                    mach.memcpy(buf0[len..].ptr, if (dep.target.deps_len == 0) "> " else "+ ", 2);
+                    len = len +% 2;
                     mach.memcpy(buf0[len..].ptr, dep.target.name.ptr, dep.target.name.len);
                     len = len +% target.name.len;
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.target);
@@ -846,8 +848,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 }
                 name_max_width += alignment;
-                name_max_width &= ~(alignment - 1);
                 root_max_width += alignment;
+                name_max_width &= ~(alignment - 1);
                 root_max_width &= ~(alignment - 1);
                 mach.memset(&buf1, ' ', 4);
                 for (builder.groups()) |group| {
