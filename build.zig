@@ -8,8 +8,9 @@ const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
 
-pub const Builder: type = build.GenericBuilder(spec.builder.default);
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+
+pub const Builder: type = build.GenericBuilder(spec.builder.default);
 
 const mods: []const build.Module = &.{
     .{ .name = "zig_lib", .path = "zig_lib.zig" },
