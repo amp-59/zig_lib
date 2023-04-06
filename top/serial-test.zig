@@ -2545,9 +2545,9 @@ const Builder = build.GenericBuilder(.{
     .logging = spec.builder.logging.silent,
 });
 pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
-    var address_space: build_types.AddressSpace = .{};
-    var allocator: build_types.Allocator = build_types.Allocator.init(&address_space, build_types.thread_count);
-    defer allocator.deinit(&address_space, build_types.thread_count);
+    var address_space: Builder.AddressSpace = .{};
+    var allocator: Builder.Allocator = Builder.Allocator.init(&address_space, Builder.max_thread_count);
+    defer allocator.deinit(&address_space, Builder.max_thread_count);
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
     try build_test.testBuildProgram(&allocator, &builder);
     var buf: [4096]u8 = undefined;
@@ -2558,7 +2558,7 @@ pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
             defer allocator.restore(s);
             var len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-            try serial.serialWrite(.{ .Allocator = build_types.Allocator }, build.types.BuildCommand, &allocator, buf[0..len :0], trg.build_cmd.*);
+            try serial.serialWrite(.{ .Allocator = Builder.Allocator }, build.types.BuildCommand, &allocator, buf[0..len :0], trg.build_cmd.*);
         }
     }
     for (builder.groups(), 0..) |grp, grp_idx| {
@@ -2568,7 +2568,7 @@ pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
             defer allocator.restore(s);
             var len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-            const build_cmd: build.types.BuildCommand = try serial.serialRead(.{ .Allocator = build_types.Allocator }, build.types.BuildCommand, &allocator, buf[0..len :0]);
+            const build_cmd: build.types.BuildCommand = try serial.serialRead(.{ .Allocator = Builder.Allocator }, build.types.BuildCommand, &allocator, buf[0..len :0]);
             if (builtin.testEqualMemory(build.types.BuildCommand, build_cmd, trg.build_cmd.*)) {}
         }
     }
