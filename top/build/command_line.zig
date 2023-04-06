@@ -15,7 +15,7 @@ const reinterpret_spec: mem.ReinterpretSpec = blk: {
     };
     break :blk tmp;
 };
-pub fn buildLength(cmd: *const types.BuildCommand) callconv(.C) u64 {
+pub fn buildLength(cmd: *const types.BuildCommand) u64 {
     var len: u64 = 0;
     if (cmd.builtin) {
         len +%= 10;
@@ -518,7 +518,7 @@ pub fn buildLength(cmd: *const types.BuildCommand) callconv(.C) u64 {
     }
     return len;
 }
-pub fn buildWrite(cmd: *const types.BuildCommand, array: *types.Args) callconv(.C) void {
+pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
     if (cmd.builtin) {
         array.writeMany("-fbuiltin\x00");
     }
@@ -1019,7 +1019,7 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: *types.Args) callconv(.
         array.writeAny(reinterpret_spec, how);
     }
 }
-pub fn formatLength(cmd: *const types.FormatCommand) callconv(.C) u64 {
+pub fn formatLength(cmd: *const types.FormatCommand) u64 {
     var len: u64 = 0;
     if (cmd.color) |how| {
         len +%= 8;
@@ -1042,7 +1042,7 @@ pub fn formatLength(cmd: *const types.FormatCommand) callconv(.C) u64 {
     }
     return len;
 }
-pub fn formatWrite(cmd: *const types.FormatCommand, array: *types.Args) callconv(.C) void {
+pub fn formatWrite(cmd: *const types.FormatCommand, array: anytype) void {
     if (cmd.color) |how| {
         array.writeMany("--color\x00");
         array.writeAny(reinterpret_spec, how);
