@@ -12,7 +12,6 @@ const testing = @import("./testing.zig");
 const attr = @import("./mem/attr.zig");
 const mem_types = @import("./mem/types.zig");
 const build_test = @import("./build2-test.zig");
-const build_types = @import("./build/types.zig");
 
 pub usingnamespace proc.start;
 
@@ -2558,7 +2557,7 @@ pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
             defer allocator.restore(s);
             var len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-            try serial.serialWrite(.{ .Allocator = Builder.Allocator }, build.types.BuildCommand, &allocator, buf[0..len :0], trg.build_cmd.*);
+            try serial.serialWrite(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0], trg.build_cmd.*);
         }
     }
     for (builder.groups(), 0..) |grp, grp_idx| {
@@ -2568,8 +2567,8 @@ pub fn testLargeFlatStructure(args: anytype, vars: anytype) !void {
             defer allocator.restore(s);
             var len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-            const build_cmd: build.types.BuildCommand = try serial.serialRead(.{ .Allocator = Builder.Allocator }, build.types.BuildCommand, &allocator, buf[0..len :0]);
-            if (builtin.testEqualMemory(build.types.BuildCommand, build_cmd, trg.build_cmd.*)) {}
+            const build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0]);
+            if (builtin.testEqualMemory(build.BuildCommand, build_cmd, trg.build_cmd.*)) {}
         }
     }
 }
