@@ -122,11 +122,34 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         grps: []*Group = &.{},
         grps_len: u64 = 0,
         const Builder = @This();
-        pub const Types = struct {
-            const target_payload: type = types.Allocator.allocate_payload(*Target);
-            const group_payload: type = types.Allocator.allocate_payload(*Group);
-            const dependency_payload: type = types.Allocator.allocate_payload(*Dependency);
-        };
+        pub const AddressSpace = mem.GenericRegularAddressSpace(.{
+            .label = "arena",
+            .idx_type = u8,
+            .divisions = max_arena_count,
+            .lb_addr = arena_lb_addr,
+            .up_addr = arena_up_addr,
+            .errors = spec.address_space.errors.noexcept,
+            .logging = spec.address_space.logging.silent,
+            .options = .{ .thread_safe = true, .require_map = true, .require_unmap = true },
+        });
+        pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
+            .label = "stack",
+            .idx_type = AddressSpace.Index,
+            .divisions = max_thread_count,
+            .lb_addr = stack_lb_addr,
+            .up_addr = stack_up_addr,
+            .errors = spec.address_space.errors.noexcept,
+            .logging = spec.address_space.logging.silent,
+            .options = .{ .thread_safe = true },
+        });
+        pub const Allocator = mem.GenericRtArenaAllocator(.{
+            .AddressSpace = AddressSpace,
+            .logging = spec.allocator.logging.silent,
+            .errors = spec.allocator.errors.noexcept,
+            .options = spec.allocator.options.small_composed,
+        });
+        pub const Args = mem.StructuredVector(u8, &@as(u8, 0), 8, Allocator, .{});
+        pub const Ptrs = mem.StructuredVector([*:0]u8, builtin.anyOpaque(builtin.zero([*:0]u8)), 8, Allocator, .{});
         pub const Dependency = struct {
             target: *Target,
             task: Task,
