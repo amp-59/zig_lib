@@ -665,7 +665,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn groupScan(group: *Group, task: Task) void {
             lo: while (true) {
-                for (group.targets()) |*target| {
+                for (group.targets()) |target| {
                     if (target.lock.get(task) == .blocking) continue :lo;
                 } else {
                     break;
@@ -827,40 +827,64 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            pub fn builderCommandNotice(builder: *Builder) void {
+            pub fn builderCommandNotice(builder: *Builder, show_root: bool, show_descr: bool, show_deps: bool) void {
                 @setRuntimeSafety(false);
                 const alignment: u64 = 8;
                 var buf0: [1024 * 1024]u8 = undefined;
                 var buf1: [4096]u8 = undefined;
                 var len: u64 = 0;
                 var name_max_width: u64 = 0;
-                for (builder.groups()) |*group| {
-                    for (group.targets()) |*target| {
+                var root_max_width: u64 = 0;
+                for (builder.groups()) |group| {
+                    for (group.targets()) |target| {
                         name_max_width = @max(name_max_width, (target.name.len));
+                        if (show_root) {
+                            if (target.root) |root| {
+                                root_max_width = @max(root_max_width, (root.len));
+                            }
+                        }
                     }
                 }
                 name_max_width += alignment;
                 name_max_width &= ~(alignment - 1);
+                root_max_width += alignment;
+                root_max_width &= ~(alignment - 1);
                 mach.memset(&buf1, ' ', 4);
-                for (builder.groups()) |*group| {
+                for (builder.groups()) |group| {
                     len +%= builtin.debug.writeMulti(buf0[len..], &.{ group.name, ":\n" });
-                    for (group.targets()) |*target| {
+                    for (group.targets()) |target| {
                         mach.memset(buf0[len..].ptr, ' ', 4);
                         len +%= 4;
                         mach.memcpy(buf0[len..].ptr, target.name.ptr, target.name.len);
                         len +%= target.name.len;
-                        const count: u64 = name_max_width - target.name.len;
-                        mach.memset(buf0[len..].ptr, ' ', count);
-                        len +%= count;
-                        if (target.root) |root| {
-                            mach.memcpy(buf0[len..].ptr, root.ptr, root.len);
-                            len +%= root.len;
+                        var count: u64 = name_max_width - target.name.len;
+                        if (show_root) {
+                            mach.memset(buf0[len..].ptr, ' ', count);
+                            len +%= count;
+                            if (target.root) |root| {
+                                mach.memcpy(buf0[len..].ptr, root.ptr, root.len);
+                                len +%= root.len;
+                            }
                         }
-                        mach.memcpy(buf0[len..].ptr, "\x1b[2m", 4);
-                        len +%= 4;
-                        len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
-                        mach.memcpy(buf0[len..].ptr, "\x1b[0m", 4);
-                        len +%= 4;
+                        if (show_descr) {
+                            count = root_max_width - if (target.root) |root| root.len else 0;
+                            mach.memset(buf0[len..].ptr, ' ', count);
+                            len +%= count;
+                            if (target.descr) |descr| {
+                                mach.memcpy(buf0[len..].ptr, descr.ptr, descr.len);
+                                len +%= descr.len;
+                            }
+                        }
+                        if (show_deps) {
+                            mach.memcpy(buf0[len..].ptr, "\x1b[2m", 4);
+                            len +%= 4;
+                            len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
+                            mach.memcpy(buf0[len..].ptr, "\x1b[0m", 4);
+                            len +%= 4;
+                        } else {
+                            buf0[len] = '\n';
+                            len +%= 1;
+                        }
                     }
                 }
                 builtin.debug.logAlways(buf0[0..len]);
@@ -943,4 +967,7 @@ fn create(allocator: *types.Allocator, comptime T: type) *T {
     const s_ab_addr: u64 = allocator.alignAbove(@alignOf(T));
     allocator.allocate(s_ab_addr +% @sizeOf(T));
     return mem.pointerOne(T, s_ab_addr);
+}
+fn copy(comptime T: type, dest: *T, src: *const T) void {
+    mach.memcpy(@ptrCast([*]u8, dest), @ptrCast([*]const u8, src), @sizeOf(T));
 }
