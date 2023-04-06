@@ -1652,11 +1652,9 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             ret.* = value;
             return ret;
         }
-        pub fn createIrreversible(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
-            defer Graphics.showWithReference(allocator, @src());
-            const s_aligned_bytes: u64 = @sizeOf(T);
+        fn createRaw(allocator: *Allocator, s_aligned_bytes: u64, alignment: u64) u64 {
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, alignment);
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and
                 s_up_addr > allocator.unmapped_byte_address())
@@ -1664,13 +1662,18 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
-            const ret: *T = @intToPtr(*T, s_ab_addr);
             if (Allocator.allocator_spec.options.count_allocations) {
                 allocator.metadata.count +%= 1;
             }
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
             }
+            return s_ab_addr;
+        }
+        pub fn createIrreversible(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
+            defer Graphics.showWithReference(allocator, @src());
+            const s_ab_addr: u64 = createRaw(@sizeOf(T), @alignOf(T));
+            const ret: *T = @intToPtr(*T, s_ab_addr);
             showCreate(T, ret);
             return ret;
         }
