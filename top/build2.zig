@@ -12,9 +12,7 @@ const types = @import("./build/types.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
 const command_line = @import("./build/command_line.zig");
-
 pub usingnamespace types;
-
 pub const State = enum(u8) {
     unavailable = 0,
     failed = 1,
@@ -23,9 +21,7 @@ pub const State = enum(u8) {
     invalid = 4,
     finished = 255,
 };
-
 pub const Task = enum(u8) { build, run };
-
 pub const BuilderSpec = struct {
     options: Options = .{},
     logging: Logging = .{},
@@ -35,7 +31,6 @@ pub const BuilderSpec = struct {
         max_command_args: ?u64 = 1024,
         max_relevant_depth: u64 = 255,
         dep_sleep_nsec: u64 = 50000,
-
         max_thread_count: u64 = 16,
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         arena_aligned_bytes: u64 = 8 * 1024 * 1024,
@@ -53,18 +48,17 @@ pub const BuilderSpec = struct {
         stat: builtin.Logging.SuccessErrorFault = .{},
     };
     pub const Errors = struct {
+        map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
+        unmap: sys.ErrorPolicy = .{ .abort = sys.munmap_errors },
         command: proc.CommandSpec.Errors = .{},
         path: sys.ErrorPolicy = .{ .throw = sys.open_errors },
         clock: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
         sleep: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
+        stat: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
         create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
         mkdir: sys.ErrorPolicy = .{ .throw = sys.mkdir_noexcl_errors },
         close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
         write: sys.ErrorPolicy = .{ .abort = sys.write_errors },
-        map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-        unmap: sys.ErrorPolicy = .{ .abort = sys.munmap_errors },
-        stat: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
-        clone: sys.ErrorPolicy = .{},
     };
     const map_options: mem.MapSpec.Options = .{
         .grows_down = true,
@@ -94,9 +88,6 @@ pub const BuilderSpec = struct {
     pub fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
         return .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
     }
-    pub fn clone(comptime builder_spec: BuilderSpec) proc.CloneSpec {
-        return .{ .return_type = void, .errors = builder_spec.errors.clone };
-    }
     pub fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
         return .{ .errors = builder_spec.errors.unmap, .logging = builder_spec.logging.unmap };
     }
@@ -118,7 +109,6 @@ pub const BuilderSpec = struct {
         };
     }
 };
-
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const Type = struct {
         zig_exe: [:0]const u8,
