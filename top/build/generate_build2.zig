@@ -263,8 +263,8 @@ pub const build_command_options: []const OptionSpec = &.{
     .{
         .name = "mode",
         .string = "-O",
-        .arg_type = @TypeOf(@import("builtin").mode),
-        .arg_type_name = "@TypeOf(builtin.zig.mode)",
+        .arg_type = builtin.Mode,
+        .arg_type_name = "builtin.Mode",
         .descr = &.{
             "Choose what to optimize for:",
             "Debug          Optimizations off, safety on",
@@ -1746,20 +1746,20 @@ pub fn main() !void {
     array.define(try file.read(.{}, fd, array.referAllUndefined(allocator), st.size));
     try file.close(.{}, fd);
 
-    array.writeMany("pub fn buildLength(cmd: *const types.BuildCommand) callconv(.C) u64 {\n");
+    array.writeMany("pub fn buildLength(cmd: *const types.BuildCommand) u64 {\n");
     array.writeMany("    var len: u64 = 0;\n");
     writeFunctionBody(build_command_options, &array, .length);
     array.writeMany("    return len;\n");
     array.writeMany("}\n");
-    array.writeMany("pub fn buildWrite(cmd: *const types.BuildCommand, array: *types.Args) callconv(.C) void {\n");
+    array.writeMany("pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {\n");
     writeFunctionBody(build_command_options, &array, .write);
     array.writeMany("}\n");
-    array.writeMany("pub fn formatLength(cmd: *const types.FormatCommand) callconv(.C) u64 {\n");
+    array.writeMany("pub fn formatLength(cmd: *const types.FormatCommand) u64 {\n");
     array.writeMany("    var len: u64 = 0;\n");
     writeFunctionBody(format_command_options, &array, .length);
     array.writeMany("    return len;\n");
     array.writeMany("}\n");
-    array.writeMany("pub fn formatWrite(cmd: *const types.FormatCommand, array: *types.Args) callconv(.C) void {\n");
+    array.writeMany("pub fn formatWrite(cmd: *const types.FormatCommand, array: anytype) void {\n");
     writeFunctionBody(format_command_options, &array, .write);
     array.writeMany("}\n");
     try writeFile(allocator, array, command_line_path);
