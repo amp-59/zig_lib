@@ -366,7 +366,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .name = name,
                     .build_cmd = allocator.createIrreversible(tasks.BuildCommand),
                 };
-                builtin.assert(ret.transform(.build, .unavailable, .ready));
+                ret.assertTransform(.build, .unavailable, .ready);
                 ret.build_cmd.* = .{
                     .kind = kind,
                     .name = name,
@@ -436,9 +436,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .build => meta.wrap(executeBuildCommand(builder, &allocator, target, depth)) catch false,
                 .run => meta.wrap(executeRunCommand(builder, &allocator, target, depth)) catch false,
             }) {
-                builtin.assert(target.transform(task, .blocking, .finished));
+                target.assertTransform(task, .blocking, .finished);
             } else {
-                builtin.assert(target.transform(task, .blocking, .failed));
+                target.assertTransform(task, .blocking, .failed);
             }
             builtin.assert(thread_space.atomicUnset(arena_index));
         }
@@ -453,9 +453,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .build => try meta.wrap(executeBuildCommand(builder, allocator, target, depth)),
                 .run => try meta.wrap(executeRunCommand(builder, allocator, target, depth)),
             }) {
-                builtin.assert(target.transform(task, .blocking, .finished));
+                target.assertTransform(task, .blocking, .finished);
             } else {
-                builtin.assert(target.transform(task, .blocking, .failed));
+                target.assertTransform(task, .blocking, .failed);
             }
         }
         fn buildWrite(builder: *Builder, target: *Target, allocator: *types.Allocator, root_path: types.Path) [:0]u8 {
