@@ -732,7 +732,7 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
 pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
-        .Int, .Enum, .Bool => {
+        .Int, .Enum, .Bool, .Void => {
             return arg1 == arg2;
         },
         .Struct => |struct_info| {
