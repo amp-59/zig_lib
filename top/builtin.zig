@@ -1720,7 +1720,7 @@ pub const parse = opaque {
         };
         const signed: bool = str[0] == '-';
         if (signed and @typeInfo(T).Int.signedness == .unsigned) {
-            return Error.BadParse;
+            return E.BadParse;
         }
         var idx: u64 = int(u64, signed);
         const is_zero: bool = str[idx] == '0';
@@ -1754,7 +1754,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 2) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return Error.BadParse;
+                        return E.BadParse;
                     },
                 }
             },
@@ -1764,7 +1764,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 8) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return Error.BadParse;
+                        return E.BadParse;
                     },
                 }
             },
@@ -1774,7 +1774,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 10) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return Error.BadParse;
+                        return E.BadParse;
                     },
                 }
             },
@@ -1784,7 +1784,7 @@ pub const parse = opaque {
                         value +%= fromSymbol(str[idx], 16) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
                     },
                     else => {
-                        return Error.BadParse;
+                        return E.BadParse;
                     },
                 }
             },
