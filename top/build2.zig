@@ -705,17 +705,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .inc_style = "\x1b[91m+",
             });
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
-            const about_state_s: [:0]const u8 = builtin.debug.about("state");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
             const about_format_s: [:0]const u8 = builtin.debug.about("format");
+            const about_state_0_s: [:0]const u8 = builtin.debug.about("state");
+            const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
             pub fn transformNotice(target: *Target, task: Task, old_state: State, new_state: State) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
-                    about_state_s, target.name,
-                    ".",           @tagName(task),
-                    ", ",          @tagName(old_state),
-                    " -> ",        @tagName(new_state),
+                    about_state_0_s, target.name,
+                    ".",             @tagName(task),
+                    ", ",            @tagName(old_state),
+                    " -> ",          @tagName(new_state),
                     "\n",
                 });
             }
@@ -723,11 +724,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
-                    about_state_s, target.name,
-                    ".",           @tagName(task),
-                    ", (",         @tagName(target.lock.get(task)),
-                    ") ",          @tagName(old_state),
-                    " -!!-> ",     @tagName(new_state),
+                    about_state_0_s, target.name,
+                    ".",             @tagName(task),
+                    ", (",           @tagName(target.lock.get(task)),
+                    ") ",            @tagName(old_state),
+                    " -!!-> ",       @tagName(new_state),
+                    "\n",
+                });
+            }
+            pub fn noTransformFault(target: *Target, task: Task, old_state: State, new_state: State) void {
+                @setRuntimeSafety(false);
+                var buf: [4096]u8 = undefined;
+                builtin.debug.logAlwaysAIO(&buf, &.{
+                    about_state_1_s, target.name,
+                    ".",             @tagName(task),
+                    ", (",           @tagName(target.lock.get(task)),
+                    ") ",            @tagName(old_state),
+                    " -!!-> ",       @tagName(new_state),
                     "\n",
                 });
             }
@@ -831,8 +844,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         const count: u64 = name_max_width - target.name.len;
                         mach.memset(buf0[len..].ptr, ' ', count);
                         len +%= count;
-                        mach.memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
-                        len +%= target.root.len;
+                        if (target.root) |root| {
+                            mach.memcpy(buf0[len..].ptr, root.ptr, root.len);
+                            len +%= root.len;
+                        }
                         mach.memcpy(buf0[len..].ptr, "\x1b[2m", 4);
                         len +%= 4;
                         len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
