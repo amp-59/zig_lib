@@ -372,35 +372,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const ret: *Target = group.builder.createTarget(allocator, name, root, extra);
                 group.trgs[group.trgs_len] = ret;
                 group.trgs_len +%= 1;
-                ret.* = .{
-                    .root = root,
-                    .name = name,
-                    .build_cmd = allocator.createIrreversible(types.BuildCommand),
-                };
-                if (extra.build_cmd_init) |build_cmd| {
-                    @memcpy(@ptrCast([*]u8, ret.build_cmd), @ptrCast([*]const u8, build_cmd), @sizeOf(types.BuildCommand));
-                }
-                ret.assertTransform(.build, .unavailable, .ready);
-                ret.build_cmd.* = .{
-                    .kind = kind,
-                    .name = name,
-                    .main_pkg_path = group.builder.build_root,
-                    .cache_root = group.builder.cache_root,
-                    .global_cache_root = group.builder.global_cache_root,
-                };
-                ret.emitBinary(allocator, group.builder);
-                if (kind == .exe) {
-                    ret.run_args = types.Args.init(allocator, 4096);
-                    ret.run_args.writeFormat(ret.binaryPath());
-                    ret.run_args.writeOne(0);
-                }
                 return ret;
             }
-            pub fn targets(group: *const Group) []Target {
+            pub fn targets(group: *const Group) []*Target {
                 return group.trgs[0..group.trgs_len];
             }
         };
-        pub fn groups(builder: *const Builder) []Group {
+        pub fn groups(builder: *const Builder) []*Group {
             return builder.grps[0..builder.grps_len];
         }
         inline fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) u8 {
@@ -574,11 +552,39 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub fn addGroup(builder: *Builder, allocator: *types.Allocator, name: [:0]const u8) Types.group_payload {
             @setRuntimeSafety(false);
             if (builder.grps.len == builder.grps_len) {
-                builder.grps = try meta.wrap(allocator.reallocateIrreversible(Group, builder.grps, (builder.grps_len +% 1) *% 2));
+                builder.grps = try meta.wrap(allocator.reallocateIrreversible(*Group, builder.grps, (builder.grps_len +% 1) *% 2));
             }
-            const ret: *Group = &builder.grps[builder.grps_len];
+            const ret: *Group = create(allocator, Group);
+            builder.grps[builder.grps_len] = ret;
             builder.grps_len +%= 1;
             ret.* = .{ .name = name, .builder = builder, .trgs = &.{}, .trgs_len = 0 };
+            return ret;
+        }
+        pub fn createTarget(
+            builder: *Builder,
+            allocator: *types.Allocator,
+            name: [:0]const u8,
+            root: ?[:0]const u8,
+            extra: Extra,
+        ) Types.target_payload {
+            const ret: *Target = create(allocator, Target);
+            ret.root = root;
+            ret.name = name;
+            ret.build_cmd = create(allocator, types.BuildCommand);
+            if (extra.build_cmd_init) |build_cmd| {
+                copy(types.BuildCommand, ret.build_cmd, build_cmd);
+            }
+            ret.assertTransform(.build, .unavailable, .ready);
+            ret.build_cmd.name = name;
+            ret.build_cmd.main_pkg_path = builder.build_root;
+            ret.build_cmd.cache_root = builder.cache_root;
+            ret.build_cmd.global_cache_root = builder.global_cache_root;
+            ret.emitBinary(allocator, builder);
+            if (ret.build_cmd.kind == .exe) {
+                ret.run_args = types.Args.init(allocator, 4096);
+                ret.run_args.writeFormat(ret.binaryPath());
+                ret.run_args.writeOne(0);
+            }
             return ret;
         }
         fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
