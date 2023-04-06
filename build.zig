@@ -137,6 +137,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
 
     // Dependencies:
     mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
+    mg_new_type_specs.dependOnRun(allocator,        mg_touch);
     mg_new_type_specs.dependOnObject(allocator,     mg_options);
     mg_new_type_specs.dependOnObject(allocator,     mg_params);
     mg_new_type_specs.dependOnObject(allocator,     mg_techs);
