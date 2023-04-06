@@ -242,14 +242,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn dependencies(target: *const Target) []Dependency {
                 return target.deps[0..target.deps_len];
             }
-            fn binaryRelative(target: *Target, allocator: *types.Allocator) [:0]const u8 {
+            fn binaryRelative(target: *Target, allocator: *Allocator) [:0]const u8 {
                 switch (target.build_cmd.kind) {
                     .exe => return concatenate(allocator, u8, &.{ tok.exe_out_dir, target.name }),
                     .lib => return concatenate(allocator, u8, &.{ tok.exe_out_dir, target.name, tok.lib_ext }),
                     .obj => return concatenate(allocator, u8, &.{ tok.exe_out_dir, target.name, tok.obj_ext }),
                 }
             }
-            fn auxiliaryRelative(target: *Target, allocator: *types.Allocator, kind: types.AuxOutputMode) [:0]const u8 {
+            fn auxiliaryRelative(target: *Target, allocator: *Allocator, kind: types.AuxOutputMode) [:0]const u8 {
                 switch (kind) {
                     .@"asm" => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.asm_ext }),
                     .llvm_ir => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.llvm_ir_ext }),
@@ -274,35 +274,35 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .implib => return target.build_cmd.emit_implib.?.yes.?,
                 }
             }
-            inline fn createBinaryPath(target: *Target, allocator: *types.Allocator, builder: *Builder) types.Path {
+            inline fn createBinaryPath(target: *Target, allocator: *Allocator, builder: *Builder) types.Path {
                 return .{ .absolute = builder.build_root, .relative = binaryRelative(target, allocator) };
             }
-            inline fn createAuxiliaryPath(target: *Target, allocator: *types.Allocator, builder: *Builder, kind: types.AuxOutputMode) types.Path {
+            inline fn createAuxiliaryPath(target: *Target, allocator: *Allocator, builder: *Builder, kind: types.AuxOutputMode) types.Path {
                 return .{ .absolute = builder.build_root, .relative = auxiliaryRelative(target, allocator, kind) };
             }
-            fn emitBinary(target: *Target, allocator: *types.Allocator, builder: *Builder) void {
+            fn emitBinary(target: *Target, allocator: *Allocator, builder: *Builder) void {
                 target.build_cmd.emit_bin = .{ .yes = createBinaryPath(target, allocator, builder) };
             }
-            fn emitAuxiliary(target: *Target, allocator: *types.Allocator, builder: *Builder) void {
+            fn emitAuxiliary(target: *Target, allocator: *Allocator, builder: *Builder) void {
                 target.build_cmd.emit_bin = .{ .yes = createAuxiliaryPath(target, allocator, builder) };
             }
-            fn emitAssembly(target: *Target, allocator: *types.Allocator, builder: *Builder) void {
+            fn emitAssembly(target: *Target, allocator: *Allocator, builder: *Builder) void {
                 emitAuxiliary(target, allocator, builder, .@"asm");
             }
             fn rootSourcePath(target: *Target, builder: *Builder) types.Path {
-                return .{ .absolute = builder.build_root, .relative = target.root.? };
+                return .{ .absolute = builder.build_root, .relative = target.root };
             }
-            pub fn dependOnBuild(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
+            pub fn dependOnBuild(target: *Target, allocator: *Allocator, dependency: *Target) void {
                 target.addDependency(allocator, dependency, .build, .finished);
             }
-            pub fn dependOnRun(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
+            pub fn dependOnRun(target: *Target, allocator: *Allocator, dependency: *Target) void {
                 target.addDependency(allocator, dependency, .run, .finished);
             }
-            pub fn dependOnObject(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
+            pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
                 target.dependOnBuild(allocator, dependency);
                 target.addFile(allocator, dependency.binaryPath());
             }
-            fn addFile(target: *Target, allocator: *types.Allocator, path: types.Path) void {
+            fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
                 if (target.build_cmd.files) |*files| {
                     const buf: []types.Path = allocator.reallocateIrreversible(types.Path, @constCast(files.*), files.len +% 1);
                     buf[files.len] = path;
@@ -338,53 +338,34 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
         };
-        pub const Extra = struct {
-            build_cmd_init: ?*const types.BuildCommand = null,
-        };
         pub const Group = struct {
             name: [:0]const u8,
             builder: *Builder,
             trgs: []*Target = &.{},
             trgs_len: u64 = 0,
-            pub fn build(
-                group: *Group,
-                address_space: *types.AddressSpace,
-                thread_space: *types.ThreadSpace,
-                allocator: *types.Allocator,
-            ) void {
-                try meta.wrap(group.acquireLock(address_space, thread_space, allocator, .build));
-            }
-            pub fn run(
-                group: *Group,
-                address_space: *types.AddressSpace,
-                thread_space: *types.ThreadSpace,
-                allocator: *types.Allocator,
-            ) void {
-                try meta.wrap(group.acquireLock(address_space, thread_space, allocator, .run));
-            }
             pub fn acquireLock(
                 group: *Group,
-                address_space: *types.AddressSpace,
-                thread_space: *types.ThreadSpace,
-                allocator: *types.Allocator,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                allocator: *Allocator,
                 task: Task,
             ) !void {
                 for (group.targets()) |target| {
-                    try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, types.thread_count, 1));
+                    try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
                 }
                 groupScan(group, task);
             }
             pub fn addTarget(
                 group: *Group,
-                allocator: *types.Allocator,
+                allocator: *Allocator,
+                comptime extra: anytype,
                 name: [:0]const u8,
-                root: ?[:0]const u8,
-                extra: Extra,
-            ) Types.target_payload {
+                root: [:0]const u8,
+            ) !*Target {
                 if (group.trgs_len == group.trgs.len) {
                     group.trgs = allocator.reallocateIrreversible(*Target, group.trgs, (group.trgs_len +% 1) *% 2);
                 }
-                const ret: *Target = group.builder.createTarget(allocator, name, root, extra);
+                const ret: *Target = try group.builder.createTarget(allocator, name, root, extra);
                 group.trgs[group.trgs_len] = ret;
                 group.trgs_len +%= 1;
                 return ret;
