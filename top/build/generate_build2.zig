@@ -47,6 +47,8 @@ pub const open_spec: file.OpenSpec = .{
     .options = .{ .read = true, .write = .append },
 };
 pub const OptionSpec = struct {
+    /// Command struct field name
+    name: []const u8 = "",
     /// Command line flag/switch
     string: ?[]const u8 = null,
     /// Simple argument type
@@ -62,172 +64,204 @@ pub const OptionSpec = struct {
     descr: ?[]const []const u8 = null,
 };
 
-pub const FormatCommandOptions = opaque {
-    pub const color: OptionSpec = .{
+const format_command_options: []const OptionSpec = &.{
+    .{
+        .name = "color",
         .string = "--color",
         .arg_type = enum { auto, off, on },
         .descr = &.{"Enable or disable colored error messages"},
-    };
-    pub const stdin: OptionSpec = .{
+    },
+    .{
+        .name = "stdin",
         .string = "--stdin",
         .descr = &.{"Format code from stdin; output to stdout"},
-    };
-    pub const check: OptionSpec = .{
+    },
+    .{
+        .name = "check",
         .string = "--check",
         .descr = &.{"List non-conforming files and exit with an error if the list is non-empty"},
-    };
-    pub const ast_check: OptionSpec = .{
+    },
+    .{
+        .name = "ast_check",
         .string = "--ast-check",
         .default_value = &true,
         .descr = &.{"Run zig ast-check on every file"},
-    };
-    pub const exclude: OptionSpec = .{
+    },
+    .{
+        .name = "exclude",
         .string = "--exclude",
         .arg_type = []const u8,
         .descr = &.{"Exclude file or directory from formatting"},
-    };
+    },
 };
-pub const BuildCommandOptions = opaque {
-    pub const builtin: OptionSpec = .{
+pub const build_command_options: []const OptionSpec = &.{
+    .{
+        .name = "builtin",
         .string = "-fbuiltin",
         .descr = &.{"Enable implicit builtin knowledge of functions"},
-    };
-    pub const link_libc: OptionSpec = .{
+    },
+    .{
+        .name = "link_libc",
         .string = "-lc",
         .descr = &.{"Link libc"},
-    };
-    pub const rdynamic: OptionSpec = .{
+    },
+    .{
+        .name = "rdynamic",
         .string = "-rdynamic",
         .descr = &.{"Add all symbols to the dynamic symbol table"},
-    };
-    pub const dynamic: OptionSpec = .{
+    },
+    .{
+        .name = "dynamic",
         .string = "-dynamic",
         .descr = &.{"Force output to be dynamically linked"},
-    };
-    pub const static: OptionSpec = .{
+    },
+    .{
+        .name = "static",
         .string = "-static",
         .descr = &.{"Force output to be statically linked"},
-    };
-    pub const symbolic: OptionSpec = .{
+    },
+    .{
+        .name = "symbolic",
         .string = "-Bsymbolic",
         .descr = &.{"Bind global references locally"},
-    };
-    pub const color: OptionSpec = .{
+    },
+    .{
+        .name = "color",
         .string = "--color",
         .arg_type = enum { on, off, auto },
         .descr = &.{"Enable or disable colored error messages"},
-    };
-    pub const emit_bin: OptionSpec = .{
+    },
+    .{
+        .name = "emit_bin",
         .string = "-femit-bin",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-bin" },
         .descr = &.{"(default=yes) Output machine code"},
-    };
-    pub const emit_asm: OptionSpec = .{
+    },
+    .{
+        .name = "emit_asm",
         .string = "-femit-asm",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-asm" },
         .descr = &.{"(default=no) Output assembly code (.s)"},
-    };
-    pub const emit_llvm_ir: OptionSpec = .{
+    },
+    .{
+        .name = "emit_llvm_ir",
         .string = "-femit-llvm-ir",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-ir" },
         .descr = &.{"(default=no) Output optimized LLVM IR (.ll)"},
-    };
-    pub const emit_llvm_bc: OptionSpec = .{
+    },
+    .{
+        .name = "emit_llvm_bc",
         .string = "-femit-llvm-bc",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-llvm-bc" },
         .descr = &.{"(default=no) Output optimized LLVM BC (.bc)"},
-    };
-    pub const emit_h: OptionSpec = .{
+    },
+    .{
+        .name = "emit_h",
         .string = "-femit-h",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-h" },
         .descr = &.{"(default=no) Output a C header file (.h)"},
-    };
-    pub const emit_docs: OptionSpec = .{
+    },
+    .{
+        .name = "emit_docs",
         .string = "-femit-docs",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-docs" },
         .descr = &.{"(default=no) Output documentation (.html)"},
-    };
-    pub const emit_analysis: OptionSpec = .{
+    },
+    .{
+        .name = "emit_analysis",
         .string = "-femit-analysis",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-analysis" },
         .descr = &.{"(default=no) Output analysis (.json)"},
-    };
-    pub const emit_implib: OptionSpec = .{
+    },
+    .{
+        .name = "emit_implib",
         .string = "-femit-implib",
         .arg_type = ?types.Path,
         .arg_type_name = "Path",
         .and_no = &.{ .string = "-fno-emit-implib" },
         .descr = &.{"(default=yes) Output an import when building a Windows DLL (.lib)"},
-    };
-    pub const cache_root: OptionSpec = .{
+    },
+    .{
+        .name = "cache_root",
         .string = "--cache-dir",
         .arg_type = []const u8,
         .descr = &.{"Override the local cache directory"},
-    };
-    pub const global_cache_root: OptionSpec = .{
+    },
+    .{
+        .name = "global_cache_root",
         .string = "--global-cache-dir",
         .arg_type = []const u8,
         .descr = &.{"Override the global cache directory"},
-    };
-    pub const zig_lib_root: OptionSpec = .{
+    },
+    .{
+        .name = "zig_lib_root",
         .string = "--zig-lib-dir",
         .arg_type = []const u8,
         .descr = &.{"Override Zig installation lib directory"},
-    };
-    pub const enable_cache: OptionSpec = .{
+    },
+    .{
+        .name = "enable_cache",
         .string = "--enable-cache",
         .default_value = &true,
-    };
-    pub const target: OptionSpec = .{
+    },
+    .{
+        .name = "target",
         .string = "-target",
         .arg_type = []const u8,
         .descr = &.{"<arch><sub>-<os>-<abi> see the targets command"},
-    };
-    pub const cpu: OptionSpec = .{
+    },
+    .{
+        .name = "cpu",
         .string = "-mcpu",
         .arg_type = []const u8,
         .descr = &.{"Specify target CPU and feature set"},
-    };
-    pub const code_model: OptionSpec = .{
+    },
+    .{
+        .name = "code_model",
         .string = "-mcmodel",
         .arg_type = enum { default, tiny, small, kernel, medium, large },
         .descr = &.{"Limit range of code and data virtual addresses"},
-    };
-    pub const red_zone: OptionSpec = .{
+    },
+    .{
+        .name = "red_zone",
         .string = "-mred-zone",
         .and_no = &.{ .string = "-mno-red-zone" },
         .descr = &.{"Enable the \"red-zone\""},
-    };
-    pub const omit_frame_pointer: OptionSpec = .{
+    },
+    .{
+        .name = "omit_frame_pointer",
         .string = "-fomit-frame-pointer",
         .and_no = &.{ .string = "-fno-omit-frame-pointer" },
         .descr = &.{"Omit the stack frame pointer"},
-    };
-    pub const exec_model: OptionSpec = .{
+    },
+    .{
+        .name = "exec_model",
         .string = "-mexec-model",
         .arg_type = []const u8,
         .descr = &.{"(WASI) Execution model"},
-    };
-    pub const name: OptionSpec = .{
+    },
+    .{
+        .name = "name",
         .string = "--name",
         .arg_type = []const u8,
         .descr = &.{"Override root name"},
-    };
-    pub const mode: OptionSpec = .{
+    },
+    .{
+        .name = "mode",
         .string = "-O",
         .arg_type = @TypeOf(@import("builtin").mode),
         .arg_type_name = "@TypeOf(builtin.zig.mode)",
@@ -238,98 +272,117 @@ pub const BuildCommandOptions = opaque {
             "ReleaseFast    Optimizations on, safety off",
             "ReleaseSmall   Size optimizations on, safety off",
         },
-    };
-    pub const main_pkg_path: OptionSpec = .{
+    },
+    .{
+        .name = "main_pkg_path",
         .string = "--main-pkg-path",
         .arg_type = []const u8,
         .descr = &.{"Set the directory of the root package"},
-    };
-    pub const pic: OptionSpec = .{
+    },
+    .{
+        .name = "pic",
         .string = "-fPIC",
         .and_no = &.{ .string = "-fno-PIC" },
         .descr = &.{"Enable Position Independent Code"},
-    };
-    pub const pie: OptionSpec = .{
+    },
+    .{
+        .name = "pie",
         .string = "-fPIE",
         .and_no = &.{ .string = "-fno-PIE" },
         .descr = &.{"Enable Position Independent Executable"},
-    };
-    pub const lto: OptionSpec = .{
+    },
+    .{
+        .name = "lto",
         .string = "-flto",
         .and_no = &.{ .string = "-fno-lto" },
         .descr = &.{"Enable Link Time Optimization"},
-    };
-    pub const stack_check: OptionSpec = .{
+    },
+    .{
+        .name = "stack_check",
         .string = "-fstack-check",
         .and_no = &.{ .string = "-fno-stack-check" },
         .descr = &.{"Enable stack probing in unsafe builds"},
-    };
-    pub const stack_protector: OptionSpec = .{
+    },
+    .{
+        .name = "stack_protector",
         .string = "-fstack-check",
         .and_no = &.{ .string = "-fno-stack-protector" },
         .descr = &.{"Enable stack protection in unsafe builds"},
-    };
-    pub const sanitize_c: OptionSpec = .{
+    },
+    .{
+        .name = "sanitize_c",
         .string = "-fsanitize-c",
         .and_no = &.{ .string = "-fno-sanitize-c" },
         .descr = &.{"Enable C undefined behaviour detection in unsafe builds"},
-    };
-    pub const valgrind: OptionSpec = .{
+    },
+    .{
+        .name = "valgrind",
         .string = "-fvalgrind",
         .and_no = &.{ .string = "-fno-valgrind" },
         .descr = &.{"Include valgrind client requests in release builds"},
-    };
-    pub const sanitize_thread: OptionSpec = .{
+    },
+    .{
+        .name = "sanitize_thread",
         .string = "-fsanitize-thread",
         .and_no = &.{ .string = "-fno-sanitize-thread" },
         .descr = &.{"Enable thread sanitizer"},
-    };
-    pub const unwind_tables: OptionSpec = .{
+    },
+    .{
+        .name = "unwind_tables",
         .string = "-funwind-tables",
         .and_no = &.{ .string = "-fno-unwind-tables" },
         .descr = &.{"Always produce unwind table entries for all functions"},
-    };
-    pub const llvm: OptionSpec = .{
+    },
+    .{
+        .name = "llvm",
         .string = "-fLLVM",
         .and_no = &.{ .string = "-fno-LLVM" },
         .descr = &.{"Use LLVM as the codegen backend"},
-    };
-    pub const clang: OptionSpec = .{
+    },
+    .{
+        .name = "clang",
         .string = "-fClang",
         .and_no = &.{ .string = "-fno-Clang" },
         .descr = &.{"Use Clang as the C/C++ compilation backend"},
-    };
-    pub const reference_trace: OptionSpec = .{
+    },
+    .{
+        .name = "reference_trace",
         .string = "-freference-trace",
         .and_no = &.{ .string = "-fno-reference-trace" },
         .descr = &.{"How many lines of reference trace should be shown per compile error"},
-    };
-    pub const error_tracing: OptionSpec = .{
+    },
+    .{
+        .name = "error_tracing",
         .string = "-ferror-tracing",
         .and_no = &.{ .string = "-fno-error-tracing" },
         .descr = &.{"Enable error tracing in `ReleaseFast` mode"},
-    };
-    pub const single_threaded: OptionSpec = .{
+    },
+    .{
+        .name = "single_threaded",
         .string = "-fsingle-threaded",
         .and_no = &.{ .string = "-fno-single-threaded" },
         .descr = &.{"Code assumes there is only one thread"},
-    };
-    pub const function_sections: OptionSpec = .{
+    },
+    .{
+        .name = "function_sections",
         .string = "-ffunction-sections",
         .and_no = &.{ .string = "-fno-function-sections" },
         .descr = &.{"Places each function in a separate sections"},
-    };
-    pub const strip: OptionSpec = .{
+    },
+    .{
+        .name = "strip",
         .string = "-fstrip",
         .and_no = &.{ .string = "-fno-strip" },
         .descr = &.{"Omit debug symbols"},
-    };
-    pub const formatted_panics: OptionSpec = .{
+    },
+    .{
+        .name = "formatted_panics",
         .string = "-fformatted-panics",
         .and_no = &.{ .string = "-fno-formatted-panics" },
         .descr = &.{"Enable formatted safety panics"},
-    };
-    pub const fmt: OptionSpec = .{
+    },
+    .{
+        .name = "fmt",
         .string = "-ofmt",
         .arg_type = enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
         .descr = &.{
@@ -344,105 +397,125 @@ pub const BuildCommandOptions = opaque {
             "hex (planned feature)  Intel IHEX",
             "raw (planned feature)  Dump machine code directly",
         },
-    };
-    pub const dirafter: OptionSpec = .{
+    },
+    .{
+        .name = "dirafter",
         .string = "-dirafter",
         .arg_type = []const u8,
         .descr = &.{"Add directory to AFTER include search path"},
-    };
-    pub const system: OptionSpec = .{
+    },
+    .{
+        .name = "system",
         .string = "-isystem",
         .arg_type = []const u8,
         .descr = &.{"Add directory to SYSTEM include search path"},
-    };
-    pub const include: OptionSpec = .{
+    },
+    .{
+        .name = "include",
         .string = "-I",
         .arg_type = []const u8,
         .descr = &.{"Add directory to include search path"},
-    };
-    pub const libc: OptionSpec = .{
+    },
+    .{
+        .name = "libc",
         .string = "--libc",
         .arg_type = []const u8,
         .descr = &.{"Provide a file which specifies libc paths"},
-    };
-    pub const library: OptionSpec = .{
+    },
+    .{
+        .name = "library",
         .string = "--library",
         .arg_type = []const u8,
         .descr = &.{"Link against system library (only if actually used)"},
-    };
-    pub const needed_library: OptionSpec = .{
+    },
+    .{
+        .name = "needed_library",
         .string = "--needed-library",
         .arg_type = []const u8,
         .descr = &.{"Link against system library (even if unused)"},
-    };
-    pub const library_directory: OptionSpec = .{
+    },
+    .{
+        .name = "library_directory",
         .string = "--library-directory",
         .arg_type = []const u8,
         .descr = &.{"Add a directory to the library search path"},
-    };
-    pub const link_script: OptionSpec = .{
+    },
+    .{
+        .name = "link_script",
         .string = "--script",
         .arg_type = []const u8,
         .descr = &.{"Use a custom linker script"},
-    };
-    pub const version_script: OptionSpec = .{
+    },
+    .{
+        .name = "version_script",
         .string = "--version-script",
         .arg_type = []const u8,
         .descr = &.{"Provide a version .map file"},
-    };
-    pub const dynamic_linker: OptionSpec = .{
+    },
+    .{
+        .name = "dynamic_linker",
         .string = "--dynamic-linker",
         .arg_type = []const u8,
         .descr = &.{"Set the dynamic interpreter path"},
-    };
-    pub const sysroot: OptionSpec = .{
+    },
+    .{
+        .name = "sysroot",
         .string = "--sysroot",
         .arg_type = []const u8,
         .descr = &.{"Set the system root directory"},
-    };
-    pub const version: OptionSpec = .{ .string = "--version" };
-    pub const entry: OptionSpec = .{
+    },
+    .{ .name = "version", .string = "--version" },
+    .{
+        .name = "entry",
         .string = "--entry",
         .arg_type = []const u8,
         .descr = &.{"Set the entrypoint symbol name"},
-    };
-    pub const soname: OptionSpec = .{
+    },
+    .{
+        .name = "soname",
         .string = "-fsoname",
         .arg_type = []const u8,
         .and_no = &.{ .string = "-fno-soname" },
         .descr = &.{"Override the default SONAME value"},
-    };
-    pub const lld: OptionSpec = .{
+    },
+    .{
+        .name = "lld",
         .string = "-fLLD",
         .and_no = &.{ .string = "-fno-LLD" },
         .descr = &.{"Use LLD as the linker"},
-    };
-    pub const compiler_rt: OptionSpec = .{
+    },
+    .{
+        .name = "compiler_rt",
         .string = "-fcompiler-rt",
         .and_no = &.{ .string = "-fno-compiler-rt" },
         .descr = &.{"(default) Include compiler-rt symbols in output"},
-    };
-    pub const rpath: OptionSpec = .{
+    },
+    .{
+        .name = "rpath",
         .string = "-rpath",
         .arg_type = []const u8,
         .descr = &.{"Add directory to the runtime library search path"},
-    };
-    pub const each_lib_rpath: OptionSpec = .{
+    },
+    .{
+        .name = "each_lib_rpath",
         .string = "-feach-lib-rpath",
         .and_no = &.{ .string = "-fno-each-lib-rpath" },
         .descr = &.{"Ensure adding rpath for each used dynamic library"},
-    };
-    pub const allow_shlib_undefined: OptionSpec = .{
+    },
+    .{
+        .name = "allow_shlib_undefined",
         .string = "-fallow-shlib-undefined",
         .and_no = &.{ .string = "-fno-allow-shlib-undefined" },
         .descr = &.{"Allow undefined symbols in shared libraries"},
-    };
-    pub const build_id: OptionSpec = .{
+    },
+    .{
+        .name = "build_id",
         .string = "-fbuild-id",
         .and_no = &.{ .string = "-fno-build-id" },
         .descr = &.{"Help coordinate stripped binaries with debug symbols"},
-    };
-    pub const compress_debug_sections: OptionSpec = .{
+    },
+    .{
+        .name = "compress_debug_sections",
         .string = "--compress-debug-sections",
         .arg_type = enum { none, zlib },
         .descr = &.{
@@ -450,46 +523,54 @@ pub const BuildCommandOptions = opaque {
             "none   No compression",
             "zlib   Compression with deflate/inflate",
         },
-    };
-    pub const gc_sections: OptionSpec = .{
+    },
+    .{
+        .name = "gc_sections",
         .string = "--gc-sections",
         .and_no = &.{ .string = "--no-gc-sections" },
         .descr = &.{
             "Force removal of functions and data that are unreachable",
             "by the entry point or exported symbols",
         },
-    };
-    pub const stack: OptionSpec = .{
+    },
+    .{
+        .name = "stack",
         .string = "--stack",
         .arg_type = u64,
         .descr = &.{"Override default stack size"},
-    };
-    pub const image_base: OptionSpec = .{
+    },
+    .{
+        .name = "image_base",
         .string = "--image-base",
         .arg_type = u64,
         .descr = &.{"Set base address for executable image"},
-    };
-    pub const macros: OptionSpec = .{
+    },
+    .{
+        .name = "macros",
         .arg_type = []const types.Macro,
         .arg_type_name = "[]const types.Macro",
         .descr = &.{"Define C macros available within the `@cImport` namespace"},
-    };
-    pub const modules: OptionSpec = .{
+    },
+    .{
+        .name = "modules",
         .arg_type = []const types.Module,
         .arg_type_name = "[]const types.Module",
         .descr = &.{"Define modules available as dependencies for the current target"},
-    };
-    pub const dependencies: OptionSpec = .{
+    },
+    .{
+        .name = "dependencies",
         .arg_type = []const types.ModuleDependency,
         .arg_type_name = "[]const types.ModuleDependency",
         .descr = &.{"Define module dependencies for the current target"},
-    };
-    pub const cflags: OptionSpec = .{
+    },
+    .{
+        .name = "cflags",
         .arg_type = types.CFlags,
         .arg_type_name = "CFlags",
         .descr = &.{"Set extra flags for the next position C source files"},
-    };
-    pub const z: OptionSpec = .{
+    },
+    .{
+        .name = "z",
         .string = "-z",
         .arg_type = enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro },
         .descr = &.{
@@ -507,38 +588,13 @@ pub const BuildCommandOptions = opaque {
             "common-page-size=[bytes]   Set the common page size for ELF binaries",
             "max-page-size=[bytes]      Set the max page size for ELF binaries",
         },
-    };
-    pub const files: OptionSpec = .{
+    },
+    .{
+        .name = "files",
         .arg_type = []const types.Path,
         .arg_type_name = "[]const types.Path",
         .descr = &.{"Add auxiliary files to the current target"},
-    };
-    //   --subsystem [subsystem]        (Windows) /SUBSYSTEM:<subsystem> to the linker
-    //   -weak-l[lib]                   (Darwin) link against system library and mark it and all referenced symbols as weak
-    //   -weak_library [lib]
-    //   -framework [name]              (Darwin) link against framework
-    //   -needed_framework [name]       (Darwin) link against framework (even if unused)
-    //   -needed_library [lib]          (Darwin) link against system library (even if unused)
-    //   -weak_framework [name]         (Darwin) link against framework and mark it and all referenced symbols as weak
-    //   -F[dir]                        (Darwin) add search path for frameworks
-    //   -install_name=[value]          (Darwin) add dylib's install name
-    //   --entitlements [path]          (Darwin) add path to entitlements file for embedding in code signature
-    //   -pagezero_size [value]         (Darwin) size of the __PAGEZERO segment in hexadecimal notation
-    //   -search_paths_first            (Darwin) search each dir in library search paths for `libx.dylib` then `libx.a`
-    //   -search_dylibs_first           (Darwin) search `libx.dylib` in each dir in library search paths, then `libx.a`
-    //   -headerpad [value]             (Darwin) set minimum space for future expansion of the load commands in hexadecimal notation
-    //   -headerpad_max_install_names   (Darwin) set enough space as if all paths were MAXPATHLEN
-    //   -dead_strip                    (Darwin) remove functions and data that are unreachable by the entry point or exported symbols
-    //   -dead_strip_dylibs             (Darwin) remove dylibs that are unreachable by the entry point or exported symbols
-    //   --import-memory                (WebAssembly) import memory from the environment
-    //   --import-table                 (WebAssembly) import function table from the host environment
-    //   --export-table                 (WebAssembly) export function table to the host environment
-    //   --initial-memory=[bytes]       (WebAssembly) initial size of the linear memory
-    //   --max-memory=[bytes]           (WebAssembly) maximum size of the linear memory
-    //   --shared-memory                (WebAssembly) use shared linear memory
-    //   --global-base=[addr]           (WebAssembly) where to start to place global data
-    //   --export=[value]               (WebAssembly) Force a symbol to be exported
-    //
+    },
     // Debug Options (Zig Compiler Development):
     //   -ftime-report                Print timing diagnostics
     //   -fstack-report               Print stack size diagnostics
@@ -1434,18 +1490,10 @@ fn writeCallNonOptionalWhatNoArgWhatNot(
 ) void {
     writeCall2(array, "NonOptionalWhatNoArgWhatNot", width, what_field, what_switch, what_not_switch, variant);
 }
-pub fn writeFunctionBody(comptime Namespace: type, array: *Array, variant: Variant) void {
+pub fn writeFunctionBody(comptime options: []const OptionSpec, array: *Array, variant: Variant) void {
     var width: u64 = (initial_indent * 4) + 4;
-    inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
-        if (!decl.is_pub) {
-            continue;
-        }
-        const decl_type: type = @TypeOf(@field(Namespace, decl.name));
-        if (decl_type != OptionSpec) {
-            continue;
-        }
-        const opt_spec: OptionSpec = @field(Namespace, decl.name);
-        const what_field: []const u8 = decl.name;
+    inline for (options) |opt_spec| {
+        const what_field: []const u8 = opt_spec.name;
         const what_switch: ?[]const u8 = opt_spec.string;
         if (opt_spec.arg_type) |arg_type| {
             if (@typeInfo(arg_type) == .Optional) {
@@ -1539,13 +1587,12 @@ pub fn writeFunctionBody(comptime Namespace: type, array: *Array, variant: Varia
         }
     }
 }
-pub fn writeStructMembers(comptime Namespace: type, array: *Array) void {
+pub fn writeStructMembers(comptime options: []const OptionSpec, array: *Array) void {
     const width: u64 = 4;
-    inline for (@typeInfo(Namespace).Opaque.decls) |decl| {
-        const opt_spec: OptionSpec = @field(Namespace, decl.name);
+    inline for (options) |opt_spec| {
         const field_type: type = getOptType(opt_spec);
-        const what_field: []const u8 = decl.name;
-        if (@field(Namespace, decl.name).descr) |field_descr| {
+        const what_field: []const u8 = opt_spec.name;
+        if (opt_spec.descr) |field_descr| {
             inline for (field_descr) |line| {
                 array.writeMany(ws[0..width] ++ "/// " ++ line ++ "\n");
             }
@@ -1686,10 +1733,10 @@ pub fn main() !void {
 
     array.writeMany("pub const BuildCommand = struct {\n");
     array.writeMany("    kind: OutputMode,\n");
-    writeStructMembers(BuildCommandOptions, &array);
+    writeStructMembers(build_command_options, &array);
     array.writeMany("};\n");
     array.writeMany("pub const FormatCommand = struct {\n");
-    writeStructMembers(FormatCommandOptions, &array);
+    writeStructMembers(format_command_options, &array);
     array.writeMany("};\n");
     try writeFile(allocator, array, tasks_path);
     array.undefineAll(allocator);
@@ -1701,19 +1748,19 @@ pub fn main() !void {
 
     array.writeMany("pub fn buildLength(cmd: *const types.BuildCommand) callconv(.C) u64 {\n");
     array.writeMany("    var len: u64 = 0;\n");
-    writeFunctionBody(BuildCommandOptions, &array, .length);
+    writeFunctionBody(build_command_options, &array, .length);
     array.writeMany("    return len;\n");
     array.writeMany("}\n");
     array.writeMany("pub fn buildWrite(cmd: *const types.BuildCommand, array: *types.Args) callconv(.C) void {\n");
-    writeFunctionBody(BuildCommandOptions, &array, .write);
+    writeFunctionBody(build_command_options, &array, .write);
     array.writeMany("}\n");
     array.writeMany("pub fn formatLength(cmd: *const types.FormatCommand) callconv(.C) u64 {\n");
     array.writeMany("    var len: u64 = 0;\n");
-    writeFunctionBody(FormatCommandOptions, &array, .length);
+    writeFunctionBody(format_command_options, &array, .length);
     array.writeMany("    return len;\n");
     array.writeMany("}\n");
     array.writeMany("pub fn formatWrite(cmd: *const types.FormatCommand, array: *types.Args) callconv(.C) void {\n");
-    writeFunctionBody(FormatCommandOptions, &array, .write);
+    writeFunctionBody(format_command_options, &array, .write);
     array.writeMany("}\n");
     try writeFile(allocator, array, command_line_path);
 }
