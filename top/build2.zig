@@ -274,7 +274,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 emitAuxiliary(target, allocator, builder, .@"asm");
             }
             fn rootSourcePath(target: *Target, builder: *Builder) types.Path {
-                return .{ .absolute = builder.build_root, .relative = target.root };
+                return .{ .absolute = builder.build_root, .relative = target.root.? };
             }
             pub fn dependOnBuild(target: *Target, allocator: *types.Allocator, dependency: *Target) void {
                 target.addDependency(allocator, dependency, .build, .finished);
