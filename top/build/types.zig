@@ -7,45 +7,6 @@ const tasks = @import("./tasks.zig");
 
 pub usingnamespace tasks;
 
-pub const arena_count: u64 = if (thread_count == 0) 4 else thread_count + 1;
-pub const thread_count: u64 = 16;
-pub const stack_aligned_bytes: u64 = 8 * 1024 * 1024;
-pub const arena_aligned_bytes: u64 = 8 * 1024 * 1024;
-pub const stack_lb_addr: u64 = 0x700000000000;
-pub const arena_lb_addr: u64 = stack_up_addr;
-pub const stack_up_addr: u64 = stack_lb_addr + (thread_count * stack_aligned_bytes);
-pub const arena_up_addr: u64 = arena_lb_addr + (arena_count * arena_aligned_bytes);
-
-pub const AddressSpace = mem.GenericRegularAddressSpace(.{
-    .label = "arena",
-    .idx_type = u8,
-    .divisions = arena_count,
-    .lb_addr = arena_lb_addr,
-    .up_addr = arena_up_addr,
-    .errors = spec.address_space.errors.noexcept,
-    .logging = spec.address_space.logging.silent,
-    .options = .{ .thread_safe = true, .require_map = true, .require_unmap = true },
-});
-pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
-    .label = "stack",
-    .idx_type = AddressSpace.Index,
-    .divisions = thread_count,
-    .lb_addr = stack_lb_addr,
-    .up_addr = stack_up_addr,
-    .errors = spec.address_space.errors.noexcept,
-    .logging = spec.address_space.logging.silent,
-    .options = .{ .thread_safe = true },
-});
-
-pub const Allocator = mem.GenericRtArenaAllocator(.{
-    .AddressSpace = AddressSpace,
-    .logging = spec.allocator.logging.silent,
-    .errors = spec.allocator.errors.noexcept,
-    .options = spec.allocator.options.small_composed,
-});
-pub const Args = mem.StructuredVector(u8, &@as(u8, 0), 8, Allocator, .{});
-pub const Ptrs = mem.StructuredVector([*:0]u8, builtin.anyOpaque(builtin.zero([*:0]u8)), 8, Allocator, .{});
-
 pub const Path = struct {
     absolute: [:0]const u8,
     relative: ?[:0]const u8 = null,
@@ -65,11 +26,6 @@ pub const Path = struct {
             len +%= relative.len;
         }
         return len;
-    }
-    pub fn full(path: Path, allocator: *Allocator) [:0]u8 {
-        var ret: [:0]u8 = allocator.allocateIrreversibleWithSentinel(u8, path.absolute.len +% 1 +% path.relative.len);
-        const len: u64 = mach.memcpyMulti(ret, &.{ path.absolute, "/", path.relative });
-        return ret[0..len :0];
     }
 };
 pub const Module = struct {
