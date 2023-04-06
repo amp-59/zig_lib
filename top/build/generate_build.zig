@@ -7,7 +7,7 @@ const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./types2.zig");
+const types = @import("./types.zig");
 
 pub usingnamespace proc.start;
 

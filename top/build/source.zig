@@ -6,7 +6,7 @@ const builtin = @import("../builtin.zig");
 
 const build = @import("./build-template.zig");
 const build2 = @import("./build2.zig");
-const types2 = @import("./build/types2.zig");
+const types2 = @import("./build/types.zig");
 
 export fn rewind(builder: *build.Builder) callconv(.C) void {
     var groups: build.GroupList = builder.groups.itr();

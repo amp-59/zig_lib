@@ -3,6 +3,10 @@ const mach = @import("../mach.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 
+const tasks = @import("./tasks.zig");
+
+pub usingnamespace tasks;
+
 pub const arena_count: u64 = if (thread_count == 0) 4 else thread_count + 1;
 pub const thread_count: u64 = 16;
 pub const stack_aligned_bytes: u64 = 8 * 1024 * 1024;

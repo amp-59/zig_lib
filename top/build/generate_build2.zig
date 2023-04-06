@@ -7,7 +7,7 @@ const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./types2.zig");
+const types = @import("./types.zig");
 
 pub usingnamespace proc.start;
 
@@ -1699,20 +1699,20 @@ pub fn main() !void {
     array.define(try file.read(.{}, fd, array.referAllUndefined(allocator), st.size));
     try file.close(.{}, fd);
 
-    array.writeMany("pub fn buildLength(cmd: *const tasks.BuildCommand) callconv(.C) u64 {\n");
+    array.writeMany("pub fn buildLength(cmd: *const types.BuildCommand) callconv(.C) u64 {\n");
     array.writeMany("    var len: u64 = 0;\n");
     writeFunctionBody(BuildCommandOptions, &array, .length);
     array.writeMany("    return len;\n");
     array.writeMany("}\n");
-    array.writeMany("pub fn buildWrite(cmd: *const tasks.BuildCommand, array: *types.Args) callconv(.C) void {\n");
+    array.writeMany("pub fn buildWrite(cmd: *const types.BuildCommand, array: *types.Args) callconv(.C) void {\n");
     writeFunctionBody(BuildCommandOptions, &array, .write);
     array.writeMany("}\n");
-    array.writeMany("pub fn formatLength(cmd: *const tasks.FormatCommand) callconv(.C) u64 {\n");
+    array.writeMany("pub fn formatLength(cmd: *const types.FormatCommand) callconv(.C) u64 {\n");
     array.writeMany("    var len: u64 = 0;\n");
     writeFunctionBody(FormatCommandOptions, &array, .length);
     array.writeMany("    return len;\n");
     array.writeMany("}\n");
-    array.writeMany("pub fn formatWrite(cmd: *const tasks.FormatCommand, array: *types.Args) callconv(.C) void {\n");
+    array.writeMany("pub fn formatWrite(cmd: *const types.FormatCommand, array: *types.Args) callconv(.C) void {\n");
     writeFunctionBody(FormatCommandOptions, &array, .write);
     array.writeMany("}\n");
     try writeFile(allocator, array, command_line_path);

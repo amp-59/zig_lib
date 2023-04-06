@@ -1,7 +1,7 @@
 const mem = @import("../mem.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./types2.zig");
+const types = @import("./types.zig");
 
 pub const OutputMode = enum {
     exe,

@@ -1,7 +1,6 @@
 const mem = @import("../mem.zig");
 const spec = @import("../spec.zig");
-const tasks = @import("./tasks.zig");
-const types = @import("./types2.zig");
+const types = @import("./types.zig");
 const reinterpret_spec: mem.ReinterpretSpec = blk: {
     var tmp: mem.ReinterpretSpec = spec.reinterpret.print;
     tmp.composite.map = &.{
