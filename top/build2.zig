@@ -11,8 +11,7 @@ const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
 
-pub const types = @import("./build/types2.zig");
-pub const tasks = @import("./build/tasks.zig");
+pub const types = @import("./build/types.zig");
 pub const command_line = @import("./build/command_line.zig");
 
 pub const State = enum(u8) {
@@ -141,7 +140,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             name: [:0]const u8,
             root: ?[:0]const u8 = null,
             descr: ?[:0]const u8 = null,
-            build_cmd: *tasks.BuildCommand,
+            build_cmd: *types.BuildCommand,
             run_args: types.Args = undefined,
             lock: Lock = .{},
             deps: []Dependency = &.{},
@@ -233,7 +232,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .obj => return concatenate(allocator, u8, &.{ tok.exe_out_dir, target.name, tok.obj_ext }),
                 }
             }
-            fn auxiliaryRelative(target: *Target, allocator: *types.Allocator, kind: tasks.AuxOutputMode) [:0]const u8 {
+            fn auxiliaryRelative(target: *Target, allocator: *types.Allocator, kind: types.AuxOutputMode) [:0]const u8 {
                 switch (kind) {
                     .@"asm" => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.asm_ext }),
                     .llvm_ir => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.llvm_ir_ext }),
@@ -247,7 +246,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn binaryPath(target: *Target) types.Path {
                 return target.build_cmd.emit_bin.?.yes.?;
             }
-            fn auxiliaryPath(target: *Target, kind: tasks.AuxOutputMode) types.Path {
+            fn auxiliaryPath(target: *Target, kind: types.AuxOutputMode) types.Path {
                 switch (kind) {
                     .@"asm" => return target.build_cmd.emit_asm.?.yes.?,
                     .llvm_ir => return target.build_cmd.emit_llvm_ir.?.yes.?,
@@ -261,7 +260,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             inline fn createBinaryPath(target: *Target, allocator: *types.Allocator, builder: *Builder) types.Path {
                 return .{ .absolute = builder.build_root, .relative = binaryRelative(target, allocator) };
             }
-            inline fn createAuxiliaryPath(target: *Target, allocator: *types.Allocator, builder: *Builder, kind: tasks.AuxOutputMode) types.Path {
+            inline fn createAuxiliaryPath(target: *Target, allocator: *types.Allocator, builder: *Builder, kind: types.AuxOutputMode) types.Path {
                 return .{ .absolute = builder.build_root, .relative = auxiliaryRelative(target, allocator, kind) };
             }
             fn emitBinary(target: *Target, allocator: *types.Allocator, builder: *Builder) void {
@@ -355,12 +354,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 groupScan(group, task);
             }
-            fn addTargetInternal(
+            const Extra = struct {
+                build_cmd_init: ?*const types.BuildCommand = null,
+            };
+            pub fn addTarget(
                 group: *Group,
                 allocator: *types.Allocator,
-                kind: tasks.OutputMode,
+                kind: types.OutputMode,
                 name: [:0]const u8,
                 root: [:0]const u8,
+                extra: Extra,
             ) Types.target_payload {
                 if (group.trgs_len == group.trgs.len) {
                     group.trgs = allocator.reallocateIrreversible(Target, group.trgs, (group.trgs_len +% 1) *% 2);
@@ -370,8 +373,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.* = .{
                     .root = root,
                     .name = name,
-                    .build_cmd = allocator.createIrreversible(tasks.BuildCommand),
+                    .build_cmd = allocator.createIrreversible(types.BuildCommand),
                 };
+                if (extra.build_cmd_init) |build_cmd| {
+                    @memcpy(@ptrCast([*]u8, ret.build_cmd), @ptrCast([*]const u8, build_cmd), @sizeOf(types.BuildCommand));
+                }
                 ret.assertTransform(.build, .unavailable, .ready);
                 ret.build_cmd.* = .{
                     .kind = kind,
@@ -386,18 +392,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     ret.run_args.writeFormat(ret.binaryPath());
                     ret.run_args.writeOne(0);
                 }
-                return ret;
-            }
-            pub fn addTarget(
-                group: *Group,
-                comptime extra: anytype,
-                allocator: *types.Allocator,
-                kind: tasks.OutputMode,
-                name: [:0]const u8,
-                root: [:0]const u8,
-            ) Types.target_payload {
-                const ret: *Target = try meta.wrap(addTargetInternal(group, allocator, kind, name, root));
-                buildExtra(ret.build_cmd, extra);
                 return ret;
             }
             pub fn targets(group: *const Group) []Target {
@@ -913,7 +907,7 @@ fn argsPointers(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
     }
     return allocator.allocateIrreversible([*:0]u8, count +% 1);
 }
-fn buildExtra(build_cmd: *tasks.BuildCommand, comptime extra: anytype) void {
+fn buildExtra(build_cmd: *types.BuildCommand, comptime extra: anytype) void {
     inline for (@typeInfo(@TypeOf(extra)).Struct.fields) |field| {
         @field(build_cmd, field.name) = @field(extra, field.name);
     }
