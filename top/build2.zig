@@ -187,7 +187,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     for (target.deps[0..target.deps_len]) |dep| {
                         try meta.wrap(dep.target.acquireLock(address_space, thread_space, allocator, builder, dep.task, arena_index, depth +% 1));
                     }
-                    while (dependencyScan(address_space, thread_space, target, task, arena_index)) {
+                    while (dependencyScan(target, task, arena_index)) {
                         try meta.wrap(time.sleep(decls.sleep_spec, .{ .nsec = builder_spec.options.dep_sleep_nsec }));
                     }
                     try meta.wrap(target.acquireThread(address_space, thread_space, allocator, builder, task, depth));
