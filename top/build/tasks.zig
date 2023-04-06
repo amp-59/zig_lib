@@ -17,13 +17,6 @@ pub const AuxOutputMode = enum {
     analysis,
     implib,
 };
-pub const RunCommand = struct {
-    args: types.Args,
-    pub fn addRunArgument(run_cmd: *RunCommand, allocator: *types.Allocator, any: anytype) void {
-        run_cmd.args.appendAny(spec.reinterpret.fmt, allocator, any);
-        run_cmd.args.appendOne(allocator, 0);
-    }
-};
 pub const BuildCommand = struct {
     kind: OutputMode,
     /// Enable implicit builtin knowledge of functions
@@ -82,7 +75,7 @@ pub const BuildCommand = struct {
     /// ReleaseSafe    Optimizations on, safety on
     /// ReleaseFast    Optimizations on, safety off
     /// ReleaseSmall   Size optimizations on, safety off
-    mode: ?@TypeOf(builtin.zig.mode) = null,
+    mode: ?builtin.Mode = null,
     /// Set the directory of the root package
     main_pkg_path: ?[]const u8 = null,
     /// Enable Position Independent Code
