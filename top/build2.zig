@@ -23,10 +23,9 @@ pub const State = enum(u8) {
     invalid = 4,
     finished = 255,
 };
-pub const Task = enum(u8) {
-    build = 0,
-    run = 1,
-};
+
+pub const Task = enum(u8) { build, run };
+
 pub const BuilderSpec = struct {
     options: Options = .{},
     logging: Logging = .{},
@@ -36,6 +35,11 @@ pub const BuilderSpec = struct {
         max_command_args: ?u64 = 1024,
         max_relevant_depth: u64 = 255,
         dep_sleep_nsec: u64 = 50000,
+
+        max_thread_count: u64 = 16,
+        stack_aligned_bytes: u64 = 8 * 1024 * 1024,
+        arena_aligned_bytes: u64 = 8 * 1024 * 1024,
+        stack_lb_addr: u64 = 0x700000000000,
     };
     pub const Logging = packed struct {
         command: proc.CommandSpec.Logging = .{},
