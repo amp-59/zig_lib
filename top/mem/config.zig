@@ -55,10 +55,13 @@ pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
 /// Currently all containers are written to this file. Later, each container
 /// will be given its own file.
 pub const container_path: [:0]const u8 = primarySourceFile("container.zig");
+pub fn containerSourceFile() void {}
 
 /// Currently all references are written to this file. Later, each specification
 /// group will be given its own file.
 pub const reference_path: [:0]const u8 = primarySourceFile("reference.zig");
+pub fn referenceSourceFile() void {}
+
 /// Contains the hand-written part of the container end-product.
 pub const container_template_path: [:0]const u8 = primarySourceFile("container-template.zig");
 /// Contains the hand-written part of the reference end-product.
