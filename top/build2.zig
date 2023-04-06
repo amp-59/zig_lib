@@ -8,11 +8,12 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
 const spec = @import("./spec.zig");
+const types = @import("./build/types.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
+const command_line = @import("./build/command_line.zig");
 
-pub const types = @import("./build/types.zig");
-pub const command_line = @import("./build/command_line.zig");
+pub usingnamespace types;
 
 pub const State = enum(u8) {
     unavailable = 0,
