@@ -354,18 +354,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 allocator: *types.Allocator,
                 task: Task,
             ) !void {
-                for (group.trgs[0..group.trgs_len]) |*target| {
+                for (group.targets()) |target| {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, types.thread_count, 1));
                 }
                 groupScan(group, task);
             }
-            const Extra = struct {
-                build_cmd_init: ?*const types.BuildCommand = null,
-            };
             pub fn addTarget(
                 group: *Group,
                 allocator: *types.Allocator,
-                kind: types.OutputMode,
                 name: [:0]const u8,
                 root: [:0]const u8,
                 extra: Extra,
