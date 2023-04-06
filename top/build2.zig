@@ -139,7 +139,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         };
         pub const Target = struct {
             name: [:0]const u8,
-            root: [:0]const u8,
+            root: ?[:0]const u8 = null,
+            descr: ?[:0]const u8 = null,
             build_cmd: *tasks.BuildCommand,
             run_args: types.Args = undefined,
             lock: Lock = .{},
