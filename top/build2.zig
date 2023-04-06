@@ -19,6 +19,7 @@ pub const State = enum(u8) {
     failed = 1,
     ready = 2,
     blocking = 3,
+    invalid = 4,
     finished = 255,
 };
 pub const Task = enum(u8) {
@@ -123,7 +124,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         args: [][*:0]u8,
         vars: [][*:0]u8,
         run_args: [][*:0]u8 = &.{},
-        grps: []Group = &.{},
+        grps: []*Group = &.{},
         grps_len: u64 = 0,
         const Builder = @This();
         pub const Types = struct {
@@ -145,7 +146,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             lock: Lock = .{},
             deps: []Dependency = &.{},
             deps_len: u64 = 0,
-            pub const Lock = virtual.ThreadSafeSet(5, State, Task);
+            pub const Lock = virtual.ThreadSafeSet(6, State, Task);
+
             fn acquireThread(
                 target: *Target,
                 address_space: *types.AddressSpace,
@@ -321,10 +323,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
         };
+        pub const Extra = struct {
+            build_cmd_init: ?*const types.BuildCommand = null,
+        };
         pub const Group = struct {
             name: [:0]const u8,
             builder: *Builder,
-            trgs: []Target = &.{},
+            trgs: []*Target = &.{},
             trgs_len: u64 = 0,
             pub fn build(
                 group: *Group,
