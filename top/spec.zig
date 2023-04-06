@@ -94,6 +94,10 @@ pub const reinterpret = opaque {
     }
 };
 pub const builder = opaque {
+    pub const default: build.BuilderSpec = .{
+        .errors = builder.errors.noexcept,
+        .logging = builder.logging.silent,
+    };
     pub const errors = opaque {
         pub const noexcept: build.BuilderSpec.Errors = .{
             .command = .{
