@@ -155,12 +155,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builder: *Builder,
                 task: Task,
                 depth: u64,
-            ) sys.Call(.{
-                .throw = types.Allocator.resize_error_policy.throw ++ decls.clock_spec.errors.throw ++
-                    decls.map_spec.errors.throw ++ decls.clone_spec.errors.throw,
-                .abort = types.Allocator.resize_error_policy.abort ++ decls.clock_spec.errors.abort ++
-                    decls.map_spec.errors.abort ++ decls.clone_spec.errors.abort,
-            }, void) {
+            ) void {
                 if (types.thread_count == 0) {
                     try executeCommand(builder, allocator, target, task, depth);
                 } else {
@@ -184,12 +179,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 task: Task,
                 arena_index: types.AddressSpace.Index,
                 depth: u64,
-            ) sys.Call(.{
-                .throw = types.Allocator.resize_error_policy.throw ++ decls.clock_spec.errors.throw ++ decls.map_spec.errors.throw ++
-                    decls.clone_spec.errors.throw ++ decls.sleep_spec.errors.throw,
-                .abort = types.Allocator.resize_error_policy.abort ++ decls.clock_spec.errors.abort ++ decls.map_spec.errors.abort ++
-                    decls.clone_spec.errors.abort ++ decls.sleep_spec.errors.abort,
-            }, void) {
+            ) void {
                 if (task == .run and target.build_cmd.kind == .exe) {
                     target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0);
                 }
@@ -214,12 +204,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 thread_space: *types.ThreadSpace,
                 allocator: *types.Allocator,
                 builder: *Builder,
-            ) sys.Call(.{
-                .throw = types.Allocator.resize_error_policy.throw ++ decls.clone_spec.errors.throw ++
-                    decls.clock_spec.errors.throw ++ decls.map_spec.errors.throw,
-                .abort = types.Allocator.resize_error_policy.abort ++ decls.clone_spec.errors.abort ++
-                    decls.clock_spec.errors.abort ++ decls.map_spec.errors.abort,
-            }, void) {
+            ) void {
                 try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .build, null, 0));
             }
             pub fn run(
@@ -228,12 +213,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 thread_space: *types.ThreadSpace,
                 allocator: *types.Allocator,
                 builder: *Builder,
-            ) sys.Call(.{
-                .throw = types.Allocator.resize_error_policy.throw ++ decls.clone_spec.errors.throw ++
-                    decls.clock_spec.errors.throw ++ decls.map_spec.errors.throw,
-                .abort = types.Allocator.resize_error_policy.abort ++ decls.clone_spec.errors.abort ++
-                    decls.clock_spec.errors.abort ++ decls.map_spec.errors.abort,
-            }, void) {
+            ) void {
                 try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .run, null, 0));
             }
             pub fn addDependency(target: *Target, allocator: *types.Allocator, dependency: *Target, task: Task, state: State) void {
@@ -339,12 +319,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 address_space: *types.AddressSpace,
                 thread_space: *types.ThreadSpace,
                 allocator: *types.Allocator,
-            ) sys.Call(.{
-                .throw = types.Allocator.resize_error_policy.throw ++ decls.clone_spec.errors.throw ++
-                    decls.clock_spec.errors.throw ++ decls.map_spec.errors.throw,
-                .abort = types.Allocator.resize_error_policy.abort ++ decls.clone_spec.errors.abort ++
-                    decls.clock_spec.errors.abort ++ decls.map_spec.errors.abort,
-            }, void) {
+            ) void {
                 try meta.wrap(group.acquireLock(address_space, thread_space, allocator, .build));
             }
             pub fn run(
@@ -352,12 +327,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 address_space: *types.AddressSpace,
                 thread_space: *types.ThreadSpace,
                 allocator: *types.Allocator,
-            ) sys.Call(.{
-                .throw = types.Allocator.resize_error_policy.throw ++ decls.clone_spec.errors.throw ++
-                    decls.clock_spec.errors.throw ++ decls.map_spec.errors.throw,
-                .abort = types.Allocator.resize_error_policy.abort ++ decls.clone_spec.errors.abort ++
-                    decls.clock_spec.errors.abort ++ decls.map_spec.errors.abort,
-            }, void) {
+            ) void {
                 try meta.wrap(group.acquireLock(address_space, thread_space, allocator, .run));
             }
             pub fn acquireLock(
@@ -424,12 +394,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub fn groups(builder: *const Builder) []Group {
             return builder.grps[0..builder.grps_len];
         }
-        inline fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
-            .throw = builder_spec.errors.command.fork.throw ++ builder_spec.errors.command.execve.throw ++
-                builder_spec.errors.command.waitpid.throw ++ builder_spec.errors.clock.throw,
-            .abort = builder_spec.errors.command.fork.abort ++ builder_spec.errors.command.execve.abort ++
-                builder_spec.errors.command.waitpid.abort ++ builder_spec.errors.clock.throw,
-        }, u8) {
+        inline fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) u8 {
             const start: time.TimeSpec = try meta.wrap(time.get(decls.clock_spec, .realtime));
             const ret: u8 = try meta.wrap(proc.command(decls.command_spec, meta.manyToSlice(args[0]), args, builder.vars));
             const finish: time.TimeSpec = try meta.wrap(time.get(decls.clock_spec, .realtime));
@@ -530,12 +495,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             len +%= 1;
             return len;
         }
-        fn executeBuildCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) sys.Call(.{
-            .throw = builder_spec.errors.command.fork.throw ++ builder_spec.errors.command.execve.throw ++
-                builder_spec.errors.command.waitpid.throw ++ builder_spec.errors.clock.throw,
-            .abort = builder_spec.errors.command.fork.abort ++ builder_spec.errors.command.execve.abort ++
-                builder_spec.errors.command.waitpid.abort ++ builder_spec.errors.clock.throw,
-        }, bool) {
+        fn executeBuildCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) bool {
             var build_time: time.TimeSpec = undefined;
             const bin_path: [:0]const u8 = try meta.wrap(
                 target.binaryRelative(allocator),
@@ -555,15 +515,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (depth < builder_spec.options.max_relevant_depth) {
                 debug.buildNotice(target.name, build_time, old_size, new_size);
             }
-            builtin.assert(target.transform(.run, .unavailable, .ready));
+            if (target.build_cmd.kind == .exe) {
+                target.assertTransform(.run, .unavailable, .ready);
+            }
             return rc == 0;
         }
-        fn executeRunCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) sys.Call(.{
-            .throw = builder_spec.errors.command.fork.throw ++ builder_spec.errors.command.execve.throw ++
-                builder_spec.errors.command.waitpid.throw ++ builder_spec.errors.clock.throw,
-            .abort = builder_spec.errors.command.fork.abort ++ builder_spec.errors.command.execve.abort ++
-                builder_spec.errors.command.waitpid.abort ++ builder_spec.errors.clock.throw,
-        }, bool) {
+        fn executeRunCommand(builder: *Builder, allocator: *types.Allocator, target: *Target, depth: u64) bool {
             var run_time: time.TimeSpec = undefined;
             const args: [:0]u8 = builder.runWrite(target);
             const ptrs: [][*:0]u8 = try meta.wrap(
