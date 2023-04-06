@@ -534,7 +534,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 try meta.wrap(mem.map(decls.map_spec, stack_lb_addr, stack_up_addr -% stack_lb_addr));
             }
             const build_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, build_root));
-            try meta.wrap(writeEnvDecls(zig_exe, build_root, cache_root, global_cache_root));
+            try meta.wrap(writeEnvDecls(zig_exe, build_root, cache_root, global_cache_root, build_root_fd)); 
             return .{
                 .zig_exe = zig_exe,
                 .build_root = build_root,
@@ -602,6 +602,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             build_root: [:0]const u8,
             cache_root: [:0]const u8,
             global_cache_root: [:0]const u8,
+            build_root_fd: u64,
         ) sys.Call(.{
             .throw = decls.mkdir_spec.errors.throw ++ decls.create_spec.errors.throw ++
                 decls.write_spec.errors.throw ++ decls.close_spec.errors.throw,
@@ -621,6 +622,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             try meta.wrap(file.close(decls.close_spec, env_fd));
             try meta.wrap(file.close(decls.close_spec, cache_root_fd));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.zig_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.exe_out_dir, file.dir_mode));
         }
         fn targetScanInternal(
             target: *Target,
