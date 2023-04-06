@@ -6,7 +6,15 @@
 // a module and can import itself from anywhere.
 pub const zig_lib = @import("zig_lib/zig_lib.zig");
 
-const build = zig_lib.build;
+const spec = zig_lib.spec;
+const build = zig_lib.build2;
+
+pub const Builder: type = build.GenericBuilder(spec.builder.default);
+
+const PartialCommand = struct {
+    modules: []const build.Module = mods,
+    dependencies: []const build.ModuleDependency = deps,
+};
 
 // zl dependencies and modules:
 const deps: []const build.ModuleDependency = &.{.{ .name = "zig_lib" }};
@@ -14,17 +22,13 @@ const mods: []const build.Module = &.{.{
     .name = "zig_lib",
     .path = "zig_lib/zig_lib.zig",
 }};
-const basic_target_spec: build.TargetSpec = .{
-    .mods = mods,
-    .deps = deps,
-};
 
 // zl looks for `buildMain` instead of `build` or `main`, because `main` is
 // actually in build_runner.zig and might be useful for the name of one of the
 // target (as below), and `build` is the name of import containing build system
 // components.
-pub fn buildMain(allocator: *build.Allocator, builder: *build.Builder) !void {
-    const main: *build.Target = builder.addTarget(basic_target_spec, allocator, "main", "./src/main.zig");
+pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
+    const all: *Builder.Group = try builder.addGroup(allocator, "all");
 
-    main.addFormat(allocator, .{});
+    _ = try all.addTarget(allocator, PartialCommand{}, "main", "./src/main.zig");
 }
