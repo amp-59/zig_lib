@@ -304,6 +304,9 @@ pub const CommandSpec = struct {
     vars_type: type = []const [*:0]u8,
     const Specification = @This();
 
+    pub const Options = struct {
+        no_follow: bool = false,
+    };
     pub const Logging = packed struct {
         execve: builtin.Logging.SuccessErrorFault = .{},
         fork: builtin.Logging.SuccessErrorFault = .{},
@@ -313,6 +316,12 @@ pub const CommandSpec = struct {
         execve: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
         fork: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
         waitpid: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
+        pub fn throw(comptime error_spec: Errors) []const sys.ErrorCode {
+            return error_spec.execve.throw ++ error_spec.fork.throw ++ error_spec.waitpid.throw;
+        }
+        pub fn abort(comptime error_spec: Errors) []const sys.ErrorCode {
+            return error_spec.execve.abort ++ error_spec.fork.abort ++ error_spec.waitpid.abort;
+        }
     };
     fn exec(comptime spec: CommandSpec) ExecuteSpec {
         return .{ .errors = spec.errors.execve, .logging = spec.logging.execve };
@@ -323,9 +332,6 @@ pub const CommandSpec = struct {
     fn waitPid(comptime spec: CommandSpec) WaitSpec {
         return .{ .errors = spec.errors.waitpid, .logging = spec.logging.waitpid, .return_type = void };
     }
-    const Options = struct {
-        no_follow: bool = false,
-    };
     fn flags(comptime spec: CommandSpec) Execute {
         var flags_bitfield: Execute = .{ .val = 0 };
         if (spec.options.no_follow) {
