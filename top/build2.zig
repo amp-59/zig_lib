@@ -624,34 +624,28 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn targetScanInternal(
             target: *Target,
-            address_space: *types.AddressSpace,
-            thread_space: *types.ThreadSpace,
             arena_index: types.AddressSpace.Index,
             task: Task,
         ) void {
             if (target.lock.get(task) == .failed) {
-                builtin.assert(target.transform(task, .blocking, .failed));
+                target.assertTransform(task, .blocking, .failed);
                 if (types.thread_count != 0) {
                     if (arena_index != types.thread_count) {
-                        builtin.assert(address_space.atomicUnset(arena_index));
-                        builtin.assert(thread_space.atomicUnset(arena_index));
                         builtin.proc.exitWithError(error.DependencyFailed, 2);
                     }
                 }
             }
         }
         fn dependencyScan(
-            address_space: *types.AddressSpace,
-            thread_space: *types.ThreadSpace,
             target: *Target,
             task: Task,
             arena_index: types.AddressSpace.Index,
         ) bool {
             @setRuntimeSafety(false);
-            for (target.deps[0..target.deps_len]) |dep| {
-                targetScanInternal(dep.target, address_space, thread_space, arena_index, dep.task);
+            for (target.dependencies()) |*dep| {
+                targetScanInternal(dep.target, arena_index, dep.task);
             }
-            for (target.deps[0..target.deps_len]) |dep| {
+            for (target.dependencies()) |*dep| {
                 if (dep.target.lock.get(dep.task) == .failed) {
                     return target.transform(task, .blocking, .failed);
                 }
