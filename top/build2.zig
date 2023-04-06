@@ -157,50 +157,65 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         };
         pub const Target = struct {
             name: [:0]const u8,
-            root: ?[:0]const u8 = null,
+            root: [:0]const u8,
             descr: ?[:0]const u8 = null,
-            build_cmd: *types.BuildCommand,
-            run_args: types.Args = undefined,
-            lock: Lock = .{},
+            lock: Lock,
             deps: []Dependency = &.{},
             deps_len: u64 = 0,
+            build_cmd: *types.BuildCommand,
+            run_args: Args,
             pub const Lock = virtual.ThreadSafeSet(6, State, Task);
-
+            const CompiledExecutable = struct {
+                lock: Lock = .{},
+                root: [:0]const u8,
+                build_cmd: *types.BuildCommand,
+                run_cmd: *types.RunCommand,
+            };
+            const Compiled = struct {
+                lock: Lock,
+                root: [:0]const u8,
+                build_cmd: *types.BuildCommand,
+            };
             fn acquireThread(
                 target: *Target,
-                address_space: *types.AddressSpace,
-                thread_space: *types.ThreadSpace,
-                allocator: *types.Allocator,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                allocator: *Allocator,
                 builder: *Builder,
                 task: Task,
                 depth: u64,
-            ) void {
-                if (types.thread_count == 0) {
-                    try executeCommand(builder, allocator, target, task, depth);
+            ) sys.Call(.{
+                .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
+                .abort = decls.clock_spec.errors.abort ++ decls.command_spec.errors.abort(),
+            }, void) {
+                if (max_thread_count == 0) {
+                    try meta.wrap(executeCommand(builder, allocator, target, task, depth));
                 } else {
-                    var arena_index: types.AddressSpace.Index = 0;
-                    while (arena_index != types.thread_count) : (arena_index +%= 1) {
+                    var arena_index: AddressSpace.Index = 0;
+                    while (arena_index != max_thread_count) : (arena_index +%= 1) {
                         if (thread_space.atomicSet(arena_index)) {
-                            const stack_up_addr: u64 = types.ThreadSpace.high(arena_index);
-                            const stack_ab_addr: u64 = stack_up_addr -% 4096;
+                            const stack_ab_addr: u64 = ThreadSpace.high(arena_index) -% 4096;
                             return forwardToExecuteCloneThreaded(builder, address_space, thread_space, target, task, arena_index, depth, stack_ab_addr);
                         }
                     }
-                    try executeCommand(builder, allocator, target, task, depth);
+                    try meta.wrap(executeCommand(builder, allocator, target, task, depth));
                 }
             }
             pub fn acquireLock(
                 target: *Target,
-                address_space: *types.AddressSpace,
-                thread_space: *types.ThreadSpace,
-                allocator: *types.Allocator,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                allocator: *Allocator,
                 builder: *Builder,
                 task: Task,
-                arena_index: types.AddressSpace.Index,
+                arena_index: AddressSpace.Index,
                 depth: u64,
-            ) void {
+            ) sys.Call(.{
+                .throw = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.throw ++ decls.command_spec.errors.throw(),
+                .abort = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.abort ++ decls.command_spec.errors.throw(),
+            }, void) {
                 if (task == .run and target.build_cmd.kind == .exe) {
-                    target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0);
+                    try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0));
                 }
                 if (target.transform(task, .ready, .blocking)) {
                     for (target.deps[0..target.deps_len]) |dep| {
@@ -217,25 +232,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 }
             }
-            pub fn build(
-                target: *Target,
-                address_space: *types.AddressSpace,
-                thread_space: *types.ThreadSpace,
-                allocator: *types.Allocator,
-                builder: *Builder,
-            ) void {
-                try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .build, null, 0));
-            }
-            pub fn run(
-                target: *Target,
-                address_space: *types.AddressSpace,
-                thread_space: *types.ThreadSpace,
-                allocator: *types.Allocator,
-                builder: *Builder,
-            ) void {
-                try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .run, null, 0));
-            }
-            pub fn addDependency(target: *Target, allocator: *types.Allocator, dependency: *Target, task: Task, state: State) void {
+            pub fn addDependency(target: *Target, allocator: *Allocator, dependency: *Target, task: Task, state: State) void {
                 if (target.deps_len == target.deps.len) {
                     target.deps = allocator.reallocateIrreversible(Dependency, target.deps, (target.deps_len +% 1) *% 2);
                 }
