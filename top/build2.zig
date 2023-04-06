@@ -521,19 +521,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return rc == 0;
         }
         pub fn init(args: [][*:0]u8, vars: [][*:0]u8) sys.Call(.{
-            .throw = types.Allocator.resize_error_policy.throw ++ builder_spec.errors.mkdir.throw ++ builder_spec.errors.path.throw ++
+            .throw = builder_spec.errors.mkdir.throw ++ builder_spec.errors.path.throw ++
                 builder_spec.errors.close.throw ++ builder_spec.errors.create.throw,
-            .abort = types.Allocator.resize_error_policy.abort ++ builder_spec.errors.mkdir.abort ++ builder_spec.errors.path.abort ++
+            .abort = builder_spec.errors.mkdir.abort ++ builder_spec.errors.path.abort ++
                 builder_spec.errors.close.abort ++ builder_spec.errors.create.abort,
         }, Builder) {
-            @setRuntimeSafety(false);
             const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
             const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
             const cache_root: [:0]const u8 = meta.manyToSlice(args[3]);
             const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
-            if (types.thread_count != 0) {
-                const stack_lb_addr: u64 = types.ThreadSpace.addr_spec.allocated_byte_address();
-                const stack_up_addr: u64 = types.ThreadSpace.addr_spec.unallocated_byte_address();
+            if (max_thread_count != 0) {
                 try meta.wrap(mem.map(decls.map_spec, stack_lb_addr, stack_up_addr -% stack_lb_addr));
             }
             const build_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, build_root));
@@ -548,8 +545,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .dir_fd = build_root_fd,
             };
         }
-        pub fn addGroup(builder: *Builder, allocator: *types.Allocator, name: [:0]const u8) Types.group_payload {
-            @setRuntimeSafety(false);
+        pub fn addGroup(builder: *Builder, allocator: *Allocator, name: [:0]const u8) !*Group {
             if (builder.grps.len == builder.grps_len) {
                 builder.grps = try meta.wrap(allocator.reallocateIrreversible(*Group, builder.grps, (builder.grps_len +% 1) *% 2));
             }
@@ -561,26 +557,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         pub fn createTarget(
             builder: *Builder,
-            allocator: *types.Allocator,
+            allocator: *Allocator,
             name: [:0]const u8,
-            root: ?[:0]const u8,
-            extra: Extra,
-        ) Types.target_payload {
+            root: [:0]const u8,
+            comptime extra: anytype,
+        ) !*Target {
             const ret: *Target = create(allocator, Target);
             ret.root = root;
             ret.name = name;
-            ret.build_cmd = create(allocator, types.BuildCommand);
-            if (extra.build_cmd_init) |build_cmd| {
-                copy(types.BuildCommand, ret.build_cmd, build_cmd);
-            }
+            ret.build_cmd = buildExtra(create(allocator, types.BuildCommand), extra);
             ret.assertTransform(.build, .unavailable, .ready);
-            ret.build_cmd.name = name;
+            ret.emitBinary(allocator, builder);
+            ret.build_cmd.name = ret.name;
             ret.build_cmd.main_pkg_path = builder.build_root;
             ret.build_cmd.cache_root = builder.cache_root;
             ret.build_cmd.global_cache_root = builder.global_cache_root;
-            ret.emitBinary(allocator, builder);
             if (ret.build_cmd.kind == .exe) {
-                ret.run_args = types.Args.init(allocator, 4096);
+                ret.run_args = Args.init(allocator, 4096);
                 ret.run_args.writeFormat(ret.binaryPath());
                 ret.run_args.writeOne(0);
             }
@@ -631,13 +624,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn targetScanInternal(
             target: *Target,
-            arena_index: types.AddressSpace.Index,
+            arena_index: AddressSpace.Index,
             task: Task,
         ) void {
             if (target.lock.get(task) == .failed) {
                 target.assertTransform(task, .blocking, .failed);
-                if (types.thread_count != 0) {
-                    if (arena_index != types.thread_count) {
+                if (max_thread_count != 0) {
+                    if (arena_index != max_thread_count) {
                         builtin.proc.exitWithError(error.DependencyFailed, 2);
                     }
                 }
@@ -646,7 +639,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn dependencyScan(
             target: *Target,
             task: Task,
-            arena_index: types.AddressSpace.Index,
+            arena_index: AddressSpace.Index,
         ) bool {
             @setRuntimeSafety(false);
             for (target.dependencies()) |*dep| {
@@ -799,7 +792,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             inline fn formatNotice(name: [:0]const u8, durat: time.TimeSpec) void {
                 simpleTimedNotice(about_format_s, name, durat, null);
             }
-
             pub fn writeAndWalk(target: *Target) void {
                 var buf0: [1024 * 1024]u8 = undefined;
                 var buf1: [4096]u8 = undefined;
@@ -838,11 +830,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var root_max_width: u64 = 0;
                 for (builder.groups()) |group| {
                     for (group.targets()) |target| {
-                        name_max_width = @max(name_max_width, (target.name.len));
+                        name_max_width = @max(name_max_width, target.name.len);
                         if (show_root) {
-                            if (target.root) |root| {
-                                root_max_width = @max(root_max_width, (root.len));
-                            }
+                            root_max_width = @max(root_max_width, target.root.len);
                         }
                     }
                 }
@@ -862,13 +852,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         if (show_root) {
                             mach.memset(buf0[len..].ptr, ' ', count);
                             len +%= count;
-                            if (target.root) |root| {
-                                mach.memcpy(buf0[len..].ptr, root.ptr, root.len);
-                                len +%= root.len;
-                            }
+                            mach.memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
+                            len +%= target.root.len;
                         }
                         if (show_descr) {
-                            count = root_max_width - if (target.root) |root| root.len else 0;
+                            count = root_max_width - target.root.len;
                             mach.memset(buf0[len..].ptr, ' ', count);
                             len +%= count;
                             if (target.descr) |descr| {
@@ -894,12 +882,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     };
     return Type;
 }
-fn duplicate(allocator: *types.Allocator, comptime T: type, values: []const T) [:builtin.zero(T)]T {
+fn duplicate(allocator: anytype, comptime T: type, values: []const T) [:builtin.zero(T)]T {
     var buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(T, values.len, builtin.zero(T));
     mach.memcpy(buf.ptr, values.ptr, values.len);
     return buf;
 }
-fn duplicate2(allocator: *types.Allocator, comptime T: type, values: []const []const T) [][:builtin.zero(T)]T {
+fn duplicate2(allocator: anytype, comptime T: type, values: []const []const T) [][:builtin.zero(T)]T {
     var buf: [][:0]u8 = allocator.allocateIrreversible([:builtin.zero(T)]T, values.len);
     var idx: u64 = 0;
     for (values) |value| {
@@ -907,7 +895,7 @@ fn duplicate2(allocator: *types.Allocator, comptime T: type, values: []const []c
         idx +%= 1;
     }
 }
-fn concatenate(allocator: *types.Allocator, comptime T: type, values: []const []const T) [:builtin.zero(T)]T {
+fn concatenate(allocator: anytype, comptime T: type, values: []const []const T) [:builtin.zero(T)]T {
     var len: u64 = 0;
     for (values) |value| len +%= value.len;
     const buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, len, builtin.zero(T));
@@ -918,7 +906,7 @@ fn concatenate(allocator: *types.Allocator, comptime T: type, values: []const []
     }
     return buf;
 }
-fn makeArgPtrs(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
+fn makeArgPtrs(allocator: anytype, args: [:0]u8) [][*:0]u8 {
     const ptrs: [][*:0]u8 = argsPointers(allocator, args);
     var len: u64 = 0;
     var idx: u64 = 0;
@@ -933,25 +921,26 @@ fn makeArgPtrs(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
     ptrs[len] = builtin.zero([*:0]u8);
     return ptrs[0..len];
 }
-fn argsPointers(allocator: *types.Allocator, args: [:0]u8) [][*:0]u8 {
+fn argsPointers(allocator: anytype, args: [:0]u8) [][*:0]u8 {
     var count: u64 = 0;
     for (args) |value| {
         count +%= @boolToInt(value == 0);
     }
     return allocator.allocateIrreversible([*:0]u8, count +% 1);
 }
-fn buildExtra(build_cmd: *types.BuildCommand, comptime extra: anytype) void {
+fn buildExtra(build_cmd: *types.BuildCommand, comptime extra: anytype) *types.BuildCommand {
     inline for (@typeInfo(@TypeOf(extra)).Struct.fields) |field| {
         @field(build_cmd, field.name) = @field(extra, field.name);
     }
+    return build_cmd;
 }
-fn reallocate(allocator: *types.Allocator, comptime T: type, buf: []T, count: u64) types.Allocator.allocate_payload([]T) {
+fn reallocate(allocator: anytype, comptime T: type, buf: []T, count: u64) []T {
     @setRuntimeSafety(false);
     const ret: [:builtin.zero(T)]T = allocate(allocator, T, count);
     mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
     return ret;
 }
-fn allocateInternal(allocator: *types.Allocator, count: u64, size_of: u64, align_of: u64) u64 {
+fn allocateInternal(allocator: anytype, count: u64, size_of: u64, align_of: u64) u64 {
     @setRuntimeSafety(false);
     const s_ab_addr: u64 = allocator.alignAbove(align_of);
     const s_up_addr: u64 = count *% size_of;
@@ -959,12 +948,12 @@ fn allocateInternal(allocator: *types.Allocator, count: u64, size_of: u64, align
     allocator.allocate(mach.cmov64(count != 1, s_up_addr, s_up_addr +% size_of));
     return s_ab_addr;
 }
-fn allocate(allocator: *types.Allocator, comptime T: type, count: u64) types.Allocator.allocate_payload([]T) {
+fn allocate(allocator: anytype, comptime T: type, count: u64) []T {
     @setRuntimeSafety(false);
     const s_ab_addr: u64 = allocateInternal(allocator, count, @sizeOf(T), @alignOf(T));
     return mem.pointerSliceWithSentinel(T, s_ab_addr, count, builtin.zero(T));
 }
-fn create(allocator: *types.Allocator, comptime T: type) *T {
+fn create(allocator: anytype, comptime T: type) *T {
     const s_ab_addr: u64 = allocator.alignAbove(@alignOf(T));
     allocator.allocate(s_ab_addr +% @sizeOf(T));
     return mem.pointerOne(T, s_ab_addr);

@@ -10,7 +10,6 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     const home: ?[:0]const u8 = proc.environmentValue(vars, "HOME");
     _ = home.?;
     _ = proc.auxiliaryValue(aux, .vdso_addr).?;
-
     const pid: u64 = try proc.fork(.{});
     if (pid == 0) {}
 }
