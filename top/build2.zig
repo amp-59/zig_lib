@@ -374,10 +374,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return group.trgs[0..group.trgs_len];
             }
         };
+        pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
+        pub const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
+        pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
+        pub const arena_aligned_bytes: u64 = builder_spec.options.arena_aligned_bytes;
+        pub const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
+        pub const arena_lb_addr: u64 = stack_up_addr;
+        pub const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
+        pub const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub fn groups(builder: *const Builder) []*Group {
             return builder.grps[0..builder.grps_len];
         }
-        inline fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) u8 {
+        fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
+            .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
+            .abort = decls.clock_spec.errors.throw ++ decls.command_spec.errors.abort(),
+        }, u8) {
             const start: time.TimeSpec = try meta.wrap(time.get(decls.clock_spec, .realtime));
             const ret: u8 = try meta.wrap(proc.command(decls.command_spec, meta.manyToSlice(args[0]), args, builder.vars));
             const finish: time.TimeSpec = try meta.wrap(time.get(decls.clock_spec, .realtime));
@@ -386,11 +397,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         extern fn forwardToExecuteCloneThreaded(
             builder: *Builder,
-            address_space: *types.AddressSpace,
-            thread_space: *types.ThreadSpace,
+            address_space: *AddressSpace,
+            thread_space: *ThreadSpace,
             target: *Target,
             task: Task,
-            arena_index: types.AddressSpace.Index,
+            arena_index: AddressSpace.Index,
             depth: u64,
             stack_address: u64,
         ) void;
@@ -399,14 +410,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         pub export fn executeCommandThreaded(
             builder: *Builder,
-            address_space: *types.AddressSpace,
-            thread_space: *types.ThreadSpace,
+            address_space: *AddressSpace,
+            thread_space: *ThreadSpace,
             target: *Target,
             task: Task,
-            arena_index: types.AddressSpace.Index,
+            arena_index: AddressSpace.Index,
             depth: u64,
         ) callconv(.C) void {
-            var allocator: types.Allocator = types.Allocator.init(address_space, arena_index);
+            if (max_thread_count == 0) {
+                unreachable;
+            }
+            var allocator: Allocator = Allocator.init(address_space, arena_index);
             defer allocator.deinit(address_space, arena_index);
             if (switch (task) {
                 .build => meta.wrap(executeBuildCommand(builder, &allocator, target, depth)) catch false,
