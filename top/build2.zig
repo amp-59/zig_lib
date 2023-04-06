@@ -299,19 +299,25 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn transform(target: *Target, task: Task, old_state: State, new_state: State) bool {
                 const ret: bool = target.lock.atomicTransform(task, old_state, new_state);
-                if (ret) {
-                    debug.transformNotice(target, task, old_state, new_state);
-                } else {
-                    debug.noTransformNotice(target, task, old_state, new_state);
+                if (builtin.logging_general.Success) {
+                    if (ret) {
+                        debug.transformNotice(target, task, old_state, new_state);
+                    } else {
+                        debug.noTransformNotice(target, task, old_state, new_state);
+                    }
                 }
                 return ret;
             }
             fn assertTransform(target: *Target, task: Task, old_state: State, new_state: State) void {
                 const res: bool = target.lock.atomicTransform(task, old_state, new_state);
                 if (res) {
-                    debug.transformNotice(target, task, old_state, new_state);
+                    if (builtin.logging_general.Success) {
+                        debug.transformNotice(target, task, old_state, new_state);
+                    }
                 } else {
-                    debug.noTransformFault(target, task, old_state, new_state);
+                    if (builtin.logging_general.Fault) {
+                        debug.noTransformFault(target, task, old_state, new_state);
+                    }
                     builtin.proc.exit(2);
                 }
             }
@@ -384,11 +390,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addTarget(
                 group: *Group,
+                comptime extra: anytype,
                 allocator: *types.Allocator,
                 kind: tasks.OutputMode,
                 name: [:0]const u8,
                 root: [:0]const u8,
-                comptime extra: anytype,
             ) Types.target_payload {
                 const ret: *Target = try meta.wrap(addTargetInternal(group, allocator, kind, name, root));
                 buildExtra(ret.build_cmd, extra);
