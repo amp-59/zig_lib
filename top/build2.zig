@@ -67,45 +67,50 @@ pub const BuilderSpec = struct {
         .exclusive = false,
         .write = .truncate,
     };
-    pub fn path(comptime builder_spec: BuilderSpec) file.PathSpec {
+    fn path(comptime builder_spec: BuilderSpec) file.PathSpec {
         return .{ .errors = builder_spec.errors.path, .logging = builder_spec.logging.path };
     }
-    pub fn command(comptime builder_spec: BuilderSpec) proc.CommandSpec {
-        return .{ .errors = builder_spec.errors.command, .logging = builder_spec.logging.command };
-    }
-    pub fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
+    fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
         return .{ .errors = builder_spec.errors.clock };
     }
-    pub fn sleep(comptime builder_spec: BuilderSpec) time.SleepSpec {
+    fn sleep(comptime builder_spec: BuilderSpec) time.SleepSpec {
         return .{ .errors = builder_spec.errors.sleep };
     }
-    pub fn mkdir(comptime builder_spec: BuilderSpec) file.MakeDirSpec {
+    fn mkdir(comptime builder_spec: BuilderSpec) file.MakeDirSpec {
         return .{ .errors = builder_spec.errors.mkdir, .logging = builder_spec.logging.mkdir };
     }
-    pub fn write(comptime builder_spec: BuilderSpec) file.WriteSpec {
+    fn write(comptime builder_spec: BuilderSpec) file.WriteSpec {
         return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
     }
-    pub fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
+    fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
         return .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
     }
-    pub fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
+    fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
         return .{ .errors = builder_spec.errors.unmap, .logging = builder_spec.logging.unmap };
     }
-    pub fn stat(comptime builder_spec: BuilderSpec) file.StatSpec {
+    fn stat(comptime builder_spec: BuilderSpec) file.StatSpec {
         return .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
     }
-    pub fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
+    fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
         return .{
             .errors = builder_spec.errors.map,
             .logging = builder_spec.logging.map,
             .options = map_options,
         };
     }
-    pub fn create(comptime builder_spec: BuilderSpec) file.CreateSpec {
+    fn create(comptime builder_spec: BuilderSpec) file.CreateSpec {
         return .{
             .errors = builder_spec.errors.create,
             .logging = builder_spec.logging.create,
             .options = create_options,
+        };
+    }
+    fn command(comptime builder_spec: BuilderSpec) proc.CommandSpec {
+        return .{
+            .args_type = [][*:0]u8,
+            .vars_type = [][*:0]u8,
+            .errors = builder_spec.errors.command,
+            .logging = builder_spec.logging.command,
         };
     }
 };
