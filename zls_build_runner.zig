@@ -21,71 +21,86 @@ pub usingnamespace proc.start;
 pub const BuildConfig = struct {
     packages: []Pkg,
     include_dirs: []const []const u8,
-
     pub const Pkg = struct {
         name: []const u8,
         path: []const u8,
     };
-    const tok = struct {
-        const lbrace_0 = "{\n";
-        const pkgs = "    \"packages\": [\n";
-        const lbrace_1 = "        {\n";
-        const name = "            \"name\": \"";
-        const path = "            \"path\": \"";
-        const rbrace_1 = "        },\n";
-        const incl = "    \"include_dirs\": [\n";
-        const quot = "        \",\n";
-        const rbrack_1 = "    ],\n";
-        const line = "\",\n";
-        const rbrace_0 = "}\n";
-    };
     pub fn formatWrite(cfg: BuildConfig, array: anytype) void {
-        array.writeMany(tok.lbrace_0 ++ tok.pkgs);
-        for (cfg.packages) |pkg| {
-            array.writeMany(tok.lbrace_1);
-            array.writeMany(tok.name);
-            array.writeMany(pkg.name);
-            array.writeMany(tok.line);
-            array.writeMany(tok.path);
-            array.writeMany(pkg.path);
-            array.writeMany(tok.line);
-            array.writeMany(tok.rbrace_1);
+        array.writeMany("{ \"packages\": ");
+        if (cfg.packages.len == 0) {
+            array.writeMany("[],");
+        } else {
+            array.writeMany("[");
+            array.writeMany("{ \"name\": \"");
+            array.writeMany(cfg.packages[0].name);
+            array.writeMany("\", \"path\": \"");
+            array.writeMany(cfg.packages[0].path);
+            array.writeMany("\" }");
+            for (cfg.packages[1..]) |pkg| {
+                array.writeMany(",\n               { \"name\": \"");
+                array.writeMany(pkg.name);
+                array.writeMany("\", \"path\": \"");
+                array.writeMany(pkg.path);
+                array.writeMany("\" }");
+            }
+            array.writeMany("],\n");
         }
-        array.writeMany(tok.rbrack_1);
-        array.writeMany(tok.incl);
-        for (cfg.include_dirs) |dir| {
-            array.writeMany(tok.quot);
-            array.writeMany(dir);
-            array.writeMany(tok.line);
+        array.writeMany("  \"include_dirs\": ");
+        if (cfg.include_dirs.len == 0) {
+            array.writeMany("[]");
+        } else {
+            array.writeMany("[\"");
+            array.writeMany(cfg.include_dirs[0]);
+            array.writeMany("\"");
+            for (cfg.include_dirs[1..]) |dir| {
+                array.writeMany(",\n                   \"");
+                array.writeMany(dir);
+                array.writeMany("\"");
+            }
+            array.writeMany("]");
         }
-        array.writeMany(tok.rbrack_1);
-        array.writeMany(tok.rbrace_0);
+        array.writeMany("}\n");
     }
     pub fn formatLength(cfg: BuildConfig) u64 {
         var len: u64 = 0;
-        len +%= (tok.lbrace_0 ++ tok.pkgs).len;
-        for (cfg.packages) |pkg| {
-            len +%= tok.lbrace_1.len;
-            len +%= tok.name.len;
-            len +%= pkg.name.len;
-            len +%= tok.line.len;
-            len +%= tok.path.len;
-            len +%= pkg.path.len;
-            len +%= tok.line.len;
-            len +%= tok.rbrace_1.len;
+        len +%= "{ \"packages\": ".len;
+        if (cfg.packages.len == 0) {
+            len +%= "[],".len;
+        } else {
+            len +%= "[".len;
+            len +%= "{ \"name\": \"".len;
+            len +%= cfg.packages[0].name.len;
+            len +%= "\", \"path\": \"".len;
+            len +%= cfg.packages[0].path.len;
+            len +%= "\" }".len;
+            for (cfg.packages[1..]) |pkg| {
+                len +%= ",\n               { \"name\": \"".len;
+                len +%= pkg.name.len;
+                len +%= "\", \"path\": \"".len;
+                len +%= pkg.path.len;
+                len +%= " }".len;
+            }
+            len +%= "],\n".len;
         }
-        len +%= tok.rbrack_1.len;
-        len +%= tok.incl.len;
-        for (cfg.include_dirs) |dir| {
-            len +%= tok.quot.len;
-            len +%= dir.len;
-            len +%= tok.line.len;
+        len +%= "  \"include_dirs\": ".len;
+        if (cfg.include_dirs.len == 0) {
+            len +%= "[]".len;
+        } else {
+            len +%= "[\"".len;
+            len +%= cfg.include_dirs[0].len;
+            len +%= "\"".len;
+            for (cfg.include_dirs[1..]) |dir| {
+                len +%= ",\n                   \"".len;
+                len +%= dir.len;
+                len +%= "\"".len;
+            }
+            len +%= "]".len;
         }
-        len +%= tok.rbrack_1.len;
-        len +%= tok.rbrace_0.len;
+        len +%= "}\n".len;
+        return len;
     }
 };
-const PkgArray = Builder.Allocator.StructuredVector(BuildConfig.Pkg);
+const Packages = Builder.Allocator.StructuredVector(BuildConfig.Pkg);
 const String = Builder.Allocator.StructuredVector(u8);
 
 pub const message_style: [:0]const u8 =
@@ -135,7 +150,8 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     const build_fn = root.buildMain;
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
     try build_fn(&allocator, &builder);
-    var pkg_array: PkgArray = PkgArray.init(&allocator, 32);
+
+    var pkg_array: Packages = Packages.init(&allocator, 32);
     for (builder.groups()) |group| {
         for (group.targets()) |target| {
             if (target.build_cmd.modules) |mods| {
@@ -145,10 +161,11 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
             }
         }
     }
-    var str_array: String = String.init(&allocator, 1024 * 1024);
-    str_array.writeFormat(BuildConfig{
+    const cfg: BuildConfig = .{
         .packages = pkg_array.referAllDefined(),
         .include_dirs = &.{},
-    });
+    };
+    var str_array: String = String.init(&allocator, cfg.formatLength());
+    str_array.writeFormat(cfg);
     try file.write(.{}, 1, str_array.readAll());
 }
