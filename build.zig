@@ -110,7 +110,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     size_test.descr =           "Test sizes of various things";
     container_test.descr =      "Test container implementation";
     readdir.descr =             "Shows how to iterate directory entries";
-    dynamic.descr =             "Shows how to allocator dynamic memory";
+    dynamic.descr =             "Shows how to allocate dynamic memory";
     custom.descr =              "Shows a complex custom address space";
     allocators.descr =          "Shows how to use many allocators";
     mca.descr =                 "Example program useful for extracting section from assembly for machine code analysis";
