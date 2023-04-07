@@ -398,7 +398,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 for (group.targets()) |target| {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
                 }
-                groupScan(group, task);
+                while (groupWait(group, task)) {
+                    try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
+                }
             }
             pub fn addTarget(
                 group: *Group,
