@@ -135,6 +135,27 @@ pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void 
     mg_container_impls.descr = "Generate container implementations";
     generate_build.descr = "Generate builder command line implementation";
 
+    const g3 = try builder.addGroup(allocator, "g3");
+    const t2: *Builder.Target = try g3.addTarget(allocator, obj_default, "obj0", "test/src/obj0.zig");
+    const t3: *Builder.Target = try g3.addTarget(allocator, obj_default, "obj1", "test/src/obj1.zig");
+    const t4: *Builder.Target = try g3.addTarget(allocator, obj_default, "obj2", "test/src/obj2.zig");
+    const t5: *Builder.Target = try g3.addTarget(allocator, obj_default, "obj3", "test/src/obj3.zig");
+    const t6: *Builder.Target = try g3.addTarget(allocator, obj_default, "obj4", "test/src/obj4.zig");
+    const t7: *Builder.Target = try g3.addTarget(allocator, obj_default, "obj5", "test/src/obj5.zig");
+    const t1: *Builder.Target = try g3.addTarget(allocator, obj_default, "lib0", "test/src/lib0.zig");
+    const t0: *Builder.Target = try g3.addTarget(allocator, obj_default, "lib1", "test/src/lib1.zig");
+    const t: *Builder.Target = try g3.addTarget(allocator, exe_default, "bin", "test/src/main.zig");
+    t1.dependOnObject(allocator, t2);
+    t1.dependOnObject(allocator, t3);
+    t1.dependOnObject(allocator, t4);
+    t0.dependOnObject(allocator, t1);
+    t0.dependOnObject(allocator, t2);
+    t0.dependOnObject(allocator, t3);
+    t.dependOnObject(allocator, t0);
+    t.dependOnObject(allocator, t5);
+    t.dependOnObject(allocator, t6);
+    t.dependOnObject(allocator, t7);
+
     // Dependencies:
     mg_container_impls.dependOnRun(allocator, mg_container_kinds);
     mg_new_type_specs.dependOnObject(allocator, mg_options);
@@ -175,7 +196,7 @@ fn testBuildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime main_fn: anytype) 
                 try meta.wrap(group.acquireLock(&address_space, &thread_space, &allocator, target_task));
             } else for (group.targets()) |target| {
                 if (mach.testEqualMany8(command, target.name)) {
-                    try meta.wrap(target.acquireLock(&address_space, &thread_space, &allocator, &builder, target_task, Builder.max_thread_count, 0));
+                    try meta.wrap(target.executeToplevel(&address_space, &thread_space, &allocator, &builder, target_task));
                 }
             }
         }
