@@ -546,6 +546,13 @@ pub fn zero(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
+pub fn addr(any: anytype) usize {
+    if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
+        return @ptrToInt(any.ptr);
+    } else {
+        return @ptrToInt(any);
+    }
+}
 pub fn anyOpaque(comptime value: anytype) *const anyopaque {
     const S: type = @TypeOf(value);
     const T = [0:value]S;
