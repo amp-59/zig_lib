@@ -323,14 +323,19 @@ pub const CommandSpec = struct {
             return error_spec.execve.abort ++ error_spec.fork.abort ++ error_spec.waitpid.abort;
         }
     };
-    fn exec(comptime spec: CommandSpec) ExecuteSpec {
-        return .{ .errors = spec.errors.execve, .logging = spec.logging.execve };
-    }
     fn fork(comptime spec: CommandSpec) ForkSpec {
         return .{ .errors = spec.errors.fork, .logging = spec.logging.fork };
     }
     fn waitPid(comptime spec: CommandSpec) WaitSpec {
         return .{ .errors = spec.errors.waitpid, .logging = spec.logging.waitpid, .return_type = void };
+    }
+    fn exec(comptime spec: CommandSpec) ExecuteSpec {
+        return .{
+            .errors = spec.errors.execve,
+            .logging = spec.logging.execve,
+            .args_type = spec.args_type,
+            .vars_type = spec.vars_type,
+        };
     }
     fn flags(comptime spec: CommandSpec) Execute {
         var flags_bitfield: Execute = .{ .val = 0 };
