@@ -133,14 +133,10 @@ pub const runtime_assertions: bool =
     if (@hasDecl(root, "runtime_assertions")) root.runtime_assertions else false;
 
 pub const Builder =
-    if (@hasDecl(root, "Builder"))
-    root.Builder
-else
-    build.GenericBuilder(.{
-        .errors = spec.builder.errors.noexcept,
-        .logging = spec.builder.logging.silent,
-    });
-
+    if (@hasDecl(root, "Builder")) root.Builder else build.GenericBuilder(.{
+    .errors = spec.builder.errors.noexcept,
+    .logging = spec.builder.logging.silent,
+});
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
     var allocator: Builder.Allocator = Builder.Allocator.init(&address_space, Builder.max_thread_count);
@@ -150,7 +146,6 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     const build_fn = root.buildMain;
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
     try build_fn(&allocator, &builder);
-
     var pkg_array: Packages = Packages.init(&allocator, 32);
     for (builder.groups()) |group| {
         for (group.targets()) |target| {

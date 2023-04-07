@@ -4,7 +4,9 @@ const proc = gen.proc;
 const algo = gen.algo;
 const spec = gen.spec;
 const builtin = gen.builtin;
+
 const attr = @import("./attr.zig");
+const config = @import("./config.zig");
 const alloc_fn = @import("./alloc_fn.zig");
 
 pub usingnamespace proc.start;
@@ -28,5 +30,5 @@ pub fn main() void {
     writeKind(alloc_fn.Fn, &array, .reallocate, reallocate[1]);
     writeKind(alloc_fn.Fn, &array, .resize, resize[1]);
 
-    gen.writeAuxiliarySourceFile(&array, "allocator_kinds.zig");
+    gen.writeSourceFile(config.allocator_kinds_path, u8, array.readAll());
 }
