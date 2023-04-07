@@ -71,6 +71,7 @@ pub const allocator_template_path: [:0]const u8 = primarySourceFile("allocator-t
 
 pub const container_kinds_path: [:0]const u8 = auxiliarySourceFile("container_kinds.zig");
 pub const reference_kinds_path: [:0]const u8 = auxiliarySourceFile("reference_kinds.zig");
+pub const allocator_kinds_path: [:0]const u8 = auxiliarySourceFile("allocator_kinds.zig");
 pub const spec_sets_path: [:0]const u8 = auxiliaryDataFile("spec_sets");
 pub const tech_sets_path: [:0]const u8 = auxiliaryDataFile("tech_sets");
 pub const abstract_specs_path: [:0]const u8 = auxiliaryDataFile("abstract_specs");
