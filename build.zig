@@ -90,6 +90,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_reference_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
     const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
+    const mg_allocator_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
 
     const bg: *Builder.Group =                  try builder.addGroup(allocator,             "buildgen");
     const generate_build: *Builder.Target =     try bg.addTarget(allocator, exe_default,    "generate_build",       "top/build/generate_build2.zig");
@@ -122,6 +123,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     readelf.descr =             "Example program (defunct) for parsing and displaying information about ELF binaries";
     declprint.descr =           "Useful for printing declarations";
     pathsplit.descr =           "Useful for splitting paths into dirnames and basename";
+
     mg_touch.descr =            "Creates placeholder files";
     mg_specs.descr =            "Serialiser for `[]const []const []const Specifier`";
     mg_techs.descr =            "Serialiser for `[]const []const []const Technique`";
@@ -132,6 +134,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_ctn_detail.descr =       "Serialiser for `[]const Container`";
     mg_new_type_specs.descr =   "Generate data and container->reference deductions";
     mg_container_kinds.descr =  "Generate function kind switch functions for container functions";
+    mg_allocator_kinds.descr =  "Generate function kind switch functions for allocator functions";
     mg_reference_impls.descr =  "Generate reference implementations";
     mg_container_impls.descr =  "Generate container implementations";
     generate_build.descr =      "Generate builder command line implementation";
@@ -149,5 +152,11 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_container_impls.dependOnObject(allocator,    mg_impl_detail);
     mg_reference_impls.dependOnObject(allocator,    mg_ctn_detail);
     mg_reference_impls.dependOnObject(allocator,    mg_impl_detail);
+
+    build_test.addRunArgument(allocator, builder.zig_exe);
+    build_test.addRunArgument(allocator, builder.build_root);
+    build_test.addRunArgument(allocator, builder.cache_root);
+    build_test.addRunArgument(allocator, builder.global_cache_root);
+
     // zig fmt: on
 }
