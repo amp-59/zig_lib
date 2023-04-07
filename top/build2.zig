@@ -264,8 +264,28 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.deps[target.deps_len] = .{ .target = dependency, .task = task, .state = state };
                 target.deps_len +%= 1;
             }
-            pub fn dependencies(target: *const Target) []Dependency {
+            pub fn addRunArgument(target: *Target, allocator: *Allocator, arg: []const u8) void {
+                if (target.args_len == target.args.len) {
+                    target.args = allocator.reallocateIrreversible([*:0]u8, target.args, (target.args_len +% 1) *% 2);
+                }
+                target.args[target.args_len] = strdup(allocator, arg).ptr;
+                target.args_len +%= 1;
+            }
+            fn addRunArguments(target: *Target, allocator: *Allocator, builder: *Builder) void {
+                const run_args_len: u64 = builder.args.len -% builder.args_len;
+                if (target.args.len <= target.args_len +% run_args_len) {
+                    target.args = allocator.reallocateIrreversible([*:0]u8, target.args, target.args_len +% run_args_len +% 1);
+                }
+                for (builder.args[builder.args_len..]) |run_arg| {
+                    target.args[target.args_len] = run_arg;
+                    target.args_len +%= 1;
+                }
+            }
+            pub fn buildDependencies(target: *const Target) []Dependency {
                 return target.deps[0..target.deps_len];
+            }
+            pub fn runArguments(target: *const Target) [][*:0]u8 {
+                return target.args[0..target.args_len];
             }
             fn binaryRelative(target: *Target, allocator: *Allocator) [:0]const u8 {
                 switch (target.build_cmd.kind) {
