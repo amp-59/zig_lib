@@ -555,12 +555,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = decls.clock_spec.errors.abort ++ decls.command_spec.errors.abort(),
         }, bool) {
             var run_time: time.TimeSpec = undefined;
-            const args: [:0]u8 = target.run_args.referAllDefinedWithSentinel(0);
-            const ptrs: [][*:0]u8 = try meta.wrap(
-                makeArgPtrs(allocator, args),
-            );
+            target.addRunArguments(allocator, builder);
+            target.args[target.args_len] = builtin.zero([*:0]u8);
+
             const rc: u8 = try meta.wrap(
-                builder.system(ptrs, &run_time),
+                builder.system(target.runArguments(), &run_time),
             );
             if (rc != 0 or depth <= builder_spec.options.max_relevant_depth) {
                 debug.runNotice(target.name, run_time, rc);
@@ -581,13 +580,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 try meta.wrap(mem.map(decls.map_spec, stack_lb_addr, stack_up_addr -% stack_lb_addr));
             }
             const build_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, build_root));
-            try meta.wrap(writeEnvDecls(zig_exe, build_root, cache_root, global_cache_root, build_root_fd)); 
+            try meta.wrap(writeEnvDecls(zig_exe, build_root, cache_root, global_cache_root, build_root_fd));
             return .{
                 .zig_exe = zig_exe,
                 .build_root = build_root,
                 .cache_root = cache_root,
                 .global_cache_root = global_cache_root,
                 .args = args,
+                .args_len = args.len,
                 .vars = vars,
                 .dir_fd = build_root_fd,
             };
@@ -610,8 +610,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             comptime extra: anytype,
         ) !*Target {
             const ret: *Target = create(allocator, Target);
-            ret.root = root;
             ret.name = name;
+            ret.root = root;
             ret.build_cmd = buildExtra(create(allocator, types.BuildCommand), extra);
             ret.assertTransform(.build, .unavailable, .ready);
             ret.emitBinary(allocator, builder);
