@@ -122,8 +122,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         global_cache_root: [:0]const u8,
         dir_fd: u64,
         args: [][*:0]u8,
+        args_len: u64,
         vars: [][*:0]u8,
-        run_args: [][*:0]u8 = &.{},
         grps: []*Group = &.{},
         grps_len: u64 = 0,
         const Builder = @This();
