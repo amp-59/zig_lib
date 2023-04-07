@@ -729,6 +729,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const create_spec: file.CreateSpec = builder_spec.create();
             const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
             const command_spec: proc.CommandSpec = builder_spec.command();
+            const time_spec: time.TimeSpec = .{ .nsec = builder_spec.options.dep_sleep_nsec };
         };
         const tok = struct {
             const env_name: [:0]const u8 = "env.zig";
@@ -854,7 +855,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn writeAndWalkInternal(buf0: *[1024 * 1024]u8, len0: u64, buf1: *[4096]u8, len1: u64, target: *Builder.Target) u64 {
                 @setRuntimeSafety(false);
-                const deps: []Builder.Dependency = target.dependencies();
+                const deps: []Builder.Dependency = target.buildDependencies();
                 var len: u64 = len0;
                 buf0[len] = '\n';
                 len = len +% 1;
@@ -931,84 +932,91 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.logAlways(buf0[0..len]);
             }
         };
+        fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
+            const addr: u64 = builtin.addr(values);
+            if (addr < stack_lb_addr or
+                addr >= allocator.lb_addr and addr < allocator.ub_addr)
+            {
+                return @constCast(values.ptr[0..values.len :0]);
+            } else {
+                var buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, values.len, 0);
+                mach.memcpy(buf.ptr, values.ptr, values.len);
+                return buf;
+            }
+        }
+        fn strdup2(allocator: *Allocator, values: []const []const u8) [][:0]const u8 {
+            var buf: [][:0]u8 = allocator.allocateIrreversible([:0]const u8, values.len);
+            var idx: u64 = 0;
+            for (values) |value| {
+                buf[idx] = strdup(allocator, value);
+                idx +%= 1;
+            }
+        }
+        fn concatenate(allocator: *Allocator, comptime T: type, values: []const []const T) [:builtin.zero(T)]T {
+            var len: u64 = 0;
+            for (values) |value| len +%= value.len;
+            const buf: [:builtin.zero(T)]T = allocator.allocateWithSentinelIrreversible(T, len, builtin.zero(T));
+            var idx: u64 = 0;
+            for (values) |value| {
+                mach.memcpy(buf[idx..].ptr, value.ptr, value.len);
+                idx +%= value.len;
+            }
+            return buf;
+        }
+        fn makeArgPtrs(allocator: *Allocator, args: [:0]u8) [][*:0]u8 {
+            const ptrs: [][*:0]u8 = argsPointers(allocator, args);
+            var len: u64 = 0;
+            var idx: u64 = 0;
+            var pos: u64 = 0;
+            while (idx != args.len) : (idx +%= 1) {
+                if (args[idx] == 0) {
+                    ptrs[len] = args[pos..idx :0];
+                    len +%= 1;
+                    pos = idx +% 1;
+                }
+            }
+            ptrs[len] = builtin.zero([*:0]u8);
+            return ptrs[0..len];
+        }
+        fn argsPointers(allocator: *Allocator, args: [:0]u8) [][*:0]u8 {
+            var count: u64 = 0;
+            for (args) |value| {
+                count +%= @boolToInt(value == 0);
+            }
+            return allocator.allocateIrreversible([*:0]u8, count +% 1);
+        }
+        fn buildExtra(build_cmd: *types.BuildCommand, comptime extra: anytype) *types.BuildCommand {
+            inline for (@typeInfo(@TypeOf(extra)).Struct.fields) |field| {
+                @field(build_cmd, field.name) = @field(extra, field.name);
+            }
+            return build_cmd;
+        }
+        fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []T {
+            @setRuntimeSafety(false);
+            const ret: [:builtin.zero(T)]T = allocate(allocator, T, count);
+            mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
+            return ret;
+        }
+        fn allocateInternal(allocator: *Allocator, count: u64, size_of: u64, align_of: u64) u64 {
+            @setRuntimeSafety(false);
+            const s_ab_addr: u64 = allocator.alignAbove(align_of);
+            const s_up_addr: u64 = s_ab_addr +% count *% size_of;
+            mach.memset(@intToPtr([*]u8, s_up_addr), 0, size_of);
+            allocator.allocate(s_up_addr +% size_of);
+            return s_ab_addr;
+        }
+        fn allocate(allocator: *Allocator, comptime T: type, count: u64) [:builtin.zero(T)]T {
+            @setRuntimeSafety(false);
+            const s_ab_addr: u64 = allocateInternal(allocator, count, @sizeOf(T), @alignOf(T));
+            return mem.pointerSliceWithSentinel(T, s_ab_addr, count, builtin.zero(T));
+        }
+        fn create(allocator: *Allocator, comptime T: type) *T {
+            const s_ab_addr: u64 = allocator.alignAbove(@alignOf(T));
+            allocator.allocate(s_ab_addr +% @sizeOf(T));
+            return mem.pointerOne(T, s_ab_addr);
+        }
     };
     return Type;
-}
-fn duplicate(allocator: anytype, comptime T: type, values: []const T) [:builtin.zero(T)]T {
-    var buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(T, values.len, builtin.zero(T));
-    mach.memcpy(buf.ptr, values.ptr, values.len);
-    return buf;
-}
-fn duplicate2(allocator: anytype, comptime T: type, values: []const []const T) [][:builtin.zero(T)]T {
-    var buf: [][:0]u8 = allocator.allocateIrreversible([:builtin.zero(T)]T, values.len);
-    var idx: u64 = 0;
-    for (values) |value| {
-        buf[idx] = duplicate(allocator, value);
-        idx +%= 1;
-    }
-}
-fn concatenate(allocator: anytype, comptime T: type, values: []const []const T) [:builtin.zero(T)]T {
-    var len: u64 = 0;
-    for (values) |value| len +%= value.len;
-    const buf: [:0]u8 = allocator.allocateWithSentinelIrreversible(u8, len, builtin.zero(T));
-    var idx: u64 = 0;
-    for (values) |value| {
-        mach.memcpy(buf[idx..].ptr, value.ptr, value.len);
-        idx +%= value.len;
-    }
-    return buf;
-}
-fn makeArgPtrs(allocator: anytype, args: [:0]u8) [][*:0]u8 {
-    const ptrs: [][*:0]u8 = argsPointers(allocator, args);
-    var len: u64 = 0;
-    var idx: u64 = 0;
-    var pos: u64 = 0;
-    while (idx != args.len) : (idx +%= 1) {
-        if (args[idx] == 0) {
-            ptrs[len] = args[pos..idx :0];
-            len +%= 1;
-            pos = idx +% 1;
-        }
-    }
-    ptrs[len] = builtin.zero([*:0]u8);
-    return ptrs[0..len];
-}
-fn argsPointers(allocator: anytype, args: [:0]u8) [][*:0]u8 {
-    var count: u64 = 0;
-    for (args) |value| {
-        count +%= @boolToInt(value == 0);
-    }
-    return allocator.allocateIrreversible([*:0]u8, count +% 1);
-}
-fn buildExtra(build_cmd: *types.BuildCommand, comptime extra: anytype) *types.BuildCommand {
-    inline for (@typeInfo(@TypeOf(extra)).Struct.fields) |field| {
-        @field(build_cmd, field.name) = @field(extra, field.name);
-    }
-    return build_cmd;
-}
-fn reallocate(allocator: anytype, comptime T: type, buf: []T, count: u64) []T {
-    @setRuntimeSafety(false);
-    const ret: [:builtin.zero(T)]T = allocate(allocator, T, count);
-    mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
-    return ret;
-}
-fn allocateInternal(allocator: anytype, count: u64, size_of: u64, align_of: u64) u64 {
-    @setRuntimeSafety(false);
-    const s_ab_addr: u64 = allocator.alignAbove(align_of);
-    const s_up_addr: u64 = count *% size_of;
-    mach.memset(@intToPtr([*]u8, s_up_addr), 0, size_of);
-    allocator.allocate(mach.cmov64(count != 1, s_up_addr, s_up_addr +% size_of));
-    return s_ab_addr;
-}
-fn allocate(allocator: anytype, comptime T: type, count: u64) []T {
-    @setRuntimeSafety(false);
-    const s_ab_addr: u64 = allocateInternal(allocator, count, @sizeOf(T), @alignOf(T));
-    return mem.pointerSliceWithSentinel(T, s_ab_addr, count, builtin.zero(T));
-}
-fn create(allocator: anytype, comptime T: type) *T {
-    const s_ab_addr: u64 = allocator.alignAbove(@alignOf(T));
-    allocator.allocate(s_ab_addr +% @sizeOf(T));
-    return mem.pointerOne(T, s_ab_addr);
 }
 fn copy(comptime T: type, dest: *T, src: *const T) void {
     mach.memcpy(@ptrCast([*]u8, dest), @ptrCast([*]const u8, src), @sizeOf(T));
