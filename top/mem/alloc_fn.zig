@@ -3,7 +3,8 @@ const meta = @import("../meta.zig");
 const builtin = @import("../builtin.zig");
 
 const gen = @import("./gen.zig");
-const detail = @import("./detail.zig");
+
+const types = @import("./types.zig");
 
 pub const key = blk: {
     var res: [@typeInfo(Fn).Enum.fields.len]Fn = undefined;
@@ -30,7 +31,7 @@ pub const Fn = enum(u16) {
     resizeIncrement,
     resizeDecrement,
 
-    pub fn hasCapability(alloc_fn_info: Fn, impl_variant: *const detail.More) bool {
+    pub fn hasCapability(alloc_fn_info: Fn, impl_variant: *const types.Implementation) bool {
         switch (alloc_fn_info) {
             .allocate, .deallocate => {
                 return impl_variant.managers.allocatable;
