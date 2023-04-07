@@ -210,7 +210,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(executeCommand(builder, allocator, target, task, depth));
                 }
             }
-            pub fn acquireLock(
+            fn acquireLock(
                 target: *Target,
                 address_space: *AddressSpace,
                 thread_space: *ThreadSpace,
@@ -239,6 +239,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     while (target.lock.get(task) == .blocking) {
                         try meta.wrap(time.sleep(decls.sleep_spec, .{ .nsec = builder_spec.options.dep_sleep_nsec }));
                     }
+                }
+            }
+            pub fn executeToplevel(
+                target: *Target,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                allocator: *Allocator,
+                builder: *Builder,
+                task: Task,
+            ) sys.Call(.{
+                .throw = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.throw ++ decls.command_spec.errors.throw(),
+                .abort = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.abort ++ decls.command_spec.errors.throw(),
+            }, void) {
+                try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, task, Builder.max_thread_count, 0));
+                while (builderWait(address_space, thread_space, builder)) {
+                    try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
                 }
             }
             pub fn addDependency(target: *Target, allocator: *Allocator, dependency: *Target, task: Task, state: State) void {
