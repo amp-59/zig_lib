@@ -620,9 +620,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ret.build_cmd.cache_root = builder.cache_root;
             ret.build_cmd.global_cache_root = builder.global_cache_root;
             if (ret.build_cmd.kind == .exe) {
-                ret.run_args = Args.init(allocator, 4096);
-                ret.run_args.writeFormat(ret.binaryPath());
-                ret.run_args.writeOne(0);
+                const bin_path: types.Path = ret.binaryPath();
+                ret.addRunArgument(allocator, concatenate(allocator, u8, &.{ bin_path.absolute, "/", bin_path.relative.? }));
             }
             return ret;
         }
@@ -672,47 +671,50 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.zig_out_dir, file.dir_mode));
             try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.exe_out_dir, file.dir_mode));
         }
-        fn targetScanInternal(
-            target: *Target,
-            arena_index: AddressSpace.Index,
-            task: Task,
-        ) void {
-            if (target.lock.get(task) == .failed) {
-                target.assertTransform(task, .blocking, .failed);
-                if (max_thread_count != 0) {
-                    if (arena_index != max_thread_count) {
-                        builtin.proc.exitWithError(error.DependencyFailed, 2);
+        fn dependencyWait(target: *Target, task: Task, arena_index: AddressSpace.Index) bool {
+            for (target.buildDependencies()) |*dep| {
+                if (dep.target.lock.get(dep.task) != dep.state) {
+                    if (dep.target.lock.get(dep.task) == .failed) {
+                        target.assertTransform(task, .blocking, .failed);
+                        if (max_thread_count != 0) {
+                            if (arena_index != max_thread_count) {
+                                builtin.proc.exitWithError(error.DependencyFailed, 2);
+                            }
+                        }
+                        return false;
+                    } else {
+                        return true;
                     }
                 }
             }
+            return false;
         }
-        fn dependencyScan(
-            target: *Target,
-            task: Task,
-            arena_index: AddressSpace.Index,
-        ) bool {
-            @setRuntimeSafety(false);
-            for (target.dependencies()) |*dep| {
-                targetScanInternal(dep.target, arena_index, dep.task);
-            }
-            for (target.dependencies()) |*dep| {
-                if (dep.target.lock.get(dep.task) == .failed) {
-                    return target.transform(task, .blocking, .failed);
-                }
-                if (dep.target.lock.get(dep.task) != dep.state) {
+        fn groupWait(group: *Group, task: Task) bool {
+            for (group.targets()) |target| {
+                if (target.lock.get(task) == .blocking) {
                     return true;
                 }
             }
             return false;
         }
-        fn groupScan(group: *Group, task: Task) void {
-            lo: while (true) {
+        fn builderWait(address_space: *Builder.AddressSpace, thread_space: *Builder.ThreadSpace, builder: *Builder) bool {
+            for (builder.groups()) |group| {
                 for (group.targets()) |target| {
-                    if (target.lock.get(task) == .blocking) continue :lo;
-                } else {
-                    break;
+                    for (comptime meta.tagList(Task)) |task| {
+                        if (target.lock.get(task) == .blocking) {
+                            return true;
+                        }
+                    }
+                }
+            } else {
+                if (address_space.count() != 1) {
+                    return true;
+                }
+                if (thread_space.count() != 0) {
+                    return true;
                 }
             }
+            return false;
         }
         const decls = struct {
             const path_spec: file.PathSpec = builder_spec.path();
