@@ -59,6 +59,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
     var thread_space: Builder.ThreadSpace = .{};
     var allocator: Builder.Allocator = Builder.Allocator.init(&address_space, Builder.max_thread_count);
+    defer allocator.deinit(&address_space, Builder.max_thread_count);
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
@@ -67,20 +68,28 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
     try build_fn(&allocator, &builder);
     var target_task: build.Task = .build;
-    for (cmds) |arg| {
+    for (cmds, 0..) |arg, idx| {
         const command: []const u8 = meta.manyToSlice(arg);
-        if (mach.testEqualMany8(command, "build")) {
-            target_task = .build;
-        } else if (mach.testEqualMany8(command, "run")) {
-            target_task = .run;
-        } else if (mach.testEqualMany8(command, "show")) {
-            Builder.debug.builderCommandNotice(&builder, true, true, true);
-        } else for (builder.groups()) |group| {
+        if (builder.args_len == builder.args.len) {
+            if (mach.testEqualMany8(command, "build")) {
+                target_task = .build;
+                continue;
+            } else if (mach.testEqualMany8(command, "--")) {
+                builder.args_len = idx +% 6;
+                continue;
+            } else if (mach.testEqualMany8(command, "run")) {
+                target_task = .run;
+                continue;
+            } else if (mach.testEqualMany8(command, "show")) {
+                return Builder.debug.builderCommandNotice(&builder, true, true, true);
+            }
+        }
+        for (builder.groups()) |group| {
             if (mach.testEqualMany8(command, group.name)) {
                 try meta.wrap(group.acquireLock(&address_space, &thread_space, &allocator, target_task));
             } else for (group.targets()) |target| {
                 if (mach.testEqualMany8(command, target.name)) {
-                    try meta.wrap(target.acquireLock(&address_space, &thread_space, &allocator, &builder, target_task, Builder.max_thread_count, 0));
+                    try meta.wrap(target.executeToplevel(&address_space, &thread_space, &allocator, &builder, target_task));
                 }
             }
         }
