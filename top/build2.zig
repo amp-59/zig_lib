@@ -162,13 +162,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         };
         pub const Target = struct {
             name: [:0]const u8,
-            root: [:0]const u8,
             descr: ?[:0]const u8 = null,
+            root: [:0]const u8,
             lock: Lock,
+            build_cmd: *types.BuildCommand,
+
             deps: []Dependency = &.{},
             deps_len: u64 = 0,
-            build_cmd: *types.BuildCommand,
-            run_args: Args,
+
+            args: [][*:0]u8 = &.{},
+            args_len: u64 = 0,
+
             pub const Lock = virtual.ThreadSafeSet(6, State, Task);
             const CompiledExecutable = struct {
                 lock: Lock = .{},
