@@ -1,3 +1,6 @@
+comptime {
+    @compileError("Converts a struct-of-bool to an enumeration based on an assumed complete usage of the struct-of-bool.");
+}
 const gen = @import("./gen.zig");
 const mem = gen.mem;
 const sys = gen.sys;
@@ -101,17 +104,17 @@ fn writeFieldType(comptime field: canonical.CanonicalFieldSpec, array: *Array) v
     }
     array.writeMany("}\n}\n};\n");
 }
-fn writeCanonicalStruct(array: *Array, comptime spec: canonical.CanonicalSpec) void {
-    inline for (spec.fields) |field| writeFieldType(field, array);
-    array.writeMany("pub const " ++ spec.type_name ++ "=packed struct{\n");
+fn writeCanonicalStruct(array: *Array, comptime canonical_spec: canonical.CanonicalSpec) void {
+    inline for (canonical_spec.fields) |field| writeFieldType(field, array);
+    array.writeMany("pub const " ++ canonical_spec.type_name ++ "=packed struct{\n");
     array.writeMany("index:u8,\n");
-    inline for (spec.fields) |field| {
+    inline for (canonical_spec.fields) |field| {
         array.writeMany(field.dst_name ++ ":" ++ field.dst_type_name ++ ",\n");
     }
     array.writeMany("pub fn convert(detail:anytype)" ++ spec.type_name ++ "{\n");
     array.writeMany("return .{\n");
     array.writeMany(".index=detail.index,\n");
-    inline for (spec.fields) |field| {
+    inline for (canonical_spec.fields) |field| {
         array.writeMany("." ++ field.dst_name ++ "=" ++ field.dst_type_name ++ ".convert(detail." ++ field.src_name ++ "),\n");
     }
     array.writeMany("};\n}\n};\n");

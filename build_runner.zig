@@ -9,6 +9,7 @@ const srg = blk: {
 };
 const proc = srg.proc;
 const mach = srg.mach;
+const file = srg.file;
 const meta = srg.meta;
 const spec = srg.spec;
 const build = srg.build2;
