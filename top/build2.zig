@@ -292,17 +292,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             inline fn createBinaryPath(target: *Target, allocator: *Allocator, builder: *Builder) types.Path {
                 return .{ .absolute = builder.build_root, .relative = binaryRelative(target, allocator) };
             }
-            inline fn createAuxiliaryPath(target: *Target, allocator: *Allocator, builder: *Builder, kind: types.AuxOutputMode) types.Path {
+            fn createAuxiliaryPath(target: *Target, allocator: *Allocator, builder: *Builder, kind: types.AuxOutputMode) types.Path {
                 return .{ .absolute = builder.build_root, .relative = auxiliaryRelative(target, allocator, kind) };
             }
-            fn emitBinary(target: *Target, allocator: *Allocator, builder: *Builder) void {
+            pub fn emitBinary(target: *Target, allocator: *Allocator, builder: *Builder) void {
                 target.build_cmd.emit_bin = .{ .yes = createBinaryPath(target, allocator, builder) };
             }
-            fn emitAuxiliary(target: *Target, allocator: *Allocator, builder: *Builder) void {
-                target.build_cmd.emit_bin = .{ .yes = createAuxiliaryPath(target, allocator, builder) };
-            }
-            fn emitAssembly(target: *Target, allocator: *Allocator, builder: *Builder) void {
-                emitAuxiliary(target, allocator, builder, .@"asm");
+            pub fn emitAuxiliary(target: *Target, allocator: *Allocator, builder: *Builder, kind: types.AuxOutputMode) void {
+                target.build_cmd.emit_bin = .{ .yes = createAuxiliaryPath(target, allocator, builder, kind) };
             }
             fn rootSourcePath(target: *Target, builder: *Builder) types.Path {
                 return .{ .absolute = builder.build_root, .relative = target.root };
@@ -316,17 +313,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn dependOnObject(target: *Target, allocator: *Allocator, dependency: *Target) void {
                 target.dependOnBuild(allocator, dependency);
                 target.addFile(allocator, dependency.binaryPath());
-            }
-            fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
-                if (target.build_cmd.files) |*files| {
-                    const buf: []types.Path = allocator.reallocateIrreversible(types.Path, @constCast(files.*), files.len +% 1);
-                    buf[files.len] = path;
-                    target.build_cmd.files = buf;
-                } else {
-                    const buf: []types.Path = allocator.allocateIrreversible(types.Path, 1);
-                    buf[0] = path;
-                    target.build_cmd.files = buf;
-                }
             }
             fn transform(target: *Target, task: Task, old_state: State, new_state: State) bool {
                 const ret: bool = target.lock.atomicTransform(task, old_state, new_state);
