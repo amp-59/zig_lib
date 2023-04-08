@@ -59,20 +59,35 @@ fn bitCastTests() !void {
     try builtin.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
 }
 fn memoryTests() !void {
-    const Element = u3;
-    const T = [16:0]Element;
-    const E = meta.Element(T);
-    const U = meta.ArrayPointerToSlice(*T);
-    try builtin.expect([:0]Element == U);
-    builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, @typeInfo(T).Array.len));
-    comptime var t: T = T{ 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 0 };
-    comptime var u: U = &t;
-    builtin.assertEqual(type, meta.Element(T), E);
-    builtin.assertEqual(type, meta.Element(*T), E);
-    for (meta.arrayPointerToSlice(&t), 0..) |e, i| builtin.assertEqual(E, e, u[i]);
-    for (meta.sliceToArrayPointer(u), 0..) |e, i| builtin.assertEqual(E, e, t[i]);
-    const m: [:0]Element = meta.manyToSlice(u.ptr);
-    builtin.assertEqual(u64, 4, m.len);
+    {
+        const Element = u3;
+        const T = [16:0]Element;
+        const E = meta.Element(T);
+        const U = meta.ArrayPointerToSlice(*T);
+        try builtin.expect([:0]Element == U);
+        builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, @typeInfo(T).Array.len));
+        comptime var t: T = T{ 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 0 };
+        comptime var u: U = &t;
+        builtin.assertEqual(type, meta.Element(T), E);
+        builtin.assertEqual(type, meta.Element(*T), E);
+        for (meta.arrayPointerToSlice(&t), 0..) |e, i| builtin.assertEqual(E, e, u[i]);
+        for (meta.sliceToArrayPointer(u), 0..) |e, i| builtin.assertEqual(E, e, t[i]);
+        const m: [:0]Element = meta.manyToSlice(u.ptr);
+        builtin.assertEqual(u64, 4, m.len);
+    }
+    const T = struct {
+        x: u64 = 0,
+        y: u32 = 0,
+        z: u16 = 0,
+    };
+    const c: []const meta.Initializer = &meta.initializers(T, .{ .x = 25, .y = 14 });
+    var t: T = .{};
+    meta.initialize(T, &t, c);
+
+    try builtin.expectEqual(T, t, .{ .x = 25, .y = 14 });
+    builtin.expectEqual(T, t, .{ .x = 25, .y = 15 }) catch |err| {
+        builtin.assertEqual(anyerror, error.UnexpectedValue, err);
+    };
 }
 pub fn main(_: anytype, _: [][*:0]u8) !void {
     try basicTests();
