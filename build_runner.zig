@@ -1,59 +1,12 @@
 const root = @import("@build");
-const srg = blk: {
-    if (@hasDecl(root, "srg")) {
-        break :blk root.srg;
-    }
-    if (@hasDecl(root, "zig_lib")) {
-        break :blk root.zig_lib;
-    }
-};
-const proc = srg.proc;
-const mach = srg.mach;
-const file = srg.file;
-const meta = srg.meta;
-const spec = srg.spec;
-const build = srg.build2;
-const builtin = srg.builtin;
+const srg = root.srg;
 
-pub usingnamespace proc.start;
+pub usingnamespace srg.proc.start;
+pub usingnamespace root;
 
-pub const message_style: [:0]const u8 =
-    if (@hasDecl(root, "message_style")) root.message_style else "\x1b[2m";
+pub usingnamespace srg.builtin.debug;
 
-pub const logging_override: builtin.Logging.Override =
-    if (@hasDecl(root, "logging_override")) root.logging_override else .{
-    .Success = null,
-    .Acquire = null,
-    .Release = null,
-    .Error = null,
-    .Fault = null,
-};
-pub const logging_default: builtin.Logging.Default =
-    if (@hasDecl(root, "logging_default")) root.logging_default else .{
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = true,
-    .Fault = true,
-};
-pub const signal_handlers: builtin.SignalHandlers =
-    if (@hasDecl(root, "signal_handlers")) root.signal_handlers else .{
-    .segmentation_fault = true,
-    .floating_point_error = false,
-    .illegal_instruction = false,
-    .bus_error = false,
-};
-pub const runtime_assertions: bool =
-    if (@hasDecl(root, "runtime_assertions")) root.runtime_assertions else false;
-
-pub const Builder =
-    if (@hasDecl(root, "Builder"))
-    root.Builder
-else
-    build.GenericBuilder(.{
-        .errors = spec.builder.errors.noexcept,
-        .logging = spec.builder.logging.silent,
-    });
+const Builder = if (@hasDecl(root, "Builder")) root.Builder else srg.build2.Builder(srg.spec.builder.default);
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
@@ -65,31 +18,31 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     }
     const cmds: [][*:0]u8 = args[5..];
     const build_fn = root.buildMain;
-    var builder: Builder = try meta.wrap(Builder.init(args, vars));
+    var builder: Builder = try srg.meta.wrap(Builder.init(args, vars));
     try build_fn(&allocator, &builder);
-    var target_task: build.Task = .build;
+    var target_task: srg.build2.Task = .build;
     for (cmds, 0..) |arg, idx| {
-        const command: []const u8 = meta.manyToSlice(arg);
+        const command: []const u8 = srg.meta.manyToSlice(arg);
         if (builder.args_len == builder.args.len) {
-            if (mach.testEqualMany8(command, "build")) {
+            if (srg.mach.testEqualMany8(command, "build")) {
                 target_task = .build;
                 continue;
-            } else if (mach.testEqualMany8(command, "--")) {
+            } else if (srg.mach.testEqualMany8(command, "--")) {
                 builder.args_len = idx +% 6;
                 continue;
-            } else if (mach.testEqualMany8(command, "run")) {
+            } else if (srg.mach.testEqualMany8(command, "run")) {
                 target_task = .run;
                 continue;
-            } else if (mach.testEqualMany8(command, "show")) {
+            } else if (srg.mach.testEqualMany8(command, "show")) {
                 return Builder.debug.builderCommandNotice(&builder, true, true, true);
             }
         }
         for (builder.groups()) |group| {
-            if (mach.testEqualMany8(command, group.name)) {
-                try meta.wrap(group.acquireLock(&address_space, &thread_space, &allocator, target_task));
+            if (srg.mach.testEqualMany8(command, group.name)) {
+                try srg.meta.wrap(group.acquireLock(&address_space, &thread_space, &allocator, target_task));
             } else for (group.targets()) |target| {
-                if (mach.testEqualMany8(command, target.name)) {
-                    try meta.wrap(target.executeToplevel(&address_space, &thread_space, &allocator, &builder, target_task));
+                if (srg.mach.testEqualMany8(command, target.name)) {
+                    try srg.meta.wrap(target.executeToplevel(&address_space, &thread_space, &allocator, &builder, target_task));
                 }
             }
         }
