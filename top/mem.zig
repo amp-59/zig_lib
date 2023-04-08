@@ -848,7 +848,7 @@ pub const debug = opaque {
             "-",           builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
             " bytes\n",
         });
     }
@@ -860,7 +860,7 @@ pub const debug = opaque {
             "-",           builtin.fmt.ud64(index).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
             " bytes\n",
         });
     }
@@ -940,7 +940,7 @@ pub const debug = opaque {
             "-",           builtin.fmt.ud64(index orelse 0).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
             " bytes (",    @errorName(arena_error),
             ")\n",
         });
@@ -953,7 +953,7 @@ pub const debug = opaque {
             "-",           builtin.fmt.ud64(index orelse 0).readAll(),
             ", ",          builtin.fmt.ux64(lb_addr).readAll(),
             "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr - lb_addr).readAll(),
+            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
             " bytes (",    @errorName(arena_error),
             ")\n",
         });
@@ -1258,13 +1258,13 @@ pub const AbstractSpec = union(enum) {
 fn lhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
     const lb_addr: u64 = @ptrToInt(lu_values.ptr);
     const ab_addr: u64 = @ptrToInt(ax_values.ptr);
-    const lhs_len: u64 = @divExact(ab_addr - lb_addr, @sizeOf(T));
+    const lhs_len: u64 = @divExact(ab_addr -% lb_addr, @sizeOf(T));
     return lu_values[0..lhs_len];
 }
 fn rhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
     const up_addr: u64 = mach.mulAdd64(@ptrToInt(lu_values.ptr), @sizeOf(T), lu_values.len);
     const xb_addr: u64 = mach.mulAdd64(@ptrToInt(ax_values.ptr), @sizeOf(U), ax_values.len);
-    const rhs_len: u64 = @divExact(up_addr - xb_addr, @sizeOf(T));
+    const rhs_len: u64 = @divExact(up_addr -% xb_addr, @sizeOf(T));
     return lu_values[0..rhs_len];
 }
 fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
