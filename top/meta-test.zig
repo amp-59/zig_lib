@@ -81,8 +81,7 @@ fn memoryTests() !void {
         z: u16 = 0,
     };
     const c: []const meta.Initializer = &meta.initializers(T, .{ .x = 25, .y = 14 });
-    var t: T = .{};
-    meta.initialize(T, &t, c);
+    var t: T = meta.initialize(T, c);
 
     try builtin.expectEqual(T, t, .{ .x = 25, .y = 14 });
     builtin.expectEqual(T, t, .{ .x = 25, .y = 15 }) catch |err| {
