@@ -409,19 +409,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn addTarget(
                 group: *Group,
                 allocator: *Allocator,
-                comptime extra: anytype,
+                extra: anytype,
                 name: [:0]const u8,
                 root: [:0]const u8,
             ) !*Target {
                 if (group.trgs_len == group.trgs.len) {
-                    group.trgs = allocator.reallocateIrreversible(*Target, group.trgs, (group.trgs_len +% 1) *% 2);
+                    group.trgs = reallocate(allocator, *Target, group.trgs, (group.trgs_len +% 1) *% 2);
                 }
-                const ret: *Target = try group.builder.createTarget(allocator, name, root, extra);
+                const ret: *Target = create(allocator, Target);
+                ret.build_cmd = create(allocator, types.BuildCommand);
+                buildExtra(ret.build_cmd, extra);
+                group.builder.createTarget(allocator, name, root, ret);
                 group.trgs[group.trgs_len] = ret;
                 group.trgs_len +%= 1;
                 return ret;
             }
             pub fn targets(group: *const Group) []*Target {
+                @setRuntimeSafety(false);
                 return group.trgs[0..group.trgs_len];
             }
         };
@@ -434,6 +438,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
         pub const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub fn groups(builder: *const Builder) []*Group {
+            @setRuntimeSafety(false);
             return builder.grps[0..builder.grps_len];
         }
         fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
