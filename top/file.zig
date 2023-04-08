@@ -692,7 +692,7 @@ pub fn indexOfDirnameFinish(pathname: []const u8) u64 {
 }
 pub fn indexOfBasenameStart(pathname: []const u8) u64 {
     const index: u64 = pathnameLimit(pathname);
-    return index + builtin.int(u64, pathname[index] == '/');
+    return index +% builtin.int(u64, pathname[index] == '/');
 }
 pub fn dirname(pathname: []const u8) []const u8 {
     return pathname[0..indexOfDirnameFinish(pathname)];
@@ -987,7 +987,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors, u64
         if (logging.Acquire) {
             mem.debug.mapNotice(addr, len);
         }
-        return addr + st.size;
+        return addr +% st.size;
     } else |map_error| {
         if (logging.Error) {
             mem.debug.mapError(map_error, addr, len);
@@ -1059,17 +1059,17 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
             if (random.data.len() == 0) {
                 sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
             }
-            if (high_alignment + low_alignment > bytes) {
+            if (high_alignment +% low_alignment > bytes) {
                 @compileError("requested type " ++ @typeName(T) ++ " is too large");
             }
             const s_lb_addr: u64 = random.data.impl.undefined_byte_address();
             const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
-            const s_up_addr: u64 = s_ab_addr + high_alignment;
+            const s_up_addr: u64 = s_ab_addr +% high_alignment;
             if (s_up_addr >= random.data.impl.unwritable_byte_address()) {
                 random.data.undefineAll();
                 const t_lb_addr: u64 = random.data.impl.undefined_byte_address();
                 const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
-                const t_up_addr: u64 = t_ab_addr + high_alignment;
+                const t_up_addr: u64 = t_ab_addr +% high_alignment;
                 sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
                 random.data.define(t_up_addr - t_lb_addr);
                 return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
@@ -1123,12 +1123,12 @@ pub fn find(vars: []const [*:0]u8, name: [:0]const u8) !u64 {
             const path_s: [:0]u8 = entry[path_key_s.len..];
             var i: u64 = 0;
             var j: u64 = 0;
-            while (i < path_s.len) : (i += 1) {
-                i += builtin.int(u64, path_s[i] == '\\');
+            while (i < path_s.len) : (i +%= 1) {
+                i +%= builtin.int(u64, path_s[i] == '\\');
                 if (path_s[i] == ':') {
                     path_s[i] = 0;
                     defer path_s[i] = ':';
-                    defer j = i + 1;
+                    defer j = i +% 1;
                     if (determineFound(path_s[j..i :0], name)) |dir_fd| {
                         return dir_fd;
                     }
