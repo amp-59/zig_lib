@@ -233,7 +233,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
         pub inline fn unmapped_byte_count(allocator: *const Allocator) u64 {
             return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
         }
-        pub inline fn alignAbove(allocator: *Allocator, comptime alignment: u64) u64 {
+        pub inline fn alignAbove(allocator: *Allocator, alignment: u64) u64 {
             allocator.ub_addr = mach.alignA64(allocator.ub_addr, alignment);
             return allocator.ub_addr;
         }
