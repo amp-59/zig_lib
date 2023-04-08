@@ -42,7 +42,8 @@ const PartialCommand = struct {
 
 const exe_default: PartialCommand = .{ .kind = .exe, .mode = .ReleaseSmall };
 const obj_default: PartialCommand = .{ .kind = .obj, .mode = .ReleaseSmall };
-const exe_debug: PartialCommand = .{ .kind = .exe, .mode = .Debug, .strip = false };
+const exe_debug: PartialCommand = .{ .kind = .exe, .mode = .Debug };
+const exe_build: PartialCommand = .{ .kind = .exe, .mode = .Debug, .strip = false };
 
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
@@ -56,8 +57,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const list_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "list_test",    "top/list-test.zig");
     const fmt_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "fmt_test",     "top/fmt-test.zig");
     const render_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "render_test",  "top/render-test.zig");
-    const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_debug,   "build_test",   "build_runner.zig");
-    const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_debug,   "build2_test",  "top/build2-test.zig");
+    const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,   "build_test",   "build_runner.zig");
+    const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",  "top/build2-test.zig");
     const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",  "top/serial-test.zig");
     const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",  "top/thread-test.zig");
     const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test", "top/virtual-test.zig");
@@ -88,9 +89,9 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_abstract_specs: *Builder.Target =  try mg.addTarget(allocator, obj_default,    "mg_abstract_specs",    "top/mem/serial_abstract_specs.zig");
     const mg_impl_detail: *Builder.Target =     try mg.addTarget(allocator, obj_default,    "mg_impl_detail",       "top/mem/serial_impl_detail.zig");
     const mg_ctn_detail: *Builder.Target =      try mg.addTarget(allocator, obj_default,    "mg_ctn_detail",        "top/mem/serial_ctn_detail.zig");
-    const mg_new_type_specs: *Builder.Target =  try mg.addTarget(allocator, exe_default,    "mg_new_type_specs",    "top/mem/new_type_specs-aux.zig");
-    const mg_reference_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
-    const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_impls",   "top/mem/container_impls-aux.zig");
+    const mg_new_type_specs: *Builder.Target =  try mg.addTarget(allocator, exe_debug,      "mg_new_type_specs",    "top/mem/new_type_specs-aux.zig");
+    const mg_reference_impls: *Builder.Target = try mg.addTarget(allocator, exe_debug,      "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
+    const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_debug,      "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg_allocator_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
 
@@ -143,7 +144,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     generate_build.descr =      "Generate builder command line implementation";
 
     // Dependencies:
-    mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
     mg_new_type_specs.dependOnRun(allocator,        mg_touch);
     mg_new_type_specs.dependOnObject(allocator,     mg_options);
     mg_new_type_specs.dependOnObject(allocator,     mg_params);
@@ -151,8 +151,11 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_new_type_specs.dependOnObject(allocator,     mg_specs);
     mg_new_type_specs.dependOnObject(allocator,     mg_ctn_detail);
     mg_new_type_specs.dependOnObject(allocator,     mg_impl_detail);
+    mg_container_impls.dependOnRun(allocator,       mg_new_type_specs);
+    mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
     mg_container_impls.dependOnObject(allocator,    mg_ctn_detail);
     mg_container_impls.dependOnObject(allocator,    mg_impl_detail);
+    mg_reference_impls.dependOnRun(allocator,       mg_new_type_specs);
     mg_reference_impls.dependOnObject(allocator,    mg_ctn_detail);
     mg_reference_impls.dependOnObject(allocator,    mg_impl_detail);
 
