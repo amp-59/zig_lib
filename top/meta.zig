@@ -1012,6 +1012,34 @@ pub inline fn analysisEnd(comptime name: []const u8) void {
     asm volatile ("# LLVM-MCA-END " ++ name);
 }
 
+pub const Initializer = struct {
+    dest_off: u64,
+    src_addr: u64,
+    src_len: u64,
+};
+pub inline fn initializers(comptime T: type, comptime any: anytype) [@typeInfo(@TypeOf(any)).Struct.fields.len]Initializer {
+    const fields: []const builtin.Type.StructField = @typeInfo(@TypeOf(any)).Struct.fields;
+    var inits: [fields.len]Initializer = undefined;
+    inline for (fields, 0..) |field, idx| {
+        const field_type: type = Field(T, field.name);
+        inits[idx] = .{
+            .dest_off = @offsetOf(T, field.name),
+            .src_addr = @ptrToInt(&@as(field_type, @field(any, field.name))),
+            .src_len = @sizeOf(field_type),
+        };
+    }
+    return inits;
+}
+pub fn initialize(comptime T: type, dest: *T, inits: []const Initializer) void {
+    for (inits) |init| {
+        @memcpy(
+            @intToPtr([*]u8, @ptrToInt(dest) +% init.dest_off),
+            @intToPtr([*]const u8, init.src_addr),
+            init.src_len,
+        );
+    }
+}
+
 pub fn UniformData(comptime bits: u16) type {
     const word_size: u16 = @bitSizeOf(usize);
     const real_bits: u16 = alignAW(bits);
