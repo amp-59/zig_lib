@@ -257,41 +257,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
                 }
             }
-            pub fn addDependency(target: *Target, allocator: *Allocator, dependency: *Target, task: Task, state: State) void {
-                if (target.deps_len == target.deps.len) {
-                    target.deps = allocator.reallocateIrreversible(Dependency, target.deps, (target.deps_len +% 1) *% 2);
-                }
-                target.deps[target.deps_len] = .{ .target = dependency, .task = task, .state = state };
-                target.deps_len +%= 1;
-            }
-            pub fn addRunArgument(target: *Target, allocator: *Allocator, arg: []const u8) void {
-                if (target.args_len == target.args.len) {
-                    target.args = allocator.reallocateIrreversible([*:0]u8, target.args, (target.args_len +% 1) *% 2);
-                }
-                target.args[target.args_len] = strdup(allocator, arg).ptr;
-                target.args_len +%= 1;
-            }
-            fn addRunArguments(target: *Target, allocator: *Allocator, builder: *Builder) void {
-                const run_args_len: u64 = builder.args.len -% builder.args_len;
-                if (target.args.len <= target.args_len +% run_args_len) {
-                    target.args = allocator.reallocateIrreversible([*:0]u8, target.args, target.args_len +% run_args_len +% 1);
-                }
-                for (builder.args[builder.args_len..]) |run_arg| {
-                    target.args[target.args_len] = run_arg;
-                    target.args_len +%= 1;
-                }
-            }
-            pub fn buildDependencies(target: *const Target) []Dependency {
-                return target.deps[0..target.deps_len];
-            }
-            pub fn runArguments(target: *const Target) [][*:0]u8 {
-                return target.args[0..target.args_len];
-            }
             fn binaryRelative(target: *Target, allocator: *Allocator) [:0]const u8 {
                 switch (target.build_cmd.kind) {
-                    .exe => return concatenate(allocator, u8, &.{ tok.exe_out_dir, target.name }),
-                    .lib => return concatenate(allocator, u8, &.{ tok.exe_out_dir, target.name, tok.lib_ext }),
-                    .obj => return concatenate(allocator, u8, &.{ tok.exe_out_dir, target.name, tok.obj_ext }),
+                    .exe => return concatenate(allocator, &.{ tok.exe_out_dir, target.name }),
+                    .lib => return concatenate(allocator, &.{ tok.exe_out_dir, target.name, tok.lib_ext }),
+                    .obj => return concatenate(allocator, &.{ tok.exe_out_dir, target.name, tok.obj_ext }),
                 }
             }
             fn auxiliaryRelative(target: *Target, allocator: *Allocator, kind: types.AuxOutputMode) [:0]const u8 {
@@ -381,6 +351,54 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     builtin.proc.exit(2);
                 }
+            }
+            pub fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
+                @setRuntimeSafety(false);
+                if (target.build_cmd.files) |*files| {
+                    const buf: []types.Path = reallocate(allocator, types.Path, @constCast(files.*), files.len +% 1);
+                    buf[files.len] = path;
+                    target.build_cmd.files = buf;
+                } else {
+                    const buf: []types.Path = allocate(allocator, types.Path, 1);
+                    buf[0] = path;
+                    target.build_cmd.files = buf;
+                }
+            }
+            pub fn addDependency(target: *Target, allocator: *Allocator, dependency: *Target, task: Task, state: State) void {
+                @setRuntimeSafety(false);
+                if (target.deps_len == target.deps.len) {
+                    target.deps = reallocate(allocator, Dependency, target.deps, (target.deps_len +% 1) *% 2);
+                }
+                target.deps[target.deps_len] = .{ .target = dependency, .task = task, .state = state };
+                target.deps_len +%= 1;
+            }
+            pub fn addRunArgument(target: *Target, allocator: *Allocator, arg: []const u8) void {
+                @setRuntimeSafety(false);
+                if (target.args_len == target.args.len) {
+                    target.args = reallocate(allocator, [*:0]u8, target.args, (target.args_len +% 1) *% 2);
+                }
+                target.args[target.args_len] = strdup(allocator, arg).ptr;
+                target.args_len +%= 1;
+            }
+            fn addRunArguments(target: *Target, allocator: *Allocator, builder: *Builder) void {
+                @setRuntimeSafety(false);
+                const run_args_len: u64 = builder.args.len -% builder.args_len;
+                if (target.args.len <= target.args_len +% run_args_len) {
+                    target.args = reallocate(allocator, [*:0]u8, target.args, target.args_len +% run_args_len +% 1);
+                }
+                for (builder.args[builder.args_len..]) |run_arg| {
+                    target.args[target.args_len] = run_arg;
+                    target.args_len +%= 1;
+                }
+                target.args[target.args_len] = builtin.zero([*:0]u8);
+            }
+            pub fn buildDependencies(target: *const Target) []Dependency {
+                @setRuntimeSafety(false);
+                return target.deps[0..target.deps_len];
+            }
+            pub fn runArguments(target: *const Target) [][*:0]u8 {
+                @setRuntimeSafety(false);
+                return target.args[0..target.args_len];
             }
         };
         pub const Group = struct {
