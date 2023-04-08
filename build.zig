@@ -6,9 +6,8 @@ const meta = srg.meta;
 const build = srg.build2;
 const builtin = srg.builtin;
 
-pub usingnamespace proc.start;
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const runtime_assertions: bool = false;
 
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
 
@@ -26,9 +25,7 @@ const mod_deps: []const build.ModuleDependency = &.{
 const PartialCommand = struct {
     kind: build.OutputMode,
     mode: builtin.Mode,
-    modules: []const build.Module = mods,
-    dependencies: []const build.ModuleDependency = mod_deps,
-    omit_frame_pointer: bool = false,
+
     image_base: u64 = 0x10000,
     strip: bool = true,
     static: bool = true,
@@ -37,11 +34,15 @@ const PartialCommand = struct {
     reference_trace: bool = true,
     single_threaded: bool = true,
     function_sections: bool = true,
+    omit_frame_pointer: bool = false,
+
+    modules: []const build.Module = mods,
+    dependencies: []const build.ModuleDependency = mod_deps,
 };
 
 const exe_default: PartialCommand = .{ .kind = .exe, .mode = .ReleaseSmall };
 const obj_default: PartialCommand = .{ .kind = .obj, .mode = .ReleaseSmall };
-const exe_debug: PartialCommand = .{ .kind = .exe, .mode = .Debug };
+const exe_debug: PartialCommand = .{ .kind = .exe, .mode = .Debug, .strip = false };
 
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
@@ -55,7 +56,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const list_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "list_test",    "top/list-test.zig");
     const fmt_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "fmt_test",     "top/fmt-test.zig");
     const render_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "render_test",  "top/render-test.zig");
-    const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_debug,   "build_test",   "top/build2-test.zig");
+    const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_debug,   "build_test",   "build_runner.zig");
+    const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_debug,   "build2_test",  "top/build2-test.zig");
     const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",  "top/serial-test.zig");
     const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",  "top/thread-test.zig");
     const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test", "top/virtual-test.zig");
@@ -104,7 +106,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     list_test.descr =           "Test library generic linked list";
     fmt_test.descr =            "Test user formatting functions";
     render_test.descr =         "Test library value rendering functions";
-    build_test.descr =          "Test this builder";
+    build_test.descr =          "Test the library build runner and build program";
+    build2_test.descr =         "Test the special test build program";
     serial_test.descr =         "Test data serialisation functions";
     thread_test.descr =         "Test clone and thread-safe compound/tagged sets";
     virtual_test.descr =        "Test address spaces, sub address spaces, and arenas";
@@ -157,6 +160,10 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     build_test.addRunArgument(allocator, builder.build_root);
     build_test.addRunArgument(allocator, builder.cache_root);
     build_test.addRunArgument(allocator, builder.global_cache_root);
+    build2_test.addRunArgument(allocator, builder.zig_exe);
+    build2_test.addRunArgument(allocator, builder.build_root);
+    build2_test.addRunArgument(allocator, builder.cache_root);
+    build2_test.addRunArgument(allocator, builder.global_cache_root);
 
     // zig fmt: on
 }
