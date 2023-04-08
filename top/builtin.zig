@@ -12,7 +12,6 @@ pub const Error = error{
     UnexpectedValue,
 };
 /// `E` must be an error type.
-///
 pub fn InternalError(comptime E: type) type {
     static.assert(@typeInfo(E) == .ErrorSet);
     return union(enum) {
