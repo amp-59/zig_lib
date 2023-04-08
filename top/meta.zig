@@ -1030,14 +1030,16 @@ pub inline fn initializers(comptime T: type, comptime any: anytype) [@typeInfo(@
     }
     return inits;
 }
-pub fn initialize(comptime T: type, dest: *T, inits: []const Initializer) void {
+pub fn initialize(comptime T: type, inits: []const Initializer) T {
+    var ret: T = undefined;
     for (inits) |init| {
         @memcpy(
-            @intToPtr([*]u8, @ptrToInt(dest) +% init.dest_off),
+            @intToPtr([*]u8, @ptrToInt(&ret) +% init.dest_off),
             @intToPtr([*]const u8, init.src_addr),
             init.src_len,
         );
     }
+    return ret;
 }
 
 pub fn UniformData(comptime bits: u16) type {
