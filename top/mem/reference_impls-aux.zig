@@ -23,7 +23,7 @@ pub const logging_override: builtin.Logging.Override = spec.logging.override.sil
 const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
 
-const Array = Allocator.StructuredStaticVector(u8, 1024 * 4096);
+const Array = Allocator.StructuredVector(u8);
 const Fn = impl_fn.Fn;
 const Expr = expr.Expr;
 
@@ -964,18 +964,32 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: 
     writeFunctions(allocator, array, impl_variant);
     array.writeMany("});\n}\n");
 }
-pub fn generateReferences() void {
+pub fn generateReferences() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
 
-    var array: Array = Array.init(&allocator, 1);
+    var array: Array = Array.init(&allocator, 1024 * 4096);
+    array.undefineAll();
 
-    const details: []const types.Implementation = attr.getImplDetails(&allocator);
+    var details: Allocator.StructuredVector(types.Implementation) =
+        try gen.readTrivialSerial(&allocator, types.Implementation, config.impl_detail_path);
 
-    for (details) |*impl_detail| {
-        writeTypeFunction(&allocator, &array, impl_detail);
+    for (types.Kind.list) |kind| {
+        for (details.readAll()) |*impl_detail| {
+            if (impl_detail.kind == kind) {
+                writeTypeFunction(&allocator, &array, impl_detail);
+            }
+        }
+        switch (kind) {
+            .automatic => gen.writeSourceFile(config.automatic_reference_path, u8, array.readAll()),
+            .static => gen.writeSourceFile(config.static_reference_path, u8, array.readAll()),
+            .dynamic => gen.writeSourceFile(config.dynamic_reference_path, u8, array.readAll()),
+            .parametric => gen.writeSourceFile(config.parametric_reference_path, u8, array.readAll()),
+        }
+        array.undefineAll();
     }
-    gen.writeSourceFile(config.reference_path, u8, array.readAll());
+
+    gen.appendSourceFile(config.reference_path, array.readAll());
 }
 pub const main = generateReferences;
