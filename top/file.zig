@@ -166,6 +166,7 @@ pub const FileStatus = extern struct {
     pub fn isSocket(st: FileStatus) bool {
         return st.mode.check(.socket);
     }
+
     pub fn isExecutable(st: FileStatus, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.check(.owner_execute);
@@ -174,6 +175,24 @@ pub const FileStatus = extern struct {
             return st.mode.check(.group_execute);
         }
         return st.mode.check(.other_execute);
+    }
+    pub fn isReadable(st: FileStatus, user_id: u16, group_id: u16) bool {
+        if (user_id == st.uid) {
+            return st.mode.check(.owner_read);
+        }
+        if (group_id == st.gid) {
+            return st.mode.check(.group_read);
+        }
+        return st.mode.check(.other_read);
+    }
+    pub fn isWritable(st: FileStatus, user_id: u16, group_id: u16) bool {
+        if (user_id == st.uid) {
+            return st.mode.check(.owner_write);
+        }
+        if (group_id == st.gid) {
+            return st.mode.check(.group_write);
+        }
+        return st.mode.check(.other_write);
     }
 };
 pub const Stat = FileStatus;
