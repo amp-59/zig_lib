@@ -993,13 +993,23 @@ pub fn generateContainers() !void {
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    const details: []const types.Container = attr.getCtnDetails(&allocator);
-    var ctn_index: u64 = 0;
-    while (ctn_index != details.len) : (ctn_index +%= 1) {
-        const save: Allocator.Save = allocator.save();
-        defer allocator.restore(save);
-        writeTypeFunction(&allocator, &array, &details[ctn_index]);
+
+    var details: Allocator.StructuredVector(types.Container) =
+        try gen.readTrivialSerial(&allocator, types.Container, config.ctn_detail_path);
+
+    inline for (types.Kind.list) |kind| {
+        for (details.readAll()) |*ctn_detail| {
+            if (ctn_detail.kind == kind) {
+                writeTypeFunction(&allocator, &array, ctn_detail);
+            }
+        }
+        switch (kind) {
+            .automatic => gen.appendSourceFile(config.automatic_container_path, array.readAll()),
+            .static => gen.appendSourceFile(config.static_container_path, array.readAll()),
+            .dynamic => gen.appendSourceFile(config.dynamic_container_path, array.readAll()),
+            .parametric => gen.appendSourceFile(config.parametric_container_path, array.readAll()),
+        }
+        array.undefineAll();
     }
-    gen.appendSourceFile(config.container_path, array.readAll());
 }
 pub const main = generateContainers;
