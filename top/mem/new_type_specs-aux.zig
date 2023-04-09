@@ -774,49 +774,69 @@ fn validateAllSerial(
         }
     }
 }
-pub fn newNewTypeSpecs() !void {
-    var address_space: AddressSpace = .{};
-    var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
-    defer allocator.deinit(&address_space);
-    @setEvalBranchQuota(1500);
-    comptime var x_p_infos: []const []const types.Specifier = &.{};
-    comptime var x_q_infos: []const []const types.Technique = &.{};
-    comptime var spec_sets: []const []const []const types.Specifier = &.{};
-    comptime var tech_sets: []const []const []const types.Technique = &.{};
+const data = blk: {
+    var x_p_infos: []const []const types.Specifier = &.{};
+    var x_q_infos: []const []const types.Technique = &.{};
+    var spec_sets: []const []const []const types.Specifier = &.{};
+    var tech_sets: []const []const []const types.Technique = &.{};
     inline for (attr.ctn_groups) |abstract_specs| {
         inline for (abstract_specs) |abstract_spec| {
-            const x_info: [3][]const types.Specifier = comptime populateParameters(abstract_spec);
-            const spec_set: []const []const types.Specifier = comptime populateSpecifiers(x_info[1], x_info[2]);
-            const tech_set: []const []const types.Technique = comptime populateTechniques(abstract_spec);
-            const q_info: []const types.Technique = comptime populateUniqueTechniqueKeys(tech_set);
+            const x_info: [3][]const types.Specifier = populateParameters(abstract_spec);
+            const spec_set: []const []const types.Specifier = populateSpecifiers(x_info[1], x_info[2]);
+            const tech_set: []const []const types.Technique = populateTechniques(abstract_spec);
+            const q_info: []const types.Technique = populateUniqueTechniqueKeys(tech_set);
             x_p_infos = x_p_infos ++ [1][]const types.Specifier{x_info[0]};
             x_q_infos = x_q_infos ++ [1][]const types.Technique{q_info};
             spec_sets = spec_sets ++ [1][]const []const types.Specifier{spec_set};
             tech_sets = tech_sets ++ [1][]const []const types.Technique{tech_set};
         }
     }
+    break :blk .{
+        .x_p_infos = x_p_infos,
+        .x_q_infos = x_q_infos,
+        .spec_sets = spec_sets,
+        .tech_sets = tech_sets,
+    };
+};
+
+pub fn newNewTypeSpecs() !void {
+    var address_space: AddressSpace = .{};
+    var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
+    defer allocator.deinit(&address_space);
+    @setEvalBranchQuota(1500);
     var array: Array = undefined;
     array.undefineAll();
-    try meta.wrap(writeSpecifications(&allocator, &array, x_p_infos, spec_sets, tech_sets, x_q_infos));
-    var indices: types.Implementation.Indices = limits(spec_sets, tech_sets);
-    var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, indices.impl));
-    indices = .{};
-    for (attr.abstract_specs, spec_sets, tech_sets) |abstract_spec, spec_set, tech_set| {
-        for (spec_set) |specs| {
-            for (tech_set) |techs| {
-                impl_details.writeOne(types.Implementation.init(abstract_spec, specs, techs, indices));
-                indices.impl +%= 1;
+
+    try gen.readFile(&array, config.container_template_path);
+    gen.writeSourceFile(config.container_common_path, u8, array.readAll());
+    array.undefineAll();
+
+    try meta.wrap(writeSpecifications(&allocator, &array));
+    var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, 0x400));
+
+    var spec_idx: u16 = 0;
+    var ctn_idx: u16 = 0;
+    var impl_idx: u16 = 0;
+
+    inline for (attr.ctn_groups) |abstract_specs| {
+        inline for (abstract_specs) |abstract_spec| {
+            for (data.spec_sets[spec_idx]) |specs| {
+                for (data.tech_sets[spec_idx]) |techs| {
+                    impl_details.writeOne(types.Implementation.init(abstract_spec, specs, techs, .{
+                        .spec = spec_idx,
+                        .ctn = ctn_idx,
+                        .impl = impl_idx,
+                    }));
+                    impl_idx +%= 1;
+                }
+                ctn_idx +%= 1;
             }
-            indices.ctn +%= 1;
+            spec_idx +%= 1;
         }
-        indices.spec +%= 1;
     }
-    attr.setSpecs(&allocator, spec_sets);
-    attr.setTechs(&allocator, tech_sets);
-    attr.setOptions(&allocator, x_q_infos);
-    attr.setParams(&allocator, x_p_infos);
-    attr.setImplDetails(&allocator, impl_details.readAll());
-    attr.setCtnDetails(&allocator, attr.ctn_details);
-    try validateAllSerial(&allocator, x_p_infos, x_q_infos, spec_sets, tech_sets, impl_details);
+    gen.writeSourceFile(config.impl_detail_path, types.Implementation, impl_details.readAll());
+    gen.writeSourceFile(config.ctn_detail_path, types.Container, attr.ctn_details);
+
+    try validateAllSerial(&allocator, data.x_p_infos, data.x_q_infos, data.spec_sets, data.tech_sets, impl_details);
 }
 pub const main = newNewTypeSpecs;
