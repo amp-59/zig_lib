@@ -1,4 +1,4 @@
-const srg = @import("zig_lib");
+const srg = @import("../zig_lib.zig");
 const sys = srg.sys;
 const fmt = srg.fmt;
 const mem = srg.mem;
