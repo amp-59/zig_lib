@@ -28,6 +28,7 @@ pub const Kind = enum(u2) {
     dynamic,
     static,
     parametric,
+    pub const list: []const Kind = meta.tagList(Kind);
 };
 pub const Layout = enum(u1) {
     structured,
