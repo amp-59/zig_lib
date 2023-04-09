@@ -58,6 +58,7 @@ fn bitCastTests() !void {
     try builtin.expect(u9 == @TypeOf(meta.leastBitCast(s)));
     try builtin.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
 }
+
 fn memoryTests() !void {
     {
         const Element = u3;
