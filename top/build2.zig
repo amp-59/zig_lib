@@ -40,6 +40,7 @@ pub const BuilderSpec = struct {
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         arena_aligned_bytes: u64 = 8 * 1024 * 1024,
         stack_lb_addr: u64 = 0x700000000000,
+        show_state: bool = false,
     };
     pub const Logging = packed struct {
         command: proc.CommandSpec.Logging = .{},
@@ -215,6 +216,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }, void) {
                 if (task == .run and target.build_cmd.kind == .exe) {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0));
+                    if (target.lock.get(.build) == .failed) {
+                        target.assertTransform(.run, .unavailable, .failed);
+                    }
                 }
                 if (target.transform(task, .ready, .blocking)) {
                     for (target.buildDependencies()) |dep| {
@@ -306,7 +310,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn transform(target: *Target, task: Task, old_state: State, new_state: State) bool {
                 const ret: bool = target.lock.atomicTransform(task, old_state, new_state);
-                if (builtin.logging_general.Success) {
+                if (builtin.logging_general.Success or builder_spec.options.show_state) {
                     if (ret) {
                         debug.transformNotice(target, task, old_state, new_state);
                     } else {
@@ -318,11 +322,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn assertTransform(target: *Target, task: Task, old_state: State, new_state: State) void {
                 const res: bool = target.lock.atomicTransform(task, old_state, new_state);
                 if (res) {
-                    if (builtin.logging_general.Success) {
+                    if (builtin.logging_general.Success or builder_spec.options.show_state) {
                         debug.transformNotice(target, task, old_state, new_state);
                     }
                 } else {
-                    if (builtin.logging_general.Fault) {
+                    if (builtin.logging_general.Fault or builder_spec.options.show_state) {
                         debug.noTransformFault(target, task, old_state, new_state);
                     }
                     builtin.proc.exit(2);
