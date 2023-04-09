@@ -645,7 +645,7 @@ fn writeSpecificationDeduction(
     array.writeMany("const Specification");
     array.writeFormat(fmt.ud64(indices.spec));
     array.writeMany("=struct{\n");
-    writeFields(array, p_info);
+    writeParametersFields(array, p_info);
     array.writeMany("const Specification=@This();\nfn Implementation(spec:Specification)type{\n");
     try meta.wrap(
         writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, indices),
@@ -655,22 +655,28 @@ fn writeSpecificationDeduction(
 fn writeSpecifications(
     allocator: *Allocator,
     array: *Array,
-    x_p_infos: []const []const types.Specifier,
-    spec_sets: []const []const []const types.Specifier,
-    tech_sets: []const []const []const types.Technique,
-    x_q_infos: []const []const types.Technique,
 ) Allocator.allocate_void {
-    gen.copySourceFile(array, config.container_template_path);
     var indices: types.Implementation.Indices = .{};
-    for (attr.abstract_specs, x_p_infos, spec_sets, tech_sets, x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
-        const save: Allocator.Save = allocator.save();
-        defer allocator.restore(save);
-        try meta.wrap(
-            writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices),
-        );
-        indices.spec +%= 1;
+
+    for (types.Kind.list) |kind| {
+        for (attr.abstract_specs, data.x_p_infos, data.spec_sets, data.tech_sets, data.x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
+            if (abstract_spec.kind == kind) {
+                const save: Allocator.Save = allocator.save();
+                defer allocator.restore(save);
+                try meta.wrap(
+                    writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices),
+                );
+                indices.spec +%= 1;
+            }
+        }
+        switch (kind) {
+            .automatic => gen.writeSourceFile(config.automatic_container_path, u8, array.readAll()),
+            .static => gen.writeSourceFile(config.static_container_path, u8, array.readAll()),
+            .dynamic => gen.writeSourceFile(config.dynamic_container_path, u8, array.readAll()),
+            .parametric => gen.writeSourceFile(config.parametric_container_path, u8, array.readAll()),
+        }
+        array.undefineAll();
     }
-    gen.writeSourceFile(config.container_path, u8, array.readAll());
 }
 fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
