@@ -1,12 +1,13 @@
 const root = @import("@build");
 const srg = root.srg;
 
-pub usingnamespace srg.proc.start;
 pub usingnamespace root;
+pub usingnamespace srg.proc.start;
 
-pub usingnamespace srg.builtin.debug;
-
-const Builder = if (@hasDecl(root, "Builder")) root.Builder else srg.build2.Builder(srg.spec.builder.default);
+const Builder = if (@hasDecl(root, "Builder"))
+    root.Builder
+else
+    srg.build2.Builder(srg.spec.builder.default);
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
@@ -39,7 +40,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         }
         for (builder.groups()) |group| {
             if (srg.mach.testEqualMany8(command, group.name)) {
-                try srg.meta.wrap(group.acquireLock(&address_space, &thread_space, &allocator, target_task));
+                try srg.meta.wrap(group.executeToplevel(&address_space, &thread_space, &allocator, target_task));
             } else for (group.targets()) |target| {
                 if (srg.mach.testEqualMany8(command, target.name)) {
                     try srg.meta.wrap(target.executeToplevel(&address_space, &thread_space, &allocator, &builder, target_task));
