@@ -29,30 +29,44 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var builder: Builder = try srg.meta.wrap(Builder.init(args, vars));
     try build_fn(&allocator, &builder);
     var target_task: srg.build2.Task = .build;
-    for (cmds, 0..) |arg, idx| {
+    lo: for (cmds, 0..) |arg, idx| {
         const command: []const u8 = srg.meta.manyToSlice(arg);
+
+        // Process builtin commands:
         if (builder.args_len == builder.args.len) {
             if (srg.mach.testEqualMany8(command, "build")) {
                 target_task = .build;
-                continue;
-            } else if (srg.mach.testEqualMany8(command, "--")) {
+                continue :lo;
+            }
+            if (srg.mach.testEqualMany8(command, "--")) {
                 builder.args_len = idx +% 6;
-                continue;
-            } else if (srg.mach.testEqualMany8(command, "run")) {
+                continue :lo;
+            }
+            if (srg.mach.testEqualMany8(command, "run")) {
                 target_task = .run;
-                continue;
-            } else if (srg.mach.testEqualMany8(command, "show")) {
-                return Builder.debug.builderCommandNotice(&builder, true, true, true);
+                continue :lo;
+            }
+            if (srg.mach.testEqualMany8(command, "list")) {
+                Builder.debug.builderCommandNotice(&builder, true, true, true);
+                continue :lo;
             }
         }
+
+        // For each group, attempt to match the command line argument with name.
+        // Then attempt to match against each target within that group.
+        // All matches are valid.
         for (builder.groups()) |group| {
             if (srg.mach.testEqualMany8(command, group.name)) {
                 try srg.meta.wrap(group.executeToplevel(&address_space, &thread_space, &allocator, target_task));
-            } else for (group.targets()) |target| {
+                continue :lo;
+            }
+            for (group.targets()) |target| {
                 if (srg.mach.testEqualMany8(command, target.name)) {
                     try srg.meta.wrap(target.executeToplevel(&address_space, &thread_space, &allocator, &builder, target_task));
+                    continue :lo;
                 }
             }
         }
+        srg.builtin.proc.exitWithError(error.TargetDoesNotExist, 2);
     }
 }
