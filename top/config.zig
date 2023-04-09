@@ -17,7 +17,7 @@ pub const comptime_assertions: bool = define("comptime_assertions", bool, is_deb
 pub const logging_default: Logging.Default = define(
     "logging_default",
     Logging.Default,
-    .{ .Success = is_debug, .Acquire = is_debug, .Release = is_debug, .Error = true, .Fault = true },
+    .{ .Success = false, .Acquire = is_debug, .Release = is_debug, .Error = true, .Fault = true },
 );
 pub const logging_override: Logging.Override = define(
     "logging_override",
