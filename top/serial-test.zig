@@ -44,7 +44,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .logging = spec.allocator.logging.silent,
     .errors = spec.allocator.errors.noexcept,
 });
-const spec_sets_a: []const mem_types.AbstractSpecification = &attr.abstract_specs;
+const spec_sets_a: []const mem_types.AbstractSpecification = attr.abstract_specs;
 const spec_sets_0: []const []const []const mem_types.Specifier = &.{ &.{ &.{ .{ .default = .{
     .tag = .child,
     .type = .{ .type_name = "type" },
