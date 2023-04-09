@@ -48,6 +48,20 @@ pub fn writeGenerator(array: anytype, src: builtin.SourceLocation) void {
     array.writeMany(src.file);
     array.writeMany("\n");
 }
+pub fn readFile(array: anytype, pathname: [:0]const u8) !void {
+    const fd: u64 = try file.open(.{}, pathname);
+    array.define(try file.read(.{}, fd, array.referAllUndefined(), array.avail()));
+}
+
+pub fn readTrivialSerial(allocator: anytype, comptime T: type, pathname: [:0]const u8) !@TypeOf(allocator.*).StructuredVector(T) {
+    const Array = @TypeOf(allocator.*).StructuredVector(T);
+    const fd: u64 = try file.open(.{}, pathname);
+    const st: file.Stat = try file.fstat(.{}, fd);
+    var ret: Array = Array.init(allocator, @divExact(st.size, @sizeOf(T)));
+    ret.define(try file.read(.{ .child = T }, fd, ret.referAllUndefined(), ret.avail()));
+    try file.close(.{}, fd);
+    return ret;
+}
 pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void {
     array.writeMany("const ");
     array.writeMany(name);
@@ -55,31 +69,16 @@ pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void 
     array.writeMany(pathname);
     array.writeMany("\");\n");
 }
-pub fn writeSourceFile(comptime pathname: [:0]const u8, comptime T: type, buf: []const T) void {
-    if (pathname[0] != '/') {
-        @compileError("update usage of " ++ @src().fn_name ++ " for output: '" ++ pathname ++ "'");
-    }
+pub fn writeSourceFile(pathname: [:0]const u8, comptime T: type, buf: []const T) void {
     const fd: u64 = file.create(create_spec, pathname, file.file_mode);
     defer file.close(close_spec, fd);
     file.write(.{ .errors = .{}, .child = T }, fd, buf);
 }
-pub fn appendSourceFile(comptime pathname: [:0]const u8, buf: []const u8) void {
-    if (pathname[0] != '/') {
-        @compileError("update usage of " ++ @src().fn_name ++ " for output: '" ++ pathname ++ "'");
-    }
+pub fn appendSourceFile(pathname: [:0]const u8, buf: []const u8) void {
     const fd: u64 = file.open(open_append_spec, pathname);
     defer file.close(close_spec, fd);
     file.write(write_spec, fd, buf);
 }
-pub fn copySourceFile(array: anytype, comptime pathname: [:0]const u8) void {
-    if (pathname[0] != '/') {
-        @compileError("update usage of " ++ @src().fn_name ++ " for output: '" ++ pathname ++ "'");
-    }
-    const fd: u64 = file.open(open_read_spec, pathname);
-    array.define(file.read(read_spec, fd, array.referAllUndefined(), array.avail()));
-    defer file.close(close_spec, fd);
-}
-
 pub fn writeComma(array: anytype) void {
     const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
     const j1: bool = mem.testEqualManyBack(u8, tok.end_elem, array.readAll());
