@@ -7,7 +7,7 @@ const spec = @This();
 const serial = @import("./serial.zig");
 const builtin = @import("./builtin.zig");
 
-fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
+pub fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
     var ret: @TypeOf(args1) = args1;
     inline for (@typeInfo(@TypeOf(args2)).Struct.fields) |field| {
         @field(ret, field.name) = @field(args2, field.name);
