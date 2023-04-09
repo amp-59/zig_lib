@@ -58,11 +58,28 @@ fn ()
             fi;
             echo "builder = zl => zl"
         else
-            echo $error "expected link to zig_lib build runner, but found other file:";
-            echo $blank "'$std_build_runner' -> ";
-            echo $blank "'$build_runner_link_target' != ";
-            echo $blank "'$zl_build_runner'";
-            return 2;
+            if test -f "$build_runner_link_target"; then
+                echo $error "expected link to zig_lib build runner, but found other file:";
+                echo $blank "'$std_build_runner' -> ";
+                echo $blank "'$build_runner_link_target' != ";
+                echo $blank "'$zl_build_runner'";
+            else
+                unlink "$std_build_runner";
+                if ! test -f "$std_build_runner_bkp"; then
+                    echo $error "found dead link to zl build runner and"
+                    echo $blank "found no backup for standard library build runner:";
+                    echo $blank "state can not be repaired";
+                    return 2;
+                else
+                    echo $warn "'$std_build_runner': no such file or directory"
+                    if test -f "$std_build_runner_bkp"; then
+                        if ! mv -i "$std_build_runner_bkp" "$std_build_runner"; then
+                            return 2;
+                        fi;
+                        echo "builder = null => std"
+                    fi;
+                fi;
+            fi;
         fi;
     elif test -f "$std_build_runner"; then
         if ! mv -i "$std_build_runner" "$std_build_runner_bkp"; then
