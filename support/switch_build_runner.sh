@@ -26,9 +26,6 @@ fn ()
                 if ! mv -i "$std_build_runner_bkp" "$std_build_runner"; then
                     return 2;
                 fi;
-                if test -f "$zl_zig_build"; then
-                    sed -i 's/pub const build = if (false)/pub const build = if (true)/' "$zl_zig_build";
-                fi;
                 echo "builder = zl => std"
             else
                 echo $error "would move back original zig build runner, but original file is missing"
@@ -46,9 +43,6 @@ fn ()
                 fi;
             else
                 echo $warn "replacing bad link"
-            fi;
-            if ! sed -i 's/pub const build = if (true)/pub const build = if (false)/' "$zl_zig_build"; then
-                return 2;
             fi;
             if ! rm "$std_build_runner"; then
                 return 2;
@@ -87,9 +81,6 @@ fn ()
         fi;
         if ! ln -s "$zl_build_runner" "$std_build_runner"; then
             return 2;
-        fi;
-        if test -f "$zl_zig_build"; then
-            sed -i 's/pub const build = if (true)/pub const build = if (false)/' "$zl_zig_build";
         fi;
         echo "builder = std => zl"
     else
