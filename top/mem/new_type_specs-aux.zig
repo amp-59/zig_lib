@@ -249,11 +249,19 @@ fn haveTechB(allocator: *Allocator, tech_set: []const []const types.Technique, u
     }
     return .{ f[0..f_len], t[0..t_len] };
 }
-fn writeFields(array: *Array, p_info: []const types.Specifier) void {
+fn writeParametersFields(array: *Array, p_info: []const types.Specifier) void {
     for (p_info) |p_field| {
         writeParametersFieldName(array, p_field);
         array.writeMany(":");
         writeParametersTypeName(array, p_field);
+        array.writeMany(",");
+    }
+}
+fn writeSpecificationFields(array: *Array, p_info: []const types.Specifier) void {
+    for (p_info) |p_field| {
+        writeSpecificationFieldName(array, p_field);
+        array.writeMany(":");
+        writeSpecificationTypeName(array, p_field);
         array.writeMany(",");
     }
 }
