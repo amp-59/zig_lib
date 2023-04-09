@@ -1,5 +1,12 @@
 const root = @import("@build");
-const srg = root.srg;
+const srg = blk: {
+    if (@hasDecl(root, "srg")) {
+        break :blk root.srg;
+    }
+    if (@hasDecl(root, "zig_lib")) {
+        break :blk root.zig_lib;
+    }
+};
 
 pub usingnamespace root;
 pub usingnamespace srg.proc.start;
