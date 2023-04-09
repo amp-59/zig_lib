@@ -54,13 +54,23 @@ pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
 
 /// Currently all containers are written to this file. Later, each container
 /// will be given its own file.
-pub const container_path: [:0]const u8 = primarySourceFile("container.zig");
-pub fn containerSourceFile() void {}
+pub const container_dir_path: [:0]const u8 = primarySourceFile("container");
+pub const container_file_path: [:0]const u8 = container_dir_path ++ ".zig";
+pub const container_common_path: [:0]const u8 = container_dir_path ++ "/common.zig";
+pub const automatic_container_path: [:0]const u8 = container_dir_path ++ "/automatic.zig";
+pub const static_container_path: [:0]const u8 = container_dir_path ++ "/static.zig";
+pub const dynamic_container_path: [:0]const u8 = container_dir_path ++ "/dynamic.zig";
+pub const parametric_container_path: [:0]const u8 = container_dir_path ++ "/parametric.zig";
 
 /// Currently all references are written to this file. Later, each specification
 /// group will be given its own file.
-pub const reference_path: [:0]const u8 = primarySourceFile("reference.zig");
-pub fn referenceSourceFile() void {}
+pub const reference_dir_path: [:0]const u8 = primarySourceFile("reference");
+pub const reference_file_path: [:0]const u8 = reference_dir_path ++ ".zig";
+pub const reference_common_path: [:0]const u8 = reference_dir_path ++ "/common.zig";
+pub const automatic_reference_path: [:0]const u8 = reference_dir_path ++ "/automatic.zig";
+pub const static_reference_path: [:0]const u8 = reference_dir_path ++ "/static.zig";
+pub const dynamic_reference_path: [:0]const u8 = reference_dir_path ++ "/dynamic.zig";
+pub const parametric_reference_path: [:0]const u8 = reference_dir_path ++ "/parametric.zig";
 
 /// Contains the hand-written part of the container end-product.
 pub const container_template_path: [:0]const u8 = primarySourceFile("container-template.zig");
