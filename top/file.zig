@@ -1280,15 +1280,20 @@ const debug = opaque {
         var buf: [16 + 4096 + 1]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
     }
-    fn fstatNotice(_: u64, _: FileStatus) void {}
-
-    fn fstatAtNotice(dir_fd: u64, name: [:0]const u8, st: FileStatus) void {
-        _ = st;
+    fn pathStatusNotice(pathname: [:0]const u8, st: *Status) void {
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, pathname, ", ", &describeMode(st.mode), "\n" });
+    }
+    fn statusNotice(fd: u64, st: *Status) void {
+        const fd_s: []const u8 = if (fd > 1024) "CWD" else builtin.fmt.ud64(fd).readAll();
+        var buf: [16 + 4096 + 512]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "fd=", fd_s, ", ", &describeMode(st.mode), "\n" });
+    }
+    fn statusAtNotice(dir_fd: u64, name: [:0]const u8, st: *Status) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "dir_fd=", dir_fd_s, ", ", name, ", ", &describeMode(st.mode), "\n" });
     }
-    fn statNotice(_: [:0]const u8, _: *FileStatus) void {}
     fn readError(read_error: anytype, fd: u64) void {
         var buf: [16 + 32 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_read_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), " (", @errorName(read_error), ")\n" });
