@@ -1424,73 +1424,68 @@ const debug = opaque {
         }
         return ret;
     }
-    fn writeDescribeType(st: *const FileStatus, buf: []u8) u64 {
-        var len: u64 = 0;
-        var mode: Mode = st.mode;
-        var owner: bool = false;
-        var group: bool = false;
-        var other: bool = false;
-        while (mode.val != 0) {
-            switch (mode.tag) {
-                .owner_read => {
-                    len +%= builtin.debug.writeMany(buf[len..], "owner: read");
-                    owner = true;
-                },
-                .owner_write => {
-                    len +%= builtin.debug.writeMany(buf[len..], if (owner) "+read" else "owner: read");
-                    owner = true;
-                },
-                .owner_execute => {
-                    len +%= builtin.debug.writeMany(buf[len..], if (owner) "+execute" else "owner: execute");
-                    owner = true;
-                },
-                .group_read => {
-                    len +%= builtin.debug.writeMany(buf[len..], "group: read");
-                    group = true;
-                },
-                .group_write => {
-                    len +%= builtin.debug.writeMany(buf[len..], if (group) "+read" else "group: read");
-                    group = true;
-                },
-                .group_execute => {
-                    len +%= builtin.debug.writeMany(buf[len..], if (group) "+execute" else "group: execute");
-                    group = true;
-                },
-                .other_read => {
-                    len +%= builtin.debug.writeMany(buf[len..], "other: read");
-                    other = true;
-                },
-                .other_write => {
-                    len +%= builtin.debug.writeMany(buf[len..], if (other) "+read" else "other: read");
-                    other = true;
-                },
-                .other_execute => {
-                    len +%= builtin.debug.writeMany(buf[len..], if (other) "+execute" else "other: execute");
-                    other = true;
-                },
-                .regular => {
-                    len +%= builtin.debug.writeMany(buf[len..], "regular file");
-                },
-                .directory => {
-                    len +%= builtin.debug.writeMany(buf[len..], "directory");
-                },
-                .character_special => {
-                    len +%= builtin.debug.writeMany(buf[len..], "character special file");
-                },
-                .block_special => {
-                    len +%= builtin.debug.writeMany(buf[len..], "block special file");
-                },
-                .named_pipe => {
-                    len +%= builtin.debug.writeMany(buf[len..], "named pipe");
-                },
-                .socket => {
-                    len +%= builtin.debug.writeMany(buf[len..], "socket");
-                },
-                .symbolic_link => {
-                    len +%= builtin.debug.writeMany(buf[len..], "symbolic link");
-                },
-            }
+    fn describeKind(kind: Kind) []const u8 {
+        switch (kind) {
+            .regular => {
+                return regular_s;
+            },
+            .directory => {
+                return directory_s;
+            },
+            .character_special => {
+                return character_special_s;
+            },
+            .block_special => {
+                return block_special_s;
+            },
+            .named_pipe => {
+                return named_pipe_s;
+            },
+            .socket => {
+                return socket_s;
+            },
+            .symbolic_link => {
+                return symbolic_link_s;
+            },
         }
-        return len;
+    }
+    fn pathIsKindNotice(pathname: [:0]const u8, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        var len: u64 = 0;
+        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, pathname, ", ", &describeMode(mode) });
+        len +%= builtin.debug.writeMany(buf[len..], "\n");
+        builtin.debug.logAlways(buf[0..len]);
+    }
+    fn fileIsKindNotice(fd: u64, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        var len: u64 = 0;
+        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", &describeMode(mode) });
+        len +%= builtin.debug.writeMany(buf[len..], "\n");
+        builtin.debug.logAlways(buf[0..len]);
+    }
+    fn pathIsKindFault(pathname: [:0]const u8, kind: Kind) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "'", pathname, "' must not be ", @tagName(kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn pathIsNotKindFault(pathname: [:0]const u8, kind: Kind, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "'", pathname, "' must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn fileIsKindFault(fd: u64, kind: Kind) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must not be ", describeKind(kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn assertFault(fd: u64, kind: Kind, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn assertAtFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.proc.exit(2);
     }
 };
