@@ -335,7 +335,7 @@ fn fileBuf(allocator_0: *Allocator, name: [:0]const u8) !FixedString {
     var file_buf: String = String.init(allocator_0);
     const fd: u64 = try file.open(input_open_spec, name);
     defer file.close(input_close_spec, fd);
-    var st: file.Stat = try file.fstat(.{}, fd);
+    var st: file.Status = try file.status(.{}, fd);
     try file_buf.increment(allocator_0, st.size + 1);
     file_buf.impl.define(try file.read(.{}, fd, file_buf.referAllUndefined(allocator_0.*), st.size));
     file_buf.writeOne('\n');
