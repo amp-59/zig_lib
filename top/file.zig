@@ -706,17 +706,18 @@ pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode
 }
 
 pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
+    builtin.static.assertEqual(Kind, .regular, mode.kind);
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, comptime mode.mode().val }))) |fd| {
+    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, @bitCast(u16, mode) }))) |fd| {
         if (logging.Acquire) {
-            debug.createNotice(pathname, fd, debug.describeMode(mode));
+            debug.createNotice(pathname, fd, comptime &debug.describeMode(mode));
         }
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.createError(open_error, pathname, debug.describeMode(mode));
+            debug.createError(open_error, pathname, comptime &debug.describeMode(mode));
         }
         return open_error;
     }
@@ -725,7 +726,7 @@ pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comp
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, comptime mode.mode().val }))) |fd| {
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, @bitCast(u16, mode) }))) |fd| {
         if (logging.Acquire) {
             debug.createAtNotice(dir_fd, name, fd);
         }
@@ -753,9 +754,9 @@ pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors, spec.retur
 pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, comptime mode.mode().val }))) {
+    if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, @bitCast(u16, mode) }))) {
         if (logging.Success) {
-            debug.makeDirNotice(pathname, debug.describeMode(mode));
+            debug.makeDirNotice(pathname, comptime &debug.describeMode(mode));
         }
     } else |mkdir_error| {
         if (logging.Error) {
@@ -767,13 +768,13 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode
 pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, comptime mode.mode().val }))) {
+    if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(u16, mode) }))) {
         if (logging.Success) {
-            debug.makeDirAtNotice(dir_fd, name, debug.describeMode(mode));
+            debug.makeDirAtNotice(dir_fd, name, comptime &debug.describeMode(mode));
         }
     } else |mkdir_error| {
         if (logging.Error) {
-            debug.makeDirAtError(mkdir_error, dir_fd, name, debug.describeMode(mode));
+            debug.makeDirAtError(mkdir_error, dir_fd, name, comptime &debug.describeMode(mode));
         }
         return mkdir_error;
     }
@@ -864,48 +865,52 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Call(
         return rmdir_error;
     }
 }
-pub inline fn stat(comptime spec: StatSpec, pathname: [:0]const u8) sys.Call(spec.errors, Stat) {
+pub inline fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.Call(spec.errors, Status) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    var st: Stat = undefined;
+    var st: Status = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    meta.wrap(sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr })) catch |stat_error| {
-        if (logging.Error) {
-            debug.statError(stat_error, pathname);
-        }
-        return stat_error;
-    };
-    return st;
-}
-pub inline fn fstat(comptime spec: StatSpec, fd: u64) sys.Call(spec.errors, Stat) {
-    var st: Stat = undefined;
-    const st_buf_addr: u64 = @ptrToInt(&st);
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr }))) {
+    if (sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr })) {
         if (logging.Success) {
-            debug.fstatNotice(fd, st);
+            debug.pathIsKindNotice(pathname, st.mode);
         }
     } else |stat_error| {
         if (logging.Error) {
-            debug.fstatError(stat_error, fd);
+            debug.pathStatusError(stat_error, pathname);
         }
         return stat_error;
     }
     return st;
 }
-pub inline fn fstatAt(comptime spec: StatSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, Stat) {
-    var st: Stat = undefined;
+pub inline fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, Status) {
+    var st: Status = undefined;
+    const st_buf_addr: u64 = @ptrToInt(&st);
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr }))) {
+        if (logging.Success) {
+            debug.statusNotice(fd, &st);
+        }
+    } else |stat_error| {
+        if (logging.Error) {
+            debug.statusError(stat_error, fd);
+        }
+        return stat_error;
+    }
+    return st;
+}
+pub inline fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, Status) {
+    var st: Status = undefined;
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.newfstatat, spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }))) {
         if (logging.Success) {
-            debug.fstatAtNotice(dir_fd, name, st);
+            debug.statusAtNotice(dir_fd, name, &st);
         }
     } else |stat_error| {
         if (logging.Error) {
-            debug.fstatAtError(stat_error, dir_fd, name);
+            debug.statusAtError(stat_error, dir_fd, name);
         }
         return stat_error;
     }
@@ -923,7 +928,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors, u64
     const flags: mem.Map = comptime spec.flags();
     const prot: mem.Prot = comptime spec.prot();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    const st: Stat = fstat(.{ .errors = .{ .abort = &.{sys.ErrorCode.OPAQUE} } }, fd);
+    const st: Status = status(.{ .errors = .{ .abort = &.{sys.ErrorCode.OPAQUE} } }, fd);
     const len: u64 = mach.alignA64(st.size, 4096);
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
         if (logging.Acquire) {
@@ -1049,9 +1054,9 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
 }
 pub fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 {
     const path_spec: PathSpec = .{ .options = .{ .directory = false } };
-    const stat_spec: StatSpec = .{ .options = .{ .no_follow = false } };
+    const stat_spec: StatusSpec = .{ .options = .{ .no_follow = false } };
     const dir_fd: u64 = path(path_spec, dir_pathname) catch return null;
-    const st: Stat = fstatAt(stat_spec, dir_fd, file_name) catch return null;
+    const st: Status = statusAt(stat_spec, dir_fd, file_name) catch return null;
     if (st.isExecutable(sys.geteuid(), sys.getegid())) {
         return dir_fd;
     }
