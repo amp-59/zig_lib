@@ -1404,65 +1404,25 @@ const debug = opaque {
         if (mode.owner.execute) {
             ret[3] = 'x';
         }
-        return descr;
-    }
-    fn describeMode(comptime mode_spec: ModeSpec) []const u8 {
-        if (builtin.is_small) {
-            return describePermsBriefly(mode_spec.owner) ++
-                describePermsBriefly(mode_spec.group) ++
-                describePermsBriefly(mode_spec.other);
-        } else {
-            var owner: ?[]const u8 = null;
-            if (mode_spec.owner.read) {
-                owner = "owner: read";
-            }
-            if (mode_spec.owner.write) {
-                owner = if (owner) |owner_s| owner_s ++ "+write" else "owner: write";
-            }
-            if (mode_spec.owner.execute) {
-                owner = if (owner) |owner_s| owner_s ++ "+execute" else "owner: execute";
-            }
-            var group: ?[]const u8 = null;
-            if (mode_spec.group.read) {
-                group = "group: read";
-            }
-            if (mode_spec.group.write) {
-                group = if (group) |group_s| group_s ++ "+write" else "group: write";
-            }
-            if (mode_spec.group.execute) {
-                group = if (group) |group_s| group_s ++ "+execute, " else "group: execute";
-            }
-            var other: ?[]const u8 = null;
-            if (mode_spec.other.read) {
-                other = "other read";
-            }
-            if (mode_spec.other.write) {
-                other = if (other) |other_s| other_s ++ "+write" else "other: write";
-            }
-            if (mode_spec.other.execute) {
-                other = if (other) |other_s| other_s ++ "+execute" else "other: execute";
-            }
-            if (owner) |owner_s| {
-                if (group) |group_s| {
-                    if (other) |other_s| {
-                        return owner_s ++ ", " ++ group_s ++ ", " ++ other_s;
-                    }
-                    return owner_s ++ ", " ++ group_s;
-                } else if (other) |other_s| {
-                    return owner_s ++ ", " ++ other_s;
-                }
-                return owner_s;
-            }
-            if (group) |group_s| {
-                if (other) |other_s| {
-                    return group_s ++ ", " ++ other_s;
-                }
-                return group_s;
-            }
-            if (other) |other_s| {
-                return other_s;
-            }
+        if (mode.group.read) {
+            ret[4] = 'r';
         }
+        if (mode.group.write) {
+            ret[5] = 'w';
+        }
+        if (mode.group.execute) {
+            ret[6] = 'x';
+        }
+        if (mode.other.read) {
+            ret[7] = 'r';
+        }
+        if (mode.other.write) {
+            ret[8] = 'w';
+        }
+        if (mode.other.execute) {
+            ret[9] = 'x';
+        }
+        return ret;
     }
     fn writeDescribeType(st: *const FileStatus, buf: []u8) u64 {
         var len: u64 = 0;
