@@ -16,8 +16,6 @@ pub const Builder = build.GenericBuilder(spec.builder.default);
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 
-//
-
 const PartialCommand = struct {
     kind: build.OutputMode,
     mode: builtin.Mode,
