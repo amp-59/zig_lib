@@ -1384,22 +1384,25 @@ const debug = opaque {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
     }
-    fn describePermsBriefly(comptime perms: Perms) []const u8 {
-        var descr: []const u8 = meta.empty;
-        if (perms.read) {
-            descr = descr ++ "r";
-        } else {
-            descr = descr ++ "-";
+    fn describeMode(mode: Mode) [10]u8 {
+        var ret: [10]u8 = [1]u8{'-'} ** 10;
+        ret[0] = switch (mode.kind) {
+            .directory => 'd',
+            .regular => 'f',
+            .character_special => 'c',
+            .block_special => 'b',
+            .socket => 'S',
+            .named_pipe => 'p',
+            .symbolic_link => 'l',
+        };
+        if (mode.owner.read) {
+            ret[1] = 'r';
         }
-        if (perms.write) {
-            descr = descr ++ "w";
-        } else {
-            descr = descr ++ "-";
+        if (mode.owner.write) {
+            ret[2] = 'w';
         }
-        if (perms.execute) {
-            descr = descr ++ "x";
-        } else {
-            descr = descr ++ "-";
+        if (mode.owner.execute) {
+            ret[3] = 'x';
         }
         return descr;
     }
