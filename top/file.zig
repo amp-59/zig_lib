@@ -1095,6 +1095,69 @@ pub fn home(vars: [][*:0]u8) ![:0]const u8 {
     }
     return error.NoHomeInEnvironment;
 }
+pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, bool) {
+    const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
+    if (stat_spec.return_type == ?Status) {
+        if (st.mode.kind == kind) {
+            return st;
+        } else {
+            return null;
+        }
+    }
+    return st.mode.kind == kind;
+}
+pub inline fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, bool) {
+    const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
+    if (stat_spec.return_type == ?Status) {
+        if (st.mode.kind == kind) {
+            return null;
+        } else {
+            return st;
+        }
+    }
+    return st.mode.kind != kind;
+}
+pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+    const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
+    const res: bool = st.mode.kind == kind;
+    const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
+    if (!res) {
+        if (logging.Fault) {
+            debug.pathIsKindNotice(pathname, st.mode);
+        }
+        builtin.proc.exit(2);
+    }
+    if (stat_spec.return_type == Status) {
+        return st;
+    }
+}
+
+pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+    const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
+    if (stat_spec.return_type == ?Status) {
+        if (st.mode.kind == kind) {
+            return st;
+        } else {
+            return null;
+        }
+    }
+    return st.mode.kind == kind;
+}
+
+pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+    const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
+    const logging: builtin.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
+    if (st.mode.kind != kind) {
+        if (logging.Fault) {
+            debug.assertAtFault(dir_fd, name, kind, st.mode);
+        }
+        builtin.proc.exit(2);
+    }
+    if (stat_spec.return_type == Status) {
+        return st;
+    }
+}
+
 const debug = opaque {
     const about_stat_0_s: [:0]const u8 = builtin.debug.about("stat");
     const about_open_0_s: [:0]const u8 = builtin.debug.about("open");
