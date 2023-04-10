@@ -37,8 +37,11 @@ fn basicTests() !void {
     try builtin.expect(meta.isFunction(@TypeOf(struct {
         fn other(_: *@This()) void {}
     }.other)));
-
     try builtin.expect(0 == meta.sentinel([:0]u8).?);
+    const E = meta.tagNamesEnum(&.{ "one", "two", "three" });
+    try builtin.expect(@hasField(E, "one"));
+    try builtin.expect(@hasField(E, "two"));
+    try builtin.expect(@hasField(E, "three"));
 }
 fn alignTests() !void {
     try builtin.expect(32 == comptime meta.alignCX(-964392));
