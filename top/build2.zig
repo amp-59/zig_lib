@@ -94,7 +94,7 @@ pub const BuilderSpec = struct {
     fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
         return .{ .errors = builder_spec.errors.unmap, .logging = builder_spec.logging.unmap };
     }
-    fn stat(comptime builder_spec: BuilderSpec) file.StatSpec {
+    fn stat(comptime builder_spec: BuilderSpec) file.StatusSpec {
         return .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
     }
     fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
@@ -622,11 +622,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             in.build_cmd.global_cache_root = builder.global_cache_root;
             if (in.build_cmd.kind == .exe) {
                 const bin_path: types.Path = in.binaryPath();
+                assertKindOrNothing(builder.dir_fd, bin_path.relative.?, .regular);
                 in.addRunArgument(allocator, concatenate(allocator, &.{ bin_path.absolute, "/", bin_path.relative.? }));
             }
         }
-        fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-            return meta.wrap(file.fstatAt(decls.fstat_spec, builder.dir_fd, name)) catch null;
+        fn assertKindOrNothing(dir_fd: u64, name: [:0]const u8, kind: file.Kind) void {
+            file.assertAt(decls.fstat_spec, dir_fd, name, kind) catch |stat_error| {
+                builtin.assert(stat_error == error.NoSuchFileOrDirectory);
+            };
+        }
+        fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.Status {
+            return file.statusAt(decls.fstat_spec, builder.dir_fd, name) catch null;
         }
         fn getFileSize(builder: *Builder, name: [:0]const u8) u64 {
             return if (getFileStatus(builder, name)) |st| st.size else 0;
@@ -720,7 +726,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const path_spec: file.PathSpec = builder_spec.path();
             const close_spec: file.CloseSpec = builder_spec.close();
             const map_spec: mem.MapSpec = builder_spec.map();
-            const stat_spec: file.StatSpec = builder_spec.stat();
+            const stat_spec: file.StatusSpec = builder_spec.stat();
             const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
             const clock_spec: time.ClockSpec = builder_spec.clock();
             const sleep_spec: time.SleepSpec = builder_spec.sleep();
@@ -730,8 +736,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
             const command_spec: proc.CommandSpec = builder_spec.command();
             const time_spec: time.TimeSpec = .{ .nsec = builder_spec.options.dep_sleep_nsec };
-            const fstat_spec: file.StatSpec = .{
-                .logging = spec.logging.success_error_fault.silent,
+            const fstat_spec: file.StatusSpec = .{
+                .logging = .{ .Error = false, .Fault = true },
                 .errors = .{ .throw = sys.stat_errors },
             };
         };
