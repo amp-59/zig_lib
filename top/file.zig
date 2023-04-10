@@ -127,7 +127,7 @@ pub const Socket = meta.EnumBitField(enum(u64) {
     };
     const SOCK = sys.SOCK;
 });
-pub const FileStatus = extern struct {
+pub const Status = extern struct {
     dev: u64,
     ino: u64,
     nlink: u64,
@@ -144,32 +144,20 @@ pub const FileStatus = extern struct {
     mtime: time.TimeSpec = .{},
     ctime: time.TimeSpec = .{},
 
-    pub fn isExecutable(st: FileStatus, user_id: u16, group_id: u16) bool {
-        if (user_id == st.uid) {
-            return st.mode.check(.owner_execute);
-        }
-        if (group_id == st.gid) {
-            return st.mode.check(.group_execute);
-        }
-        return st.mode.check(.other_execute);
+    pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
+        user_id == st.uid and return st.mode.owner.execute;
+        group_id == st.gid and return st.mode.group.execute;
+        return st.mode.other.execute;
     }
-    pub fn isReadable(st: FileStatus, user_id: u16, group_id: u16) bool {
-        if (user_id == st.uid) {
-            return st.mode.check(.owner_read);
-        }
-        if (group_id == st.gid) {
-            return st.mode.check(.group_read);
-        }
-        return st.mode.check(.other_read);
+    pub fn isReadable(st: Status, user_id: u16, group_id: u16) bool {
+        user_id == st.uid and return st.mode.owner.read;
+        group_id == st.gid and return st.mode.group.read;
+        return st.mode.other.read;
     }
-    pub fn isWritable(st: FileStatus, user_id: u16, group_id: u16) bool {
-        if (user_id == st.uid) {
-            return st.mode.check(.owner_write);
-        }
-        if (group_id == st.gid) {
-            return st.mode.check(.group_write);
-        }
-        return st.mode.check(.other_write);
+    pub fn isWritable(st: Status, user_id: u16, group_id: u16) bool {
+        user_id == st.uid and return st.mode.owner.read;
+        group_id == st.gid and return st.mode.group.read;
+        return st.mode.other.read;
     }
 };
 pub const Stat = FileStatus;
