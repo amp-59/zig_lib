@@ -423,7 +423,7 @@ pub const PathSpec = struct {
         return flags_bitfield;
     }
 };
-pub const StatSpec = struct {
+pub const StatusSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
     logging: builtin.Logging.SuccessErrorFault = .{},
@@ -432,7 +432,7 @@ pub const StatSpec = struct {
     const Options = struct {
         no_follow: bool = false,
     };
-    fn flags(comptime spec: StatSpec) Open {
+    fn flags(comptime spec: StatusSpec) Open {
         comptime var flags_bitfield: Open = .{ .val = 0 };
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
@@ -447,21 +447,10 @@ pub const GetWorkingDirectorySpec = struct {
     const Specification = @This();
 };
 pub const ReadLinkSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
-    const Options = struct {
-        no_follow: bool = false,
-    };
-    fn flags(comptime spec: StatSpec) Open {
-        comptime var flags_bitfield: Open = .{ .val = 0 };
-        if (spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        return flags_bitfield;
-    }
 };
 pub const MapSpec = struct {
     options: Options = .{},
