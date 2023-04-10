@@ -29,15 +29,6 @@ pub const DirStreamLogging = struct {
     close: builtin.Logging.ReleaseErrorFault = .{},
     getdents: builtin.Logging.SuccessErrorFault = .{},
 };
-pub const Kind = enum(u8) {
-    regular = sys.S.IFREG >> 12,
-    directory = sys.S.IFDIR >> 12,
-    character_special = sys.S.IFCHR >> 12,
-    block_special = sys.S.IFBLK >> 12,
-    named_pipe = sys.S.IFIFO >> 12,
-    socket = sys.S.IFSOCK >> 12,
-    symbolic_link = sys.S.IFLNK >> 12,
-};
 pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
     return (struct {
         path: [:0]const u8,
@@ -63,8 +54,8 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             pub fn len(dirent: *const Entry) u16 {
                 return @intToPtr(*const u16, @ptrToInt(dirent) + 8).*;
             }
-            pub fn kind(dirent: *const Entry) Kind {
-                return @intToPtr(*const Kind, @ptrToInt(dirent) + 10).*;
+            pub fn kind(dirent: *const Entry) file.Kind {
+                return @intToPtr(*const file.Kind, @ptrToInt(dirent) + 10).*;
             }
             pub fn name(dirent: *const Entry) [:0]const u8 {
                 return @intToPtr([*:0]u8, @ptrToInt(dirent) + 11)[0..dirent.len() :0];
