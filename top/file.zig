@@ -680,9 +680,9 @@ fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
     return buf[0..pathname.len :0];
 }
 fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: ModeSpec) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
-    const stat_spec: StatSpec = spec.statSpec();
-    const make_dir_spec: MakeDirSpec = spec.makeDirSpec();
-    const st: FileStatus = stat(stat_spec, pathname) catch |err| blk: {
+    const stat_spec: StatusSpec = spec.stat();
+    const make_dir_spec: MakeDirSpec = spec.mkdir();
+    const st: Status = pathStatus(stat_spec, pathname) catch |err| blk: {
         if (err == error.NoSuchFileOrDirectory) {
             const idx: u64 = indexOfDirnameFinish(pathname);
             builtin.assertEqual(u8, pathname[idx], '/');
@@ -693,9 +693,9 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode
             }
         }
         try makeDir(make_dir_spec, pathname, mode);
-        break :blk try stat(stat_spec, pathname);
+        break :blk try pathStatus(stat_spec, pathname);
     };
-    if (!st.isDirectory()) {
+    if (st.mode.kind != .directory) {
         return error.NotADirectory;
     }
 }
