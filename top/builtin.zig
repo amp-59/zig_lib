@@ -1082,11 +1082,43 @@ pub const proc = struct {
         }
         exit(return_code);
     }
-    pub fn exit(rc: u8) noreturn {
+    pub inline fn exit(rc: u8) noreturn {
         asm volatile (
             \\syscall
             :
             : [sysno] "{rax}" (60), // linux sys_exit
+              [arg1] "{rdi}" (rc), // exit code
+        );
+        unreachable;
+    }
+    pub fn exitGroupWithError(exit_error: anytype, return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Error or
+            config.logging_general.Fault)
+        {
+            debug.exitError(@errorName(exit_error), return_code);
+        }
+        exitGroup(return_code);
+    }
+    pub fn exitGroupWithNotice(return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Success) {
+            debug.exitNotice(return_code);
+        }
+        exitGroup(return_code);
+    }
+    pub fn exitGroupWithFault(message: []const u8, return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Fault) {
+            debug.exitFault(message, return_code);
+        }
+        exitGroup(return_code);
+    }
+    pub inline fn exitGroup(rc: u8) noreturn {
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (231), // linux sys_exit_group
               [arg1] "{rdi}" (rc), // exit code
         );
         unreachable;
