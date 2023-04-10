@@ -143,27 +143,6 @@ pub const FileStatus = extern struct {
     atime: time.TimeSpec = .{},
     mtime: time.TimeSpec = .{},
     ctime: time.TimeSpec = .{},
-    pub fn isDirectory(st: FileStatus) bool {
-        return st.mode.check(.directory);
-    }
-    pub fn isCharacterSpecial(st: FileStatus) bool {
-        return st.mode.check(.character_special);
-    }
-    pub fn isBlockSpecial(st: FileStatus) bool {
-        return st.mode.check(.block_special);
-    }
-    pub fn isRegular(st: FileStatus) bool {
-        return st.mode.check(.regular);
-    }
-    pub fn isNamedPipe(st: FileStatus) bool {
-        return st.mode.check(.named_pipe);
-    }
-    pub fn isSymbolicLink(st: FileStatus) bool {
-        return st.mode.check(.symbolic_link);
-    }
-    pub fn isSocket(st: FileStatus) bool {
-        return st.mode.check(.socket);
-    }
 
     pub fn isExecutable(st: FileStatus, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
