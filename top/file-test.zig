@@ -19,9 +19,6 @@ pub const logging_override: builtin.Logging.Override = .{
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
-const exec_zig: bool = false;
-const errors: sys.ErrorPolicy = .{};
-
 const getcwd_spec: file.GetWorkingDirectorySpec = .{
     .errors = .{ .throw = sys.getcwd_errors },
 };
@@ -84,12 +81,20 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_udp_fd);
     try file.close(.{}, unix_tcp_fd);
 }
+pub fn testFileTests() !void {
+    try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode);
+    try file.pathAssert(stat_spec, "/run/user/1000/file_test", .directory);
+    const fd: u64 = try file.open(open_dir_spec, "/run/user/1000/file_test");
+    try builtin.expect(try file.pathIs(stat_spec, "/run/user/1000/file_test", .directory));
+    try file.fileAssert(stat_spec, fd, .directory);
+    try builtin.expect(try file.fileIs(stat_spec, fd, .directory));
+    try file.close(close_spec, fd);
+    try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
+}
 fn testFileOperationsRound2() !void {
     var buf: [4096]u8 = undefined;
     _ = try meta.wrap(file.getCwd(getcwd_spec, &buf));
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
-    var st: file.Stat = try meta.wrap(file.stat(stat_spec, "/run/user/1000/file_test"));
-    builtin.assert(st.isDirectory());
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.dir_mode));
     const path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
@@ -101,7 +106,6 @@ fn testFileOperationsRound2() !void {
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test"));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.close(close_spec, dir_fd));
-
     const mem_fd: u64 = try meta.wrap(mem.fd(.{}, "buffer"));
     try meta.wrap(file.ftruncate(ftruncate_spec, mem_fd, 4096));
 }
@@ -121,4 +125,5 @@ pub fn main() !void {
     try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testPathOperations());
+    try meta.wrap(testFileTests());
 }
