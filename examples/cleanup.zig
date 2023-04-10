@@ -33,7 +33,7 @@ pub fn main(args_in: [][*:0]u8) !void {
         const segment_s: [:0]const u8 = "LBB";
         const unnamed_s: [:0]const u8 = "L__unnamed";
 
-        const buf: []u8 = mem.pointerSlice(u8, lb_addr, file.fstat(.{ .errors = .{} }, fd).size);
+        const buf: []u8 = mem.pointerSlice(u8, lb_addr, file.status(.{ .errors = .{} }, fd).size);
         var idx: u64 = 0;
         while (idx != buf.len) : (idx +%= 1) {
             if (mem.testEqualMany(u8, segment_s, buf[idx .. idx + segment_s.len])) {
