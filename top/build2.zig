@@ -626,7 +626,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.FileStatus {
-            return meta.wrap(file.fstatAt(.{ .errors = .{ .throw = sys.stat_errors } }, builder.dir_fd, name)) catch null;
+            return meta.wrap(file.fstatAt(decls.fstat_spec, builder.dir_fd, name)) catch null;
         }
         fn getFileSize(builder: *Builder, name: [:0]const u8) u64 {
             return if (getFileStatus(builder, name)) |st| st.size else 0;
@@ -730,6 +730,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
             const command_spec: proc.CommandSpec = builder_spec.command();
             const time_spec: time.TimeSpec = .{ .nsec = builder_spec.options.dep_sleep_nsec };
+            const fstat_spec: file.StatSpec = .{
+                .logging = spec.logging.success_error_fault.silent,
+                .errors = .{ .throw = sys.stat_errors },
+            };
         };
         const tok = struct {
             const env_name: [:0]const u8 = "env.zig";
