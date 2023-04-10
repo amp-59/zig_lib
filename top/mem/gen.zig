@@ -18,7 +18,7 @@ const open_read_spec: file.OpenSpec = .{
     .errors = .{},
     .options = .{ .read = true, .write = null },
 };
-const stat_spec: file.StatSpec = .{
+const stat_spec: file.StatusSpec = .{
     .errors = .{},
 };
 const open_append_spec: file.OpenSpec = .{
@@ -56,7 +56,7 @@ pub fn readFile(array: anytype, pathname: [:0]const u8) !void {
 pub fn readTrivialSerial(allocator: anytype, comptime T: type, pathname: [:0]const u8) !@TypeOf(allocator.*).StructuredVector(T) {
     const Array = @TypeOf(allocator.*).StructuredVector(T);
     const fd: u64 = try file.open(.{}, pathname);
-    const st: file.Stat = try file.fstat(.{}, fd);
+    const st: file.Status = try file.status(.{}, fd);
     var ret: Array = Array.init(allocator, @divExact(st.size, @sizeOf(T)));
     ret.define(try file.read(.{ .child = T }, fd, ret.referAllUndefined(), ret.avail()));
     try file.close(.{}, fd);

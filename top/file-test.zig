@@ -46,7 +46,7 @@ const unlink_spec: file.UnlinkSpec = .{
 const close_spec: file.CloseSpec = .{
     .errors = .{ .throw = sys.close_errors },
 };
-const stat_spec: file.StatSpec = .{
+const stat_spec: file.StatusSpec = .{
     .errors = .{ .throw = sys.stat_errors },
 };
 const ftruncate_spec: file.TruncateSpec = .{
@@ -85,9 +85,11 @@ pub fn testFileTests() !void {
     try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode);
     try file.pathAssert(stat_spec, "/run/user/1000/file_test", .directory);
     const fd: u64 = try file.open(open_dir_spec, "/run/user/1000/file_test");
+
     try builtin.expect(try file.pathIs(stat_spec, "/run/user/1000/file_test", .directory));
-    try file.fileAssert(stat_spec, fd, .directory);
-    try builtin.expect(try file.fileIs(stat_spec, fd, .directory));
+    try builtin.expect(try file.pathIsNot(stat_spec, "/run/user/1000/file_test", .regular));
+    try builtin.expect(try file.pathIsNot(stat_spec, "/run/user/1000/file_test", .block_special));
+
     try file.close(close_spec, fd);
     try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
 }

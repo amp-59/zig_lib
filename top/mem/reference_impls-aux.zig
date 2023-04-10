@@ -989,7 +989,6 @@ pub fn generateReferences() !void {
         }
         array.undefineAll();
     }
-
-    gen.appendSourceFile(config.reference_path, array.readAll());
+    gen.appendSourceFile(config.reference_common_path, array.readAll());
 }
 pub const main = generateReferences;

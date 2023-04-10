@@ -286,7 +286,7 @@ pub const SerialSpec = struct {
         write: sys.ErrorPolicy = .{ .throw = sys.write_errors },
         close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
     };
-    fn stat(comptime serial_spec: SerialSpec) file.StatSpec {
+    fn stat(comptime serial_spec: SerialSpec) file.StatusSpec {
         return .{ .logging = serial_spec.logging.stat, .errors = serial_spec.errors.stat };
     }
     fn read(comptime serial_spec: SerialSpec) file.ReadSpec {
@@ -345,15 +345,15 @@ pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator:
         serial_spec.errors.open.abort ++ serial_spec.errors.read.abort ++ serial_spec.errors.close.abort,
 }, meta.Mutable(S)) {
     const open_spec: file.OpenSpec = comptime serial_spec.open();
-    const stat_spec: file.StatSpec = comptime serial_spec.stat();
+    const stat_spec: file.StatusSpec = comptime serial_spec.stat();
     const read_spec: file.ReadSpec = comptime serial_spec.read();
     const close_spec: file.CloseSpec = comptime serial_spec.close();
     const t_ab_addr: u64 = allocator.alignAbove(16);
     const fd: u64 = try meta.wrap(
         file.open(open_spec, pathname),
     );
-    const st: file.Stat = try meta.wrap(
-        file.fstat(stat_spec, fd),
+    const st: file.Status = try meta.wrap(
+        file.status(stat_spec, fd),
     );
     const buf: []u8 = try meta.wrap(
         allocator.allocateIrreversible(u8, st.size),

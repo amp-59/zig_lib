@@ -96,7 +96,7 @@ const open_spec: file.OpenSpec = .{
 const close_spec: file.CloseSpec = .{
     .errors = .{},
 };
-const stat_spec: file.StatSpec = .{};
+const stat_spec: file.StatusSpec = .{};
 
 fn fileBuf(allocator: *zig.Allocator.Node, dir_fd: u64, name: [:0]const u8) !zig.SourceArray {
     const fd: u64 = try file.openAt(open_spec, dir_fd, name);
