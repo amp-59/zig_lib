@@ -25,25 +25,23 @@ pub const Open = meta.EnumBitField(enum(u64) {
     exclusive = OPEN.EXCL,
     const OPEN = sys.O;
 });
-const Mode = meta.EnumBitField(enum(u16) {
-    owner_read = MODE.IRUSR,
-    owner_write = MODE.IWUSR,
-    owner_execute = MODE.IXUSR,
-    group_read = MODE.IRGRP,
-    group_write = MODE.IWGRP,
-    group_execute = MODE.IXGRP,
-    other_read = MODE.IROTH,
-    other_write = MODE.IWOTH,
-    other_execute = MODE.IXOTH,
-    regular = MODE.IFREG,
-    directory = MODE.IFDIR,
-    character_special = MODE.IFCHR,
-    block_special = MODE.IFBLK,
-    named_pipe = MODE.IFIFO,
-    socket = MODE.IFSOCK,
-    symbolic_link = MODE.IFLNK,
+pub const Kind = enum(u4) {
+    regular = MODE.IFREG >> 12,
+    directory = MODE.IFDIR >> 12,
+    character_special = MODE.IFCHR >> 12,
+    block_special = MODE.IFBLK >> 12,
+    named_pipe = MODE.IFIFO >> 12,
+    socket = MODE.IFSOCK >> 12,
+    symbolic_link = MODE.IFLNK >> 12,
     const MODE = sys.S;
-});
+};
+const Mode = packed struct(u16) {
+    other: Perms,
+    group: Perms,
+    owner: Perms,
+    bits: u3 = 0,
+    kind: Kind,
+};
 const Term = opaque {
     const Input = meta.EnumBitField(enum(u32) {
         ignore_break = IN.IGNBRK,
