@@ -636,9 +636,6 @@ pub fn EnumBitField(comptime E: type) type {
         const BitField = @This();
         pub const Tag = E;
         pub const Int = @typeInfo(Tag).Enum.tag_type;
-        pub fn value(tag: Tag) Int {
-            return @enumToInt(tag);
-        }
         pub inline fn check(bit_field: *const BitField, tag: Tag) bool {
             return bit_field.val & @enumToInt(tag) == @enumToInt(tag);
         }
@@ -672,6 +669,21 @@ pub fn tagNameList(comptime E: type, comptime tag_list: []const E) []const []con
         ret[index] = @tagName(tag);
     }
     return &ret;
+}
+pub fn tagNamesEnum(comptime names: []const []const u8) type {
+    var enum_fields: []const builtin.Type.EnumField = &.{};
+    for (names, 0..) |name, idx| {
+        enum_fields = enum_fields ++ [1]builtin.Type.EnumField{.{
+            .name = name,
+            .value = idx,
+        }};
+    }
+    return @Type(.{ .Enum = .{
+        .fields = enum_fields,
+        .tag_type = LeastRealBitSize(enum_fields.len),
+        .is_exhaustive = true,
+        .decls = &.{},
+    } });
 }
 pub fn GenericStructOfBool(comptime Struct: type) type {
     return struct {
