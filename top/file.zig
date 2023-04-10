@@ -160,8 +160,7 @@ pub const Status = extern struct {
         return st.mode.other.read;
     }
 };
-pub const Stat = FileStatus;
-pub const FileStatusExtra = extern struct {
+pub const StatusExtra = extern struct {
     mask: u32,
     blksize: u32,
     attributes: u64,
@@ -205,52 +204,23 @@ pub const TerminalAttributes = extern struct {
         return termios.special[@enumToInt(tag)];
     }
 };
-const Perms = struct { read: bool, write: bool, execute: bool };
+const Perms = packed struct {
+    execute: bool,
+    read: bool,
+    write: bool,
+};
+pub const ModeSpec = Mode;
 pub const dir_mode: ModeSpec = .{
     .owner = .{ .read = true, .write = true, .execute = true },
     .group = .{ .read = true, .write = true, .execute = true },
     .other = .{ .read = false, .write = false, .execute = false },
+    .kind = .directory,
 };
 pub const file_mode: ModeSpec = .{
     .owner = .{ .read = true, .write = true, .execute = false },
     .group = .{ .read = true, .write = false, .execute = false },
     .other = .{ .read = false, .write = false, .execute = false },
-};
-pub const ModeSpec = struct {
-    owner: Perms,
-    group: Perms,
-    other: Perms,
-    fn mode(comptime mode_spec: ModeSpec) Mode {
-        comptime var mode_bitfield: Mode = .{ .val = 0 };
-        if (mode_spec.owner.read) {
-            mode_bitfield.set(.owner_read);
-        }
-        if (mode_spec.owner.write) {
-            mode_bitfield.set(.owner_write);
-        }
-        if (mode_spec.owner.execute) {
-            mode_bitfield.set(.owner_execute);
-        }
-        if (mode_spec.group.read) {
-            mode_bitfield.set(.group_read);
-        }
-        if (mode_spec.group.write) {
-            mode_bitfield.set(.group_write);
-        }
-        if (mode_spec.group.execute) {
-            mode_bitfield.set(.group_execute);
-        }
-        if (mode_spec.other.read) {
-            mode_bitfield.set(.other_read);
-        }
-        if (mode_spec.other.write) {
-            mode_bitfield.set(.other_write);
-        }
-        if (mode_spec.other.execute) {
-            mode_bitfield.set(.other_execute);
-        }
-        return mode_bitfield;
-    }
+    .kind = .regular,
 };
 pub const ReadSpec = struct {
     child: type = u8,
