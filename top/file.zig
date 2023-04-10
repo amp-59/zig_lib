@@ -653,7 +653,6 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.error
         }
         return fd;
     } else |open_error| {
-        if (logging.Fault) {}
         if (logging.Error) {
             debug.openError(open_error, pathname);
         }
