@@ -338,14 +338,14 @@ pub const MakePathSpec = struct {
         stat: builtin.Logging.SuccessErrorFault = .{},
         mkdir: builtin.Logging.SuccessErrorFault = .{},
     };
-    fn statSpec(comptime spec: MakePathSpec) StatSpec {
+    fn stat(comptime spec: MakePathSpec) StatusSpec {
         return .{
             .errors = spec.errors.stat,
             .logging = spec.logging.stat,
             .options = .{ .no_follow = true },
         };
     }
-    fn makeDirSpec(comptime spec: MakePathSpec) MakeDirSpec {
+    fn mkdir(comptime spec: MakePathSpec) MakeDirSpec {
         return .{
             .errors = spec.errors.stat,
             .logging = spec.logging.stat,
