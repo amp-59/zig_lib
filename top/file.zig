@@ -1346,15 +1346,15 @@ const debug = opaque {
         var buf: [16 + 64 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_readlink_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(readlink_error), ")\n" });
     }
-    fn statError(stat_error: anytype, pathname: [:0]const u8) void {
+    fn pathStatusError(stat_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, pathname, " (", @errorName(stat_error), ")\n" });
     }
-    fn fstatError(stat_error: anytype, fd: u64) void {
+    fn statusError(stat_error: anytype, fd: u64) void {
         var buf: [16 + 32 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", (", @errorName(stat_error), ")\n" });
     }
-    fn fstatAtError(stat_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+    fn statusAtError(stat_error: anytype, dir_fd: u64, name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(stat_error), ")\n" });
