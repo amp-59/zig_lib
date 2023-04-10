@@ -1162,6 +1162,9 @@ const debug = opaque {
     const about_stat_0_s: [:0]const u8 = builtin.debug.about("stat");
     const about_open_0_s: [:0]const u8 = builtin.debug.about("open");
     const about_open_1_s: [:0]const u8 = builtin.debug.about("open-error");
+    const about_file_0_s: [:0]const u8 = builtin.debug.about("file");
+    const about_file_1_s: [:0]const u8 = builtin.debug.about("file-error");
+    const about_file_2_s: [:0]const u8 = builtin.debug.about("file-fault");
     const about_read_0_s: [:0]const u8 = builtin.debug.about("read");
     const about_read_1_s: [:0]const u8 = builtin.debug.about("read-error");
     const about_stat_1_s: [:0]const u8 = builtin.debug.about("stat-error");
@@ -1187,6 +1190,14 @@ const debug = opaque {
     const about_readlink_1_s: [:0]const u8 = builtin.debug.about("readlink-error");
     const about_truncate_0_s: [:0]const u8 = builtin.debug.about("truncate");
     const about_truncate_1_s: [:0]const u8 = builtin.debug.about("truncate-error");
+
+    const regular_s: [:0]const u8 = "a regular file";
+    const directory_s: [:0]const u8 = "a directory";
+    const character_special_s: [:0]const u8 = "a character special file";
+    const block_special_s: [:0]const u8 = "a block special file";
+    const named_pipe_s: [:0]const u8 = "a named pipe";
+    const socket_s: [:0]const u8 = "a socket";
+    const symbolic_link_s: [:0]const u8 = "a symbolic link";
 
     fn readNotice(fd: u64, len: u64) void {
         var buf: [16 + 32]u8 = undefined;
