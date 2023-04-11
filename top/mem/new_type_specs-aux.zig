@@ -16,6 +16,7 @@ const config = @import("./config.zig");
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+
 pub const runtime_assertions: bool = false;
 
 const Allocator = config.Allocator;
@@ -438,6 +439,11 @@ fn writeOptionalSwitchOpen(array: *Array, tag_name: []const u8) void {
     array.writeMany("|{\nswitch(");
     array.writeMany(tag_name);
     array.writeMany("){\n");
+}
+fn writeSpecificationType(array: *Array, specs: []const types.Specifier) void {
+    array.writeMany("struct {");
+    writeSpecificationFields(array, specs);
+    array.writeMany("};\n");
 }
 fn writeReturnImplementation(array: *Array, detail: types.Implementation, specs: []const types.Specifier) void {
     array.writeMany("return reference.");
