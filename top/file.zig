@@ -1390,6 +1390,47 @@ const debug = opaque {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
     }
+
+    fn pathIsKindNotice(pathname: [:0]const u8, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        var len: u64 = 0;
+        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, pathname, ", ", &describeMode(mode) });
+        len +%= builtin.debug.writeMany(buf[len..], "\n");
+        builtin.debug.logAlways(buf[0..len]);
+    }
+    fn fileIsKindNotice(fd: u64, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        var len: u64 = 0;
+        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", &describeMode(mode) });
+        len +%= builtin.debug.writeMany(buf[len..], "\n");
+        builtin.debug.logAlways(buf[0..len]);
+    }
+    fn pathIsKindFault(pathname: [:0]const u8, kind: Kind) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "'", pathname, "' must not be ", @tagName(kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn pathIsNotKindFault(pathname: [:0]const u8, kind: Kind, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "'", pathname, "' must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn fileIsKindFault(fd: u64, kind: Kind) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must not be ", describeKind(kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn assertFault(fd: u64, kind: Kind, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.proc.exit(2);
+    }
+    fn assertAtFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.proc.exit(2);
+    }
+
     fn describeMode(mode: Mode) [10]u8 {
         var ret: [10]u8 = [1]u8{'-'} ** 10;
         ret[0] = switch (mode.kind) {
@@ -1454,44 +1495,5 @@ const debug = opaque {
                 return symbolic_link_s;
             },
         }
-    }
-    fn pathIsKindNotice(pathname: [:0]const u8, mode: Mode) void {
-        var buf: [8192]u8 = undefined;
-        var len: u64 = 0;
-        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, pathname, ", ", &describeMode(mode) });
-        len +%= builtin.debug.writeMany(buf[len..], "\n");
-        builtin.debug.logAlways(buf[0..len]);
-    }
-    fn fileIsKindNotice(fd: u64, mode: Mode) void {
-        var buf: [8192]u8 = undefined;
-        var len: u64 = 0;
-        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", &describeMode(mode) });
-        len +%= builtin.debug.writeMany(buf[len..], "\n");
-        builtin.debug.logAlways(buf[0..len]);
-    }
-    fn pathIsKindFault(pathname: [:0]const u8, kind: Kind) void {
-        var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "'", pathname, "' must not be ", @tagName(kind), "\n" });
-        builtin.proc.exit(2);
-    }
-    fn pathIsNotKindFault(pathname: [:0]const u8, kind: Kind, mode: Mode) void {
-        var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "'", pathname, "' must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
-        builtin.proc.exit(2);
-    }
-    fn fileIsKindFault(fd: u64, kind: Kind) void {
-        var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must not be ", describeKind(kind), "\n" });
-        builtin.proc.exit(2);
-    }
-    fn assertFault(fd: u64, kind: Kind, mode: Mode) void {
-        var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
-        builtin.proc.exit(2);
-    }
-    fn assertAtFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
-        var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
-        builtin.proc.exit(2);
     }
 };
