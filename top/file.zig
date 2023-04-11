@@ -1223,6 +1223,10 @@ const debug = opaque {
         var buf: [4096 + 64 + summary.len]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", summary, "\n" });
     }
+    fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
+        var buf: [4096]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
+    }
     fn openAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096]u8 = undefined;
@@ -1232,10 +1236,6 @@ const debug = opaque {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
-    }
-    fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
-        var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
     }
     fn makeDirNotice(pathname: [:0]const u8, comptime descr: []const u8) void {
         const max_len: u64 = 16 + 4096 + 2 + descr.len + 1;
