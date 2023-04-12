@@ -1726,7 +1726,7 @@ pub fn main() !void {
     defer array.deinit(&allocator);
     array.increment(&allocator, 1024 * 1024);
 
-    var st: file.Stat = try file.stat(.{}, tasks_template_path);
+    var st: file.Status = try file.pathStatus(.{}, tasks_template_path);
     var fd: u64 = try file.open(.{}, tasks_template_path);
     array.define(try file.read(.{}, fd, array.referAllUndefined(allocator), st.size));
     try file.close(.{}, fd);
@@ -1741,7 +1741,7 @@ pub fn main() !void {
     try writeFile(allocator, array, tasks_path);
     array.undefineAll(allocator);
 
-    st = try file.stat(.{}, command_line_path);
+    st = try file.pathStatus(.{}, command_line_path);
     fd = try file.open(.{}, command_line_template_path);
     array.define(try file.read(.{}, fd, array.referAllUndefined(allocator), st.size));
     try file.close(.{}, fd);
