@@ -25,25 +25,25 @@ inline fn isTypeType(comptime T: type, comptime type_types: []const builtin.Type
     return false;
 }
 pub inline fn isNumber(comptime T: type) bool {
-    return isTypeType(T, number_types);
+    return comptime isTypeType(T, number_types);
 }
 pub inline fn isInteger(comptime T: type) bool {
-    return isTypeType(T, integer_types);
+    return comptime isTypeType(T, integer_types);
 }
 pub inline fn isFloat(comptime T: type) bool {
-    return isTypeType(T, float_types);
+    return comptime isTypeType(T, float_types);
 }
 pub inline fn isEnum(comptime T: type) bool {
-    return isTypeType(T, enum_types);
+    return comptime isTypeType(T, enum_types);
 }
 pub inline fn isTag(comptime T: type) bool {
-    return isTypeType(T, tag_types);
+    return comptime isTypeType(T, tag_types);
 }
 pub inline fn isFunction(comptime T: type) bool {
-    return isTypeType(T, fn_types);
+    return comptime isTypeType(T, fn_types);
 }
 pub inline fn isContainer(comptime T: type) bool {
-    return isTypeType(T, container_types);
+    return comptime isTypeType(T, container_types);
 }
 pub fn assertType(comptime T: type, comptime tag: builtin.TypeId) void {
     if (builtin.comptime_assertions) {
