@@ -717,7 +717,7 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: 
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.createError(open_error, pathname, comptime &debug.describeMode(mode));
+            debug.createError(open_error, pathname);
         }
         return open_error;
     }
@@ -770,11 +770,11 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, co
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(u16, mode) }))) {
         if (logging.Success) {
-            debug.makeDirAtNotice(dir_fd, name, comptime &debug.describeMode(mode));
+            debug.makeDirAtNotice(dir_fd, name, mode);
         }
     } else |mkdir_error| {
         if (logging.Error) {
-            debug.makeDirAtError(mkdir_error, dir_fd, name, comptime &debug.describeMode(mode));
+            debug.makeDirAtError(mkdir_error, dir_fd, name);
         }
         return mkdir_error;
     }
@@ -872,7 +872,7 @@ pub inline fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr })) {
         if (logging.Success) {
-            debug.pathIsKindNotice(pathname, st.mode);
+            debug.pathNotice(pathname, st.mode);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -888,7 +888,7 @@ pub inline fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, S
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr }))) {
         if (logging.Success) {
-            debug.statusNotice(fd, &st);
+            debug.statusNotice(fd, &debug.describeMode(st.mode));
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -906,7 +906,7 @@ pub inline fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.newfstatat, spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }))) {
         if (logging.Success) {
-            debug.statusAtNotice(dir_fd, name, &st);
+            debug.statusAtNotice(dir_fd, name, st.mode);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -1120,10 +1120,10 @@ pub inline fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, 
 pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
     const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
     const res: bool = st.mode.kind == kind;
-    const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
+    const logging: builtin.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (!res) {
         if (logging.Fault) {
-            debug.pathIsKindNotice(pathname, st.mode);
+            debug.pathMustBeFault(pathname, kind, st.mode);
         }
         builtin.proc.exit(2);
     }
@@ -1149,13 +1149,45 @@ pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8,
     const logging: builtin.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (st.mode.kind != kind) {
         if (logging.Fault) {
-            debug.assertAtFault(dir_fd, name, kind, st.mode);
+            debug.atDirFdMustBeFault(dir_fd, name, kind, st.mode);
         }
         builtin.proc.exit(2);
     }
     if (stat_spec.return_type == Status) {
         return st;
     }
+}
+
+pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, bool) {
+    const st: Status = try meta.wrap(status(stat_spec, fd));
+    return st.mode.kind == kind;
+}
+pub inline fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(stat_spec.errors, bool) {
+    return !is(stat_spec, kind, fd);
+}
+pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, void) {
+    const st: Status = try meta.wrap(status(stat_spec, fd));
+    const res: bool = st.mode.kind == kind;
+    const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
+    if (!res) {
+        if (logging.Fault) {
+            debug.assertNotFault(fd, kind, st.mode);
+        }
+        builtin.proc.exit(2);
+    }
+    if (stat_spec.return_type == Status) return st;
+}
+pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, void) {
+    const st: Status = try meta.wrap(status(stat_spec, fd));
+    const res: bool = st.mode.kind == kind;
+    const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
+    if (res) {
+        if (logging.Fault) {
+            debug.assertFault(kind, fd, st.mode);
+        }
+        builtin.proc.exit(2);
+    }
+    if (stat_spec.return_type == Status) return st;
 }
 
 const debug = opaque {
@@ -1215,6 +1247,7 @@ const debug = opaque {
             builtin.fmt.ud64(len).readAll(), " bytes\n",
         });
     }
+
     fn openNotice(pathname: [:0]const u8, fd: u64) void {
         var buf: [4096 + 32]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
@@ -1260,115 +1293,111 @@ const debug = opaque {
         var buf: [16 + 4096 + 1]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
     }
-    fn pathStatusNotice(pathname: [:0]const u8, st: *Status) void {
+
+    fn pathStatusNotice(pathname: [:0]const u8, descr: []const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, pathname, ", ", &describeMode(st.mode), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, pathname, ", ", descr, "\n" });
     }
-    fn statusNotice(fd: u64, st: *Status) void {
+    fn statusNotice(fd: u64, descr: []const u8) void {
         const fd_s: []const u8 = if (fd > 1024) "CWD" else builtin.fmt.ud64(fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "fd=", fd_s, ", ", &describeMode(st.mode), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "fd=", fd_s, ", ", descr, "\n" });
     }
 
-    fn readError(read_error: anytype, fd: u64) void {
-        var buf: [16 + 32 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_read_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), " (", @errorName(read_error), ")\n" });
+    fn openOperationAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64, about: [:0]const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
-    fn writeError(write_error: anytype, fd: u64) void {
-        var buf: [16 + 32 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_write_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), " (", @errorName(write_error), ")\n" });
+    inline fn openAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
+        openOperationAtNotice(dir_fd, name, fd, about_open_0_s);
     }
-    fn openError(open_error: anytype, pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_open_1_s, pathname, " (", @errorName(open_error), ")\n" });
+    inline fn createAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
+        openOperationAtNotice(dir_fd, name, fd, about_create_0_s);
     }
 
-    fn openAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
+    fn modeOperationAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, about: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
+        var buf: [16 + 32 + 4096 + 512]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, ", ", &describeMode(mode), "\n" });
     }
-    fn createAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", dir_fd=", dir_fd_s, ", ", name, "\n" });
+    fn makeDirAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
+        modeOperationAtNotice(dir_fd, name, mode, about_mkdir_0_s);
     }
-    fn makeDirAtNotice(dir_fd: u64, name: [:0]const u8, comptime descr: []const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096 + descr.len]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_mkdir_0_s, "dir_fd=", dir_fd_s, ", ", name, ", ", descr, "\n" });
+    fn statusAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
+        modeOperationAtNotice(dir_fd, name, mode, about_mkdir_0_s);
     }
+
     fn unlinkAtNotice(dir_fd: u64, name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unlinkat_0_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
-    fn statusAtNotice(dir_fd: u64, name: [:0]const u8, st: *Status) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "dir_fd=", dir_fd_s, ", ", name, ", ", &describeMode(st.mode), "\n" });
-    }
-
-    fn openAtError(open_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+    fn operationAtError(dir_fd: u64, name: [:0]const u8, about: [:0]const u8, error_name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_open_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(open_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, " (", error_name, ")\n" });
+    }
+    fn openAtError(open_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+        operationAtError(dir_fd, name, about_open_1_s, @errorName(open_error));
     }
     fn createAtError(open_error: anytype, dir_fd: u64, name: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(open_error), ")\n" });
+        operationAtError(dir_fd, name, about_create_1_s, @errorName(open_error));
     }
-    fn makeDirAtError(mkdir_error: anytype, dir_fd: u64, name: [:0]const u8, comptime descr: []const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096 + 512 + descr.len]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_mkdir_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(mkdir_error), ")\n" });
+    fn makeDirAtError(mkdir_error: anytype, dir_fd: u64, name: [:0]const u8) void {
+        operationAtError(dir_fd, name, about_mkdir_1_s, @errorName(mkdir_error));
     }
     fn readLinkAtError(readlink_error: anytype, dir_fd: u64, name: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 64 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_readlink_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(readlink_error), ")\n" });
+        operationAtError(dir_fd, name, about_readlink_1_s, @errorName(readlink_error));
     }
     fn statusAtError(stat_error: anytype, dir_fd: u64, name: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(stat_error), ")\n" });
+        operationAtError(dir_fd, name, about_stat_1_s, @errorName(stat_error));
     }
     fn unlinkAtError(unlinkat_error: anytype, dir_fd: u64, name: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unlinkat_1_s, "dir_fd=", dir_fd_s, ", ", name, " (", @errorName(unlinkat_error), ")\n" });
-    }
-
-    fn createError(open_error: anytype, pathname: [:0]const u8, comptime summary: []const u8) void {
-        var buf: [4096 + 512 + summary.len]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_1_s, pathname, ", ", summary, " (", @errorName(open_error), ")\n" });
+        operationAtError(dir_fd, name, about_unlink_1_s, @errorName(unlinkat_error));
     }
     fn socketError(socket_error: anytype, dom: Domain, conn: Connection) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
-
-    fn makeDirError(mkdir_error: anytype, pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_mkdir_1_s, pathname, " (", @errorName(mkdir_error), ")\n" });
-    }
     fn getCwdError(getcwd_error: anytype) void {
         var buf: [16 + 4096 + 8]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_getcwd_1_s, "(", @errorName(getcwd_error), ")\n" });
     }
-    fn readLinkError(readlink_error: anytype, pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 8]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_readlink_1_s, pathname, " (", @errorName(readlink_error), ")\n" });
-    }
-
-    fn pathStatusError(stat_error: anytype, pathname: [:0]const u8) void {
+    fn operationPathError(pathname: [:0]const u8, about: [:0]const u8, error_name: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, pathname, " (", @errorName(stat_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, pathname, " (", error_name, ")\n" });
+    }
+    fn openError(open_error: anytype, pathname: [:0]const u8) void {
+        operationPathError(pathname, about_open_1_s, @errorName(open_error));
+    }
+    fn createError(open_error: anytype, pathname: [:0]const u8) void {
+        operationPathError(pathname, about_create_1_s, @errorName(open_error));
+    }
+    fn pathStatusError(stat_error: anytype, pathname: [:0]const u8) void {
+        operationPathError(pathname, about_stat_1_s, @errorName(stat_error));
+    }
+    fn readLinkError(readlink_error: anytype, pathname: [:0]const u8) void {
+        operationPathError(pathname, about_readlink_1_s, @errorName(readlink_error));
+    }
+    fn makeDirError(mkdir_error: anytype, pathname: [:0]const u8) void {
+        operationPathError(pathname, about_mkdir_1_s, @errorName(mkdir_error));
+    }
+    fn operationFdError(fd: u64, about: [:0]const u8, error_name: [:0]const u8) void {
+        var buf: [16 + 32 + 512]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", (", error_name, ")\n" });
+    }
+    fn readError(read_error: anytype, fd: u64) void {
+        operationFdError(fd, about_read_1_s, @errorName(read_error));
+    }
+    fn writeError(write_error: anytype, fd: u64) void {
+        operationFdError(fd, about_write_1_s, @errorName(write_error));
     }
     fn statusError(stat_error: anytype, fd: u64) void {
-        var buf: [16 + 32 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", (", @errorName(stat_error), ")\n" });
+        operationFdError(fd, about_stat_1_s, @errorName(stat_error));
+    }
+    fn closeError(close_error: anytype, fd: u64) void {
+        operationFdError(fd, about_close_1_s, @errorName(close_error));
     }
     fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
@@ -1378,10 +1407,7 @@ const debug = opaque {
         var buf: [16 + 64 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", offset=", builtin.fmt.ud64(offset).readAll(), ", (", @errorName(truncate_error), ")\n" });
     }
-    fn closeError(close_error: anytype, fd: u64) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_close_1_s, builtin.fmt.ud64(fd).readAll(), " (", @errorName(close_error), ")\n" });
-    }
+
     fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
@@ -1391,44 +1417,43 @@ const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
     }
 
-    fn pathIsKindNotice(pathname: [:0]const u8, mode: Mode) void {
+    fn pathNotice(pathname: [:0]const u8, mode: Mode) void {
         var buf: [8192]u8 = undefined;
-        var len: u64 = 0;
-        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, pathname, ", ", &describeMode(mode) });
-        len +%= builtin.debug.writeMany(buf[len..], "\n");
-        builtin.debug.logAlways(buf[0..len]);
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_0_s, pathname, ", ", &describeMode(mode), "\n" });
     }
-    fn fileIsKindNotice(fd: u64, mode: Mode) void {
+    fn pathMustNotBeFault(pathname: [:0]const u8, kind: Kind) void {
         var buf: [8192]u8 = undefined;
-        var len: u64 = 0;
-        len +%= builtin.debug.writeMulti(&buf, &.{ about_file_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", &describeMode(mode) });
-        len +%= builtin.debug.writeMany(buf[len..], "\n");
-        builtin.debug.logAlways(buf[0..len]);
+        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "'", pathname, "' must not be ", describeKind(kind), "\n" });
     }
-    fn pathIsKindFault(pathname: [:0]const u8, kind: Kind) void {
-        var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "'", pathname, "' must not be ", @tagName(kind), "\n" });
-        builtin.proc.exit(2);
-    }
-    fn pathIsNotKindFault(pathname: [:0]const u8, kind: Kind, mode: Mode) void {
+    fn pathMustBeFault(pathname: [:0]const u8, kind: Kind, mode: Mode) void {
         var buf: [8192]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "'", pathname, "' must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
-        builtin.proc.exit(2);
     }
-    fn fileIsKindFault(fd: u64, kind: Kind) void {
+
+    fn fdNotice(fd: u64, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(buf, &.{ about_file_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", &describeMode(mode), "\n" });
+    }
+    fn fdMustNotBeFault(fd: u64, kind: Kind) void {
         var buf: [8192]u8 = undefined;
         builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must not be ", describeKind(kind), "\n" });
-        builtin.proc.exit(2);
     }
-    fn assertFault(fd: u64, kind: Kind, mode: Mode) void {
+    fn fdMustBeFault(fd: u64, kind: Kind, mode: Mode) void {
         var buf: [8192]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
-        builtin.proc.exit(2);
     }
-    fn assertAtFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
+
+    fn atDirFdNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_0_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, ", ", &describeMode(mode), "\n" });
+    }
+    fn atDirFdMustBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
         var buf: [8192]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
-        builtin.proc.exit(2);
+    }
+    fn atDirFdMustNotBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must not be ", describeKind(kind), "\n" });
     }
 
     fn describeMode(mode: Mode) [10]u8 {
