@@ -206,6 +206,19 @@ pub fn Args(comptime Fn: type) type {
 pub inline fn tuple(any: anytype) Tuple(@TypeOf(any)) {
     return any;
 }
+pub inline fn call(comptime function: anytype, arguments: anytype) @TypeOf(@call(.auto, function, arguments)) {
+    switch (builtin.zig.mode) {
+        .Debug => {
+            return @call(.never_inline, function, arguments);
+        },
+        .ReleaseSmall, .ReleaseSafe => {
+            return @call(.auto, function, arguments);
+        },
+        .ReleaseFast => {
+            return @call(.always_inline, function, arguments);
+        },
+    }
+}
 
 /// Align `count` below to bitSizeOf smallest real word bit count
 pub fn alignBW(comptime count: comptime_int) u16 {
