@@ -712,7 +712,7 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: 
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, @bitCast(u16, mode) }))) |fd| {
         if (logging.Acquire) {
-            debug.createNotice(pathname, fd, comptime &debug.describeMode(mode));
+            debug.createNotice(pathname, fd, mode);
         }
         return fd;
     } else |open_error| {
@@ -756,7 +756,7 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, @bitCast(u16, mode) }))) {
         if (logging.Success) {
-            debug.makeDirNotice(pathname, comptime &debug.describeMode(mode));
+            debug.makeDirNotice(pathname, mode);
         }
     } else |mkdir_error| {
         if (logging.Error) {
@@ -1252,22 +1252,20 @@ const debug = opaque {
         var buf: [4096 + 32]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_open_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
     }
-    fn createNotice(pathname: [:0]const u8, fd: u64, comptime summary: []const u8) void {
-        var buf: [4096 + 64 + summary.len]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", summary, "\n" });
+    fn createNotice(pathname: [:0]const u8, fd: u64, mode: Mode) void {
+        var buf: [4096 + 64 + 16]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_create_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", &describeMode(mode), "\n" });
     }
 
     fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
     }
-
-    fn makeDirNotice(pathname: [:0]const u8, comptime descr: []const u8) void {
-        const max_len: u64 = 16 + 4096 + 2 + descr.len + 1;
+    fn makeDirNotice(pathname: [:0]const u8, mode: Mode) void {
+        const max_len: u64 = 16 + 4096 + 2 + 16;
         var buf: [max_len]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_mkdir_0_s, pathname, ", ", descr, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_mkdir_0_s, pathname, ", ", &describeMode(mode), "\n" });
     }
-
     fn getCwdNotice(pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 8]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_getcwd_0_s, pathname, "\n" });
@@ -1288,12 +1286,10 @@ const debug = opaque {
         var buf: [16 + 4096 + 8]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unlink_0_s, pathname, "\n" });
     }
-
     fn removeDirNotice(pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 1]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
     }
-
     fn pathStatusNotice(pathname: [:0]const u8, mode: Mode) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, pathname, ", ", &describeMode(mode), "\n" });
@@ -1314,7 +1310,6 @@ const debug = opaque {
     fn statusAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
         modeOperationAtNotice(dir_fd, name, mode, about_mkdir_0_s);
     }
-
     fn openOperationAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64, about: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096]u8 = undefined;
@@ -1326,11 +1321,13 @@ const debug = opaque {
     inline fn createAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
         openOperationAtNotice(dir_fd, name, fd, about_create_0_s);
     }
-
-    fn unlinkAtNotice(dir_fd: u64, name: [:0]const u8) void {
+    fn operationAtNotice(dir_fd: u64, name: [:0]const u8, about: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unlinkat_0_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, "\n" });
+    }
+    fn unlinkAtNotice(dir_fd: u64, name: [:0]const u8) void {
+        operationAtNotice(dir_fd, name, about_unlink_0_s);
     }
     fn operationAtError(dir_fd: u64, name: [:0]const u8, about: [:0]const u8, error_name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
@@ -1455,6 +1452,17 @@ const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must not be ", describeKind(kind), "\n" });
     }
 
+    fn describePerms(buf: []u8, perms: Perms) void {
+        if (perms.read) {
+            buf[0] = 'r';
+        }
+        if (perms.write) {
+            buf[1] = 'w';
+        }
+        if (perms.execute) {
+            buf[2] = 'x';
+        }
+    }
     fn describeMode(mode: Mode) [10]u8 {
         var ret: [10]u8 = [1]u8{'-'} ** 10;
         ret[0] = switch (mode.kind) {
@@ -1466,33 +1474,9 @@ const debug = opaque {
             .named_pipe => 'p',
             .symbolic_link => 'l',
         };
-        if (mode.owner.read) {
-            ret[1] = 'r';
-        }
-        if (mode.owner.write) {
-            ret[2] = 'w';
-        }
-        if (mode.owner.execute) {
-            ret[3] = 'x';
-        }
-        if (mode.group.read) {
-            ret[4] = 'r';
-        }
-        if (mode.group.write) {
-            ret[5] = 'w';
-        }
-        if (mode.group.execute) {
-            ret[6] = 'x';
-        }
-        if (mode.other.read) {
-            ret[7] = 'r';
-        }
-        if (mode.other.write) {
-            ret[8] = 'w';
-        }
-        if (mode.other.execute) {
-            ret[9] = 'x';
-        }
+        describePerms(ret[1..], mode.owner);
+        describePerms(ret[4..], mode.group);
+        describePerms(ret[7..], mode.other);
         return ret;
     }
     fn describeKind(kind: Kind) []const u8 {
