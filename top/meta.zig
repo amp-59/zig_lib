@@ -572,6 +572,16 @@ pub inline fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
 pub fn bytesTo(comptime E: type, comptime bytes: []const u8) E {
     return @ptrCast(*const E, @alignCast(@alignOf(E), bytes.ptr)).*;
 }
+/// Returns the degree of optional
+pub fn optionalLevel(comptime T: type) comptime_int {
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Optional and
+        type_info.Pointer.size == .Slice)
+    {
+        return optionalLevel(type_info.Optional.child) + 1;
+    }
+    return 0;
+}
 /// Returns the degree of indirection
 pub fn sliceLevel(comptime T: type) comptime_int {
     const type_info: builtin.Type = @typeInfo(T);
