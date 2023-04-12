@@ -872,7 +872,7 @@ pub inline fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr })) {
         if (logging.Success) {
-            debug.pathNotice(pathname, st.mode);
+            debug.pathStatusNotice(pathname, st.mode);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -888,7 +888,7 @@ pub inline fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, S
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr }))) {
         if (logging.Success) {
-            debug.statusNotice(fd, &debug.describeMode(st.mode));
+            debug.statusNotice(fd, st.mode);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -1171,7 +1171,7 @@ pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat
     const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
     if (!res) {
         if (logging.Fault) {
-            debug.assertNotFault(fd, kind, st.mode);
+            debug.fdMustBeFault(fd, kind, st.mode);
         }
         builtin.proc.exit(2);
     }
@@ -1183,7 +1183,7 @@ pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(s
     const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
     if (res) {
         if (logging.Fault) {
-            debug.assertFault(kind, fd, st.mode);
+            debug.fdMustNotBeFault(fd, kind);
         }
         builtin.proc.exit(2);
     }
@@ -1294,14 +1294,25 @@ const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_0_s, pathname, "\n" });
     }
 
-    fn pathStatusNotice(pathname: [:0]const u8, descr: []const u8) void {
+    fn pathStatusNotice(pathname: [:0]const u8, mode: Mode) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, pathname, ", ", descr, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, pathname, ", ", &describeMode(mode), "\n" });
     }
-    fn statusNotice(fd: u64, descr: []const u8) void {
+    fn statusNotice(fd: u64, mode: Mode) void {
         const fd_s: []const u8 = if (fd > 1024) "CWD" else builtin.fmt.ud64(fd).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "fd=", fd_s, ", ", descr, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_stat_0_s, "fd=", fd_s, ", ", &describeMode(mode), "\n" });
+    }
+    fn modeOperationAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, about: [:0]const u8) void {
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
+        var buf: [16 + 32 + 4096 + 512]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, ", ", &describeMode(mode), "\n" });
+    }
+    fn makeDirAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
+        modeOperationAtNotice(dir_fd, name, mode, about_mkdir_0_s);
+    }
+    fn statusAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
+        modeOperationAtNotice(dir_fd, name, mode, about_mkdir_0_s);
     }
 
     fn openOperationAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64, about: [:0]const u8) void {
@@ -1314,18 +1325,6 @@ const debug = opaque {
     }
     inline fn createAtNotice(dir_fd: u64, name: [:0]const u8, fd: u64) void {
         openOperationAtNotice(dir_fd, name, fd, about_create_0_s);
-    }
-
-    fn modeOperationAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, about: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
-        var buf: [16 + 32 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, ", ", &describeMode(mode), "\n" });
-    }
-    fn makeDirAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
-        modeOperationAtNotice(dir_fd, name, mode, about_mkdir_0_s);
-    }
-    fn statusAtNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
-        modeOperationAtNotice(dir_fd, name, mode, about_mkdir_0_s);
     }
 
     fn unlinkAtNotice(dir_fd: u64, name: [:0]const u8) void {
