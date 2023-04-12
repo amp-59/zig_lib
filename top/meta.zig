@@ -601,8 +601,15 @@ pub fn SliceChild(comptime T: type) type {
     }
     return T;
 }
-pub fn sliceProperty(comptime T: type) SliceProperty {
-    return .{ sliceLevel(T), SliceChild(T) };
+pub fn DistalChild(comptime T: type) type {
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info == .Pointer) {
+        return DistalChild(type_info.Pointer.child);
+    }
+    if (type_info == .Optional) {
+        return DistalChild(type_info.Optional.child);
+    }
+    return T;
 }
 pub fn Mutable(comptime T: type) type {
     const type_info: builtin.Type = @typeInfo(T);
