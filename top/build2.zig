@@ -15,20 +15,7 @@ const types = @import("./build/types.zig");
 const command_line = @import("./build/command_line.zig");
 
 pub usingnamespace types;
-pub const Task = enum(u8) {
-    build = 1,
-    run = 2,
-};
-pub const State = enum(u8) {
-    unavailable = 0,
-    failed = 1,
-    ready = 2,
-    blocking = 3,
-    invalid = 4,
-    finished = 255,
-    pub const tag_list: []const State = meta.tagList(State);
-};
-pub const Lock = virtual.ThreadSafeSet(State.tag_list.len, State, Task);
+
 pub const BuilderSpec = struct {
     options: Options = .{},
     logging: Logging = .{},
