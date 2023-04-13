@@ -954,7 +954,7 @@ fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
         const SubFormat = meta.Return(fmt.ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = (4 + typeName(Pointer, spec).len + 3) + AnyFormat(spec, child).max_len + 1;
-        pub fn formatWrite(format: Format, array: anytype) void {
+        pub fn formatWrite(format: anytype, array: anytype) void {
             const address: usize = @ptrToInt(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
