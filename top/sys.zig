@@ -1,6 +1,6 @@
 //! Linux x86_64
 const builtin = @import("./builtin.zig");
-pub const MAP = opaque {
+pub const MAP = struct {
     pub const FILE: usize = 0x0;
     pub const SHARED: usize = 0x1;
     pub const PRIVATE: usize = 0x2;
@@ -23,12 +23,12 @@ pub const MAP = opaque {
     pub const SYNC: usize = 0x80000;
     pub const FIXED_NOREPLACE: usize = 0x100000;
 };
-pub const MFD = opaque {
+pub const MFD = struct {
     pub const CLOEXEC: usize = 0x1;
     pub const ALLOW_SEALING: usize = 0x2;
     pub const HUGETLB: usize = 0x4;
 };
-pub const PROT = opaque {
+pub const PROT = struct {
     pub const NONE: usize = 0x0;
     pub const READ: usize = 0x1;
     pub const WRITE: usize = 0x2;
@@ -36,13 +36,13 @@ pub const PROT = opaque {
     pub const GROWSDOWN: usize = 0x1000000;
     pub const GROWSUP: usize = 0x2000000;
 };
-pub const REMAP = opaque {
+pub const REMAP = struct {
     pub const RESIZE: usize = 0x0;
     pub const MAYMOVE: usize = 0x1;
     pub const FIXED: usize = 0x2;
     pub const DONTUNMAP: usize = 0x4;
 };
-pub const MADV = opaque {
+pub const MADV = struct {
     pub const NORMAL: usize = 0x0;
     pub const RANDOM: usize = 0x1;
     pub const SEQUENTIAL: usize = 0x2;
@@ -64,12 +64,12 @@ pub const MADV = opaque {
     pub const PAGEOUT: usize = 0x15;
     pub const HWPOISON: usize = 0x64;
 };
-pub const MCL = opaque {
+pub const MCL = struct {
     pub const CURRENT: usize = 0x1;
     pub const FUTURE: usize = 0x2;
     pub const ONFAULT: usize = 0x4;
 };
-pub const O = opaque {
+pub const O = struct {
     pub const LARGEFILE: usize = 0x0;
     pub const RDONLY: usize = 0x0;
     pub const WRONLY: usize = 0x1;
@@ -92,21 +92,21 @@ pub const O = opaque {
     pub const DSYNC: usize = 0x1000;
     pub const TMPFILE: usize = 0x400000;
 };
-pub const LOCK = opaque {
+pub const LOCK = struct {
     pub const SH: usize = 0x1;
     pub const EX: usize = 0x2;
     pub const NB: usize = 0x4;
     pub const UN: usize = 0x8;
 };
-pub const POSIX = opaque {
-    pub const MADV = opaque {
+pub const POSIX = struct {
+    pub const MADV = struct {
         pub const NORMAL: usize = 0x0;
         pub const RANDOM: usize = 0x1;
         pub const SEQUENTIAL: usize = 0x2;
         pub const WILLNEED: usize = 0x3;
         pub const DONTNEED: usize = 0x4;
     };
-    pub const FADV = opaque {
+    pub const FADV = struct {
         pub const NORMAL: usize = 0x0;
         pub const RANDOM: usize = 0x1;
         pub const SEQUENTIAL: usize = 0x2;
@@ -115,36 +115,40 @@ pub const POSIX = opaque {
         pub const NOREUSE: usize = 0x5;
     };
 };
-pub const S = opaque {
-    pub const IFMT: usize = 0xf000;
-    pub const IFDIR: usize = 0x4000;
-    pub const IFCHR: usize = 0x2000;
-    pub const IFBLK: usize = 0x6000;
-    pub const IFREG: usize = 0x8000;
-    pub const IFIFO: usize = 0x1000;
-    pub const IFLNK: usize = 0xa000;
-    pub const IFSOCK: usize = 0xc000;
-    pub const ISUID: usize = 0x800;
-    pub const ISGID: usize = 0x400;
-    pub const ISVTX: usize = 0x200;
-    pub const IREAD: usize = 0x100;
-    pub const IWRITE: usize = 0x80;
-    pub const IEXEC: usize = 0x40;
-    pub const IRUSR: usize = 0x100;
-    pub const IWUSR: usize = 0x80;
-    pub const IXUSR: usize = 0x40;
-    pub const IRWXU: usize = 0x1c0;
-    pub const IRGRP: usize = 0x20;
-    pub const IWGRP: usize = 0x10;
-    pub const IXGRP: usize = 0x8;
-    pub const IRWXG: usize = 0x38;
-    pub const IROTH: usize = 0x4;
-    pub const IWOTH: usize = 0x2;
-    pub const IXOTH: usize = 0x1;
-    pub const IRWXO: usize = 0x7;
-    pub const AT_FDCWD: usize = 0xffffffffffffff9c;
+
+// zig fmt: off
+pub const S: type = struct {
+    pub const IFMT: u16     = 0b1111000000000000;
+    pub const IFLNK: u16    = 0b1010000000000000;
+    pub const IFREG: u16    = 0b1000000000000000;
+    pub const IFSOCK: u16   = 0b1100000000000000;
+    pub const IFDIR: u16    = 0b0100000000000000;
+    pub const IFBLK: u16    = 0b0110000000000000;
+    pub const IFCHR: u16    = 0b0010000000000000;
+    pub const IFIFO: u16    = 0b0001000000000000;
+    pub const ISUID: u16    = 0b0000100000000000;
+    pub const ISGID: u16    = 0b0000010000000000;
+    pub const ISVTX: u16    = 0b0000001000000000;
+    pub const IREAD: u16    = 0b0000000100000000;
+    pub const IWRITE: u16   = 0b0000000010000000;
+    pub const IEXEC: u16    = 0b0000000001000000;
+    pub const IRUSR: u16    = 0b0000000100000000;
+    pub const IWUSR: u16    = 0b0000000010000000;
+    pub const IXUSR: u16    = 0b0000000001000000;
+    pub const IRWXU: u16    = 0b0000000111000000;
+    pub const IRGRP: u16    = 0b0000000000100000;
+    pub const IWGRP: u16    = 0b0000000000010000;
+    pub const IXGRP: u16    = 0b0000000000001000;
+    pub const IRWXG: u16    = 0b0000000000111000;
+    pub const IROTH: u16    = 0b0000000000000100;
+    pub const IWOTH: u16    = 0b0000000000000010;
+    pub const IXOTH: u16    = 0b0000000000000001;
+    pub const IRWXO: u16    = 0b0000000000000111;
+    pub const AT_FDCWD: u64 = 0xffffffffffffff9c;
 };
-pub const UTIME = opaque {
+// zig fmt: on
+
+pub const UTIME = struct {
     pub const NOW: usize = 0x3fffffff;
     pub const OMIT: usize = 0x3ffffffe;
 };
@@ -152,14 +156,14 @@ pub const R_OK: usize = 0x4;
 pub const W_OK: usize = 0x2;
 pub const X_OK: usize = 0x1;
 pub const F_OK: usize = 0x0;
-pub const SEEK = opaque {
+pub const SEEK = struct {
     pub const END: usize = 0x2;
     pub const HOLE: usize = 0x4;
     pub const DATA: usize = 0x3;
     pub const SET: usize = 0x0;
     pub const CUR: usize = 0x1;
 };
-pub const STATX = opaque {
+pub const STATX = struct {
     pub const TYPE: usize = 0x1;
     pub const MODE: usize = 0x2;
     pub const NLINK: usize = 0x4;
@@ -175,7 +179,7 @@ pub const STATX = opaque {
     pub const BTIME: usize = 0x800;
     pub const MNT_ID: usize = 0x1000;
     pub const ALL: usize = 0xfff;
-    pub const ATTR = opaque {
+    pub const ATTR = struct {
         pub const COMPRESSED: usize = 0x4;
         pub const IMMUTABLE: usize = 0x10;
         pub const APPEND: usize = 0x20;
@@ -187,12 +191,12 @@ pub const STATX = opaque {
         pub const DAX: usize = 0x200000;
     };
 };
-pub const GRND = opaque {
+pub const GRND = struct {
     pub const NONBLOCK: usize = 0x1;
     pub const RANDOM: usize = 0x2;
     pub const INSECURE: usize = 0x4;
 };
-pub const CLOCK = opaque {
+pub const CLOCK = struct {
     pub const REALTIME: usize = 0x0;
     pub const REALTIME_ALARM: usize = 0x8;
     pub const REALTIME_COARSE: usize = 0x5;
@@ -205,7 +209,7 @@ pub const CLOCK = opaque {
     pub const PROCESS_CPUTIME_ID: usize = 0x2;
     pub const THREAD_CPUTIME_ID: usize = 0x3;
 };
-pub const IPC = opaque {
+pub const IPC = struct {
     pub const EXCL: usize = 0x400;
     pub const INFO: usize = 0x3;
     pub const RMID: usize = 0x0;
@@ -214,19 +218,19 @@ pub const IPC = opaque {
     pub const CREAT: usize = 0x200;
     pub const STAT: usize = 0x2;
 };
-pub const SCHED = opaque {
+pub const SCHED = struct {
     pub const RR: usize = 0x2;
     pub const BATCH: usize = 0x3;
     pub const IDLE: usize = 0x5;
-    pub const FLAG = opaque {
+    pub const FLAG = struct {
         pub const RECLAIM: usize = 0x2;
-        pub const RESET_ON = opaque {
+        pub const RESET_ON = struct {
             pub const FORK: usize = 0x1;
         };
         pub const DL_OVERRUN: usize = 0x4;
     };
 };
-pub const SA = opaque {
+pub const SA = struct {
     pub const ONSTACK: usize = 0x8000000;
     pub const SIGINFO: usize = 0x4;
     pub const NODEFER: usize = 0x40000000;
@@ -238,7 +242,7 @@ pub const SA = opaque {
     pub const NOCLDSTOP: usize = 0x1;
     pub const UNSUPPORTED: usize = 0x400;
 };
-pub const SIG = opaque {
+pub const SIG = struct {
     pub const DFL: usize = 0x0;
     pub const IGN: usize = 0x1;
     pub const INT: usize = 0x2;
@@ -279,7 +283,7 @@ pub const SIG = opaque {
     pub const SETMASK: usize = 0x2;
     pub const BLOCK: usize = 0x0;
 };
-pub const TIOC = opaque {
+pub const TIOC = struct {
     pub const EXCL: usize = 0x540C;
     pub const NXCL: usize = 0x540D;
     pub const SCTTY: usize = 0x540E;
@@ -330,14 +334,14 @@ pub const TIOC = opaque {
     pub const PKT_IOCTL: usize = 64;
     pub const SER_TEMT: usize = 0x01;
 };
-pub const FIO = opaque {
+pub const FIO = struct {
     pub const NBIO: usize = 0x5421;
     pub const NCLEX: usize = 0x5450;
     pub const CLEX: usize = 0x5451;
     pub const ASYNC: usize = 0x5452;
     pub const QSIZE: usize = 0x5460;
 };
-pub const TC = opaque {
+pub const TC = struct {
     pub const GETS: usize = 0x5401;
     pub const SETS: usize = 0x5402;
     pub const SETSW: usize = 0x5403;
@@ -354,7 +358,7 @@ pub const TC = opaque {
     pub const SETX: usize = 0x5433;
     pub const SETXF: usize = 0x5434;
     pub const SETXW: usize = 0x5435;
-    pub const I = opaque {
+    pub const I = struct {
         pub const IGNBRK: u32 = 0x1;
         pub const BRKINT: u32 = 0x2;
         pub const IGNPAR: u32 = 0x4;
@@ -371,7 +375,7 @@ pub const TC = opaque {
         pub const MAXBEL: u32 = 0x2000;
         pub const UTF8: u32 = undefined;
     };
-    pub const O = opaque {
+    pub const O = struct {
         pub const POST: u32 = 0x1;
         pub const LCUC: u32 = 0x2;
         pub const NLCR: u32 = 0x4;
@@ -387,7 +391,7 @@ pub const TC = opaque {
         pub const VTDLY: u32 = 0x4000;
         pub const FFDLY: u32 = 0x8000;
     };
-    pub const C = opaque {
+    pub const C = struct {
         pub const BAUD: u32 = 0x100f;
         pub const BAUDEX: u32 = 0x1000;
         pub const SIZE: u32 = 0x30;
@@ -401,7 +405,7 @@ pub const TC = opaque {
         pub const MSPAR: u32 = 0x40000000;
         pub const RTSCTS: u32 = 0x80000000;
     };
-    pub const L = opaque {
+    pub const L = struct {
         pub const ISIG: u32 = 0x1;
         pub const ICANON: u32 = 0x2;
         pub const XCASE: u32 = 0x4;
@@ -418,7 +422,7 @@ pub const TC = opaque {
         pub const PENDIN: u32 = 0x4000;
         pub const IEXTEN: u32 = 0x8000;
     };
-    pub const V = opaque {
+    pub const V = struct {
         pub const DISCARD: u8 = 0xd;
         pub const EOF: u8 = 0x4;
         pub const EOL: u8 = 0xb;
@@ -446,28 +450,28 @@ pub const TC = opaque {
     pub const IOFF: usize = 0x2;
     pub const ION: usize = 0x3;
 };
-pub const ARCH = opaque {
-    pub const SET = opaque {
+pub const ARCH = struct {
+    pub const SET = struct {
         pub const CPUID: usize = 0x1012;
         pub const GS: usize = 0x1001;
         pub const FS: usize = 0x1002;
     };
-    pub const GET = opaque {
+    pub const GET = struct {
         pub const CPUID: usize = 0x1011;
         pub const GS: usize = 0x1004;
         pub const FS: usize = 0x1003;
     };
 };
-pub const UFFD = opaque {
-    pub const EVENT = opaque {
+pub const UFFD = struct {
+    pub const EVENT = struct {
         pub const UNMAP: usize = 0x16;
         pub const FORK: usize = 0x13;
         pub const REMOVE: usize = 0x15;
         pub const REMAP: usize = 0x14;
         pub const PAGEFAULT: usize = 0x12;
     };
-    pub const FEATURE = opaque {
-        pub const EVENT = opaque {
+    pub const FEATURE = struct {
+        pub const EVENT = struct {
             pub const UNMAP: usize = 0x40;
             pub const FORK: usize = 0x2;
             pub const REMOVE: usize = 0x8;
@@ -475,17 +479,17 @@ pub const UFFD = opaque {
         };
         pub const THREAD_ID: usize = 0x100;
         pub const SIGBUS: usize = 0x80;
-        pub const MISSING = opaque {
+        pub const MISSING = struct {
             pub const SHMEM: usize = 0x20;
             pub const HUGETLBFS: usize = 0x10;
         };
     };
-    pub const PAGEFAULT_FLAG = opaque {
+    pub const PAGEFAULT_FLAG = struct {
         pub const WP: usize = 0x2;
         pub const WRITE: usize = 0x1;
     };
 };
-pub const POLL = opaque {
+pub const POLL = struct {
     pub const HUP: usize = 0x6;
     pub const ERR: usize = 0x4;
     pub const IN: usize = 0x1;
@@ -493,17 +497,17 @@ pub const POLL = opaque {
     pub const MSG: usize = 0x3;
     pub const PRI: usize = 0x5;
 };
-pub const PERF = opaque {
-    pub const SAMPLE_BRANCH = opaque {
+pub const PERF = struct {
+    pub const SAMPLE_BRANCH = struct {
         pub const PLM_ALL: usize = 0x7;
     };
-    pub const EVENT_IOC = opaque {
+    pub const EVENT_IOC = struct {
         pub const QUERY_BPF: usize = 0xc008240a;
         pub const REFRESH: usize = 0x2402;
         pub const PERIOD: usize = 0x40082404;
         pub const DISABLE: usize = 0x2401;
         pub const ENABLE: usize = 0x2400;
-        pub const SET = opaque {
+        pub const SET = struct {
             pub const FILTER: usize = 0x40082406;
             pub const BPF: usize = 0x40042408;
             pub const OUTPUT: usize = 0x2405;
@@ -512,12 +516,12 @@ pub const PERF = opaque {
         pub const PAUSE_OUTPUT: usize = 0x40042409;
         pub const ID: usize = 0x80082407;
     };
-    pub const AUX_FLAG = opaque {
+    pub const AUX_FLAG = struct {
         pub const TRUNCATED: usize = 0x1;
         pub const OVERWRITE: usize = 0x2;
     };
-    pub const MEM = opaque {
-        pub const LVL = opaque {
+    pub const MEM = struct {
+        pub const LVL = struct {
             pub const L1: usize = 0x8;
             pub const IO: usize = 0x1000;
             pub const MISS: usize = 0x4;
@@ -525,7 +529,7 @@ pub const PERF = opaque {
             pub const HIT: usize = 0x2;
             pub const L3: usize = 0x40;
             pub const UNC: usize = 0x2000;
-            pub const REM = opaque {
+            pub const REM = struct {
                 pub const CCE2: usize = 0x800;
                 pub const RAM1: usize = 0x100;
                 pub const RAM2: usize = 0x200;
@@ -534,7 +538,7 @@ pub const PERF = opaque {
             pub const LOC_RAM: usize = 0x80;
             pub const LFB: usize = 0x10;
         };
-        pub const TLB = opaque {
+        pub const TLB = struct {
             pub const L1: usize = 0x8;
             pub const L2: usize = 0x10;
             pub const MISS: usize = 0x4;
@@ -542,13 +546,13 @@ pub const PERF = opaque {
             pub const WK: usize = 0x20;
             pub const HIT: usize = 0x2;
         };
-        pub const SNOOP = opaque {
+        pub const SNOOP = struct {
             pub const HITM: usize = 0x10;
             pub const MISS: usize = 0x8;
             pub const NONE: usize = 0x2;
             pub const HIT: usize = 0x4;
         };
-        pub const OP = opaque {
+        pub const OP = struct {
             pub const LOAD: usize = 0x2;
             pub const PFETCH: usize = 0x8;
             pub const EXEC: usize = 0x10;
@@ -556,20 +560,20 @@ pub const PERF = opaque {
         };
         pub const LOCK_LOCKED: usize = 0x2;
     };
-    pub const FLAG = opaque {
-        pub const FD = opaque {
+    pub const FLAG = struct {
+        pub const FD = struct {
             pub const NO_GROUP: usize = 0x1;
             pub const OUTPUT: usize = 0x2;
             pub const CLOEXEC: usize = 0x8;
         };
         pub const PID_CGROUP: usize = 0x4;
     };
-    pub const RECORD_MISC = opaque {
+    pub const RECORD_MISC = struct {
         pub const KERNEL: usize = 0x1;
         pub const MMAP_DATA: usize = 0x2000;
         pub const HYPERVISOR: usize = 0x3;
         pub const PROC_MAP_PARSE_TIMEOUT: usize = 0x1000;
-        pub const GUEST = opaque {
+        pub const GUEST = struct {
             pub const KERNEL: usize = 0x4;
             pub const USER: usize = 0x5;
         };
@@ -581,9 +585,9 @@ pub const PERF = opaque {
         pub const CPUMODE_UNKNOWN: usize = 0x0;
     };
 };
-pub const RESOLVE = opaque {
+pub const RESOLVE = struct {
     pub const BENEATH: usize = 0x8;
-    pub const NO = opaque {
+    pub const NO = struct {
         pub const SYMLINKS: usize = 0x4;
         pub const XDEV: usize = 0x1;
         pub const MAGICLINKS: usize = 0x2;
@@ -592,9 +596,9 @@ pub const RESOLVE = opaque {
     pub const IN_ROOT: usize = 0x10;
 };
 pub const SYS_SECCOMP: usize = 0x1;
-pub const KEYCTL = opaque {
+pub const KEYCTL = struct {
     pub const UPDATE: usize = 0x2;
-    pub const GET = opaque {
+    pub const GET = struct {
         pub const SECURITY: usize = 0x11;
         pub const KEYRING_ID: usize = 0x0;
         pub const PERSISTENT: usize = 0x16;
@@ -608,7 +612,7 @@ pub const KEYCTL = opaque {
     pub const RESTRICT_KEYRING: usize = 0x1d;
     pub const ASSUME_AUTHORITY: usize = 0x10;
     pub const JOIN_SESSION_KEYRING: usize = 0x1;
-    pub const SET = opaque {
+    pub const SET = struct {
         pub const REQKEY_KEYRING: usize = 0xe;
         pub const TIMEOUT: usize = 0xf;
     };
@@ -622,24 +626,24 @@ pub const KEYCTL = opaque {
     pub const DESCRIBE: usize = 0x6;
     pub const READ: usize = 0xb;
 };
-pub const KEY = opaque {
-    pub const SPEC = opaque {
+pub const KEY = struct {
+    pub const SPEC = struct {
         pub const THREAD_KEYRING: usize = 0xffffffff;
         pub const REQUESTOR_KEYRING: usize = 0xfffffff8;
-        pub const USER = opaque {
+        pub const USER = struct {
             pub const KEYRING: usize = 0xfffffffc;
             pub const SESSION_KEYRING: usize = 0xfffffffb;
         };
-        pub const REQKEY_AUTH = opaque {
+        pub const REQKEY_AUTH = struct {
             pub const KEY: usize = 0xfffffff9;
         };
         pub const PROCESS_KEYRING: usize = 0xfffffffe;
         pub const SESSION_KEYRING: usize = 0xfffffffd;
     };
-    pub const REQKEY_DEFL = opaque {
+    pub const REQKEY_DEFL = struct {
         pub const THREAD_KEYRING: usize = 0x1;
         pub const REQUESTOR_KEYRING: usize = 0x7;
-        pub const USER = opaque {
+        pub const USER = struct {
             pub const KEYRING: usize = 0x4;
             pub const SESSION_KEYRING: usize = 0x5;
         };
@@ -649,21 +653,21 @@ pub const KEY = opaque {
         pub const SESSION_KEYRING: usize = 0x3;
     };
 };
-pub const SYNC_FILE = opaque {
-    pub const RANGE = opaque {
-        pub const WAIT = opaque {
+pub const SYNC_FILE = struct {
+    pub const RANGE = struct {
+        pub const WAIT = struct {
             pub const AFTER: usize = 0x4;
             pub const BEFORE: usize = 0x1;
         };
         pub const WRITE: usize = 0x2;
     };
 };
-pub const SIGEV = opaque {
+pub const SIGEV = struct {
     pub const NONE: usize = 0x1;
     pub const SIGNAL: usize = 0x0;
     pub const THREAD_ID: usize = 0x4;
 };
-pub const MS = opaque {
+pub const MS = struct {
     pub const MANDLOCK: usize = 0x40;
     pub const LAZYTIME: usize = 0x2000000;
     pub const REC: usize = 0x4000;
@@ -687,7 +691,7 @@ pub const MS = opaque {
     pub const NOSUID: usize = 0x2;
     pub const NOEXEC: usize = 0x8;
 };
-pub const ATTR = opaque {
+pub const ATTR = struct {
     pub const HIDDEN: usize = 0x2;
     pub const RO: usize = 0x1;
     pub const VOLUME: usize = 0x8;
@@ -695,7 +699,7 @@ pub const ATTR = opaque {
     pub const ARCH: usize = 0x20;
     pub const SYS: usize = 0x4;
 };
-pub const ILL = opaque {
+pub const ILL = struct {
     pub const COPROC: usize = 0x7;
     pub const ILLOPN: usize = 0x2;
     pub const PRVREG: usize = 0x6;
@@ -705,17 +709,17 @@ pub const ILL = opaque {
     pub const PRVOPC: usize = 0x5;
     pub const BADSTK: usize = 0x8;
 };
-pub const RENAME = opaque {
+pub const RENAME = struct {
     pub const NOREPLACE: usize = 0x1;
     pub const WHITEOUT: usize = 0x4;
     pub const EXCHANGE: usize = 0x2;
 };
-pub const SS = opaque {
+pub const SS = struct {
     pub const ONSTACK: usize = 0x1;
     pub const DISABLE: usize = 0x2;
     pub const AUTODISARM: usize = 0x80000000;
 };
-pub const FPE = opaque {
+pub const FPE = struct {
     pub const FLTINV: usize = 0x7;
     pub const FLTDIV: usize = 0x3;
     pub const FLTSUB: usize = 0x8;
@@ -725,7 +729,7 @@ pub const FPE = opaque {
     pub const INTDIV: usize = 0x1;
     pub const FLTOVF: usize = 0x4;
 };
-pub const CLD = opaque {
+pub const CLD = struct {
     pub const TRAPPED: usize = 0x4;
     pub const STOPPED: usize = 0x5;
     pub const KILLED: usize = 0x2;
@@ -733,9 +737,9 @@ pub const CLD = opaque {
     pub const DUMPED: usize = 0x3;
     pub const EXITED: usize = 0x1;
 };
-pub const AT = opaque {
+pub const AT = struct {
     pub const EACCESS: usize = 0x200;
-    pub const SYMLINK = opaque {
+    pub const SYMLINK = struct {
         pub const FOLLOW: usize = 0x400;
         pub const NOFOLLOW: usize = 0x100;
     };
@@ -774,8 +778,8 @@ pub const AT = opaque {
     pub const L3_CACHESIZE: usize = 0x2e;
     pub const L3_CACHEGEOMETRY: usize = 0x2f;
 };
-pub const FMR = opaque {
-    pub const OF = opaque {
+pub const FMR = struct {
+    pub const OF = struct {
         pub const EXTENT_MAP: usize = 0x4;
         pub const SHARED: usize = 0x8;
         pub const SPECIAL_OWNER: usize = 0x10;
@@ -783,13 +787,13 @@ pub const FMR = opaque {
         pub const LAST: usize = 0x20;
         pub const PREALLOC: usize = 0x1;
     };
-    pub const OWN = opaque {
+    pub const OWN = struct {
         pub const UNKNOWN: usize = 0x2;
         pub const FREE: usize = 0x1;
         pub const METADATA: usize = 0x3;
     };
 };
-pub const F = opaque {
+pub const F = struct {
     pub const SETOWN: usize = 0x8;
     pub const SETLK: usize = 0x6;
     pub const SETFD: usize = 0x2;
@@ -804,7 +808,7 @@ pub const F = opaque {
     pub const GETOWN: usize = 0x9;
     pub const SETFL: usize = 0x4;
 };
-pub const SI = opaque {
+pub const SI = struct {
     pub const TKILL: usize = 0xfffffffa;
     pub const ASYNCIO: usize = 0xfffffffc;
     pub const KERNEL: usize = 0x80;
@@ -814,14 +818,14 @@ pub const SI = opaque {
     pub const SIGIO: usize = 0xfffffffb;
     pub const MESGQ: usize = 0xfffffffd;
 };
-pub const RWF = opaque {
+pub const RWF = struct {
     pub const DSYNC: usize = 0x2;
     pub const HIPRI: usize = 0x1;
     pub const SYNC: usize = 0x4;
     pub const NOWAIT: usize = 0x8;
     pub const APPEND: usize = 0x10;
 };
-pub const DT = opaque {
+pub const DT = struct {
     pub const SOCK: usize = 0xc;
     pub const UNKNOWN: usize = 0x0;
     pub const LNK: usize = 0xa;
@@ -830,28 +834,28 @@ pub const DT = opaque {
     pub const FIFO: usize = 0x1;
     pub const REG: usize = 0x8;
 };
-pub const LINUX_REBOOT_CMD = opaque {
+pub const LINUX_REBOOT_CMD = struct {
     pub const RESTART: usize = 0x1234567;
     pub const HALT: usize = 0xcdef0123;
     pub const SW_SUSPEND: usize = 0xd000fce2;
     pub const RESTART2: usize = 0xa1b2c3d4;
     pub const POWER_OFF: usize = 0x4321fedc;
     pub const KEXEC: usize = 0x45584543;
-    pub const CAD = opaque {
+    pub const CAD = struct {
         pub const ON: usize = 0x89abcdef;
         pub const OFF: usize = 0x0;
     };
 };
-pub const BUS = opaque {
+pub const BUS = struct {
     pub const ADRALN: usize = 0x1;
     pub const ADRERR: usize = 0x2;
     pub const OBJERR: usize = 0x3;
-    pub const MCEERR = opaque {
+    pub const MCEERR = struct {
         pub const AO: usize = 0x5;
         pub const AR: usize = 0x4;
     };
 };
-pub const POSIX_FADV = opaque {
+pub const POSIX_FADV = struct {
     pub const NOREUSE: usize = 0x5;
     pub const NORMAL: usize = 0x0;
     pub const RANDOM: usize = 0x1;
@@ -859,20 +863,20 @@ pub const POSIX_FADV = opaque {
     pub const SEQUENTIAL: usize = 0x2;
     pub const WILLNEED: usize = 0x3;
 };
-pub const ITIMER = opaque {
+pub const ITIMER = struct {
     pub const VIRTUAL: usize = 0x1;
     pub const REAL: usize = 0x0;
     pub const PROF: usize = 0x2;
 };
-pub const SEGV = opaque {
+pub const SEGV = struct {
     pub const ACCERR: usize = 0x2;
     pub const PKUERR: usize = 0x4;
     pub const BNDERR: usize = 0x3;
     pub const MAPERR: usize = 0x1;
 };
-pub const SECCOMP = opaque {
-    pub const RET = opaque {
-        pub const KILL = opaque {
+pub const SECCOMP = struct {
+    pub const RET = struct {
+        pub const KILL = struct {
             pub const PROCESS: usize = 0x80000000;
             pub const THREAD: usize = 0x0;
         };
@@ -883,46 +887,46 @@ pub const SECCOMP = opaque {
         pub const TRAP: usize = 0x30000;
         pub const USER_NOTIF: usize = 0x7fc00000;
     };
-    pub const GET = opaque {
+    pub const GET = struct {
         pub const NOTIF_SIZES: usize = 0x3;
         pub const ACTION_AVAIL: usize = 0x2;
     };
-    pub const FILTER_FLAG = opaque {
+    pub const FILTER_FLAG = struct {
         pub const NEW_LISTENER: usize = 0x8;
         pub const SPEC_ALLOW: usize = 0x4;
         pub const TSYNC: usize = 0x1;
         pub const LOG: usize = 0x2;
     };
-    pub const SET_MODE = opaque {
+    pub const SET_MODE = struct {
         pub const STRICT: usize = 0x0;
         pub const FILTER: usize = 0x1;
     };
 };
-pub const UFFDIO = opaque {
-    pub const ZEROPAGE_MODE = opaque {
+pub const UFFDIO = struct {
+    pub const ZEROPAGE_MODE = struct {
         pub const DONTWAKE: usize = 0x1;
     };
-    pub const WRITEPROTECT_MODE = opaque {
+    pub const WRITEPROTECT_MODE = struct {
         pub const DONTWAKE: usize = 0x2;
         pub const WP: usize = 0x1;
     };
-    pub const REGISTER_MODE = opaque {
+    pub const REGISTER_MODE = struct {
         pub const WP: usize = 0x2;
         pub const MISSING: usize = 0x1;
     };
-    pub const COPY_MODE = opaque {
+    pub const COPY_MODE = struct {
         pub const DONTWAKE: usize = 0x1;
         pub const WP: usize = 0x2;
     };
 };
-pub const MODULE_INIT = opaque {
-    pub const IGNORE = opaque {
+pub const MODULE_INIT = struct {
+    pub const IGNORE = struct {
         pub const MODVERSIONS: usize = 0x1;
         pub const VERMAGIC: usize = 0x2;
     };
 };
-pub const KEXEC = opaque {
-    pub const FILE = opaque {
+pub const KEXEC = struct {
+    pub const FILE = struct {
         pub const UNLOAD: usize = 0x1;
         pub const NO_INITRAMFS: usize = 0x4;
         pub const ON_CRASH: usize = 0x2;
@@ -930,7 +934,7 @@ pub const KEXEC = opaque {
     pub const PRESERVE_CONTEXT: usize = 0x2;
     pub const ON_CRASH: usize = 0x1;
 };
-pub const FS = opaque {
+pub const FS = struct {
     pub const APPEND_FL: usize = 0x20;
     pub const NODUMP_FL: usize = 0x40;
     pub const SECRM_FL: usize = 0x1;
@@ -946,7 +950,7 @@ pub const FS = opaque {
     pub const COMPR_FL: usize = 0x4;
     pub const NOCOW_FL: usize = 0x800000;
 };
-pub const CLONE = opaque {
+pub const CLONE = struct {
     pub const IO: usize = 0x80000000;
     pub const NEWTIME: usize = 0x80;
     pub const PIDFD: usize = 0x1000;
@@ -974,13 +978,13 @@ pub const CLONE = opaque {
     pub const PTRACE: usize = 0x2000;
     pub const INTO_CGROUP: usize = 0x0;
 };
-pub const ID = opaque {
+pub const ID = struct {
     pub const PID: usize = 0x1;
     pub const ALL: usize = 0x0;
     pub const PGID: usize = 0x2;
     pub const PIDFD: usize = 0x3;
 };
-pub const WAIT = opaque {
+pub const WAIT = struct {
     pub const NOHANG: usize = 0x1;
     pub const UNTRACED: usize = 0x2;
     pub const CONTINUED: usize = 0x8;
@@ -991,7 +995,7 @@ pub const WAIT = opaque {
     pub const NOTHREAD: usize = 0x20000000;
     pub const ALL: usize = 0x40000000;
 };
-pub const MOUNT_ATTR = opaque {
+pub const MOUNT_ATTR = struct {
     pub const RELATIME: usize = 0x0;
     pub const RDONLY: usize = 0x1;
     pub const _ATIME: usize = 0x70;
@@ -1003,7 +1007,7 @@ pub const MOUNT_ATTR = opaque {
     pub const NOSUID: usize = 0x2;
     pub const NOEXEC: usize = 0x8;
 };
-pub const PTRACE = opaque {
+pub const PTRACE = struct {
     pub const GETSIGMASK: usize = 0x420a;
     pub const GETREGSET: usize = 0x4204;
     pub const LISTEN: usize = 0x4208;
@@ -1015,35 +1019,35 @@ pub const PTRACE = opaque {
     pub const SEIZE: usize = 0x4206;
     pub const SETSIGMASK: usize = 0x420b;
 };
-pub const IOCB_FLAG = opaque {
+pub const IOCB_FLAG = struct {
     pub const RESFD: usize = 0x1;
     pub const IOPRIO: usize = 0x2;
 };
-pub const TRAP = opaque {
+pub const TRAP = struct {
     pub const BRKPT: usize = 0x1;
     pub const TRACE: usize = 0x2;
     pub const BRANCH: usize = 0x3;
     pub const HWBKPT: usize = 0x4;
 };
-pub const FUTEX = opaque {
+pub const FUTEX = struct {
     pub const FD: usize = 0x2;
     pub const UNLOCK_PI: usize = 0x7;
     pub const TRYLOCK_PI: usize = 0x8;
-    pub const WAIT = opaque {
+    pub const WAIT = struct {
         pub const REQUEUE_PI: usize = 0xb;
         pub const BITSET: usize = 0x9;
     };
     pub const CMP_REQUEUE_PI: usize = 0xc;
     pub const REQUEUE: usize = 0x3;
     pub const CLOCK_REALTIME: usize = 0x100;
-    pub const WAKE = opaque {
+    pub const WAKE = struct {
         pub const BITSET: usize = 0xa;
         pub const OP: usize = 0x5;
     };
     pub const PRIVATE_FLAG: usize = 0x80;
     pub const LOCK_PI: usize = 0x6;
 };
-pub const SO = opaque {
+pub const SO = struct {
     pub const DEBUG: u64 = 0x1;
     pub const REUSEADDR: u64 = 0x2;
     pub const TYPE: u64 = 0x3;
@@ -1128,18 +1132,18 @@ pub const SO = opaque {
     pub const RCVTIMEO: u64 = 0x14;
     pub const SNDTIMEO: u64 = 0x15;
 };
-pub const AF = opaque {
+pub const AF = struct {
     pub const UNIX: u64 = 0x1;
     pub const INET: u64 = 0x2;
     pub const INET6: u64 = 0xa;
 };
-pub const SOCK = opaque {
+pub const SOCK = struct {
     pub const STREAM: u64 = 0x1;
     pub const DGRAM: u64 = 0x2;
     pub const NONBLOCK: u64 = 0x800;
     pub const CLOEXEC: u64 = 0x80000;
 };
-pub const INADDR = opaque {
+pub const INADDR = struct {
     pub const ANY: u64 = 0x0;
 };
 pub const ErrorCode = enum(i9) {
