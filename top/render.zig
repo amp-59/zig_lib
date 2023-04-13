@@ -523,7 +523,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             } else {
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                    const field_spec: RenderSpec = if (field.type == type) field_spec_if_type else field_spec_if_not_type;
+                    const field_spec: RenderSpec = if (meta.DistalChild(field.type)) field_spec_if_type else field_spec_if_not_type;
                     len +%= 1 + field_name_format.formatLength() + 3;
                     len +%= AnyFormat(field.type, field_spec).max_len;
                     len +%= 2;
@@ -557,7 +557,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                     const field_value: field.type = @field(format.value, field.name);
-                    const field_spec: RenderSpec = if (field.type == type) field_spec_if_type else field_spec_if_not_type;
+                    const field_spec: RenderSpec = if (comptime meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null) {
                         if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
@@ -578,7 +578,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             var fields_len: usize = 0;
             inline for (fields) |field| {
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                const field_spec: RenderSpec = if (field.type == type) field_spec_if_type else field_spec_if_not_type;
+                const field_spec: RenderSpec = if (comptime meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                 const FieldFormat = AnyFormat(field_spec, field.type);
                 const field_value: field.type = @field(format.value, field.name);
                 if (spec.omit_default_fields and field.default_value != null) {
