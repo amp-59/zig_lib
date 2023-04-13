@@ -1112,18 +1112,27 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             len +%= 1;
             return len;
         }
+        fn isMultiLine(values: []const u8) bool {
+            for (values) |value| {
+                if (value == '\n') return true;
+            }
+            return false;
+        }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.address_view) {
                 const addr_view_format: AddressFormat = .{ .value = @ptrToInt(format.value.ptr) };
                 writeFormat(array, addr_view_format);
             }
-            if (comptime child == u8) {
+            if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        return formatWriteMultiLineStringLiteral(format, array);
+                        if (isMultiLine(format.value)) {
+                            return formatWriteMultiLineStringLiteral(format, array);
+                        } else {
+                            return formatWriteStringLiteral(format, array);
+                        }
                     }
-                }
-                if (spec.string_literal) |render_string_literal| {
+                } else if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         return formatWriteStringLiteral(format, array);
                     }
@@ -1136,13 +1145,16 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             if (spec.address_view) {
                 len +%= AddressFormat.formatLength(.{ .value = @ptrToInt(format.value.ptr) });
             }
-            if (comptime child == u8) {
+            if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        len +%= formatLengthMultiLineStringLiteral(format);
+                        if (isMultiLine(format.value)) {
+                            len +%= formatLengthMultiLineStringLiteral(format);
+                        } else {
+                            len +%= formatLengthStringLiteral(format);
+                        }
                     }
-                }
-                if (spec.string_literal) |render_string_literal| {
+                } else if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         len +%= formatLengthStringLiteral(format);
                     }
