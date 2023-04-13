@@ -418,6 +418,11 @@ pub inline fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
 } }) {
     return leastBitCast(any);
 }
+pub fn Allowzero(comptime T: type) type {
+    var type_info: builtin.Type = @typeInfo(T);
+    type_info.Pointer.is_allowzero = true;
+    return @Type(type_info);
+}
 pub fn ArrayPointerToSlice(comptime T: type) type {
     const type_info: builtin.Type = @typeInfo(T);
     const child_type_info: builtin.Type = @typeInfo(type_info.Pointer.child);
