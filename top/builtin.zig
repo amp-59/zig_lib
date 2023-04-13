@@ -84,6 +84,10 @@ pub inline fn createErrorPolicy(
     value.* = new;
     return value;
 }
+pub inline fn errorName(any_error: anytype) []const u8 {
+    const builtin = @errorName(any_error);
+    return builtin[0..@min(builtin.len, 512)];
+}
 pub fn BitCount(comptime T: type) type {
     if (@sizeOf(T) == 0) {
         return comptime_int;
@@ -857,11 +861,61 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
         },
     }
 }
-
-const FaultExtra = struct {
-    src: SourceLocation,
-    about: ?[]const u8 = null,
-};
+pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) !void {
+    switch (@typeInfo(T)) {
+        else => @compileError(@typeName(T)),
+        .Void => {},
+        .Int, .Enum, .Bool => {
+            try expectEqual(T, arg1, arg2);
+        },
+        .Struct => |struct_info| {
+            inline for (struct_info.fields) |field| {
+                try expectEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
+            }
+        },
+        .Union => |union_info| {
+            if (union_info.tag_type) |tag_type| {
+                try expectEqual(tag_type, arg1, arg2);
+                switch (arg1) {
+                    inline else => |value, tag| {
+                        try expectEqualMemory(@TypeOf(value), value, @field(arg2, @tagName(tag)));
+                    },
+                }
+            } else {
+                @compileError(@typeName(T));
+            }
+        },
+        .Optional => |optional_info| {
+            if (arg1 != null and arg2 != null) {
+                try expectEqualMemory(optional_info.child, arg1.?, arg2.?);
+            } else {
+                try expect(arg1 == null and arg2 == null);
+            }
+        },
+        .Array => |array_info| {
+            try expectEqual([]const array_info.child, &arg1, &arg2);
+        },
+        .Pointer => |pointer_info| {
+            switch (pointer_info.size) {
+                .Many => {
+                    const len1: usize = indexOfSentinel(arg1);
+                    const len2: usize = indexOfSentinel(arg2);
+                    try expectEqual(usize, len1, len2);
+                    for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
+                        try expectEqualMemory(pointer_info.child, value1, value2);
+                    }
+                },
+                .Slice => {
+                    try expectEqual(usize, arg1.len, arg2.len);
+                    for (arg1, arg2) |value1, value2| {
+                        try expectEqualMemory(pointer_info.child, value1, value2);
+                    }
+                },
+                else => try expectEqualMemory(pointer_info.child, arg1.*, arg2.*),
+            }
+        },
+    }
+}
 pub fn expect(b: bool) Error!void {
     if (!b) {
         return error.UnexpectedValue;
