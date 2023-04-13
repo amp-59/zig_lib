@@ -8,10 +8,12 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
 const spec = @import("./spec.zig");
-const types = @import("./build/types.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
+
+const types = @import("./build/types.zig");
 const command_line = @import("./build/command_line.zig");
+
 pub usingnamespace types;
 pub const Task = enum(u8) {
     build = 1,
