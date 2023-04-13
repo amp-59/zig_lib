@@ -35,7 +35,7 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.IFLNK >> 12,
     const MODE = sys.S;
 };
-const Mode = packed struct(u16) {
+pub const Mode = packed struct(u16) {
     other: Perms,
     group: Perms,
     owner: Perms,
@@ -206,8 +206,9 @@ pub const TerminalAttributes = extern struct {
 };
 const Perms = packed struct {
     execute: bool,
-    read: bool,
     write: bool,
+    read: bool,
+    pub usingnamespace meta.GenericStructOfBool(Perms);
 };
 pub const ModeSpec = Mode;
 pub const dir_mode: ModeSpec = .{
