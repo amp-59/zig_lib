@@ -35,8 +35,11 @@ pub const RenderSpec = struct {
         suffix: ?[]const u8 = null,
     };
     const default: RenderSpec = .{};
-};
 
+    // TODO:
+    // * TypeFormat should never be affected by `infer_type_names`.
+    // * TypeFormat should never be affected by `omit_type_names`.
+};
 pub inline fn any(value: anytype) AnyFormat(RenderSpec.default, @TypeOf(value)) {
     return .{ .value = value };
 }
