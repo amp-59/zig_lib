@@ -90,6 +90,8 @@ pub fn testFileTests() !void {
     try builtin.expect(try file.pathIsNot(stat_spec, "/run/user/1000/file_test", .regular));
     try builtin.expect(try file.pathIsNot(stat_spec, "/run/user/1000/file_test", .block_special));
 
+    try builtin.expect(try file.is(stat_spec, fd, .directory));
+
     try file.close(close_spec, fd);
     try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
 }
@@ -122,7 +124,22 @@ fn testPathOperations() !void {
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something");
 }
+fn testPackedModeStruct() !void {
+    const mode: file.Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = false },
+        .group = .{ .read = false, .write = true, .execute = false },
+        .other = .{ .read = false, .write = true, .execute = false },
+        .kind = .regular,
+    };
+    comptime var int: u16 = meta.leastBitCast(mode);
+    const fd: u64 = try meta.wrap(file.create(create_spec, "./0123456789", @bitCast(file.Mode, int)));
+    const st: file.Status = try file.status(stat_spec, fd);
+    try file.close(close_spec, fd);
+    try file.unlink(unlink_spec, "./0123456789");
+    try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
+}
 pub fn main() !void {
+    try meta.wrap(testPackedModeStruct());
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testSocketOpenAndClose());
