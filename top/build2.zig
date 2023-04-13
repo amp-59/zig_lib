@@ -434,62 +434,67 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ts.* = time.diff(finish, start);
             return ret;
         }
-        extern fn forwardToExecuteCloneThreaded(
-            builder: *Builder,
-            address_space: *AddressSpace,
-            thread_space: *ThreadSpace,
-            target: *Target,
-            task: Task,
-            arena_index: AddressSpace.Index,
-            depth: u64,
-            stack_address: u64,
-        ) void;
-        comptime {
-            asm (@embedFile("./build/forwardToExecuteCloneThreaded.s"));
-        }
-        pub export fn executeCommandThreaded(
-            builder: *Builder,
-            address_space: *AddressSpace,
-            thread_space: *ThreadSpace,
-            target: *Target,
-            task: Task,
-            arena_index: AddressSpace.Index,
-            depth: u64,
-        ) callconv(.C) void {
-            if (max_thread_count == 0) {
-                unreachable;
+        // This namespace exists so that programs referencing builder types do
+        // not necessitate compiling `executeCommandThreaded`. These will only
+        // be compiled if their callers are compiled.
+        const impl = struct {
+            extern fn forwardToExecuteCloneThreaded(
+                builder: *Builder,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                target: *Target,
+                task: types.Task,
+                arena_index: AddressSpace.Index,
+                depth: u64,
+                stack_address: u64,
+            ) void;
+            comptime {
+                asm (@embedFile("./build/forwardToExecuteCloneThreaded.s"));
             }
-            var allocator: Allocator = Allocator.init(address_space, arena_index);
-            defer allocator.deinit(address_space, arena_index);
-            if (switch (task) {
-                .build => meta.wrap(executeBuildCommand(builder, &allocator, target, depth)) catch false,
-                .run => meta.wrap(executeRunCommand(builder, &allocator, target, depth)) catch false,
-            }) {
-                target.assertTransform(task, .blocking, .finished);
-            } else {
-                target.assertTransform(task, .blocking, .failed);
+            export fn executeCommandThreaded(
+                builder: *Builder,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                target: *Target,
+                task: types.Task,
+                arena_index: AddressSpace.Index,
+                depth: u64,
+            ) void {
+                if (max_thread_count == 0) {
+                    unreachable;
+                }
+                var allocator: Allocator = Allocator.init(address_space, arena_index);
+                defer allocator.deinit(address_space, arena_index);
+                if (switch (task) {
+                    .build => meta.wrap(executeBuildCommand(builder, &allocator, target, depth)) catch false,
+                    .run => meta.wrap(executeRunCommand(builder, &allocator, target, depth)) catch false,
+                }) {
+                    target.assertTransform(task, .blocking, .finished);
+                } else {
+                    target.assertTransform(task, .blocking, .failed);
+                }
+                builtin.assert(thread_space.atomicUnset(arena_index));
             }
-            builtin.assert(thread_space.atomicUnset(arena_index));
-        }
-        pub fn executeCommand(
-            builder: *Builder,
-            allocator: *Allocator,
-            target: *Target,
-            task: Task,
-            depth: u64,
-        ) sys.Call(.{
-            .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
-            .abort = decls.clock_spec.errors.throw ++ decls.command_spec.errors.abort(),
-        }, void) {
-            if (switch (task) {
-                .build => try meta.wrap(executeBuildCommand(builder, allocator, target, depth)),
-                .run => try meta.wrap(executeRunCommand(builder, allocator, target, depth)),
-            }) {
-                target.assertTransform(task, .blocking, .finished);
-            } else {
-                target.assertTransform(task, .blocking, .failed);
+            fn executeCommand(
+                builder: *Builder,
+                allocator: *Allocator,
+                target: *Target,
+                task: types.Task,
+                depth: u64,
+            ) sys.Call(.{
+                .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
+                .abort = decls.clock_spec.errors.throw ++ decls.command_spec.errors.abort(),
+            }, void) {
+                if (switch (task) {
+                    .build => try meta.wrap(executeBuildCommand(builder, allocator, target, depth)),
+                    .run => try meta.wrap(executeRunCommand(builder, allocator, target, depth)),
+                }) {
+                    target.assertTransform(task, .blocking, .finished);
+                } else {
+                    target.assertTransform(task, .blocking, .failed);
+                }
             }
-        }
+        };
         fn buildWrite(builder: *Builder, target: *Target, allocator: *Allocator, root_path: types.Path) [:0]u8 {
             @setRuntimeSafety(false);
             var ret: Args = Args.init(allocator, buildLength(builder, target, root_path));
