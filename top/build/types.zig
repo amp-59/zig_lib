@@ -1,11 +1,28 @@
 const mem = @import("../mem.zig");
 const mach = @import("../mach.zig");
+const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 
 const tasks = @import("./tasks.zig");
 
 pub usingnamespace tasks;
+
+pub const Task = enum(u8) {
+    build = 1,
+    run = 2,
+};
+pub const State = enum(u8) {
+    unavailable = 0,
+    failed = 1,
+    ready = 2,
+    blocking = 3,
+    invalid = 4,
+    finished = 255,
+};
+pub const state_list: []const State = meta.tagList(State);
+pub const task_list: []const Task = meta.tagList(Task);
+pub const Lock = mem.ThreadSafeSet(state_list.len, State, Task);
 
 pub const Path = struct {
     absolute: [:0]const u8,
