@@ -700,7 +700,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn builderWait(address_space: *Builder.AddressSpace, thread_space: *Builder.ThreadSpace, builder: *Builder) bool {
             for (builder.groups()) |group| {
                 for (group.targets()) |target| {
-                    for (comptime meta.tagList(Task)) |task| {
+                    for (types.task_list) |task| {
                         if (target.lock.get(task) == .blocking) {
                             return true;
                         }
