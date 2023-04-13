@@ -1,3 +1,12 @@
+//! REVISION:
+//! * `TypeFormat` should never be affected by `infer_type_names`.
+//! * `TypeFormat` should never be affected by `omit_type_names`.
+//! * Implement `fast_type_formatter`.
+//! * Consider merging or otherwise simplifying the following options:
+//!     - `infer_type_names`
+//!     - `infer_type_names_recursively`
+//!     - `omit_type_names`
+//! * Implement `address_view` or something similar, correctly.
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
 const lit = @import("./lit.zig");
@@ -35,10 +44,6 @@ pub const RenderSpec = struct {
         suffix: ?[]const u8 = null,
     };
     const default: RenderSpec = .{};
-
-    // TODO:
-    // * TypeFormat should never be affected by `infer_type_names`.
-    // * TypeFormat should never be affected by `omit_type_names`.
 };
 pub inline fn any(value: anytype) AnyFormat(RenderSpec.default, @TypeOf(value)) {
     return .{ .value = value };

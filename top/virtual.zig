@@ -32,15 +32,15 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
         pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits[index / word_bit_size] |= bit_mask;
         }
         pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits[index / word_bit_size] &= ~bit_mask;
         }
     };
@@ -57,23 +57,21 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             return builtin.intCast(Shift, builtin.sub(idx_type, data_info.Int.bits -% 1, index));
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits & bit_mask != 0;
         }
         pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits |= bit_mask;
         }
         pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits &= ~bit_mask;
         }
     };
     if (data_info == .Int and idx_info != .Enum) {
         return Int;
     }
-    const tag_type: type = @typeInfo(idx_type).Enum.tag_type;
-    _ = tag_type;
     const TaggedArray = extern struct {
         bits: data_type = [1]u64{0} ** data_info.Array.len,
         pub const BitSet: type = @This();
@@ -83,15 +81,15 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
         pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits[index / word_bit_size] |= bit_mask;
         }
         pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits[index / word_bit_size] &= ~bit_mask;
         }
     };
@@ -105,18 +103,18 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         const Shift: type = builtin.ShiftAmount(Word);
 
         pub fn indexToShiftAmount(index: idx_type) Shift {
-            return builtin.intCast(Shift, builtin.sub(data_type, data_info.Int.bits -% 1, @enumToInt(index)));
+            return @intCast(Shift, (data_info.Int.bits -% 1) -% @enumToInt(index));
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits & bit_mask != 0;
         }
         pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits |= bit_mask;
         }
         pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = builtin.shl(Word, 1, indexToShiftAmount(index));
+            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             bit_set.bits &= ~bit_mask;
         }
     };
