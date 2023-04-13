@@ -155,61 +155,51 @@ fn printPassed(name: []const u8) void {
     builtin.debug.write(name);
     builtin.debug.write("\n");
 }
-fn parseInput(allocator_0: *Allocator, file_buf: FixedString) anyerror!Exports {
-    var exports: Exports = try Exports.init(allocator_0);
-    const buf: []const u8 = file_buf.readAll();
-    const buf_len: u64 = buf.len;
-    var idx_0: u32 = 0;
+fn parseInput(allocator: *Allocator, buf: []const u8) Allocator.allocate_payload(Segments) {
+    var segments: Segments = try Segments.init(allocator);
     var found_line_feed: bool = true;
     var found_horizontal_tab: bool = false;
-    var begin: struct { name: u32 = 0, body: u32 = 0 } = .{};
-    var jumps: ?JumpList = null;
-    while (idx_0 < buf_len) : (idx_0 += 1) {
-        found_line_feed = buf[idx_0] == '\n';
-        idx_0 += builtin.int2a(u32, found_line_feed, idx_0 != buf_len - 1);
-        found_horizontal_tab = buf[idx_0] == '\t';
-        idx_0 += builtin.int2a(u32, found_horizontal_tab, idx_0 != buf_len - 1);
+    var segment: Segment = .{};
+    while (segment.span.end < buf.len) : (segment.span.end +%= 1) {
+        found_line_feed = buf[segment.span.end] == '\n';
+        segment.span.end +%= builtin.int2a(u32, found_line_feed, segment.span.end != buf.len -% 1);
+        found_horizontal_tab = buf[segment.span.end] == '\t';
+        segment.span.end +%= builtin.int2a(u32, found_horizontal_tab, segment.span.end != buf.len -% 1);
         if (builtin.int2a(bool, found_line_feed, found_horizontal_tab)) {
-            if (mem.testEqualManyFront(u8, type_s, buf[idx_0..buf_len])) {
-                idx_0 += 6;
-                var idx_1: u32 = idx_0;
-                while (buf[idx_1] != '\n') idx_1 += 1;
-                if (mem.testEqualManyBack(u8, function_s, buf[idx_0..idx_1])) {
-                    idx_1 += 1;
-                    begin.name = idx_1;
-                    while (buf[idx_1] != '\n') idx_1 += 1;
-                    idx_0 = idx_1;
-                    begin.body = idx_0;
+            if (mem.testEqualManyFront(u8, type_s, buf[segment.span.end..buf.len])) {
+                segment.span.end +%= 6;
+                var idx: u32 = segment.span.end;
+                while (buf[idx] != '\n') {
+                    idx +%= 1;
+                }
+                if (mem.testEqualManyBack(u8, function_s, buf[segment.span.end..idx])) {
+                    idx +%= 1;
+                    segment.span.begin = idx;
+                    while (buf[idx] != '\n') {
+                        idx +%= 1;
+                    }
+                    segment.span.end = idx;
+                    segment.span.mid = idx;
                 }
             }
         } else if (found_line_feed) {
-            if (builtin.int2a(bool, buf[idx_0] == '.', idx_0 + 9 < buf_len)) {
-                if (mem.testEqualManyFront(u8, lfunc_end_s, buf[idx_0 + 1 .. buf.len])) {
-                    printFound(file_buf.readAll()[begin.name..begin.body]);
-                    try exports.append(allocator_0, .{
-                        .body = .{
-                            .begin = begin.name,
-                            .mid = begin.body,
-                            .end = idx_0,
-                        },
-                        .jumps = if (jumps) |*list|
-                            try list.dynamic(allocator_0, FixedJumpList)
-                        else
-                            null,
-                    });
-                    jumps = null;
-                    idx_0 += 10;
-                } else if (mem.testEqualManyFront(u8, lbb_section_s, buf[idx_0 + 1 .. buf.len])) {
-                    if (jumps == null) {
-                        jumps = JumpList.init(allocator_0);
+            if (builtin.int2a(bool, buf[segment.span.end] == '.', segment.span.end +% 9 < buf.len)) {
+                if (mem.testEqualManyFront(u8, lfunc_end_s, buf[segment.span.end +% 1 .. buf.len])) {
+                    printFound(buf[segment.span.begin..segment.span.mid]);
+                    try segments.append(allocator, segment);
+                    segment.jumps = null;
+                    segment.span.end +%= 10;
+                } else if (mem.testEqualManyFront(u8, lbb_section_s, buf[segment.span.end +% 1 .. buf.len])) {
+                    if (segment.jumps == null) {
+                        segment.jumps = try JumpList.init(allocator, 16);
                     }
-                    try jumps.?.appendOne(allocator_0, idx_0);
-                    idx_0 += 4;
+                    try segment.jumps.?.appendOne(allocator, segment.span.end);
+                    segment.span.end +%= 4;
                 }
             }
         }
     }
-    return exports;
+    return segments;
 }
 fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const u8) anyerror!void {
     var name_buf: ExportName = .{};
