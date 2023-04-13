@@ -1132,7 +1132,8 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                             return formatWriteStringLiteral(format, array);
                         }
                     }
-                } else if (spec.string_literal) |render_string_literal| {
+                }
+                if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         return formatWriteStringLiteral(format, array);
                     }
@@ -1154,7 +1155,8 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                             len +%= formatLengthStringLiteral(format);
                         }
                     }
-                } else if (spec.string_literal) |render_string_literal| {
+                }
+                if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         len +%= formatLengthStringLiteral(format);
                     }
