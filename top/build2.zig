@@ -124,7 +124,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const Builder = @This();
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
             .label = "arena",
-            .idx_type = u8,
+            .idx_type = u64,
             .divisions = max_arena_count,
             .lb_addr = arena_lb_addr,
             .up_addr = arena_up_addr,
@@ -154,7 +154,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             name: [:0]const u8,
             descr: ?[:0]const u8 = null,
             root: [:0]const u8,
-            lock: Lock,
+            lock: types.Lock,
             build_cmd: *types.BuildCommand,
             deps: []Dependency = &.{},
             deps_len: u64 = 0,
@@ -162,8 +162,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             args_len: u64 = 0,
             pub const Dependency = struct {
                 target: *Target,
-                task: Task,
-                state: State,
+                task: types.Task,
+                state: types.State,
             };
             fn acquireThread(
                 target: *Target,
@@ -171,7 +171,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 thread_space: *ThreadSpace,
                 allocator: *Allocator,
                 builder: *Builder,
-                task: Task,
+                task: types.Task,
                 depth: u64,
             ) sys.Call(.{
                 .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
@@ -196,7 +196,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 thread_space: *ThreadSpace,
                 allocator: *Allocator,
                 builder: *Builder,
-                task: Task,
+                task: types.Task,
                 arena_index: AddressSpace.Index,
                 depth: u64,
             ) sys.Call(.{
@@ -230,7 +230,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 thread_space: *ThreadSpace,
                 allocator: *Allocator,
                 builder: *Builder,
-                task: Task,
+                task: types.Task,
             ) sys.Call(.{
                 .throw = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.throw ++ decls.command_spec.errors.throw(),
                 .abort = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.abort ++ decls.command_spec.errors.throw(),
@@ -297,7 +297,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.dependOnBuild(allocator, dependency);
                 target.addFile(allocator, dependency.binaryPath());
             }
-            fn transform(target: *Target, task: Task, old_state: State, new_state: State) bool {
+            fn transform(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) bool {
                 const ret: bool = target.lock.atomicTransform(task, old_state, new_state);
                 if (builtin.logging_general.Success or builder_spec.options.show_state) {
                     if (ret) {
@@ -308,7 +308,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ret;
             }
-            fn assertTransform(target: *Target, task: Task, old_state: State, new_state: State) void {
+            fn assertTransform(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 const res: bool = target.lock.atomicTransform(task, old_state, new_state);
                 if (res) {
                     if (builtin.logging_general.Success or builder_spec.options.show_state) {
@@ -333,7 +333,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     target.build_cmd.files = buf;
                 }
             }
-            pub fn addDependency(target: *Target, allocator: *Allocator, dependency: *Target, task: Task, state: State) void {
+            pub fn addDependency(target: *Target, allocator: *Allocator, dependency: *Target, task: types.Task, state: types.State) void {
                 @setRuntimeSafety(false);
                 if (target.deps_len == target.deps.len) {
                     target.deps = reallocate(allocator, Dependency, target.deps, (target.deps_len +% 1) *% 2);
@@ -380,7 +380,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 address_space: *AddressSpace,
                 thread_space: *ThreadSpace,
                 allocator: *Allocator,
-                task: Task,
+                task: types.Task,
             ) !void {
                 for (group.targets()) |target| {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
@@ -666,7 +666,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.zig_out_dir, file.dir_mode));
             try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.exe_out_dir, file.dir_mode));
         }
-        fn dependencyWait(target: *Target, task: Task, arena_index: AddressSpace.Index) bool {
+        fn dependencyWait(target: *Target, task: types.Task, arena_index: AddressSpace.Index) bool {
             for (target.buildDependencies()) |*dep| {
                 if (dep.target.lock.get(dep.task) != dep.state) {
                     if (dep.target.lock.get(dep.task) == .failed) {
@@ -684,7 +684,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
-        fn groupWait(group: *Group, task: Task) bool {
+        fn groupWait(group: *Group, task: types.Task) bool {
             for (group.targets()) |target| {
                 if (target.lock.get(task) == .blocking) {
                     return true;
@@ -759,7 +759,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_format_s: [:0]const u8 = builtin.debug.about("format");
             const about_state_0_s: [:0]const u8 = builtin.debug.about("state");
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
-            pub fn transformNotice(target: *Target, task: Task, old_state: State, new_state: State) void {
+            pub fn transformNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
@@ -770,7 +770,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     "\n",
                 });
             }
-            pub fn noTransformNotice(target: *Target, task: Task, old_state: State, new_state: State) void {
+            pub fn noTransformNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
@@ -782,7 +782,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     "\n",
                 });
             }
-            pub fn noTransformFault(target: *Target, task: Task, old_state: State, new_state: State) void {
+            pub fn noTransformFault(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
