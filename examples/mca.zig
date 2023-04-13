@@ -201,10 +201,10 @@ fn parseInput(allocator: *Allocator, buf: []const u8) Allocator.allocate_payload
     }
     return segments;
 }
-fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const u8) anyerror!void {
-    var name_buf: ExportName = .{};
-    if (x.jumps) |jumps| {
-        var begin: u64 = x.body.begin;
+fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, segment: Segment, name: []const u8) anyerror!void {
+    var name_buf: SegmentName = .{};
+    if (segment.jumps) |jumps| {
+        var begin: u64 = segment.span.begin;
         for (jumps.readAll(), 0..) |idx_1, j| {
             if (j == 0) {
                 name_buf.undefineAll();
@@ -212,11 +212,11 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
                 if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
-                    section_text = section_text[0 .. section_text.len - 5];
+                    section_text = section_text[0 .. section_text.len -% 5];
                 }
                 try file.write(.{}, fd, section_text);
             } else {
-                const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
+                const sub_region: []const u8 = file_buf.readManyAt(begin +% 1);
                 name_buf.undefineAll();
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
                     name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], "\n" });
@@ -224,7 +224,7 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
                 try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
                 if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
-                    section_text = section_text[0 .. section_text.len - 5];
+                    section_text = section_text[0 .. section_text.len -% 5];
                 }
                 try file.write(.{}, fd, section_text);
                 name_buf.undefineAll();
@@ -236,15 +236,15 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
             }
             begin = idx_1;
         }
-        const sub_region: []const u8 = file_buf.readManyAt(begin + 1);
+        const sub_region: []const u8 = file_buf.readManyAt(begin +% 1);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
             name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], '\n' });
         }
         try file.write(.{}, fd, name_buf.readAll());
-        var section_text: []const u8 = file_buf.readAll()[begin..x.body.end];
+        var section_text: []const u8 = file_buf.readAll()[begin..segment.span.end];
         if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
-            section_text = section_text[0 .. section_text.len - 5];
+            section_text = section_text[0 .. section_text.len -% 5];
         }
         try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
@@ -256,9 +256,9 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         name_buf.undefineAll();
         name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
         try file.write(.{}, fd, name_buf.readAll());
-        var section_text: []const u8 = file_buf.readAll()[x.body.begin..x.body.end];
+        var section_text: []const u8 = file_buf.readAll()[segment.span.begin..segment.span.end];
         if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
-            section_text = section_text[0 .. section_text.len - 5];
+            section_text = section_text[0 .. section_text.len -% 5];
         }
         try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
@@ -266,75 +266,75 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, x: Export, name: []const
         try file.write(.{}, fd, name_buf.readAll());
     }
 }
-fn pruneSectionsOuterLoop(allocator_0: *Allocator, file_buf: FixedString, exports: *Exports, next: Exports) anyerror!void {
-    const x: *Export = exports.this();
-    const name: []const u8 = file_buf.readAll()[x.body.begin..x.body.mid];
+fn pruneSectionsOuterLoop(allocator: *Allocator, file_buf: FixedString, segments: *Segments, next: Segments) anyerror!void {
+    const segment: *Segment = segments.this();
+    const name: []const u8 = file_buf.readAll()[segment.span.begin..segment.span.mid];
     if (prune_fmt and mem.indexOfFirstEqualMany(u8, "fmt.", name) != null) {
-        if (x.jumps) |*jump| {
-            jump.deinit(allocator_0);
+        if (segment.jumps) |*jump| {
+            jump.deinit(allocator);
         }
         printPruned(name);
-        return exports.delete(null);
+        return segments.delete(null);
     }
     if (prune_weak and mem.testEqualManyFront(u8, "\"", name)) {
-        if (x.jumps) |*jump| {
-            jump.deinit(allocator_0);
+        if (segment.jumps) |*jump| {
+            jump.deinit(allocator);
         }
         printPruned(name);
-        return exports.delete(null);
+        return segments.delete(null);
     }
     if (prune_std and mem.testEqualManyFront(u8, "std", name)) {
-        if (x.jumps) |*jump| {
-            jump.deinit(allocator_0);
+        if (segment.jumps) |*jump| {
+            jump.deinit(allocator);
         }
         printPruned(name);
-        return exports.delete(null);
+        return segments.delete(null);
     }
     printPassed(name);
-    exports.* = next;
+    segments.* = next;
 }
-fn writeOutputOuterLoop(allocator_0: *Allocator, fd: u64, file_buf: FixedString, exports: *Exports) anyerror!void {
-    const x: *Export = exports.this();
-    const name: []const u8 = file_buf.readAll()[x.body.begin..x.body.mid];
-    try writeOutputInnerLoop(fd, file_buf, x.*, name);
-    if (x.jumps) |*jump| jump.deinit(allocator_0);
+fn writeOutputOuterLoop(allocator: *Allocator, fd: u64, file_buf: FixedString, segments: *Segments) anyerror!void {
+    const segment: *Segment = segments.this();
+    const name: []const u8 = file_buf.readAll()[segment.span.begin..segment.span.mid];
+    try writeOutputInnerLoop(fd, file_buf, segment.*, name);
+    if (segment.jumps) |*jump| jump.deinit(allocator);
 }
-fn writeOutput(allocator_0: *Allocator, fd: u64, file_buf: FixedString, exports: *Exports) anyerror!void {
+fn writeOutput(allocator: *Allocator, fd: u64, file_buf: FixedString, segments: *Segments) anyerror!void {
     try file.write(.{}, fd, preamble);
-    exports.goToHead();
-    while (exports.next()) |next| {
-        try pruneSectionsOuterLoop(allocator_0, file_buf, exports, next);
+    segments.goToHead();
+    while (segments.next()) |next| {
+        try pruneSectionsOuterLoop(allocator, file_buf, segments, next);
     } else {
-        try pruneSectionsOuterLoop(allocator_0, file_buf, exports, exports.*);
-        exports.goToHead();
+        try pruneSectionsOuterLoop(allocator, file_buf, segments, segments.*);
+        segments.goToHead();
     }
-    while (exports.next()) |next| {
-        try writeOutputOuterLoop(allocator_0, fd, file_buf, exports);
-        exports.* = next;
+    while (segments.next()) |next| {
+        try writeOutputOuterLoop(allocator, fd, file_buf, segments);
+        segments.* = next;
     } else {
-        try writeOutputOuterLoop(allocator_0, fd, file_buf, exports);
-        exports.goToHead();
+        try writeOutputOuterLoop(allocator, fd, file_buf, segments);
+        segments.goToHead();
     }
 }
-fn fileBuf(allocator_0: *Allocator, name: [:0]const u8) !FixedString {
-    var file_buf: String = String.init(allocator_0);
+fn fileBuf(allocator: *Allocator, name: [:0]const u8) !FixedString {
+    var file_buf: String = String.init(allocator);
     const fd: u64 = try file.open(input_open_spec, name);
     defer file.close(input_close_spec, fd);
     var st: file.Status = try file.status(.{}, fd);
-    try file_buf.increment(allocator_0, st.size + 1);
-    file_buf.impl.define(try file.read(.{}, fd, file_buf.referAllUndefined(allocator_0.*), st.size));
+    try file_buf.increment(allocator, st.size +% 1);
+    file_buf.impl.define(try file.read(.{}, fd, file_buf.referAllUndefined(allocator.*), st.size));
     file_buf.writeOne('\n');
-    return file_buf.dynamic(allocator_0, FixedString);
+    return file_buf.dynamic(allocator, FixedString);
 }
-fn processRequest(options: *const Options, allocator_0: *Allocator, name: [:0]const u8) anyerror!void {
-    var file_buf: FixedString = try fileBuf(allocator_0, name);
-    var exports = try parseInput(allocator_0, file_buf);
+fn processRequest(options: *const Options, allocator: *Allocator, name: [:0]const u8) anyerror!void {
+    var file_buf: FixedString = try fileBuf(allocator, name);
+    var segments = try parseInput(allocator, file_buf.readAll());
 
     const fd: u64 = if (options.output) |output| try file.create(output_file_spec, output, file.file_mode) else 1;
     defer if (options.output != null) file.close(output_close_spec, fd);
-    try writeOutput(allocator_0, fd, file_buf, &exports);
-    exports.deinit(allocator_0);
-    file_buf.deinit(allocator_0);
+    try writeOutput(allocator, fd, file_buf, &segments);
+    segments.deinit(allocator);
+    file_buf.deinit(allocator);
 }
 const Options = struct {
     output: ?[:0]const u8 = null,
@@ -351,15 +351,15 @@ pub fn main(args_in: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
     const options: Options = proc.getOpts(Options, &args, opt_map);
     var address_space: AddressSpace = .{};
-    var allocator_0: Allocator = try Allocator.init(&address_space);
-    defer allocator_0.deinit(&address_space);
+    var allocator: Allocator = try Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
     for (args) |arg| {
         const name: [:0]const u8 = meta.manyToSlice(arg);
         if (mem.testEqualManyBack(u8, ".zig", name)) {
             continue;
         }
         if (mem.testEqualManyBack(u8, ".s", name)) {
-            try processRequest(&options, &allocator_0, name);
+            try processRequest(&options, &allocator, name);
         }
     }
 }
