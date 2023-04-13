@@ -124,27 +124,22 @@ const function_s: [:0]const u8 = ",@function";
 const mca_begin_s: *const [17:0]u8 = "# LLVM-MCA-BEGIN ";
 const mca_end_s: *const [15:0]u8 = "# LLVM-MCA-END ";
 const Jump = u32;
-const JumpList = Allocator.StructuredHolderLowAligned(Jump, 4);
-const FixedJumpList = Allocator.StructuredVectorLowAligned(Jump, 4);
+const JumpList = Allocator.StructuredVectorLowAligned(Jump, 4);
 const Span = struct {
-    begin: u32,
-    mid: u32,
-    end: u32,
+    begin: u32 = 0,
+    mid: u32 = 0,
+    end: u32 = 0,
 };
-const ExportName = mem.StaticString(4096);
-const Export = struct {
-    body: Span,
-    jumps: ?FixedJumpList,
+const SegmentName = mem.StaticString(4096);
+const Segment = struct {
+    span: Span = .{},
+    jumps: ?JumpList = null,
 };
-const Exports = mem.GenericLinkedList(.{
-    .child = Export,
+const Segments = mem.GenericLinkedList(.{
+    .child = Segment,
     .low_alignment = 8,
     .Allocator = Allocator,
 });
-const exports_mem_spec: mem.MemorySpec = .{ .allocated = .{
-    .Allocator = Allocator,
-    .initial_count = 16,
-} };
 fn printFound(name: []const u8) void {
     builtin.debug.write("found: ");
     builtin.debug.write(name);
