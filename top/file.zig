@@ -39,7 +39,9 @@ pub const Mode = packed struct(u16) {
     other: Perms,
     group: Perms,
     owner: Perms,
-    bits: u3 = 0,
+    sticky: bool,
+    set_gid: bool,
+    set_uid: bool,
     kind: Kind,
 };
 const Term = opaque {
@@ -209,14 +211,13 @@ const Perms = packed struct {
     read: bool,
     pub usingnamespace meta.GenericStructOfBool(Perms);
 };
-pub const ModeSpec = Mode;
-pub const dir_mode: ModeSpec = .{
+pub const dir_mode: Mode = .{
     .owner = .{ .read = true, .write = true, .execute = true },
     .group = .{ .read = true, .write = true, .execute = true },
     .other = .{ .read = false, .write = false, .execute = false },
     .kind = .directory,
 };
-pub const file_mode: ModeSpec = .{
+pub const file_mode: Mode = .{
     .owner = .{ .read = true, .write = true, .execute = false },
     .group = .{ .read = true, .write = false, .execute = false },
     .other = .{ .read = false, .write = false, .execute = false },
@@ -679,7 +680,7 @@ fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
     buf[pathname.len] = 0;
     return buf[0..pathname.len :0];
 }
-fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: ModeSpec) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
+fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: Mode) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
     const stat_spec: StatusSpec = spec.stat();
     const make_dir_spec: MakeDirSpec = spec.mkdir();
     const st: Status = pathStatus(stat_spec, pathname) catch |err| blk: {
@@ -699,12 +700,12 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode
         return error.NotADirectory;
     }
 }
-pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode: ModeSpec) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
+pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode: Mode) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
     var buf: [4096:0]u8 = undefined;
     const name: [:0]u8 = writePath(&buf, pathname);
     return makePathInternal(spec, name, mode);
 }
-pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
+pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
     builtin.static.assertEqual(Kind, .regular, mode.kind);
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
@@ -721,7 +722,7 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: 
         return open_error;
     }
 }
-pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
+pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
@@ -750,7 +751,7 @@ pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors, spec.retur
         return close_error;
     }
 }
-pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
+pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, @bitCast(u16, mode) }))) {
@@ -764,7 +765,7 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode
         return mkdir_error;
     }
 }
-pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, comptime mode: ModeSpec) sys.Call(spec.errors, spec.return_type) {
+pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(u16, mode) }))) {
