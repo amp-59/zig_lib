@@ -178,16 +178,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .abort = decls.clock_spec.errors.abort ++ decls.command_spec.errors.abort(),
             }, void) {
                 if (max_thread_count == 0) {
-                    try meta.wrap(executeCommand(builder, allocator, target, task, depth));
+                    try meta.wrap(impl.executeCommand(builder, allocator, target, task, depth));
                 } else {
                     var arena_index: AddressSpace.Index = 0;
                     while (arena_index != max_thread_count) : (arena_index +%= 1) {
                         if (thread_space.atomicSet(arena_index)) {
                             const stack_ab_addr: u64 = ThreadSpace.high(arena_index) -% 4096;
-                            return forwardToExecuteCloneThreaded(builder, address_space, thread_space, target, task, arena_index, depth, stack_ab_addr);
+                            return impl.forwardToExecuteCloneThreaded(builder, address_space, thread_space, target, task, arena_index, depth, stack_ab_addr);
                         }
                     }
-                    try meta.wrap(executeCommand(builder, allocator, target, task, depth));
+                    try meta.wrap(impl.executeCommand(builder, allocator, target, task, depth));
                 }
             }
             fn acquireLock(
@@ -235,7 +235,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .throw = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.throw ++ decls.command_spec.errors.throw(),
                 .abort = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.abort ++ decls.command_spec.errors.throw(),
             }, void) {
-                try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, task, Builder.max_thread_count, 0));
+                try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, task, max_thread_count, 0));
                 while (builderWait(address_space, thread_space, builder)) {
                     try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
                 }
