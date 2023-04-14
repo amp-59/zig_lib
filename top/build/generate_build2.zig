@@ -94,6 +94,7 @@ const format_command_options: []const OptionSpec = &.{
         .descr = &.{"Exclude file or directory from formatting"},
     },
 };
+
 pub const build_command_options: []const OptionSpec = &.{
     .{
         .name = "builtin",
