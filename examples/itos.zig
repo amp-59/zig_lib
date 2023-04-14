@@ -28,7 +28,7 @@ fn noOption(opt_arg: []const u8) void {
         opt_arg,
         "'\n-o, --output=     x,d,o,b\n",
     });
-    builtin.proc.exitWithFault(print_array.readAll());
+    builtin.proc.exitWithFaultMessage(print_array.readAll());
 }
 const Options = struct {
     output: Radix = .hex,
