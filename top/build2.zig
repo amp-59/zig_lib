@@ -601,7 +601,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (target.build_cmd.kind == .exe) {
                 target.assertTransform(.run, .unavailable, .ready);
             }
-            return rc == 0;
+            return rc == builder_spec.options.expected_status;
         }
         fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
             .throw = decls.clock_spec.errors.throw ++ decls.command_spec.errors.throw(),
@@ -616,7 +616,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (rc != 0 or depth <= builder_spec.options.max_relevant_depth) {
                 debug.simpleTimedNotice(debug.about_run_s, target.name, run_time, rc);
             }
-            return rc == 0;
+            return rc == builder_spec.options.expected_status;
         }
         pub fn init(args: [][*:0]u8, vars: [][*:0]u8) sys.Call(.{
             .throw = builder_spec.errors.mkdir.throw ++ builder_spec.errors.path.throw ++
