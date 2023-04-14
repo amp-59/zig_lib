@@ -26,6 +26,7 @@ pub const Open = meta.EnumBitField(enum(u64) {
     const OPEN = sys.O;
 });
 pub const Kind = enum(u4) {
+    unknown = 0,
     regular = MODE.IFREG >> 12,
     directory = MODE.IFDIR >> 12,
     character_special = MODE.IFCHR >> 12,
