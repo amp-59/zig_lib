@@ -1136,6 +1136,14 @@ pub const proc = struct {
         }
         exit(return_code);
     }
+    pub fn exitWithErrorAndFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
+        _ = exit_error;
+        @setCold(true);
+        if (config.logging_general.Fault) {
+            debug.exitFault(message, return_code);
+        }
+        exit(return_code);
+    }
     pub inline fn exit(rc: u8) noreturn {
         asm volatile (
             \\syscall
@@ -1223,13 +1231,17 @@ pub const debug = opaque {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ debug.about_exit_0_s, "rc=", fmt.ud8(rc).readAll(), "\n" });
     }
-    fn exitError(symbol: []const u8, rc: u8) void {
+    fn exitError(error_name: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, "(", symbol, "), rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, "(", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitFault(message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
+    }
+    fn exitErrorFault(error_name: []const u8, message: []const u8, rc: u8) void {
+        var buf: [4096]u8 = undefined;
+        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, " (", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
@@ -1512,17 +1524,20 @@ pub const debug = opaque {
     pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
+        const ret_addr: u64 = @returnAddress();
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
             logFaultAIO(&buf, &[_][]const u8{
-                debug.about_exit_1_s,    "indexing (",
-                fmt.ud64(idx).readAll(), ") into empty array is not allowed\n",
+                debug.about_exit_1_s,         "indexing (",
+                fmt.ud64(idx).readAll(),      ") into empty array @ ",
+                fmt.ux64(ret_addr).readAll(), "\n",
             });
         } else {
             logFaultAIO(&buf, &[_][]const u8{
                 debug.about_exit_1_s,             "index ",
                 fmt.ud64(idx).readAll(),          " above maximum ",
-                fmt.ud64(max_len -% 1).readAll(), "\n",
+                fmt.ud64(max_len -% 1).readAll(), " @ ",
+                fmt.ux64(ret_addr).readAll(),     "\n",
             });
         }
         proc.exitWithError(error.PanicOutOfBounds, 2);
@@ -1530,32 +1545,38 @@ pub const debug = opaque {
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
+        const ret_addr: u64 = @returnAddress();
         var buf: [1024]u8 = undefined;
         logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s,        "sentinel mismatch: expected ",
-            fmt.int(expected).readAll(), ", found ",
-            fmt.int(actual).readAll(),   "\n",
+            debug.about_exit_1_s,         "sentinel mismatch: expected ",
+            fmt.int(expected).readAll(),  ", found ",
+            fmt.int(actual).readAll(),    " @ ",
+            fmt.ux64(ret_addr).readAll(), "\n",
         });
         proc.exit(2);
     }
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
+        const ret_addr: u64 = @returnAddress();
         var buf: [1024]u8 = undefined;
         logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s,      "start index ",
-            fmt.ud64(lower).readAll(), " is larger than end index ",
-            fmt.ud64(upper).readAll(), "\n",
+            debug.about_exit_1_s,         "start index ",
+            fmt.ud64(lower).readAll(),    " is larger than end index ",
+            fmt.ud64(upper).readAll(),    " @ ",
+            fmt.ux64(ret_addr).readAll(), "\n",
         });
         proc.exit(2);
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
         var buf: [1024]u8 = undefined;
+        const ret_addr: u64 = @returnAddress();
         logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s, "access of union field '",
-            @tagName(wanted),     "' while field '",
-            @tagName(active),     "' is active\n",
+            debug.about_exit_1_s,         "access of union field '",
+            @tagName(wanted),             "' while field '",
+            @tagName(active),             "' is active @ ",
+            fmt.ux64(ret_addr).readAll(), "\n",
         });
         proc.exit(2);
     }
