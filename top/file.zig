@@ -1400,19 +1400,19 @@ const debug = opaque {
     }
     fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", builtin.fmt.ud64(offset), " (", @errorName(truncate_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_truncate_1_s, pathname, ", offset=", builtin.fmt.ud64(offset), " (", @errorName(truncate_error), ")\n" });
     }
     fn ftruncateError(truncate_error: anytype, fd: u64, offset: u64) void {
         var buf: [16 + 64 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", offset=", builtin.fmt.ud64(offset).readAll(), ", (", @errorName(truncate_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_truncate_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", offset=", builtin.fmt.ud64(offset).readAll(), ", (", @errorName(truncate_error), ")\n" });
     }
     fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
     }
     fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
     }
     fn pathNotice(pathname: [:0]const u8, mode: Mode) void {
         var buf: [8192]u8 = undefined;
@@ -1432,7 +1432,7 @@ const debug = opaque {
     }
     fn fdMustNotBeFault(fd: u64, kind: Kind) void {
         var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must not be ", describeKind(kind), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &.{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must not be ", describeKind(kind), "\n" });
     }
     fn fdMustBeFault(fd: u64, kind: Kind, mode: Mode) void {
         var buf: [8192]u8 = undefined;
@@ -1464,6 +1464,7 @@ const debug = opaque {
     fn describeMode(mode: Mode) [10]u8 {
         var ret: [10]u8 = [1]u8{'-'} ** 10;
         ret[0] = switch (mode.kind) {
+            .unknown => '-',
             .directory => 'd',
             .regular => 'f',
             .character_special => 'c',
@@ -1479,27 +1480,14 @@ const debug = opaque {
     }
     fn describeKind(kind: Kind) []const u8 {
         switch (kind) {
-            .regular => {
-                return regular_s;
-            },
-            .directory => {
-                return directory_s;
-            },
-            .character_special => {
-                return character_special_s;
-            },
-            .block_special => {
-                return block_special_s;
-            },
-            .named_pipe => {
-                return named_pipe_s;
-            },
-            .socket => {
-                return socket_s;
-            },
-            .symbolic_link => {
-                return symbolic_link_s;
-            },
+            .unknown => return unknown_s,
+            .regular => return regular_s,
+            .directory => return directory_s,
+            .character_special => return character_special_s,
+            .block_special => return block_special_s,
+            .named_pipe => return named_pipe_s,
+            .socket => return socket_s,
+            .symbolic_link => return symbolic_link_s,
         }
     }
 };
