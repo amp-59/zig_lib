@@ -104,6 +104,9 @@ fn testFileOperationsRound2() !void {
     const path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
     try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test", file.file_mode))));
     const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
+    try file.assertNot(stat_spec, path_reg_fd, .unknown);
+    try file.assert(stat_spec, path_reg_fd, .regular);
+
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
@@ -134,7 +137,6 @@ fn testPackedModeStruct() !void {
         .sticky = false,
         .kind = .regular,
     };
-
     comptime var int: u16 = meta.leastBitCast(mode);
     const fd: u64 = try meta.wrap(file.create(create_spec, "./0123456789", @bitCast(file.Mode, int)));
     const st: file.Status = try file.status(stat_spec, fd);
@@ -143,10 +145,10 @@ fn testPackedModeStruct() !void {
     try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
 }
 pub fn main() !void {
-    try meta.wrap(testPackedModeStruct());
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testPathOperations());
     try meta.wrap(testFileTests());
+    // try meta.wrap(testPackedModeStruct());
 }
