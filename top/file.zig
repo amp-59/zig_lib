@@ -1168,7 +1168,7 @@ pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spe
 pub inline fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(stat_spec.errors, bool) {
     return !is(stat_spec, kind, fd);
 }
-pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, void) {
+pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
     const st: Status = try meta.wrap(status(stat_spec, fd));
     const res: bool = st.mode.kind == kind;
     const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
@@ -1178,9 +1178,11 @@ pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat
         }
         builtin.proc.exit(2);
     }
-    if (stat_spec.return_type == Status) return st;
+    if (stat_spec.return_type == Status) {
+        return st;
+    }
 }
-pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, void) {
+pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
     const st: Status = try meta.wrap(status(stat_spec, fd));
     const res: bool = st.mode.kind == kind;
     const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
@@ -1190,7 +1192,9 @@ pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(s
         }
         builtin.proc.exit(2);
     }
-    if (stat_spec.return_type == Status) return st;
+    if (stat_spec.return_type == Status) {
+        return st;
+    }
 }
 const debug = opaque {
     const about_stat_0_s: [:0]const u8 = builtin.debug.about("stat");
