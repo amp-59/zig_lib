@@ -214,6 +214,7 @@ fn getSymbol(kind: file.Kind) [:0]const u8 {
             .character_special => return "c\x00",
             .named_pipe => return "p\x00",
             .socket => return "S\x00",
+            .unknown => unreachable,
         }
     } else {
         switch (kind) {
@@ -224,6 +225,7 @@ fn getSymbol(kind: file.Kind) [:0]const u8 {
             .character_special => return "c ",
             .named_pipe => return "p ",
             .socket => return "S ",
+            .unknown => unreachable,
         }
     }
 }
@@ -280,6 +282,7 @@ fn writeAndWalkPlain(
                     }
                 };
             },
+            .unknown => unreachable,
         }
     }
 }
@@ -341,6 +344,7 @@ fn writeAndWalk(
                     }
                 };
             },
+            .unknown => unreachable,
         }
     }
 }
