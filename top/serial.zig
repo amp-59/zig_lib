@@ -36,6 +36,7 @@ fn toAddress(ptr: anytype, addr: u64) @TypeOf(ptr) {
     }
 }
 fn readStruct(comptime struct_info: builtin.Type.Struct, addr: u64, offset: u64, any: anytype) u64 {
+    @setRuntimeSafety(false);
     var len: u64 = offset;
     inline for (struct_info.fields) |field| {
         len = read(addr, len, &@field(any, field.name));
@@ -43,6 +44,7 @@ fn readStruct(comptime struct_info: builtin.Type.Struct, addr: u64, offset: u64,
     return len;
 }
 fn readUnion(comptime union_info: builtin.Type.Union, addr: u64, offset: u64, any: anytype) u64 {
+    @setRuntimeSafety(false);
     if (union_info.tag_type) |tag_type| {
         inline for (union_info.fields) |field| {
             if (any.* == @field(tag_type, field.name)) {
@@ -53,6 +55,7 @@ fn readUnion(comptime union_info: builtin.Type.Union, addr: u64, offset: u64, an
     return offset;
 }
 fn writeStruct(comptime struct_info: builtin.Type.Struct, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    @setRuntimeSafety(false);
     const T: type = @TypeOf(any);
     var ret: T = any;
     inline for (struct_info.fields) |field| {
@@ -63,6 +66,7 @@ fn writeStruct(comptime struct_info: builtin.Type.Struct, allocator: anytype, ad
     return ret;
 }
 fn writeUnion(comptime union_info: builtin.Type.Union, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    @setRuntimeSafety(false);
     const T: type = @TypeOf(any);
     if (union_info.tag_type) |tag_type| {
         inline for (union_info.fields) |field| {
@@ -76,6 +80,7 @@ fn writeUnion(comptime union_info: builtin.Type.Union, allocator: anytype, addr:
     return any;
 }
 fn readPointerOne(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
+    @setRuntimeSafety(false);
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
@@ -85,6 +90,7 @@ fn readPointerOne(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset
     return len;
 }
 fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
+    @setRuntimeSafety(false);
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
@@ -96,10 +102,11 @@ fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offs
     return len;
 }
 fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset: u64, any: anytype) u64 {
+    @setRuntimeSafety(false);
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
     var idx: u64 = 0;
-    while (next[idx] != mem.pointerOpaque(pointer_info.child, pointer_info.sentinel.?).*) idx +%= 1;
+    while (next[idx] != comptime mem.pointerOpaque(pointer_info.child, pointer_info.sentinel.?).*) idx +%= 1;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
     len +%= @sizeOf(pointer_info.child) *% (idx +% 1);
     for (next[0..idx]) |*value| {
@@ -109,6 +116,7 @@ fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offse
     return len;
 }
 fn writePointerOne(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    @setRuntimeSafety(false);
     const ret: @TypeOf(any) = try meta.wrap(
         allocator.createIrreversible(pointer_info.child),
     );
@@ -118,9 +126,9 @@ fn writePointerOne(comptime pointer_info: builtin.Type.Pointer, allocator: anyty
     return toOffset(ret, addr);
 }
 fn writePointerSlice(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
+    @setRuntimeSafety(false);
     if (pointer_info.sentinel) |sentinel_ptr| {
-        const sentinel: pointer_info.child =
-            comptime mem.pointerOpaque(pointer_info.child, sentinel_ptr).*;
+        const sentinel: pointer_info.child = comptime mem.pointerOpaque(pointer_info.child, sentinel_ptr).*;
         const ret: @TypeOf(any) = try meta.wrap(
             allocator.allocateWithSentinelIrreversible(pointer_info.child, any.len, sentinel),
         );
@@ -235,6 +243,7 @@ fn genericDeserializeValuesLoop(comptime T: type, s_up_addr: u64, s_aligned_byte
     return t_aligned_bytes;
 }
 pub fn genericSerializeInternal(allocator: anytype, s_ab_addr: u64, any: anytype) @TypeOf(allocator.*).allocate_payload([]u8) {
+    @setRuntimeSafety(false);
     const S: type = @TypeOf(any);
     const T: type = meta.SliceChild(S);
     const s_up_addr: u64 = s_ab_addr +% length(T, any);
