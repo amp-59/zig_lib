@@ -29,7 +29,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         const Word: type = data_info.Array.child;
         const Shift: type = builtin.ShiftAmount(Word);
         pub fn indexToShiftAmount(index: idx_type) Shift {
-            return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
+            return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
             const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -53,8 +53,8 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         const Word: type = data_type;
         const Shift: type = builtin.ShiftAmount(Word);
 
-        pub fn indexToShiftAmount(index: idx_type) Shift {
-            return builtin.intCast(Shift, builtin.sub(idx_type, data_info.Int.bits -% 1, index));
+        pub inline fn indexToShiftAmount(index: idx_type) Shift {
+            return @intCast(Shift, (data_info.Int.bits -% 1) -% index);
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
             const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -77,8 +77,8 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub const BitSet: type = @This();
         const Word: type = data_info.Array.child;
         const Shift: type = builtin.ShiftAmount(Word);
-        pub fn indexToShiftAmount(index: idx_type) Shift {
-            return builtin.intCast(Shift, builtin.sub(idx_type, word_bit_size -% 1, builtin.rem(u8, index, word_bit_size)));
+        pub inline fn indexToShiftAmount(index: idx_type) Shift {
+            return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
             const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -102,7 +102,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         const Word: type = data_type;
         const Shift: type = builtin.ShiftAmount(Word);
 
-        pub fn indexToShiftAmount(index: idx_type) Shift {
+        pub inline fn indexToShiftAmount(index: idx_type) Shift {
             return @intCast(Shift, (data_info.Int.bits -% 1) -% @enumToInt(index));
         }
         pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
@@ -124,144 +124,110 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
 }
 pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
     const idx_info: builtin.Type = @typeInfo(idx_type);
-    const Binary = extern struct {
-        bytes: data_type = .{0} ** elements,
-        pub const SafeSet: type = @This();
-        const data_type: type = [elements]u8;
-        pub fn get(safe_set: *const SafeSet, index: idx_type) bool {
-            return safe_set.bytes[index] == 255;
-        }
-        pub fn set(safe_set: *SafeSet, index: idx_type) void {
-            safe_set.bytes[index] = 255;
-        }
-        pub fn unset(safe_set: *SafeSet, index: idx_type) void {
-            safe_set.bytes[index] = 0;
-        }
-        pub fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-            return asm volatile (
-                \\mov           $0,     %al
-                \\mov           $255,   %dl
-                \\lock cmpxchg  %dl,    %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bytes[index]),
-                : "rax", "rdx", "memory"
-            );
-        }
-        pub fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-            return asm volatile (
-                \\mov           $255,   %al
-                \\mov           $0,     %dl
-                \\lock cmpxchg  %dl,    %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bytes[index]),
-                : "rax", "rdx", "memory"
-            );
-        }
-    };
     if (val_type == bool and idx_info != .Enum) {
-        return Binary;
+        return extern struct {
+            bytes: data_type = builtin.zero(data_type),
+            pub const SafeSet: type = @This();
+            const data_type: type = [elements]u8;
+            inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
+                return &safe_set.bytes[index];
+            }
+            pub fn get(safe_set: *SafeSet, index: idx_type) bool {
+                return safe_set.refer(index).* != 0;
+            }
+            pub fn set(safe_set: *SafeSet, index: idx_type) void {
+                safe_set.refer(index).* = 255;
+            }
+            pub fn unset(safe_set: *SafeSet, index: idx_type) void {
+                safe_set.refer(index).* = 0;
+            }
+            pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
+                return common.atomicByteTransform(&safe_set.bytes[index], 0, 255);
+            }
+            pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
+                return common.atomicByteTransform(&safe_set.bytes[index], 255, 0);
+            }
+        };
     }
-    const TaggedBinary = extern struct {
-        bytes: data_type = .{0} ** elements,
-        pub const SafeSet: type = @This();
-        const data_type: type = [elements]u8;
-        pub fn get(safe_set: *const SafeSet, index: idx_type) bool {
-            return safe_set.bytes[@enumToInt(index)] == 255;
-        }
-        pub fn set(safe_set: *SafeSet, index: idx_type) void {
-            safe_set.bytes[@enumToInt(index)] = 255;
-        }
-        pub fn unset(safe_set: *SafeSet, index: idx_type) void {
-            safe_set.bytes[@enumToInt(index)] = 0;
-        }
-        pub fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-            return asm volatile (
-                \\mov           $0,     %al
-                \\mov           $255,   %dl
-                \\lock cmpxchg  %dl,    %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
-                : "rax", "rdx", "memory"
-            );
-        }
-        pub fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-            return asm volatile (
-                \\mov           $255,   %al
-                \\mov           $0,     %dl
-                \\lock cmpxchg  %dl,    %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
-                : "rax", "rdx", "memory"
-            );
-        }
-    };
     if (val_type == bool and idx_info == .Enum) {
-        return TaggedBinary;
+        return extern struct {
+            bytes: data_type = builtin.zero(data_type),
+            pub const SafeSet: type = @This();
+            const data_type: type = [elements]u8;
+            inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
+                return &safe_set.bytes[index];
+            }
+            pub fn get(safe_set: *SafeSet, index: idx_type) bool {
+                return safe_set.refer(index).* != 0;
+            }
+            pub fn set(safe_set: *SafeSet, index: idx_type) void {
+                safe_set.refer(index).* = 255;
+            }
+            pub fn unset(safe_set: *SafeSet, index: idx_type) void {
+                safe_set.refer(index).* = 0;
+            }
+            pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
+                return common.atomicByteTransform(safe_set.refer(index), 0, 255);
+            }
+            pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
+                return common.atomicByteTransform(safe_set.refer(index), 255, 0);
+            }
+        };
     }
-    const Compound = extern struct {
-        bytes: data_type = .{@intToEnum(val_type, 0)} ** elements,
-        pub const SafeSet: type = @This();
-        const data_type: type = [elements]val_type;
-
-        pub fn get(safe_set: *const SafeSet, index: idx_type) val_type {
-            return safe_set.bytes[index];
-        }
-        pub fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
-            return &safe_set.bytes[index];
-        }
-        pub fn atomicTransform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-            return asm volatile (
-                \\mov           %[if_state],    %al
-                \\mov           %[to_state],    %dl
-                \\lock cmpxchg  %dl,            %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bytes[index]),
-                  [if_state] "r" (if_state),
-                  [to_state] "r" (to_state),
-                : "rax", "rdx", "memory"
-            );
-        }
-    };
     if (val_type != bool and idx_info != .Enum) {
-        return Compound;
+        return extern struct {
+            bytes: [elements]val_type = builtin.zero([elements]val_type),
+            pub const SafeSet: type = @This();
+            inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
+                return &safe_set.bytes[index];
+            }
+            pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
+                return safe_set.refer(index).*;
+            }
+            pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
+                return asm volatile (
+                    \\mov           %[if_state],    %al
+                    \\mov           %[to_state],    %dl
+                    \\lock cmpxchg  %dl,            %[ptr]
+                    \\sete          %[ret]
+                    : [ret] "=r" (-> bool),
+                    : [ptr] "p" (safe_set.refer(index)),
+                      [if_state] "r" (if_state),
+                      [to_state] "r" (to_state),
+                    : "rax", "rdx", "memory"
+                );
+            }
+        };
     }
-    const TaggedCompound = extern struct {
-        bytes: data_type = .{@intToEnum(val_type, 0)} ** elements,
-        pub const SafeSet: type = @This();
-        const data_type: type = [elements]val_type;
-
-        pub fn get(safe_set: *const SafeSet, index: idx_type) val_type {
-            return safe_set.bytes[@enumToInt(index)];
-        }
-        pub fn transform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-            const ret: bool = safe_set.bytes[@enumToInt(index)] == if_state;
-            if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
-            return ret;
-        }
-        pub fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
-            return &safe_set.bytes[index];
-        }
-        pub fn atomicTransform(safe_set: *volatile SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-            return asm volatile (
-                \\mov           %[if_state],    %al
-                \\mov           %[to_state],    %dl
-                \\lock cmpxchg  %dl,            %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
-                  [if_state] "r" (if_state),
-                  [to_state] "r" (to_state),
-                : "rax", "rdx", "memory"
-            );
-        }
-    };
     if (val_type != bool and idx_info == .Enum) {
-        return TaggedCompound;
+        return extern struct {
+            bytes: [elements]val_type = builtin.zero([elements]val_type),
+            pub const SafeSet: type = @This();
+            inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
+                return &safe_set.bytes[@enumToInt(index)];
+            }
+            pub inline fn get(safe_set: *SafeSet, index: idx_type) val_type {
+                return safe_set.refer(index).*;
+            }
+            pub fn transform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
+                const ret: bool = safe_set.get() == if_state;
+                if (ret) safe_set.refer(index).* = to_state;
+                return ret;
+            }
+            pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
+                return asm volatile (
+                    \\mov           %[if_state],    %al
+                    \\mov           %[to_state],    %dl
+                    \\lock cmpxchg  %dl,            %[ptr]
+                    \\sete          %[ret]
+                    : [ret] "=r" (-> bool),
+                    : [ptr] "p" (safe_set.refer(index)),
+                      [if_state] "r" (if_state),
+                      [to_state] "r" (to_state),
+                    : "rax", "rdx", "memory"
+                );
+            }
+        };
     }
 }
 fn GenericMultiSet(
@@ -292,8 +258,8 @@ fn GenericMultiSet(
         pub fn atomicUnset(multi_set: *MultiSet, comptime index: spec.idx_type) bool {
             return multi_set.fields[fieldIndex(index)].atomicUnset(arenaIndex(index));
         }
-        pub fn atomicTransform(multi_set: *MultiSet, comptime index: spec.idx_type, if_state: spec.val_type, to_state: spec.val_type) bool {
-            return multi_set.fields[fieldIndex(index)].atomicTransform(arenaIndex(index), if_state, to_state);
+        pub fn atomicExchange(multi_set: *MultiSet, comptime index: spec.idx_type, if_state: spec.val_type, to_state: spec.val_type) bool {
+            return multi_set.fields[fieldIndex(index)].atomicExchange(arenaIndex(index), if_state, to_state);
         }
         inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
             if (is_tagged) {
@@ -866,14 +832,14 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
             return spec.options.thread_safe and address_space.impl.atomicSet(index);
         }
-        pub fn atomicTransform(
+        pub fn atomicExchange(
             address_space: *RegularAddressSpace,
             index: Index,
             comptime if_state: spec.val_type,
             comptime to_state: spec.val_type,
         ) bool {
             return spec.options.thread_safe and
-                address_space.impl.atomicTransform(index, if_state, to_state);
+                address_space.impl.atomicExchange(index, if_state, to_state);
         }
         pub fn low(index: Index) u64 {
             return spec.low(index);
@@ -884,7 +850,7 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub fn arena(index: Index) Arena {
             return spec.arena(index);
         }
-        pub fn count(address_space: *const RegularAddressSpace) u64 {
+        pub fn count(address_space: *RegularAddressSpace) u64 {
             var index: Index = 0;
             var ret: u64 = 0;
             while (index != addr_spec.divisions) : (index +%= 1) {
@@ -938,14 +904,14 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub fn atomicSet(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             return spec.list[index].options.thread_safe and address_space.impl.atomicSet(index);
         }
-        pub fn atomicTransform(
+        pub fn atomicExchange(
             address_space: *DiscreteAddressSpace,
             comptime index: Index,
             comptime if_state: spec.val_type,
             comptime to_state: spec.val_type,
         ) bool {
             return spec.list[index].options.thread_safe and
-                address_space.impl.atomicTransform(index, if_state, to_state);
+                address_space.impl.atomicExchange(index, if_state, to_state);
         }
         pub fn low(comptime index: Index) u64 {
             return spec.low(index);
@@ -956,10 +922,10 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub fn arena(comptime index: Index) Arena {
             return spec.arena(index);
         }
-        pub fn count(address_space: *const DiscreteAddressSpace) u64 {
-            var index: Index = 0;
+        pub fn count(address_space: *DiscreteAddressSpace) u64 {
+            comptime var index: Index = 0;
             var ret: u64 = 0;
-            while (index != spec.list.len) : (index +%= 1) {
+            inline while (index != spec.list.len) : (index +%= 1) {
                 ret +%= builtin.int(u64, address_space.impl.get(index));
             }
             return ret;
@@ -1005,26 +971,10 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
             return !ret;
         }
         pub fn atomicSet(address_space: *ElementaryAddressSpace) bool {
-            return spec.options.thread_safe and asm volatile (
-                \\mov           $0,     %al
-                \\mov           $255,   %dl
-                \\lock cmpxchg  %dl,    %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&address_space.impl),
-                : "rax", "rdx", "memory"
-            );
+            return common.atomicByteTransform(&address_space.impl, 0, 255);
         }
         pub fn atomicUnset(address_space: *ElementaryAddressSpace) bool {
-            return spec.options.thread_safe and asm volatile (
-                \\mov           $255,   %al
-                \\mov           $0,     %dl
-                \\lock cmpxchg  %dl,    %[ptr]
-                \\sete          %[ret]
-                : [ret] "=r" (-> bool),
-                : [ptr] "p" (&address_space.impl),
-                : "rax", "rdx", "memory"
-            );
+            return common.atomicByteTransform(&address_space.impl, 255, 0);
         }
         fn low() u64 {
             return spec.lb_addr;
@@ -1048,6 +998,62 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
     };
     return Type;
 }
+
+const common = struct {
+    fn atomicByteTransform(byte_ptr: *u8, if_state: u8, to_state: u8) bool {
+        return asm volatile (
+            \\mov           %[if_state],    %al
+            \\mov           %[to_state],    %dl
+            \\lock cmpxchg  %dl,            %[ptr]
+            \\sete          %[ret]
+            : [ret] "=r" (-> bool),
+            : [ptr] "p" (byte_ptr),
+              [if_state] "r" (if_state),
+              [to_state] "r" (to_state),
+            : "rax", "rdx", "memory"
+        );
+    }
+    fn atomicWordTransform(word_ptr: *u16, if_state: u16, to_state: u16) bool {
+        return asm volatile (
+            \\mov           %[if_state],    %ax
+            \\mov           %[to_state],    %dx
+            \\lock cmpxchg  %dx,            %[ptr]
+            \\sete          %[ret]
+            : [ret] "=r" (-> bool),
+            : [ptr] "p" (word_ptr),
+              [if_state] "r" (if_state),
+              [to_state] "r" (to_state),
+            : "rax", "rdx", "memory"
+        );
+    }
+    fn atomicDwordTransform(dword_ptr: *u32, if_state: u32, to_state: u32) bool {
+        return asm volatile (
+            \\mov           %[if_state],    %eax
+            \\mov           %[to_state],    %edx
+            \\lock cmpxchg  %edx,           %[ptr]
+            \\sete          %[ret]
+            : [ret] "=r" (-> bool),
+            : [ptr] "p" (dword_ptr),
+              [if_state] "r" (if_state),
+              [to_state] "r" (to_state),
+            : "rax", "rdx", "memory"
+        );
+    }
+    fn atomicQwordTransform(qword_ptr: *u64, if_state: u64, to_state: u64) bool {
+        return asm volatile (
+            \\mov           %[if_state],    %rax
+            \\mov           %[to_state],    %rdx
+            \\lock cmpxchg  %rdx,           %[ptr]
+            \\sete          %[ret]
+            : [ret] "=r" (-> bool),
+            : [ptr] "p" (qword_ptr),
+              [if_state] "r" (if_state),
+              [to_state] "r" (to_state),
+            : "rax", "rdx", "memory"
+        );
+    }
+};
+
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
