@@ -33,7 +33,6 @@ pub const BuilderSpec = struct {
         show_state: bool = false,
         env_name: [:0]const u8 = "env.zig",
         build_name: [:0]const u8 = "build.zig",
-        build_prefix: [:0]const u8 = "build-",
         zig_out_dir: [:0]const u8 = "zig-out/",
         zig_cache_dir: [:0]const u8 = "zig-cache/",
         exe_out_dir: [:0]const u8 = "zig-out/bin/",
@@ -223,10 +222,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (task == .run and target.build_cmd.kind == .exe) {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0));
                     if (target.lock.get(.build) == .failed) {
-                        target.assertTransform(.run, .unavailable, .failed);
+                        target.assertExchange(.run, .unavailable, .failed);
                     }
                 }
-                if (target.transform(task, .ready, .blocking)) {
+                if (target.exchange(task, .ready, .blocking)) {
                     for (target.buildDependencies()) |dep| {
                         try meta.wrap(dep.target.acquireLock(address_space, thread_space, allocator, builder, dep.task, arena_index, depth +% 1));
                     }
@@ -353,26 +352,26 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.dependOnBuild(allocator, dependency);
                 target.addFile(allocator, dependency.binaryPath());
             }
-            fn transform(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) bool {
-                const ret: bool = target.lock.atomicTransform(task, old_state, new_state);
+            fn exchange(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) bool {
+                const ret: bool = target.lock.atomicExchange(task, old_state, new_state);
                 if (builtin.logging_general.Success or builder_spec.options.show_state) {
                     if (ret) {
-                        debug.transformNotice(target, task, old_state, new_state);
+                        debug.exchangeNotice(target, task, old_state, new_state);
                     } else {
-                        debug.noTransformNotice(target, task, old_state, new_state);
+                        debug.noExchangeNotice(target, task, old_state, new_state);
                     }
                 }
                 return ret;
             }
-            fn assertTransform(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
-                const res: bool = target.lock.atomicTransform(task, old_state, new_state);
+            fn assertExchange(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
+                const res: bool = target.lock.atomicExchange(task, old_state, new_state);
                 if (res) {
                     if (builtin.logging_general.Success or builder_spec.options.show_state) {
-                        debug.transformNotice(target, task, old_state, new_state);
+                        debug.exchangeNotice(target, task, old_state, new_state);
                     }
                 } else {
                     if (builtin.logging_general.Fault or builder_spec.options.show_state) {
-                        debug.noTransformFault(target, task, old_state, new_state);
+                        debug.noExchangeFault(target, task, old_state, new_state);
                     }
                     builtin.proc.exit(2);
                 }
@@ -525,9 +524,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .build => meta.wrap(executeBuildCommand(builder, &allocator, target, depth)) catch false,
                     .run => meta.wrap(executeRunCommand(builder, &allocator, target, depth)) catch false,
                 }) {
-                    target.assertTransform(task, .blocking, .finished);
+                    target.assertExchange(task, .blocking, .finished);
                 } else {
-                    target.assertTransform(task, .blocking, .failed);
+                    target.assertExchange(task, .blocking, .failed);
                 }
                 builtin.assert(thread_space.atomicUnset(arena_index));
             }
@@ -545,9 +544,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .build => try meta.wrap(executeBuildCommand(builder, allocator, target, depth)),
                     .run => try meta.wrap(executeRunCommand(builder, allocator, target, depth)),
                 }) {
-                    target.assertTransform(task, .blocking, .finished);
+                    target.assertExchange(task, .blocking, .finished);
                 } else {
-                    target.assertTransform(task, .blocking, .failed);
+                    target.assertExchange(task, .blocking, .failed);
                 }
             }
         };
@@ -556,7 +555,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var ret: Args = Args.init(allocator, buildLength(builder, target, root_path));
             ret.writeMany(builder.zig_exe);
             ret.writeOne(0);
-            ret.writeMany(builder_spec.options.build_prefix);
+            ret.writeMany("build-");
             ret.writeMany(@tagName(target.build_cmd.kind));
             ret.writeOne(0);
             command_line.buildWrite(target.build_cmd, &ret);
@@ -599,7 +598,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 debug.buildNotice(target.name, build_time, old_size, new_size);
             }
             if (target.build_cmd.kind == .exe) {
-                target.assertTransform(.run, .unavailable, .ready);
+                target.assertExchange(.run, .unavailable, .ready);
             }
             return rc == builder_spec.options.expected_status;
         }
@@ -664,7 +663,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         ) void {
             in.name = name;
             in.root = root;
-            in.assertTransform(.build, .unavailable, .ready);
+            in.assertExchange(.build, .unavailable, .ready);
             in.emitBinary(allocator, builder);
             in.build_cmd.name = in.name;
             in.build_cmd.main_pkg_path = builder.build_root;
@@ -703,7 +702,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             for (target.buildDependencies()) |*dep| {
                 if (dep.target.lock.get(dep.task) != dep.state) {
                     if (dep.target.lock.get(dep.task) == .failed) {
-                        target.assertTransform(task, .blocking, .failed);
+                        target.assertExchange(task, .blocking, .failed);
                         if (max_thread_count != 0) {
                             if (arena_index != max_thread_count) {
                                 builtin.proc.exitWithError(error.DependencyFailed, 2);
@@ -804,7 +803,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_format_s: [:0]const u8 = builtin.debug.about("format");
             const about_state_0_s: [:0]const u8 = builtin.debug.about("state");
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
-            pub fn transformNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
+            pub fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
@@ -815,7 +814,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     "\n",
                 });
             }
-            pub fn noTransformNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
+            pub fn noExchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
@@ -827,7 +826,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     "\n",
                 });
             }
-            pub fn noTransformFault(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
+            pub fn noExchangeFault(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
