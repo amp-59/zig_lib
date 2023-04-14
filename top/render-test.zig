@@ -14,7 +14,7 @@ const virtual_test = @import("./virtual-test.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = true;
 
@@ -37,6 +37,7 @@ const use_alloc: bool = false;
 const use_min: bool = false;
 const use_dyn: bool = false;
 const cmp_test: bool = false;
+const huge_test: bool = false;
 const use_std: bool = !builtin.is_debug and false;
 const std = @import("std");
 const err: std.fs.File = std.io.getStdErr();
@@ -177,6 +178,7 @@ fn testSpecificCases() !void {
             };
         }
     };
+
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed struct(u128) { a: u64, b: u64 } }, "packed struct(u128) { a: u64, b: u64, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed struct(u64) { a: void, b: u64 } }, "packed struct(u64) { a: void, b: u64, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed union { a: u64, b: u64 } }, "packed union { a: u64, b: u64, }");
@@ -230,11 +232,24 @@ pub fn testOneBigCase() !void {
     array.writeFormat(comptime render.GenericTypeDescrFormat(.{ .options = .{ .depth = 0 } }).init(mem.AbstractSpec));
     builtin.debug.write(array.readAll());
 }
+pub fn testHugeCase() !void {
+    var address_space: builtin.AddressSpace() = .{};
+    var allocator: Allocator = try Allocator.init(&address_space);
+    var unlimited_array: Allocator.StructuredVector(u8) = try Allocator.StructuredVector(u8).init(&allocator, 1024 * 1024);
+    const sys = @import("./sys.zig");
+    try unlimited_array.appendAny(spec.reinterpret.fmt, &allocator, comptime render.TypeFormat(.{ .omit_container_decls = false, .radix = 2 }){ .value = sys });
+    builtin.debug.write(unlimited_array.readAll());
+    builtin.debug.write("\n");
+    unlimited_array.undefineAll();
+}
 pub fn main() !void {
     if (cmp_test) {
         try meta.wrap(testAgainstStandard());
     } else {
         try meta.wrap(testSpecificCases());
         try meta.wrap(testOneBigCase());
+    }
+    if (huge_test) {
+        try meta.wrap(testHugeCase());
     }
 }
