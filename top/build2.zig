@@ -259,20 +259,59 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn binaryRelative(target: *Target, allocator: *Allocator) [:0]const u8 {
                 switch (target.build_cmd.kind) {
-                    .exe => return concatenate(allocator, &.{ tok.exe_out_dir, target.name }),
-                    .lib => return concatenate(allocator, &.{ tok.exe_out_dir, target.name, tok.lib_ext }),
-                    .obj => return concatenate(allocator, &.{ tok.exe_out_dir, target.name, tok.obj_ext }),
+                    .exe => return concatenate(allocator, &.{
+                        builder_spec.options.exe_out_dir,
+                        target.name,
+                    }),
+                    .lib => return concatenate(allocator, &.{
+                        builder_spec.options.exe_out_dir,
+                        target.name,
+                        builder_spec.options.lib_ext,
+                    }),
+                    .obj => return concatenate(allocator, &.{
+                        builder_spec.options.exe_out_dir,
+                        target.name,
+                        builder_spec.options.obj_ext,
+                    }),
                 }
             }
             fn auxiliaryRelative(target: *Target, allocator: *Allocator, kind: types.AuxOutputMode) [:0]const u8 {
                 switch (kind) {
-                    .@"asm" => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.asm_ext }),
-                    .llvm_ir => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.llvm_ir_ext }),
-                    .llvm_bc => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.llvm_bc_ext }),
-                    .h => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.h_ext }),
-                    .docs => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.docs_ext }),
-                    .analysis => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.analysis_ext }),
-                    .implib => return concatenate(allocator, &.{ tok.aux_out_dir, target.name, tok.implib_ext }),
+                    .@"asm" => return concatenate(allocator, &.{
+                        builder_spec.options.aux_out_dir,
+                        target.name,
+                        builder_spec.options.asm_ext,
+                    }),
+                    .llvm_ir => return concatenate(allocator, &.{
+                        builder_spec.options.aux_out_dir,
+                        target.name,
+                        builder_spec.options.llvm_ir_ext,
+                    }),
+                    .llvm_bc => return concatenate(allocator, &.{
+                        builder_spec.options.aux_out_dir,
+                        target.name,
+                        builder_spec.options.llvm_bc_ext,
+                    }),
+                    .h => return concatenate(allocator, &.{
+                        builder_spec.options.aux_out_dir,
+                        target.name,
+                        builder_spec.options.h_ext,
+                    }),
+                    .docs => return concatenate(allocator, &.{
+                        builder_spec.options.aux_out_dir,
+                        target.name,
+                        builder_spec.options.docs_ext,
+                    }),
+                    .analysis => return concatenate(allocator, &.{
+                        builder_spec.options.aux_out_dir,
+                        target.name,
+                        builder_spec.options.analysis_ext,
+                    }),
+                    .implib => return concatenate(allocator, &.{
+                        builder_spec.options.aux_out_dir,
+                        target.name,
+                        builder_spec.options.implib_ext,
+                    }),
                 }
             }
             fn binaryPath(target: *Target) types.Path {
@@ -517,7 +556,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var ret: Args = Args.init(allocator, buildLength(builder, target, root_path));
             ret.writeMany(builder.zig_exe);
             ret.writeOne(0);
-            ret.writeMany(tok.build_prefix);
+            ret.writeMany(builder_spec.options.build_prefix);
             ret.writeMany(@tagName(target.build_cmd.kind));
             ret.writeOne(0);
             command_line.buildWrite(target.build_cmd, &ret);
@@ -649,44 +688,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return if (getFileStatus(builder, name)) |st| st.size else 0;
         }
         fn makeZigCacheDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, tok.zig_cache_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_cache_dir, file.dir_mode));
         }
         fn makeZigOutDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, tok.zig_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_out_dir, file.dir_mode));
         }
         fn makeBinDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, tok.zig_exe_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_exe_out_dir, file.dir_mode));
         }
         fn makeAuxDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, tok.zig_aux_out_dir, file.dir_mode));
-        }
-        fn writeEnvDecls(
-            zig_exe: [:0]const u8,
-            build_root: [:0]const u8,
-            cache_root: [:0]const u8,
-            global_cache_root: [:0]const u8,
-            build_root_fd: u64,
-        ) sys.Call(.{
-            .throw = decls.mkdir_spec.errors.throw ++ decls.create_spec.errors.throw ++
-                decls.write_spec.errors.throw ++ decls.close_spec.errors.throw,
-            .abort = decls.mkdir_spec.errors.abort ++ decls.create_spec.errors.abort ++
-                decls.write_spec.errors.abort ++ decls.close_spec.errors.abort,
-        }, void) {
-            const cache_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, cache_root));
-            const env_fd: u64 = try meta.wrap(file.createAt(decls.create_spec, cache_root_fd, tok.env_name, file.file_mode));
-            for ([_][]const u8{
-                tok.zig_exe_decl,                           zig_exe,
-                tok.end_expr ++ tok.build_root_decl,        build_root,
-                tok.end_expr ++ tok.cache_root_decl,        cache_root,
-                tok.end_expr ++ tok.global_cache_root_decl, global_cache_root,
-                tok.end_expr,
-            }) |s| {
-                try meta.wrap(file.write(decls.write_spec, env_fd, s));
-            }
-            try meta.wrap(file.close(decls.close_spec, env_fd));
-            try meta.wrap(file.close(decls.close_spec, cache_root_fd));
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.zig_out_dir, file.dir_mode));
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, tok.exe_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_aux_out_dir, file.dir_mode));
         }
         fn dependencyWait(target: *Target, task: types.Task, arena_index: AddressSpace.Index) bool {
             for (target.buildDependencies()) |*dep| {
@@ -752,29 +763,41 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .errors = .{ .throw = sys.stat_errors },
             };
         };
-        const tok = struct {
-            const env_name: [:0]const u8 = "env.zig";
-            const build_name: [:0]const u8 = "build.zig";
-            const build_prefix: [:0]const u8 = "build-";
-            const zig_out_dir: [:0]const u8 = "zig-out/";
-            const zig_cache_dir: [:0]const u8 = "zig-cache/";
-            const exe_out_dir: [:0]const u8 = "zig-out/bin/";
-            const aux_out_dir: [:0]const u8 = "zig-out/aux/";
-            const h_ext: [:0]const u8 = ".h";
-            const lib_ext: [:0]const u8 = ".so";
-            const obj_ext: [:0]const u8 = ".o";
-            const asm_ext: [:0]const u8 = ".s";
-            const llvm_bc_ext: [:0]const u8 = ".bc";
-            const llvm_ir_ext: [:0]const u8 = ".ll";
-            const analysis_ext: [:0]const u8 = ".json";
-            const docs_ext: [:0]const u8 = ".html";
-            const implib_ext: [:0]const u8 = ".lib";
-            const zig_exe_decl: [:0]const u8 = "pub const zig_exe: [:0]const u8 = \"";
-            const build_root_decl: [:0]const u8 = "pub const build_root: [:0]const u8 = \"";
-            const cache_root_decl: [:0]const u8 = "pub const cache_dir: [:0]const u8 = \"";
-            const global_cache_root_decl: [:0]const u8 = "pub const global_cache_dir: [:0]const u8 = \"";
-            const end_expr: [:0]const u8 = "\";\n";
-        };
+        fn writeEnvDecls(
+            zig_exe: [:0]const u8,
+            build_root: [:0]const u8,
+            cache_root: [:0]const u8,
+            global_cache_root: [:0]const u8,
+            build_root_fd: u64,
+        ) sys.Call(.{
+            .throw = decls.mkdir_spec.errors.throw ++ decls.create_spec.errors.throw ++
+                decls.write_spec.errors.throw ++ decls.close_spec.errors.throw,
+            .abort = decls.mkdir_spec.errors.abort ++ decls.create_spec.errors.abort ++
+                decls.write_spec.errors.abort ++ decls.close_spec.errors.abort,
+        }, void) {
+            const cache_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, cache_root));
+            const env_fd: u64 = try meta.wrap(
+                file.createAt(decls.create_spec, cache_root_fd, builder_spec.options.env_name, file.file_mode),
+            );
+            for ([_][]const u8{
+                "pub const zig_exe: [:0]const u8 = \"",               zig_exe,
+                "\";\npub const build_root: [:0]const u8 = \"",       build_root,
+                "\";\npub const cache_dir: [:0]const u8 = \"",        cache_root,
+                "\";\npub const global_cache_dir: [:0]const u8 = \"", global_cache_root,
+                "\";\n",
+            }) |s| {
+                try meta.wrap(file.write(decls.write_spec, env_fd, s));
+            }
+            try meta.wrap(file.close(decls.close_spec, env_fd));
+            try meta.wrap(file.close(decls.close_spec, cache_root_fd));
+            try meta.wrap(
+                file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode),
+            );
+            try meta.wrap(
+                file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.exe_out_dir, file.dir_mode),
+            );
+        }
+
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
