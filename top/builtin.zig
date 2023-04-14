@@ -1113,6 +1113,20 @@ pub fn pack64(h: u32, l: u32) u64 {
 }
 
 pub const proc = struct {
+    pub fn exitWithNotice(return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Success) {
+            debug.exitNotice(return_code);
+        }
+        exit(return_code);
+    }
+    pub fn exitGroupWithNotice(return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Success) {
+            debug.exitNotice(return_code);
+        }
+        exitGroup(return_code);
+    }
     pub fn exitWithError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Error or
@@ -1121,37 +1135,6 @@ pub const proc = struct {
             debug.exitError(@errorName(exit_error), return_code);
         }
         exit(return_code);
-    }
-    pub fn exitWithNotice(return_code: u8) noreturn {
-        @setCold(true);
-        if (config.logging_general.Success) {
-            debug.exitNotice(return_code);
-        }
-        exit(return_code);
-    }
-    pub fn exitWithFault(message: []const u8, return_code: u8) noreturn {
-        @setCold(true);
-        if (config.logging_general.Fault) {
-            debug.exitFault(message, return_code);
-        }
-        exit(return_code);
-    }
-    pub fn exitWithErrorAndFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
-        _ = exit_error;
-        @setCold(true);
-        if (config.logging_general.Fault) {
-            debug.exitFault(message, return_code);
-        }
-        exit(return_code);
-    }
-    pub inline fn exit(rc: u8) noreturn {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (60), // linux sys_exit
-              [arg1] "{rdi}" (rc), // exit code
-        );
-        unreachable;
     }
     pub fn exitGroupWithError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
@@ -1162,19 +1145,42 @@ pub const proc = struct {
         }
         exitGroup(return_code);
     }
-    pub fn exitGroupWithNotice(return_code: u8) noreturn {
+    pub fn exitWithFaultMessage(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Success) {
-            debug.exitNotice(return_code);
+        if (config.logging_general.Fault) {
+            debug.exitFault(message, return_code);
         }
-        exitGroup(return_code);
+        exit(return_code);
     }
-    pub fn exitGroupWithFault(message: []const u8, return_code: u8) noreturn {
+    pub fn exitGroupWithFaultMessage(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Fault) {
             debug.exitFault(message, return_code);
         }
         exitGroup(return_code);
+    }
+    pub fn exitWithErrorAndFaultMessage(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Fault) {
+            debug.exitErrorFault(@errorName(exit_error), message, return_code);
+        }
+        exit(return_code);
+    }
+    pub fn exitGroupWithErrorAndFaultMessage(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
+        @setCold(true);
+        if (config.logging_general.Fault) {
+            debug.exitErrorFault(@errorName(exit_error), message, return_code);
+        }
+        exitGroup(return_code);
+    }
+    pub inline fn exit(rc: u8) noreturn {
+        asm volatile (
+            \\syscall
+            :
+            : [sysno] "{rax}" (60), // linux sys_exit
+              [arg1] "{rdi}" (rc), // exit code
+        );
+        unreachable;
     }
     pub inline fn exitGroup(rc: u8) noreturn {
         asm volatile (
