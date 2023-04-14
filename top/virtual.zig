@@ -31,7 +31,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub fn indexToShiftAmount(index: idx_type) Shift {
             return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
         }
-        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
             const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
@@ -56,7 +56,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub inline fn indexToShiftAmount(index: idx_type) Shift {
             return @intCast(Shift, (data_info.Int.bits -% 1) -% index);
         }
-        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
             const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits & bit_mask != 0;
         }
@@ -80,7 +80,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub inline fn indexToShiftAmount(index: idx_type) Shift {
             return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
         }
-        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
             const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits[index / word_bit_size] & bit_mask != 0;
         }
@@ -105,7 +105,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         pub inline fn indexToShiftAmount(index: idx_type) Shift {
             return @intCast(Shift, (data_info.Int.bits -% 1) -% @enumToInt(index));
         }
-        pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
+        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
             const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
             return bit_set.bits & bit_mask != 0;
         }
@@ -126,9 +126,8 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
     const idx_info: builtin.Type = @typeInfo(idx_type);
     if (val_type == bool and idx_info != .Enum) {
         return extern struct {
-            bytes: data_type = builtin.zero(data_type),
+            bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
-            const data_type: type = [elements]u8;
             inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
                 return &safe_set.bytes[index];
             }
@@ -151,11 +150,10 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
     }
     if (val_type == bool and idx_info == .Enum) {
         return extern struct {
-            bytes: data_type = builtin.zero(data_type),
+            bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
-            const data_type: type = [elements]u8;
             inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
-                return &safe_set.bytes[index];
+                return &safe_set.bytes[@enumToInt(index)];
             }
             pub fn get(safe_set: *SafeSet, index: idx_type) bool {
                 return safe_set.refer(index).* != 0;
@@ -238,16 +236,33 @@ fn GenericMultiSet(
     return (extern struct {
         fields: Fields = .{},
         pub const MultiSet: type = @This();
-        const is_tagged: bool = @typeInfo(spec.idx_type) == .Enum;
-
-        pub fn get(multi_set: *const MultiSet, comptime index: spec.idx_type) spec.val_type {
+        inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
+            if (@typeInfo(spec.idx_type) == .Enum) {
+                return @intToEnum(spec.idx_type, directory[@enumToInt(index)].arena_index);
+            } else {
+                return directory[index].arena_index;
+            }
+        }
+        inline fn fieldIndex(comptime index: spec.idx_type) usize {
+            if (@typeInfo(spec.idx_type) == .Enum) {
+                return directory[@enumToInt(index)].field_index;
+            } else {
+                return directory[index].field_index;
+            }
+        }
+        pub fn get(multi_set: *MultiSet, comptime index: spec.idx_type) spec.val_type {
             return multi_set.fields[fieldIndex(index)].get(arenaIndex(index));
         }
         pub fn set(multi_set: *MultiSet, comptime index: spec.idx_type) void {
             multi_set.fields[fieldIndex(index)].set(arenaIndex(index));
         }
-        pub fn transform(multi_set: *MultiSet, comptime index: spec.idx_type, if_state: spec.val_type, to_state: spec.val_type) bool {
-            return multi_set.fields[fieldIndex(index)].transform(arenaIndex(index), if_state, to_state);
+        pub fn exchange(
+            multi_set: *MultiSet,
+            comptime index: spec.idx_type,
+            if_state: spec.val_type,
+            to_state: spec.val_type,
+        ) bool {
+            return multi_set.fields[fieldIndex(index)].exchange(arenaIndex(index), if_state, to_state);
         }
         pub fn unset(multi_set: *MultiSet, comptime index: spec.idx_type) void {
             multi_set.fields[fieldIndex(index)].unset(arenaIndex(index));
@@ -258,22 +273,13 @@ fn GenericMultiSet(
         pub fn atomicUnset(multi_set: *MultiSet, comptime index: spec.idx_type) bool {
             return multi_set.fields[fieldIndex(index)].atomicUnset(arenaIndex(index));
         }
-        pub fn atomicExchange(multi_set: *MultiSet, comptime index: spec.idx_type, if_state: spec.val_type, to_state: spec.val_type) bool {
+        pub fn atomicExchange(
+            multi_set: *MultiSet,
+            comptime index: spec.idx_type,
+            if_state: spec.val_type,
+            to_state: spec.val_type,
+        ) bool {
             return multi_set.fields[fieldIndex(index)].atomicExchange(arenaIndex(index), if_state, to_state);
-        }
-        inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
-            if (is_tagged) {
-                return @intToEnum(spec.idx_type, directory[@enumToInt(index)].arena_index);
-            } else {
-                return directory[index].arena_index;
-            }
-        }
-        inline fn fieldIndex(comptime index: spec.idx_type) usize {
-            if (is_tagged) {
-                return directory[@enumToInt(index)].field_index;
-            } else {
-                return directory[index].field_index;
-            }
         }
     });
 }
@@ -350,15 +356,6 @@ pub const Arena = extern struct {
     lb_addr: u64,
     up_addr: u64,
     options: ArenaOptions = .{},
-    pub fn low(arena: Arena) u64 {
-        return arena.lb_addr;
-    }
-    pub fn high(arena: Arena) u64 {
-        return arena.up_addr;
-    }
-    pub fn capacity(arena: Arena) u64 {
-        return arena.up_addr -% arena.lb_addr;
-    }
 };
 pub const AddressSpaceLogging = packed struct {
     acquire: builtin.Logging.AcquireErrorFault = .{},
@@ -436,7 +433,7 @@ pub const DiscreteMultiArena = struct {
         var s_index: multi_arena.idx_type = 0;
         while (s_index <= multi_arena.list.len) : (s_index += 1) {
             const super_arena: Arena = multi_arena.list[s_index];
-            if (super_arena.low() > sub_arena.high()) {
+            if (super_arena.lb_addr > sub_arena.up_addr) {
                 break;
             }
             if (super_arena.intersection(sub_arena) != null) {
@@ -470,13 +467,13 @@ pub const DiscreteMultiArena = struct {
         return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
     }
     pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: multi_arena.idx_type) u64 {
-        return multi_arena.list[index].capacity();
+        return multi_arena.list[index].up_addr -% multi_arena.list[index].up_addr;
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: u64) multi_arena.idx_type {
         var index: multi_arena.idx_type = 0;
         while (index != multi_arena.list.len) : (index += 1) {
-            if (addr >= multi_arena.list[index].low() and
-                addr < multi_arena.list[index].high())
+            if (addr >= multi_arena.list[index].lb_addr and
+                addr < multi_arena.list[index].up_addr)
             {
                 return index;
             }
@@ -490,10 +487,10 @@ pub const DiscreteMultiArena = struct {
         return multi_arena.list.len;
     }
     pub fn low(comptime multi_arena: MultiArena, comptime index: multi_arena.idx_type) u64 {
-        return multi_arena.list[index].low();
+        return multi_arena.list[index].lb_addr;
     }
     pub fn high(comptime multi_arena: MultiArena, comptime index: multi_arena.idx_type) u64 {
-        return multi_arena.list[index].high();
+        return multi_arena.list[index].up_addr;
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
         return GenericDiscreteAddressSpace(multi_arena);
@@ -570,8 +567,8 @@ pub const RegularMultiArena = struct {
 
     fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
-        var max_index: Index(multi_arena) = multi_arena.invert(sub_arena.high());
-        var min_index: Index(multi_arena) = multi_arena.invert(sub_arena.low());
+        var max_index: Index(multi_arena) = multi_arena.invert(sub_arena.up_addr);
+        var min_index: Index(multi_arena) = multi_arena.invert(sub_arena.lb_addr);
         var s_index: Index(multi_arena) = min_index;
         while (s_index <= max_index) : (s_index += 1) {
             map_list = meta.concat(ArenaReference, map_list, .{
@@ -588,7 +585,7 @@ pub const RegularMultiArena = struct {
     fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
         var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len -% 1].high());
-        var min_index: Index(multi_arena) = multi_arena.invert(sub_list[0].low());
+        var min_index: Index(multi_arena) = multi_arena.invert(sub_list[0].lb_addr);
         var s_index: Index(multi_arena) = min_index;
         while (s_index <= max_index) : (s_index += 1) {
             map_list = meta.concat(ArenaReference, map_list, .{
@@ -880,7 +877,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub const Value: type = spec.val_type;
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
 
-        pub fn get(address_space: *const DiscreteAddressSpace, comptime index: Index) bool {
+        pub fn get(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             return address_space.impl.get(index);
         }
         pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
