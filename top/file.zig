@@ -1228,6 +1228,7 @@ const debug = opaque {
     const about_readlink_1_s: [:0]const u8 = builtin.debug.about("readlink-error");
     const about_truncate_0_s: [:0]const u8 = builtin.debug.about("truncate");
     const about_truncate_1_s: [:0]const u8 = builtin.debug.about("truncate-error");
+    const unknown_s: [:0]const u8 = "an unknown file";
     const regular_s: [:0]const u8 = "a regular file";
     const directory_s: [:0]const u8 = "a directory";
     const character_special_s: [:0]const u8 = "a character special file";
