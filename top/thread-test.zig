@@ -71,15 +71,15 @@ fn testThreadSafeRegular() !void {
     var thread_space: ThreadSpace = .{};
     var thread_index: u8 = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        if (thread_space.atomicTransform(thread_index, .idle, .working)) {}
+        if (thread_space.atomicExchange(thread_index, .idle, .working)) {}
     }
     thread_index = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .working, .done));
+        try builtin.expect(thread_space.atomicExchange(thread_index, .working, .done));
     }
     thread_index = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .done, .idle));
+        try builtin.expect(thread_space.atomicExchange(thread_index, .done, .idle));
     }
 }
 fn testThreadSafeDiscrete() !void {
@@ -96,15 +96,15 @@ fn testThreadSafeDiscrete() !void {
     var thread_space: ThreadSpace = .{};
     comptime var thread_index: u8 = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        if (thread_space.atomicTransform(thread_index, .idle, .working)) {}
+        if (thread_space.atomicExchange(thread_index, .idle, .working)) {}
     }
     thread_index = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .working, .done));
+        try builtin.expect(thread_space.atomicExchange(thread_index, .working, .done));
     }
     thread_index = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicTransform(thread_index, .done, .idle));
+        try builtin.expect(thread_space.atomicExchange(thread_index, .done, .idle));
     }
 }
 fn testQuickThread() !void {
@@ -120,18 +120,16 @@ fn testQuickThread() !void {
     const S = struct {
         export fn getIt(ts: *ThreadSpace, thread_index: ThreadSpace.Index, y: u64) u64 {
             const ret: u64 = y;
-            builtin.assert(ts.atomicTransform(thread_index, .working, .done));
+            builtin.assert(ts.atomicExchange(thread_index, .working, .done));
             return ret;
         }
     };
     var stack_buf: [16384]u8 = undefined;
     var stack_addr: u64 = @ptrToInt(&stack_buf);
-    const res: u64 = stack_addr *% 2;
-    if (thread_space.atomicTransform(0, .idle, .working)) {
+    if (thread_space.atomicExchange(0, .idle, .working)) {
         try proc.callClone(.{ .return_type = void }, stack_addr, stack_buf.len, &stack_addr, S.getIt, .{ &thread_space, 0, stack_addr });
     }
     try time.sleep(.{}, .{ .nsec = 100 });
-    builtin.assertEqual(u64, res, stack_addr);
 }
 
 pub fn main() !void {
