@@ -129,8 +129,12 @@ fn testPackedModeStruct() !void {
         .owner = .{ .read = true, .write = true, .execute = false },
         .group = .{ .read = false, .write = true, .execute = false },
         .other = .{ .read = false, .write = true, .execute = false },
+        .set_uid = false,
+        .set_gid = false,
+        .sticky = false,
         .kind = .regular,
     };
+
     comptime var int: u16 = meta.leastBitCast(mode);
     const fd: u64 = try meta.wrap(file.create(create_spec, "./0123456789", @bitCast(file.Mode, int)));
     const st: file.Status = try file.status(stat_spec, fd);
