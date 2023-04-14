@@ -150,14 +150,14 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
     mg_reference_impls.dependOnRun(allocator,       mg_new_type_specs);
 
-    build_test.addRunArgument(allocator, builder.zig_exe);
-    build_test.addRunArgument(allocator, builder.build_root);
-    build_test.addRunArgument(allocator, builder.cache_root);
-    build_test.addRunArgument(allocator, builder.global_cache_root);
-    build2_test.addRunArgument(allocator, builder.zig_exe);
-    build2_test.addRunArgument(allocator, builder.build_root);
-    build2_test.addRunArgument(allocator, builder.cache_root);
-    build2_test.addRunArgument(allocator, builder.global_cache_root);
-
+    addEnvPathArgs(allocator, builder, build_test);
+    addEnvPathArgs(allocator, builder, build2_test);
+    addEnvPathArgs(allocator, builder, serial_test);
     // zig fmt: on
+}
+fn addEnvPathArgs(allocator: *Builder.Allocator, builder: *Builder, target: *Builder.Target) void {
+    target.addRunArgument(allocator, builder.zig_exe);
+    target.addRunArgument(allocator, builder.build_root);
+    target.addRunArgument(allocator, builder.cache_root);
+    target.addRunArgument(allocator, builder.global_cache_root);
 }
