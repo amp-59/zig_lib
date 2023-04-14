@@ -101,8 +101,8 @@ noinline fn testDifferenceBetweenHighAndLowLevelMemoryManagement() !void {
     }
 }
 pub export fn _start() void {
-    //try meta.wrap(testImpactOfTrivialForwardedOperations());
-    try meta.wrap(testDifferenceBetweenHighAndLowLevelMemoryManagement());
+    try meta.wrap(testImpactOfTrivialForwardedOperations());
+    //try meta.wrap(testDifferenceBetweenHighAndLowLevelMemoryManagement());
     //try meta.wrap(testDifferenceBetweenMutMethods());
 
     sys.call(.exit, .{}, noreturn, .{0});
