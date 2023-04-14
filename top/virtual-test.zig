@@ -120,14 +120,7 @@ fn testRegularAddressSpace() !void {
     while (i != AddressSpace.addr_spec.divisions) : (i += 1) {
         try mem.acquire(AddressSpace, &address_space, i);
     }
-}
-
-fn acquireStaticSet(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) bool {
-    if (comptime AddressSpace.arena(index).options.thread_safe) {
-        return address_space.atomicSet(index);
-    } else {
-        return address_space.set(index);
-    }
+    try builtin.expectEqual(u64, AddressSpace.addr_spec.divisions, address_space.count());
 }
 fn testDiscreteAddressSpace(comptime list: anytype) !void {
     const AddressSpace = virtual.GenericDiscreteAddressSpace(.{ .list = list });
@@ -140,10 +133,12 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
         try mem.acquireStatic(AddressSpace, &address_space, i);
     }
+    try builtin.expectEqual(u64, AddressSpace.addr_spec.list.len, address_space.count());
     i = 1;
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
         mem.releaseStatic(AddressSpace, &address_space, i);
     }
+    try builtin.expectEqual(u64, AddressSpace.addr_spec.list.len, 0);
 }
 fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.DiscreteAddressSpaceSpec) !void {
     const AddressSpace = comptime blk: {
