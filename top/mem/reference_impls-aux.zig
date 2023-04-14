@@ -26,10 +26,6 @@ const AddressSpace = Allocator.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
 const Fn = impl_fn.Fn;
 const Expr = expr.Expr;
-
-fn dupe(allocator: *Allocator, value: anytype) Allocator.allocate_payload(*@TypeOf(value)) {
-    return allocator.duplicateIrreversible(@TypeOf(value), value);
-}
 const Info = struct {
     start: u64,
     alias: ?Fn = null,
@@ -37,7 +33,9 @@ const Info = struct {
         info.alias = impl_fn_info;
     }
 };
-
+fn dupe(allocator: *Allocator, value: anytype) Allocator.allocate_payload(*@TypeOf(value)) {
+    return allocator.duplicateIrreversible(@TypeOf(value), value);
+}
 fn resizeInitializer(allocator: *Allocator, impl_variant: *const types.Implementation) *[3]Expr {
     var buf: []Expr = allocator.allocateIrreversible(Expr, 8);
     var len: u64 = 0;
