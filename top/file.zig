@@ -37,22 +37,22 @@ pub const Kind = enum(u4) {
     const MODE = sys.S;
 };
 pub const Device = extern struct {
-    major: u32,
-    minor: u8,
+    major: u32 = 0,
+    minor: u8 = 0,
 };
 pub const Perms = packed struct {
-    execute: bool,
-    write: bool,
-    read: bool,
+    execute: bool = false,
+    write: bool = false,
+    read: bool = false,
 };
 pub const Mode = packed struct(u16) {
-    other: Perms,
-    group: Perms,
-    owner: Perms,
-    sticky: bool,
-    set_gid: bool,
-    set_uid: bool,
-    kind: Kind,
+    other: Perms = .{ .read = false, .write = false, .execute = false },
+    group: Perms = .{ .read = true, .write = false, .execute = false },
+    owner: Perms = .{ .read = true, .write = true, .execute = false },
+    sticky: bool = false,
+    set_gid: bool = false,
+    set_uid: bool = false,
+    kind: Kind = .regular,
 };
 const Term = opaque {
     const Input = meta.EnumBitField(enum(u32) {
@@ -1290,15 +1290,13 @@ const debug = opaque {
     }
     fn pathnameFdModeAboutNotice(pathname: [:0]const u8, fd: u64, mode: Mode, about: [:0]const u8) void {
         var buf: [4096 + 64 + 16]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", &describeMode(mode), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", mode=", &describeMode(mode), "\n" });
     }
     fn pathnameModeDeviceAboutNotice(pathname: [:0]const u8, mode: Mode, dev: Device, about: [:0]const u8) void {
         var buf: [4096 + 64 + 16]u8 = undefined;
         const maj_s: []const u8 = builtin.fmt.ud64(dev.major).readAll();
         const min_s: []const u8 = builtin.fmt.ud64(dev.minor).readAll();
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about, ", ", pathname, ", ", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, pathname, ", mode=", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n" });
     }
     fn fdAboutNotice(fd: u64, about: [:0]const u8) void {
         var buf: [16 + 32 + 4096]u8 = undefined;
@@ -1306,7 +1304,7 @@ const debug = opaque {
     }
     fn fdModeAboutNotice(fd: u64, mode: Mode, about: [:0]const u8) void {
         var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", &describeMode(mode), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", mode=", &describeMode(mode), "\n" });
     }
     fn fdLenAboutNotice(fd: u64, len: u64, about: [:0]const u8) void {
         var buf: [16 + 32]u8 = undefined;
@@ -1315,7 +1313,7 @@ const debug = opaque {
     fn dirFdNameModeAboutNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, about: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, ", ", &describeMode(mode), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(mode), "\n" });
     }
     fn dirFdNameFdAboutNotice(dir_fd: u64, name: [:0]const u8, fd: u64, about: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
@@ -1336,7 +1334,7 @@ const debug = opaque {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         const maj_s: [:0]const u8 = builtin.fmt.ud64(dev.major).readAll();
         const min_s: [:0]const u8 = builtin.fmt.ud64(dev.minor).readAll();
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, ", ", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n" });
     }
     fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
         var buf: [4096]u8 = undefined;
@@ -1354,14 +1352,17 @@ const debug = opaque {
         var buf: [16 + 64 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", offset=", builtin.fmt.ud64(offset).readAll(), "\n" });
     }
+    inline fn openNotice(pathname: [:0]const u8, fd: u64) void {
+        pathnameFdAboutNotice(pathname, fd, about_open_0_s);
+    }
+    inline fn closeNotice(fd: u64) void {
+        fdAboutNotice(fd, about_close_0_s);
+    }
     inline fn readNotice(fd: u64, len: u64) void {
         fdLenAboutNotice(fd, len, about_read_0_s);
     }
     inline fn writeNotice(fd: u64, len: u64) void {
         fdLenAboutNotice(fd, len, about_write_0_s);
-    }
-    inline fn openNotice(pathname: [:0]const u8, fd: u64) void {
-        pathnameFdAboutNotice(pathname, fd, about_open_0_s);
     }
     inline fn createNotice(pathname: [:0]const u8, fd: u64, mode: Mode) void {
         pathnameFdModeAboutNotice(pathname, fd, mode, about_create_0_s);
@@ -1371,9 +1372,6 @@ const debug = opaque {
     }
     inline fn makeNodeNotice(pathname: [:0]const u8, mode: Mode, dev: Device) void {
         pathnameModeDeviceAboutNotice(pathname, mode, dev, about_mknod_0_s);
-    }
-    inline fn closeNotice(fd: u64) void {
-        fdAboutNotice(fd, about_close_0_s);
     }
     inline fn unlinkNotice(pathname: [:0]const u8) void {
         pathnameAboutNotice(pathname, about_unlink_0_s);
@@ -1402,7 +1400,6 @@ const debug = opaque {
     inline fn statusNotice(fd: u64, mode: Mode) void {
         fdModeAboutNotice(fd, mode, about_stat_0_s);
     }
-
     fn dirFdNameAboutError(dir_fd: u64, name: [:0]const u8, about: [:0]const u8, error_name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512]u8 = undefined;
@@ -1432,13 +1429,11 @@ const debug = opaque {
         var buf: [16 + 64 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", builtin.fmt.ud64(fd).readAll(), ", offset=", builtin.fmt.ud64(offset).readAll(), ", (", @errorName(truncate_error), ")\n" });
     }
-    fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unlink_1_s, pathname, " (", @errorName(unlink_error), ")\n" });
+    inline fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
+        pathnameAboutError(pathname, about_unlink_1_s, @errorName(unlink_error));
     }
-    fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
-        var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_rmdir_1_s, pathname, " (", @errorName(rmdir_error), ")\n" });
+    inline fn removeDirError(rmdir_error: anytype, pathname: [:0]const u8) void {
+        pathnameAboutError(pathname, about_rmdir_1_s, @errorName(rmdir_error));
     }
     inline fn pathNotice(pathname: [:0]const u8, mode: Mode) void {
         pathnameModeAboutNotice(pathname, mode, about_open_0_s);
