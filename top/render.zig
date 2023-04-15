@@ -59,7 +59,7 @@ inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
     } else if (spec.omit_type_names) {
         return "";
     } else {
-        return fmt.typeName(T);
+        return comptime fmt.typeName(T);
     }
 }
 inline fn writeFormat(array: anytype, format: anytype) void {
