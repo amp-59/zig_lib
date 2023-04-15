@@ -25,6 +25,9 @@ const getcwd_spec: file.GetWorkingDirectorySpec = .{
 const make_dir_spec: file.MakeDirSpec = .{
     .errors = .{ .throw = sys.mkdir_errors },
 };
+const make_node_spec: file.MakeNodeSpec = .{
+    .errors = .{ .throw = sys.mknod_errors },
+};
 const create_spec: file.CreateSpec = .{
     .options = .{},
     .errors = .{ .throw = sys.open_errors },
@@ -106,6 +109,11 @@ fn testFileOperationsRound2() !void {
     const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
+
+    try file.makeNode(make_node_spec, "/run/user/1000/file_test/regular", .{}, .{});
+    try file.unlink(unlink_spec, "/run/user/1000/file_test/regular");
+    try file.makeNode(make_node_spec, "/run/user/1000/file_test/fifo", .{ .kind = .named_pipe }, .{});
+    try file.unlink(unlink_spec, "/run/user/1000/file_test/fifo");
 
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
