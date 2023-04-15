@@ -117,7 +117,7 @@ pub const POSIX = struct {
 };
 
 // zig fmt: off
-pub const S: type = struct {
+pub const S = struct {
     pub const IFMT: u16     = 0b1111000000000000;
     pub const IFLNK: u16    = 0b1010000000000000;
     pub const IFREG: u16    = 0b1000000000000000;
