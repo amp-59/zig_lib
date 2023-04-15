@@ -36,7 +36,7 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.IFLNKR,
     const MODE = sys.S;
 };
-pub const Device = packed struct {
+pub const Device = extern struct {
     major: u32,
     minor: u8,
 };
@@ -793,6 +793,34 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, co
             debug.makeDirAtError(mkdir_error, dir_fd, name);
         }
         return mkdir_error;
+    }
+}
+pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime mode: Mode, comptime dev: Device) sys.Call(spec.errors, spec.return_type) {
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.mknod, spec.errors, spec.return_type, .{ pathname_buf_addr, @bitCast(u16, mode), @bitCast(u64, dev) }))) {
+        if (logging.Success) {
+            debug.makeNodeNotice(pathname, mode);
+        }
+    } else |mknod_error| {
+        if (logging.Error) {
+            debug.makeNodeError(mknod_error, pathname);
+        }
+        return mknod_error;
+    }
+}
+pub fn makeNodeAt(comptime spec: MakeNodeSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode, comptime dev: Device) sys.Call(spec.errors, spec.return_type) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.mknodat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(u16, mode), @bitCast(u64, dev) }))) {
+        if (logging.Success) {
+            debug.makeNodeAtNotice(dir_fd, name, mode);
+        }
+    } else |mknod_error| {
+        if (logging.Error) {
+            debug.makeNodeAtError(mknod_error, dir_fd, name);
+        }
+        return mknod_error;
     }
 }
 pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.Call(spec.errors, [:0]const u8) {
