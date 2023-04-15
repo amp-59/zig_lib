@@ -1280,13 +1280,29 @@ const debug = opaque {
         var buf: [16 + 4096 + 8]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, pathname, "\n" });
     }
-    fn fdAboutNotice(fd: u64, about: [:0]const u8) void {
-        var buf: [16 + 32 + 4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), "\n" });
-    }
     fn pathnameModeAboutNotice(pathname: [:0]const u8, mode: Mode, about: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, pathname, ", mode=", &describeMode(mode), "\n" });
+    }
+    fn pathnameFdAboutNotice(pathname: [:0]const u8, fd: u64, about: [:0]const u8) void {
+        var buf: [4096 + 32]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
+    }
+    fn pathnameFdModeAboutNotice(pathname: [:0]const u8, fd: u64, mode: Mode, about: [:0]const u8) void {
+        var buf: [4096 + 64 + 16]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", &describeMode(mode), "\n" });
+    }
+    fn pathnameModeDeviceAboutNotice(pathname: [:0]const u8, mode: Mode, dev: Device, about: [:0]const u8) void {
+        var buf: [4096 + 64 + 16]u8 = undefined;
+        const maj_s: []const u8 = builtin.fmt.ud64(dev.major).readAll();
+        const min_s: []const u8 = builtin.fmt.ud64(dev.minor).readAll();
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about, ", ", pathname, ", ", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n",
+        });
+    }
+    fn fdAboutNotice(fd: u64, about: [:0]const u8) void {
+        var buf: [16 + 32 + 4096]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), "\n" });
     }
     fn fdModeAboutNotice(fd: u64, mode: Mode, about: [:0]const u8) void {
         var buf: [8192]u8 = undefined;
@@ -1311,21 +1327,9 @@ const debug = opaque {
         var buf: [16 + 32 + 4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
-    fn pathnameFdAboutNotice(pathname: [:0]const u8, fd: u64, about: [:0]const u8) void {
-        var buf: [4096 + 32]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, "\n" });
-    }
-    fn pathnameFdModeAboutNotice(pathname: [:0]const u8, fd: u64, mode: Mode, about: [:0]const u8) void {
-        var buf: [4096 + 64 + 16]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", builtin.fmt.ud64(fd).readAll(), ", ", pathname, ", ", &describeMode(mode), "\n" });
-    }
-    fn pathnameModeDeviceAboutNotice(pathname: [:0]const u8, mode: Mode, dev: Device, about: [:0]const u8) void {
-        var buf: [4096 + 64 + 16]u8 = undefined;
-        const maj_s: []const u8 = builtin.fmt.ud64(dev.major).readAll();
-        const min_s: []const u8 = builtin.fmt.ud64(dev.minor).readAll();
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about, ", ", pathname, ", ", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n",
-        });
+    fn dirFdNameModeNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
+        var buf: [8192]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_0_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, ", mode=", &describeMode(mode), "\n" });
     }
     fn dirFdNameModeDeviceAboutNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, dev: Device, about: [:0]const u8) void {
         var buf: [4096 + 64 + 16]u8 = undefined;
@@ -1508,10 +1512,6 @@ const debug = opaque {
     fn fdKindModeFault(fd: u64, kind: Kind, mode: Mode) void {
         var buf: [8192]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
-    }
-    fn atDirFdNotice(dir_fd: u64, name: [:0]const u8, mode: Mode) void {
-        var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_0_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, ", ", &describeMode(mode), "\n" });
     }
     fn atDirFdMustBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
         var buf: [8192]u8 = undefined;
