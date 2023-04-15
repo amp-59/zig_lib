@@ -584,7 +584,7 @@ pub const RegularMultiArena = struct {
     }
     fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
-        var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len -% 1].high());
+        var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len -% 1].up_addr);
         var min_index: Index(multi_arena) = multi_arena.invert(sub_list[0].lb_addr);
         var s_index: Index(multi_arena) = min_index;
         while (s_index <= max_index) : (s_index += 1) {
