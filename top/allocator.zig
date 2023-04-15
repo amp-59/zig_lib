@@ -477,8 +477,8 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
         pub const arena_index: u64 = allocator_spec.arena_index;
         const arena: mem.Arena = spec.arena();
-        const lb_addr: u64 = arena.low();
-        const ua_addr: u64 = arena.high();
+        const lb_addr: u64 = arena.lb_addr;
+        const ua_addr: u64 = arena.up_addr;
         pub fn init(address_space: *AddressSpace) Allocator.acquire_allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
