@@ -24,6 +24,21 @@ pub const state_list: []const State = meta.tagList(State);
 pub const task_list: []const Task = meta.tagList(Task);
 pub const Lock = mem.ThreadSafeSet(state_list.len, State, Task);
 
+pub const Message = struct {
+    pub const Header = extern struct {
+        tag: Tag,
+        bytes_len: u32,
+    };
+    pub const Tag = enum(u32) {
+        exit,
+        update,
+        run,
+        hot_update,
+        query_test_metadata,
+        run_test,
+        _,
+    };
+};
 pub const Path = struct {
     absolute: [:0]const u8,
     relative: ?[:0]const u8 = null,
