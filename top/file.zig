@@ -215,12 +215,6 @@ pub const TerminalAttributes = extern struct {
         return termios.special[@enumToInt(tag)];
     }
 };
-const Perms = packed struct {
-    execute: bool,
-    write: bool,
-    read: bool,
-    pub usingnamespace meta.GenericStructOfBool(Perms);
-};
 pub const dir_mode: Mode = .{
     .owner = .{ .read = true, .write = true, .execute = true },
     .group = .{ .read = true, .write = true, .execute = true },
@@ -439,6 +433,12 @@ pub const PathSpec = struct {
         }
         return flags_bitfield;
     }
+};
+pub const MakeNodeSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessErrorFault = .{},
+    const Specification = @This();
 };
 pub const StatusSpec = struct {
     options: Options = .{},
