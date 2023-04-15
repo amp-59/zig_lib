@@ -183,8 +183,10 @@ pub fn buildLength(cmd: *const types.BuildCommand) u64 {
         len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
         len +%= 1;
     }
-    if (cmd.enable_cache) {
-        len +%= 15;
+    if (cmd.listen) |how| {
+        len +%= 9;
+        len +%= mem.reinterpret.lengthAny(u8, reinterpret_spec, how);
+        len +%= 1;
     }
     if (cmd.target) |how| {
         len +%= 8;
@@ -685,8 +687,10 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
         array.writeAny(reinterpret_spec, how);
         array.writeOne('\x00');
     }
-    if (cmd.enable_cache) {
-        array.writeMany("--enable-cache\x00");
+    if (cmd.listen) |how| {
+        array.writeMany("--listen\x00");
+        array.writeAny(reinterpret_spec, how);
+        array.writeOne('\x00');
     }
     if (cmd.target) |how| {
         array.writeMany("-target\x00");
