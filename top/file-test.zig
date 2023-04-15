@@ -3,19 +3,14 @@ const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
+const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_override: builtin.Logging.Override = .{
-    .Success = true,
-    .Acquire = true,
-    .Release = true,
-    .Error = true,
-    .Fault = true,
-};
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
@@ -33,7 +28,7 @@ const create_spec: file.CreateSpec = .{
     .errors = .{ .throw = sys.open_errors },
 };
 const open_spec: file.OpenSpec = .{
-    .options = .{ .read = true, .write = null },
+    .options = .{ .read = true, .write = .append },
     .errors = .{ .throw = sys.open_errors },
 };
 const open_dir_spec: file.OpenSpec = .{
@@ -88,13 +83,10 @@ pub fn testFileTests() !void {
     try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode);
     try file.pathAssert(stat_spec, "/run/user/1000/file_test", .directory);
     const fd: u64 = try file.open(open_dir_spec, "/run/user/1000/file_test");
-
     try builtin.expect(try file.pathIs(stat_spec, "/run/user/1000/file_test", .directory));
     try builtin.expect(try file.pathIsNot(stat_spec, "/run/user/1000/file_test", .regular));
     try builtin.expect(try file.pathIsNot(stat_spec, "/run/user/1000/file_test", .block_special));
-
     try builtin.expect(try file.is(stat_spec, fd, .directory));
-
     try file.close(close_spec, fd);
     try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
 }
@@ -138,17 +130,18 @@ fn testPathOperations() !void {
 fn testPackedModeStruct() !void {
     const mode: file.Mode = .{
         .owner = .{ .read = true, .write = true, .execute = false },
-        .group = .{ .read = false, .write = true, .execute = false },
-        .other = .{ .read = false, .write = true, .execute = false },
+        .group = .{ .read = true, .write = true, .execute = false },
+        .other = .{ .read = true, .write = true, .execute = false },
         .set_uid = false,
         .set_gid = false,
         .sticky = false,
         .kind = .regular,
     };
     comptime var int: u16 = meta.leastBitCast(mode);
-    const fd: u64 = try meta.wrap(file.create(create_spec, "./0123456789", @bitCast(file.Mode, int)));
-    const st: file.Status = try file.status(stat_spec, fd);
+    var fd: u64 = try meta.wrap(file.create(create_spec, "./0123456789", mode));
     try file.close(close_spec, fd);
+    fd = try file.open(open_spec, "./0123456789");
+    const st: file.Status = try file.status(stat_spec, fd);
     try file.unlink(unlink_spec, "./0123456789");
     try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
 }
