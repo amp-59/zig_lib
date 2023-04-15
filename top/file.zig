@@ -40,7 +40,7 @@ pub const Device = extern struct {
     major: u32 = 0,
     minor: u8 = 0,
 };
-pub const Perms = packed struct {
+pub const Perms = packed struct(u3) {
     execute: bool = false,
     write: bool = false,
     read: bool = false,
@@ -726,7 +726,7 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: 
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, @bitCast(u16, mode) }))) |fd| {
+    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, @bitCast(u16, mode) & 0xfff }))) |fd| {
         if (logging.Acquire) {
             debug.createNotice(pathname, fd, mode);
         }
@@ -742,7 +742,7 @@ pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comp
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, @bitCast(u16, mode) }))) |fd| {
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, @bitCast(u16, mode) & 0xfff }))) |fd| {
         if (logging.Acquire) {
             debug.createAtNotice(dir_fd, name, fd);
         }
