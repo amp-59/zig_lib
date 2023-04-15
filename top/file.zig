@@ -27,14 +27,23 @@ pub const Open = meta.EnumBitField(enum(u64) {
 });
 pub const Kind = enum(u4) {
     unknown = 0,
-    regular = MODE.IFREG >> 12,
-    directory = MODE.IFDIR >> 12,
-    character_special = MODE.IFCHR >> 12,
-    block_special = MODE.IFBLK >> 12,
-    named_pipe = MODE.IFIFO >> 12,
-    socket = MODE.IFSOCK >> 12,
-    symbolic_link = MODE.IFLNK >> 12,
+    regular = MODE.IFREGR,
+    directory = MODE.IFDIRR,
+    character_special = MODE.IFCHRR,
+    block_special = MODE.IFBLKR,
+    named_pipe = MODE.IFIFOR,
+    socket = MODE.IFSOCKR,
+    symbolic_link = MODE.IFLNKR,
     const MODE = sys.S;
+};
+pub const Device = packed struct {
+    major: u32,
+    minor: u8,
+};
+pub const Perms = packed struct {
+    execute: bool,
+    write: bool,
+    read: bool,
 };
 pub const Mode = packed struct(u16) {
     other: Perms,
