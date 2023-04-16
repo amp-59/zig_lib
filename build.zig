@@ -31,7 +31,6 @@ const PartialCommand = struct {
     strip: bool = true,
     static: bool = true,
     compiler_rt: bool = false,
-    enable_cache: bool = true,
     reference_trace: bool = true,
     single_threaded: bool = true,
     function_sections: bool = true,
@@ -60,6 +59,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const render_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "render_test",  "top/render-test.zig");
     const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,   "build_test",   "build_runner.zig");
     const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",  "top/build2-test.zig");
+    const proc_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "proc_test",    "top/proc-test.zig");
     const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",  "top/serial-test.zig");
     const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",  "top/thread-test.zig");
     const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test", "top/virtual-test.zig");
@@ -106,6 +106,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     list_test.descr =           "Test library generic linked list";
     fmt_test.descr =            "Test user formatting functions";
     render_test.descr =         "Test library value rendering functions";
+    proc_test.descr =           "Test process related functions";
     build_test.descr =          "Test the library build runner and build program";
     build2_test.descr =         "Test the special test build program";
     serial_test.descr =         "Test data serialisation functions";
@@ -149,7 +150,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_container_impls.dependOnRun(allocator,       mg_new_type_specs);
     mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
     mg_reference_impls.dependOnRun(allocator,       mg_new_type_specs);
-
     addEnvPathArgs(allocator, builder, build_test);
     addEnvPathArgs(allocator, builder, build2_test);
     addEnvPathArgs(allocator, builder, serial_test);
