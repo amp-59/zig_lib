@@ -882,7 +882,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn writeAndWalk(target: *Target) void {
                 var buf0: [1024 * 1024]u8 = undefined;
                 var buf1: [4096]u8 = undefined;
-                mach.memcpy(&buf0, target.name.ptr, target.name.len);
+                @memcpy(&buf0, target.name.ptr, target.name.len);
                 var len: u64 = target.name.len;
                 len = writeAndWalkInternal(&buf0, len, &buf1, 0, target);
                 builtin.debug.logAlways(buf0[0..len]);
@@ -894,14 +894,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf0[len] = '\n';
                 len = len +% 1;
                 for (deps, 0..) |dep, idx| {
-                    mach.memcpy(buf1[len1..].ptr, if (idx == deps.len -% 1) "  " else "| ", 2);
-                    mach.memcpy(buf0[len..].ptr, buf1, len1 +% 2);
+                    @memcpy(buf1[len1..].ptr, if (idx == deps.len -% 1) "  " else "| ", 2);
+                    @memcpy(buf0[len..].ptr, buf1, len1 +% 2);
                     len = len +% len1 +% 2;
-                    mach.memcpy(buf0[len..].ptr, if (idx == deps.len -% 1) "\x08\x08`-" else "\x08\x08|-", 4);
+                    @memcpy(buf0[len..].ptr, if (idx == deps.len -% 1) "\x08\x08`-" else "\x08\x08|-", 4);
                     len = len +% 4;
-                    mach.memcpy(buf0[len..].ptr, if (dep.target.deps_len == 0) "> " else "+ ", 2);
+                    @memcpy(buf0[len..].ptr, if (dep.target.deps_len == 0) "> " else "+ ", 2);
                     len = len +% 2;
-                    mach.memcpy(buf0[len..].ptr, dep.target.name.ptr, dep.target.name.len);
+                    @memcpy(buf0[len..].ptr, dep.target.name.ptr, dep.target.name.len);
                     len = len +% target.name.len;
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.target);
                 }
@@ -927,35 +927,35 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 root_max_width +%= alignment;
                 name_max_width &= ~(alignment -% 1);
                 root_max_width &= ~(alignment -% 1);
-                mach.memset(&buf1, ' ', 4);
+                @memset(&buf1, ' ', 4);
                 for (builder.groups()) |group| {
                     len +%= builtin.debug.writeMulti(buf0[len..], &.{ group.name, ":\n" });
                     for (group.targets()) |target| {
-                        mach.memset(buf0[len..].ptr, ' ', 4);
+                        @memset(buf0[len..].ptr, ' ', 4);
                         len +%= 4;
-                        mach.memcpy(buf0[len..].ptr, target.name.ptr, target.name.len);
+                        @memcpy(buf0[len..].ptr, target.name.ptr, target.name.len);
                         len +%= target.name.len;
                         var count: u64 = name_max_width -% target.name.len;
                         if (show_root) {
-                            mach.memset(buf0[len..].ptr, ' ', count);
+                            @memset(buf0[len..].ptr, ' ', count);
                             len +%= count;
-                            mach.memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
+                            @memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
                             len +%= target.root.len;
                         }
                         if (show_descr) {
                             count = root_max_width -% target.root.len;
-                            mach.memset(buf0[len..].ptr, ' ', count);
+                            @memset(buf0[len..].ptr, ' ', count);
                             len +%= count;
                             if (target.descr) |descr| {
-                                mach.memcpy(buf0[len..].ptr, descr.ptr, descr.len);
+                                @memcpy(buf0[len..].ptr, descr.ptr, descr.len);
                                 len +%= descr.len;
                             }
                         }
                         if (show_deps) {
-                            mach.memcpy(buf0[len..].ptr, "\x1b[2m", 4);
+                            @memcpy(buf0[len..].ptr, "\x1b[2m", 4);
                             len +%= 4;
                             len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
-                            mach.memcpy(buf0[len..].ptr, "\x1b[0m", 4);
+                            @memcpy(buf0[len..].ptr, "\x1b[0m", 4);
                             len +%= 4;
                         } else {
                             buf0[len] = '\n';
@@ -974,7 +974,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return @constCast(values.ptr[0..values.len :0]);
             } else {
                 var buf: [:0]u8 = @ptrCast([:0]u8, allocate(allocator, u8, values.len));
-                mach.memcpy(buf.ptr, values.ptr, values.len);
+                @memcpy(buf.ptr, values.ptr, values.len);
                 return buf;
             }
         }
@@ -992,7 +992,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const buf: [:0]u8 = @ptrCast([:0]u8, allocate(allocator, u8, len));
             var idx: u64 = 0;
             for (values) |value| {
-                mach.memcpy(buf[idx..].ptr, value.ptr, value.len);
+                @memcpy(buf[idx..].ptr, value.ptr, value.len);
                 idx +%= value.len;
             }
             return buf;
@@ -1022,14 +1022,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []T {
             @setRuntimeSafety(false);
             const ret: []T = allocate(allocator, T, count);
-            mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
+            @memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
             return ret;
         }
         fn allocateInternal(allocator: *Allocator, count: u64, size_of: u64, align_of: u64) u64 {
             @setRuntimeSafety(false);
             const s_ab_addr: u64 = allocator.alignAbove(align_of);
             const s_up_addr: u64 = s_ab_addr +% count *% size_of;
-            mach.memset(@intToPtr([*]u8, s_up_addr), 0, size_of);
+            @memset(@intToPtr([*]u8, s_up_addr), 0, size_of);
             allocator.allocate(s_up_addr +% size_of);
             return s_ab_addr;
         }
@@ -1048,5 +1048,5 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     return Type;
 }
 fn copy(comptime T: type, dest: *T, src: *const T) void {
-    mach.memcpy(@ptrCast([*]u8, dest), @ptrCast([*]const u8, src), @sizeOf(T));
+    @memcpy(@ptrCast([*]u8, dest), @ptrCast([*]const u8, src), @sizeOf(T));
 }
