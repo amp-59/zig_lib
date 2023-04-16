@@ -1024,6 +1024,41 @@ const IOControlSpec = struct {
     const TC = sys.TC;
     const TIOC = sys.TIOC;
 };
+
+pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
+    const logging: builtin.Logging.SuccessErrorFault = comptime dup_spec.logging.override();
+    if (sys.call(.dup, dup_spec.errors, dup_spec.return_type, .{fd})) |ret| {
+        if (logging.Success) {
+            debug.duplicateNotice(fd, ret);
+        }
+        if (dup_spec.return_type == u64) {
+            return ret;
+        }
+    } else |dup_error| {
+        if (logging.Error) {
+            debug.duplicateError(dup_error, fd);
+        }
+        return dup_error;
+    }
+}
+pub fn duplicateTo(comptime dup_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
+    const flags: u64 = sys.O.CLOEXEC;
+    const logging: builtin.Logging.SuccessErrorFault = comptime dup_spec.logging.override();
+    if (sys.call(.dup3, dup_spec.errors, dup_spec.return_type, .{ old_fd, new_fd, flags })) |ret| {
+        if (logging.Success) {
+            debug.duplicateExtraNotice(old_fd, new_fd);
+        }
+        if (dup_spec.return_type == u64) {
+            return ret;
+        }
+    } else |dup3_error| {
+        if (logging.Error) {
+            debug.duplicateExtraError(dup3_error, old_fd, new_fd);
+        }
+        return dup3_error;
+    }
+}
+
 // Soon.
 fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
 fn getTerminalAttributes() void {}
