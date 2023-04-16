@@ -444,14 +444,14 @@ pub const StatusSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
     logging: builtin.Logging.SuccessErrorFault = .{},
-    return_type: type = void,
+    return_type: ?type = null,
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
     };
-    fn flags(comptime spec: StatusSpec) Open {
-        comptime var flags_bitfield: Open = .{ .val = 0 };
-        if (spec.options.no_follow) {
+    fn flags(comptime stat_spec: Specification) Open {
+        var flags_bitfield: Open = .{ .val = 0 };
+        if (stat_spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
         return flags_bitfield;
