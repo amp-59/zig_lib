@@ -1395,8 +1395,9 @@ const debug = opaque {
     }
     fn fdLenAboutNotice(fd: u64, len: u64, about: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
+        const len_s: u64 = builtin.fmt.ud64(len).readAll();
         var buf: [16 + 32]u8 = undefined;
-        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, ", ", builtin.fmt.ud64(len).readAll(), " bytes\n" });
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, ", ", len_s, " bytes\n" });
     }
     fn dirFdNameModeAboutNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, about: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
@@ -1530,13 +1531,15 @@ const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
     fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
+        const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", builtin.fmt.ud64(offset), " (", @errorName(truncate_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", offset_s, " (", @errorName(truncate_error), ")\n" });
     }
     fn ftruncateError(truncate_error: anytype, fd: u64, offset: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
+        const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [16 + 64 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", fd_s, ", offset=", builtin.fmt.ud64(offset).readAll(), ", (", @errorName(truncate_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", fd_s, ", offset=", offset_s, ", (", @errorName(truncate_error), ")\n" });
     }
     inline fn duplicateError(dup_error: anytype, fd: u64) void {
         fdAboutError(fd, about_dup_1_s, @errorName(dup_error));
@@ -1616,20 +1619,24 @@ const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "'", pathname, "' must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
     }
     fn fdNotKindFault(fd: u64, kind: Kind) void {
+        const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must not be ", describeKind(kind), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "fd=", fd_s, " must not be ", describeKind(kind), "\n" });
     }
     fn fdKindModeFault(fd: u64, kind: Kind, mode: Mode) void {
+        const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "fd=", builtin.fmt.ud64(fd).readAll(), " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "fd=", fd_s, " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
     }
     fn atDirFdMustBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
+        const dir_fd_s: []const u8 = builtin.fmt.ud64(dir_fd).readAll();
         var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "dir_fd=", dir_fd_s, ", ", name, " must be ", describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
     }
     fn atDirFdMustNotBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind) void {
+        const dir_fd_s: []const u8 = builtin.fmt.ud64(dir_fd).readAll();
         var buf: [8192]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "dir_fd=", builtin.fmt.ud64(dir_fd).readAll(), ", ", name, " must not be ", describeKind(kind), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_file_2_s, "dir_fd=", dir_fd_s, ", ", name, " must not be ", describeKind(kind), "\n" });
     }
     fn describePerms(buf: []u8, perms: Perms) void {
         if (perms.read) {
