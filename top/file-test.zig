@@ -10,7 +10,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
@@ -107,6 +107,11 @@ fn testFileOperationsRound2() !void {
     try file.makeNode(make_node_spec, "/run/user/1000/file_test/fifo", .{ .kind = .named_pipe }, .{});
     try file.unlink(unlink_spec, "/run/user/1000/file_test/fifo");
 
+    const new_in_fd: u64 = try file.duplicate(.{}, 0);
+    try file.write(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
+    const new_new_in_fd: u64 = try file.duplicateTo(.{}, 7, 8);
+    try file.write(.{}, new_new_in_fd, builtin.fmt.ud64(new_new_in_fd).readAll());
+
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
@@ -145,7 +150,10 @@ fn testPackedModeStruct() !void {
     try file.unlink(unlink_spec, "./0123456789");
     try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
 }
-pub fn main() !void {
+pub fn main(_: anytype, vars: anytype) !void {
+    const path_fd: []const u8 = try file.find(vars, "zig");
+    _ = path_fd;
+
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testSocketOpenAndClose());
