@@ -326,7 +326,7 @@ pub const CommandSpec = struct {
     fn fork(comptime spec: CommandSpec) ForkSpec {
         return .{ .errors = spec.errors.fork, .logging = spec.logging.fork };
     }
-    fn waitPid(comptime spec: CommandSpec) WaitSpec {
+    fn waitpid(comptime spec: CommandSpec) WaitSpec {
         return .{ .errors = spec.errors.waitpid, .logging = spec.logging.waitpid, .return_type = void };
     }
     fn exec(comptime spec: CommandSpec) ExecuteSpec {
@@ -519,7 +519,7 @@ pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.ar
 }, u8) {
     const fork_spec: ForkSpec = comptime spec.fork();
     const exec_spec: ExecuteSpec = comptime spec.exec();
-    const wait_spec: WaitSpec = comptime spec.waitPid();
+    const wait_spec: WaitSpec = comptime spec.waitpid();
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.execve.override();
     const pid: u64 = try meta.wrap(fork(fork_spec));
     if (pid == 0) {
@@ -538,7 +538,7 @@ pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, ar
 }, u8) {
     const fork_spec: ForkSpec = comptime spec.fork();
     const exec_spec: ExecuteSpec = comptime spec.exec();
-    const wait_spec: WaitSpec = comptime spec.waitPid();
+    const wait_spec: WaitSpec = comptime spec.waitpid();
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.execve.override();
     const pid: u64 = try meta.wrap(fork(fork_spec));
     if (pid == 0) {
