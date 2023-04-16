@@ -529,26 +529,26 @@ pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     return_type: type = void,
     logging: builtin.Logging.ReleaseErrorFault = .{},
-    const Specification = @This();
 };
 pub const UnlinkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.unlink_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
-    const Specification = @This();
 };
 pub const RemoveDirSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.rmdir_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
-    const Specification = @This();
-    const special_fn = sys.special.rmdir;
 };
 pub const TruncateSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.truncate_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessErrorFault = .{},
-    const Specification = @This();
+};
+pub const DuplicateSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.dup_errors },
+    return_type: type = u64,
+    logging: builtin.Logging.SuccessErrorFault = .{},
 };
 pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, spec.return_type) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
