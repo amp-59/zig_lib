@@ -1564,3 +1564,87 @@ pub fn orderedMatches(comptime T: type, arg1: []const T, arg2: []const T) u64 {
     }
     return mats;
 }
+pub const SimpleAllocator = struct {
+    start: u64 = 0x40000000,
+    next: u64 = 0x40000000,
+    finish: u64 = 0x40000000,
+
+    pub inline fn create(allocator: *SimpleAllocator, comptime T: type) *T {
+        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), @alignOf(T));
+        return @intToPtr(*T, ret_addr);
+    }
+    pub inline fn allocate(allocator: *SimpleAllocator, comptime T: type, count: u64) []T {
+        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, @alignOf(T));
+        return @intToPtr([*]T, ret_addr)[0..count];
+    }
+    pub inline fn reallocate(allocator: *SimpleAllocator, comptime T: type, buf: []T, count: u64) []T {
+        const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @alignOf(T));
+        return @intToPtr([*]T, ret_addr)[0..count];
+    }
+    pub inline fn save(allocator: *const SimpleAllocator) SimpleAllocator.Save {
+        return .{ .next = allocator.next };
+    }
+    pub inline fn restore(allocator: *SimpleAllocator, state: SimpleAllocator.Save) void {
+        allocator.next = state.next;
+    }
+    pub inline fn restart(allocator: *SimpleAllocator) void {
+        allocator.next = allocator.start;
+        allocator.finish = allocator.start;
+    }
+    pub fn unmap(allocator: *SimpleAllocator) void {
+        sys.call(.munmap, .{}, void, allocator.start, allocator.finish - allocator.start);
+    }
+    pub const Save = struct { next: u64 };
+
+    // PROT_READ|PROT_WRITE
+    const flags: u64 = 0x1 | 0x2;
+    // MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE
+    const prot: u64 = 0x20 | 0x02 | 0x100000;
+    const zero: u64 = 0;
+
+    inline fn mapRange(old_finish: u64, new_finish: u64) u64 {
+        sys.call(.mmap, .{}, void, old_finish, new_finish - old_finish, flags, prot, ~zero, zero);
+        return new_finish;
+    }
+    inline fn alignAbove(value: u64, alignment: u64) u64 {
+        const mask: u64 = alignment -% 1;
+        return (value +% mask) & ~mask;
+    }
+    inline fn copy(dest: u64, src: u64, len: u64) void {
+        @memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
+    }
+    fn allocateInternal(
+        allocator: *SimpleAllocator,
+        size_of: u64,
+        align_of: u64,
+    ) u64 {
+        const start: u64 = allocator.next;
+        const aligned: u64 = alignAbove(start, align_of);
+        const finish: u64 = aligned +% size_of;
+        if (finish > allocator.finish) {
+            allocator.finish = mapRange(allocator.finish, alignAbove(finish, 4096));
+        }
+        allocator.next = finish;
+        return aligned;
+    }
+    fn reallocateInternal(
+        allocator: *SimpleAllocator,
+        old_aligned: u64,
+        old_size_of: u64,
+        new_size_of: u64,
+        align_of: u64,
+    ) u64 {
+        const old_finish: u64 = old_aligned +% old_size_of;
+        const new_finish: u64 = old_aligned +% new_size_of;
+        if (allocator.next == old_finish) {
+            if (new_finish > allocator.finish) {
+                allocator.finish = map(allocator.finish, alignAbove(new_finish, 4096));
+            }
+            allocator.next = new_finish;
+            return old_aligned;
+        }
+        const new_aligned: u64 = allocator.allocateInternal(new_size_of, align_of);
+        copy(new_aligned, old_aligned, old_size_of);
+        return new_aligned;
+    }
+};
