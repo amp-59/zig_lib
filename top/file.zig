@@ -1173,29 +1173,34 @@ pub fn home(vars: [][*:0]u8) ![:0]const u8 {
     }
     return error.NoHomeInEnvironment;
 }
-pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, bool) {
+pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse bool,
+) {
     const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
-    if (stat_spec.return_type == ?Status) {
-        if (st.mode.kind == kind) {
-            return st;
-        } else {
-            return null;
+    if (stat_spec.return_type) |return_type| {
+        if (return_type == ?Status) {
+            return mach.cmovZ(st.mode.kind == kind, st);
         }
     }
     return st.mode.kind == kind;
 }
-pub inline fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, bool) {
+pub inline fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse bool,
+) {
     const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
-    if (stat_spec.return_type == ?Status) {
-        if (st.mode.kind == kind) {
-            return null;
-        } else {
-            return st;
+    if (stat_spec.return_type) |return_type| {
+        if (return_type == ?Status) {
+            return mach.cmovZ(st.mode.kind != kind, st);
         }
     }
     return st.mode.kind != kind;
 }
-pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse void,
+) {
     const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
     const res: bool = st.mode.kind == kind;
     const logging: builtin.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
@@ -1205,22 +1210,38 @@ pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: 
         }
         builtin.proc.exit(2);
     }
-    if (stat_spec.return_type == Status) {
-        return st;
+    if (stat_spec.return_type) |return_type| {
+        return mach.cmovV(return_type == Status, st);
     }
 }
-pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse bool,
+) {
     const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
-    if (stat_spec.return_type == ?Status) {
-        if (st.mode.kind == kind) {
-            return st;
-        } else {
-            return null;
+    if (stat_spec.return_type) |return_type| {
+        if (return_type == ?Status) {
+            return mach.cmovZ(st.mode.kind == kind, st);
         }
     }
     return st.mode.kind == kind;
 }
-pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse bool,
+) {
+    const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
+    if (stat_spec.return_type) |return_type| {
+        if (return_type == ?Status) {
+            return mach.cmovZ(st.mode.kind != kind, st);
+        }
+    }
+    return st.mode.kind != kind;
+}
+pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse void,
+) {
     const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
     const logging: builtin.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (st.mode.kind != kind) {
@@ -1229,18 +1250,38 @@ pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8,
         }
         builtin.proc.exit(2);
     }
-    if (stat_spec.return_type == Status) {
-        return st;
+    if (stat_spec.return_type) |return_type| {
+        return mach.cmovV(return_type == Status, st);
     }
 }
-pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, bool) {
+pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse bool,
+) {
     const st: Status = try meta.wrap(status(stat_spec, fd));
+    if (stat_spec.return_type) |return_type| {
+        if (return_type == ?Status) {
+            return mach.cmovZ(st.mode.kind == kind, st);
+        }
+    }
     return st.mode.kind == kind;
 }
-pub inline fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(stat_spec.errors, bool) {
-    return !is(stat_spec, kind, fd);
+pub inline fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse bool,
+) {
+    const st: Status = try meta.wrap(status(stat_spec, fd));
+    if (stat_spec.return_type) |return_type| {
+        if (return_type == ?Status) {
+            return mach.cmovZ(st.mode.kind != kind, st);
+        }
+    }
+    return st.mode.kind != kind;
 }
-pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse void,
+) {
     const st: Status = try meta.wrap(status(stat_spec, fd));
     const res: bool = st.mode.kind == kind;
     const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
@@ -1250,11 +1291,14 @@ pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat
         }
         builtin.proc.exit(2);
     }
-    if (stat_spec.return_type == Status) {
-        return st;
+    if (stat_spec.return_type) |return_type| {
+        return mach.cmovV(return_type == Status, st);
     }
 }
-pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(stat_spec.errors, stat_spec.return_type) {
+pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
+    stat_spec.errors,
+    stat_spec.return_type orelse void,
+) {
     const st: Status = try meta.wrap(status(stat_spec, fd));
     const res: bool = st.mode.kind == kind;
     const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
