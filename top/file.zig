@@ -484,42 +484,42 @@ pub const MapSpec = struct {
         populate: bool = false,
         grows_down: bool = false,
         sync: bool = false,
+        const Visibility = enum { shared, shared_validate, private };
     };
-    const Visibility = enum { shared, shared_validate, private };
-    pub fn flags(comptime spec: MapSpec) mem.Map {
+    pub fn flags(comptime map_spec: Specification) mem.Map {
         var flags_bitfield: mem.Map = .{ .val = 0 };
         flags_bitfield.set(.fixed_no_replace);
-        switch (spec.options.visibility) {
+        switch (map_spec.options.visibility) {
             .private => flags_bitfield.set(.private),
             .shared => flags_bitfield.set(.shared),
             .shared_validate => flags_bitfield.set(.shared_validate),
         }
-        if (spec.options.anonymous) {
+        if (map_spec.options.anonymous) {
             flags_bitfield.set(.anonymous);
         }
-        if (spec.options.grows_down) {
+        if (map_spec.options.grows_down) {
             flags_bitfield.set(.grows_down);
             flags_bitfield.set(.stack);
         }
-        if (spec.options.populate) {
-            builtin.static.assert(spec.options.visibility == .private);
+        if (map_spec.options.populate) {
+            builtin.static.assert(map_spec.options.visibility == .private);
             flags_bitfield.set(.populate);
         }
-        if (spec.options.sync) {
-            builtin.static.assert(spec.options.visibility == .shared_validate);
+        if (map_spec.options.sync) {
+            builtin.static.assert(map_spec.options.visibility == .shared_validate);
             flags_bitfield.set(.sync);
         }
         return flags_bitfield;
     }
-    pub fn prot(comptime spec: MapSpec) mem.Prot {
-        comptime var prot_bitfield: mem.Prot = .{ .val = 0 };
-        if (spec.options.read) {
+    pub fn prot(comptime map_spec: Specification) mem.Prot {
+        var prot_bitfield: mem.Prot = .{ .val = 0 };
+        if (map_spec.options.read) {
             prot_bitfield.set(.read);
         }
-        if (spec.options.write) {
+        if (map_spec.options.write) {
             prot_bitfield.set(.write);
         }
-        if (spec.options.exec) {
+        if (map_spec.options.exec) {
             prot_bitfield.set(.exec);
         }
         return prot_bitfield;
