@@ -215,10 +215,16 @@ pub const build_command_options: []const OptionSpec = &.{
         .descr = &.{"Override Zig installation lib directory"},
     },
     .{
-        .name = "enable_cache",
-        .string = "--enable-cache",
-        .default_value = &true,
+        .name = "listen",
+        .string = "--listen",
+        .arg_type = enum { none, @"-", ipv4 },
+        .descr = &.{"[MISSING]"},
     },
+    //.{
+    //    .name = "enable_cache",
+    //    .string = "--enable-cache",
+    //    .default_value = &true,
+    //},
     .{
         .name = "target",
         .string = "-target",
@@ -724,7 +730,9 @@ pub fn formatCompositeLiteral(
     switch (type_info) {
         .Enum => |enum_info| {
             inline for (enum_info.fields) |field| {
-                array.writeMany(" " ++ field.name ++ " = ");
+                array.writeMany(" ");
+                array.writeFormat(fmt.IdentifierFormat{ .value = field.name });
+                array.writeMany(" = ");
                 array.writeFormat(comptime fmt.any(field.value));
                 array.writeMany(",");
             }
