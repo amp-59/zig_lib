@@ -251,17 +251,14 @@ pub const file_mode: Mode = .{
     .set_uid = false,
     .kind = .regular,
 };
-pub const ReadSpec = struct {
-    child: type = u8,
-    return_type: type = u64,
-    errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
-};
-pub const WriteSpec = struct {
-    child: type = u8,
-    return_type: type = void,
-    errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
+pub const fifo_mode: Mode = .{
+    .owner = .{ .read = true, .write = true, .execute = false },
+    .group = .{ .read = true, .write = false, .execute = false },
+    .other = .{ .read = false, .write = false, .execute = false },
+    .sticky = false,
+    .set_gid = false,
+    .set_uid = false,
+    .kind = .named_pipe,
 };
 pub const OpenSpec = struct {
     options: Options = .{},
@@ -324,6 +321,35 @@ pub const OpenSpec = struct {
             }
         } else if (spec.options.read) {
             flags_bitfield.set(.read_only);
+        }
+        return flags_bitfield;
+    }
+};
+pub const ReadSpec = struct {
+    child: type = u8,
+    return_type: type = u64,
+    errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
+    logging: builtin.Logging.SuccessErrorFault = .{},
+};
+pub const WriteSpec = struct {
+    child: type = u8,
+    return_type: type = void,
+    errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
+    logging: builtin.Logging.SuccessErrorFault = .{},
+};
+pub const StatusSpec = struct {
+    options: Options = .{},
+    errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
+    logging: builtin.Logging.SuccessErrorFault = .{},
+    return_type: ?type = null,
+    const Specification = @This();
+    const Options = struct {
+        no_follow: bool = false,
+    };
+    fn flags(comptime stat_spec: Specification) Open {
+        var flags_bitfield: Open = .{ .val = 0 };
+        if (stat_spec.options.no_follow) {
+            flags_bitfield.set(.no_follow);
         }
         return flags_bitfield;
     }
