@@ -37,9 +37,10 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.IFLNKR,
     const MODE = sys.S;
 };
-pub const Execute = meta.EnumBitField(enum(u64) {
+pub const At = meta.EnumBitField(enum(u64) {
     empty_path = AT.EMPTY_PATH,
     no_follow = AT.SYMLINK.NOFOLLOW,
+    no_auto_mount = AT.NO_AUTOMOUNT,
     const AT = sys.AT;
 });
 pub const Device = extern struct {
@@ -145,22 +146,23 @@ pub const Socket = meta.EnumBitField(enum(u64) {
     };
     const SOCK = sys.SOCK;
 });
+
 pub const Status = extern struct {
     dev: u64,
     ino: u64,
     nlink: u64,
     mode: Mode,
-    @"0": [2]u8,
+    @"0": u16,
     uid: u32,
     gid: u32,
-    @"1": [4]u8,
+    @"1": u32,
     rdev: u64,
     size: u64,
     blksize: u64,
     blocks: u64,
-    atime: time.TimeSpec = .{},
-    mtime: time.TimeSpec = .{},
-    ctime: time.TimeSpec = .{},
+    atime: time.TimeSpec,
+    mtime: time.TimeSpec,
+    ctime: time.TimeSpec,
     pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.execute;
@@ -197,7 +199,7 @@ pub const StatusExtra = extern struct {
     uid: u32,
     gid: u32,
     mode: u16,
-    @"0": [2]u8,
+    @"0": u16,
     ino: u64,
     size: u64,
     blocks: u64,
@@ -212,6 +214,61 @@ pub const StatusExtra = extern struct {
     dev_minor: u32,
     mnt_id: u64,
     @"1": [104]u8,
+
+    pub const Attributes = meta.EnumBitField(enum(u64) {
+        compressed = STATX.ATTR.COMPRESSED,
+        immutable = STATX.ATTR.IMMUTABLE,
+        append = STATX.ATTR.APPEND,
+        nodump = STATX.ATTR.NODUMP,
+        encrypted = STATX.ATTR.ENCRYPTED,
+        verity = STATX.ATTR.VERITY,
+        dax = STATX.ATTR.DAX,
+        const STATX = sys.STATX;
+    });
+    pub const Fields = meta.EnumBitField(enum(u64) {
+        type = STATX.TYPE,
+        mode = STATX.MODE,
+        nlink = STATX.NLINK,
+        uid = STATX.UID,
+        gid = STATX.GID,
+        atime = STATX.ATIME,
+        mtime = STATX.MTIME,
+        ctime = STATX.CTIME,
+        btime = STATX.BTIME,
+        ino = STATX.INO,
+        size = STATX.SIZE,
+        blocks = STATX.BLOCKS,
+        mnt_id = STATX.MNT_ID,
+        const STATX = sys.STATX;
+    });
+
+    pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
+        if (user_id == st.uid) {
+            return st.mode.owner.execute;
+        }
+        if (group_id == st.gid) {
+            return st.mode.group.execute;
+        }
+        return st.mode.other.execute;
+    }
+    pub fn isReadable(st: Status, user_id: u16, group_id: u16) bool {
+        if (user_id == st.uid) {
+            return st.mode.owner.read;
+        }
+        if (group_id == st.gid) {
+            return st.mode.group.read;
+        }
+        return st.mode.other.read;
+    }
+    pub fn isWritable(st: Status, user_id: u16, group_id: u16) bool {
+        if (user_id == st.uid) {
+            return st.mode.owner.read;
+        }
+        if (group_id == st.gid) {
+            return st.mode.group.read;
+        }
+        return st.mode.other.read;
+    }
 };
 pub const DirectoryEntry = extern struct {
     inode: u64,
@@ -346,12 +403,95 @@ pub const StatusSpec = struct {
     const Options = struct {
         no_follow: bool = false,
     };
-    fn flags(comptime stat_spec: Specification) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
+    fn flags(comptime stat_spec: Specification) At {
+        var flags_bitfield: At = .{ .val = 0 };
         if (stat_spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
         return flags_bitfield;
+    }
+};
+pub const StatusExtraSpec = struct {
+    options: Options = .{},
+    errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
+    logging: builtin.Logging.SuccessErrorFault = .{},
+    return_type: ?type = null,
+    const Specification = @This();
+    const Options = struct {
+        no_follow: bool = false,
+        empty_path: bool = false,
+        no_auto_mount: bool = true,
+        fields: struct {
+            type: bool = true,
+            mode: bool = true,
+            nlink: bool = true,
+            uid: bool = true,
+            gid: bool = true,
+            atime: bool = true,
+            mtime: bool = true,
+            ctime: bool = true,
+            btime: bool = false,
+            ino: bool = true,
+            size: bool = true,
+            blocks: bool = true,
+            mnt_id: bool = false,
+        },
+    };
+    fn flags(comptime statx_spec: Specification) At {
+        var flags_bitfield: At = .{ .val = 0 };
+        if (statx_spec.options.no_follow) {
+            flags_bitfield.set(.no_follow);
+        }
+        if (statx_spec.options.no_auto_mount) {
+            flags_bitfield.set(.no_auto_mount);
+        }
+        if (statx_spec.options.empty_path) {
+            flags_bitfield.set(.empty_path);
+        }
+        return flags_bitfield;
+    }
+    fn fields(comptime statx_spec: Specification) StatusExtra.Fields {
+        var fields_bitfield: At = .{ .val = 0 };
+        if (statx_spec.options.fields.type) {
+            fields_bitfield.set(.type);
+        }
+        if (statx_spec.options.fields.mode) {
+            fields_bitfield.set(.mode);
+        }
+        if (statx_spec.options.fields.nlink) {
+            fields_bitfield.set(.nlink);
+        }
+        if (statx_spec.options.fields.uid) {
+            fields_bitfield.set(.uid);
+        }
+        if (statx_spec.options.fields.gid) {
+            fields_bitfield.set(.gid);
+        }
+        if (statx_spec.options.fields.atime) {
+            fields_bitfield.set(.atime);
+        }
+        if (statx_spec.options.fields.mtime) {
+            fields_bitfield.set(.mtime);
+        }
+        if (statx_spec.options.fields.ctime) {
+            fields_bitfield.set(.ctime);
+        }
+        if (statx_spec.options.fields.btime) {
+            fields_bitfield.set(.btime);
+        }
+        if (statx_spec.options.fields.ino) {
+            fields_bitfield.set(.ino);
+        }
+        if (statx_spec.options.fields.size) {
+            fields_bitfield.set(.size);
+        }
+        if (statx_spec.options.fields.blocks) {
+            fields_bitfield.set(.blocks);
+        }
+        if (statx_spec.options.fields.mnt_id) {
+            fields_bitfield.set(.mnt_id);
+        }
+        return fields_bitfield;
     }
 };
 pub const SocketSpec = struct {
@@ -496,8 +636,8 @@ pub const ExecuteSpec = struct {
     const Options = struct {
         no_follow: bool = false,
     };
-    fn flags(comptime spec: ExecuteSpec) Execute {
-        var flags_bitfield: Execute = .{ .val = 0 };
+    fn flags(comptime spec: Specification) At {
+        var flags_bitfield: At = .{ .val = 0 };
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
@@ -524,7 +664,7 @@ pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.a
 pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: Execute = spec.flags();
+    const flags: At = comptime spec.flags();
     const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
         unreachable;
@@ -539,7 +679,7 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: Execute = spec.flags();
+    const flags: At = comptime spec.flags();
     const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
         unreachable;
@@ -1039,7 +1179,7 @@ pub inline fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u
     var st: Status = undefined;
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
-    const flags: Open = comptime spec.flags();
+    const flags: At = comptime spec.flags();
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.newfstatat, spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }))) {
         if (logging.Success) {
@@ -1048,6 +1188,24 @@ pub inline fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u
     } else |stat_error| {
         if (logging.Error) {
             debug.statusAtError(stat_error, dir_fd, name);
+        }
+        return stat_error;
+    }
+    return st;
+}
+pub inline fn statusExtra(comptime spec: StatusExtraSpec, fd: u64, pathname: [:0]const u8) sys.Call(spec.errors, Status) {
+    var st: Status = undefined;
+    const st_buf_addr: u64 = @ptrToInt(&st);
+    const flags: At = comptime spec.flags();
+    const mask: StatusExtra.Fields = comptime spec.fields();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.statx, spec.errors, void, .{ fd, pathname, flags.val, mask.val, st_buf_addr }))) {
+        if (logging.Success) {
+            debug.statusNotice(fd, st.mode);
+        }
+    } else |stat_error| {
+        if (logging.Error) {
+            debug.statusError(stat_error, fd);
         }
         return stat_error;
     }
@@ -1134,7 +1292,7 @@ pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.er
         return dup_error;
     }
 }
-pub fn duplicateTo(comptime dup_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
+pub fn duplicateExtra(comptime dup_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
     const flags: u64 = sys.O.CLOEXEC;
     const logging: builtin.Logging.SuccessErrorFault = comptime dup_spec.logging.override();
     if (meta.wrap(sys.call(.dup3, dup_spec.errors, dup_spec.return_type, .{ old_fd, new_fd, flags }))) |ret| {
