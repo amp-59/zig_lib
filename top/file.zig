@@ -1429,20 +1429,22 @@ const debug = opaque {
     const about_rmdir_1_s: [:0]const u8 = builtin.debug.about("rmdir-error");
     const about_write_0_s: [:0]const u8 = builtin.debug.about("write");
     const about_write_1_s: [:0]const u8 = builtin.debug.about("write-error");
+    const about_socket_0_s: [:0]const u8 = builtin.debug.about("socket");
+    const about_socket_1_s: [:0]const u8 = builtin.debug.about("socket-error");
     const about_create_0_s: [:0]const u8 = builtin.debug.about("create");
     const about_create_1_s: [:0]const u8 = builtin.debug.about("create-error");
+    const about_execve_0_s: [:0]const u8 = builtin.debug.about("execve");
+    const about_execve_1_s: [:0]const u8 = builtin.debug.about("execve-error");
     const about_getcwd_0_s: [:0]const u8 = builtin.debug.about("getcwd");
     const about_getcwd_1_s: [:0]const u8 = builtin.debug.about("getcwd-error");
     const about_unlink_0_s: [:0]const u8 = builtin.debug.about("unlink");
     const about_unlink_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
-    const about_socket_0: [:0]const u8 = builtin.debug.about("socket");
-    const about_socket_1: [:0]const u8 = builtin.debug.about("socket-error");
-    const about_fexecve_1_s: [:0]const u8 = builtin.debug.about("fexecve-error");
     const about_unlinkat_0_s: [:0]const u8 = builtin.debug.about("unlink");
     const about_unlinkat_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
     const about_readlink_1_s: [:0]const u8 = builtin.debug.about("readlink-error");
     const about_truncate_0_s: [:0]const u8 = builtin.debug.about("truncate");
     const about_truncate_1_s: [:0]const u8 = builtin.debug.about("truncate-error");
+
     const unknown_s: [:0]const u8 = "an unknown file";
     const regular_s: [:0]const u8 = "a regular file";
     const directory_s: [:0]const u8 = "a directory";
@@ -1524,7 +1526,7 @@ const debug = opaque {
     fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0, "fd=", fd_s, ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0_s, "fd=", fd_s, ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
     }
     fn getCwdNotice(pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 8]u8 = undefined;
@@ -1621,7 +1623,7 @@ const debug = opaque {
     }
     fn socketError(socket_error: anytype, dom: Domain, conn: Connection) void {
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
     fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
