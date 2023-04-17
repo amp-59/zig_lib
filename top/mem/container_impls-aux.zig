@@ -36,18 +36,18 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
     }
     const child_size: [:0]const u8 = if (ctn_detail.layout == .structured) tok.child_size_name else tok.call_sizeof_child;
     const unit: Expr = if (ctn_detail.layout == .structured) expr.constant(1) else expr.symbol(tok.amount_unit);
-    var define: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.define));
-    var undefine: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefine));
-    var seek: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.seek));
-    var tell: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.tell));
-    var writable_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.writable_byte_count));
-    var defined_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.defined_byte_count));
-    var undefined_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefined_byte_count));
-    var streamed_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.streamed_byte_count));
-    var unstreamed_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_count));
-    var aligned_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.aligned_byte_address));
-    var undefined_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.undefined_byte_address));
-    var unstreamed_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, impl_fn.get(.unstreamed_byte_address));
+    var define: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .define);
+    var undefine: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .undefine);
+    var seek: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .seek);
+    var tell: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .tell);
+    var writable_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .writable_byte_count);
+    var defined_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .defined_byte_count);
+    var undefined_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .undefined_byte_count);
+    var streamed_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .streamed_byte_count);
+    var unstreamed_byte_count: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .unstreamed_byte_count);
+    var aligned_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .aligned_byte_address);
+    var undefined_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .undefined_byte_address);
+    var unstreamed_byte_address: [3]Expr = makeImplFnMemberCall(allocator, ctn_detail, .unstreamed_byte_address);
     var readable_byte_count: [3]Expr = if (ctn_detail.modes.resize) defined_byte_count else writable_byte_count;
     var amount_of_type_to_bytes: [3]Expr = expr.amountOfTypeToBytes(expr.symbol(tok.offset_name), expr.symbol(tok.child_type_name));
     var amount_to_count_of_type: [3]Expr = expr.amountToCountOfType(expr.symbol(tok.offset_name), expr.symbol(tok.child_type_name));
@@ -59,20 +59,20 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
     var add_address_amount_of_type_to_bytes: [3]Expr = expr.add(undefined, expr.call(&amount_of_type_to_bytes));
     var mul_offset_child_size: [3]Expr = expr.mul(expr.symbol(tok.offset_name), expr.symbol(child_size));
     var mul_count_child_size: [3]Expr = expr.mul(expr.symbol(tok.count_name), expr.symbol(child_size));
-    const __defined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__defined));
-    const __undefined_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__undefined));
-    const __streamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__streamed));
-    const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__unstreamed));
-    const __at_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__at));
-    const __len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.__len));
-    const increment_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.increment));
-    const write_one_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeOne));
-    const write_count_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeCount));
-    const write_many_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeMany));
-    const write_format_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeFormat));
-    const write_args_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeArgs));
-    const write_fields_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeFields));
-    const write_any_intr_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.writeAny));
+    const __defined_call: Expr = expr.intr(allocator, ctn_detail, .__defined);
+    const __undefined_call: Expr = expr.intr(allocator, ctn_detail, .__undefined);
+    const __streamed_call: Expr = expr.intr(allocator, ctn_detail, .__streamed);
+    const __unstreamed_call: Expr = expr.intr(allocator, ctn_detail, .__unstreamed);
+    const __at_call: Expr = expr.intr(allocator, ctn_detail, .__at);
+    const __len_call: Expr = expr.intr(allocator, ctn_detail, .__len);
+    const increment_call: Expr = expr.intr(allocator, ctn_detail, .increment);
+    const write_one_intr_call: Expr = expr.intr(allocator, ctn_detail, .writeOne);
+    const write_count_intr_call: Expr = expr.intr(allocator, ctn_detail, .writeCount);
+    const write_many_intr_call: Expr = expr.intr(allocator, ctn_detail, .writeMany);
+    const write_format_intr_call: Expr = expr.intr(allocator, ctn_detail, .writeFormat);
+    const write_args_intr_call: Expr = expr.intr(allocator, ctn_detail, .writeArgs);
+    const write_fields_intr_call: Expr = expr.intr(allocator, ctn_detail, .writeFields);
+    const write_any_intr_call: Expr = expr.intr(allocator, ctn_detail, .writeAny);
     const mul_sub_address_offset_exprs: []Expr = &if (ctn_detail.layout == .structured) mul_sub_address_offset else sub_address_amount_of_type_to_bytes;
     const mul_add_address_offset_exprs: []Expr = &if (ctn_detail.layout == .structured) mul_add_address_offset else add_address_amount_of_type_to_bytes;
     const mul_sub_address_offset_address: *Expr = &if (ctn_detail.layout == .structured) mul_sub_address_offset[3] else sub_address_amount_of_type_to_bytes[1];
@@ -83,14 +83,14 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
     const is_defined: bool = ctn_fn.kind.defined(ctn_fn_info);
     switch (ctn_fn_info) {
         .readAll => {
-            const len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
+            const len_call: Expr = expr.intr(allocator, ctn_detail, .len);
             var pointer_slice: [4]Expr = expr.interfacePointerMany(expr.symbol(tok.child_type_name), expr.join(&aligned_byte_address), len_call);
             array.writeMany(tok.return_keyword);
             array.writeFormat(expr.call(&pointer_slice));
             return array.writeMany(tok.end_expr);
         },
         .readAllWithSentinel => {
-            const len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
+            const len_call: Expr = expr.intr(allocator, ctn_detail, .len);
             var pointer_slice_with_sentinel: [5]Expr = expr.interfacePointerCountWithSentinel(
                 expr.symbol(tok.child_type_name),
                 expr.join(&aligned_byte_address),
@@ -733,7 +733,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         },
         // return count of defined of type subtract amount of type
         .__len => {
-            const len_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
+            const len_call: Expr = expr.intr(allocator, ctn_detail, .len);
             var sub_len_offset: [3]Expr = expr.sub(len_call, if (ctn_detail.layout == .structured)
                 expr.call(&mul_offset_child_size)
             else
@@ -764,7 +764,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         },
         // return count of undefined of type  subtract amount of type
         .__avail => {
-            const avail_call: Expr = expr.intr(allocator, ctn_detail, ctn_fn.get(.len));
+            const avail_call: Expr = expr.intr(allocator, ctn_detail, .len);
             array.writeMany(tok.return_keyword);
             var sub_avail_offset: [3]Expr = expr.sub(avail_call, expr.symbol(tok.offset_name));
             array.writeFormat(expr.call(&sub_avail_offset));
@@ -886,7 +886,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         },
     }
 }
-fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const types.Container, impl_fn_info: *const impl_fn.Fn) [3]Expr {
+fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const types.Container, impl_fn_info: impl_fn.Fn) [3]Expr {
     // Using array_impl in expr.impl would be better.
     return expr.fieldAccess(
         expr.symbol(tok.array_name),
