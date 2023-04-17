@@ -55,7 +55,8 @@ pub const BuildCommand = struct {
     global_cache_root: ?[]const u8 = null,
     /// Override Zig installation lib directory
     zig_lib_root: ?[]const u8 = null,
-    enable_cache: bool = true,
+    /// [MISSING]
+    listen: ?enum(u2) { none = 0, @"-" = 1, ipv4 = 2 } = null,
     /// <arch><sub>-<os>-<abi> see the targets command
     target: ?[]const u8 = null,
     /// Specify target CPU and feature set
