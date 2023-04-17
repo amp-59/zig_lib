@@ -100,11 +100,12 @@ pub const builder = opaque {
     };
     pub const errors = opaque {
         pub const noexcept: build.BuilderSpec.Errors = .{
-            .command = .{
-                .fork = .{},
-                .execve = .{},
-                .waitpid = .{},
-            },
+            .fork = .{},
+            .write = .{},
+            .mknod = .{},
+            .dup3 = .{},
+            .execve = .{},
+            .waitpid = .{},
             .path = .{},
             .map = .{},
             .unmap = .{},
@@ -116,11 +117,9 @@ pub const builder = opaque {
             .stat = .{},
         };
         pub const zen: build.BuilderSpec.Errors = .{
-            .command = .{
-                .fork = .{ .throw = sys.fork_errors },
-                .execve = .{ .throw = sys.execve_errors },
-                .waitpid = .{ .throw = sys.wait_errors },
-            },
+            .fork = .{ .throw = sys.fork_errors },
+            .execve = .{ .throw = sys.execve_errors },
+            .waitpid = .{ .throw = sys.wait_errors },
             .path = .{ .throw = sys.open_errors },
             .map = .{ .throw = sys.mmap_errors },
             .stat = .{ .throw = sys.stat_errors },
@@ -138,11 +137,9 @@ pub const builder = opaque {
     };
     pub const logging = opaque {
         pub const verbose: build.BuilderSpec.Logging = .{
-            .command = .{
-                .fork = spec.logging.success_error_fault.verbose,
-                .execve = spec.logging.success_error_fault.verbose,
-                .waitpid = spec.logging.success_error_fault.verbose,
-            },
+            .fork = spec.logging.success_error_fault.verbose,
+            .execve = spec.logging.success_error_fault.verbose,
+            .waitpid = spec.logging.success_error_fault.verbose,
             .path = spec.logging.acquire_error_fault.verbose,
             .stat = spec.logging.success_error_fault.verbose,
             .create = spec.logging.acquire_error_fault.verbose,
@@ -171,6 +168,7 @@ pub const logging = opaque {
     };
     pub const override = opaque {
         pub const verbose: builtin.Logging.Override = .{
+            .Attempt = true,
             .Success = true,
             .Acquire = true,
             .Release = true,
@@ -178,6 +176,7 @@ pub const logging = opaque {
             .Fault = true,
         };
         pub const silent: builtin.Logging.Override = .{
+            .Attempt = true,
             .Success = false,
             .Acquire = false,
             .Release = false,
@@ -202,6 +201,26 @@ pub const logging = opaque {
         };
         pub const silent: builtin.Logging.SuccessFault = .{
             .Success = false,
+            .Fault = false,
+        };
+    };
+    pub const attempt_error = opaque {
+        pub const verbose: builtin.Logging.AttemptError = .{
+            .Attempt = true,
+            .Error = true,
+        };
+        pub const silent: builtin.Logging.AttemptError = .{
+            .Attempt = false,
+            .Error = false,
+        };
+    };
+    pub const attempt_fault = opaque {
+        pub const verbose: builtin.Logging.AttemptFault = .{
+            .Attempt = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.AttemptFault = .{
+            .Attempt = false,
             .Fault = false,
         };
     };
@@ -242,6 +261,18 @@ pub const logging = opaque {
         };
         pub const silent: builtin.Logging.ReleaseFault = .{
             .Release = false,
+            .Fault = false,
+        };
+    };
+    pub const attempt_error_fault = opaque {
+        pub const verbose: builtin.Logging.AttemptErrorFault = .{
+            .Attempt = true,
+            .Error = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.AttemptErrorFault = .{
+            .Attempt = false,
+            .Error = false,
             .Fault = false,
         };
     };
