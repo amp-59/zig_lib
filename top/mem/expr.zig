@@ -248,8 +248,8 @@ const Init = struct {
         impl_name: [:0]const u8 = tok.impl_name,
         impl_type_name: [:0]const u8 = tok.impl_type_name,
         impl_const_param: [:0]const u8 = tok.impl_const_param,
-        fn determine(impl_fn_info: *const impl_fn.Fn) Tokens {
-            switch (impl_fn_info.*) {
+        fn determine(impl_fn_info: impl_fn.Fn) Tokens {
+            switch (impl_fn_info) {
                 .allocate => {
                     return .{
                         .impl_name = tok.source_impl_name,
@@ -309,7 +309,7 @@ const Init = struct {
     pub fn call(exprs: []Expr) Expr {
         return packMore(.call, exprs);
     }
-    pub fn impl0(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: *const gen.ArgList) Expr {
+    pub fn impl0(allocator: anytype, impl_fn_info: impl_fn.Fn, arg_list: *const gen.ArgList) Expr {
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 3);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(impl_fn_info.fnName());
@@ -320,7 +320,7 @@ const Init = struct {
         }
         return packMore(.call, exprs[0..idx]);
     }
-    pub fn impl1(allocator: anytype, impl_fn_info: *const impl_fn.Fn, arg_list: *const gen.ArgList, tokens: Tokens) Expr {
+    pub fn impl1(allocator: anytype, impl_fn_info: impl_fn.Fn, arg_list: *const gen.ArgList, tokens: Tokens) Expr {
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 3);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(impl_fn_info.fnName());
@@ -341,14 +341,14 @@ const Init = struct {
         }
         return packMore(.call_member, exprs[0..idx]);
     }
-    pub fn impl(allocator: anytype, any_detail: anytype, impl_fn_info: *const impl_fn.Fn) Expr {
+    pub fn impl(allocator: anytype, any_detail: anytype, impl_fn_info: impl_fn.Fn) Expr {
         if (@TypeOf(any_detail.*) == types.Implementation) {
             return impl0(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument));
         } else {
             return impl1(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument), Tokens.determine(impl_fn_info));
         }
     }
-    pub fn intr(allocator: anytype, ctn_detail: *const types.Container, ctn_fn_info: *const ctn_fn.Fn) Expr {
+    pub fn intr(allocator: anytype, ctn_detail: *const types.Container, ctn_fn_info: ctn_fn.Fn) Expr {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 1);
         var idx: u64 = 0;
