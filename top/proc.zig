@@ -477,6 +477,19 @@ pub const Status = struct {
     }
 };
 
+pub fn getUserId() u16 {
+    return @truncate(u16, sys.call(.getuid, .{}, u64, .{}));
+}
+pub fn getEffectiveUserId() u16 {
+    return @truncate(u16, sys.call(.geteuid, .{}, u64, .{}));
+}
+pub fn getGroupId() u16 {
+    return @truncate(u16, sys.call(.getgid, .{}, u64, .{}));
+}
+pub fn getEffectiveGroupId() u16 {
+    return @truncate(u16, sys.call(.getegid, .{}, u64, .{}));
+}
+
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     const status: u64 = if (status_opt) |status| @ptrToInt(status) else 0;
