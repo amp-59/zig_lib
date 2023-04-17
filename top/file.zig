@@ -1,6 +1,7 @@
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
+const proc = @import("./proc.zig");
 const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const builtin = @import("./builtin.zig");
@@ -156,18 +157,18 @@ pub const Status = extern struct {
     mtime: time.TimeSpec = .{},
     ctime: time.TimeSpec = .{},
     pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
-        user_id == st.uid and return st.mode.owner.execute;
-        group_id == st.gid and return st.mode.group.execute;
+        if (user_id == st.uid) return st.mode.owner.execute;
+        if (group_id == st.gid) return st.mode.group.execute;
         return st.mode.other.execute;
     }
     pub fn isReadable(st: Status, user_id: u16, group_id: u16) bool {
-        user_id == st.uid and return st.mode.owner.read;
-        group_id == st.gid and return st.mode.group.read;
+        if (user_id == st.uid) return st.mode.owner.read;
+        if (group_id == st.gid) return st.mode.group.read;
         return st.mode.other.read;
     }
     pub fn isWritable(st: Status, user_id: u16, group_id: u16) bool {
-        user_id == st.uid and return st.mode.owner.read;
-        group_id == st.gid and return st.mode.group.read;
+        if (user_id == st.uid) return st.mode.owner.read;
+        if (group_id == st.gid) return st.mode.group.read;
         return st.mode.other.read;
     }
 };
@@ -1135,7 +1136,7 @@ pub fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 
     const stat_spec: StatusSpec = .{ .options = .{ .no_follow = false } };
     const dir_fd: u64 = path(path_spec, dir_pathname) catch return null;
     const st: Status = statusAt(stat_spec, dir_fd, file_name) catch return null;
-    if (st.isExecutable(sys.geteuid(), sys.getegid())) {
+    if (st.isExecutable(proc.getEffectiveUserId(), proc.getEffectiveGroupId())) {
         return dir_fd;
     }
     return null;
