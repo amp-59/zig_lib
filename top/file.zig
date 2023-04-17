@@ -1773,4 +1773,88 @@ const debug = opaque {
             .symbolic_link => return symbolic_link_s,
         }
     }
+    pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
+        var argc: u64 = args.len;
+        var buf: [4096 +% 128]u8 = undefined;
+        var len: u64 = 0;
+        var idx: u64 = 0;
+        len +%= builtin.debug.writeMany(buf[len..], about_execve_0_s);
+        len +%= builtin.debug.writeMany(buf[len..], filename);
+        buf[len] = ' ';
+        len +%= 1;
+        if (filename.ptr == args[0]) {
+            len +%= builtin.debug.writeMany(buf[len..], "[0] ");
+            idx +%= 1;
+        }
+        while (idx != argc) : (idx +%= 1) {
+            var arg_len: u64 = 0;
+            while (args[idx][arg_len] != 0) arg_len +%= 1;
+            if (arg_len == 0) {
+                buf[len] = '\'';
+                len +%= 1;
+                buf[len] = '\'';
+                len +%= 1;
+            }
+            if (len +% arg_len >= buf.len -% 37) {
+                break;
+            }
+            for (args[idx][0..arg_len], 0..) |c, j| buf[len +% j] = c;
+            len +%= arg_len;
+            buf[len] = ' ';
+            len +%= 1;
+        }
+        if (argc != idx) {
+            len +%= builtin.debug.writeMany(buf[len..], " ... and ");
+            len +%= builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc -% idx).readAll());
+            len +%= builtin.debug.writeMany(buf[len..], " more args ... \n");
+        } else {
+            buf[len] = '\n';
+            len +%= 1;
+        }
+        builtin.debug.write(buf[0..len]);
+    }
+    pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
+        const max_len: u64 = 4096 +% 128;
+        var argc: u64 = args.len;
+        var buf: [max_len]u8 = undefined;
+        var idx: u64 = 0;
+        var len: u64 = 0;
+        len +%= builtin.debug.writeMany(buf[len..], about_execve_1_s);
+        len +%= builtin.debug.writeMany(buf[len..], "(");
+        len +%= builtin.debug.writeMany(buf[len..], @errorName(exec_error));
+        len +%= builtin.debug.writeMany(buf[len..], ")");
+        len +%= builtin.debug.writeMany(buf[len..], filename);
+        buf[len] = ' ';
+        len +%= 1;
+        if (filename.ptr == args[0]) {
+            len +%= builtin.debug.writeMany(buf[len..], "[0] ");
+            idx +%= 1;
+        }
+        while (idx != argc) : (idx +%= 1) {
+            var arg_len: u64 = 0;
+            while (args[idx][arg_len] != 0) arg_len +%= 1;
+            if (arg_len == 0) {
+                buf[len] = '\'';
+                len +%= 1;
+                buf[len] = '\'';
+                len +%= 1;
+            }
+            if (len +% arg_len >= max_len -% 37) {
+                break;
+            }
+            for (args[idx][0..arg_len], 0..) |c, j| buf[len +% j] = c;
+            len +%= arg_len;
+            buf[len] = ' ';
+            len +%= 1;
+        }
+        if (argc != idx) {
+            len +%= builtin.debug.writeMany(buf[len..], " ... and ");
+            len +%= builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc -% idx).readAll());
+            len +%= builtin.debug.writeMany(buf[len..], " more args ... \n");
+        } else {
+            buf[len] = '\n';
+            len +%= 1;
+        }
+        builtin.debug.write(buf[0..len]);
+    }
 };
