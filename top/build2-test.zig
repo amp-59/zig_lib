@@ -13,7 +13,7 @@ const command_line = build.command_line;
 pub usingnamespace proc.start;
 
 pub const Builder = build.GenericBuilder(spec.builder.default);
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
 
 const PartialCommand = struct {
@@ -24,7 +24,6 @@ const PartialCommand = struct {
     strip: bool = true,
     static: bool = true,
     compiler_rt: bool = false,
-    enable_cache: bool = true,
     reference_trace: bool = true,
     single_threaded: bool = true,
     function_sections: bool = true,
