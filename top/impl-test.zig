@@ -14,6 +14,7 @@ pub usingnamespace proc.start;
 pub const AddressSpace = spec.address_space.exact_8;
 pub const runtime_assertions: bool = true;
 pub const logging_default: builtin.Logging.Default = .{
+    .Attempt = true,
     .Success = true,
     .Acquire = true,
     .Release = true,
@@ -21,6 +22,7 @@ pub const logging_default: builtin.Logging.Default = .{
     .Fault = true,
 };
 pub const logging_override: builtin.Logging.Override = .{
+    .Attempt = false,
     .Success = false,
     .Acquire = false,
     .Release = false,

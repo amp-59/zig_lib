@@ -152,6 +152,7 @@ fn testPackedModeStruct() !void {
 }
 pub fn main(_: anytype, vars: anytype) !void {
     const path_fd: u64 = try file.find(vars, "zig");
+
     _ = path_fd;
 
     try meta.wrap(testFileOperationsRound1());

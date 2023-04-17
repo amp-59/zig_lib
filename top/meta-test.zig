@@ -5,6 +5,7 @@ const proc = @import("./proc.zig");
 pub usingnamespace proc.start;
 
 pub const logging_default: builtin.Logging.Default = .{
+    .Attempt = true,
     .Success = true,
     .Acquire = true,
     .Release = true,
