@@ -37,6 +37,11 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.IFLNKR,
     const MODE = sys.S;
 };
+pub const Execute = meta.EnumBitField(enum(u64) {
+    empty_path = AT.EMPTY_PATH,
+    no_follow = AT.SYMLINK.NOFOLLOW,
+    const AT = sys.AT;
+});
 pub const Device = extern struct {
     major: u32 = 0,
     minor: u8 = 0,
@@ -157,18 +162,30 @@ pub const Status = extern struct {
     mtime: time.TimeSpec = .{},
     ctime: time.TimeSpec = .{},
     pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
-        if (user_id == st.uid) return st.mode.owner.execute;
-        if (group_id == st.gid) return st.mode.group.execute;
+        if (user_id == st.uid) {
+            return st.mode.owner.execute;
+        }
+        if (group_id == st.gid) {
+            return st.mode.group.execute;
+        }
         return st.mode.other.execute;
     }
     pub fn isReadable(st: Status, user_id: u16, group_id: u16) bool {
-        if (user_id == st.uid) return st.mode.owner.read;
-        if (group_id == st.gid) return st.mode.group.read;
+        if (user_id == st.uid) {
+            return st.mode.owner.read;
+        }
+        if (group_id == st.gid) {
+            return st.mode.group.read;
+        }
         return st.mode.other.read;
     }
     pub fn isWritable(st: Status, user_id: u16, group_id: u16) bool {
-        if (user_id == st.uid) return st.mode.owner.read;
-        if (group_id == st.gid) return st.mode.group.read;
+        if (user_id == st.uid) {
+            return st.mode.owner.read;
+        }
+        if (group_id == st.gid) {
+            return st.mode.group.read;
+        }
         return st.mode.other.read;
     }
 };
