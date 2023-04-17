@@ -151,7 +151,6 @@ pub const S = struct {
     pub const IWOTH: u16    = 0b0000000000000010;
     pub const IXOTH: u16    = 0b0000000000000001;
     pub const IRWXO: u16    = 0b0000000000000111;
-    pub const AT_FDCWD: u64 = 0xffffffffffffff9c;
 };
 // zig fmt: on
 
@@ -750,6 +749,8 @@ pub const AT = struct {
         pub const FOLLOW: usize = 0x400;
         pub const NOFOLLOW: usize = 0x100;
     };
+    pub const NO_AUTOMOUNT: usize = 0x800;
+    pub const FDCWD: u64 = 0xffffffffffffff9c;
     pub const REMOVEDIR: usize = 0x200;
     pub const EMPTY_PATH: usize = 0x1000;
     pub const EXECFD: usize = 0x2;

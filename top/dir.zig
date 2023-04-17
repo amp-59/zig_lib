@@ -110,7 +110,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             }
         }
         pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !DirStream {
-            const fd: u64 = try file.openAt(dir_open_spec, dirfd orelse sys.S.AT_FDCWD, name);
+            const fd: u64 = try file.openAt(dir_open_spec, dirfd orelse sys.AT.FDCWD, name);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
             clear(blk.aligned_byte_address(), dir_spec.initial_size);
             var ret: DirStream = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
