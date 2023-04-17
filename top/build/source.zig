@@ -11,7 +11,7 @@ const Builder = build.GenericBuilder(.{
     .errors = spec.builder.errors.noexcept,
     .logging = spec.builder.logging.silent,
 });
-export fn forwardToExecuteCloneThreaded(
+export fn forwardToExecuteCloneThreadedDirty(
     builder: *Builder,
     address_space: *Builder.AddressSpace,
     thread_space: *Builder.ThreadSpace,
@@ -21,7 +21,7 @@ export fn forwardToExecuteCloneThreaded(
     depth: u64,
     stack_address: u64,
 ) void {
-    _ = proc.callClone(.{ .errors = .{} }, stack_address, Builder.stack_aligned_bytes, {}, Builder.executeCommandThreaded, .{
+    proc.callClone(.{ .errors = .{}, .return_type = void }, stack_address, Builder.stack_aligned_bytes, {}, Builder.executeCommandThreaded, .{
         builder, address_space, thread_space, target, task, arena_index, depth,
     });
 }
