@@ -151,7 +151,7 @@ fn testPackedModeStruct() !void {
     try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
 }
 pub fn main(_: anytype, vars: anytype) !void {
-    const path_fd: []const u8 = try file.find(vars, "zig");
+    const path_fd: u64 = try file.find(vars, "zig");
     _ = path_fd;
 
     try meta.wrap(testFileOperationsRound1());
