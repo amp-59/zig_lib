@@ -484,23 +484,72 @@ pub const MakeNodeSpec = struct {
     logging: builtin.Logging.SuccessErrorFault = .{},
     const Specification = @This();
 };
-pub const StatusSpec = struct {
+pub const ExecuteSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
-    return_type: ?type = null,
+    errors: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
+    logging: builtin.Logging.AttemptErrorFault = .{},
+    return_type: type = void,
+    args_type: type = []const [*:0]u8,
+    vars_type: type = []const [*:0]u8,
+
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
     };
-    fn flags(comptime stat_spec: Specification) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
-        if (stat_spec.options.no_follow) {
+    fn flags(comptime spec: ExecuteSpec) Execute {
+        var flags_bitfield: Execute = .{ .val = 0 };
+        if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
         return flags_bitfield;
     }
 };
+pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
+    const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const args_addr: u64 = @ptrToInt(args.ptr);
+    const vars_addr: u64 = @ptrToInt(vars.ptr);
+    const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
+    if (logging.Attempt) {
+        debug.executeNotice(pathname, args);
+    }
+    if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
+        unreachable;
+    } else |execve_error| {
+        if (logging.Error) {
+            debug.executeError(execve_error, pathname, args);
+        }
+        return execve_error;
+    }
+}
+pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
+    const args_addr: u64 = @ptrToInt(args.ptr);
+    const vars_addr: u64 = @ptrToInt(vars.ptr);
+    const flags: Execute = spec.flags();
+    const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
+        unreachable;
+    } else |execve_error| {
+        if (logging.Error) {
+            debug.executeError(execve_error, args[0], args);
+        }
+        return execve_error;
+    }
+}
+pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const args_addr: u64 = @ptrToInt(args.ptr);
+    const vars_addr: u64 = @ptrToInt(vars.ptr);
+    const flags: Execute = spec.flags();
+    const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
+        unreachable;
+    } else |execve_error| {
+        if (logging.Error) {
+            debug.executeError(execve_error, name, args);
+        }
+        return execve_error;
+    }
+}
 pub const GetWorkingDirectorySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
