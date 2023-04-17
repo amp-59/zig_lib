@@ -1,9 +1,9 @@
 const sys = @import("./sys.zig");
 const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
+const file = @import("./file.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
-
 pub const SignalAction = extern struct {
     handler: u64,
     flags: u64,
@@ -110,11 +110,6 @@ pub const AuxiliaryVectorEntry = enum(u64) {
     l3_cache_geometry = AT.L3_CACHEGEOMETRY,
     const AT = sys.AT;
 };
-const Execute = meta.EnumBitField(enum(u64) {
-    empty_path = AT.EMPTY_PATH,
-    no_follow = AT.SYMLINK.NOFOLLOW,
-    const AT = sys.AT;
-});
 pub const Clone = meta.EnumBitField(enum(u64) {
     new_time = CLONE.NEWTIME,
     pid_fd = CLONE.PIDFD,
@@ -275,26 +270,6 @@ pub const ForkSpec = struct {
     return_type: type = u64,
     const Specification = @This();
 };
-pub const ExecuteSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
-    return_type: type = void,
-    args_type: type = []const [*:0]u8,
-    vars_type: type = []const [*:0]u8,
-
-    const Specification = @This();
-    const Options = struct {
-        no_follow: bool = false,
-    };
-    fn flags(comptime spec: ExecuteSpec) Execute {
-        var flags_bitfield: Execute = .{ .val = 0 };
-        if (spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        return flags_bitfield;
-    }
-};
 pub const CommandSpec = struct {
     options: Options = .{},
     errors: Errors = .{},
@@ -308,7 +283,7 @@ pub const CommandSpec = struct {
         no_follow: bool = false,
     };
     pub const Logging = packed struct {
-        execve: builtin.Logging.SuccessErrorFault = .{},
+        execve: builtin.Logging.AttemptErrorFault = .{},
         fork: builtin.Logging.SuccessErrorFault = .{},
         waitpid: builtin.Logging.SuccessErrorFault = .{},
     };
@@ -329,7 +304,7 @@ pub const CommandSpec = struct {
     fn waitpid(comptime spec: CommandSpec) WaitSpec {
         return .{ .errors = spec.errors.waitpid, .logging = spec.logging.waitpid, .return_type = void };
     }
-    fn exec(comptime spec: CommandSpec) ExecuteSpec {
+    fn exec(comptime spec: CommandSpec) file.ExecuteSpec {
         comptime return .{
             .errors = spec.errors.execve,
             .logging = spec.logging.execve,
@@ -337,8 +312,8 @@ pub const CommandSpec = struct {
             .vars_type = spec.vars_type,
         };
     }
-    fn flags(comptime spec: CommandSpec) Execute {
-        var flags_bitfield: Execute = .{ .val = 0 };
+    fn flags(comptime spec: CommandSpec) file.Execute {
+        var flags_bitfield: file.Execute = .{ .val = 0 };
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
@@ -410,58 +385,18 @@ pub const CloneSpec = struct {
         };
     }
 };
-pub fn exec(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
-    const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const args_addr: u64 = @ptrToInt(args.ptr);
-    const vars_addr: u64 = @ptrToInt(vars.ptr);
-    if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
-        unreachable;
-    } else |execve_error| {
-        if (spec.logging.override().Error) {
-            debug.executeError(execve_error, pathname, args);
-        }
-        return execve_error;
-    }
-}
-pub fn execHandle(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
-    const args_addr: u64 = @ptrToInt(args.ptr);
-    const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: Execute = spec.flags();
-    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
-        unreachable;
-    } else |execve_error| {
-        if (spec.logging.override().Error) {
-            debug.executeError(execve_error, args[0], args);
-        }
-        return execve_error;
-    }
-}
-pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
-    const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const args_addr: u64 = @ptrToInt(args.ptr);
-    const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: Execute = spec.flags();
-    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
-        unreachable;
-    } else |execve_error| {
-        if (spec.logging.override().Error) {
-            debug.executeError(execve_error, name, args);
-        }
-        return execve_error;
-    }
-}
 pub const Status = struct {
-    pub inline fn exitStatus(status: u32) u8 {
+    pub inline fn exit(status: u32) u8 {
         return @intCast(u8, (status & 0xff00) >> 8);
     }
-    pub inline fn termSignal(status: u32) u32 {
+    pub inline fn term(status: u32) u32 {
         return status & 0x7f;
     }
-    pub inline fn stopSignal(status: u32) u32 {
-        return exitStatus(status);
+    pub inline fn stop(status: u32) u32 {
+        return Status.exit(status);
     }
     pub inline fn ifExited(status: u32) bool {
-        return termSignal(status) == 0;
+        return Status.term(status) == 0;
     }
     pub inline fn ifSignaled(status: u32) bool {
         return ((status & 0x7f) + 1) >> 1 > 0;
@@ -531,38 +466,30 @@ pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.ar
     .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
 }, u8) {
     const fork_spec: ForkSpec = comptime spec.fork();
-    const exec_spec: ExecuteSpec = comptime spec.exec();
     const wait_spec: WaitSpec = comptime spec.waitpid();
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.execve.override();
+    const exec_spec: file.ExecuteSpec = comptime spec.exec();
     const pid: u64 = try meta.wrap(fork(fork_spec));
     if (pid == 0) {
-        try meta.wrap(exec(exec_spec, pathname, args, vars));
+        try meta.wrap(file.execPath(exec_spec, pathname, args, vars));
     }
     var status: u32 = 0;
-    if (logging.Success) {
-        debug.executeNotice(pathname, args);
-    }
     try meta.wrap(waitPid(wait_spec, .{ .pid = pid }, &status));
-    return Status.exitStatus(status);
+    return Status.exit(status);
 }
-pub fn commandAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(.{
+pub fn commandAt(comptime spec: CommandSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(.{
     .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
     .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
 }, u8) {
     const fork_spec: ForkSpec = comptime spec.fork();
-    const exec_spec: ExecuteSpec = comptime spec.exec();
     const wait_spec: WaitSpec = comptime spec.waitpid();
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.execve.override();
+    const exec_spec: file.ExecuteSpec = comptime spec.exec();
     const pid: u64 = try meta.wrap(fork(fork_spec));
     if (pid == 0) {
-        try meta.wrap(execAt(exec_spec, dir_fd, name, args, vars));
+        try meta.wrap(file.execAt(exec_spec, dir_fd, name, args, vars));
     }
     var status: u32 = 0;
-    if (logging.Success) {
-        debug.executeNotice(name, args);
-    }
     try meta.wrap(waitPid(wait_spec, .{ .pid = pid }, &status));
-    return Status.exitStatus(status);
+    return Status.exit(status);
 }
 pub const start = opaque {
     pub export fn _start() callconv(.Naked) noreturn {
@@ -855,15 +782,17 @@ pub fn shift(args: *[][*:0]u8, index: u64) void {
 }
 pub const ArgsIterator = struct {
     args: [][*:0]u8,
-    index: u64 = 1,
+    args_idx: u64 = 1,
     pub fn init(args: [][*:0]u8) ArgsIterator {
         return .{ .args = args };
     }
     pub fn readOne(itr: *ArgsIterator) ?[:0]const u8 {
         if (itr.index <= itr.args.len) {
             const arg: [*:0]const u8 = itr.args[itr.index];
-            itr.index +%= 1;
-            return arg[0..strlen(arg) :0];
+            itr.args_idx +%= 1;
+            var arg_len: u64 = 0;
+            while (itr.args[itr.args_idx] != 0) arg_len +%= 1;
+            return arg[0..arg_len :0];
         }
         return null;
     }
@@ -1095,53 +1024,10 @@ const debug = opaque {
     const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
     const about_wait_0_s: []const u8 = builtin.debug.about("wait");
     const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
-    const about_execve_0_s: []const u8 = builtin.debug.about("execve");
-    const about_execve_1_s: []const u8 = builtin.debug.about("execve-error");
-    const about_execveat_1_s: []const u8 = builtin.debug.about("execveat-error");
 
     fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
         const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
         builtin.debug.write(buf);
-    }
-
-    pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
-        var argc: u64 = args.len;
-        var buf: [4096 +% 128]u8 = undefined;
-        var len: u64 = 0;
-        var idx: u64 = 0;
-        len +%= builtin.debug.writeMany(buf[len..], about_execve_0_s);
-        len +%= builtin.debug.writeMany(buf[len..], filename);
-        buf[len] = ' ';
-        len +%= 1;
-        if (filename.ptr == args[0]) {
-            len +%= builtin.debug.writeMany(buf[len..], "[0] ");
-            idx +%= 1;
-        }
-        while (idx != argc) : (idx +%= 1) {
-            const arg_len: u64 = strlen(args[idx]);
-            if (arg_len == 0) {
-                buf[len] = '\'';
-                len +%= 1;
-                buf[len] = '\'';
-                len +%= 1;
-            }
-            if (len +% arg_len >= buf.len -% 37) {
-                break;
-            }
-            for (args[idx][0..arg_len], 0..) |c, j| buf[len +% j] = c;
-            len +%= arg_len;
-            buf[len] = ' ';
-            len +%= 1;
-        }
-        if (argc != idx) {
-            len +%= builtin.debug.writeMany(buf[len..], " ... and ");
-            len +%= builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc -% idx).readAll());
-            len +%= builtin.debug.writeMany(buf[len..], " more args ... \n");
-        } else {
-            buf[len] = '\n';
-            len +%= 1;
-        }
-        builtin.debug.write(buf[0..len]);
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [4096]u8 = undefined;
@@ -1209,54 +1095,4 @@ const debug = opaque {
         }
         return mats;
     }
-    // Try to make these two less original
-    pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
-        const max_len: u64 = 4096 +% 128;
-        var argc: u64 = args.len;
-        var buf: [max_len]u8 = undefined;
-        var idx: u64 = 0;
-        var len: u64 = 0;
-        len +%= builtin.debug.writeMany(buf[len..], about_execve_1_s);
-        len +%= builtin.debug.writeMany(buf[len..], "(");
-        len +%= builtin.debug.writeMany(buf[len..], @errorName(exec_error));
-        len +%= builtin.debug.writeMany(buf[len..], ")");
-        len +%= builtin.debug.writeMany(buf[len..], filename);
-        buf[len] = ' ';
-        len +%= 1;
-        if (filename.ptr == args[0]) {
-            len +%= builtin.debug.writeMany(buf[len..], "[0] ");
-            idx +%= 1;
-        }
-        while (idx != argc) : (idx +%= 1) {
-            const arg_len: u64 = strlen(args[idx]);
-            if (arg_len == 0) {
-                buf[len] = '\'';
-                len +%= 1;
-                buf[len] = '\'';
-                len +%= 1;
-            }
-            if (len +% arg_len >= max_len -% 37) {
-                break;
-            }
-            for (args[idx][0..arg_len], 0..) |c, j| buf[len +% j] = c;
-            len +%= arg_len;
-            buf[len] = ' ';
-            len +%= 1;
-        }
-        if (argc != idx) {
-            len +%= builtin.debug.writeMany(buf[len..], " ... and ");
-            len +%= builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc -% idx).readAll());
-            len +%= builtin.debug.writeMany(buf[len..], " more args ... \n");
-        } else {
-            buf[len] = '\n';
-            len +%= 1;
-        }
-        builtin.debug.write(buf[0..len]);
-    }
 };
-// Common utility functions:
-fn strlen(s: [*:0]const u8) u64 {
-    var len: u64 = 0;
-    while (s[len] != 0) len +%= 1;
-    return len;
-}
