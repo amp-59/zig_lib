@@ -36,7 +36,6 @@ pub const Message = struct {
         hot_update,
         query_test_metadata,
         run_test,
-        _,
     };
 };
 pub const Path = struct {
