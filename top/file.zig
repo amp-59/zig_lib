@@ -1120,7 +1120,7 @@ const IOControlSpec = struct {
 
 pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
     const logging: builtin.Logging.SuccessErrorFault = comptime dup_spec.logging.override();
-    if (sys.call(.dup, dup_spec.errors, dup_spec.return_type, .{fd})) |ret| {
+    if (meta.wrap(sys.call(.dup, dup_spec.errors, dup_spec.return_type, .{fd}))) |ret| {
         if (logging.Success) {
             debug.duplicateNotice(fd, ret);
         }
@@ -1137,7 +1137,7 @@ pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.er
 pub fn duplicateTo(comptime dup_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
     const flags: u64 = sys.O.CLOEXEC;
     const logging: builtin.Logging.SuccessErrorFault = comptime dup_spec.logging.override();
-    if (sys.call(.dup3, dup_spec.errors, dup_spec.return_type, .{ old_fd, new_fd, flags })) |ret| {
+    if (meta.wrap(sys.call(.dup3, dup_spec.errors, dup_spec.return_type, .{ old_fd, new_fd, flags }))) |ret| {
         if (logging.Success) {
             debug.duplicateExtraNotice(old_fd, new_fd);
         }
@@ -1377,7 +1377,7 @@ pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
 ) {
     const st: Status = try meta.wrap(status(stat_spec, fd));
     const res: bool = st.mode.kind == kind;
-    const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
+    const logging: builtin.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (!res) {
         if (logging.Fault) {
             debug.fdKindModeFault(fd, kind, st.mode);
@@ -1394,7 +1394,7 @@ pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
 ) {
     const st: Status = try meta.wrap(status(stat_spec, fd));
     const res: bool = st.mode.kind == kind;
-    const logging: builtin.Logging.SuccessErrorFault = stat_spec.logging.override();
+    const logging: builtin.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (res) {
         if (logging.Fault) {
             debug.fdNotKindFault(fd, kind);
