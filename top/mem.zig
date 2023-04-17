@@ -555,7 +555,7 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireSet(AddressSpace, address_space, index)) {
         if (spec.options.require_map) {
             try meta.wrap(acquireMap(AddressSpace, address_space));
@@ -576,7 +576,7 @@ pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireStaticSet(AddressSpace, address_space, index)) {
         if (logging.Acquire) {
             debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
@@ -594,7 +594,7 @@ pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpa
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = address_space.low();
     const up_addr: u64 = address_space.high();
-    const logging: builtin.Logging.AcquireErrorFault = spec.logging.acquire.override();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireElementarySet(AddressSpace, address_space)) {
         if (logging.Acquire) {
             debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
@@ -612,7 +612,7 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.ReleaseErrorFault = spec.logging.release.override();
+    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
             debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
@@ -633,7 +633,7 @@ pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.ReleaseErrorFault = spec.logging.release.override();
+    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseStaticUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
             debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
@@ -697,7 +697,7 @@ pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64)
     }
 }
 pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
         if (logging.Success) {
             debug.remapNotice(old_addr, old_len, null, new_len);
@@ -710,7 +710,7 @@ pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u6
     }
 }
 pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.ReleaseErrorFault = spec.logging.override();
+    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
         if (logging.Release) {
             debug.unmapNotice(addr, len);
@@ -724,7 +724,7 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors
 }
 pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
     const prot: Prot = comptime spec.prot();
-    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, prot.val }))) {
         if (logging.Success) {
             debug.protectNotice(addr, len, "<description>");
@@ -738,7 +738,7 @@ pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.Call(spec.er
 }
 pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
     const advice: Advice = comptime spec.advice();
-    const logging: builtin.Logging.SuccessErrorFault = spec.logging.override();
+    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
         if (logging.Success) {
             debug.adviseNotice(addr, len, spec.describe());
@@ -753,7 +753,7 @@ pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.Call(spec.erro
 pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: mem.Fd = comptime spec.flags();
-    const logging: builtin.Logging.AcquireErrorFault = spec.logging.override();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
         if (logging.Acquire) {
             mem.debug.memFdNotice(name, mem_fd);
@@ -841,28 +841,22 @@ pub const debug = opaque {
             " bytes\n",
         });
     }
-    fn arenaAcquireNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn indexLbAddrUpAddrLabelAboutNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8, about: [:0]const u8) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_acq_0_s, label orelse "arena",
-            "-",           builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
-            "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
+            about,      label orelse "arena",
+            "-",        builtin.fmt.ud64(index).readAll(),
+            ", ",       builtin.fmt.ux64(lb_addr).readAll(),
+            "..",       builtin.fmt.ux64(up_addr).readAll(),
+            ", ",       builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
             " bytes\n",
         });
     }
-    fn arenaReleaseNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        @setCold(true);
-        var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_rel_0_s, label orelse "arena",
-            "-",           builtin.fmt.ud64(index).readAll(),
-            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
-            "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
-            " bytes\n",
-        });
+    inline fn arenaAcquireNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        indexLbAddrUpAddrLabelAboutNotice(index, lb_addr, up_addr, label, about_acq_0_s);
+    }
+    inline fn arenaReleaseNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        indexLbAddrUpAddrLabelAboutNotice(index, lb_addr, up_addr, label, about_rel_0_s);
     }
     fn memFdNotice(name: [:0]const u8, mem_fd: u64) void {
         var buf: [4096 + 32]u8 = undefined;
