@@ -11,6 +11,7 @@ pub usingnamespace proc.start;
 
 pub const AddressSpace = spec.address_space.regular_128;
 pub const logging_default: builtin.Logging.Default = .{
+    .Attempt = true,
     .Success = true,
     .Acquire = true,
     .Release = true,

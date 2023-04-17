@@ -16,6 +16,7 @@ pub usingnamespace proc.start;
 pub usingnamespace proc.exception;
 
 pub const logging_default: builtin.Logging.Default = .{
+    .Attempt = true,
     .Success = true,
     .Acquire = true,
     .Release = true,
