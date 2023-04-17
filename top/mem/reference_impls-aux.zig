@@ -272,25 +272,15 @@ fn constructInitializer(allocator: *Allocator, impl_variant: *const types.Implem
     return dupe(allocator, expr.initializer(expr.list(buf[0..len])));
 }
 fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation, impl_fn_info: Fn, info: *Info) void {
-    const allocated_byte_address_fn_info: *const Fn = impl_fn.get(.allocated_byte_address);
-    const aligned_byte_address_fn_info: *const Fn = impl_fn.get(.aligned_byte_address);
-    const unstreamed_byte_address_fn_info: *const Fn = impl_fn.get(.unstreamed_byte_address);
-    const undefined_byte_address_fn_info: *const Fn = impl_fn.get(.undefined_byte_address);
-    const unwritable_byte_address_fn_info: *const Fn = impl_fn.get(.unwritable_byte_address);
-    const unallocated_byte_address_fn_info: *const Fn = impl_fn.get(.unallocated_byte_address);
-    const allocated_byte_count_fn_info: *const Fn = impl_fn.get(.allocated_byte_count);
-    const aligned_byte_count_fn_info: *const Fn = impl_fn.get(.aligned_byte_count);
-    const writable_byte_count_fn_info: *const Fn = impl_fn.get(.writable_byte_count);
-    const alignment_fn_info: *const Fn = impl_fn.get(.alignment);
-    const allocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, allocated_byte_address_fn_info);
-    const aligned_byte_address_call: Expr = expr.impl(allocator, impl_variant, aligned_byte_address_fn_info);
-    const unstreamed_byte_address_call: Expr = expr.impl(allocator, impl_variant, unstreamed_byte_address_fn_info);
-    const undefined_byte_address_call: Expr = expr.impl(allocator, impl_variant, undefined_byte_address_fn_info);
-    const unwritable_byte_address_call: Expr = expr.impl(allocator, impl_variant, unwritable_byte_address_fn_info);
-    const unallocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, unallocated_byte_address_fn_info);
-    const allocated_byte_count_call: Expr = expr.impl(allocator, impl_variant, allocated_byte_count_fn_info);
-    const aligned_byte_count_call: Expr = expr.impl(allocator, impl_variant, aligned_byte_count_fn_info);
-    const alignment_call: Expr = expr.impl(allocator, impl_variant, alignment_fn_info);
+    const allocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, .allocated_byte_address);
+    const aligned_byte_address_call: Expr = expr.impl(allocator, impl_variant, .aligned_byte_address);
+    const unstreamed_byte_address_call: Expr = expr.impl(allocator, impl_variant, .unstreamed_byte_address);
+    const undefined_byte_address_call: Expr = expr.impl(allocator, impl_variant, .undefined_byte_address);
+    const unwritable_byte_address_call: Expr = expr.impl(allocator, impl_variant, .unwritable_byte_address);
+    const unallocated_byte_address_call: Expr = expr.impl(allocator, impl_variant, .unallocated_byte_address);
+    const allocated_byte_count_call: Expr = expr.impl(allocator, impl_variant, .allocated_byte_count);
+    const aligned_byte_count_call: Expr = expr.impl(allocator, impl_variant, .aligned_byte_count);
+    const alignment_call: Expr = expr.impl(allocator, impl_variant, .alignment);
     const has_static_maximum_length: bool =
         impl_variant.kind == .automatic or
         impl_variant.kind == .static;
@@ -368,7 +358,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         .aligned_byte_address => {
             array.writeMany(tok.return_keyword);
             if (has_unit_alignment) {
-                return info.setAlias(allocated_byte_address_fn_info.*);
+                return info.setAlias(.allocated_byte_address);
             }
             if (impl_variant.techs.disjunct_alignment) {
                 if (has_packed_approximate_capacity) {
@@ -407,7 +397,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                     array.writeFormat(expr.call(&aligna_unallocated_low_alignment));
                     return array.writeMany(tok.end_expr);
                 }
-                return info.setAlias(allocated_byte_address_fn_info.*);
+                return info.setAlias(.allocated_byte_address);
             }
             if (impl_variant.techs.lazy_alignment) {
                 var aligna_allocated_low_alignment: [3]Expr = expr.alignA(
@@ -481,7 +471,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                     array.writeFormat(expr.call(&sub_unallocated_high_alignment));
                     return array.writeMany(tok.end_expr);
                 }
-                return info.setAlias(unallocated_byte_address_fn_info.*);
+                return info.setAlias(.unallocated_byte_address);
             }
             if (impl_variant.fields.unallocated_byte_address) {
                 if (impl_variant.specs.sentinel) {
@@ -497,7 +487,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             }
             var add_aligned_writable: [3]Expr = expr.add(
                 aligned_byte_address_call,
-                expr.impl(allocator, impl_variant, writable_byte_count_fn_info),
+                expr.impl(allocator, impl_variant, .writable_byte_count),
             );
             array.writeFormat(expr.call(&add_aligned_writable));
             return array.writeMany(tok.end_expr);
@@ -506,7 +496,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             array.writeMany(tok.return_keyword);
             if (impl_variant.techs.single_packed_approximate_capacity) {
                 if (has_unit_alignment) {
-                    return info.setAlias(aligned_byte_count_fn_info.*);
+                    return info.setAlias(.aligned_byte_count);
                 } else {
                     var add_alignment_count: [3]Expr = expr.add(
                         alignment_call,
@@ -518,7 +508,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             }
             if (impl_variant.techs.double_packed_approximate_capacity) {
                 if (has_unit_alignment) {
-                    return info.setAlias(aligned_byte_count_fn_info.*);
+                    return info.setAlias(.aligned_byte_count);
                 } else {
                     var add_alignment_count: [3]Expr = expr.add(
                         alignment_call,
@@ -529,7 +519,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 }
             }
             if (has_static_maximum_length) {
-                return info.setAlias(writable_byte_count_fn_info.*);
+                return info.setAlias(.writable_byte_count);
             }
             var sub_unallocated_allocated: [3]Expr = expr.sub(
                 unallocated_byte_address_call,
@@ -561,7 +551,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 array.writeFormat(expr.call(&add_aligned_count_high_alignment));
                 return array.writeMany(tok.end_expr);
             }
-            return info.setAlias(writable_byte_count_fn_info.*);
+            return info.setAlias(.writable_byte_count);
         },
         .writable_byte_count => {
             array.writeMany(tok.return_keyword);
@@ -644,7 +634,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 }
             }
             if (has_unit_alignment) {
-                return info.setAlias(allocated_byte_count_fn_info.*);
+                return info.setAlias(.allocated_byte_count);
             } else {
                 var sub_allocated_count_alignment: [3]Expr = expr.sub(
                     allocated_byte_count_call,
@@ -806,7 +796,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 .src = expr.symbol(tok.source_impl_name),
             });
             const target_aligned_byte_address_call: Expr =
-                expr.impl(allocator, impl_variant, impl_fn.get(.aligned_byte_address));
+                expr.impl(allocator, impl_variant, .aligned_byte_address);
             var impl_deref_stx: [2]Expr = expr.dereference(expr.symbol(tok.impl_name));
             var s_impl_decl: [7]Expr = expr.constDecl(
                 expr.symbol(tok.source_impl_name),
