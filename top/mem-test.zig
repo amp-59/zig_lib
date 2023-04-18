@@ -11,11 +11,8 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-
-pub const itos = builtin.fmt.ux;
-
-pub const AddressSpace = spec.address_space.exact_8;
-
+pub const AddressSpace = spec.address_space.regular_128;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 const invalid_holder_state: u64 = (0b110000110000 << 48);
 
 const move_spec = .{
@@ -289,6 +286,30 @@ pub fn testNoImpact() !void {
     const low: u64 = @min(x, y);
     const high: u64 = @max(x, y);
     try testing.expectEqualMany(u8, getViewOfRaw(S.src, low, high), getViewOfView(&mem.view(S.src), low, high));
+}
+const AllocatorL = struct {}.GenericLinkedAllocator(.{
+    .AddressSpace = AddressSpace,
+    .arena_index = 0,
+});
+fn testLallocator() !void {
+    var address_space: AddressSpace = .{};
+    var allocator: AllocatorL = try AllocatorL.init(&address_space);
+    defer allocator.deinit(&address_space);
+    var allocations: [256][]u8 = undefined;
+    for (&allocations, 0..) |*buf, idx| {
+        buf.* = try allocator.allocate(u8, idx +% 1);
+    }
+    AllocatorL.Graphics.graphPartitions(allocator);
+    for (allocations, 0..) |buf, idx| {
+        if (idx % 3 != 0) {
+            allocator.free(buf);
+        }
+    }
+    AllocatorL.Graphics.graphPartitions(allocator);
+    allocator.consolidate();
+    AllocatorL.Graphics.graphPartitions(allocator);
+    allocator.freeAll();
+    AllocatorL.Graphics.graphPartitions(allocator);
 }
 pub fn main() !void {
     try meta.wrap(testMapGenericOverhead());
