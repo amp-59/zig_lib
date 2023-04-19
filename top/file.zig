@@ -60,8 +60,8 @@ pub const Mode = packed struct(u16) {
     set_uid: bool = false,
     kind: Kind = .regular,
 };
-const Term = opaque {
-    const Input = meta.EnumBitField(enum(u32) {
+pub const Term = opaque {
+    pub const Input = meta.EnumBitField(enum(u32) {
         ignore_break = IN.IGNBRK,
         break_interrupt = IN.BRKINT,
         ignore_errors = IN.IGNPAR,
@@ -74,7 +74,7 @@ const Term = opaque {
         upper = IN.LCUC,
         const IN = sys.TC.I;
     });
-    const Output = meta.EnumBitField(enum(u32) {
+    pub const Output = meta.EnumBitField(enum(u32) {
         post_processing = OUT.POST,
         translate_carriage_return = OUT.CRNL,
         no_carriage_return = OUT.NOCR,
@@ -83,7 +83,7 @@ const Term = opaque {
         upper = OUT.LCUC,
         const OUT = sys.TC.O;
     });
-    const Control = meta.EnumBitField(enum(u32) {
+    pub const Control = meta.EnumBitField(enum(u32) {
         baud_rate = CTL.BAUD,
         baud_rate_extra = CTL.BAUDEX,
         baud_rate_input = CTL.IBAUD,
@@ -94,7 +94,7 @@ const Term = opaque {
         ignore_modem = CTL.LOCAL,
         const CTL = sys.TC.C;
     });
-    const Local = meta.EnumBitField(enum(u32) {
+    pub const Local = meta.EnumBitField(enum(u32) {
         signal = LOC.ISIG,
         signal_disable_flush = LOC.NOFLSH,
         canonical_mode = LOC.ICANON,
@@ -104,7 +104,7 @@ const Term = opaque {
         canonical_echo_newline = LOC.ECHONL,
         const LOC = sys.TC.L;
     });
-    const Special = meta.EnumBitField(enum(u8) {
+    pub const Special = meta.EnumBitField(enum(u8) {
         end_of_file = SPEC.EOF,
         end_of_line = SPEC.EOL,
         erase = SPEC.ERASE,
