@@ -54,7 +54,7 @@ pub const BuilderSpec = struct {
         mkdir: builtin.Logging.SuccessError,
         write: builtin.Logging.SuccessError,
         map: builtin.Logging.AcquireError,
-        unmap: builtin.Logging.AcquireError,
+        unmap: builtin.Logging.ReleaseError,
         fork: builtin.Logging.SuccessError,
         waitpid: builtin.Logging.SuccessError,
         execve: builtin.Logging.AttemptError,
@@ -833,7 +833,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
             pub fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
-                var buf: [4096]u8 = undefined;
+                var buf: [32768]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
                     about_state_0_s, target.name,
                     ".",             @tagName(task),
@@ -844,7 +844,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn noExchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
-                var buf: [4096]u8 = undefined;
+                var buf: [32768]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
                     about_state_0_s, target.name,
                     ".",             @tagName(task),
@@ -856,7 +856,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn noExchangeFault(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
-                var buf: [4096]u8 = undefined;
+                var buf: [32768]u8 = undefined;
                 builtin.debug.logAlwaysAIO(&buf, &.{
                     about_state_1_s, target.name,
                     ".",             @tagName(task),
@@ -868,7 +868,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn buildNotice(name: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
                 @setRuntimeSafety(false);
-                var buf: [4096]u8 = undefined;
+                var buf: [32768]u8 = undefined;
                 var len: u64 = mach.memcpyMulti(&buf, &.{ about_build_s, name, ", " });
                 if (old_size == 0) {
                     len +%= mach.memcpyMulti(buf[len..].ptr, &.{ "\x1b[93m", builtin.fmt.ud64(new_size).readAll(), "*\x1b[0m bytes " });
@@ -897,7 +897,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
                 @setRuntimeSafety(false);
-                var buf: [4096]u8 = undefined;
+                var buf: [32768]u8 = undefined;
                 var len: u64 = mach.memcpyMulti(&buf, &.{ about, name, ", " });
                 len +%= mach.memcpyMulti(buf[len..].ptr, &.{
                     "rc=", builtin.fmt.ud64(rc).readAll(),
@@ -909,13 +909,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn writeAndWalk(target: *Target) void {
                 var buf0: [1024 * 1024]u8 = undefined;
-                var buf1: [4096]u8 = undefined;
+                var buf1: [32768]u8 = undefined;
                 @memcpy(&buf0, target.name.ptr, target.name.len);
                 var len: u64 = target.name.len;
                 len = writeAndWalkInternal(&buf0, len, &buf1, 0, target);
                 builtin.debug.logAlways(buf0[0..len]);
             }
-            fn writeAndWalkInternal(buf0: *[1024 * 1024]u8, len0: u64, buf1: *[4096]u8, len1: u64, target: *Builder.Target) u64 {
+            fn writeAndWalkInternal(buf0: *[1024 * 1024]u8, len0: u64, buf1: *[32768]u8, len1: u64, target: *Builder.Target) u64 {
                 @setRuntimeSafety(false);
                 const deps: []Target.Dependency = target.buildDependencies();
                 var len: u64 = len0;
@@ -939,7 +939,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 const alignment: u64 = 8;
                 var buf0: [1024 * 1024]u8 = undefined;
-                var buf1: [4096]u8 = undefined;
+                var buf1: [32768]u8 = undefined;
                 var len: u64 = 0;
                 var name_max_width: u64 = 0;
                 var root_max_width: u64 = 0;
