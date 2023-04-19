@@ -1577,6 +1577,8 @@ const debug = opaque {
     const about_read_0_s: [:0]const u8 = builtin.debug.about("read");
     const about_read_1_s: [:0]const u8 = builtin.debug.about("read-error");
     const about_stat_1_s: [:0]const u8 = builtin.debug.about("stat-error");
+    const about_pipe_0_s: [:0]const u8 = builtin.debug.about("pipe");
+    const about_pipe_1_s: [:0]const u8 = builtin.debug.about("pipe-error");
     const about_close_0_s: [:0]const u8 = builtin.debug.about("close");
     const about_close_1_s: [:0]const u8 = builtin.debug.about("close-error");
     const about_mkdir_0_s: [:0]const u8 = builtin.debug.about("mkdir");
@@ -1611,6 +1613,10 @@ const debug = opaque {
     const named_pipe_s: [:0]const u8 = "a named pipe";
     const socket_s: [:0]const u8 = "a socket";
     const symbolic_link_s: [:0]const u8 = "a symbolic link";
+    const new_fd_s: [:0]const u8 = "new_fd=";
+    const old_fd_s: [:0]const u8 = "old_fd=";
+    const read_fd_s: [:0]const u8 = "read_fd=";
+    const write_fd_s: [:0]const u8 = "write_fd=";
 
     fn fdAboutNotice(fd: u64, about: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
