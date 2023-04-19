@@ -720,7 +720,6 @@ pub const ExecuteSpec = struct {
     return_type: type = void,
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
-
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
@@ -817,7 +816,6 @@ pub const MapSpec = struct {
     };
     pub fn flags(comptime map_spec: Specification) mem.Map {
         var flags_bitfield: mem.Map = .{ .val = 0 };
-
         switch (map_spec.options.visibility) {
             .private => flags_bitfield.set(.private),
             .shared => flags_bitfield.set(.shared),
@@ -869,9 +867,21 @@ pub const TruncateSpec = struct {
     logging: builtin.Logging.SuccessError = .{},
 };
 pub const DuplicateSpec = struct {
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.dup_errors },
     return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
+    const Specification = @This();
+    const Options = struct {
+        close_on_exec: bool = false,
+    };
+    fn flags(comptime dup3_spec: Specification) Open {
+        var ret: Open = .{ .val = 0 };
+        if (dup3_spec.options.close_on_exec) {
+            ret.set(.close_on_exec);
+        }
+        return ret;
+    }
 };
 pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, spec.return_type) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
