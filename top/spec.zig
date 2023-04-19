@@ -176,7 +176,7 @@ pub const logging = opaque {
             .Fault = true,
         };
         pub const silent: builtin.Logging.Override = .{
-            .Attempt = true,
+            .Attempt = false,
             .Success = false,
             .Acquire = false,
             .Release = false,
@@ -330,14 +330,14 @@ pub const dir = opaque {
     };
     pub const logging = opaque {
         pub const silent: file.DirStreamLogging = .{
-            .open = spec.logging.acquire_error_fault.silent,
-            .close = spec.logging.release_error_fault.silent,
-            .getdents = spec.logging.success_error_fault.silent,
+            .open = spec.logging.acquire_error.silent,
+            .close = spec.logging.release_error.silent,
+            .getdents = spec.logging.success_error.silent,
         };
         pub const verbose: file.DirStreamLogging = .{
-            .open = spec.logging.acquire_error_fault.verbose,
-            .close = spec.logging.release_error_fault.verbose,
-            .getdents = spec.logging.success_error_fault.verbose,
+            .open = spec.logging.acquire_error.verbose,
+            .close = spec.logging.release_error.verbose,
+            .getdents = spec.logging.success_error.verbose,
         };
     };
     pub const errors = opaque {
@@ -413,10 +413,10 @@ pub const allocator = opaque {
             .sentinel = true,
             .metadata = true,
             .branches = true,
-            .map = spec.logging.acquire_error_fault.verbose,
-            .unmap = spec.logging.release_error_fault.verbose,
-            .remap = spec.logging.success_error_fault.verbose,
-            .advise = spec.logging.success_error_fault.verbose,
+            .map = spec.logging.acquire_error.verbose,
+            .unmap = spec.logging.release_error.verbose,
+            .remap = spec.logging.success_error.verbose,
+            .advise = spec.logging.success_error.verbose,
             .allocate = true,
             .reallocate = true,
             .reinterpret = true,
@@ -427,10 +427,10 @@ pub const allocator = opaque {
             .sentinel = false,
             .metadata = false,
             .branches = false,
-            .map = spec.logging.acquire_error_fault.silent,
-            .unmap = spec.logging.release_error_fault.silent,
-            .remap = spec.logging.success_error_fault.silent,
-            .advise = spec.logging.success_error_fault.silent,
+            .map = spec.logging.acquire_error.silent,
+            .unmap = spec.logging.release_error.silent,
+            .remap = spec.logging.success_error.silent,
+            .advise = spec.logging.success_error.silent,
             .allocate = false,
             .reallocate = false,
             .reinterpret = false,
@@ -476,20 +476,20 @@ pub const serializer = opaque {
     };
     pub const logging = opaque {
         pub const verbose: serial.SerialSpec.Logging = .{
-            .create = spec.logging.acquire_error_fault.verbose,
-            .open = spec.logging.acquire_error_fault.verbose,
-            .close = spec.logging.release_error_fault.verbose,
+            .create = spec.logging.acquire_error.verbose,
+            .open = spec.logging.acquire_error.verbose,
+            .close = spec.logging.release_error.verbose,
+            .read = spec.logging.success_error.verbose,
+            .write = spec.logging.success_error.verbose,
             .stat = spec.logging.success_error_fault.verbose,
-            .read = spec.logging.success_error_fault.verbose,
-            .write = spec.logging.success_error_fault.verbose,
         };
         pub const silent: serial.SerialSpec.Logging = .{
-            .create = spec.logging.acquire_error_fault.silent,
-            .open = spec.logging.acquire_error_fault.silent,
-            .close = spec.logging.release_error_fault.silent,
+            .create = spec.logging.acquire_error.silent,
+            .open = spec.logging.acquire_error.silent,
+            .close = spec.logging.release_error.silent,
+            .read = spec.logging.success_error.silent,
+            .write = spec.logging.success_error.silent,
             .stat = spec.logging.success_error_fault.silent,
-            .read = spec.logging.success_error_fault.silent,
-            .write = spec.logging.success_error_fault.silent,
         };
     };
 };
