@@ -266,7 +266,7 @@ pub const WaitIdSpec = struct {
 };
 pub const ForkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     return_type: type = u64,
     const Specification = @This();
 };
@@ -283,20 +283,14 @@ pub const CommandSpec = struct {
         no_follow: bool = false,
     };
     pub const Logging = packed struct {
-        execve: builtin.Logging.AttemptErrorFault = .{},
-        fork: builtin.Logging.SuccessErrorFault = .{},
-        waitpid: builtin.Logging.SuccessErrorFault = .{},
+        execve: builtin.Logging.AttemptError = .{},
+        fork: builtin.Logging.SuccessError = .{},
+        waitpid: builtin.Logging.SuccessError = .{},
     };
     pub const Errors = struct {
         execve: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
         fork: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
         waitpid: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
-        pub fn throw(comptime error_spec: Errors) []const sys.ErrorCode {
-            return error_spec.execve.throw ++ error_spec.fork.throw ++ error_spec.waitpid.throw;
-        }
-        pub fn abort(comptime error_spec: Errors) []const sys.ErrorCode {
-            return error_spec.execve.abort ++ error_spec.fork.abort ++ error_spec.waitpid.abort;
-        }
     };
     fn fork(comptime spec: CommandSpec) ForkSpec {
         return .{ .errors = spec.errors.fork, .logging = spec.logging.fork };
@@ -324,7 +318,7 @@ pub const CloneSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.clone_errors },
     return_type: type = usize,
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     const Options = struct {
         address_space: bool = true,
         file_system: bool = true,
@@ -426,7 +420,7 @@ pub fn getEffectiveGroupId() u16 {
 }
 
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     const status: u64 = if (status_opt) |status| @ptrToInt(status) else 0;
     if (meta.wrap(sys.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), status, 0, 0, 0 }))) |pid| {
         return pid;
@@ -437,11 +431,12 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(spec.errors, spec.return_type) {
-    const idtype: IdType = spec.id_type;
-    const flags: WaitId = spec.flags();
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ idtype.val, id, @ptrToInt(&info), flags.val, 0 }))) |pid| {
+pub fn waitId(comptime spec: WaitIdSpec, id: u64, sig_info: *SignalInfo) sys.Call(spec.errors, spec.return_type) {
+    const id_type: u64 = @enumToInt(spec.id_type);
+    const sig_info_buf_addr: u64 = @ptrToInt(sig_info);
+    const flags: WaitId = comptime spec.flags();
+    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ id_type, id, sig_info_buf_addr, flags.val, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
         if (logging.Error) {
@@ -451,8 +446,11 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64, info: *SignalInfo) sys.Call(sp
     }
 }
 pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.fork, spec.errors, spec.return_type, .{}))) |pid| {
+        if (logging.Success and pid != 0) {
+            debug.forkNotice(pid);
+        }
         return pid;
     } else |fork_error| {
         if (logging.Error) {
@@ -1032,6 +1030,10 @@ const debug = opaque {
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logFaultAIO(&buf, &[_][]const u8{ debug.about_fault_s, symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+    }
+    fn forkNotice(pid: u64) void {
+        var buf: [16 +% 32 +% 512]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_fork_0_s, "pid=", builtin.fmt.ud64(pid).readAll(), "\n" });
     }
     fn forkError(fork_error: anytype) void {
         var buf: [16 +% 32 +% 512]u8 = undefined;
