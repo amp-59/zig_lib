@@ -1193,13 +1193,14 @@ pub inline fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u
     }
     return st;
 }
-pub inline fn statusExtra(comptime spec: StatusExtraSpec, fd: u64, pathname: [:0]const u8) sys.Call(spec.errors, Status) {
-    var st: Status = undefined;
+pub inline fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]const u8) sys.Call(spec.errors, StatusExtended) {
+    var st: StatusExtended = undefined;
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
     const flags: At = comptime spec.flags();
-    const mask: StatusExtra.Fields = comptime spec.fields();
+    const mask: StatusExtended.Fields = comptime spec.fields();
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.statx, spec.errors, void, .{ fd, pathname, flags.val, mask.val, st_buf_addr }))) {
+    if (meta.wrap(sys.call(.statx, spec.errors, void, .{ fd, pathname_buf_addr, flags.val, mask.val, st_buf_addr }))) {
         if (logging.Success) {
             debug.statusNotice(fd, st.mode);
         }
@@ -1222,7 +1223,7 @@ pub inline fn statusExtra(comptime spec: StatusExtraSpec, fd: u64, pathname: [:0
 pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors, u64) {
     const flags: mem.Map = comptime spec.flags();
     const prot: mem.Prot = comptime spec.prot();
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     const st: Status = status(.{ .errors = .{ .abort = &.{sys.ErrorCode.OPAQUE} } }, fd);
     const len: u64 = mach.alignA64(st.size, 4096);
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
@@ -1238,7 +1239,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors, u64
     }
 }
 pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.Call(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ pathname, offset }))) |ret| {
         if (logging.Success) {
             debug.truncateNotice(pathname, offset);
@@ -1252,7 +1253,7 @@ pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64
     }
 }
 pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.Call(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.ftruncate, spec.errors, spec.return_type, .{ fd, offset }))) |ret| {
         if (logging.Success) {
             debug.ftruncateNotice(fd, offset);
@@ -1277,7 +1278,7 @@ const IOControlSpec = struct {
 };
 
 pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
-    const logging: builtin.Logging.SuccessErrorFault = comptime dup_spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime dup_spec.logging.override();
     if (meta.wrap(sys.call(.dup, dup_spec.errors, dup_spec.return_type, .{fd}))) |ret| {
         if (logging.Success) {
             debug.duplicateNotice(fd, ret);
