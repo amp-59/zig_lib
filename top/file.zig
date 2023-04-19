@@ -212,7 +212,6 @@ pub const StatusExtended = extern struct {
     dev_minor: u32,
     mnt_id: u64,
     @"1": [104]u8,
-
     pub const Attributes = meta.EnumBitField(enum(u64) {
         compressed = STATX.ATTR.COMPRESSED,
         immutable = STATX.ATTR.IMMUTABLE,
@@ -239,7 +238,6 @@ pub const StatusExtended = extern struct {
         mnt_id = STATX.MNT_ID,
         const STATX = sys.STATX;
     });
-
     pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.execute;
@@ -420,7 +418,6 @@ pub const StatusExtendedSpec = struct {
         empty_path: bool = false,
         no_auto_mount: bool = true,
         fields: Fields = .{},
-
         const Fields = packed struct {
             type: bool = true,
             mode: bool = true,
@@ -497,7 +494,7 @@ pub const StatusExtendedSpec = struct {
 pub const MakePipeSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.pipe_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessError = .{},
+    logging: builtin.Logging.AcquireError = .{},
     options: Options,
     pub const Options = struct {
         close_on_exec: bool = false,
