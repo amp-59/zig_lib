@@ -140,7 +140,7 @@ pub const Logging = packed struct {
     };
     pub const AttemptError = packed struct {
         Attempt: bool = logging_default.Attempt,
-        Fault: bool = logging_default.Fault,
+        Error: bool = logging_default.Fault,
         pub fn override(comptime logging: AttemptError) AttemptError {
             return .{
                 .Attempt = logging_override.Success orelse logging.Success,
@@ -163,7 +163,7 @@ pub const Logging = packed struct {
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: AttemptErrorFault) AttemptErrorFault {
-            comptime return .{
+            return .{
                 .Attempt = logging_override.Attempt orelse logging.Attempt,
                 .Fault = logging_override.Fault orelse logging.Fault,
                 .Error = logging_override.Error orelse logging.Error,
@@ -174,7 +174,7 @@ pub const Logging = packed struct {
         Success: bool = logging_default.Success,
         Error: bool = logging_default.Error,
         pub fn override(comptime logging: SuccessError) SuccessError {
-            comptime return .{
+            return .{
                 .Success = logging_override.Success orelse logging.Success,
                 .Error = logging_override.Error orelse logging.Error,
             };
@@ -184,7 +184,7 @@ pub const Logging = packed struct {
         Success: bool = logging_default.Success,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: SuccessFault) SuccessFault {
-            comptime return .{
+            return .{
                 .Success = logging_override.Success orelse logging.Success,
                 .Fault = logging_override.Fault orelse logging.Fault,
             };
@@ -194,7 +194,7 @@ pub const Logging = packed struct {
         Acquire: bool = logging_default.Acquire,
         Error: bool = logging_default.Error,
         pub fn override(comptime logging: AcquireError) AcquireError {
-            comptime return .{
+            return .{
                 .Acquire = logging_override.Acquire orelse logging.Acquire,
                 .Error = logging_override.Error orelse logging.Error,
             };
@@ -204,7 +204,7 @@ pub const Logging = packed struct {
         Acquire: bool = logging_default.Acquire,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: AcquireFault) AcquireFault {
-            comptime return .{
+            return .{
                 .Acquire = logging_override.Acquire orelse logging.Acquire,
                 .Fault = logging_override.Fault orelse logging.Fault,
             };
@@ -214,7 +214,7 @@ pub const Logging = packed struct {
         Release: bool = logging_default.Release,
         Error: bool = logging_default.Error,
         pub fn override(comptime logging: ReleaseError) ReleaseError {
-            comptime return .{
+            return .{
                 .Release = logging_override.Release orelse logging.Release,
                 .Error = logging_override.Error orelse logging.Error,
             };
@@ -224,7 +224,7 @@ pub const Logging = packed struct {
         Release: bool = logging_default.Release,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: ReleaseFault) ReleaseFault {
-            comptime return .{
+            return .{
                 .Release = logging_override.Release orelse logging.Release,
                 .Fault = logging_override.Fault orelse logging.Fault,
             };
@@ -235,7 +235,7 @@ pub const Logging = packed struct {
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: SuccessErrorFault) SuccessErrorFault {
-            comptime return .{
+            return .{
                 .Success = logging_override.Success orelse logging.Success,
                 .Error = logging_override.Error orelse logging.Error,
                 .Fault = logging_override.Fault orelse logging.Fault,
@@ -247,7 +247,7 @@ pub const Logging = packed struct {
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: AcquireErrorFault) AcquireErrorFault {
-            comptime return .{
+            return .{
                 .Acquire = logging_override.Acquire orelse logging.Acquire,
                 .Error = logging_override.Error orelse logging.Error,
                 .Fault = logging_override.Fault orelse logging.Fault,
@@ -259,7 +259,7 @@ pub const Logging = packed struct {
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: ReleaseErrorFault) ReleaseErrorFault {
-            comptime return .{
+            return .{
                 .Release = logging_override.Release orelse logging.Release,
                 .Error = logging_override.Error orelse logging.Error,
                 .Fault = logging_override.Fault orelse logging.Fault,
