@@ -588,20 +588,20 @@ pub const CreateSpec = struct {
         write: ?OpenSpec.Write = .truncate,
         read: bool = false,
     };
-    fn flags(comptime spec: CreateSpec) Open {
+    fn flags(comptime creat_spec: Specification) Open {
         var flags_bitfield: Open = .{ .val = 0 };
         flags_bitfield.set(.create);
-        if (spec.options.exclusive) {
+        if (creat_spec.options.exclusive) {
             flags_bitfield.set(.exclusive);
         }
-        if (spec.options.close_on_exec) {
+        if (creat_spec.options.close_on_exec) {
             flags_bitfield.set(.close_on_exec);
         }
-        if (spec.options.temporary) {
+        if (creat_spec.options.temporary) {
             flags_bitfield.set(.temporary);
         }
-        if (spec.options.write) |w| {
-            if (spec.options.read) {
+        if (creat_spec.options.write) |w| {
+            if (creat_spec.options.read) {
                 flags_bitfield.set(.read_write);
             } else {
                 flags_bitfield.set(.write_only);
@@ -612,7 +612,7 @@ pub const CreateSpec = struct {
             if (w == .truncate) {
                 flags_bitfield.set(.truncate);
             }
-        } else if (spec.options.read) {
+        } else if (creat_spec.options.read) {
             flags_bitfield.set(.read_only);
         }
         return flags_bitfield;
