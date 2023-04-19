@@ -540,6 +540,72 @@ pub const SocketSpec = struct {
         return flags_bitfield;
     }
 };
+pub const ChannelSpec = struct {
+    errors: Errors,
+    logging: Logging,
+    pub const Errors = struct {
+        pipe: sys.ErrorPolicy,
+        dup3: sys.ErrorPolicy,
+        close: sys.ErrorPolicy,
+    };
+    pub const Logging = struct {
+        pipe: builtin.Logging.AcquireError,
+        dup3: builtin.Logging.SuccessError,
+        close: builtin.Logging.ReleaseError,
+    };
+};
+pub const StdIo = enum(u32) {
+    in = 0,
+    out = 1,
+    err = 2,
+};
+pub fn GenericChannel(comptime chan_spec: ChannelSpec) type {
+    const Type = struct {
+        in: Pipe,
+        out: Pipe,
+        err: Pipe,
+        const Channel = @This();
+        pub const decls = struct {
+            pub const pipe_spec: MakePipeSpec = .{
+                .options = .{ .close_on_exec = false },
+                .errors = chan_spec.errors.pipe,
+                .logging = chan_spec.logging.pipe,
+            };
+            pub const dup3_spec: DuplicateSpec = .{
+                .errors = chan_spec.errors.dup3,
+                .logging = chan_spec.logging.dup3,
+            };
+            pub const close_spec: CloseSpec = .{
+                .errors = chan_spec.errors.close,
+                .logging = chan_spec.logging.close,
+            };
+        };
+        pub fn init() sys.Call(chan_spec.errors.pipe, Channel) {
+            var ret: Channel = undefined;
+            try meta.wrap(makePipe(decls.pipe_spec, &ret.in));
+            try meta.wrap(makePipe(decls.pipe_spec, &ret.out));
+            try meta.wrap(makePipe(decls.pipe_spec, &ret.err));
+            return ret;
+        }
+        pub fn init_read(chan: Channel) sys.Call(.{
+            .throw = chan_spec.errors.dup3.throw ++ chan_spec.errors.close.throw,
+            .abort = chan_spec.errors.dup3.abort ++ chan_spec.errors.close.abort,
+        }, void) {
+            try meta.wrap(close(decls.close_spec, chan.in.write));
+            try meta.wrap(close(decls.close_spec, chan.out.read));
+            try meta.wrap(close(decls.close_spec, chan.err.read));
+            try meta.wrap(duplicateTo(decls.dup3_spec, chan.in.read, 0));
+            try meta.wrap(duplicateTo(decls.dup3_spec, chan.out.write, 1));
+            try meta.wrap(duplicateTo(decls.dup3_spec, chan.out.write, 2));
+        }
+        pub fn init_write(chan: *Channel) sys.Call(chan_spec.errors.close, void) {
+            try meta.wrap(close(decls.close_spec, chan.in.read));
+            try meta.wrap(close(decls.close_spec, chan.out.write));
+            try meta.wrap(close(decls.close_spec, chan.err.write));
+        }
+    };
+    return Type;
+}
 pub const MakeDirSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
