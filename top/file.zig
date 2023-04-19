@@ -1310,6 +1310,49 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
         return dup3_error;
     }
 }
+pub const MakePipeSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.pipe_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessError = .{},
+    options: Options,
+
+    const Options = struct {
+        close_on_exec: bool = false,
+        direct: bool = false,
+        non_block: bool = false,
+    };
+    fn flags(comptime pipe2_spec: MakePipeSpec) Open {
+        var flags_bitfield: Open = .{ .val = 0 };
+        if (pipe2_spec.options.close_on_exec) {
+            flags_bitfield.set(.close_on_exec);
+        }
+        if (pipe2_spec.options.direct) {
+            flags_bitfield.set(.direct);
+        }
+        if (pipe2_spec.options.non_block) {
+            flags_bitfield.set(.non_block);
+        }
+        return flags_bitfield;
+    }
+};
+pub const Pipe = extern struct {
+    read: u32,
+    write: u32,
+};
+pub fn makePipe(comptime pipe2_spec: MakePipeSpec, pipefd: *Pipe) sys.Call(pipe2_spec.errors, pipe2_spec.return_type) {
+    const flags: Open = comptime pipe2_spec.flags();
+    const pipefd_addr: u64 = @ptrToInt(pipefd);
+    const logging: builtin.Logging.SuccessError = comptime pipe2_spec.logging.override();
+    if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ pipefd_addr, flags.val }))) {
+        if (logging.Success) {
+            debug.pipeNotice(pipefd.read, pipefd.write);
+        }
+    } else |pipe2_error| {
+        if (logging.Error) {
+            debug.pipeError(pipe2_error);
+        }
+    }
+}
 
 // Soon.
 fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
