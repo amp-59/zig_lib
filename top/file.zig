@@ -1674,11 +1674,11 @@ const debug = opaque {
         var buf: [16 + 32 + 4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
-    fn oldFdNewFdAboutNotice(old_fd: u64, new_fd: u64, about: [:0]const u8) void {
-        const old_fd_s: []const u8 = builtin.fmt.ud64(old_fd).readAll();
-        const new_fd_s: []const u8 = builtin.fmt.ud64(new_fd).readAll();
+    fn fdFdAboutNotice(fd1: u64, fd2: u64, about: [:0]const u8, about_fd1: [:0]const u8, about_fd2: [:0]const u8) void {
+        const fd1_s: []const u8 = builtin.fmt.ud64(fd1).readAll();
+        const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [64]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "old_fd=", old_fd_s, " => new_fd=", new_fd_s, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, about_fd1, fd1_s, " => ", about_fd2, fd2_s, "\n" });
     }
     fn dirFdNameModeDeviceAboutNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, dev: Device, about: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
@@ -1714,10 +1714,13 @@ const debug = opaque {
         fdAboutNotice(fd, about_close_0_s);
     }
     inline fn duplicateNotice(old_fd: u64, new_fd: u64) void {
-        oldFdNewFdAboutNotice(old_fd, new_fd, about_dup_0_s);
+        fdFdAboutNotice(old_fd, new_fd, about_dup_0_s, old_fd_s, new_fd_s);
     }
-    inline fn duplicateExtraNotice(old_fd: u64, new_fd: u64) void {
-        oldFdNewFdAboutNotice(old_fd, new_fd, about_dup3_0_s);
+    inline fn duplicateToNotice(old_fd: u64, new_fd: u64) void {
+        fdFdAboutNotice(old_fd, new_fd, about_dup3_0_s, old_fd_s, new_fd_s);
+    }
+    inline fn pipeNotice(read_fd: u64, write_fd: u64) void {
+        fdFdAboutNotice(read_fd, write_fd, about_pipe_0_s, read_fd_s, write_fd_s);
     }
     inline fn readNotice(fd: u64, len: u64) void {
         fdLenAboutNotice(fd, len, about_read_0_s);
@@ -1761,6 +1764,10 @@ const debug = opaque {
     inline fn statusNotice(fd: u64, mode: Mode) void {
         fdModeAboutNotice(fd, mode, about_stat_0_s);
     }
+    fn aboutError(about: [:0]const u8, error_name: [:0]const u8) void {
+        var buf: [16 + 4096 + 8]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "(", error_name, ")\n" });
+    }
     fn dirFdNameAboutError(dir_fd: u64, name: [:0]const u8, about: [:0]const u8, error_name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [16 + 32 + 4096 + 512]u8 = undefined;
@@ -1775,15 +1782,11 @@ const debug = opaque {
         var buf: [16 + 32 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, ", (", error_name, ")\n" });
     }
-    fn oldFdNewFdAboutError(old_fd: u64, new_fd: u64, about: [:0]const u8, error_name: [:0]const u8) void {
-        const old_fd_s: []const u8 = builtin.fmt.ud64(old_fd).readAll();
-        const new_fd_s: []const u8 = builtin.fmt.ud64(new_fd).readAll();
+    fn fdFdAboutError(fd1: u64, fd2: u64, about: [:0]const u8, about_fd1: [:0]const u8, about_fd2: [:0]const u8, error_name: [:0]const u8) void {
+        const fd1_s: []const u8 = builtin.fmt.ud64(fd1).readAll();
+        const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [64]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "old_fd=", old_fd_s, ", new_fd=", new_fd_s, " (", error_name, ")\n" });
-    }
-    fn getCwdError(getcwd_error: anytype) void {
-        var buf: [16 + 4096 + 8]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_getcwd_1_s, "(", @errorName(getcwd_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, about_fd1, fd1_s, " => ", about_fd2, fd2_s, " (", error_name, ")\n" });
     }
     fn socketError(socket_error: anytype, dom: Domain, conn: Connection) void {
         var buf: [4096]u8 = undefined;
@@ -1800,11 +1803,17 @@ const debug = opaque {
         var buf: [16 + 64 + 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", fd_s, ", offset=", offset_s, ", (", @errorName(truncate_error), ")\n" });
     }
+    inline fn getCwdError(getcwd_error: anytype) void {
+        aboutError(about_getcwd_1_s, @errorName(getcwd_error));
+    }
     inline fn duplicateError(dup_error: anytype, fd: u64) void {
         fdAboutError(fd, about_dup_1_s, @errorName(dup_error));
     }
-    inline fn duplicateExtraError(dup3_error: anytype, old_fd: u64, new_fd: u64) void {
-        oldFdNewFdAboutError(old_fd, new_fd, about_dup3_1_s, @errorName(dup3_error));
+    inline fn duplicateToError(dup3_error: anytype, old_fd: u64, new_fd: u64) void {
+        fdFdAboutError(old_fd, new_fd, about_dup3_1_s, old_fd_s, new_fd_s, @errorName(dup3_error));
+    }
+    inline fn pipeError(pipe_error: anytype) void {
+        aboutError(about_pipe_1_s, @errorName(pipe_error));
     }
     inline fn unlinkError(unlink_error: anytype, pathname: [:0]const u8) void {
         pathnameAboutError(pathname, about_unlink_1_s, @errorName(unlink_error));
@@ -1977,6 +1986,11 @@ const debug = opaque {
         }
         builtin.debug.write(buf[0..len]);
     }
+    pub fn executeErrorBrief(exec_error: anytype, filename: [:0]const u8) void {
+        var buf: [4096 +% 128]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, [_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ") ", filename });
+    }
+
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
         const max_len: u64 = 4096 +% 128;
         var argc: u64 = args.len;
