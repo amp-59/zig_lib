@@ -145,7 +145,6 @@ pub const Socket = meta.EnumBitField(enum(u64) {
     };
     const SOCK = sys.SOCK;
 });
-
 pub const Status = extern struct {
     dev: u64,
     ino: u64,
@@ -190,14 +189,14 @@ pub const Status = extern struct {
         return st.mode.other.read;
     }
 };
-pub const StatusExtra = extern struct {
+pub const StatusExtended = extern struct {
     mask: u32,
     blksize: u32,
     attributes: u64,
     nlink: u32,
     uid: u32,
     gid: u32,
-    mode: u16,
+    mode: Mode,
     @"0": u16,
     ino: u64,
     size: u64,
