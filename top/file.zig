@@ -1424,49 +1424,6 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
         }
     };
 }
-pub fn determineFound(dir_pathname: [:0]const u8, file_name: [:0]const u8) ?u64 {
-    const path_spec: PathSpec = .{ .options = .{ .directory = false } };
-    const stat_spec: StatusSpec = .{ .options = .{ .no_follow = false } };
-    const dir_fd: u64 = path(path_spec, dir_pathname) catch return null;
-    const st: Status = statusAt(stat_spec, dir_fd, file_name) catch return null;
-    if (st.isExecutable(proc.getEffectiveUserId(), proc.getEffectiveGroupId())) {
-        return dir_fd;
-    }
-    return null;
-}
-pub fn find(vars: []const [*:0]u8, name: [:0]const u8) !u64 {
-    const path_key_s: []const u8 = "PATH=";
-    for (vars) |entry_ptr| {
-        const entry: [:0]u8 = meta.manyToSlice(entry_ptr);
-        if (mem.testEqualManyFront(u8, path_key_s, entry)) {
-            const path_s: [:0]u8 = entry[path_key_s.len..];
-            var i: u64 = 0;
-            var j: u64 = 0;
-            while (i < path_s.len) : (i +%= 1) {
-                i +%= builtin.int(u64, path_s[i] == '\\');
-                if (path_s[i] == ':') {
-                    path_s[i] = 0;
-                    defer path_s[i] = ':';
-                    defer j = i +% 1;
-                    if (determineFound(path_s[j..i :0], name)) |dir_fd| {
-                        return dir_fd;
-                    }
-                }
-            }
-        }
-    }
-    return error.NoExecutableInEnvironmentPath;
-}
-pub fn home(vars: [][*:0]u8) ![:0]const u8 {
-    const home_key_s: []const u8 = "HOME=";
-    for (vars) |entry_ptr| {
-        const entry: [:0]u8 = meta.manyToSlice(entry_ptr);
-        if (mem.testEqualManyFront(u8, home_key_s, entry)) {
-            return entry[home_key_s.len..];
-        }
-    }
-    return error.NoHomeInEnvironment;
-}
 pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
