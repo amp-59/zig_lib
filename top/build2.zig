@@ -665,7 +665,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 try meta.wrap(mem.map(decls.map_spec, stack_lb_addr, stack_up_addr -% stack_lb_addr));
             }
             const build_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, build_root));
-            try meta.wrap(writeEnvDecls(zig_exe, build_root, cache_root, global_cache_root, build_root_fd));
+            const cache_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, cache_root));
+            const env_fd: u64 = try meta.wrap(file.createAt(decls.create_spec, cache_root_fd, builder_spec.options.env_name, file.file_mode));
+            for ([_][]const u8{
+                "pub const zig_exe: [:0]const u8 = \"",               zig_exe,
+                "\";\npub const build_root: [:0]const u8 = \"",       build_root,
+                "\";\npub const cache_dir: [:0]const u8 = \"",        cache_root,
+                "\";\npub const global_cache_dir: [:0]const u8 = \"", global_cache_root,
+                "\";\n",
+            }) |s| try meta.wrap(file.write(decls.write_spec, env_fd, s));
+            try meta.wrap(file.close(decls.close_spec, env_fd));
+            try meta.wrap(file.close(decls.close_spec, cache_root_fd));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.exe_out_dir, file.dir_mode));
             return .{
                 .zig_exe = zig_exe,
                 .build_root = build_root,
@@ -789,48 +801,30 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const write_spec: file.WriteSpec = builder_spec.write();
             const create_spec: file.CreateSpec = builder_spec.create();
             const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
-            const command_spec: proc.CommandSpec = builder_spec.command();
+            const fork_spec: proc.ForkSpec = builder_spec.fork();
+            const execve_spec: file.ExecuteSpec = builder_spec.execve();
+            const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
+            const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
+            const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
+
+            const command_spec: proc.CommandSpec = .{
+                .errors = .{
+                    .fork = fork_spec.errors,
+                    .waitpid = waitpid_spec.errors,
+                    .execve = execve_spec.errors,
+                },
+                .logging = .{
+                    .fork = fork_spec.logging,
+                    .waitpid = waitpid_spec.logging,
+                    .execve = execve_spec.logging,
+                },
+            };
             const time_spec: time.TimeSpec = .{ .nsec = builder_spec.options.dep_sleep_nsec };
             const fstat_spec: file.StatusSpec = .{
                 .logging = .{ .Error = false, .Fault = true },
                 .errors = .{ .throw = sys.stat_errors },
             };
         };
-        fn writeEnvDecls(
-            zig_exe: [:0]const u8,
-            build_root: [:0]const u8,
-            cache_root: [:0]const u8,
-            global_cache_root: [:0]const u8,
-            build_root_fd: u64,
-        ) sys.Call(.{
-            .throw = decls.mkdir_spec.errors.throw ++ decls.create_spec.errors.throw ++
-                decls.write_spec.errors.throw ++ decls.close_spec.errors.throw,
-            .abort = decls.mkdir_spec.errors.abort ++ decls.create_spec.errors.abort ++
-                decls.write_spec.errors.abort ++ decls.close_spec.errors.abort,
-        }, void) {
-            const cache_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, cache_root));
-            const env_fd: u64 = try meta.wrap(
-                file.createAt(decls.create_spec, cache_root_fd, builder_spec.options.env_name, file.file_mode),
-            );
-            for ([_][]const u8{
-                "pub const zig_exe: [:0]const u8 = \"",               zig_exe,
-                "\";\npub const build_root: [:0]const u8 = \"",       build_root,
-                "\";\npub const cache_dir: [:0]const u8 = \"",        cache_root,
-                "\";\npub const global_cache_dir: [:0]const u8 = \"", global_cache_root,
-                "\";\n",
-            }) |s| {
-                try meta.wrap(file.write(decls.write_spec, env_fd, s));
-            }
-            try meta.wrap(file.close(decls.close_spec, env_fd));
-            try meta.wrap(file.close(decls.close_spec, cache_root_fd));
-            try meta.wrap(
-                file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode),
-            );
-            try meta.wrap(
-                file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.exe_out_dir, file.dir_mode),
-            );
-        }
-
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
