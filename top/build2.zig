@@ -18,8 +18,8 @@ pub usingnamespace types;
 
 pub const BuilderSpec = struct {
     options: Options = .{},
-    logging: Logging = .{},
-    errors: Errors = .{},
+    logging: Logging,
+    errors: Errors,
     pub const Options = struct {
         expected_status: u8 = 0,
         max_command_line: ?u64 = 65536,
