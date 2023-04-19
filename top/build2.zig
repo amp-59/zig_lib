@@ -136,12 +136,12 @@ pub const BuilderSpec = struct {
             .options = create_options,
         };
     }
-    fn command(comptime builder_spec: BuilderSpec) proc.CommandSpec {
-        return .{
+    fn execve(comptime builder_spec: BuilderSpec) file.ExecuteSpec {
+        comptime return .{
+            .errors = builder_spec.errors.execve,
+            .logging = builder_spec.logging.execve,
             .args_type = [][*:0]u8,
             .vars_type = [][*:0]u8,
-            .errors = builder_spec.errors.command,
-            .logging = builder_spec.logging.command,
         };
     }
 };
