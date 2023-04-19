@@ -53,8 +53,8 @@ pub const address_space = struct {
         pub const zen: zig_lib.mem.AddressSpaceErrors = .{
             .acquire = .{ .throw = error.UnderSupply },
             .release = .abort,
-            .map = .{ .throw = sys.mmap_errors },
-            .unmap = .{ .abort = sys.munmap_errors },
+            .map = .{ .throw = sys.mmap.errors.all },
+            .unmap = .{ .abort = sys.munmap.errors.all },
         };
     };
 };
@@ -119,29 +119,29 @@ pub const builder = struct {
             .stat = .{},
         };
         pub const zen: zig_lib.build.BuilderSpec.Errors = .{
-            .write = .{ .abort = sys.write_errors },
-            .mknod = .{ .throw = sys.mknod_errors },
-            .dup3 = .{ .throw = sys.dup_errors },
-            .fork = .{ .throw = sys.fork_errors },
-            .execve = .{ .throw = sys.execve_errors },
-            .waitpid = .{ .throw = sys.wait_errors },
-            .path = .{ .throw = sys.open_errors },
-            .map = .{ .throw = sys.mmap_errors },
-            .stat = .{ .throw = sys.stat_errors },
-            .unmap = .{ .throw = sys.munmap_errors },
-            .clock = .{ .throw = sys.clock_get_errors },
-            .sleep = .{ .throw = sys.nanosleep_errors },
-            .create = .{ .throw = sys.open_errors },
-            .mkdir = .{ .throw = sys.mkdir_noexcl_errors },
-            .close = .{ .abort = sys.close_errors },
+            .write = .{ .abort = sys.write.errors.all },
+            .mknod = .{ .throw = sys.mknod.errors.all },
+            .dup3 = .{ .throw = sys.dup.errors.all },
+            .fork = .{ .throw = sys.fork.errors.all },
+            .execve = .{ .throw = sys.execve.errors.all },
+            .waitpid = .{ .throw = sys.wait.errors.all },
+            .path = .{ .throw = sys.open.errors.all },
+            .map = .{ .throw = sys.mmap.errors.all },
+            .stat = .{ .throw = sys.stat.errors.all },
+            .unmap = .{ .throw = sys.munmap.errors.all },
+            .clock = .{ .throw = sys.clock_gettime.errors.all },
+            .sleep = .{ .throw = sys.nanosleep.errors.all },
+            .create = .{ .throw = sys.open.errors.all },
+            .mkdir = .{ .throw = sys.mkdir.errors.noexcl },
+            .close = .{ .abort = sys.close.errors.all },
         };
-        pub const critical: spec.build.BuilderSpec.Errors = add(zen, .{
-            .close = .{ .throw = sys.close_errors },
-            .unmap = .{ .throw = sys.munmap_errors },
+        pub const critical: zig_lib.build.BuilderSpec.Errors = add(zen, .{
+            .close = .{ .throw = sys.close.errors.all },
+            .unmap = .{ .throw = sys.munmap.errors.all },
         });
     };
     pub const logging = struct {
-        pub const verbose: spec.build.BuilderSpec.Logging = .{
+        pub const verbose: zig_lib.build.BuilderSpec.Logging = .{
             .write = spec.logging.success_error.verbose,
             .map = spec.logging.acquire_error.verbose,
             .mknod = spec.logging.success_error.verbose,
@@ -507,833 +507,287 @@ pub const serializer = struct {
     };
 };
 
+pub usingnamespace sys;
+
 pub const sys = struct {
     pub const mmap = struct {
-        pub const function = struct {
-            pub const default: sys.Config = .{
-                .tag = .mmap,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .mmap,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
         pub const options = struct {
             pub const object: zig_lib.file.MapSpec.Options = .{
                 .visibility = .private,
-                .anonymous = false,
                 .read = true,
                 .write = false,
                 .exec = true,
                 .populate = true,
-                .grows_down = false,
                 .sync = false,
             };
             pub const file: zig_lib.file.MapSpec.Options = .{
-                .anonymous = false,
                 .visibility = .shared,
                 .read = true,
                 .write = true,
                 .exec = false,
                 .populate = false,
-                .grows_down = false,
                 .sync = false,
             };
         };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .AGAIN, .BADF,     .EXIST, .INVAL,  .NFILE,
                 .NODEV, .NOMEM, .OVERFLOW, .PERM,  .TXTBSY,
-            });
-            pub const mem: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            };
+            pub const mem: []const zig_lib.sys.ErrorCode = &.{
                 .EXIST, .INVAL, .NOMEM,
-            });
-            pub const file: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            };
+            pub const file: []const zig_lib.sys.ErrorCode = &.{
                 .EXIST, .INVAL, .NOMEM, .NFILE, .NODEV, .TXTBSY,
-            });
+            };
         };
     };
     pub const mremap = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .mremap,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .mremap,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .AGAIN, .FAULT, .INVAL, .NOMEM,
-            });
+            };
         };
     };
     pub const munmap = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .munmap,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .munmap,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{.INVAL});
+            pub const all: []const zig_lib.sys.ErrorCode = &.{.INVAL};
         };
     };
     pub const brk = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .brk,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .brk,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{.NOMEM});
+            pub const all: []const zig_lib.sys.ErrorCode = &.{.NOMEM};
         };
     };
     pub const chdir = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .chdir,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .chdir,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
-            });
+            };
         };
     };
     pub const close = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .close,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .close,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .INTR, .IO, .BADF, .NOSPC,
-            });
+            };
         };
     };
     pub const clone3 = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .clone3,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, isize);
-            pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .PERM,      .AGAIN, .INVAL,   .EXIST, .USERS,
                 .OPNOTSUPP, .NOMEM, .RESTART, .BUSY,  .NOSPC,
-            });
+            };
         };
     };
     pub const open = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .open,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            const dir: sys.Config = .{
-                .tag = .openat,
-                .errors = open.errors.all,
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, isize);
-            pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
-
-            pub const dir_noexcept: sys.Config = default.reconfigure(null, isize);
-            pub const dir_discard_noexcept: sys.Config = default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            const default = config.default.function();
-            const noexcept = config.noexcept.function();
-
-            const dir_default = config.dir_default.function();
-            const dir_noexcept = config.dir_noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
                 .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
                 .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
                 .PERM,  .FAULT,       .INVAL,    .NXIO,   .BUSY,
-            });
+            };
         };
     };
     pub const read = struct {
-        pub const function = struct {
-            pub const default: sys.Config = .{
-                .tag = .read,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .read,
-                .errors = .{},
-                .return_type = void,
-            };
-            pub const noexcept_nodiscard: sys.Config = .{
-                .tag = .read,
-                .errors = .{},
-                .return_type = isize,
-            };
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR,
-            });
+            };
         };
     };
     pub const clock_gettime = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{ .tag = .clock_gettime, .errors = .{ .throw = errors.all }, .return_type = void };
-            pub const noexcept: sys.Config = default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM,
-            });
+            };
         };
     };
     pub const execve = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .execve,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const dir_default: sys.Config = .{
-                .tag = .execveat,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, void);
-            pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-
-            pub const dir_default = config.dir_default.function();
-            pub const dir_noexcept = config.dir_noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
                 .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
                 .INVAL, .NOEXEC,
-            });
+            };
         };
     };
     pub const fork = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .fork,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .NOSYS, .AGAIN, .NOMEM, .RESTART,
-            });
+            };
         };
     };
     pub const getcwd = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .getcwd,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, isize);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
-            });
+            };
         };
     };
     pub const getdents = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .getdents64,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR,
-            });
+            };
         };
     };
     pub const getrandom = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .getrandom,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .AGAIN, .FAULT, .INTR, .INVAL, .NOSYS,
-            });
+            };
         };
     };
     pub const dup = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .dup,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, isize);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
-            });
+            };
         };
     };
     pub const dup2 = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .dup2,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, isize);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
-            });
+            };
         };
     };
     pub const dup3 = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .dup3,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, isize);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
-            });
+            };
         };
     };
 
     pub const ioctl = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .ioctl,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .NOTTY, .BADF, .FAULT, .INVAL,
-            });
+            };
         };
     };
     pub const madvise = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .madvise,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
-            });
+            };
         };
     };
     pub const mkdir = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .mkdir,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const dir_default: sys.Config = .{
-                .tag = .mkdirat,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
-            });
+            };
+            pub const noexcl: []const zig_lib.sys.ErrorCode = &.{
+                .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
+                .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
+            };
         };
     };
     pub const memfd_create = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .memfd_create,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .FAULT, .INVAL, .MFILE, .NOMEM,
-            });
+            };
         };
     };
     pub const truncate = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .truncate,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const file_default: sys.Config = .{
-                .tag = .ftruncate,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES,  .FAULT, .FBIG, .INTR,   .IO,    .ISDIR, .LOOP, .NAMETOOLONG,
                 .NOTDIR, .PERM,  .ROFS, .TXTBSY, .INVAL, .BADF,
-            });
+            };
         };
     };
     pub const mknod = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .mknod,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const dir_default: sys.Config = .{
-                .tag = .mknodat,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, void);
-            pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-            pub const dir_default = config.dir_default.function();
-            pub const dir_noexcept = config.dir_noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
-            });
+            };
         };
     };
     pub const open_by_handle_at = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .open_by_handle_at,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = open.errors.all ++ zig_lib.meta.slice(sys.ErrorCode, .{.STALE});
+            pub const all: []const zig_lib.sys.ErrorCode = open.errors.all ++ [1]zig_lib.sys.ErrorCode{.STALE};
         };
     };
     pub const name_to_handle_at = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .name_to_handle_at,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = open.errors.all ++ zig_lib.meta.slice(sys.ErrorCode, .{.STALE});
+            pub const all: []const zig_lib.sys.ErrorCode = open.errors.all ++ [1]zig_lib.sys.ErrorCode{.STALE};
         };
     };
     pub const nanosleep = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .nanosleep,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .INTR, .FAULT, .INVAL, .OPNOTSUPP,
-            });
+            };
         };
     };
     pub const readlink = struct {
-        pub const function = struct {
-            pub const default: sys.Config = .{
-                .tag = .readlink,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const dir_default: sys.Config = .{
-                .tag = .readlinkat,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .FAULT, .INVAL,  .IO, .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR,
-            });
+            };
         };
     };
     pub const rmdir = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .rmdir,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            // pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .BUSY,  .FAULT,  .INVAL,    .LOOP, .NAMETOOLONG,
                 .NOENT, .NOMEM, .NOTDIR, .NOTEMPTY, .PERM, .ROFS,
-            });
+            };
         };
     };
     pub const sigaction = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .rt_sigaction,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .FAULT, .INVAL,
-            });
+            };
         };
     };
     pub const stat = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .stat,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const file_default: sys.Config = .{
-                .tag = .fstat,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const dir_default: sys.Config = .{
-                .tag = .newfstatat,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const link_default: sys.Config = .{
-                .tag = .lstat,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, void);
-            pub const file_noexcept: sys.Config = file_default.reconfigure(null, void);
-            pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
-            pub const link_noexcept: sys.Config = link_default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-            pub const file_default = config.file_default.function();
-            pub const file_noexcept = config.file_noexcept.function();
-            pub const dir_default = config.dir_default.function();
-            pub const dir_noexcept = config.dir_noexcept.function();
-            pub const link_default = config.link_default.function();
-            pub const link_noexcept = config.link_noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .FAULT, .INVAL,  .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .OVERFLOW,
-            });
+            };
         };
     };
     pub const unlink = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .unlink,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const dir_default: sys.Config = .{
-                .tag = .unlinkat,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept = default.reconfigure(null, void);
-            pub const dir_noexcept = default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .BUSY,  .FAULT,  .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
                 .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
-            });
+            };
         };
     };
     pub const write = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .write,
-                .errors = .{ .throw = errors.all },
-                .return_type = usize,
-            };
-            pub const noexcept: sys.Config = default.reconfigure(null, isize);
-            pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-            pub const discard_noexcept = config.discard_noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .AGAIN, .BADF,  .DESTADDRREQ, .DQUOT, .FAULT, .FBIG,
                 .INTR,  .INVAL, .IO,          .NOSPC, .PERM,  .PIPE,
-            });
-        };
-    };
-    pub const getid = struct {
-        pub const config = struct {
-            pub const user: sys.Config = .{
-                .tag = .getuid,
-                .errors = .{},
-                .return_type = u16,
             };
-            pub const group: sys.Config = .{
-                .tag = .getgid,
-                .errors = .{},
-                .return_type = u16,
-            };
-            pub const effective_user: sys.Config = .{
-                .tag = .geteuid,
-                .errors = .{},
-                .return_type = u16,
-            };
-            pub const effective_group: sys.Config = .{
-                .tag = .getegid,
-                .errors = .{},
-                .return_type = u16,
-            };
-        };
-        pub const function = struct {
-            pub const user = config.user.function();
-            pub const group = config.group.function();
-            pub const effective_user = config.effective_user.function();
-            pub const effective_group = config.effective_group.function();
         };
     };
     pub const wait = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .wait4,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .wait4,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
-            });
+            };
         };
     };
     pub const waitid = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .waitid,
-                .errors = .{ .throw = errors.all },
-                .return_type = void,
-            };
-            pub const noexcept: sys.Config = .{
-                .tag = .waitid,
-                .errors = .{},
-                .return_type = void,
-            };
-        };
-        pub const function = struct {
-            pub const default = config.default.function();
-            pub const noexcept = config.noexcept.function();
-        };
         pub const errors = struct {
-            pub const all: []const sys.ErrorCode = zig_lib.meta.slice(sys.ErrorCode, .{
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
-            });
-        };
-    };
-    pub const exit = struct {
-        pub const config = struct {
-            pub const default: sys.Config = .{
-                .tag = .exit,
-                .errors = .{},
-                .return_type = noreturn,
             };
         };
     };
