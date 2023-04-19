@@ -700,46 +700,37 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
 pub const GetWorkingDirectorySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     const Specification = @This();
 };
 pub const ReadLinkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     const Specification = @This();
 };
 pub const MapSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
-    logging: builtin.Logging.AcquireErrorFault = .{},
+    logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
     pub const Options = struct {
-        anonymous: bool = false,
         visibility: Visibility = .shared,
         read: bool = true,
         write: bool = true,
         exec: bool = false,
         populate: bool = false,
-        grows_down: bool = false,
         sync: bool = false,
         const Visibility = enum { shared, shared_validate, private };
     };
     pub fn flags(comptime map_spec: Specification) mem.Map {
         var flags_bitfield: mem.Map = .{ .val = 0 };
-        flags_bitfield.set(.fixed_no_replace);
+
         switch (map_spec.options.visibility) {
             .private => flags_bitfield.set(.private),
             .shared => flags_bitfield.set(.shared),
             .shared_validate => flags_bitfield.set(.shared_validate),
-        }
-        if (map_spec.options.anonymous) {
-            flags_bitfield.set(.anonymous);
-        }
-        if (map_spec.options.grows_down) {
-            flags_bitfield.set(.grows_down);
-            flags_bitfield.set(.stack);
         }
         if (map_spec.options.populate) {
             builtin.static.assert(map_spec.options.visibility == .private);
