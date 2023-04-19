@@ -14,7 +14,7 @@ pub fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
     }
     return ret;
 }
-pub const address_space = opaque {
+pub const address_space = struct {
     pub const regular_128 = mem.GenericRegularAddressSpace(.{
         .lb_addr = 0,
         .lb_offset = 0x40000000,
@@ -32,16 +32,16 @@ pub const address_space = opaque {
             .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
         }),
     });
-    pub const logging = opaque {
+    pub const logging = struct {
         pub const verbose: mem.AddressSpaceLogging = .{
             .acquire = spec.logging.acquire_error_fault.verbose,
             .release = spec.logging.release_error_fault.verbose,
-            .map = spec.logging.acquire_error_fault.verbose,
-            .unmap = spec.logging.release_error_fault.verbose,
+            .map = spec.logging.acquire_error.verbose,
+            .unmap = spec.logging.release_error.verbose,
         };
         pub const silent: mem.AddressSpaceLogging = builtin.zero(mem.AddressSpaceLogging);
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const noexcept: mem.AddressSpaceErrors = .{
             .release = .ignore,
             .acquire = .ignore,
@@ -56,7 +56,7 @@ pub const address_space = opaque {
         };
     };
 };
-pub const reinterpret = opaque {
+pub const reinterpret = struct {
     pub const flat: mem.ReinterpretSpec = .{};
     pub const ptr: mem.ReinterpretSpec = .{
         .reference = .{ .dereference = &.{} },
@@ -93,12 +93,12 @@ pub const reinterpret = opaque {
         return rs_1;
     }
 };
-pub const builder = opaque {
+pub const builder = struct {
     pub const default: build.BuilderSpec = .{
         .errors = builder.errors.noexcept,
         .logging = builder.logging.silent,
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const noexcept: build.BuilderSpec.Errors = .{
             .fork = .{},
             .write = .{},
@@ -117,6 +117,9 @@ pub const builder = opaque {
             .stat = .{},
         };
         pub const zen: build.BuilderSpec.Errors = .{
+            .write = .{ .abort = sys.write_errors },
+            .mknod = .{ .throw = sys.mknod_errors },
+            .dup3 = .{ .throw = sys.dup_errors },
             .fork = .{ .throw = sys.fork_errors },
             .execve = .{ .throw = sys.execve_errors },
             .waitpid = .{ .throw = sys.wait_errors },
@@ -135,23 +138,29 @@ pub const builder = opaque {
             .unmap = .{ .throw = sys.munmap_errors },
         });
     };
-    pub const logging = opaque {
+    pub const logging = struct {
         pub const verbose: build.BuilderSpec.Logging = .{
-            .fork = spec.logging.success_error_fault.verbose,
-            .execve = spec.logging.success_error_fault.verbose,
-            .waitpid = spec.logging.success_error_fault.verbose,
-            .path = spec.logging.acquire_error_fault.verbose,
+            .write = spec.logging.success_error.verbose,
+            .map = spec.logging.acquire_error.verbose,
+            .mknod = spec.logging.success_error.verbose,
+            .dup3 = spec.logging.success_error.verbose,
+            .unmap = spec.logging.release_error.verbose,
+            .fork = spec.logging.success_error.verbose,
+            .execve = spec.logging.attempt_error.verbose,
+            .waitpid = spec.logging.success_error.verbose,
+            .path = spec.logging.acquire_error.verbose,
             .stat = spec.logging.success_error_fault.verbose,
-            .create = spec.logging.acquire_error_fault.verbose,
-            .close = spec.logging.release_error_fault.verbose,
-            .mkdir = spec.logging.success_error_fault.verbose,
+            .create = spec.logging.acquire_error.verbose,
+            .close = spec.logging.release_error.verbose,
+            .mkdir = spec.logging.success_error.verbose,
         };
         pub const silent: build.BuilderSpec.Logging = builtin.zero(build.BuilderSpec.Logging);
     };
 };
-pub const logging = opaque {
-    pub const default = opaque {
+pub const logging = struct {
+    pub const default = struct {
         pub const verbose: builtin.Logging.Default = .{
+            .Attempt = true,
             .Success = true,
             .Acquire = true,
             .Release = true,
@@ -159,6 +168,7 @@ pub const logging = opaque {
             .Fault = true,
         };
         pub const silent: builtin.Logging.Default = .{
+            .Attempt = false,
             .Success = false,
             .Acquire = false,
             .Release = false,
@@ -166,7 +176,7 @@ pub const logging = opaque {
             .Fault = false,
         };
     };
-    pub const override = opaque {
+    pub const override = struct {
         pub const verbose: builtin.Logging.Override = .{
             .Attempt = true,
             .Success = true,
@@ -184,27 +194,8 @@ pub const logging = opaque {
             .Fault = false,
         };
     };
-    pub const success_error = opaque {
-        pub const verbose: builtin.Logging.SuccessError = .{
-            .Success = true,
-            .Error = true,
-        };
-        pub const silent: builtin.Logging.SuccessError = .{
-            .Success = false,
-            .Error = false,
-        };
-    };
-    pub const success_fault = opaque {
-        pub const verbose: builtin.Logging.SuccessFault = .{
-            .Success = true,
-            .Fault = true,
-        };
-        pub const silent: builtin.Logging.SuccessFault = .{
-            .Success = false,
-            .Fault = false,
-        };
-    };
-    pub const attempt_error = opaque {
+
+    pub const attempt_error = struct {
         pub const verbose: builtin.Logging.AttemptError = .{
             .Attempt = true,
             .Error = true,
@@ -214,7 +205,7 @@ pub const logging = opaque {
             .Error = false,
         };
     };
-    pub const attempt_fault = opaque {
+    pub const attempt_fault = struct {
         pub const verbose: builtin.Logging.AttemptFault = .{
             .Attempt = true,
             .Fault = true,
@@ -224,47 +215,7 @@ pub const logging = opaque {
             .Fault = false,
         };
     };
-    pub const acquire_error = opaque {
-        pub const verbose: builtin.Logging.AcquireError = .{
-            .Acquire = true,
-            .Error = true,
-        };
-        pub const silent: builtin.Logging.AcquireError = .{
-            .Acquire = false,
-            .Error = false,
-        };
-    };
-    pub const acquire_fault = opaque {
-        pub const verbose: builtin.Loggin.AcquireFaultg = .{
-            .Acquire = true,
-            .Fault = true,
-        };
-        pub const silent: builtin.Logging.AcquireFault = .{
-            .Acquire = false,
-            .Fault = false,
-        };
-    };
-    pub const release_error = opaque {
-        pub const verbose: builtin.Logging.ReleaseError = .{
-            .Release = true,
-            .Error = true,
-        };
-        pub const silent: builtin.Logging.ReleaseError = .{
-            .Release = false,
-            .Error = false,
-        };
-    };
-    pub const release_fault = opaque {
-        pub const verbose: builtin.Logging.ReleaseFault = .{
-            .Release = true,
-            .Fault = true,
-        };
-        pub const silent: builtin.Logging.ReleaseFault = .{
-            .Release = false,
-            .Fault = false,
-        };
-    };
-    pub const attempt_error_fault = opaque {
+    pub const attempt_error_fault = struct {
         pub const verbose: builtin.Logging.AttemptErrorFault = .{
             .Attempt = true,
             .Error = true,
@@ -276,7 +227,27 @@ pub const logging = opaque {
             .Fault = false,
         };
     };
-    pub const success_error_fault = opaque {
+    pub const success_error = struct {
+        pub const verbose: builtin.Logging.SuccessError = .{
+            .Success = true,
+            .Error = true,
+        };
+        pub const silent: builtin.Logging.SuccessError = .{
+            .Success = false,
+            .Error = false,
+        };
+    };
+    pub const success_fault = struct {
+        pub const verbose: builtin.Logging.SuccessFault = .{
+            .Success = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.SuccessFault = .{
+            .Success = false,
+            .Fault = false,
+        };
+    };
+    pub const success_error_fault = struct {
         pub const verbose: builtin.Logging.SuccessErrorFault = .{
             .Success = true,
             .Error = true,
@@ -288,7 +259,27 @@ pub const logging = opaque {
             .Fault = false,
         };
     };
-    pub const acquire_error_fault = opaque {
+    pub const acquire_error = struct {
+        pub const verbose: builtin.Logging.AcquireError = .{
+            .Acquire = true,
+            .Error = true,
+        };
+        pub const silent: builtin.Logging.AcquireError = .{
+            .Acquire = false,
+            .Error = false,
+        };
+    };
+    pub const acquire_fault = struct {
+        pub const verbose: builtin.Logging.AcquireFault = .{
+            .Acquire = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.AcquireFault = .{
+            .Acquire = false,
+            .Fault = false,
+        };
+    };
+    pub const acquire_error_fault = struct {
         pub const verbose: builtin.Logging.AcquireErrorFault = .{
             .Acquire = true,
             .Error = true,
@@ -300,7 +291,27 @@ pub const logging = opaque {
             .Fault = false,
         };
     };
-    pub const release_error_fault = opaque {
+    pub const release_error = struct {
+        pub const verbose: builtin.Logging.ReleaseError = .{
+            .Release = true,
+            .Error = true,
+        };
+        pub const silent: builtin.Logging.ReleaseError = .{
+            .Release = false,
+            .Error = false,
+        };
+    };
+    pub const release_fault = struct {
+        pub const verbose: builtin.Logging.ReleaseFault = .{
+            .Release = true,
+            .Fault = true,
+        };
+        pub const silent: builtin.Logging.ReleaseFault = .{
+            .Release = false,
+            .Fault = false,
+        };
+    };
+    pub const release_error_fault = struct {
         pub const verbose: builtin.Logging.ReleaseErrorFault = .{
             .Release = true,
             .Error = true,
@@ -313,8 +324,8 @@ pub const logging = opaque {
         };
     };
 };
-pub const dir = opaque {
-    pub const options = opaque {
+pub const dir = struct {
+    pub const options = struct {
         pub const eager: file.DirStreamOptions = .{
             .init_read_all = true,
             .shrink_after_read = true,
@@ -328,7 +339,7 @@ pub const dir = opaque {
             .close_on_deinit = false,
         };
     };
-    pub const logging = opaque {
+    pub const logging = struct {
         pub const silent: file.DirStreamLogging = .{
             .open = spec.logging.acquire_error.silent,
             .close = spec.logging.release_error.silent,
@@ -340,7 +351,7 @@ pub const dir = opaque {
             .getdents = spec.logging.success_error.verbose,
         };
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const zen: file.DirStreamErrors = .{
             .open = .{ .throw = open.errors.all },
             .close = .{ .abort = open.errors.all },
@@ -353,8 +364,8 @@ pub const dir = opaque {
         };
     };
 };
-pub const allocator = opaque {
-    pub const options = opaque {
+pub const allocator = struct {
+    pub const options = struct {
         pub const small: mem.ArenaAllocatorOptions = .{
             .count_branches = false,
             .count_allocations = false,
@@ -407,7 +418,7 @@ pub const allocator = opaque {
             .require_unmap = false,
         };
     };
-    pub const logging = opaque {
+    pub const logging = struct {
         pub const verbose: mem.AllocatorLogging = .{
             .head = true,
             .sentinel = true,
@@ -437,7 +448,7 @@ pub const allocator = opaque {
             .deallocate = false,
         };
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const zen: mem.AllocatorErrors = .{
             .map = .{ .throw = mmap.errors.mem },
             .remap = .{ .throw = mremap.errors.all },
@@ -455,8 +466,8 @@ pub const allocator = opaque {
         };
     };
 };
-pub const serializer = opaque {
-    pub const errors = opaque {
+pub const serializer = struct {
+    pub const errors = struct {
         pub const noexcept: serial.SerialSpec.Errors = .{
             .create = .{},
             .open = .{},
@@ -474,7 +485,7 @@ pub const serializer = opaque {
             .write = write.errors.all,
         };
     };
-    pub const logging = opaque {
+    pub const logging = struct {
         pub const verbose: serial.SerialSpec.Logging = .{
             .create = spec.logging.acquire_error.verbose,
             .open = spec.logging.acquire_error.verbose,
@@ -493,8 +504,8 @@ pub const serializer = opaque {
         };
     };
 };
-pub const mmap = opaque {
-    pub const function = opaque {
+pub const mmap = struct {
+    pub const function = struct {
         pub const default: sys.Config = .{
             .tag = .mmap,
             .errors = .{ .throw = errors.all },
@@ -506,7 +517,7 @@ pub const mmap = opaque {
             .return_type = void,
         };
     };
-    pub const options = opaque {
+    pub const options = struct {
         pub const object: spec.file.MapSpec.Options = .{
             .visibility = .private,
             .anonymous = false,
@@ -528,7 +539,7 @@ pub const mmap = opaque {
             .sync = false,
         };
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .AGAIN, .BADF,     .EXIST, .INVAL,  .NFILE,
             .NODEV, .NOMEM, .OVERFLOW, .PERM,  .TXTBSY,
@@ -541,8 +552,8 @@ pub const mmap = opaque {
         });
     };
 };
-pub const mremap = opaque {
-    pub const config = opaque {
+pub const mremap = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .mremap,
             .errors = .{ .throw = errors.all },
@@ -554,18 +565,18 @@ pub const mremap = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .AGAIN, .FAULT, .INVAL, .NOMEM,
         });
     };
 };
-pub const munmap = opaque {
-    pub const config = opaque {
+pub const munmap = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .munmap,
             .errors = .{ .throw = errors.all },
@@ -577,16 +588,16 @@ pub const munmap = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{.INVAL});
     };
 };
-pub const brk = opaque {
-    pub const config = opaque {
+pub const brk = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .brk,
             .errors = .{ .throw = errors.all },
@@ -598,16 +609,16 @@ pub const brk = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{.NOMEM});
     };
 };
-pub const chdir = opaque {
-    pub const config = opaque {
+pub const chdir = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .chdir,
             .errors = .{ .throw = errors.all },
@@ -619,18 +630,18 @@ pub const chdir = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
         });
     };
 };
-pub const close = opaque {
-    pub const config = opaque {
+pub const close = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .close,
             .errors = .{ .throw = errors.all },
@@ -642,18 +653,18 @@ pub const close = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .INTR, .IO, .BADF, .NOSPC,
         });
     };
 };
-pub const clone3 = opaque {
-    pub const config = opaque {
+pub const clone3 = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .clone3,
             .errors = .{ .throw = errors.all },
@@ -662,19 +673,19 @@ pub const clone3 = opaque {
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
         pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .PERM,      .AGAIN, .INVAL,   .EXIST, .USERS,
             .OPNOTSUPP, .NOMEM, .RESTART, .BUSY,  .NOSPC,
         });
     };
 };
-pub const open = opaque {
-    pub const config = opaque {
+pub const open = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .open,
             .errors = .{ .throw = errors.all },
@@ -691,14 +702,14 @@ pub const open = opaque {
         pub const dir_noexcept: sys.Config = default.reconfigure(null, isize);
         pub const dir_discard_noexcept: sys.Config = default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         const default = config.default.function();
         const noexcept = config.noexcept.function();
 
         const dir_default = config.dir_default.function();
         const dir_noexcept = config.dir_noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
             .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
@@ -707,8 +718,8 @@ pub const open = opaque {
         });
     };
 };
-pub const read = opaque {
-    pub const function = opaque {
+pub const read = struct {
+    pub const function = struct {
         pub const default: sys.Config = .{
             .tag = .read,
             .errors = .{ .throw = errors.all },
@@ -725,29 +736,29 @@ pub const read = opaque {
             .return_type = isize,
         };
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR,
         });
     };
 };
-pub const clock_gettime = opaque {
-    pub const config = opaque {
+pub const clock_gettime = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{ .tag = .clock_gettime, .errors = .{ .throw = errors.all }, .return_type = void };
         pub const noexcept: sys.Config = default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM,
         });
     };
 };
-pub const execve = opaque {
-    pub const config = opaque {
+pub const execve = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .execve,
             .errors = .{ .throw = errors.all },
@@ -761,14 +772,14 @@ pub const execve = opaque {
         pub const noexcept: sys.Config = default.reconfigure(null, void);
         pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
 
         pub const dir_default = config.dir_default.function();
         pub const dir_noexcept = config.dir_noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
             .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
@@ -776,26 +787,26 @@ pub const execve = opaque {
         });
     };
 };
-pub const fork = opaque {
-    pub const config = opaque {
+pub const fork = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .fork,
             .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .NOSYS, .AGAIN, .NOMEM, .RESTART,
         });
     };
 };
-pub const getcwd = opaque {
-    pub const config = opaque {
+pub const getcwd = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .getcwd,
             .errors = .{ .throw = errors.all },
@@ -803,54 +814,54 @@ pub const getcwd = opaque {
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
         });
     };
 };
-pub const getdents = opaque {
-    pub const config = opaque {
+pub const getdents = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .getdents64,
             .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR,
         });
     };
 };
-pub const getrandom = opaque {
-    pub const config = opaque {
+pub const getrandom = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .getrandom,
             .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .AGAIN, .FAULT, .INTR, .INVAL, .NOSYS,
         });
     };
 };
-pub const dup = opaque {
-    pub const config = opaque {
+pub const dup = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .dup,
             .errors = .{ .throw = errors.all },
@@ -858,18 +869,18 @@ pub const dup = opaque {
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .BADF, .BUSY, .INTR, .INVAL, .MFILE,
         });
     };
 };
-pub const dup2 = opaque {
-    pub const config = opaque {
+pub const dup2 = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .dup2,
             .errors = .{ .throw = errors.all },
@@ -877,18 +888,18 @@ pub const dup2 = opaque {
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .BADF, .BUSY, .INTR, .INVAL, .MFILE,
         });
     };
 };
-pub const dup3 = opaque {
-    pub const config = opaque {
+pub const dup3 = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .dup3,
             .errors = .{ .throw = errors.all },
@@ -896,55 +907,55 @@ pub const dup3 = opaque {
         };
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .BADF, .BUSY, .INTR, .INVAL, .MFILE,
         });
     };
 };
 
-pub const ioctl = opaque {
-    pub const config = opaque {
+pub const ioctl = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .ioctl,
             .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .NOTTY, .BADF, .FAULT, .INVAL,
         });
     };
 };
-pub const madvise = opaque {
-    pub const config = opaque {
+pub const madvise = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .madvise,
             .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
         });
     };
 };
-pub const mkdir = opaque {
-    pub const config = opaque {
+pub const mkdir = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .mkdir,
             .errors = .{ .throw = errors.all },
@@ -956,37 +967,37 @@ pub const mkdir = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
             .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
         });
     };
 };
-pub const memfd_create = opaque {
-    pub const config = opaque {
+pub const memfd_create = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .memfd_create,
             .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .FAULT, .INVAL, .MFILE, .NOMEM,
         });
     };
 };
-pub const truncate = opaque {
-    pub const config = opaque {
+pub const truncate = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .truncate,
             .errors = .{ .throw = errors.all },
@@ -998,19 +1009,19 @@ pub const truncate = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES,  .FAULT, .FBIG, .INTR,   .IO,    .ISDIR, .LOOP, .NAMETOOLONG,
             .NOTDIR, .PERM,  .ROFS, .TXTBSY, .INVAL, .BADF,
         });
     };
 };
-pub const mknod = opaque {
-    pub const config = opaque {
+pub const mknod = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .mknod,
             .errors = .{ .throw = errors.all },
@@ -1024,71 +1035,71 @@ pub const mknod = opaque {
         pub const noexcept: sys.Config = default.reconfigure(null, void);
         pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
         pub const dir_default = config.dir_default.function();
         pub const dir_noexcept = config.dir_noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP,
             .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
         });
     };
 };
-pub const open_by_handle_at = opaque {
-    pub const config = opaque {
+pub const open_by_handle_at = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .open_by_handle_at,
             .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = open.errors.all ++ meta.slice(sys.ErrorCode, .{.STALE});
     };
 };
-pub const name_to_handle_at = opaque {
-    pub const config = opaque {
+pub const name_to_handle_at = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .name_to_handle_at,
             .errors = .{ .throw = errors.all },
             .return_type = usize,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = open.errors.all ++ meta.slice(sys.ErrorCode, .{.STALE});
     };
 };
-pub const nanosleep = opaque {
-    pub const config = opaque {
+pub const nanosleep = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .nanosleep,
             .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .INTR, .FAULT, .INVAL, .OPNOTSUPP,
         });
     };
 };
-pub const readlink = opaque {
-    pub const function = opaque {
+pub const readlink = struct {
+    pub const function = struct {
         pub const default: sys.Config = .{
             .tag = .readlink,
             .errors = .{ .throw = errors.all },
@@ -1100,34 +1111,34 @@ pub const readlink = opaque {
             .return_type = usize,
         };
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES,       .BADF,  .FAULT, .INVAL,  .IO, .LOOP,
             .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR,
         });
     };
 };
-pub const rmdir = opaque {
-    pub const config = opaque {
+pub const rmdir = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .rmdir,
             .errors = .{ .throw = errors.all },
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         // pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .BUSY,  .FAULT,  .INVAL,    .LOOP, .NAMETOOLONG,
             .NOENT, .NOMEM, .NOTDIR, .NOTEMPTY, .PERM, .ROFS,
         });
     };
 };
-pub const sigaction = opaque {
-    pub const config = opaque {
+pub const sigaction = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .rt_sigaction,
             .errors = .{ .throw = errors.all },
@@ -1135,18 +1146,18 @@ pub const sigaction = opaque {
         };
         pub const noexcept: sys.Config = default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .FAULT, .INVAL,
         });
     };
 };
-pub const stat = opaque {
-    pub const config = opaque {
+pub const stat = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .stat,
             .errors = .{ .throw = errors.all },
@@ -1172,7 +1183,7 @@ pub const stat = opaque {
         pub const dir_noexcept: sys.Config = dir_default.reconfigure(null, void);
         pub const link_noexcept: sys.Config = link_default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
         pub const file_default = config.file_default.function();
@@ -1182,15 +1193,15 @@ pub const stat = opaque {
         pub const link_default = config.link_default.function();
         pub const link_noexcept = config.link_noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES,       .BADF,  .FAULT, .INVAL,  .LOOP,
             .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .OVERFLOW,
         });
     };
 };
-pub const unlink = opaque {
-    pub const config = opaque {
+pub const unlink = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .unlink,
             .errors = .{ .throw = errors.all },
@@ -1204,19 +1215,19 @@ pub const unlink = opaque {
         pub const noexcept = default.reconfigure(null, void);
         pub const dir_noexcept = default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .ACCES, .BUSY,  .FAULT,  .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
             .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
         });
     };
 };
-pub const write = opaque {
-    pub const config = opaque {
+pub const write = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .write,
             .errors = .{ .throw = errors.all },
@@ -1225,20 +1236,20 @@ pub const write = opaque {
         pub const noexcept: sys.Config = default.reconfigure(null, isize);
         pub const discard_noexcept: sys.Config = default.reconfigure(null, void);
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
         pub const discard_noexcept = config.discard_noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .AGAIN, .BADF,  .DESTADDRREQ, .DQUOT, .FAULT, .FBIG,
             .INTR,  .INVAL, .IO,          .NOSPC, .PERM,  .PIPE,
         });
     };
 };
-pub const getid = opaque {
-    pub const config = opaque {
+pub const getid = struct {
+    pub const config = struct {
         pub const user: sys.Config = .{
             .tag = .getuid,
             .errors = .{},
@@ -1260,15 +1271,15 @@ pub const getid = opaque {
             .return_type = u16,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const user = config.user.function();
         pub const group = config.group.function();
         pub const effective_user = config.effective_user.function();
         pub const effective_group = config.effective_group.function();
     };
 };
-pub const wait = opaque {
-    pub const config = opaque {
+pub const wait = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .wait4,
             .errors = .{ .throw = errors.all },
@@ -1280,18 +1291,18 @@ pub const wait = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
         });
     };
 };
-pub const waitid = opaque {
-    pub const config = opaque {
+pub const waitid = struct {
+    pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .waitid,
             .errors = .{ .throw = errors.all },
@@ -1303,17 +1314,17 @@ pub const waitid = opaque {
             .return_type = void,
         };
     };
-    pub const function = opaque {
+    pub const function = struct {
         pub const default = config.default.function();
         pub const noexcept = config.noexcept.function();
     };
-    pub const errors = opaque {
+    pub const errors = struct {
         pub const all: []const sys.ErrorCode = meta.slice(sys.ErrorCode, .{
             .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
         });
     };
 };
-pub const exit = opaque {
+pub const exit = struct {
     pub const config = struct {
         pub const default: sys.Config = .{
             .tag = .exit,
