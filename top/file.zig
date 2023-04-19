@@ -319,7 +319,7 @@ pub const OpenSpec = struct {
     options: Options = .{},
     return_type: type = u64,
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-    logging: builtin.Logging.AcquireErrorFault = .{},
+    logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
     const Options = struct {
         read: bool = true,
@@ -384,13 +384,13 @@ pub const ReadSpec = struct {
     child: type = u8,
     return_type: type = u64,
     errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
 };
 pub const WriteSpec = struct {
     child: type = u8,
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
 };
 pub const StatusSpec = struct {
     options: Options = .{},
@@ -409,9 +409,9 @@ pub const StatusSpec = struct {
         return flags_bitfield;
     }
 };
-pub const StatusExtraSpec = struct {
+pub const StatusExtendedSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
+    errors: sys.ErrorPolicy = .{ .throw = sys.statx_errors },
     logging: builtin.Logging.SuccessErrorFault = .{},
     return_type: ?type = null,
     const Specification = @This();
@@ -448,8 +448,8 @@ pub const StatusExtraSpec = struct {
         }
         return flags_bitfield;
     }
-    fn fields(comptime statx_spec: Specification) StatusExtra.Fields {
-        var fields_bitfield: At = .{ .val = 0 };
+    fn fields(comptime statx_spec: Specification) StatusExtended.Fields {
+        var fields_bitfield: StatusExtended.Fields = .{ .val = 0 };
         if (statx_spec.options.fields.type) {
             fields_bitfield.set(.type);
         }
