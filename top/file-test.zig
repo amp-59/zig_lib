@@ -2,6 +2,7 @@ const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
+const time = @import("./time.zig");
 const proc = @import("./proc.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
@@ -10,7 +11,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
@@ -47,6 +48,10 @@ const close_spec: file.CloseSpec = .{
 const stat_spec: file.StatusSpec = .{
     .errors = .{ .throw = sys.stat_errors },
 };
+const statx_spec: file.StatusExtendedSpec = .{
+    .errors = .{ .throw = sys.stat_errors },
+    .options = .{ .fields = .{} },
+};
 const ftruncate_spec: file.TruncateSpec = .{
     .errors = .{ .throw = sys.truncate_errors },
 };
@@ -57,7 +62,21 @@ const make_path_spec: file.MakePathSpec = .{
     .errors = .{},
     .logging = .{},
 };
-
+const read_spec: file.ReadSpec = .{
+    .errors = .{},
+};
+const write_spec: file.WriteSpec = .{
+    .errors = .{},
+};
+const pipe_spec: file.MakePipeSpec = .{
+    .options = .{ .close_on_exec = false },
+};
+fn testStatusExtended() !void {
+    const Fields = @TypeOf(statx_spec.options.fields);
+    const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
+    var st: file.StatusExtended = try meta.wrap(file.statusExtended(nilx_spec, 0, "/home"));
+    _ = st;
+}
 fn testFileOperationsRound1() !void {
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
@@ -150,15 +169,38 @@ fn testPackedModeStruct() !void {
     try file.unlink(unlink_spec, "./0123456789");
     try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
 }
-pub fn main(_: anytype, vars: anytype) !void {
-    const path_fd: u64 = try file.find(vars, "zig");
 
-    _ = path_fd;
-
+pub fn testPipe(args: [][*:0]u8) !void {
+    var pipefd: file.Pipe = undefined;
+    try file.makePipe(pipe_spec, &pipefd);
+    const cpid: u64 = try proc.fork(.{});
+    if (cpid == 0) {
+        var buf: [4096]u8 = undefined;
+        var len: u64 = 0;
+        len +%= file.read(read_spec, pipefd.read, &buf, buf.len);
+        try file.write(.{}, pipefd.write, buf[0..len]);
+        buf[len] = '\n';
+        len +%= 1;
+        buf[len] = 0;
+        try file.close(close_spec, pipefd.write);
+        try file.close(close_spec, pipefd.read);
+        builtin.proc.exit(0);
+    } else {
+        const arg: []const u8 = meta.manyToSlice(args[0]);
+        var buf: [4096]u8 = undefined;
+        var len: u64 = 0;
+        file.write(write_spec, pipefd.write, arg);
+        len +%= file.read(read_spec, pipefd.read, &buf, buf.len);
+        try file.close(close_spec, pipefd.read);
+        try file.close(close_spec, pipefd.write);
+    }
+}
+pub fn main(args: anytype) !void {
+    try meta.wrap(testStatusExtended());
+    try meta.wrap(testPipe(args));
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testPathOperations());
     try meta.wrap(testFileTests());
-    // try meta.wrap(testPackedModeStruct());
 }
