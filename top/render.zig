@@ -95,7 +95,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
         .NoReturn => NoReturnFormat,
         .Vector => VectorFormat(spec, Type),
         .ErrorUnion => ErrorUnionFormat(spec, Type),
-        .ErrorSet => ErrorSetFormat(spec, Type),
+        .ErrorSet => ErrorSetFormat(Type),
         else => @compileError(@typeName(Type)),
     };
 }
@@ -1358,7 +1358,7 @@ fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn ErrorSetFormat(comptime ErrorSet: type, comptime _: RenderSpec) type {
+fn ErrorSetFormat(comptime ErrorSet: type) type {
     return struct {
         value: ErrorSet,
         const Format: type = @This();
