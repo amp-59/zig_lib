@@ -17,30 +17,30 @@ const invalid_holder_state: u64 = (0b110000110000 << 48);
 
 const move_spec = .{
     .options = .{},
-    .logging = spec.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error.verbose,
     .errors = .{ .abort = sys.mremap_errors },
 };
 const map_spec = .{
     .options = .{},
-    .logging = spec.logging.acquire_error_fault.verbose,
+    .logging = spec.logging.acquire_error.verbose,
     .errors = .{ .abort = sys.mmap_errors },
 };
 const resize_spec = .{
-    .logging = spec.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error.verbose,
     .errors = .{ .abort = sys.mremap_errors },
 };
 const unmap_spec = .{
-    .logging = spec.logging.release_error_fault.verbose,
+    .logging = spec.logging.release_error.verbose,
     .errors = .{ .abort = sys.munmap_errors },
 };
 const advise_spec = .{
     .options = .{ .property = .{ .dump = true } },
-    .logging = spec.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error.verbose,
     .errors = .{ .abort = sys.madvise_errors },
 };
 const protect_spec = .{
     .options = .{ .none = true },
-    .logging = spec.logging.success_error_fault.verbose,
+    .logging = spec.logging.success_error.verbose,
     .errors = .{ .abort = sys.madvise_errors },
 };
 const wr_spec: mem.ReinterpretSpec = .{
@@ -300,9 +300,11 @@ fn testLallocator() !void {
         buf.* = try allocator.allocate(u8, idx +% 1);
     }
     AllocatorL.Graphics.graphPartitions(allocator);
-    for (allocations, 0..) |buf, idx| {
+    for (&allocations, 0..) |*buf, idx| {
         if (idx % 3 != 0) {
             allocator.free(buf);
+        } else {
+            buf.* = try allocator.reallocate(u8, buf.*, buf.len * 2);
         }
     }
     AllocatorL.Graphics.graphPartitions(allocator);
