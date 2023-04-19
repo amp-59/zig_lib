@@ -190,7 +190,7 @@ pub const CloneArgs = extern struct {
 pub const WaitSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     return_type: type = u64,
     const Specification = @This();
     const Options = struct {
@@ -227,19 +227,19 @@ pub const WaitSpec = struct {
     }
 };
 pub const WaitIdSpec = struct {
-    id_type: IdType,
-    options: Options,
+    id_type: IdType = .pid,
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     return_type: type = u64,
     const Specification = @This();
     const Options = struct {
-        exited: bool,
-        stopped: bool,
-        continued: bool,
-        clone: bool,
-        no_thread: bool,
-        all: bool,
+        exited: bool = true,
+        stopped: bool = false,
+        continued: bool = false,
+        clone: bool = false,
+        no_thread: bool = false,
+        all: bool = false,
     };
     fn flags(comptime spec: WaitIdSpec) WaitId {
         var ret: WaitId = .{ .val = 0 };
