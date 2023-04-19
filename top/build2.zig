@@ -110,6 +110,18 @@ pub const BuilderSpec = struct {
     fn stat(comptime builder_spec: BuilderSpec) file.StatusSpec {
         return .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
     }
+    fn fork(comptime builder_spec: BuilderSpec) proc.ForkSpec {
+        return .{ .errors = builder_spec.errors.fork, .logging = builder_spec.logging.fork };
+    }
+    fn waitpid(comptime builder_spec: BuilderSpec) proc.WaitSpec {
+        return .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid, .return_type = void };
+    }
+    fn mknod(comptime builder_spec: BuilderSpec) file.MakeNodeSpec {
+        return .{ .errors = builder_spec.errors.mknod, .logging = builder_spec.logging.mknod };
+    }
+    fn dup3(comptime builder_spec: BuilderSpec) file.DuplicateSpec {
+        return .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
+    }
     fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
         return .{
             .errors = builder_spec.errors.map,
