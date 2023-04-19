@@ -360,8 +360,8 @@ pub const Arena = extern struct {
 pub const AddressSpaceLogging = packed struct {
     acquire: builtin.Logging.AcquireErrorFault = .{},
     release: builtin.Logging.ReleaseErrorFault = .{},
-    map: builtin.Logging.AcquireErrorFault = .{},
-    unmap: builtin.Logging.ReleaseErrorFault = .{},
+    map: builtin.Logging.AcquireError = .{},
+    unmap: builtin.Logging.ReleaseError = .{},
 };
 
 pub const AddressSpaceErrors = struct {
