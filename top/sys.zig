@@ -1291,7 +1291,7 @@ pub const ErrorCode = enum(i9) {
     // DEADLOCK = -35, // Resource deadlock avoided
     // NOTSUP = -95, // Operation not supported
 
-    pub fn errorName(error_code: ErrorCode) []const u8 {
+    pub inline fn errorName(comptime error_code: ErrorCode) []const u8 {
         switch (error_code) {
             .PERM => return "OperationNotPermitted",
             .NOENT => return "NoSuchFileOrDirectory",
@@ -1434,7 +1434,7 @@ pub const SignalCode = enum(u32) {
     FPE = SIG.FPE,
     BUS = SIG.BUS,
     ILL = SIG.ILL,
-    pub fn errorName(error_code: SignalCode) []const u8 {
+    pub inline fn errorName(comptime error_code: SignalCode) []const u8 {
         switch (error_code) {
             .SEGV => return "SegmentationFault",
             .FPE => return "FloatingPointError",
@@ -1836,6 +1836,7 @@ pub const Fn = enum(u9) {
             .nanosleep,
             .dup2,
             .clone3,
+            .pipe2,
             => 2,
 
             .dup3,
@@ -1916,6 +1917,9 @@ pub const getrandom_errors: []const ErrorCode = &[_]ErrorCode{
 };
 pub const dup_errors: []const ErrorCode = &[_]ErrorCode{
     .BADF, .BUSY, .INTR, .INVAL, .MFILE,
+};
+pub const pipe_errors: []const ErrorCode = &[_]ErrorCode{
+    .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
 };
 pub const ioctl_errors: []const ErrorCode = &[_]ErrorCode{
     .NOTTY, .BADF, .FAULT, .INVAL,
@@ -2001,6 +2005,11 @@ pub const sigaction_errors: []const ErrorCode = &[_]ErrorCode{
 pub const stat_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES,  .BADF,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
     .NOTDIR, .OVERFLOW,
+};
+pub const statx_errors: []const ErrorCode = &[_]ErrorCode{
+    .ACCES,  .BADF,        .FAULT, .INVAL,
+    .LOOP,   .NAMETOOLONG, .NOENT, .NOMEM,
+    .NOTDIR,
 };
 pub const unlink_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES,  .BUSY, .FAULT, .IO,   .ISDIR, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
