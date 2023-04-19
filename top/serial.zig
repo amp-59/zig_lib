@@ -280,12 +280,12 @@ pub const SerialSpec = struct {
     logging: Logging = .{},
 
     pub const Logging = struct {
-        create: builtin.Logging.AcquireErrorFault = .{},
-        open: builtin.Logging.AcquireErrorFault = .{},
+        create: builtin.Logging.AcquireError = .{},
+        open: builtin.Logging.AcquireError = .{},
+        read: builtin.Logging.SuccessError = .{},
+        write: builtin.Logging.SuccessError = .{},
+        close: builtin.Logging.ReleaseError = .{},
         stat: builtin.Logging.SuccessErrorFault = .{},
-        read: builtin.Logging.SuccessErrorFault = .{},
-        write: builtin.Logging.SuccessErrorFault = .{},
-        close: builtin.Logging.ReleaseErrorFault = .{},
     };
     pub const Errors = struct {
         create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
