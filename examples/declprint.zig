@@ -1,4 +1,4 @@
-const srg = @import("zig_lib");
+const srg = @import("../zig_lib.zig");
 const mem = srg.mem;
 const fmt = srg.fmt;
 const proc = srg.proc;
@@ -21,7 +21,7 @@ fn recursivePrint(comptime T: type) void {
                         .bits = int_info.bits,
                         .signedness = .unsigned,
                     } });
-                    array.writeAny(spec.reinterpret.fmt, .{
+                    array.writeAny(spec.reinterpret.fmt, comptime .{
                         "pub const ",
                         fmt.IdentifierFormat{ .value = decl.name },
                         ": " ++ @typeName(I) ++ " = ",
@@ -40,7 +40,7 @@ fn recursivePrint(comptime T: type) void {
                         });
                         break :blk_0 IntFmt{ .value = tmp_0.value };
                     };
-                    array.writeAny(spec.reinterpret.fmt, .{
+                    array.writeAny(spec.reinterpret.fmt, comptime .{
                         "pub const ",
                         fmt.IdentifierFormat{ .value = decl.name },
                         ": " ++ @typeName(@TypeOf(int_fmt.value)) ++ " = ",
@@ -50,11 +50,11 @@ fn recursivePrint(comptime T: type) void {
                     file.write(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .Struct, .Array, .Pointer => {
-                    array.writeAny(spec.reinterpret.fmt, .{
+                    array.writeAny(spec.reinterpret.fmt, comptime .{
                         "pub const ",
                         fmt.IdentifierFormat{ .value = decl.name },
                         ": " ++ @typeName(Field) ++ " = ",
-                        comptime fmt.any(field),
+                        fmt.render(.{ .omit_default_fields = false, .infer_type_names = true }, field),
                         ";\n",
                     });
                     file.write(.{ .errors = .{} }, 1, array.readAll());
@@ -70,7 +70,7 @@ fn recursivePrint(comptime T: type) void {
                         array.undefineAll();
                         recursivePrint(field);
                         array.writeMany("};\n");
-                        builtin.debug.write(array.readAll());
+                        file.write(.{ .errors = .{} }, 1, array.readAll());
                     }
                 },
                 else => {},
@@ -79,5 +79,11 @@ fn recursivePrint(comptime T: type) void {
     }
 }
 pub fn main() void {
+    recursivePrint(srg.spec.builder);
+    recursivePrint(srg.spec.address_space.errors);
+    recursivePrint(srg.spec.address_space.logging);
+    recursivePrint(srg.spec.allocator);
+    recursivePrint(srg.spec.dir);
+    recursivePrint(srg.spec.sys);
     recursivePrint(srg.sys);
 }
