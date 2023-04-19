@@ -12,6 +12,7 @@ const builtin = srg.builtin;
 pub usingnamespace proc.start;
 pub const is_verbose: bool = false;
 pub const logging_override: builtin.Logging.Override = .{
+    .Attempt = false,
     .Success = false,
     .Acquire = false,
     .Release = false,
@@ -20,9 +21,6 @@ pub const logging_override: builtin.Logging.Override = .{
 };
 pub const AddressSpace = spec.address_space.regular_128;
 
-const prune_weak: bool = false;
-const prune_fmt: bool = true;
-const prune_std: bool = true;
 const input_open_spec: file.OpenSpec = .{
     .options = .{
         .read = true,
@@ -267,29 +265,9 @@ fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, segment: Segment, name: 
     }
 }
 fn pruneSectionsOuterLoop(allocator: *Allocator, file_buf: FixedString, segments: *Segments, next: Segments) anyerror!void {
+    _ = allocator;
     const segment: *Segment = segments.this();
     const name: []const u8 = file_buf.readAll()[segment.span.begin..segment.span.mid];
-    if (prune_fmt and mem.indexOfFirstEqualMany(u8, "fmt.", name) != null) {
-        if (segment.jumps) |*jump| {
-            jump.deinit(allocator);
-        }
-        printPruned(name);
-        return segments.delete(null);
-    }
-    if (prune_weak and mem.testEqualManyFront(u8, "\"", name)) {
-        if (segment.jumps) |*jump| {
-            jump.deinit(allocator);
-        }
-        printPruned(name);
-        return segments.delete(null);
-    }
-    if (prune_std and mem.testEqualManyFront(u8, "std", name)) {
-        if (segment.jumps) |*jump| {
-            jump.deinit(allocator);
-        }
-        printPruned(name);
-        return segments.delete(null);
-    }
     printPassed(name);
     segments.* = next;
 }
