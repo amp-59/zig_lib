@@ -494,13 +494,41 @@ pub const StatusExtendedSpec = struct {
         return fields_bitfield;
     }
 };
+pub const MakePipeSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.pipe_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessError = .{},
+    options: Options,
+    pub const Options = struct {
+        close_on_exec: bool = false,
+        direct: bool = false,
+        non_block: bool = false,
+    };
+    fn flags(comptime pipe2_spec: MakePipeSpec) Open {
+        var flags_bitfield: Open = .{ .val = 0 };
+        if (pipe2_spec.options.close_on_exec) {
+            flags_bitfield.set(.close_on_exec);
+        }
+        if (pipe2_spec.options.direct) {
+            flags_bitfield.set(.direct);
+        }
+        if (pipe2_spec.options.non_block) {
+            flags_bitfield.set(.non_block);
+        }
+        return flags_bitfield;
+    }
+};
+pub const Pipe = extern struct {
+    read: u32,
+    write: u32,
+};
 pub const SocketSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.socket_errors },
     logging: builtin.Logging.AcquireError = .{},
     return_type: type = u64,
     const Specification = @This();
-    const Options = struct {
+    pub const Options = struct {
         non_block: bool = true,
         close_on_exec: bool = true,
     };
@@ -1310,35 +1338,6 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
         return dup3_error;
     }
 }
-pub const MakePipeSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.pipe_errors },
-    return_type: type = void,
-    logging: builtin.Logging.SuccessError = .{},
-    options: Options,
-
-    const Options = struct {
-        close_on_exec: bool = false,
-        direct: bool = false,
-        non_block: bool = false,
-    };
-    fn flags(comptime pipe2_spec: MakePipeSpec) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
-        if (pipe2_spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        if (pipe2_spec.options.direct) {
-            flags_bitfield.set(.direct);
-        }
-        if (pipe2_spec.options.non_block) {
-            flags_bitfield.set(.non_block);
-        }
-        return flags_bitfield;
-    }
-};
-pub const Pipe = extern struct {
-    read: u32,
-    write: u32,
-};
 pub fn makePipe(comptime pipe2_spec: MakePipeSpec, pipefd: *Pipe) sys.Call(pipe2_spec.errors, pipe2_spec.return_type) {
     const flags: Open = comptime pipe2_spec.flags();
     const pipefd_addr: u64 = @ptrToInt(pipefd);
