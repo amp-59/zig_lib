@@ -138,13 +138,13 @@ pub const Clone = meta.EnumBitField(enum(u64) {
     new_cgroup = CLONE.NEWCGROUP,
     const CLONE = sys.CLONE;
 });
-pub const IdType = meta.EnumBitField(enum(u64) {
+pub const IdType = enum(u64) {
     pid = ID.PID,
     all = ID.ALL,
     group = ID.PGID,
     file = ID.PIDFD,
     const ID = sys.ID;
-});
+};
 pub const WaitId = meta.EnumBitField(enum(u64) {
     exited = WAIT.EXITED,
     stopped = WAIT.STOPPED,
