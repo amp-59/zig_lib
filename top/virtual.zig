@@ -771,10 +771,6 @@ fn Specs(comptime AddressSpace: type) type {
             .errors = AddressSpace.addr_spec.errors.map,
             .logging = AddressSpace.addr_spec.logging.map,
         };
-        pub const remap_spec = .{
-            .errors = AddressSpace.addr_spec.errors.remap,
-            .logging = AddressSpace.addr_spec.logging.remap,
-        };
         pub const unmap_spec = .{
             .errors = AddressSpace.addr_spec.errors.unmap,
             .logging = AddressSpace.addr_spec.logging.unmap,
