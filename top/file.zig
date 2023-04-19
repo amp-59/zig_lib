@@ -1293,19 +1293,19 @@ pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.er
         return dup_error;
     }
 }
-pub fn duplicateExtra(comptime dup_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
+pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.Call(dup3_spec.errors, dup3_spec.return_type) {
     const flags: u64 = sys.O.CLOEXEC;
-    const logging: builtin.Logging.SuccessErrorFault = comptime dup_spec.logging.override();
-    if (meta.wrap(sys.call(.dup3, dup_spec.errors, dup_spec.return_type, .{ old_fd, new_fd, flags }))) |ret| {
+    const logging: builtin.Logging.SuccessError = comptime dup3_spec.logging.override();
+    if (meta.wrap(sys.call(.dup3, dup3_spec.errors, dup3_spec.return_type, .{ old_fd, new_fd, flags }))) |ret| {
         if (logging.Success) {
-            debug.duplicateExtraNotice(old_fd, new_fd);
+            debug.duplicateToNotice(old_fd, new_fd);
         }
-        if (dup_spec.return_type == u64) {
+        if (dup3_spec.return_type == u64) {
             return ret;
         }
     } else |dup3_error| {
         if (logging.Error) {
-            debug.duplicateExtraError(dup3_error, old_fd, new_fd);
+            debug.duplicateToError(dup3_error, old_fd, new_fd);
         }
         return dup3_error;
     }
