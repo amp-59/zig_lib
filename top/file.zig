@@ -561,7 +561,7 @@ pub const CreateSpec = struct {
         read: bool = false,
     };
     fn flags(comptime spec: CreateSpec) Open {
-        comptime var flags_bitfield: Open = .{ .val = 0 };
+        var flags_bitfield: Open = .{ .val = 0 };
         flags_bitfield.set(.create);
         if (spec.options.exclusive) {
             flags_bitfield.set(.exclusive);
@@ -578,13 +578,11 @@ pub const CreateSpec = struct {
             } else {
                 flags_bitfield.set(.write_only);
             }
-            switch (w) {
-                .append => {
-                    flags_bitfield.set(.append);
-                },
-                .truncate => {
-                    flags_bitfield.set(.truncate);
-                },
+            if (w == .append) {
+                flags_bitfield.set(.append);
+            }
+            if (w == .truncate) {
+                flags_bitfield.set(.truncate);
             }
         } else if (spec.options.read) {
             flags_bitfield.set(.read_only);
@@ -655,7 +653,9 @@ pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.a
     if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
         unreachable;
     } else |execve_error| {
-        if (logging.Error) {
+        if (logging.Error and logging.Attempt) {
+            debug.executeErrorBrief(execve_error, pathname);
+        } else if (logging.Error) {
             debug.executeError(execve_error, pathname, args);
         }
         return execve_error;
@@ -665,11 +665,16 @@ pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spe
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: At = comptime spec.flags();
-    const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    if (logging.Attempt) {
+        debug.executeNotice(args[0], args);
+    }
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
         unreachable;
     } else |execve_error| {
-        if (logging.Error) {
+        if (logging.Error and logging.Attempt) {
+            debug.executeErrorBrief(execve_error, args[0]);
+        } else if (logging.Error) {
             debug.executeError(execve_error, args[0], args);
         }
         return execve_error;
@@ -680,11 +685,13 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: At = comptime spec.flags();
-    const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
         unreachable;
     } else |execve_error| {
-        if (logging.Error) {
+        if (logging.Error and logging.Attempt) {
+            debug.executeErrorBrief(execve_error, name);
+        } else if (logging.Error) {
             debug.executeError(execve_error, name, args);
         }
         return execve_error;
