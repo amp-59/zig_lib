@@ -88,13 +88,13 @@ pub const AllocatorLogging = packed struct {
     metadata: bool = builtin.logging_general.Success,
     branches: bool = builtin.logging_general.Success,
     /// Report `mmap` Acquire and Release.
-    map: builtin.Logging.AcquireErrorFault = .{},
+    map: builtin.Logging.AcquireError = .{},
     /// Report `munmap` Release and Error.
-    unmap: builtin.Logging.ReleaseErrorFault = .{},
+    unmap: builtin.Logging.ReleaseError = .{},
     /// Report `mremap` Success and Error.
-    remap: builtin.Logging.SuccessErrorFault = .{},
+    remap: builtin.Logging.SuccessError = .{},
     /// Report `madvise` Success and Error.
-    advise: builtin.Logging.SuccessErrorFault = .{},
+    advise: builtin.Logging.SuccessError = .{},
     /// Report when a reference is created.
     allocate: bool = builtin.logging_general.Acquire,
     /// Report when a reference is modified (move/resize).
@@ -3250,7 +3250,7 @@ const special = opaque {
     fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
         const mmap_prot: mem.Prot = comptime spec.prot();
         const mmap_flags: mem.Map = comptime spec.flags();
-        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
+        const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
             if (logging.Acquire) {
                 debug.mapNotice(addr, len);
@@ -3264,7 +3264,7 @@ const special = opaque {
     }
     fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors, spec.return_type) {
         const mremap_flags: mem.Remap = comptime spec.flags();
-        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+        const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
             if (logging.Success) {
                 debug.moveNotice(old_addr, old_len, new_addr);
@@ -3277,7 +3277,7 @@ const special = opaque {
         }
     }
     fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors, spec.return_type) {
-        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+        const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
             if (logging.Success) {
                 debug.resizeNotice(old_addr, old_len, new_len);
@@ -3290,7 +3290,7 @@ const special = opaque {
         }
     }
     fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
-        const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.override();
+        const logging: builtin.Logging.ReleaseError = comptime spec.logging.override();
         if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
             if (logging.Release) {
                 debug.unmapNotice(addr, len);
@@ -3303,7 +3303,7 @@ const special = opaque {
         }
     }
     fn advise(comptime spec: mem.AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
-        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+        const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
         const advice: mem.Advice = spec.advice();
         if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
             if (logging.Success) {
