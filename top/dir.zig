@@ -25,9 +25,9 @@ pub const DirStreamOptions = struct {
     close_on_deinit: bool = true,
 };
 pub const DirStreamLogging = struct {
-    open: builtin.Logging.AcquireErrorFault = .{},
-    close: builtin.Logging.ReleaseErrorFault = .{},
-    getdents: builtin.Logging.SuccessErrorFault = .{},
+    open: builtin.Logging.AcquireError = .{},
+    close: builtin.Logging.ReleaseError = .{},
+    getdents: builtin.Logging.SuccessError = .{},
 };
 pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
     return (struct {
