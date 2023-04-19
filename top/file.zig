@@ -497,7 +497,7 @@ pub const StatusExtendedSpec = struct {
 pub const SocketSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.socket_errors },
-    logging: builtin.Logging.AcquireErrorFault = .{},
+    logging: builtin.Logging.AcquireError = .{},
     return_type: type = u64,
     const Specification = @This();
     const Options = struct {
@@ -518,7 +518,7 @@ pub const SocketSpec = struct {
 pub const MakeDirSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     const Specification = @This();
 };
 pub const MakePathSpec = struct {
@@ -531,7 +531,7 @@ pub const MakePathSpec = struct {
     };
     const MakePathLogging = struct {
         stat: builtin.Logging.SuccessErrorFault = .{},
-        mkdir: builtin.Logging.SuccessErrorFault = .{},
+        mkdir: builtin.Logging.SuccessError = .{},
     };
     fn stat(comptime spec: MakePathSpec) StatusSpec {
         return .{
@@ -542,8 +542,8 @@ pub const MakePathSpec = struct {
     }
     fn mkdir(comptime spec: MakePathSpec) MakeDirSpec {
         return .{
-            .errors = spec.errors.stat,
-            .logging = spec.logging.stat,
+            .errors = spec.errors.mkdir,
+            .logging = spec.logging.mkdir,
         };
     }
 };
@@ -551,7 +551,7 @@ pub const CreateSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
-    logging: builtin.Logging.AcquireErrorFault = .{},
+    logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
     pub const Options = struct {
         exclusive: bool = true,
@@ -596,7 +596,7 @@ pub const PathSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
-    logging: builtin.Logging.AcquireErrorFault = .{},
+    logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
     const Options = struct {
         directory: bool = true,
@@ -621,13 +621,13 @@ pub const PathSpec = struct {
 pub const MakeNodeSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessErrorFault = .{},
+    logging: builtin.Logging.SuccessError = .{},
     const Specification = @This();
 };
 pub const ExecuteSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
-    logging: builtin.Logging.AttemptErrorFault = .{},
+    logging: builtin.Logging.AttemptError = .{},
     return_type: type = void,
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
@@ -648,7 +648,7 @@ pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.a
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const logging: builtin.Logging.AttemptErrorFault = comptime spec.logging.override();
+    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
     if (logging.Attempt) {
         debug.executeNotice(pathname, args);
     }
