@@ -419,7 +419,9 @@ pub const StatusExtendedSpec = struct {
         no_follow: bool = false,
         empty_path: bool = false,
         no_auto_mount: bool = true,
-        fields: struct {
+        fields: Fields = .{},
+
+        const Fields = packed struct {
             type: bool = true,
             mode: bool = true,
             nlink: bool = true,
@@ -433,7 +435,7 @@ pub const StatusExtendedSpec = struct {
             size: bool = true,
             blocks: bool = true,
             mnt_id: bool = false,
-        },
+        };
     };
     fn flags(comptime statx_spec: Specification) At {
         var flags_bitfield: At = .{ .val = 0 };
