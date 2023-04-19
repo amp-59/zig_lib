@@ -143,7 +143,7 @@ pub const Logging = packed struct {
         Error: bool = logging_default.Fault,
         pub fn override(comptime logging: AttemptError) AttemptError {
             return .{
-                .Attempt = logging_override.Success orelse logging.Success,
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
                 .Error = logging_override.Error orelse logging.Error,
             };
         }
@@ -153,7 +153,7 @@ pub const Logging = packed struct {
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: AttemptFault) AttemptFault {
             return .{
-                .Attempt = logging_override.Success orelse logging.Success,
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
                 .Fault = logging_override.Fault orelse logging.Fault,
             };
         }
