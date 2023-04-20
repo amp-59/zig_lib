@@ -118,7 +118,10 @@ pub const lit_hex_sequences: [256][:0]const u8 = .{
     "\\xf3", "\\xf4", "\\xf5", "\\xf6", "\\xf7", "\\xf8", "\\xf9", "\\xfa", "\\xfb",
     "\\xfc", "\\xfd", "\\xfe", "\\xff",
 };
-pub const Range = extern struct { lower: u8, upper: u8 };
+pub const Range = extern struct {
+    lower: u8,
+    upper: u8,
+};
 pub const character_ranges = struct {
     pub const print: Range = .{ .lower = 0x20, .upper = 0x7e };
     pub const lower: Range = .{ .lower = 0x61, .upper = 0x7a };
@@ -134,6 +137,7 @@ pub const character_classes = struct {
         .{ .lower = 91, .upper = 96 },
         .{ .lower = 123, .upper = 126 },
     };
+    pub const print: [7]Range = alnum ++ punct;
 };
 pub const int_prefixes: [51][]const u8 = [_][:0]const u8{
     "", "", "0b", "", "", "", "", "", "0o", "", "", "", "0d", "", "", "", "0x",
