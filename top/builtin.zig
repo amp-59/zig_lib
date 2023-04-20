@@ -1468,7 +1468,7 @@ pub const debug = opaque {
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
     }
     pub fn writeMany(buf: []u8, s: []const u8) u64 {
-        mach.memcpy(buf.ptr, s.ptr, s.len);
+        @memcpy(buf.ptr, s.ptr, s.len);
         return s.len;
     }
     pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
