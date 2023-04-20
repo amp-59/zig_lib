@@ -145,62 +145,45 @@ const thread_spec: proc.CloneSpec = .{
 fn show(status: Status) void {
     var array: PrintArray = .{};
     if (count_dirs) {
-        array.writeMany(Status.about_dirs_s);
+        array.writeMany(about_dirs_s);
         array.writeFormat(fmt.udh(status.dir_count));
         array.writeOne('\n');
     }
     if (count_files) {
-        array.writeMany(Status.about_files_s);
+        array.writeMany(about_files_s);
         array.writeFormat(fmt.udh(status.file_count));
         array.writeOne('\n');
     }
     if (count_links) {
-        array.writeMany(Status.about_links_s);
+        array.writeMany(about_links_s);
         array.writeFormat(fmt.udh(status.link_count));
         array.writeOne('\n');
     }
     if (track_max_depth) {
-        array.writeMany(Status.about_depth_s);
+        array.writeMany(about_depth_s);
         array.writeFormat(fmt.udh(status.max_depth));
         array.writeOne('\n');
     }
     if (count_errors) {
-        array.writeMany(Status.about_errors_s);
+        array.writeMany(about_errors_s);
         array.writeFormat(fmt.udh(status.errors));
         array.writeOne('\n');
     }
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
-inline fn printIfNAvail(comptime n: usize, allocator: Allocator1, array: Array) u64 {
-    const many: []u8 = array.referManyAt(allocator, array.index(allocator));
-    if (plain_print) {
-        if (many.len > (n -% 1)) {
-            file.write(write_spec, 1, many);
-            if (n == 1) {
-                file.write(write_spec, 1, "\n");
-            }
-            return many.len;
-        }
-    } else {
-        if (many.len > (n -% 1)) {
-            if (n == 1) {
-                file.write(write_spec, 1, many);
-                return many.len;
-            } else if (many[many.len -% 1] == '\n') {
-                file.write(write_spec, 1, many);
-                return many.len;
-            }
-        }
-    }
-    return 0;
-}
 noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *Array) void {
     while (true) {
-        array.stream(printIfNAvail(56, allocator.*, array.*));
+        const many: []u8 = array.referManyAt(allocator.*, array.index(allocator.*));
+        if (many.len > 56) {
+            file.write(write_spec, 1, many);
+            array.stream(many.len);
+        }
         if (done(status)) break;
     }
-    if (array.index(allocator.*) < array.len(allocator.*)) {
-        array.stream(printIfNAvail(1, allocator.*, array.*));
+    const many: []u8 = array.referManyAt(allocator.*, array.index(allocator.*));
+    if (many.len > 56) {
+        file.write(write_spec, 1, many);
+        array.stream(many.len);
     }
     show(status.*);
     status.flag = 0;
