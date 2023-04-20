@@ -95,6 +95,33 @@ pub const reinterpret = struct {
         return rs_1;
     }
 };
+
+pub const channel = struct {
+    pub const errors = struct {
+        pub const zen: zig_lib.file.ChannelSpec.Errors = .{
+            .pipe = .{ .throw = sys.pipe.errors.all },
+            .dup3 = .{ .throw = sys.dup.errors.all },
+            .close = .{ .abort = sys.close.errors.all },
+        };
+        pub const noexcept: zig_lib.file.ChannelSpec.Errors = .{
+            .pipe = .{},
+            .dup3 = .{},
+            .close = .{},
+        };
+    };
+    pub const logging = struct {
+        pub const verbose: zig_lib.file.ChannelSpec.Logging = .{
+            .dup3 = spec.logging.success_error.verbose,
+            .pipe = spec.logging.acquire_error.verbose,
+            .close = spec.logging.release_error.verbose,
+        };
+        pub const silent: zig_lib.file.ChannelSpec.Logging = .{
+            .dup3 = spec.logging.success_error.silent,
+            .pipe = spec.logging.acquire_error.silent,
+            .close = spec.logging.release_error.silent,
+        };
+    };
+};
 pub const builder = struct {
     pub const default: zig_lib.build.BuilderSpec = .{
         .errors = builder.errors.noexcept,
@@ -788,6 +815,13 @@ pub const sys = struct {
         pub const errors = struct {
             pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
+            };
+        };
+    };
+    pub const pipe = struct {
+        pub const errors = struct {
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
+                .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
             };
         };
     };
