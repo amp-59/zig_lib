@@ -25,14 +25,14 @@ fn recursivePrint(comptime T: type) void {
                         "pub const ",
                         fmt.IdentifierFormat{ .value = decl.name },
                         ": " ++ @typeName(I) ++ " = ",
-                        fmt.ux(@bitCast(I, field)),
+                        fmt.ub(@bitCast(I, field)),
                         ";\n",
                     });
                     file.write(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .ComptimeInt => {
                     const int_fmt = blk_0: {
-                        const tmp_0 = fmt.ux(@as(comptime_int, field));
+                        const tmp_0 = fmt.ub(@as(comptime_int, field));
                         const IntFmt = fmt.PolynomialFormat(blk_1: {
                             var tmp_1 = @TypeOf(tmp_0).fmt_spec;
                             tmp_1.width = .min;
@@ -85,5 +85,5 @@ pub fn main() void {
     recursivePrint(srg.spec.allocator);
     recursivePrint(srg.spec.dir);
     recursivePrint(srg.spec.sys);
-    recursivePrint(srg.sys);
+    recursivePrint(srg.sys.POLL);
 }
