@@ -96,12 +96,11 @@ fn done(status: *const volatile Status) bool {
 }
 // user config begin
 const max_pathname_args: u16 = 128;
-const plain_print: bool = false;
 const read_link: bool = true;
-const count_files: bool = false;
-const count_dirs: bool = false;
-const count_links: bool = false;
-const count_errors: bool = false;
+const count_files: bool = true;
+const count_dirs: bool = true;
+const count_links: bool = true;
+const count_errors: bool = true;
 const compact_arrows: bool = true;
 const track_max_depth: bool = false;
 const quit_on_error: bool = false;
