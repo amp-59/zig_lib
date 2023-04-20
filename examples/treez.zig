@@ -229,85 +229,15 @@ fn writeReadLink(
     }
 }
 fn getSymbol(kind: file.Kind) [:0]const u8 {
-    if (plain_print) {
-        switch (kind) {
-            .regular => return "f\x00",
-            .directory => return "d\x00",
-            .symbolic_link => return "L\x00",
-            .block_special => return "b\x00",
-            .character_special => return "c\x00",
-            .named_pipe => return "p\x00",
-            .socket => return "S\x00",
-            .unknown => unreachable,
-        }
-    } else {
-        switch (kind) {
-            .regular => return "f ",
-            .directory => return "d ",
-            .symbolic_link => return "L ",
-            .block_special => return "b ",
-            .character_special => return "c ",
-            .named_pipe => return "p ",
-            .socket => return "S ",
-            .unknown => unreachable,
-        }
-    }
-}
-fn writeAndWalkPlain(
-    allocator_0: *Allocator0,
-    allocator_1: *Allocator1,
-    array: *Array,
-    alts_buf: *PrintArray,
-    link_buf: *PrintArray,
-    status: *volatile Status,
-    dir_fd: ?u64,
-    name: [:0]const u8,
-    depth: u64,
-) !void {
-    const need_separator: bool = name[name.len -% 1] != '/';
-    alts_buf.writeMany(name);
-    if (need_separator) {
-        alts_buf.writeOne('/');
-    }
-    defer alts_buf.undefine(name.len + builtin.int(u64, need_separator));
-    var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
-    defer dir.deinit(allocator_0);
-    var list: DirStream.ListView = dir.list();
-    var index: u64 = 1;
-    while (list.at(index)) |entry| : (index +%= 1) {
-        switch (entry.kind()) {
-            .symbolic_link => |kind| {
-                if (count_links) {
-                    status.link_count +%= 1;
-                }
-                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
-                try writeReadLink(allocator_1, array, link_buf, status, dir.fd, entry.name());
-            },
-            .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
-                if (count_files) {
-                    status.file_count +%= 1;
-                }
-                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
-            },
-            .directory => |kind| {
-                if (count_dirs) {
-                    status.dir_count +%= 1;
-                }
-                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ getSymbol(kind), alts_buf.readAll(), entry.name(), 0 });
-                if (track_max_depth) {
-                    status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
-                }
-                writeAndWalkPlain(allocator_0, allocator_1, array, alts_buf, link_buf, status, dir.fd, entry.name(), depth +% 1) catch |any_error| {
-                    if (quit_on_error) {
-                        return any_error;
-                    }
-                    if (count_errors) {
-                        status.errors +%= 1;
-                    }
-                };
-            },
-            .unknown => unreachable,
-        }
+    switch (kind) {
+        .regular => return "f ",
+        .directory => return "d ",
+        .symbolic_link => return "L ",
+        .block_special => return "b ",
+        .character_special => return "c ",
+        .named_pipe => return "p ",
+        .socket => return "S ",
+        .unknown => unreachable,
     }
 }
 fn writeAndWalk(
