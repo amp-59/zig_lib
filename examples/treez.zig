@@ -108,11 +108,11 @@ const print_in_second_thread: bool = true;
 
 // config constants derived from above options
 const what_s: [:0]const u8 = if (compact_arrows) "?" else "???";
-const endl_s: [:0]const u8 = if (plain_print) "\x00" else "\n";
+const endl_s: [:0]const u8 = "\n";
 const del_s: [:0]const u8 = if (compact_arrows) "\x08\x08" else "\x08\x08\x08\x08";
 const spc_s: [:0]const u8 = if (compact_arrows) "  " else "    ";
 const bar_s: [:0]const u8 = if (compact_arrows) "| " else "|   ";
-const links_to_s: [:0]const u8 = if (plain_print) "\x00L\x00" else if (compact_arrows) " -> " else " --> ";
+const links_to_s: [:0]const u8 = if (compact_arrows) " -> " else " --> ";
 const file_arrow_s: [:0]const u8 = del_s ++ if (compact_arrows) "|-> " else "|---> ";
 const last_file_arrow_s: [:0]const u8 = del_s ++ if (compact_arrows) "`-> " else "`---> ";
 const link_arrow_s: [:0]const u8 = file_arrow_s;
