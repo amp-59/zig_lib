@@ -118,14 +118,14 @@ pub const lit_hex_sequences: [256][:0]const u8 = .{
     "\\xf3", "\\xf4", "\\xf5", "\\xf6", "\\xf7", "\\xf8", "\\xf9", "\\xfa", "\\xfb",
     "\\xfc", "\\xfd", "\\xfe", "\\xff",
 };
-const Range = extern struct { lower: u8, upper: u8 };
-pub const character_ranges = opaque {
+pub const Range = extern struct { lower: u8, upper: u8 };
+pub const character_ranges = struct {
     pub const print: Range = .{ .lower = 0x20, .upper = 0x7e };
     pub const lower: Range = .{ .lower = 0x61, .upper = 0x7a };
     pub const upper: Range = .{ .lower = 0x41, .upper = 0x5a };
     pub const digit: Range = .{ .lower = 0x30, .upper = 0x39 };
 };
-pub const character_classes = opaque {
+pub const character_classes = struct {
     pub const alpha: [2]Range = .{ character_ranges.upper, character_ranges.lower };
     pub const alnum: [3]Range = .{ character_ranges.upper, character_ranges.lower, character_ranges.digit };
     pub const punct: [4]Range = .{
@@ -140,10 +140,10 @@ pub const int_prefixes: [51][]const u8 = [_][:0]const u8{
     "", "", "",   "", "", "", "", "", "",   "", "", "", "",   "", "", "", "",
     "", "", "0z", "", "", "", "", "", "",   "", "", "", "",   "", "", "", "",
 };
-pub const fx = opaque {
+pub const fx = struct {
     pub const none: [:0]const u8 = "\x1b\x5b\x30\x6d";
-    pub const color = opaque {
-        pub const fg = opaque {
+    pub const color = struct {
+        pub const fg = struct {
             pub const black: [:0]const u8 = "\x1b\x5b\x33\x30\x6d";
             pub const red: [:0]const u8 = "\x1b\x5b\x33\x31\x6d";
             pub const green: [:0]const u8 = "\x1b\x5b\x33\x32\x6d";
@@ -170,7 +170,7 @@ pub const fx = opaque {
                 return mcode(.{ 38, 5, 255 - @min(23, index) });
             }
         };
-        pub const bg = opaque {
+        pub const bg = struct {
             pub const black: [:0]const u8 = "\x1b\x5b\x34\x30\x6d";
             pub const red: [:0]const u8 = "\x1b\x5b\x34\x31\x6d";
             pub const green: [:0]const u8 = "\x1b\x5b\x34\x32\x6d";
@@ -188,7 +188,7 @@ pub const fx = opaque {
             pub const hi_white: [:0]const u8 = "\x1b\x5b\x31\x30\x37\x6d";
         };
     };
-    pub const style = opaque {
+    pub const style = struct {
         pub const bold: [:0]const u8 = "\x1b\x5b\x31\x6d";
         pub const faint: [:0]const u8 = "\x1b\x5b\x32\x6d";
         pub const italic: [:0]const u8 = "\x1b\x5b\x33\x6d";
@@ -206,7 +206,7 @@ pub const fx = opaque {
     }
 };
 pub const whitespace = [_]u8{ ' ', '\t', '\n', '\r', 0x0b, 0x0a };
-pub const ctrl = opaque {
+pub const ctrl = struct {
     pub const start_of_heading: u8 = 0x1;
     pub const start_of_text: u8 = 0x2;
     pub const end_of_text: u8 = 0x03;
@@ -240,7 +240,7 @@ pub const ctrl = opaque {
     pub const unit_separator: u8 = 0x1f;
     pub const white_space: u8 = 0x20;
 };
-pub const position = opaque {
+pub const position = struct {
     pub const ask: [4]u8 = .{ 0x1b, 0x5b, 0x36, 0x6e };
     pub const save: [3]u8 = .{ 0x1b, 0x5b, 0x73 };
     pub const restore: [3]u8 = .{ 0x1b, 0x5b, 0x75 };
@@ -249,7 +249,7 @@ pub const position = opaque {
     pub const right: [3]u8 = .{ 0x1b, 0x5b, 0x43 };
     pub const left: [3]u8 = .{ 0x1b, 0x5b, 0x44 };
 };
-pub const kill = opaque {
+pub const kill = struct {
     pub const screen_bare: [3]u8 = .{ 0x1b, 0x5b, 0x4a };
     pub const screen_down: [4]u8 = .{ 0x1b, 0x5b, 0x30, 0x4a };
     pub const screen_up: [4]u8 = .{ 0x1b, 0x5b, 0x31, 0x4a };
@@ -260,7 +260,7 @@ pub const kill = opaque {
     pub const line: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x4b };
     pub const back: [1]u8 = .{0x8};
 };
-const key = opaque {
+const key = struct {
     pub const home: [3]u8 = .{ 0x1b, 0x5b, 0x48 };
     pub const end: [3]u8 = .{ 0x1b, 0x5b, 0x46 };
     pub const insert: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x7e };
