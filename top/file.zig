@@ -819,6 +819,32 @@ pub const DuplicateSpec = struct {
         return ret;
     }
 };
+pub const PollSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.poll_errors },
+    logging: builtin.Logging.AcquireError = .{},
+};
+
+pub const Events = packed struct(u16) {
+    input: bool = false,
+    priority: bool = false,
+    output: bool = false,
+    @"error": bool = false,
+    hangup: bool = false,
+    invalid: bool = false,
+    other: u10 = 0,
+};
+pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, void) {
+    if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ @ptrToInt(fds.ptr), fds.len, timeout }))) {
+        //
+    } else |poll_error| {
+        return poll_error;
+    }
+}
+pub const PollFd = struct {
+    fd: u32,
+    expect: Events,
+    actual: Events = .{},
+};
 pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, spec.return_type) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
     const read_count_mul: u64 = @sizeOf(spec.child);
