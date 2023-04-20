@@ -185,7 +185,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .options = spec.allocator.options.small_composed,
         });
         pub const Args = Allocator.StructuredVectorLowAlignedWithSentinel(u8, 0, 8);
-
+        pub usingnamespace decls;
         pub const Target = struct {
             name: [:0]const u8,
             descr: ?[:0]const u8 = null,
@@ -790,22 +790,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return false;
         }
         const decls = struct {
-            const path_spec: file.PathSpec = builder_spec.path();
-            const close_spec: file.CloseSpec = builder_spec.close();
-            const map_spec: mem.MapSpec = builder_spec.map();
-            const stat_spec: file.StatusSpec = builder_spec.stat();
-            const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
-            const clock_spec: time.ClockSpec = builder_spec.clock();
-            const sleep_spec: time.SleepSpec = builder_spec.sleep();
-            const clone_spec: proc.CloneSpec = builder_spec.clone();
-            const write_spec: file.WriteSpec = builder_spec.write();
-            const create_spec: file.CreateSpec = builder_spec.create();
-            const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
-            const fork_spec: proc.ForkSpec = builder_spec.fork();
-            const execve_spec: file.ExecuteSpec = builder_spec.execve();
-            const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
-            const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
-            const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
+            pub const path_spec: file.PathSpec = builder_spec.path();
+            pub const close_spec: file.CloseSpec = builder_spec.close();
+            pub const map_spec: mem.MapSpec = builder_spec.map();
+            pub const stat_spec: file.StatusSpec = builder_spec.stat();
+            pub const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
+            pub const clock_spec: time.ClockSpec = builder_spec.clock();
+            pub const sleep_spec: time.SleepSpec = builder_spec.sleep();
+            pub const clone_spec: proc.CloneSpec = builder_spec.clone();
+            pub const write_spec: file.WriteSpec = builder_spec.write();
+            pub const create_spec: file.CreateSpec = builder_spec.create();
+            pub const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
+            pub const fork_spec: proc.ForkSpec = builder_spec.fork();
+            pub const execve_spec: file.ExecuteSpec = builder_spec.execve();
+            pub const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
+            pub const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
+            pub const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
 
             const command_spec: proc.CommandSpec = .{
                 .errors = .{
