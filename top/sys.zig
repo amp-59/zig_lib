@@ -496,12 +496,16 @@ pub const UFFD = struct {
     };
 };
 pub const POLL = struct {
-    pub const HUP: usize = 0x6;
-    pub const ERR: usize = 0x4;
-    pub const IN: usize = 0x1;
-    pub const OUT: usize = 0x2;
-    pub const MSG: usize = 0x3;
-    pub const PRI: usize = 0x5;
+    pub const IN: u64 = 0b0000000001;
+    pub const PRI: u64 = 0b0000000010;
+    pub const OUT: u64 = 0b0000000100;
+    pub const ERR: u64 = 0b0000001000;
+    pub const HUP: u64 = 0b0000010000;
+    pub const NVAL: u64 = 0b0000100000;
+    pub const RDNORM: u64 = 0b0001000000;
+    pub const RDBAND: u64 = 0b0010000000;
+    pub const WRNORM: u64 = 0b0100000000;
+    pub const WRBAND: u64 = 0b1000000000;
 };
 pub const PERF = struct {
     pub const SAMPLE_BRANCH = struct {
@@ -1855,6 +1859,7 @@ pub const Fn = enum(u9) {
             .unlinkat,
             .mkdirat,
             .open_by_handle_at,
+            .poll,
             => 3,
 
             .newfstatat,
@@ -1920,6 +1925,9 @@ pub const dup_errors: []const ErrorCode = &[_]ErrorCode{
 };
 pub const pipe_errors: []const ErrorCode = &[_]ErrorCode{
     .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
+};
+pub const poll_errors: []const ErrorCode = &[_]ErrorCode{
+    .FAULT, .INTR, .INVAL, .NOMEM,
 };
 pub const ioctl_errors: []const ErrorCode = &[_]ErrorCode{
     .NOTTY, .BADF, .FAULT, .INVAL,
