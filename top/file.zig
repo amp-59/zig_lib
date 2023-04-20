@@ -62,6 +62,20 @@ pub const Mode = packed struct(u16) {
     set_uid: bool = false,
     kind: Kind = .regular,
 };
+pub const Events = packed struct(u16) {
+    input: bool = false,
+    priority: bool = false,
+    output: bool = false,
+    @"error": bool = false,
+    hangup: bool = false,
+    invalid: bool = false,
+    other: u10 = 0,
+};
+pub const PollFd = struct {
+    fd: u32,
+    expect: Events,
+    actual: Events = .{},
+};
 pub const Term = opaque {
     pub const Input = meta.EnumBitField(enum(u32) {
         ignore_break = IN.IGNBRK,
@@ -391,6 +405,10 @@ pub const WriteSpec = struct {
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
     logging: builtin.Logging.SuccessError = .{},
+};
+pub const PollSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.poll_errors },
+    logging: builtin.Logging.AcquireError = .{},
 };
 pub const StatusSpec = struct {
     options: Options = .{},
@@ -819,20 +837,6 @@ pub const DuplicateSpec = struct {
         return ret;
     }
 };
-pub const PollSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.poll_errors },
-    logging: builtin.Logging.AcquireError = .{},
-};
-
-pub const Events = packed struct(u16) {
-    input: bool = false,
-    priority: bool = false,
-    output: bool = false,
-    @"error": bool = false,
-    hangup: bool = false,
-    invalid: bool = false,
-    other: u10 = 0,
-};
 pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, void) {
     if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ @ptrToInt(fds.ptr), fds.len, timeout }))) {
         //
@@ -840,11 +844,7 @@ pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(
         return poll_error;
     }
 }
-pub const PollFd = struct {
-    fd: u32,
-    expect: Events,
-    actual: Events = .{},
-};
+
 pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, spec.return_type) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
     const read_count_mul: u64 = @sizeOf(spec.child);
