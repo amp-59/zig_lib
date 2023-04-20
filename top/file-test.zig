@@ -1,5 +1,6 @@
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
+const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const time = @import("./time.zig");
@@ -11,7 +12,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
@@ -128,8 +129,8 @@ fn testFileOperationsRound2() !void {
 
     const new_in_fd: u64 = try file.duplicate(.{}, 0);
     try file.write(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
-    const new_new_in_fd: u64 = try file.duplicateTo(.{}, 7, 8);
-    try file.write(.{}, new_new_in_fd, builtin.fmt.ud64(new_new_in_fd).readAll());
+    try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
+    try file.write(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
 
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
@@ -169,35 +170,42 @@ fn testPackedModeStruct() !void {
     try file.unlink(unlink_spec, "./0123456789");
     try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
 }
-
-pub fn testPipe(args: [][*:0]u8) !void {
-    var pipefd: file.Pipe = undefined;
-    try file.makePipe(pipe_spec, &pipefd);
-    const cpid: u64 = try proc.fork(.{});
-    if (cpid == 0) {
-        var buf: [4096]u8 = undefined;
-        var len: u64 = 0;
-        len +%= file.read(read_spec, pipefd.read, &buf, buf.len);
-        try file.write(.{}, pipefd.write, buf[0..len]);
-        buf[len] = '\n';
-        len +%= 1;
-        buf[len] = 0;
-        try file.close(close_spec, pipefd.write);
-        try file.close(close_spec, pipefd.read);
+fn testStandardChannel() !void {
+    const Channel = file.GenericChannel(.{
+        .errors = spec.channel.errors.noexcept,
+        .logging = spec.channel.logging.silent,
+    });
+    var chan: Channel = Channel.init();
+    const pid: u64 = try proc.fork(.{});
+    if (pid == 0) {
+        try meta.wrap(file.close(Channel.decls.close_spec, chan.in.write));
+        try meta.wrap(file.close(Channel.decls.close_spec, chan.out.read));
+        try meta.wrap(file.close(Channel.decls.close_spec, chan.err.read));
+        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, chan.in.read, 0));
+        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, chan.out.write, 1));
+        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, chan.out.write, 2));
+        var i_array: mem.StaticString(4096) = undefined;
+        i_array.undefineAll();
+        var o_array: mem.StaticString(4096) = undefined;
+        o_array.undefineAll();
+        i_array.define(try file.read(.{}, 0, i_array.referAllUndefined(), i_array.avail()));
+        o_array.writeAny(spec.reinterpret.fmt, .{ "msg: ", i_array.readAll(), ", len: ", fmt.ud64(i_array.len()), '\n' });
+        try file.write(.{}, chan.out.write, o_array.readAll());
         builtin.proc.exit(0);
     } else {
-        const arg: []const u8 = meta.manyToSlice(args[0]);
-        var buf: [4096]u8 = undefined;
-        var len: u64 = 0;
-        file.write(write_spec, pipefd.write, arg);
-        len +%= file.read(read_spec, pipefd.read, &buf, buf.len);
-        try file.close(close_spec, pipefd.read);
-        try file.close(close_spec, pipefd.write);
+        try meta.wrap(file.close(Channel.decls.close_spec, chan.in.read));
+        try meta.wrap(file.close(Channel.decls.close_spec, chan.out.write));
+        try meta.wrap(file.close(Channel.decls.close_spec, chan.err.write));
+        var i_array: mem.StaticString(4096) = undefined;
+        i_array.undefineAll();
+        try file.write(.{}, chan.in.write, "message");
+        i_array.define(try file.read(.{}, chan.out.read, i_array.referAllUndefined(), i_array.avail()));
+        try file.write(.{}, 1, i_array.readAll());
     }
 }
-pub fn main(args: anytype) !void {
+pub fn main() !void {
+    try meta.wrap(testStandardChannel());
     try meta.wrap(testStatusExtended());
-    try meta.wrap(testPipe(args));
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testSocketOpenAndClose());
