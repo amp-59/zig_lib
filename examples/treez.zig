@@ -251,6 +251,8 @@ fn writeAndWalk(
     name: [:0]const u8,
     depth: u64,
 ) !void {
+    const save: Allocator0.Save = allocator_0.save();
+    defer allocator_0.restore(save);
     var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
     defer dir.deinit(allocator_0);
     var list: DirStream.ListView = dir.list();
@@ -316,67 +318,38 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(allocator_1.map(32768));
     for (names.readAll()) |arg| {
         var status: Status = .{};
-        var alts_buf: PrintArray = undefined;
-        alts_buf.undefineAll();
-        var link_buf: PrintArray = undefined;
-        link_buf.undefineAll();
         var array: Array = Array.init(&allocator_1);
+        var alts_buf: PrintArray = undefined;
+        var link_buf: PrintArray = undefined;
+        alts_buf.undefineAll();
+        link_buf.undefineAll();
         defer array.deinit(&allocator_1);
-        try meta.wrap(array.appendMany(&allocator_1, arg));
-        try meta.wrap(array.appendMany(&allocator_1, if (arg[arg.len -% 1] != '/') "/\n" else "\n"));
-        if (plain_print) {
-            if (print_in_second_thread) {
-                var tid: u64 = undefined;
-                var stack_buf: [16384]u8 align(16) = undefined;
-                const stack_addr: u64 = @ptrToInt(&stack_buf);
-                tid = proc.callClone(thread_spec, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
-                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
-                    &allocator_0, &allocator_1, &array,
-                    &alts_buf,    &link_buf,    &status,
-                    null,         arg,          0,
-                }) catch if (count_errors) {
-                    status.errors +%= 1;
-                };
-                status.flag = 255;
-                mem.monitor(u8, &status.flag);
-                thread.unmap(.{ .errors = .{} }, 8);
-            } else {
-                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
-                    &allocator_0, &allocator_1, &array,
-                    &alts_buf,    &link_buf,    &status,
-                    null,         arg,          0,
-                }) catch {
-                    status.errors +%= 1;
-                };
-                builtin.debug.write(array.readAll(allocator_1));
-                show(status);
-            }
+        array.writeMany(arg);
+        array.writeMany(if (arg[arg.len -% 1] != '/') "/\n" else "\n");
+        mach.memset(alts_buf.referManyAt(0).ptr, ' ', 4096);
+        if (print_in_second_thread) {
+            var tid: u64 = undefined;
+            var stack_buf: [16384]u8 align(16) = undefined;
+            const stack_addr: u64 = @ptrToInt(&stack_buf);
+            tid = proc.callClone(thread_spec, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
+            @call(.auto, writeAndWalk, .{
+                &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
+                &status,      null,         arg,    0,
+            }) catch if (count_errors) {
+                status.errors +%= 1;
+            };
+            status.flag = 255;
+            mem.monitor(u8, &status.flag);
+            thread.unmap(.{ .errors = .{} }, 8);
         } else {
-            mach.memset(alts_buf.referManyAt(0).ptr, ' ', 4096);
-            if (print_in_second_thread) {
-                var tid: u64 = undefined;
-                var stack_buf: [16384]u8 align(16) = undefined;
-                const stack_addr: u64 = @ptrToInt(&stack_buf);
-                tid = proc.callClone(thread_spec, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
-                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
-                    &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
-                    &status,      null,         arg,    0,
-                }) catch if (count_errors) {
-                    status.errors +%= 1;
-                };
-                status.flag = 255;
-                mem.monitor(u8, &status.flag);
-                thread.unmap(.{ .errors = .{} }, 8);
-            } else {
-                @call(.auto, if (plain_print) writeAndWalkPlain else writeAndWalk, .{
-                    &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
-                    &status,      null,         arg,    0,
-                }) catch if (count_errors) {
-                    status.errors +%= 1;
-                };
-                builtin.debug.write(array.readAll(allocator_1));
-                show(status);
-            }
+            @call(.auto, writeAndWalk, .{
+                &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
+                &status,      null,         arg,    0,
+            }) catch if (count_errors) {
+                status.errors +%= 1;
+            };
+            builtin.debug.write(array.readAll(allocator_1));
+            show(status);
         }
     }
 }
