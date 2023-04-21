@@ -285,3 +285,18 @@ pub const ErrorMessageList = struct {
     };
     pub const len: u64 = 3;
 };
+pub const SourceLocation = struct {
+    src_path: u32,
+    line: u32,
+    column: u32,
+    span_start: u32,
+    span_main: u32,
+    span_end: u32,
+    src_line: u32 = 0,
+    ref_len: u32 = 0,
+    pub const Extra = struct {
+        data: *SourceLocation,
+        end: u64,
+    };
+    pub const len: u64 = 8;
+};
