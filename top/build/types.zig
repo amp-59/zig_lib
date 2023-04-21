@@ -275,3 +275,13 @@ pub const ServerMessage = extern struct {
     }
     pub const len: u64 = @sizeOf(@This());
 };
+pub const ErrorMessageList = struct {
+    len: u32,
+    start: u32,
+    compile_log_text: u32,
+    pub const Extra = struct {
+        data: *ErrorMessageList,
+        end: u64,
+    };
+    pub const len: u64 = 3;
+};
