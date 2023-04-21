@@ -300,3 +300,14 @@ pub const SourceLocation = struct {
     };
     pub const len: u64 = 8;
 };
+pub const ErrorMessage = struct {
+    start: u32,
+    count: u32 = 1,
+    src_loc: u32 = 0,
+    notes_len: u32 = 0,
+    pub const Extra = struct {
+        data: *ErrorMessage,
+        end: u64,
+    };
+    pub const len: u64 = 4;
+};
