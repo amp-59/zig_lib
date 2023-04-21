@@ -143,6 +143,7 @@ pub const builder = struct {
             .create = .{},
             .mkdir = .{},
             .close = .{},
+            .poll = .{},
             .stat = .{},
         };
         pub const zen: zig_lib.build.BuilderSpec.Errors = .{
@@ -160,6 +161,7 @@ pub const builder = struct {
             .sleep = .{ .throw = sys.nanosleep.errors.all },
             .create = .{ .throw = sys.open.errors.all },
             .mkdir = .{ .throw = sys.mkdir.errors.noexcl },
+            .poll = .{ .throw = sys.poll.errors.all },
             .close = .{ .abort = sys.close.errors.all },
         };
         pub const critical: zig_lib.build.BuilderSpec.Errors = add(zen, .{
@@ -391,6 +393,11 @@ pub const dir = struct {
             .close = .{},
             .getdents = .{},
         };
+        pub const critical: zig_lib.file.DirStreamErrors = .{
+            .open = .{ .throw = sys.open.errors.all },
+            .close = .{ .throw = sys.open.errors.all },
+            .getdents = .{ .throw = sys.getdents.errors.all },
+        };
     };
 };
 pub const allocator = struct {
@@ -539,7 +546,7 @@ pub usingnamespace sys;
 pub const sys = struct {
     pub const mmap = struct {
         pub const options = struct {
-            pub const object: zig_lib.file.MapSpec.Options = .{
+            pub const executable: zig_lib.file.MapSpec.Options = .{
                 .visibility = .private,
                 .read = true,
                 .write = false,
@@ -547,7 +554,7 @@ pub const sys = struct {
                 .populate = true,
                 .sync = false,
             };
-            pub const file: zig_lib.file.MapSpec.Options = .{
+            pub const regular: zig_lib.file.MapSpec.Options = .{
                 .visibility = .shared,
                 .read = true,
                 .write = true,
