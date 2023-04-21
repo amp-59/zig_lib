@@ -591,6 +591,24 @@ comptime {
         \\  ret
     );
 }
+pub fn manyToSlice80(str: [*]u8) [:0]u8 {
+    @setRuntimeSafety(false);
+    return str[0..strlen(str) :0];
+}
+extern fn strlen(str: [*]u8) callconv(.C) u64;
+comptime {
+    asm (
+        \\  .intel_syntax noprefix
+        \\strlen:
+        \\  mov     rax, -1
+        \\0:
+        \\  cmp     byte ptr [rdi + rax + 1], 0
+        \\  lea     rax, [rax + 1]
+        \\  jne     0b
+        \\  ret
+        \\
+    );
+}
 extern fn __zig_probe_stack() callconv(.C) void;
 comptime {
     asm (
