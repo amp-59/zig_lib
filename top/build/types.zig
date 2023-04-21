@@ -311,3 +311,12 @@ pub const ErrorMessage = struct {
     };
     pub const len: u64 = 4;
 };
+pub const ReferenceTrace = struct {
+    decl_name: u32,
+    src_loc: u32,
+    pub const Extra = struct {
+        data: *ReferenceTrace,
+        end: u64,
+    };
+    pub const len: u64 = 2;
+};
