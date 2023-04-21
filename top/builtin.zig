@@ -64,7 +64,6 @@ pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: 
         }
     }
 }
-//
 /// `S` must be a container type.
 pub inline fn setErrorPolicy(
     comptime S: type,
@@ -1446,7 +1445,7 @@ pub const debug = opaque {
     }
     pub fn write(buf: []const u8) void {
         asm volatile (
-            \\syscall
+            \\syscall # write
             :
             : [_] "{rax}" (1), // linux sys_write
               [_] "{rdi}" (2), // stderr
@@ -1454,6 +1453,21 @@ pub const debug = opaque {
               [_] "{rdx}" (buf.len),
             : "rcx", "r11", "memory", "rax"
         );
+    }
+    pub fn read(comptime n: u64) struct { buf: [n]u8, len: u64 } {
+        var buf: [n]u8 = undefined;
+        return .{
+            .buf = buf,
+            .len = asm volatile (
+                \\syscall # read
+                : [_] "={rax}" (-> usize),
+                : [_] "{rax}" (0), // linux sys_read
+                  [_] "{rdi}" (0), // stdin
+                  [_] "{rsi}" (&buf),
+                  [_] "{rdx}" (buf.len),
+                : "rcx", "r11", "memory"
+            ),
+        };
     }
     inline fn name(buf: []u8) u64 {
         const rc: i64 = asm volatile (
