@@ -320,3 +320,10 @@ pub const ReferenceTrace = struct {
     };
     pub const len: u64 = 2;
 };
+pub const EmitBinPath = extern struct {
+    flags: Flags,
+    pub const Flags = packed struct(u8) {
+        cache_hit: bool,
+        reserved: u7 = 0,
+    };
+};
