@@ -266,6 +266,9 @@ pub const Logging = packed struct {
             };
         }
     };
+    pub fn Field(comptime Spec: type) type {
+        return @TypeOf(@field(@as(Spec, undefined), "logging"));
+    }
 };
 
 pub fn define(
