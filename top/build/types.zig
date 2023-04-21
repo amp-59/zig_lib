@@ -24,20 +24,6 @@ pub const state_list: []const State = meta.tagList(State);
 pub const task_list: []const Task = meta.tagList(Task);
 pub const Lock = mem.ThreadSafeSet(state_list.len, State, Task);
 
-pub const Message = struct {
-    pub const Header = extern struct {
-        tag: Tag,
-        bytes_len: u32,
-    };
-    pub const Tag = enum(u32) {
-        exit,
-        update,
-        run,
-        hot_update,
-        query_test_metadata,
-        run_test,
-    };
-};
 pub const Path = struct {
     absolute: [:0]const u8,
     relative: ?[:0]const u8 = null,
@@ -227,4 +213,65 @@ pub const Files = struct {
         }
         return len;
     }
+};
+
+pub const Errors = struct {
+    extra: []u32,
+    bytes: []u8,
+    pub const Header = extern struct {
+        extra_len: u32,
+        bytes_len: u32,
+    };
+    pub fn extraData(errors: Errors, comptime T: type, index: usize) T.Extra {
+        @setRuntimeSafety(false);
+        return .{
+            .data = @ptrCast(*T, errors.extra[index..].ptr),
+            .end = index +% T.len,
+        };
+    }
+};
+pub const ClientMessage = extern struct {
+    tag: Tag,
+    bytes_len: u32,
+    pub const Tag = enum(u32) {
+        exit,
+        update,
+        run,
+        hot_update,
+        query_test_metadata,
+        run_test,
+    };
+};
+pub const ServerMessage = extern struct {
+    tag: Tag,
+    bytes_len: u32,
+    pub const Tag = enum(u32) {
+        zig_version,
+        error_bundle,
+        progress,
+        emit_bin_path,
+        test_metadata,
+        test_results,
+    };
+    pub fn version(message: *ServerMessage) [:0]const u8 {
+        @setRuntimeSafety(false);
+        const string_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage);
+        return @intToPtr([*:0]u8, string_addr)[0..message.bytes_len :0];
+    }
+    pub fn pathname(message: *ServerMessage) [:0]const u8 {
+        @setRuntimeSafety(false);
+        const string_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage) +% 1;
+        return meta.manyToSlice(@intToPtr([*:0]u8, string_addr));
+    }
+    pub fn errors(message: *ServerMessage) Errors {
+        @setRuntimeSafety(false);
+        const hdr_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage);
+        const data_addr: u64 = hdr_addr +% @sizeOf(Errors.Header);
+        const errors_header: *Errors.Header = @intToPtr(*Errors.Header, hdr_addr);
+        return .{
+            .extra = @intToPtr([*]u32, data_addr)[0..errors_header.extra_len],
+            .bytes = @intToPtr([*]u8, data_addr +% errors_header.extra_len *% 4)[0..errors_header.bytes_len],
+        };
+    }
+    pub const len: u64 = @sizeOf(@This());
 };
