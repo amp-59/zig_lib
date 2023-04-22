@@ -839,23 +839,13 @@ pub const DuplicateSpec = struct {
         return ret;
     }
 };
-pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, void) {
-    if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ @ptrToInt(fds.ptr), fds.len, timeout }))) {
-        if (poll_spec.logging.Success) {
-            debug.pollNotice(fds);
-        }
-    } else |poll_error| {
-        return poll_error;
-    }
-}
-
-pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count: u64) sys.Call(spec.errors, spec.return_type) {
-    const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
+pub fn readMany(comptime spec: ReadSpec, fd: u64, read_buf: [*]spec.child, read_count: u64) sys.Call(spec.errors, spec.return_type) {
+    const read_buf_addr: u64 = @ptrToInt(read_buf);
     const read_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_count *% read_count_mul }))) |ret| {
         if (logging.Success) {
-            debug.readNotice(fd, read_count, ret);
+            debug.readNotice(fd, read_count *% read_count_mul, ret);
         }
         if (spec.return_type != void) {
             return @intCast(spec.return_type, @divExact(ret, read_count_mul));
@@ -867,11 +857,19 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count
         return read_error;
     }
 }
-pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.Call(spec.errors, spec.return_type) {
-    const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
+pub inline fn readOne(comptime spec: ReadSpec, fd: u64, read_buf: *spec.child) sys.Call(spec.errors, spec.return_type) {
+    return readMany(spec, fd, @ptrCast([*]spec.child, read_buf), 1);
+}
+pub inline fn readSlice(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.Call(spec.errors, spec.return_type) {
+    return readMany(spec, fd, read_buf.ptr, read_buf.len);
+}
+pub const read = readMany;
+
+pub fn writeMany(comptime spec: WriteSpec, fd: u64, write_buf: [*]const spec.child, write_count: u64) sys.Call(spec.errors, spec.return_type) {
+    const write_buf_addr: u64 = @ptrToInt(write_buf);
     const write_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len *% write_count_mul }))) |ret| {
+    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_count *% write_count_mul }))) |ret| {
         if (logging.Success) {
             debug.writeNotice(fd, ret);
         }
@@ -885,6 +883,14 @@ pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) s
         return write_error;
     }
 }
+pub inline fn writeOne(comptime spec: WriteSpec, fd: u64, write_val: spec.child) sys.Call(spec.errors, spec.return_type) {
+    return writeMany(spec, fd, @ptrCast([*]const spec.child, &write_val), 1);
+}
+pub inline fn writeSlice(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.Call(spec.errors, spec.return_type) {
+    return writeMany(spec, fd, write_buf.ptr, write_buf.len);
+}
+pub const write = writeMany;
+
 pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
