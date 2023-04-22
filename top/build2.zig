@@ -1307,7 +1307,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
             @setRuntimeSafety(false);
-            const s_ab_addr: u64 = allocateInternal(allocator, count, @sizeOf(T), @alignOf(T));
+            const s_ab_addr: u64 = allocateInternal(allocator, count, @sizeOf(T), @max(@alignOf(T), 8));
             return mem.pointerSlice(T, s_ab_addr, count);
         }
         fn create(allocator: *Allocator, comptime T: type) *T {
