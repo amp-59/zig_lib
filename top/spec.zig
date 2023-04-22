@@ -9,6 +9,8 @@ const zig_lib = struct {
 };
 const spec = @This();
 
+pub usingnamespace sys;
+
 pub fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
     var ret: @TypeOf(args1) = args1;
     inline for (@typeInfo(@TypeOf(args2)).Struct.fields) |field| {
@@ -176,9 +178,12 @@ pub const builder = struct {
     pub const logging = struct {
         pub const verbose: zig_lib.build.BuilderSpec.Logging = .{
             .write = spec.logging.success_error.verbose,
+            .read = spec.logging.success_error.verbose,
             .map = spec.logging.acquire_error.verbose,
             .mknod = spec.logging.success_error.verbose,
             .dup3 = spec.logging.success_error.verbose,
+            .pipe = spec.logging.acquire_error.verbose,
+            .poll = spec.logging.success_error.verbose,
             .unmap = spec.logging.release_error.verbose,
             .fork = spec.logging.success_error.verbose,
             .execve = spec.logging.attempt_error.verbose,
@@ -229,7 +234,6 @@ pub const logging = struct {
             .Fault = false,
         };
     };
-
     pub const attempt_error = struct {
         pub const verbose: zig_lib.builtin.Logging.AttemptError = .{
             .Attempt = true,
@@ -546,10 +550,7 @@ pub const serializer = struct {
         };
     };
 };
-
-pub usingnamespace sys;
-
-pub const sys = struct {
+const sys = struct {
     pub const mmap = struct {
         pub const options = struct {
             pub const executable: zig_lib.file.MapSpec.Options = .{
@@ -703,7 +704,13 @@ pub const sys = struct {
             };
         };
     };
-
+    pub const poll = struct {
+        pub const errors = struct {
+            pub const all: []const zig_lib.sys.ErrorCode = &.{
+                .FAULT, .INTR, .INVAL, .NOMEM,
+            };
+        };
+    };
     pub const ioctl = struct {
         pub const errors = struct {
             pub const all: []const zig_lib.sys.ErrorCode = &.{
