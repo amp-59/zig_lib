@@ -131,8 +131,10 @@ pub const builder = struct {
         pub const noexcept: zig_lib.build.BuilderSpec.Errors = .{
             .fork = .{},
             .write = .{},
+            .read = .{},
             .mknod = .{},
             .dup3 = .{},
+            .pipe = .{},
             .execve = .{},
             .waitpid = .{},
             .path = .{},
@@ -148,8 +150,10 @@ pub const builder = struct {
         };
         pub const zen: zig_lib.build.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
+            .read = .{ .abort = sys.read.errors.all },
             .mknod = .{ .throw = sys.mknod.errors.all },
             .dup3 = .{ .throw = sys.dup.errors.all },
+            .pipe = .{ .throw = sys.pipe.errors.all },
             .fork = .{ .throw = sys.fork.errors.all },
             .execve = .{ .throw = sys.execve.errors.all },
             .waitpid = .{ .throw = sys.wait.errors.all },
@@ -460,6 +464,7 @@ pub const allocator = struct {
             .sentinel = true,
             .metadata = true,
             .branches = true,
+            .illegal = true,
             .map = spec.logging.acquire_error.verbose,
             .unmap = spec.logging.release_error.verbose,
             .remap = spec.logging.success_error.verbose,
@@ -474,6 +479,7 @@ pub const allocator = struct {
             .sentinel = false,
             .metadata = false,
             .branches = false,
+            .illegal = false,
             .map = spec.logging.acquire_error.silent,
             .unmap = spec.logging.release_error.silent,
             .remap = spec.logging.success_error.silent,
