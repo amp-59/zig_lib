@@ -10,12 +10,9 @@ const proc = @import("./proc.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
-
 const types = @import("./build/types.zig");
 const command_line = @import("./build/command_line.zig");
-
 pub usingnamespace types;
-
 pub const BuilderSpec = struct {
     options: Options = .{},
     logging: Logging,
@@ -25,7 +22,8 @@ pub const BuilderSpec = struct {
         max_command_line: ?u64 = 65536,
         max_command_args: ?u64 = 1024,
         max_relevant_depth: u64 = 255,
-        dep_sleep_nsec: u64 = 50000,
+        sleep_nanoseconds: u64 = 50000,
+        build_timeout_milliseconds: u64 = 1000 * 84600,
         max_thread_count: u64 = 16,
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         arena_aligned_bytes: u64 = 8 * 1024 * 1024,
