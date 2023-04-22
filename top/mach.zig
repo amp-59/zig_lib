@@ -475,61 +475,6 @@ const is_small = @import("builtin").mode == .ReleaseSmall;
 const is_debug = @import("builtin").mode == .Debug;
 const is_test = @import("builtin").is_test;
 
-pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
-    return asmTestEqualMany8(
-        l_values.ptr,
-        l_values.len,
-        r_values.ptr,
-        r_values.len,
-    );
-}
-extern fn asmTestEqualMany8(_: [*]const u8, _: u64, _: [*]const u8, _: u64) callconv(.C) bool;
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\asmTestEqualMany8:
-        \\  cmp     rsi, rcx
-        \\  jne     2f
-        \\  mov     al, 1f
-        \\  cmp     rdi, rdx
-        \\  je      1f
-        \\  test    rsi, rsi
-        \\  je      1f
-        \\  dec     rsi
-        \\  xor     ecx, ecx
-        \\0:
-        \\  movzx   eax, byte ptr [rdi + rcx]
-        \\  cmp     al,  byte ptr [rdx + rcx]
-        \\  sete    al
-        \\  jne     1f
-        \\  lea     r8,  [rcx + 1]
-        \\  cmp     rsi, rcx
-        \\  mov     rcx, r8
-        \\  jne     0b
-        \\1:
-        \\  ret
-        \\2:
-        \\  xor    eax,  eax
-        \\  ret
-    );
-}
-extern fn asmAssert(b: bool, buf_ptr: [*]const u8, buf_len: u64) callconv(.C) void;
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\asmAssert:
-        \\  test    edi, edi
-        \\  jne     0f
-        \\  mov     eax, 1
-        \\  mov     edi, 2
-        \\  syscall # write
-        \\  mov     eax, 60
-        \\  mov     edi, 2
-        \\  syscall # exit
-        \\0:
-        \\  ret
-    );
-}
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void;
 comptime {
     asm (
@@ -552,63 +497,123 @@ comptime {
         \\  ret
     );
 }
+
+pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
+    return _0.asmTestEqualMany8(l_values.ptr, l_values.len, r_values.ptr, r_values.len);
+}
 pub inline fn memcpyMulti(noalias dest: [*]u8, src: []const []const u8) u64 {
-    return asmMemcpyMulti(dest, src.ptr, src.len);
+    return _1.asmMemcpyMulti(dest, src.ptr, src.len);
 }
-extern fn asmMemcpyMulti(noalias dest: [*]u8, src: [*]const []const u8, len: u64) callconv(.C) u64;
-comptime {
-    asm (
-        \\.intel_syntax noprefix
-        \\asmMemcpyMulti:
-        \\  xor     r8d, r8d
-        \\  xor     ecx, ecx
-        \\  cmp     r8, rdx
-        \\  jne     9f
-        \\  mov     rax, rcx
-        \\  ret
-        \\9:
-        \\  push    rbx
-        \\5:
-        \\  mov     r10, qword ptr [rsi]
-        \\  mov     r9, qword ptr [rsi + 8]
-        \\  xor     eax, eax
-        \\  lea     r11, [rdi + rcx]
-        \\3:
-        \\  cmp     rax, r9
-        \\  je      11f
-        \\  mov     bl, byte ptr [r10 + rax]
-        \\  mov     byte ptr [r11 + rax], bl
-        \\  inc     rax
-        \\  jmp     3b
-        \\11:
-        \\  inc     r8
-        \\  add     rcx, rax
-        \\  add     rsi, 16
-        \\  cmp     r8, rdx
-        \\  jne     5b
-        \\  mov     rax, rcx
-        \\  pop     rbx
-        \\  ret
-    );
-}
-pub fn manyToSlice80(str: [*]u8) [:0]u8 {
+pub inline fn manyToSlice80(str: [*]u8) [:0]u8 {
+    const len: u64 = _3.strlen(str);
     @setRuntimeSafety(false);
-    return str[0..strlen(str) :0];
+    return str[0..len :0];
 }
-extern fn strlen(str: [*]u8) callconv(.C) u64;
-comptime {
-    asm (
-        \\  .intel_syntax noprefix
-        \\strlen:
-        \\  mov     rax, -1
-        \\0:
-        \\  cmp     byte ptr [rdi + rax + 1], 0
-        \\  lea     rax, [rax + 1]
-        \\  jne     0b
-        \\  ret
-        \\
-    );
-}
+const _0 = struct {
+    extern fn asmTestEqualMany8(_: [*]const u8, _: u64, _: [*]const u8, _: u64) callconv(.C) bool;
+    comptime {
+        asm (
+            \\.intel_syntax noprefix
+            \\asmTestEqualMany8:
+            \\  cmp     rsi, rcx
+            \\  jne     2f
+            \\  mov     al, 1f
+            \\  cmp     rdi, rdx
+            \\  je      1f
+            \\  test    rsi, rsi
+            \\  je      1f
+            \\  dec     rsi
+            \\  xor     ecx, ecx
+            \\0:
+            \\  movzx   eax, byte ptr [rdi + rcx]
+            \\  cmp     al,  byte ptr [rdx + rcx]
+            \\  sete    al
+            \\  jne     1f
+            \\  lea     r8,  [rcx + 1]
+            \\  cmp     rsi, rcx
+            \\  mov     rcx, r8
+            \\  jne     0b
+            \\1:
+            \\  ret
+            \\2:
+            \\  xor    eax,  eax
+            \\  ret
+        );
+    }
+};
+const _1 = struct {
+    extern fn asmMemcpyMulti(noalias dest: [*]u8, src: [*]const []const u8, len: u64) callconv(.C) u64;
+    comptime {
+        asm (
+            \\.intel_syntax noprefix
+            \\asmMemcpyMulti:
+            \\  xor     r8d, r8d
+            \\  xor     ecx, ecx
+            \\  cmp     r8, rdx
+            \\  jne     9f
+            \\  mov     rax, rcx
+            \\  ret
+            \\9:
+            \\  push    rbx
+            \\5:
+            \\  mov     r10, qword ptr [rsi]
+            \\  mov     r9, qword ptr [rsi + 8]
+            \\  xor     eax, eax
+            \\  lea     r11, [rdi + rcx]
+            \\3:
+            \\  cmp     rax, r9
+            \\  je      11f
+            \\  mov     bl, byte ptr [r10 + rax]
+            \\  mov     byte ptr [r11 + rax], bl
+            \\  inc     rax
+            \\  jmp     3b
+            \\11:
+            \\  inc     r8
+            \\  add     rcx, rax
+            \\  add     rsi, 16
+            \\  cmp     r8, rdx
+            \\  jne     5b
+            \\  mov     rax, rcx
+            \\  pop     rbx
+            \\  ret
+        );
+    }
+};
+const _2 = struct {
+    extern fn asmAssert(b: bool, buf_ptr: [*]const u8, buf_len: u64) callconv(.C) void;
+    comptime {
+        asm (
+            \\.intel_syntax noprefix
+            \\asmAssert:
+            \\  test    edi, edi
+            \\  jne     0f
+            \\  mov     eax, 1
+            \\  mov     edi, 2
+            \\  syscall # write
+            \\  mov     eax, 60
+            \\  mov     edi, 2
+            \\  syscall # exit
+            \\0:
+            \\  ret
+        );
+    }
+};
+const _3 = struct {
+    extern fn strlen(str: [*]u8) callconv(.C) u64;
+    comptime {
+        asm (
+            \\  .intel_syntax noprefix
+            \\strlen:
+            \\  mov     rax, -1
+            \\0:
+            \\  cmp     byte ptr [rdi + rax + 1], 0
+            \\  lea     rax, [rax + 1]
+            \\  jne     0b
+            \\  ret
+            \\
+        );
+    }
+};
 extern fn __zig_probe_stack() callconv(.C) void;
 comptime {
     asm (
