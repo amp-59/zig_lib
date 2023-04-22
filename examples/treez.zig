@@ -169,20 +169,20 @@ fn show(status: Status) void {
         array.writeFormat(fmt.udh(status.errors));
         array.writeOne('\n');
     }
-    file.write(.{ .errors = .{} }, 1, array.readAll());
+    file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
 }
 noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: *Array) void {
     while (true) {
         const many: []u8 = array.referManyAt(allocator.*, array.index(allocator.*));
         if (many.len > 56) {
-            file.write(write_spec, 1, many);
+            file.writeSlice(write_spec, 1, many);
             array.stream(many.len);
         }
         if (done(status)) break;
     }
     const many: []u8 = array.referManyAt(allocator.*, array.index(allocator.*));
     if (many.len > 56) {
-        file.write(write_spec, 1, many);
+        file.writeSlice(write_spec, 1, many);
         array.stream(many.len);
     }
     show(status.*);
