@@ -214,22 +214,6 @@ pub const Files = struct {
         return len;
     }
 };
-
-pub const Errors = struct {
-    extra: []u32,
-    bytes: []u8,
-    pub const Header = extern struct {
-        extra_len: u32,
-        bytes_len: u32,
-    };
-    pub fn extraData(errors: Errors, comptime T: type, index: usize) T.Extra {
-        @setRuntimeSafety(false);
-        return .{
-            .data = @ptrCast(*T, errors.extra[index..].ptr),
-            .end = index +% T.len,
-        };
-    }
-};
 pub const ClientMessage = extern struct {
     tag: Tag,
     bytes_len: u32,
@@ -260,7 +244,7 @@ pub const ServerMessage = extern struct {
     }
     pub fn pathname(message: *ServerMessage) [:0]const u8 {
         @setRuntimeSafety(false);
-        const string_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage) +% 1;
+        const string_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage) +% @sizeOf(EmitBin);
         return meta.manyToSlice(@intToPtr([*:0]u8, string_addr));
     }
     pub fn errors(message: *ServerMessage) Errors {
@@ -275,6 +259,37 @@ pub const ServerMessage = extern struct {
     }
     pub const len: u64 = @sizeOf(@This());
 };
+pub const Errors = struct {
+    extra: []u32,
+    bytes: []u8,
+    pub const Header = extern struct {
+        extra_len: u32,
+        bytes_len: u32,
+    };
+    pub fn create(msg: []u8) Errors {
+        const errors_header: *Header = @ptrCast(*Header, @alignCast(4, msg.ptr));
+        const data_addr: u64 = @ptrToInt(msg.ptr) + @sizeOf(Header);
+        return .{
+            .extra = @intToPtr([*]u32, data_addr)[0..errors_header.extra_len],
+            .bytes = @intToPtr([*]u8, data_addr +% errors_header.extra_len *% 4)[0..errors_header.bytes_len],
+        };
+    }
+    pub fn extraData(errors: Errors, comptime T: type, index: usize) T.Extra {
+        @setRuntimeSafety(false);
+        return .{
+            .data = @ptrCast(*T, errors.extra[index..].ptr),
+            .end = index +% T.len,
+        };
+    }
+};
+pub const EmitBin = extern struct {
+    flags: Flags,
+    pub const Flags = packed struct(u8) {
+        cache_hit: bool,
+        reserved: u7 = 0,
+    };
+};
+
 pub const ErrorMessageList = struct {
     len: u32,
     start: u32,
@@ -319,11 +334,4 @@ pub const ReferenceTrace = struct {
         end: u64,
     };
     pub const len: u64 = 2;
-};
-pub const EmitBinPath = extern struct {
-    flags: Flags,
-    pub const Flags = packed struct(u8) {
-        cache_hit: bool,
-        reserved: u7 = 0,
-    };
 };
