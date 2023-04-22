@@ -655,12 +655,12 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
         if (spec.logging.release.Release) {
             debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
         }
-    } else if (comptime spec.errors.release == .throw) {
+    } else if (spec.errors.release == .throw) {
         if (spec.logging.release.Error) {
             debug.arenaReleaseError(spec.errors.throw, null, lb_addr, up_addr, spec.label);
         }
         return spec.errors.release.throw;
-    } else if (comptime spec.errors.release == .abort) {
+    } else if (spec.errors.release == .abort) {
         builtin.proc.exitWithFaultMessage(debug.about_rel_2_s, 2);
     }
 }
