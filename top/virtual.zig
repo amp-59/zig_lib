@@ -23,109 +23,102 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
     const data_type: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(data_type);
     const idx_info: builtin.Type = @typeInfo(idx_type);
-    const Array = extern struct {
-        bits: data_type = [1]u64{0} ** data_info.Array.len,
-        pub const BitSet: type = @This();
-        const Word: type = data_info.Array.child;
-        const Shift: type = builtin.ShiftAmount(Word);
-        pub fn indexToShiftAmount(index: idx_type) Shift {
-            return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
-        }
-        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            return bit_set.bits[index / word_bit_size] & bit_mask != 0;
-        }
-        pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits[index / word_bit_size] |= bit_mask;
-        }
-        pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits[index / word_bit_size] &= ~bit_mask;
-        }
-    };
+
     if (data_info == .Array and idx_info != .Enum) {
-        return Array;
-    }
-    const Int = extern struct {
-        bits: data_type = 0,
-        pub const BitSet: type = @This();
-        const Word: type = data_type;
-        const Shift: type = builtin.ShiftAmount(Word);
+        return (extern struct {
+            bits: data_type = [1]u64{0} ** data_info.Array.len,
+            pub const BitSet: type = @This();
+            const Word: type = data_info.Array.child;
+            const Shift: type = builtin.ShiftAmount(Word);
+            pub fn indexToShiftAmount(index: idx_type) Shift {
+                return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
+            }
+            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                return bit_set.bits[index / word_bit_size] & bit_mask != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits[index / word_bit_size] |= bit_mask;
+            }
+            pub fn unset(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits[index / word_bit_size] &= ~bit_mask;
+            }
+        });
+    } else if (data_info == .Int and idx_info != .Enum) {
+        return (extern struct {
+            bits: data_type = 0,
+            pub const BitSet: type = @This();
+            const Word: type = data_type;
+            const Shift: type = builtin.ShiftAmount(Word);
 
-        pub inline fn indexToShiftAmount(index: idx_type) Shift {
-            return @intCast(Shift, (data_info.Int.bits -% 1) -% index);
-        }
-        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            return bit_set.bits & bit_mask != 0;
-        }
-        pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits |= bit_mask;
-        }
-        pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits &= ~bit_mask;
-        }
-    };
-    if (data_info == .Int and idx_info != .Enum) {
-        return Int;
-    }
-    const TaggedArray = extern struct {
-        bits: data_type = [1]u64{0} ** data_info.Array.len,
-        pub const BitSet: type = @This();
-        const Word: type = data_info.Array.child;
-        const Shift: type = builtin.ShiftAmount(Word);
-        pub inline fn indexToShiftAmount(index: idx_type) Shift {
-            return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
-        }
-        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            return bit_set.bits[index / word_bit_size] & bit_mask != 0;
-        }
-        pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits[index / word_bit_size] |= bit_mask;
-        }
-        pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits[index / word_bit_size] &= ~bit_mask;
-        }
-    };
-    if (data_info == .Array and idx_info == .Enum) {
-        return TaggedArray;
-    }
-    const TaggedInt = extern struct {
-        bits: data_type = 0,
-        pub const BitSet: type = @This();
-        const Word: type = data_type;
-        const Shift: type = builtin.ShiftAmount(Word);
-
-        pub inline fn indexToShiftAmount(index: idx_type) Shift {
-            return @intCast(Shift, (data_info.Int.bits -% 1) -% @enumToInt(index));
-        }
-        pub fn get(bit_set: *BitSet, index: idx_type) val_type {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            return bit_set.bits & bit_mask != 0;
-        }
-        pub fn set(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits |= bit_mask;
-        }
-        pub fn unset(bit_set: *BitSet, index: idx_type) void {
-            const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
-            bit_set.bits &= ~bit_mask;
-        }
-    };
-    if (data_info == .Int and idx_info == .Enum) {
-        return TaggedInt;
+            pub inline fn indexToShiftAmount(index: idx_type) Shift {
+                return @intCast(Shift, (data_info.Int.bits -% 1) -% index);
+            }
+            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                return bit_set.bits & bit_mask != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits |= bit_mask;
+            }
+            pub fn unset(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits &= ~bit_mask;
+            }
+        });
+    } else if (data_info == .Array and idx_info == .Enum) {
+        return (extern struct {
+            bits: data_type = [1]u64{0} ** data_info.Array.len,
+            pub const BitSet: type = @This();
+            const Word: type = data_info.Array.child;
+            const Shift: type = builtin.ShiftAmount(Word);
+            pub inline fn indexToShiftAmount(index: idx_type) Shift {
+                return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
+            }
+            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                return bit_set.bits[index / word_bit_size] & bit_mask != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits[index / word_bit_size] |= bit_mask;
+            }
+            pub fn unset(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits[index / word_bit_size] &= ~bit_mask;
+            }
+        });
+    } else if (data_info == .Int and idx_info == .Enum) {
+        return (extern struct {
+            bits: data_type = 0,
+            pub const BitSet: type = @This();
+            const Word: type = data_type;
+            const Shift: type = builtin.ShiftAmount(Word);
+            pub inline fn indexToShiftAmount(index: idx_type) Shift {
+                return @intCast(Shift, (data_info.Int.bits -% 1) -% @enumToInt(index));
+            }
+            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                return bit_set.bits & bit_mask != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits |= bit_mask;
+            }
+            pub fn unset(bit_set: *BitSet, index: idx_type) void {
+                const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
+                bit_set.bits &= ~bit_mask;
+            }
+        });
     }
 }
 pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
     const idx_info: builtin.Type = @typeInfo(idx_type);
     if (val_type == bool and idx_info != .Enum) {
-        return extern struct {
+        return (extern struct {
             bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
@@ -146,10 +139,9 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
                 return common.atomicByteTransform(&safe_set.bytes[index], 255, 0);
             }
-        };
-    }
-    if (val_type == bool and idx_info == .Enum) {
-        return extern struct {
+        });
+    } else if (val_type == bool and idx_info == .Enum) {
+        return (extern struct {
             bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
@@ -170,10 +162,9 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
                 return common.atomicByteTransform(safe_set.refer(index), 255, 0);
             }
-        };
-    }
-    if (val_type != bool and idx_info != .Enum) {
-        return extern struct {
+        });
+    } else if (val_type != bool and idx_info != .Enum) {
+        return (extern struct {
             bytes: [elements]val_type = builtin.zero([elements]val_type),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
@@ -195,10 +186,9 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                     : "rax", "rdx", "memory"
                 );
             }
-        };
-    }
-    if (val_type != bool and idx_info == .Enum) {
-        return extern struct {
+        });
+    } else if (val_type != bool and idx_info == .Enum) {
+        return (extern struct {
             bytes: [elements]val_type = builtin.zero([elements]val_type),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
@@ -225,7 +215,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                     : "rax", "rdx", "memory"
                 );
             }
-        };
+        });
     }
 }
 fn GenericMultiSet(
