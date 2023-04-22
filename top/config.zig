@@ -266,6 +266,16 @@ pub const Logging = packed struct {
             };
         }
     };
+    pub const ErrorFault = packed struct {
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: ReleaseErrorFault) ReleaseErrorFault {
+            return .{
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
     pub fn Field(comptime Spec: type) type {
         return @TypeOf(@field(@as(Spec, undefined), "logging"));
     }
