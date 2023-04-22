@@ -1392,6 +1392,20 @@ pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.Call(pipe2_spec.errors, P
             debug.pipeError(pipe2_error);
         }
     }
+    return pipefd;
+}
+pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, void) {
+    const logging: builtin.Logging.AttemptSuccessError = comptime poll_spec.logging.override();
+    if (logging.Attempt) {
+        debug.pollNotice(fds, timeout);
+    }
+    if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ @ptrToInt(fds.ptr), fds.len, timeout }))) {
+        if (logging.Success) {
+            debug.pollNotice(fds, timeout);
+        }
+    } else |poll_error| {
+        return poll_error;
+    }
 }
 // Soon.
 fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
