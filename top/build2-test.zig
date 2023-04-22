@@ -1,19 +1,22 @@
 const mem = @import("./mem.zig");
+const fmt = @import("./fmt.zig");
+const lit = @import("./lit.zig");
 const sys = @import("./sys.zig");
 const proc = @import("./proc.zig");
 const mach = @import("./mach.zig");
+const time = @import("./time.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const build = @import("./build2.zig");
-const types = build.types;
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
+const virtual = @import("./virtual.zig");
+const testing = @import("./testing.zig");
 const command_line = build.command_line;
 
 pub usingnamespace proc.start;
 
 pub const Builder = build.GenericBuilder(spec.builder.default);
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
 
 const PartialCommand = struct {
@@ -228,36 +231,6 @@ fn testBuildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime main_fn: anytype) 
             }
         }
     }
-}
-const Types = struct {
-    TaskData: type,
-    Allocator: type,
-    AddressSpace: type,
-    Array: type,
-};
-fn getTypes(comptime builder_fn: anytype) Types {
-    const TaskData = @typeInfo(@TypeOf(builder_fn)).Fn.params[0].type;
-    const Array = meta.Child(@typeInfo(@TypeOf(builder_fn)).Fn.params[1].type.?);
-    return .{
-        .Array = Array,
-        .TaskData = meta.Child(TaskData.?),
-        .Allocator = meta.Child(@typeInfo(@TypeOf(Array.init)).Fn.params[0].type.?),
-        .AddressSpace = meta.Child(@typeInfo(@TypeOf(Array.init)).Fn.params[0].type.?).AddressSpace,
-    };
-}
-fn testDirectCommandLineUsage() void {
-    const env = @import("env");
-    const T = getTypes(command_line.buildWrite);
-    var address_space: T.AddressSpace = .{};
-    var allocator: T.Allocator = T.Allocator.init(&address_space, 0);
-    defer allocator.deinit(&address_space, 0);
-    var array: T.Array = T.Array.init(&allocator, 4096);
-    defer array.deinit(&allocator);
-    var cmd: T.TaskData = .{
-        .kind = .exe,
-        .emit_bin = .{ .yes = .{ .absolute = env.build_root, .relative = "zig-out/bin/test_output" } },
-    };
-    command_line.buildWrite(&cmd, &array);
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     try testBuildRunner(args, vars, @import("../build.zig").buildMain);
