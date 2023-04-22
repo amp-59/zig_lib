@@ -28,7 +28,7 @@ fn recursivePrint(comptime T: type) void {
                         fmt.ub(@bitCast(I, field)),
                         ";\n",
                     });
-                    file.write(.{ .errors = .{} }, 1, array.readAll());
+                    file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .ComptimeInt => {
                     const int_fmt = blk_0: {
@@ -47,7 +47,7 @@ fn recursivePrint(comptime T: type) void {
                         int_fmt,
                         ";\n",
                     });
-                    file.write(.{ .errors = .{} }, 1, array.readAll());
+                    file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .Struct, .Array, .Pointer => {
                     array.writeAny(spec.reinterpret.fmt, comptime .{
@@ -57,7 +57,7 @@ fn recursivePrint(comptime T: type) void {
                         fmt.render(.{ .omit_default_fields = false, .infer_type_names = true }, field),
                         ";\n",
                     });
-                    file.write(.{ .errors = .{} }, 1, array.readAll());
+                    file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
                 },
                 .Type => {
                     if (comptime meta.isContainer(field)) {
@@ -70,7 +70,7 @@ fn recursivePrint(comptime T: type) void {
                         array.undefineAll();
                         recursivePrint(field);
                         array.writeMany("};\n");
-                        file.write(.{ .errors = .{} }, 1, array.readAll());
+                        file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
                     }
                 },
                 else => {},
