@@ -23,6 +23,6 @@ pub fn main(args_in: [][*:0]u8) !void {
         };
         const s_bytes: u64 = mach.alignA(up_addr - lb_addr, 4096);
         defer mem.unmap(.{ .errors = .{} }, lb_addr, s_bytes);
-        file.write(.{ .errors = .{} }, 1, mem.pointerSlice(u8, lb_addr, s_bytes));
+        file.write(.{ .errors = .{} }, 1, mem.pointerMany(u8, lb_addr), s_bytes);
     }
 }

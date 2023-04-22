@@ -80,14 +80,14 @@ const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch) 
     .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .any = &(.bin) } },
 });
 fn loopInner(options: Options, arg: []const u8) !void {
-    file.write(.{ .errors = .{} }, 1, switch (options.output) {
+    file.writeSlice(.{ .errors = .{} }, 1, switch (options.output) {
         .hex => builtin.fmt.ux64(try builtin.parse.any(u64, arg)).readAll(),
         .dec => builtin.fmt.ud64(try builtin.parse.any(u64, arg)).readAll(),
         .oct => builtin.fmt.uo64(try builtin.parse.any(u64, arg)).readAll(),
         .bin => builtin.fmt.ub64(try builtin.parse.any(u64, arg)).readAll(),
         .char => outputChar(),
     });
-    file.write(.{ .errors = .{} }, 1, "\n");
+    file.writeSlice(.{ .errors = .{} }, 1, "\n");
 }
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
