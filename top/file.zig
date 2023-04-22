@@ -1378,9 +1378,10 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
         return dup3_error;
     }
 }
-pub fn makePipe(comptime pipe2_spec: MakePipeSpec, pipefd: *Pipe) sys.Call(pipe2_spec.errors, pipe2_spec.return_type) {
+pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.Call(pipe2_spec.errors, Pipe) {
+    var pipefd: Pipe = undefined;
     const flags: Open = comptime pipe2_spec.flags();
-    const pipefd_addr: u64 = @ptrToInt(pipefd);
+    const pipefd_addr: u64 = @ptrToInt(&pipefd);
     const logging: builtin.Logging.AcquireError = comptime pipe2_spec.logging.override();
     if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ pipefd_addr, flags.val }))) {
         if (logging.Acquire) {
