@@ -1,17 +1,12 @@
 pub const srg = @import("./zig_lib.zig");
-
 const proc = srg.proc;
 const spec = srg.spec;
 const meta = srg.meta;
 const build = srg.build2;
 const builtin = srg.builtin;
-
 pub const runtime_assertions: bool = false;
-
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
-
 pub const message_style: [:0]const u8 = "\x1b[2m";
-
 const mods: []const build.Module = &.{
     .{ .name = "zig_lib", .path = "zig_lib.zig" },
     .{ .name = "@build", .path = "build.zig" },
@@ -22,11 +17,9 @@ const mod_deps: []const build.ModuleDependency = &.{
     .{ .name = "@build" },
     .{ .name = "env" },
 };
-
 const PartialCommand = struct {
     kind: build.OutputMode,
     mode: builtin.Mode,
-
     image_base: u64 = 0x10000,
     strip: bool = true,
     static: bool = true,
@@ -34,17 +27,16 @@ const PartialCommand = struct {
     reference_trace: bool = true,
     single_threaded: bool = true,
     function_sections: bool = true,
+    gc_sections: bool = true,
     omit_frame_pointer: bool = false,
-
     modules: []const build.Module = mods,
     dependencies: []const build.ModuleDependency = mod_deps,
 };
-
 const exe_default: PartialCommand = .{ .kind = .exe, .mode = .ReleaseSmall };
+const exe_fast: PartialCommand = .{ .kind = .exe, .mode = .ReleaseFast };
 const obj_default: PartialCommand = .{ .kind = .obj, .mode = .ReleaseSmall };
 const exe_debug: PartialCommand = .{ .kind = .exe, .mode = .Debug };
 const exe_build: PartialCommand = .{ .kind = .exe, .mode = .Debug, .strip = false };
-
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
     // Groups:
@@ -65,7 +57,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test", "top/virtual-test.zig");
     const size_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "size_test",    "test/size_per_config.zig");
     const container_test: *Builder.Target =     try tests.addTarget(allocator, exe_default, "container_test", "top/container-test.zig");
-
     const examples: *Builder.Group =            try builder.addGroup(allocator,                 "examples");
     const readdir: *Builder.Target =            try examples.addTarget(allocator, exe_default,  "readdir",      "examples/iterate_dir_entries.zig");
     const dynamic: *Builder.Target =            try examples.addTarget(allocator, exe_default,  "dynamic",      "examples/dynamic_alloc.zig");
@@ -80,7 +71,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const readelf: *Builder.Target =            try examples.addTarget(allocator, exe_default,  "readelf",      "examples/readelf.zig");
     const pathsplit: *Builder.Target =          try examples.addTarget(allocator, exe_default,  "pathsplit",    "examples/pathsplit.zig");
     const declprint: *Builder.Target =          try examples.addTarget(allocator, exe_default,  "declprint",    "examples/declprint.zig");
-
     const mg: *Builder.Group =                  try builder.addGroup(allocator,             "memgen");
     const mg_touch: *Builder.Target =           try mg.addTarget(allocator, exe_default,    "mg_touch",             "top/mem/touch-aux.zig");
     const mg_specs: *Builder.Target =           try mg.addTarget(allocator, obj_default,    "mg_specs",             "top/mem/serial_specs.zig");
@@ -93,10 +83,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_debug,      "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg_allocator_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
-
     const bg: *Builder.Group =                  try builder.addGroup(allocator,             "buildgen");
     const generate_build: *Builder.Target =     try bg.addTarget(allocator, exe_default,    "generate_build",       "top/build/generate_build2.zig");
-
     // Descriptions:
     builtin_test.descr =        "Test builtin functions";
     meta_test.descr =           "Test meta functions";
@@ -127,7 +115,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     readelf.descr =             "Example program (defunct) for parsing and displaying information about ELF binaries";
     declprint.descr =           "Useful for printing declarations";
     pathsplit.descr =           "Useful for splitting paths into dirnames and basename";
-
     mg_touch.descr =            "Creates placeholder files";
     mg_specs.descr =            "Serialiser for `[]const []const []const Specifier`";
     mg_techs.descr =            "Serialiser for `[]const []const []const Technique`";
@@ -140,7 +127,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_reference_impls.descr =  "Generate reference implementations";
     mg_container_impls.descr =  "Generate container implementations";
     generate_build.descr =      "Generate builder command line implementation";
-
     // Dependencies:
     mg_new_type_specs.dependOnRun(allocator,        mg_touch);
     mg_new_type_specs.dependOnObject(allocator,     mg_options);
