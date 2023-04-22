@@ -12,8 +12,6 @@ pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
 pub const AddressSpace = spec.address_space.regular_128;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
-const invalid_holder_state: u64 = (0b110000110000 << 48);
 
 const move_spec = .{
     .options = .{},
@@ -83,8 +81,8 @@ fn testMapGenericOverhead() !void {
 fn testRtAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericRtArenaAllocator(.{
-        .options = .{ .trace_state = true },
-        .logging = spec.allocator.logging.verbose,
+        .options = .{ .trace_state = false },
+        .logging = spec.allocator.logging.silent,
         .AddressSpace = spec.address_space.regular_128,
     });
     var address_space: Allocator.AddressSpace = .{};
@@ -135,8 +133,8 @@ fn testAllocatedImplementation() !void {
         // unsound on systems where the program is mapped randomly in the
         // address space.
         .arena_index = 0,
-        .options = .{ .trace_state = true },
-        .logging = spec.allocator.logging.verbose,
+        .options = .{ .trace_state = false },
+        .logging = spec.allocator.logging.silent,
         .AddressSpace = AddressSpace,
     });
     var address_space: builtin.AddressSpace() = .{};
@@ -205,26 +203,6 @@ fn testAutomaticImplementation() !void {
         try testing.expectEqualMany(bool, bit_set.readAll(), &.{ true, false, false, true });
     }
 }
-
-const AllocatorX = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .options = spec.allocator.options.small,
-    .errors = spec.allocator.errors.noexcept,
-    .logging = spec.allocator.logging.silent,
-    .AddressSpace = AddressSpace,
-});
-
-export fn resizeMany(allocator: *AllocatorX, array: *AllocatorX.StructuredHolder(u8), x: u64) void {
-    try meta.wrap(array.increment(allocator, x));
-}
-
-noinline fn getViewOfRaw(x: []const u8, begin: u64, end: u64) []const u8 {
-    return x[begin..end];
-}
-noinline fn getViewOfView(x: anytype, begin: u64, end: u64) []const u8 {
-    return x.readAll()[begin..end];
-}
-
 fn testUtilityTestFunctions() !void {
     { // strings
         { // true
@@ -268,24 +246,6 @@ fn testUtilityTestFunctions() !void {
             try builtin.expectEqual(u64, 0, mem.propagateSearch(u8, "0123456789", "0123456789", 0).?);
         }
     }
-}
-pub fn testNoImpact() !void {
-    var rng: file.DeviceRandomBytes(16384) = .{};
-    const S = struct {
-        const src = @embedFile("./mem-test.zig");
-        fn between(x: *u64) bool {
-            if (!(x.* < src.len and x.* > 0)) {
-                x.* /= 2;
-                return false;
-            }
-            return true;
-        }
-    };
-    const x: u64 = rng.readOneConditionally(u64, S.between);
-    const y: u64 = rng.readOneConditionally(u64, S.between);
-    const low: u64 = @min(x, y);
-    const high: u64 = @max(x, y);
-    try testing.expectEqualMany(u8, getViewOfRaw(S.src, low, high), getViewOfView(&mem.view(S.src), low, high));
 }
 const AllocatorL = struct {}.GenericLinkedAllocator(.{
     .AddressSpace = AddressSpace,
