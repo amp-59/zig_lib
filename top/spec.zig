@@ -183,7 +183,7 @@ pub const builder = struct {
             .mknod = spec.logging.success_error.verbose,
             .dup3 = spec.logging.success_error.verbose,
             .pipe = spec.logging.acquire_error.verbose,
-            .poll = spec.logging.success_error.verbose,
+            .poll = spec.logging.attempt_success_error.verbose,
             .unmap = spec.logging.release_error.verbose,
             .fork = spec.logging.success_error.verbose,
             .execve = spec.logging.attempt_error.verbose,
@@ -235,132 +235,82 @@ pub const logging = struct {
         };
     };
     pub const attempt_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.AttemptError = .{
-            .Attempt = true,
-            .Error = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.AttemptError = .{
-            .Attempt = false,
-            .Error = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.AttemptError =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptError);
+        pub const silent: zig_lib.builtin.Logging.AttemptError =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptError);
     };
     pub const attempt_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AttemptFault = .{
-            .Attempt = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.AttemptFault = .{
-            .Attempt = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.AttemptFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptFault);
+        pub const silent: zig_lib.builtin.Logging.AttemptFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptFault);
+    };
+    pub const attempt_success_error = struct {
+        pub const verbose: zig_lib.builtin.Logging.AttemptSuccessError =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptSuccessError);
+        pub const silent: zig_lib.builtin.Logging.AttemptSuccessError =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptSuccessError);
     };
     pub const attempt_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AttemptErrorFault = .{
-            .Attempt = true,
-            .Error = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.AttemptErrorFault = .{
-            .Attempt = false,
-            .Error = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.AttemptErrorFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptErrorFault);
+        pub const silent: zig_lib.builtin.Logging.AttemptErrorFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptErrorFault);
     };
     pub const success_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.SuccessError = .{
-            .Success = true,
-            .Error = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.SuccessError = .{
-            .Success = false,
-            .Error = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.SuccessError =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.SuccessError);
+        pub const silent: zig_lib.builtin.Logging.SuccessError =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.SuccessError);
     };
     pub const success_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.SuccessFault = .{
-            .Success = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.SuccessFault = .{
-            .Success = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.SuccessFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.SuccessFault);
+        pub const silent: zig_lib.builtin.Logging.SuccessFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.SuccessFault);
     };
     pub const success_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.SuccessErrorFault = .{
-            .Success = true,
-            .Error = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.SuccessErrorFault = .{
-            .Success = false,
-            .Error = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.SuccessErrorFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.SuccessErrorFault);
+        pub const silent: zig_lib.builtin.Logging.SuccessErrorFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.SuccessErrorFault);
     };
     pub const acquire_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.AcquireError = .{
-            .Acquire = true,
-            .Error = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.AcquireError = .{
-            .Acquire = false,
-            .Error = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.AcquireError =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.AcquireError);
+        pub const silent: zig_lib.builtin.Logging.AcquireError =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.AcquireError);
     };
     pub const acquire_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AcquireFault = .{
-            .Acquire = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.AcquireFault = .{
-            .Acquire = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.AcquireFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.AcquireFault);
+        pub const silent: zig_lib.builtin.Logging.AcquireFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.AcquireFault);
     };
     pub const acquire_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AcquireErrorFault = .{
-            .Acquire = true,
-            .Error = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.AcquireErrorFault = .{
-            .Acquire = false,
-            .Error = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.AcquireErrorFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.AcquireErrorFault);
+        pub const silent: zig_lib.builtin.Logging.AcquireErrorFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.AcquireErrorFault);
     };
     pub const release_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.ReleaseError = .{
-            .Release = true,
-            .Error = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.ReleaseError = .{
-            .Release = false,
-            .Error = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.ReleaseError =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.ReleaseError);
+        pub const silent: zig_lib.builtin.Logging.ReleaseError =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.ReleaseError);
     };
     pub const release_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.ReleaseFault = .{
-            .Release = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.ReleaseFault = .{
-            .Release = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.ReleaseFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.ReleaseFault);
+        pub const silent: zig_lib.builtin.Logging.ReleaseFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.ReleaseFault);
     };
     pub const release_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.ReleaseErrorFault = .{
-            .Release = true,
-            .Error = true,
-            .Fault = true,
-        };
-        pub const silent: zig_lib.builtin.Logging.ReleaseErrorFault = .{
-            .Release = false,
-            .Error = false,
-            .Fault = false,
-        };
+        pub const verbose: zig_lib.builtin.Logging.ReleaseErrorFault =
+            zig_lib.builtin.all(zig_lib.builtin.Logging.ReleaseErrorFault);
+        pub const silent: zig_lib.builtin.Logging.ReleaseErrorFault =
+            zig_lib.builtin.zero(zig_lib.builtin.Logging.ReleaseErrorFault);
     };
 };
 pub const dir = struct {
