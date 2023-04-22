@@ -138,9 +138,9 @@ pub const Logging = packed struct {
         /// Report actions which terminate the program
         Fault: ?bool,
     };
-    pub const AttemptError = packed struct {
+    pub const AttemptError = packed struct(u2) {
         Attempt: bool = logging_default.Attempt,
-        Error: bool = logging_default.Fault,
+        Error: bool = logging_default.Error,
         pub fn override(comptime logging: AttemptError) AttemptError {
             return .{
                 .Attempt = logging_override.Attempt orelse logging.Attempt,
@@ -148,29 +148,7 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const AttemptFault = packed struct {
-        Attempt: bool = logging_default.Attempt,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptFault) AttemptFault {
-            return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptErrorFault = packed struct {
-        Attempt: bool = logging_default.Attempt,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptErrorFault) AttemptErrorFault {
-            return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Fault = logging_override.Fault orelse logging.Fault,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const SuccessError = packed struct {
+    pub const SuccessError = packed struct(u2) {
         Success: bool = logging_default.Success,
         Error: bool = logging_default.Error,
         pub fn override(comptime logging: SuccessError) SuccessError {
@@ -180,17 +158,19 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const SuccessFault = packed struct {
+    pub const AttemptSuccessError = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
         Success: bool = logging_default.Success,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessFault) SuccessFault {
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptSuccessError) AttemptSuccessError {
             return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
                 .Success = logging_override.Success orelse logging.Success,
-                .Fault = logging_override.Fault orelse logging.Fault,
+                .Error = logging_override.Error orelse logging.Error,
             };
         }
     };
-    pub const AcquireError = packed struct {
+    pub const AcquireError = packed struct(u2) {
         Acquire: bool = logging_default.Acquire,
         Error: bool = logging_default.Error,
         pub fn override(comptime logging: AcquireError) AcquireError {
@@ -200,17 +180,19 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const AcquireFault = packed struct {
+    pub const AttemptAcquireError = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
         Acquire: bool = logging_default.Acquire,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AcquireFault) AcquireFault {
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptAcquireError) AttemptAcquireError {
             return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
                 .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Fault = logging_override.Fault orelse logging.Fault,
+                .Error = logging_override.Error orelse logging.Error,
             };
         }
     };
-    pub const ReleaseError = packed struct {
+    pub const ReleaseError = packed struct(u2) {
         Release: bool = logging_default.Release,
         Error: bool = logging_default.Error,
         pub fn override(comptime logging: ReleaseError) ReleaseError {
@@ -220,7 +202,73 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const ReleaseFault = packed struct {
+    pub const AttemptReleaseError = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptReleaseError) AttemptReleaseError {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptFault = packed struct(u2) {
+        Attempt: bool = logging_default.Attempt,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptFault) AttemptFault {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessFault = packed struct(u2) {
+        Success: bool = logging_default.Success,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessFault) SuccessFault {
+            return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessFault) AttemptSuccessFault {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AcquireFault = packed struct(u2) {
+        Acquire: bool = logging_default.Acquire,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AcquireFault) AcquireFault {
+            return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptAcquireFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptAcquireFault) AttemptAcquireFault {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const ReleaseFault = packed struct(u2) {
         Release: bool = logging_default.Release,
         Fault: bool = logging_default.Fault,
         pub fn override(comptime logging: ReleaseFault) ReleaseFault {
@@ -230,7 +278,41 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const SuccessErrorFault = packed struct {
+    pub const AttemptReleaseFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptReleaseFault) AttemptReleaseFault {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const ErrorFault = packed struct(u2) {
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: ErrorFault) ErrorFault {
+            return .{
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptErrorFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptErrorFault) AttemptErrorFault {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessErrorFault = packed struct(u3) {
         Success: bool = logging_default.Success,
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
@@ -242,7 +324,21 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const AcquireErrorFault = packed struct {
+    pub const AttemptSuccessErrorFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessErrorFault) AttemptSuccessErrorFault {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AcquireErrorFault = packed struct(u3) {
         Acquire: bool = logging_default.Acquire,
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
@@ -254,7 +350,21 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const ReleaseErrorFault = packed struct {
+    pub const AttemptAcquireErrorFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptAcquireErrorFault) AttemptAcquireErrorFault {
+            return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const ReleaseErrorFault = packed struct(u3) {
         Release: bool = logging_default.Release,
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
@@ -266,11 +376,15 @@ pub const Logging = packed struct {
             };
         }
     };
-    pub const ErrorFault = packed struct {
+    pub const AttemptReleaseErrorFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Release: bool = logging_default.Release,
         Error: bool = logging_default.Error,
         Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: ReleaseErrorFault) ReleaseErrorFault {
+        pub fn override(comptime logging: AttemptReleaseErrorFault) AttemptReleaseErrorFault {
             return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Release = logging_override.Release orelse logging.Release,
                 .Error = logging_override.Error orelse logging.Error,
                 .Fault = logging_override.Fault orelse logging.Fault,
             };
@@ -280,7 +394,46 @@ pub const Logging = packed struct {
         return @TypeOf(@field(@as(Spec, undefined), "logging"));
     }
 };
-
+pub fn loggingTypes() []const type {
+    var ret: []const type = &.{};
+    var bits: u6 = 0;
+    while (true) : (bits +%= 1) {
+        var fields: @TypeOf(@typeInfo(Logging.Default).Struct.fields) = &.{};
+        const logging: Logging.Default = @bitCast(Logging.Default, bits);
+        inline for (@typeInfo(Logging.Default).Struct.fields) |field| {
+            if (@field(logging, field.name)) {
+                fields = fields ++ .{field};
+            }
+        }
+        if (@popCount(bits) <= 1) {
+            continue;
+        }
+        if (!logging.Error and !logging.Fault) {
+            continue;
+        }
+        if (logging.Acquire and logging.Release and
+            logging.Attempt and logging.Error and logging.Fault)
+        {
+            break;
+        }
+        if (logging.Acquire and logging.Release) {
+            continue;
+        }
+        if (logging.Success and logging.Acquire) {
+            continue;
+        }
+        if (logging.Success and logging.Release) {
+            continue;
+        }
+        ret = ret ++ .{@Type(.{ .Struct = .{
+            .layout = .Packed,
+            .fields = fields,
+            .decls = &.{},
+            .is_tuple = false,
+        } })};
+    }
+    return ret;
+}
 pub fn define(
     comptime symbol: []const u8,
     comptime T: type,
