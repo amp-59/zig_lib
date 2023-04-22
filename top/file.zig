@@ -48,7 +48,7 @@ pub const Device = extern struct {
     major: u32 = 0,
     minor: u8 = 0,
 };
-pub const Pipe = extern struct {
+pub const Pipe = packed struct(u64) {
     read: u32,
     write: u32,
 };
@@ -73,6 +73,7 @@ pub const Events = packed struct(u16) {
     @"error": bool = false,
     hangup: bool = false,
     invalid: bool = false,
+
     other: u10 = 0,
 };
 pub const PollFd = struct {
@@ -412,7 +413,7 @@ pub const WriteSpec = struct {
 };
 pub const PollSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.poll_errors },
-    logging: builtin.Logging.SuccessError = .{},
+    logging: builtin.Logging.AttemptSuccessError = .{},
 };
 pub const StatusSpec = struct {
     options: Options = .{},
