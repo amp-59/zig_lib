@@ -938,20 +938,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
             pub const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
             pub const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
-
+            pub const poll_spec: file.PollSpec = builder_spec.poll();
+            pub const pipe_spec: file.MakePipeSpec = builder_spec.pipe();
+            pub const read_spec: file.ReadSpec = builder_spec.read();
+            pub const read_spec2: file.ReadSpec = builder_spec.read2();
+            pub const read_spec3: file.ReadSpec = builder_spec.read3();
             const command_spec: proc.CommandSpec = .{
-                .errors = .{
-                    .fork = fork_spec.errors,
-                    .waitpid = waitpid_spec.errors,
-                    .execve = execve_spec.errors,
-                },
-                .logging = .{
-                    .fork = fork_spec.logging,
-                    .waitpid = waitpid_spec.logging,
-                    .execve = execve_spec.logging,
-                },
+                .errors = .{ .fork = fork_spec.errors, .waitpid = waitpid_spec.errors, .execve = execve_spec.errors },
+                .logging = .{ .fork = fork_spec.logging, .waitpid = waitpid_spec.logging, .execve = execve_spec.logging },
             };
-            const time_spec: time.TimeSpec = .{ .nsec = builder_spec.options.dep_sleep_nsec };
+            const time_spec: time.TimeSpec = .{ .nsec = builder_spec.options.sleep_nanoseconds };
             const fstat_spec: file.StatusSpec = .{
                 .logging = .{ .Error = false, .Fault = true },
                 .errors = .{ .throw = sys.stat_errors },
@@ -1124,6 +1120,122 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 }
                 builtin.debug.logAlways(buf0[0..len]);
+            }
+            const tok = struct {
+                const error_s: [:0]const u8 = "\x1b[91merror";
+                const note_s: [:0]const u8 = "\x1b[96mnote";
+            };
+            fn writeError(allocator: *Builder.Allocator, array: *Builder.Args, errors: types.Errors, err_msg_idx: u32, about: [:0]const u8) void {
+                @setRuntimeSafety(false);
+                const bytes: []u8 = errors.bytes;
+                const err_msg_extra: types.ErrorMessage.Extra = errors.extraData(types.ErrorMessage, err_msg_idx);
+                const err_msg: *types.ErrorMessage = err_msg_extra.data;
+                const note_start: u64 = err_msg_idx +% types.ErrorMessage.len;
+                if (err_msg.src_loc == 0) {
+                    // testing.print(.{ "[", err_msg_idx, "] ", about, "\x1b[0m has no source location\n" });
+                    array.writeMany(about);
+                    array.writeMany(": \x1b[0m");
+                    array.writeMany(terminate(bytes[err_msg.start..]));
+                    writeMessage(array, bytes, err_msg.start, 0);
+                    if (err_msg.count != 1) {
+                        writeTimes(array, err_msg.count);
+                    }
+                    for (errors.extra[note_start .. note_start +% err_msg.notes_len]) |note| {
+                        writeError(allocator, array, errors, note, tok.note_s);
+                    }
+                } else {
+                    // testing.print(.{ "[", err_msg_idx, "] ", about, "\x1b[0m has source location\n" });
+                    const src_start: u64 = array.len();
+                    const src_extra: types.SourceLocation.Extra = errors.extraData(types.SourceLocation, err_msg.src_loc);
+                    const src: *types.SourceLocation = src_extra.data;
+                    array.writeMany("\x1b[1m");
+                    writeSourceLocation(array, terminate(bytes[src.src_path..]), src.line + 1, src.column + 1);
+                    array.writeMany(": ");
+                    array.writeMany(about);
+                    array.writeMany(":\x1b[0;1m ");
+                    writeMessage(array, bytes, err_msg.start, array.len() -% (src_start +% 15));
+                    if (err_msg.count != 1) {
+                        writeTimes(array, err_msg.count);
+                    }
+                    if (src.src_line != 0) {
+                        const before_caret: u64 = src.span_main -% src.span_start;
+                        const indent: u64 = src.column -% before_caret;
+                        const after_caret: u64 = src.span_end -% src.span_main;
+                        writeCaret(array, terminate(bytes[src.src_line..]), indent, before_caret, after_caret);
+                    }
+                    for (errors.extra[note_start .. note_start +% err_msg.notes_len]) |note| {
+                        writeError(allocator, array, errors, note, tok.note_s);
+                    }
+                    if (src.ref_len > 0) {
+                        writeReferenceTrace(array, errors, bytes, src_extra.end, src.ref_len);
+                    }
+                }
+            }
+            fn writeSourceLocation(array: *Builder.Args, pathname: [:0]const u8, line: u64, column: u64) void {
+                array.writeMany(pathname);
+                array.writeMany(":");
+                array.writeFormat(fmt.ud64(line));
+                array.writeMany(":");
+                array.writeFormat(fmt.ud64(column));
+            }
+            fn writeTimes(array: *Builder.Args, count: u64) void {
+                array.writeMany("\x1b[2m (");
+                array.writeFormat(fmt.ud64(count));
+                array.writeMany(" times)\x1b[0m\n");
+            }
+            fn writeCaret(array: *Builder.Args, line: [:0]const u8, indent: u64, before_caret: u64, after_caret: u64) void {
+                array.writeMany(line);
+                array.writeOne('\n');
+                writeRepeat(array, ' ', indent);
+                array.writeMany("\x1b[92m");
+                writeRepeat(array, '~', before_caret);
+                array.writeOne('^');
+                writeRepeat(array, '~', after_caret -% @boolToInt(after_caret != 0));
+                array.writeMany("\x1b[0m\n");
+            }
+            fn writeMessage(array: *Builder.Args, bytes: []u8, start: u64, indent: u64) void {
+                var next: u64 = start;
+                var idx: u64 = start;
+                while (bytes[idx] != 0) : (idx +%= 1) {
+                    if (bytes[idx] == '\n') {
+                        array.writeMany(bytes[next .. idx +% 1]);
+                        writeRepeat(array, ' ', indent);
+                        next = idx +% 1;
+                    }
+                }
+                array.writeMany(bytes[next..idx]);
+                array.writeMany("\x1b[0m\n");
+            }
+            fn writeReferenceTrace(array: *Builder.Args, errors: types.Errors, bytes: []u8, start: u64, len: u64) void {
+                array.writeMany("\x1b[0m\x1b[2mreferenced by:\n");
+                var ref_idx: u64 = start;
+                for (0..len) |_| {
+                    const ref_trace: types.ReferenceTrace.Extra = errors.extraData(types.ReferenceTrace, ref_idx);
+                    ref_idx = ref_trace.end;
+                    if (ref_trace.data.src_loc != 0) {
+                        const ref_src: types.SourceLocation.Extra = errors.extraData(types.SourceLocation, ref_trace.data.src_loc);
+                        writeRepeat(array, ' ', 4);
+                        array.writeMany(terminate(bytes[ref_trace.data.decl_name..]));
+                        array.writeMany(": ");
+                        writeSourceLocation(array, terminate(bytes[ref_src.data.src_path..]), ref_src.data.line + 1, ref_src.data.column + 1);
+                        array.writeMany("\n");
+                    }
+                }
+                array.writeMany("\x1b[0m\n");
+            }
+            fn writeRepeat(array: *Builder.Args, value: u8, count: u64) void {
+                for (0..count) |_| array.writeOne(value);
+            }
+            fn writeErrors(allocator: *Builder.Allocator, errors: types.Errors) void {
+                var array: Builder.Args = Builder.Args.init(allocator, 1024 *% 1024);
+                const list: types.ErrorMessageList.Extra = errors.extraData(types.ErrorMessageList, 0);
+                for (errors.extra[list.data.start .. list.data.start +% list.data.len]) |err_msg_idx| {
+                    writeError(allocator, &array, errors, err_msg_idx, tok.error_s);
+                }
+                builtin.debug.write(array.readAll());
+            }
+            fn terminate(bytes: []u8) [:0]const u8 {
+                return meta.manyToSlice(@ptrCast([*:0]u8, bytes.ptr));
             }
         };
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
