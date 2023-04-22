@@ -39,11 +39,11 @@ pub fn GenericChannel(comptime chan_spec: ChannelSpec) type {
             };
         };
         pub fn init() sys.Call(chan_spec.errors.pipe, Channel) {
-            var ret: Channel = undefined;
-            try meta.wrap(file.makePipe(decls.pipe_spec, &ret.in));
-            try meta.wrap(file.makePipe(decls.pipe_spec, &ret.out));
-            try meta.wrap(file.makePipe(decls.pipe_spec, &ret.err));
-            return ret;
+            return .{
+                .in = try meta.wrap(file.makePipe(decls.pipe_spec)),
+                .out = try meta.wrap(file.makePipe(decls.pipe_spec)),
+                .err = try meta.wrap(file.makePipe(decls.pipe_spec)),
+            };
         }
         pub fn init_read(chan: Channel) sys.Call(.{
             .throw = chan_spec.errors.dup3.throw ++ chan_spec.errors.close.throw,
