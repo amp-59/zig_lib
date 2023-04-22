@@ -84,6 +84,4 @@ pub fn main() void {
     recursivePrint(srg.spec.address_space.logging);
     recursivePrint(srg.spec.allocator);
     recursivePrint(srg.spec.dir);
-    recursivePrint(srg.spec.sys);
-    recursivePrint(srg.sys.POLL);
 }
