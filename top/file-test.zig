@@ -72,6 +72,17 @@ const write_spec: file.WriteSpec = .{
 const pipe_spec: file.MakePipeSpec = .{
     .options = .{ .close_on_exec = false },
 };
+const poll_spec: file.PollSpec = .{
+    .errors = .{ .throw = sys.poll_errors },
+};
+fn testPoll() !void {
+    var pollfds: [3]file.PollFd = .{
+        .{ .fd = 0, .expect = .{ .input = true } },
+        .{ .fd = 1, .expect = .{ .output = true } },
+        .{ .fd = 2, .expect = .{ .output = true } },
+    };
+    try file.poll(poll_spec, &pollfds, 100);
+}
 fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
@@ -128,9 +139,9 @@ fn testFileOperationsRound2() !void {
     try file.unlink(unlink_spec, "/run/user/1000/file_test/fifo");
 
     const new_in_fd: u64 = try file.duplicate(.{}, 0);
-    try file.write(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
+    try file.writeSlice(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
     try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
-    try file.write(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
+    try file.writeSlice(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
 
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
@@ -188,9 +199,9 @@ fn testStandardChannel() !void {
         i_array.undefineAll();
         var o_array: mem.StaticString(4096) = undefined;
         o_array.undefineAll();
-        i_array.define(try file.read(.{}, 0, i_array.referAllUndefined(), i_array.avail()));
+        i_array.define(try file.readSlice(.{}, 0, i_array.referAllUndefined()));
         o_array.writeAny(spec.reinterpret.fmt, .{ "msg: ", i_array.readAll(), ", len: ", fmt.ud64(i_array.len()), '\n' });
-        try file.write(.{}, chan.out.write, o_array.readAll());
+        try file.writeSlice(.{}, chan.out.write, o_array.readAll());
         builtin.proc.exit(0);
     } else {
         try meta.wrap(file.close(Channel.decls.close_spec, chan.in.read));
@@ -198,9 +209,9 @@ fn testStandardChannel() !void {
         try meta.wrap(file.close(Channel.decls.close_spec, chan.err.write));
         var i_array: mem.StaticString(4096) = undefined;
         i_array.undefineAll();
-        try file.write(.{}, chan.in.write, "message");
-        i_array.define(try file.read(.{}, chan.out.read, i_array.referAllUndefined(), i_array.avail()));
-        try file.write(.{}, 1, i_array.readAll());
+        try file.writeSlice(.{}, chan.in.write, "message");
+        i_array.define(try file.readSlice(.{}, chan.out.read, i_array.referAllUndefined()));
+        try file.writeSlice(.{}, 1, i_array.readAll());
     }
 }
 pub fn main() !void {
@@ -211,4 +222,5 @@ pub fn main() !void {
     try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testPathOperations());
     try meta.wrap(testFileTests());
+    try meta.wrap(testPoll());
 }
