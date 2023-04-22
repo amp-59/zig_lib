@@ -669,8 +669,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var allocator: Allocator = Allocator.init(address_space, arena_index);
                 defer allocator.deinit(address_space, arena_index);
                 if (switch (task) {
-                    .build => meta.wrap(executeBuildCommand(builder, &allocator, target, depth)) catch false,
-                    .run => meta.wrap(executeRunCommand(builder, &allocator, target, depth)) catch false,
+                    .build => meta.wrap(
+                        executeBuildCommand(builder, &allocator, target, depth),
+                    ) catch false,
+                    .run => meta.wrap(
+                        executeRunCommand(builder, &allocator, target, depth),
+                    ) catch false,
                 }) {
                     target.assertExchange(task, .blocking, .finished);
                 } else {
@@ -691,8 +695,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
             }, void) {
                 if (switch (task) {
-                    .build => try meta.wrap(executeBuildCommand(builder, allocator, target, depth)),
-                    .run => try meta.wrap(executeRunCommand(builder, allocator, target, depth)),
+                    .build => try meta.wrap(
+                        executeBuildCommand(builder, allocator, target, depth),
+                    ),
+                    .run => try meta.wrap(
+                        executeRunCommand(builder, allocator, target, depth),
+                    ),
                 }) {
                     target.assertExchange(task, .blocking, .finished);
                 } else {
@@ -735,6 +743,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.binaryRelative(allocator),
             );
             const root_path: types.Path = target.rootSourcePath(builder);
+            target.build_cmd.listen = .@"-";
             const args: [:0]u8 = try meta.wrap(
                 builder.buildWrite(target, allocator, root_path),
             );
@@ -743,7 +752,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             );
             const old_size: u64 = builder.getFileSize(bin_path);
             const rc: u8 = try meta.wrap(
-                builder.system(ptrs, &build_time),
+                builder.compile(allocator, ptrs, &build_time),
             );
             const new_size: u64 = builder.getFileSize(bin_path);
             if (depth < builder_spec.options.max_relevant_depth) {
@@ -793,7 +802,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 "\";\npub const cache_dir: [:0]const u8 = \"",        cache_root,
                 "\";\npub const global_cache_dir: [:0]const u8 = \"", global_cache_root,
                 "\";\n",
-            }) |s| try meta.wrap(file.write(decls.write_spec, env_fd, s));
+            }) |s| try meta.wrap(file.write(decls.write_spec, env_fd, s.ptr, s.len));
             try meta.wrap(file.close(decls.close_spec, env_fd));
             try meta.wrap(file.close(decls.close_spec, cache_root_fd));
             try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode));
@@ -899,13 +908,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                 }
-            } else {
-                if (address_space.count() != 1) {
-                    return true;
-                }
-                if (thread_space.count() != 0) {
-                    return true;
-                }
+            }
+            if (address_space.count() != 1) {
+                return true;
+            }
+            if (max_thread_count == 0) {
+                return false;
+            }
+            if (thread_space.count() != 0) {
+                return true;
             }
             return false;
         }
@@ -919,6 +930,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub const sleep_spec: time.SleepSpec = builder_spec.sleep();
             pub const clone_spec: proc.CloneSpec = builder_spec.clone();
             pub const write_spec: file.WriteSpec = builder_spec.write();
+            pub const write_spec2: file.WriteSpec = builder_spec.write2();
             pub const create_spec: file.CreateSpec = builder_spec.create();
             pub const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
             pub const fork_spec: proc.ForkSpec = builder_spec.fork();
