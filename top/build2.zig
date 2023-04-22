@@ -74,14 +74,20 @@ pub const BuilderSpec = struct {
         mkdir: sys.ErrorPolicy,
         close: sys.ErrorPolicy,
         write: sys.ErrorPolicy,
+        read: sys.ErrorPolicy,
         fork: sys.ErrorPolicy,
         execve: sys.ErrorPolicy,
         waitpid: sys.ErrorPolicy,
         mknod: sys.ErrorPolicy,
         dup3: sys.ErrorPolicy,
+        pipe: sys.ErrorPolicy,
+        poll: sys.ErrorPolicy,
     };
     const map_options: mem.MapSpec.Options = .{
         .grows_down = true,
+    };
+    const pipe_options: file.MakePipeSpec.Options = .{
+        .close_on_exec = false,
     };
     const create_options: file.CreateSpec.Options = .{
         .exclusive = false,
@@ -101,6 +107,18 @@ pub const BuilderSpec = struct {
     }
     fn write(comptime builder_spec: BuilderSpec) file.WriteSpec {
         return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
+    }
+    fn write2(comptime builder_spec: BuilderSpec) file.WriteSpec {
+        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write, .child = types.ClientMessage };
+    }
+    fn read(comptime builder_spec: BuilderSpec) file.ReadSpec {
+        return .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
+    }
+    fn read2(comptime builder_spec: BuilderSpec) file.ReadSpec {
+        return .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = void };
+    }
+    fn read3(comptime builder_spec: BuilderSpec) file.ReadSpec {
+        return .{ .child = types.ServerMessage, .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = void };
     }
     fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
         return .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
@@ -122,6 +140,16 @@ pub const BuilderSpec = struct {
     }
     fn dup3(comptime builder_spec: BuilderSpec) file.DuplicateSpec {
         return .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
+    }
+    fn poll(comptime builder_spec: BuilderSpec) file.PollSpec {
+        return .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll };
+    }
+    fn pipe(comptime builder_spec: BuilderSpec) file.MakePipeSpec {
+        return .{
+            .errors = builder_spec.errors.pipe,
+            .logging = builder_spec.logging.pipe,
+            .options = pipe_options,
+        };
     }
     fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
         return .{
