@@ -48,6 +48,10 @@ pub const Device = extern struct {
     major: u32 = 0,
     minor: u8 = 0,
 };
+pub const Pipe = extern struct {
+    read: u32,
+    write: u32,
+};
 pub const Perms = packed struct(u3) {
     execute: bool = false,
     write: bool = false,
@@ -408,7 +412,7 @@ pub const WriteSpec = struct {
 };
 pub const PollSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.poll_errors },
-    logging: builtin.Logging.AcquireError = .{},
+    logging: builtin.Logging.SuccessError = .{},
 };
 pub const StatusSpec = struct {
     options: Options = .{},
@@ -512,16 +516,18 @@ pub const StatusExtendedSpec = struct {
     }
 };
 pub const MakePipeSpec = struct {
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.pipe_errors },
     return_type: type = void,
     logging: builtin.Logging.AcquireError = .{},
-    options: Options,
+    const Specification = @This();
+
     pub const Options = struct {
         close_on_exec: bool = false,
         direct: bool = false,
         non_block: bool = false,
     };
-    fn flags(comptime pipe2_spec: MakePipeSpec) Open {
+    fn flags(comptime pipe2_spec: Specification) Open {
         var flags_bitfield: Open = .{ .val = 0 };
         if (pipe2_spec.options.close_on_exec) {
             flags_bitfield.set(.close_on_exec);
@@ -534,10 +540,6 @@ pub const MakePipeSpec = struct {
         }
         return flags_bitfield;
     }
-};
-pub const Pipe = extern struct {
-    read: u32,
-    write: u32,
 };
 pub const SocketSpec = struct {
     options: Options = .{},
@@ -564,7 +566,6 @@ pub const MakeDirSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessError = .{},
-    const Specification = @This();
 };
 pub const MakePathSpec = struct {
     errors: MakePathErrors = .{},
@@ -578,17 +579,17 @@ pub const MakePathSpec = struct {
         stat: builtin.Logging.SuccessErrorFault = .{},
         mkdir: builtin.Logging.SuccessError = .{},
     };
-    fn stat(comptime spec: MakePathSpec) StatusSpec {
+    fn stat(comptime mkpath_spec: Specification) StatusSpec {
         return .{
-            .errors = spec.errors.stat,
-            .logging = spec.logging.stat,
+            .errors = mkpath_spec.errors.stat,
+            .logging = mkpath_spec.logging.stat,
             .options = .{ .no_follow = true },
         };
     }
-    fn mkdir(comptime spec: MakePathSpec) MakeDirSpec {
+    fn mkdir(comptime mkpath_spec: Specification) MakeDirSpec {
         return .{
-            .errors = spec.errors.mkdir,
-            .logging = spec.logging.mkdir,
+            .errors = mkpath_spec.errors.mkdir,
+            .logging = mkpath_spec.logging.mkdir,
         };
     }
 };
@@ -839,7 +840,9 @@ pub const DuplicateSpec = struct {
 };
 pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, void) {
     if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ @ptrToInt(fds.ptr), fds.len, timeout }))) {
-        //
+        if (poll_spec.logging.Success) {
+            debug.pollNotice(fds);
+        }
     } else |poll_error| {
         return poll_error;
     }
@@ -851,7 +854,7 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child, read_count
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_count *% read_count_mul }))) |ret| {
         if (logging.Success) {
-            debug.readNotice(fd, ret);
+            debug.readNotice(fd, read_count, ret);
         }
         if (spec.return_type != void) {
             return @intCast(spec.return_type, @divExact(ret, read_count_mul));
@@ -1661,6 +1664,13 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, ", ", len_s, " bytes\n" });
     }
+    fn fdMaxLenLenAboutNotice(fd: u64, max_len: u64, len: u64, about: [:0]const u8) void {
+        const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
+        const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, ", ", len_s, "/", max_len_s, " bytes\n" });
+    }
     fn pathnameAboutNotice(pathname: [:0]const u8, about: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, pathname, "\n" });
@@ -1749,8 +1759,8 @@ const debug = opaque {
     inline fn pipeNotice(read_fd: u64, write_fd: u64) void {
         fdFdAboutNotice(read_fd, write_fd, about_pipe_0_s, read_fd_s, write_fd_s);
     }
-    inline fn readNotice(fd: u64, len: u64) void {
-        fdLenAboutNotice(fd, len, about_read_0_s);
+    inline fn readNotice(fd: u64, max_len: u64, len: u64) void {
+        fdMaxLenLenAboutNotice(fd, max_len, len, about_read_0_s);
     }
     inline fn writeNotice(fd: u64, len: u64) void {
         fdLenAboutNotice(fd, len, about_write_0_s);
