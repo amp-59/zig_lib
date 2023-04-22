@@ -1633,6 +1633,8 @@ const debug = opaque {
     const about_stat_1_s: [:0]const u8 = builtin.debug.about("stat-error");
     const about_pipe_0_s: [:0]const u8 = builtin.debug.about("pipe");
     const about_pipe_1_s: [:0]const u8 = builtin.debug.about("pipe-error");
+    const about_poll_0_s: [:0]const u8 = builtin.debug.about("poll");
+    const about_poll_1_s: [:0]const u8 = builtin.debug.about("poll-error");
     const about_close_0_s: [:0]const u8 = builtin.debug.about("close");
     const about_close_1_s: [:0]const u8 = builtin.debug.about("close-error");
     const about_mkdir_0_s: [:0]const u8 = builtin.debug.about("mkdir");
@@ -1765,6 +1767,18 @@ const debug = opaque {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, "fd=", fd_s, ", offset=", offset_s, "\n" });
+    }
+    fn pollNotice(pollfds: []PollFd, timeout: u64) void {
+        const fds_len_s: []const u8 = builtin.fmt.ud64(pollfds.len).readAll();
+        const timeout_s: []const u8 = builtin.fmt.ud64(timeout).readAll();
+        var buf: [32768]u8 = undefined;
+        var len: u64 = builtin.debug.writeMulti(&buf, &.{
+            about_poll_0_s, "fds=",
+            fds_len_s,      ", t=",
+            timeout_s,      "ms\n",
+        });
+        len +%= writePollFds(buf[len..], pollfds);
+        builtin.debug.write(buf[0..len]);
     }
     inline fn openNotice(pathname: [:0]const u8, fd: u64) void {
         pathnameFdAboutNotice(pathname, fd, about_open_0_s);
@@ -2006,16 +2020,20 @@ const debug = opaque {
         }
     }
     pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
+        @setRuntimeSafety(false);
         var argc: u64 = args.len;
         var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
         var idx: u64 = 0;
-        len +%= builtin.debug.writeMany(buf[len..], about_execve_0_s);
-        len +%= builtin.debug.writeMany(buf[len..], filename);
+        @memcpy(buf[len..].ptr, about_execve_0_s.ptr, about_execve_0_s.len);
+        len +%= about_execve_0_s.len;
+        @memcpy(buf[len..].ptr, filename.ptr, filename.len);
+        len +%= filename.len;
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            len +%= builtin.debug.writeMany(buf[len..], "[0] ");
+            @memcpy(buf[len..].ptr, "[0] ", 4);
+            len +%= 4;
             idx +%= 1;
         }
         while (idx != argc) : (idx +%= 1) {
@@ -2030,15 +2048,19 @@ const debug = opaque {
             if (len +% arg_len >= buf.len -% 37) {
                 break;
             }
-            for (args[idx][0..arg_len], 0..) |c, j| buf[len +% j] = c;
+            @memcpy(buf[len..].ptr, args[idx][0..arg_len].ptr, arg_len);
             len +%= arg_len;
             buf[len] = ' ';
             len +%= 1;
         }
         if (argc != idx) {
-            len +%= builtin.debug.writeMany(buf[len..], " ... and ");
-            len +%= builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc -% idx).readAll());
-            len +%= builtin.debug.writeMany(buf[len..], " more args ... \n");
+            const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
+            @memcpy(buf[len..].ptr, " ... and ", 9);
+            len +%= 9;
+            @memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
+            len +%= del_s.len;
+            @memcpy(buf[len..].ptr, " more args ... \n", 16);
+            len +%= 16;
         } else {
             buf[len] = '\n';
             len +%= 1;
@@ -2050,20 +2072,28 @@ const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, [_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ") ", filename });
     }
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
+        @setRuntimeSafety(false);
         const max_len: u64 = 4096 +% 128;
+        const error_name: [:0]const u8 = @errorName(exec_error);
         var argc: u64 = args.len;
         var buf: [max_len]u8 = undefined;
         var idx: u64 = 0;
         var len: u64 = 0;
-        len +%= builtin.debug.writeMany(buf[len..], about_execve_1_s);
-        len +%= builtin.debug.writeMany(buf[len..], "(");
-        len +%= builtin.debug.writeMany(buf[len..], @errorName(exec_error));
-        len +%= builtin.debug.writeMany(buf[len..], ")");
-        len +%= builtin.debug.writeMany(buf[len..], filename);
+        @memcpy(buf[len..].ptr, about_execve_1_s.ptr, about_execve_1_s.len);
+        len +%= about_execve_1_s.len;
+        @memcpy(buf[len..].ptr, "(", 1);
+        len +%= 1;
+        @memcpy(buf[len..], error_name.ptr, error_name.len);
+        len +%= error_name.len;
+        @memcpy(buf[len..], ")", 1);
+        len +%= 1;
+        @memcpy(buf[len..].ptr, filename.ptr, filename.len);
+        len +%= filename.len;
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            len +%= builtin.debug.writeMany(buf[len..], "[0] ");
+            @memcpy(buf[len..].ptr, "[0] ", 4);
+            len +%= 4;
             idx +%= 1;
         }
         while (idx != argc) : (idx +%= 1) {
@@ -2078,19 +2108,69 @@ const debug = opaque {
             if (len +% arg_len >= max_len -% 37) {
                 break;
             }
-            for (args[idx][0..arg_len], 0..) |c, j| buf[len +% j] = c;
+            @memcpy(buf[len..].ptr, args[idx][0..arg_len].ptr, arg_len);
             len +%= arg_len;
             buf[len] = ' ';
             len +%= 1;
         }
         if (argc != idx) {
-            len +%= builtin.debug.writeMany(buf[len..], " ... and ");
-            len +%= builtin.debug.writeMany(buf[len..], builtin.fmt.ud64(argc -% idx).readAll());
-            len +%= builtin.debug.writeMany(buf[len..], " more args ... \n");
+            const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
+            @memcpy(buf[len..].ptr, " ... and ", 9);
+            len +%= 9;
+            @memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
+            len +%= del_s.len;
+            @memcpy(buf[len..].ptr, " more args ... \n", 16);
+            len +%= 16;
         } else {
             buf[len] = '\n';
             len +%= 1;
         }
         builtin.debug.write(buf[0..len]);
+    }
+    fn writePollFds(buf: []u8, pollfds: []PollFd) u64 {
+        @setRuntimeSafety(false);
+        var len: u64 = 0;
+        for (pollfds) |*pollfd| {
+            len +%= writePollFd(buf[len..], pollfd);
+        }
+        return len;
+    }
+    fn writePollFd(buf: []u8, pollfd: *PollFd) u64 {
+        @setRuntimeSafety(false);
+        var len: u64 = 0;
+        const fd_s: []const u8 = builtin.fmt.ud64(pollfd.fd).readAll();
+        @memset(buf[len..].ptr, ' ', 4 -% fd_s.len);
+        len +%= 4 -% fd_s.len;
+        @memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
+        len +%= fd_s.len;
+        buf[len] = ':';
+        len +%= 1;
+        @memset(buf[len..].ptr, ' ', 11);
+        len +%= 11;
+        len +%= writeEvents(buf[len..], pollfd, "expect: ", 4);
+        len +%= writeEvents(buf[len..], pollfd, " actual: ", 6);
+        buf[len] = '\n';
+        len +%= 1;
+        return len;
+    }
+    fn writeEvents(buf: []u8, pollfd: *PollFd, about: [:0]const u8, off: u64) u64 {
+        @setRuntimeSafety(false);
+        const events: Events = @intToPtr(*Events, @ptrToInt(pollfd) + off).*;
+        if (@bitCast(u16, events) == 0) {
+            return 0;
+        }
+        var len: u64 = 0;
+        @memcpy(buf.ptr, about.ptr, about.len);
+        len +%= about.len;
+        inline for (@typeInfo(Events).Struct.fields) |field| {
+            if (field.type != bool) {
+                continue;
+            }
+            if (@field(events, field.name)) {
+                @memcpy(buf[len..].ptr, field.name ++ ",", field.name.len +% 1);
+                len +%= field.name.len +% 1;
+            }
+        }
+        return len;
     }
 };
