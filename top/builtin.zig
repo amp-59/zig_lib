@@ -548,6 +548,10 @@ pub fn zero(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
+pub fn all(comptime T: type) T {
+    const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{~@as(u8, 0)} ** @sizeOf(T);
+    return @ptrCast(*const T, &data).*;
+}
 pub fn addr(any: anytype) usize {
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
         return @ptrToInt(any.ptr);
@@ -1484,6 +1488,10 @@ pub const debug = opaque {
     pub fn writeMany(buf: []u8, s: []const u8) u64 {
         @memcpy(buf.ptr, s.ptr, s.len);
         return s.len;
+    }
+    pub fn writeRepeat(buf: []u8, c: u8, count: u64) u64 {
+        @memset(buf.ptr, c, count);
+        return count;
     }
     pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
         return mach.memcpyMulti(buf.ptr, ss);
