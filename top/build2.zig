@@ -336,10 +336,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 task: types.Task,
                 depth: u64,
             ) sys.Call(.{
-                .throw = decls.clock_spec.errors.throw ++
-                    decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-                .abort = decls.clock_spec.errors.abort ++
-                    decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+                .throw = clock_spec.errors.throw ++
+                    fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+                .abort = clock_spec.errors.abort ++
+                    fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
             }, void) {
                 if (max_thread_count == 0) {
                     try meta.wrap(impl.executeCommand(builder, allocator, target, task, depth));
@@ -347,8 +347,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     var arena_index: AddressSpace.Index = 0;
                     while (arena_index != max_thread_count) : (arena_index +%= 1) {
                         if (thread_space.atomicSet(arena_index)) {
-                            const stack_ab_addr: u64 = ThreadSpace.high(arena_index) -% 4096;
-                            return impl.forwardToExecuteCloneThreaded(builder, address_space, thread_space, target, task, arena_index, depth, stack_ab_addr);
+                            return @call(.never_inline, impl.forwardToExecuteCloneThreaded, .{
+                                builder, address_space, thread_space, target, task, arena_index, depth, ThreadSpace.high(arena_index) -% 4096,
+                            });
                         }
                     }
                     try meta.wrap(impl.executeCommand(builder, allocator, target, task, depth));
@@ -364,10 +365,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 arena_index: AddressSpace.Index,
                 depth: u64,
             ) sys.Call(.{
-                .throw = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.throw ++
-                    decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-                .abort = decls.clock_spec.errors.abort ++ decls.sleep_spec.errors.abort ++
-                    decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+                .throw = clock_spec.errors.throw ++ sleep_spec.errors.throw ++
+                    fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+                .abort = clock_spec.errors.abort ++ sleep_spec.errors.abort ++
+                    fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
             }, void) {
                 if (task == .run and target.build_cmd.kind == .exe) {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0));
@@ -380,13 +381,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         try meta.wrap(dep.target.acquireLock(address_space, thread_space, allocator, builder, dep.task, arena_index, depth +% 1));
                     }
                     while (dependencyWait(target, task, arena_index)) {
-                        try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
+                        try meta.wrap(time.sleep(sleep_spec, .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                     }
                     try meta.wrap(target.acquireThread(address_space, thread_space, allocator, builder, task, depth));
                 }
                 if (depth == 0) {
                     while (target.lock.get(task) == .blocking) {
-                        try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
+                        try meta.wrap(time.sleep(sleep_spec, .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                     }
                 }
             }
@@ -398,14 +399,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builder: *Builder,
                 task: types.Task,
             ) sys.Call(.{
-                .throw = decls.clock_spec.errors.throw ++ decls.sleep_spec.errors.throw ++
-                    decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-                .abort = decls.clock_spec.errors.abort ++ decls.sleep_spec.errors.abort ++
-                    decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+                .throw = clock_spec.errors.throw ++ sleep_spec.errors.throw ++
+                    fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+                .abort = clock_spec.errors.abort ++ sleep_spec.errors.abort ++
+                    fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
             }, void) {
                 try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, task, max_thread_count, 0));
                 while (builderWait(address_space, thread_space, builder)) {
-                    try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
+                    try meta.wrap(time.sleep(sleep_spec, .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
             }
             fn binaryRelative(target: *Target, allocator: *Allocator) [:0]const u8 {
@@ -593,7 +594,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
                 }
                 while (groupWait(group, task)) {
-                    try meta.wrap(time.sleep(decls.sleep_spec, decls.time_spec));
+                    try meta.wrap(time.sleep(sleep_spec, .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
             }
             pub fn addTarget(
@@ -619,51 +620,47 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return group.trgs[0..group.trgs_len];
             }
         };
-        const update_exit_message: [2]types.ClientMessage = .{
-            .{ .tag = .update, .bytes_len = 0 },
-            .{ .tag = .exit, .bytes_len = 0 },
-        };
         pub fn groups(builder: *const Builder) []*Group {
             @setRuntimeSafety(false);
             return builder.grps[0..builder.grps_len];
         }
         fn openChild(in: file.Pipe, out: file.Pipe, err: file.Pipe) sys.Call(.{
-            .throw = decls.close_spec.errors.throw ++ decls.dup3_spec.errors.throw,
-            .abort = decls.close_spec.errors.abort ++ decls.dup3_spec.errors.abort,
+            .throw = close_spec.errors.throw ++ dup3_spec.errors.throw,
+            .abort = close_spec.errors.abort ++ dup3_spec.errors.abort,
         }, void) {
-            try meta.wrap(file.close(decls.close_spec, in.write));
-            try meta.wrap(file.close(decls.close_spec, out.read));
-            try meta.wrap(file.close(decls.close_spec, err.read));
-            try meta.wrap(file.duplicateTo(decls.dup3_spec, in.read, 0));
-            try meta.wrap(file.duplicateTo(decls.dup3_spec, out.write, 1));
-            try meta.wrap(file.duplicateTo(decls.dup3_spec, err.write, 2));
+            try meta.wrap(file.close(close_spec, in.write));
+            try meta.wrap(file.close(close_spec, out.read));
+            try meta.wrap(file.close(close_spec, err.read));
+            try meta.wrap(file.duplicateTo(dup3_spec, in.read, 0));
+            try meta.wrap(file.duplicateTo(dup3_spec, out.write, 1));
+            try meta.wrap(file.duplicateTo(dup3_spec, err.write, 2));
         }
-        fn openParent(in: file.Pipe, out: file.Pipe, err: file.Pipe) sys.Call(decls.close_spec.errors, void) {
-            try meta.wrap(file.close(decls.close_spec, in.read));
-            try meta.wrap(file.close(decls.close_spec, out.write));
-            try meta.wrap(file.close(decls.close_spec, err.write));
+        fn openParent(in: file.Pipe, out: file.Pipe, err: file.Pipe) sys.Call(close_spec.errors, void) {
+            try meta.wrap(file.close(close_spec, in.read));
+            try meta.wrap(file.close(close_spec, out.write));
+            try meta.wrap(file.close(close_spec, err.write));
         }
-        fn closeParent(in: file.Pipe, out: file.Pipe, err: file.Pipe) sys.Call(decls.close_spec.errors, void) {
-            try meta.wrap(file.close(decls.close_spec, in.write));
-            try meta.wrap(file.close(decls.close_spec, out.read));
-            try meta.wrap(file.close(decls.close_spec, err.read));
+        fn closeParent(in: file.Pipe, out: file.Pipe, err: file.Pipe) sys.Call(close_spec.errors, void) {
+            try meta.wrap(file.close(close_spec, in.write));
+            try meta.wrap(file.close(close_spec, out.read));
+            try meta.wrap(file.close(close_spec, err.read));
         }
         fn clientLoop(allocator: *Allocator, out: file.Pipe) void {
             var fds: [1]file.PollFd = .{
                 .{ .fd = out.read, .expect = .{ .input = true } },
             };
-            while (!fds[0].actual.hangup) {
-                const hdr: *types.ServerMessage = create(allocator, types.ServerMessage);
+            while (!fds[0].actual.hangup) : (fds[0].actual.input = false) {
+                const hdr: *types.Message.ServerHeader = create(allocator, types.Message.ServerHeader);
                 try meta.wrap(
-                    file.poll(decls.poll_spec, &fds, builder_spec.options.build_timeout_milliseconds),
+                    file.poll(poll_spec, &fds, builder_spec.options.build_timeout_milliseconds),
                 );
                 try meta.wrap(
-                    file.readOne(decls.read_spec3, out.read, hdr),
+                    file.readOne(read_spec3, out.read, hdr),
                 );
                 const msg: []u8 = allocate(allocator, u8, hdr.bytes_len);
                 mach.memset(msg.ptr, 0, msg.len);
                 try meta.wrap(
-                    file.readSlice(decls.read_spec2, out.read, msg),
+                    file.readSlice(read_spec2, out.read, msg),
                 );
                 switch (hdr.tag) {
                     .zig_version => continue,
@@ -678,52 +675,52 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
-            .throw = decls.clock_spec.errors.throw ++
-                decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-            .abort = decls.clock_spec.errors.abort ++
-                decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+            .throw = clock_spec.errors.throw ++
+                fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+            .abort = clock_spec.errors.abort ++
+                fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
         }, u8) {
-            const start: time.TimeSpec = try meta.wrap(time.get(decls.clock_spec, .realtime));
-            const pid: u64 = try meta.wrap(proc.fork(decls.fork_spec));
+            const start: time.TimeSpec = try meta.wrap(time.get(clock_spec, .realtime));
+            const pid: u64 = try meta.wrap(proc.fork(fork_spec));
             if (pid == 0) try meta.wrap(
-                file.execPath(decls.execve_spec, meta.manyToSlice(args[0]), args, builder.vars),
+                file.execPath(execve_spec, meta.manyToSlice(args[0]), args, builder.vars),
             );
             var status: u32 = 0;
             try meta.wrap(
-                proc.waitPid(decls.waitpid_spec, .{ .pid = pid }, &status),
+                proc.waitPid(waitpid_spec, .{ .pid = pid }, &status),
             );
-            ts.* = time.diff(try meta.wrap(time.get(decls.clock_spec, .realtime)), start);
+            ts.* = time.diff(try meta.wrap(time.get(clock_spec, .realtime)), start);
             return proc.Status.exit(status);
         }
         fn compile(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
-            .throw = decls.clock_spec.errors.throw ++
-                decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-            .abort = decls.clock_spec.errors.abort ++
-                decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+            .throw = clock_spec.errors.throw ++
+                fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+            .abort = clock_spec.errors.abort ++
+                fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
         }, u8) {
-            const in: file.Pipe = try meta.wrap(file.makePipe(decls.pipe_spec));
-            const out: file.Pipe = try meta.wrap(file.makePipe(decls.pipe_spec));
-            const err: file.Pipe = try meta.wrap(file.makePipe(decls.pipe_spec));
-            const start: time.TimeSpec = try meta.wrap(time.get(decls.clock_spec, .realtime));
-            const pid: u64 = try meta.wrap(proc.fork(decls.fork_spec));
+            const in: file.Pipe = try meta.wrap(file.makePipe(pipe_spec));
+            const out: file.Pipe = try meta.wrap(file.makePipe(pipe_spec));
+            const err: file.Pipe = try meta.wrap(file.makePipe(pipe_spec));
+            const start: time.TimeSpec = try meta.wrap(time.get(clock_spec, .realtime));
+            const pid: u64 = try meta.wrap(proc.fork(fork_spec));
             if (pid == 0) {
                 try meta.wrap(openChild(in, out, err));
                 try meta.wrap(
-                    file.execPath(decls.execve_spec, builder.zig_exe, args, builder.vars),
+                    file.execPath(execve_spec, builder.zig_exe, args, builder.vars),
                 );
             }
             try meta.wrap(openParent(in, out, err));
             try meta.wrap(
-                file.write(decls.write_spec2, in.write, &update_exit_message, 2),
+                file.write(write_spec2, in.write, &update_exit_message, 2),
             );
             try meta.wrap(
                 clientLoop(allocator, out),
             );
             var status: u32 = 0;
             try meta.wrap(
-                proc.waitPid(decls.waitpid_spec, .{ .pid = pid }, &status),
+                proc.waitPid(waitpid_spec, .{ .pid = pid }, &status),
             );
-            ts.* = time.diff(try meta.wrap(time.get(decls.clock_spec, .realtime)), start);
+            ts.* = time.diff(try meta.wrap(time.get(clock_spec, .realtime)), start);
             return proc.Status.exit(status);
         }
         // This namespace exists so that programs referencing builder types do
@@ -778,10 +775,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 task: types.Task,
                 depth: u64,
             ) sys.Call(.{
-                .throw = decls.clock_spec.errors.throw ++
-                    decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-                .abort = decls.clock_spec.errors.abort ++
-                    decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+                .throw = clock_spec.errors.throw ++
+                    fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+                .abort = clock_spec.errors.abort ++
+                    fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
             }, void) {
                 if (switch (task) {
                     .build => try meta.wrap(
@@ -815,17 +812,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn buildLength(builder: *Builder, target: *Target, root_path: types.Path) u64 {
             if (builder_spec.options.max_command_line) |len| return len;
             var len: u64 = builder.zig_exe.len +% 1;
-            len +%= 6 +% @tagName(target.build_cmd.kind).len +% 1;
-            len +%= command_line.buildLength(target.build_cmd);
-            len +%= root_path.formatLength();
-            len +%= 1;
+            len = len +% 6 +% @tagName(target.build_cmd.kind).len +% 1;
+            len = len +% command_line.buildLength(target.build_cmd);
+            len = len +% root_path.formatLength();
+            len = len +% 1;
             return len;
         }
         fn executeBuildCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
-            .throw = decls.clock_spec.errors.throw ++
-                decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-            .abort = decls.clock_spec.errors.abort ++
-                decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+            .throw = clock_spec.errors.throw ++
+                fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+            .abort = clock_spec.errors.abort ++
+                fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
         }, bool) {
             var build_time: time.TimeSpec = undefined;
             const bin_path: [:0]const u8 = try meta.wrap(
@@ -853,10 +850,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return rc == builder_spec.options.expected_status;
         }
         fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
-            .throw = decls.clock_spec.errors.throw ++
-                decls.fork_spec.errors.throw ++ decls.execve_spec.errors.throw ++ decls.waitpid_spec.errors.throw,
-            .abort = decls.clock_spec.errors.abort ++
-                decls.fork_spec.errors.abort ++ decls.execve_spec.errors.abort ++ decls.waitpid_spec.errors.abort,
+            .throw = clock_spec.errors.throw ++
+                fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
+            .abort = clock_spec.errors.abort ++
+                fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
         }, bool) {
             var run_time: time.TimeSpec = undefined;
             target.addRunArguments(allocator, builder);
