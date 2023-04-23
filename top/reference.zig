@@ -57,10 +57,10 @@ pub fn pointerOpaque(comptime child: type, any: *const anyopaque) *const child {
 pub fn pointerOneAligned(
     comptime child: type,
     addr: u64,
-    comptime addr_align: u64,
-) *align(addr_align) child {
+    comptime alignment: u64,
+) *align(alignment) child {
     @setRuntimeSafety(false);
-    return @intToPtr(*child, addr);
+    return @intToPtr(*align(alignment) child, addr);
 }
 pub fn pointerManyAligned(
     comptime child: type,
@@ -96,7 +96,7 @@ pub fn pointerSliceWithSentinelAligned(
     comptime alignment: u64,
 ) [:sentinel]align(alignment) child {
     @setRuntimeSafety(false);
-    return @intToPtr([*]child, addr)[0..count :sentinel];
+    return @intToPtr([*]align(alignment) child, addr)[0..count :sentinel];
 }
 pub fn pointerCountAligned(
     comptime child: type,
@@ -105,7 +105,7 @@ pub fn pointerCountAligned(
     comptime alignment: u64,
 ) *align(alignment) [count]child {
     @setRuntimeSafety(false);
-    return @intToPtr(*[count]child, addr);
+    return @intToPtr(*align(alignment) [count]child, addr);
 }
 pub fn pointerCountWithSentinelAligned(
     comptime child: type,
@@ -115,7 +115,7 @@ pub fn pointerCountWithSentinelAligned(
     comptime alignment: u64,
 ) *align(alignment) [count:sentinel]child {
     @setRuntimeSafety(false);
-    return @intToPtr(*[count:sentinel]child, addr);
+    return @intToPtr(*align(alignment) [count:sentinel]child, addr);
 }
 pub fn pointerOpaqueAligned(
     comptime child: type,
