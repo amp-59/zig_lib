@@ -45,7 +45,7 @@ pub const BuilderSpec = struct {
         docs_ext: [:0]const u8 = ".html",
         implib_ext: [:0]const u8 = ".lib",
     };
-    pub const Logging = packed struct {
+    pub const Logging = packed struct(u34) {
         path: builtin.Logging.Field(file.PathSpec),
         create: builtin.Logging.Field(file.CreateSpec),
         close: builtin.Logging.Field(file.CloseSpec),
@@ -1006,7 +1006,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
-
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
@@ -1201,13 +1200,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn writeError(buf: [*]u8, errors: types.Errors, err_msg_idx: u32, about: [:0]const u8) u64 {
                 @setRuntimeSafety(false);
-                const bytes: []u8 = errors.bytes;
+                const bytes: [*]u8 = errors.bytes;
                 const err_msg: *types.ErrorMessage = errors.cast(types.ErrorMessage, err_msg_idx);
                 const note_start: u64 = err_msg_idx +% types.ErrorMessage.len;
                 const notes: []u32 = errors.extra[note_start .. note_start +% err_msg.notes_len];
                 var len: u64 = 0;
                 if (err_msg.src_loc == 0) {
-                    const name: [:0]const u8 = terminate(bytes[err_msg.start..]);
+                    const name: [:0]const u8 = terminate(bytes + err_msg.start);
                     len = len +% writeAbout(buf + len, about);
                     @memcpy(buf + len, name.ptr, name.len);
                     len = len +% name.len;
@@ -1219,7 +1218,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 } else {
                     const src: *types.SourceLocation = errors.cast(types.SourceLocation, err_msg.src_loc);
                     const src_end: u64 = err_msg.src_loc +% types.SourceLocation.len;
-                    const src_file: [:0]u8 = terminate(bytes[src.src_path..]);
+                    const src_file: [:0]u8 = terminate(bytes + src.src_path);
                     @memcpy(buf + len, "\x1b[1m", 4);
                     len = len +% 4;
                     len = len +% writeSourceLocation(buf + len, src_file, src.line +% 1, src.column +% 1);
@@ -1230,7 +1229,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (err_msg.count != 1)
                         len = len +% writeTimes(buf + len, err_msg.count);
                     if (src.src_line != 0)
-                        len = len +% writeCaret(buf + len, terminate(bytes[src.src_line..]), src);
+                        len = len +% writeCaret(buf + len, terminate(bytes + src.src_line), src);
                     for (notes) |note|
                         len = len +% writeError(buf + len, errors, note, note_s);
                     if (src.ref_len > 0)
@@ -1289,7 +1288,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 return len +% 1;
             }
-            fn writeMessage(buf: [*]u8, bytes: []u8, start: u64, indent: u64) u64 {
+            fn writeMessage(buf: [*]u8, bytes: [*]u8, start: u64, indent: u64) u64 {
                 @setRuntimeSafety(false);
                 var len: u64 = 0;
                 var next: u64 = start;
@@ -1312,7 +1311,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 return len +% 1;
             }
-            fn writeReferenceTrace(buf: [*]u8, errors: types.Errors, bytes: []u8, start: u64, ref_len: u64) u64 {
+            fn writeReferenceTrace(buf: [*]u8, errors: types.Errors, bytes: [*]u8, start: u64, ref_len: u64) u64 {
                 @setRuntimeSafety(false);
                 var ref_idx: u64 = start;
                 var idx: u64 = 0;
@@ -1327,8 +1326,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (src_idx != 0) {
                         const ref_src: *types.SourceLocation =
                             errors.cast(types.SourceLocation, src_idx);
-                        const src_file: [:0]u8 = terminate(bytes[ref_src.src_path..]);
-                        const decl_name: [:0]u8 = terminate(bytes[ref_trc.decl_name..]);
+                        const src_file: [:0]u8 = terminate(bytes + ref_src.src_path);
+                        const decl_name: [:0]u8 = terminate(bytes + ref_trc.decl_name);
                         @memset(buf + len, ' ', 4);
                         len = len +% 4;
                         @memcpy(buf + len, decl_name.ptr, decl_name.len);
@@ -1355,8 +1354,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 builtin.debug.write(buf[0..len]);
             }
-            fn terminate(bytes: []u8) [:0]u8 {
-                return meta.manyToSlice(@ptrCast([*:0]u8, bytes.ptr));
+            fn terminate(bytes: [*]u8) [:0]u8 {
+                var len: u64 = 0;
+                while (bytes[len] != 0) len = len +% 1;
+                return bytes[0..len :0];
             }
         };
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
