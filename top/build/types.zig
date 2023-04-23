@@ -214,50 +214,43 @@ pub const Files = struct {
         return len;
     }
 };
-pub const ClientMessage = extern struct {
-    tag: Tag,
-    bytes_len: u32,
-    pub const Tag = enum(u32) {
-        exit,
-        update,
-        run,
-        hot_update,
-        query_test_metadata,
-        run_test,
-    };
-};
-pub const ServerMessage = extern struct {
-    tag: Tag,
-    bytes_len: u32,
-    pub const Tag = enum(u32) {
-        zig_version,
-        error_bundle,
-        progress,
-        emit_bin_path,
-        test_metadata,
-        test_results,
-    };
-    pub fn version(message: *ServerMessage) [:0]const u8 {
-        @setRuntimeSafety(false);
-        const string_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage);
-        return @intToPtr([*:0]u8, string_addr)[0..message.bytes_len :0];
-    }
-    pub fn pathname(message: *ServerMessage) [:0]const u8 {
-        @setRuntimeSafety(false);
-        const string_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage) +% @sizeOf(EmitBin);
-        return meta.manyToSlice(@intToPtr([*:0]u8, string_addr));
-    }
-    pub fn errors(message: *ServerMessage) Errors {
-        @setRuntimeSafety(false);
-        const hdr_addr: u64 = @ptrToInt(message) +% @sizeOf(ServerMessage);
-        const data_addr: u64 = hdr_addr +% @sizeOf(Errors.Header);
-        const errors_header: *Errors.Header = @intToPtr(*Errors.Header, hdr_addr);
-        return .{
-            .extra = @intToPtr([*]u32, data_addr)[0..errors_header.extra_len],
-            .bytes = @intToPtr([*]u8, data_addr +% errors_header.extra_len *% 4)[0..errors_header.bytes_len],
+pub const Message = struct {
+    pub const ClientHeader = extern struct {
+        tag: Tag,
+        bytes_len: u32,
+        pub const Tag = enum(u32) {
+            exit,
+            update,
+            run,
+            hot_update,
+            query_test_metadata,
+            run_test,
         };
-    }
-    pub const len: u64 = @sizeOf(@This());
+        pub const len: u64 = @sizeOf(ClientHeader);
+    };
+    pub const ServerHeader = extern struct {
+        tag: Tag,
+        bytes_len: u32,
+        pub const Tag = enum(u32) {
+            zig_version,
+            error_bundle,
+            progress,
+            emit_bin_path,
+            test_metadata,
+            test_results,
+        };
+        pub fn version(message: *ServerHeader) [:0]const u8 {
+            @setRuntimeSafety(false);
+            const string_addr: u64 = @ptrToInt(message) +% len;
+            return @intToPtr([*:0]u8, string_addr)[0..message.bytes_len :0];
+        }
+        pub fn pathname(message: *ServerHeader) [:0]const u8 {
+            @setRuntimeSafety(false);
+            const string_addr: u64 = @ptrToInt(message) +% len +% EmitBin.len;
+            return meta.manyToSlice(@intToPtr([*:0]u8, string_addr));
+        }
+        pub const len: u64 = @sizeOf(ServerHeader);
+    };
 };
 pub const Errors = struct {
     extra: []u32,
@@ -289,7 +282,6 @@ pub const EmitBin = extern struct {
         reserved: u7 = 0,
     };
 };
-
 pub const ErrorMessageList = struct {
     len: u32,
     start: u32,
