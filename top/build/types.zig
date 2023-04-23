@@ -226,7 +226,7 @@ pub const Message = struct {
             query_test_metadata,
             run_test,
         };
-        pub const len: u64 = @sizeOf(ClientHeader);
+        pub const size: u64 = @sizeOf(ClientHeader);
     };
     pub const ServerHeader = extern struct {
         tag: Tag,
@@ -239,40 +239,30 @@ pub const Message = struct {
             test_metadata,
             test_results,
         };
-        pub fn version(message: *ServerHeader) [:0]const u8 {
-            @setRuntimeSafety(false);
-            const string_addr: u64 = @ptrToInt(message) +% len;
-            return @intToPtr([*:0]u8, string_addr)[0..message.bytes_len :0];
-        }
-        pub fn pathname(message: *ServerHeader) [:0]const u8 {
-            @setRuntimeSafety(false);
-            const string_addr: u64 = @ptrToInt(message) +% len +% EmitBin.len;
-            return meta.manyToSlice(@intToPtr([*:0]u8, string_addr));
-        }
-        pub const len: u64 = @sizeOf(ServerHeader);
+        pub const size: u64 = @sizeOf(ServerHeader);
+    };
+    pub const ErrorHeader = extern struct {
+        extra_len: u32,
+        bytes_len: u32,
+        pub const size: u64 = @sizeOf(ServerHeader);
     };
 };
 pub const Errors = struct {
-    extra: []u32,
-    bytes: []u8,
-    pub const Header = extern struct {
-        extra_len: u32,
-        bytes_len: u32,
-    };
+    extra: [*]u32,
+    bytes: [*:0]u8,
+
     pub fn create(msg: []u8) Errors {
-        const errors_header: *Header = @ptrCast(*Header, @alignCast(4, msg.ptr));
-        const data_addr: u64 = @ptrToInt(msg.ptr) + @sizeOf(Header);
+        @setRuntimeSafety(false);
+        const errors_header: *Message.ErrorHeader = @ptrCast(*Message.ErrorHeader, @alignCast(4, msg.ptr));
+        const data_addr: u64 = @ptrToInt(msg.ptr) + @sizeOf(Message.ErrorHeader);
         return .{
-            .extra = @intToPtr([*]u32, data_addr)[0..errors_header.extra_len],
-            .bytes = @intToPtr([*]u8, data_addr +% errors_header.extra_len *% 4)[0..errors_header.bytes_len],
+            .extra = @intToPtr([*]u32, data_addr),
+            .bytes = @intToPtr([*:0]u8, data_addr +% errors_header.extra_len *% 4),
         };
     }
-    pub fn extraData(errors: Errors, comptime T: type, index: usize) T.Extra {
+    pub inline fn cast(errors: Errors, comptime T: type, idx: u64) *T {
         @setRuntimeSafety(false);
-        return .{
-            .data = @ptrCast(*T, errors.extra[index..].ptr),
-            .end = index +% T.len,
-        };
+        return @ptrCast(*T, errors.extra + idx);
     }
 };
 pub const EmitBin = extern struct {
@@ -327,3 +317,13 @@ pub const ReferenceTrace = struct {
     };
     pub const len: u64 = 2;
 };
+pub fn version(message: *Message.ServerHeader) [:0]const u8 {
+    @setRuntimeSafety(false);
+    const string_addr: u64 = @ptrToInt(message) +% Message.ServerHeader.len;
+    return @intToPtr([*:0]u8, string_addr)[0..message.bytes_len :0];
+}
+pub fn pathname(message: *Message.ServerHeader) [:0]const u8 {
+    @setRuntimeSafety(false);
+    const string_addr: u64 = @ptrToInt(message) +% Message.ServerHeader.len +% EmitBin.len;
+    return meta.manyToSlice(@intToPtr([*:0]u8, string_addr));
+}

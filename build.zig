@@ -6,7 +6,9 @@ const build = srg.build2;
 const builtin = srg.builtin;
 pub const runtime_assertions: bool = false;
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
+
 pub const message_style: [:0]const u8 = "\x1b[2m";
+
 const mods: []const build.Module = &.{
     .{ .name = "zig_lib", .path = "zig_lib.zig" },
     .{ .name = "@build", .path = "build.zig" },
