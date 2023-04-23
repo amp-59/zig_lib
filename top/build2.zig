@@ -1143,164 +1143,226 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 root_max_width &= ~(alignment -% 1);
                 @memset(&buf1, ' ', 4);
                 for (builder.groups()) |group| {
-                    len +%= builtin.debug.writeMulti(buf0[len..], &.{ group.name, ":\n" });
+                    @memcpy(buf0[len..].ptr, group.name.ptr, group.name.len);
+                    len = len +% group.name.len;
+                    @memcpy(buf0[len..].ptr, ":\n", 2);
+                    len = len +% 2;
                     for (group.targets()) |target| {
                         @memset(buf0[len..].ptr, ' ', 4);
-                        len +%= 4;
+                        len = len +% 4;
                         @memcpy(buf0[len..].ptr, target.name.ptr, target.name.len);
-                        len +%= target.name.len;
+                        len = len +% target.name.len;
                         var count: u64 = name_max_width -% target.name.len;
                         if (show_root) {
                             @memset(buf0[len..].ptr, ' ', count);
-                            len +%= count;
+                            len = len +% count;
                             @memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
-                            len +%= target.root.len;
+                            len = len +% target.root.len;
                         }
                         if (show_descr) {
                             count = root_max_width -% target.root.len;
                             @memset(buf0[len..].ptr, ' ', count);
-                            len +%= count;
+                            len = len +% count;
                             if (target.descr) |descr| {
                                 @memcpy(buf0[len..].ptr, descr.ptr, descr.len);
-                                len +%= descr.len;
+                                len = len +% descr.len;
                             }
                         }
                         if (show_deps) {
                             @memcpy(buf0[len..].ptr, "\x1b[2m", 4);
-                            len +%= 4;
+                            len = len +% 4;
                             len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
                             @memcpy(buf0[len..].ptr, "\x1b[0m", 4);
-                            len +%= 4;
+                            len = len +% 4;
                         } else {
                             buf0[len] = '\n';
-                            len +%= 1;
+                            len = len +% 1;
                         }
                     }
                 }
-                builtin.debug.logAlways(buf0[0..len]);
+                builtin.debug.write(buf0[0..len]);
             }
-            const tok = struct {
-                const error_s: [:0]const u8 = "\x1b[91merror";
-                const note_s: [:0]const u8 = "\x1b[96mnote";
-            };
-            fn writeError(allocator: *Builder.Allocator, array: *Builder.Args, errors: types.Errors, err_msg_idx: u32, about: [:0]const u8) void {
+            fn writeAbout(buf: [*]u8, about: [:0]const u8) u64 {
+                @setRuntimeSafety(false);
+                var len: u64 = 0;
+                if (about.ptr == error_s) {
+                    @memcpy(buf + len, "\x1b[91m", 5);
+                    len = len +% 5;
+                }
+                if (about.ptr == note_s) {
+                    @memcpy(buf + len, "\x1b[96m", 5);
+                    len = len +% 5;
+                }
+                @memcpy(buf + len, about.ptr, about.len);
+                len = len +% about.len;
+                @memcpy(buf + len, ":\x1b[0;1m ", 8);
+                len = len +% 8;
+                return len;
+            }
+            fn writeError(buf: [*]u8, errors: types.Errors, err_msg_idx: u32, about: [:0]const u8) u64 {
                 @setRuntimeSafety(false);
                 const bytes: []u8 = errors.bytes;
-                const err_msg_extra: types.ErrorMessage.Extra = errors.extraData(types.ErrorMessage, err_msg_idx);
-                const err_msg: *types.ErrorMessage = err_msg_extra.data;
+                const err_msg: *types.ErrorMessage = errors.cast(types.ErrorMessage, err_msg_idx);
                 const note_start: u64 = err_msg_idx +% types.ErrorMessage.len;
+                const notes: []u32 = errors.extra[note_start .. note_start +% err_msg.notes_len];
+                var len: u64 = 0;
                 if (err_msg.src_loc == 0) {
-                    // testing.print(.{ "[", err_msg_idx, "] ", about, "\x1b[0m has no source location\n" });
-                    array.writeMany(about);
-                    array.writeMany(": \x1b[0m");
-                    array.writeMany(terminate(bytes[err_msg.start..]));
-                    writeMessage(array, bytes, err_msg.start, 0);
-                    if (err_msg.count != 1) {
-                        writeTimes(array, err_msg.count);
-                    }
-                    for (errors.extra[note_start .. note_start +% err_msg.notes_len]) |note| {
-                        writeError(allocator, array, errors, note, tok.note_s);
-                    }
+                    const name: [:0]const u8 = terminate(bytes[err_msg.start..]);
+                    len = len +% writeAbout(buf + len, about);
+                    @memcpy(buf + len, name.ptr, name.len);
+                    len = len +% name.len;
+                    len = len +% writeMessage(buf + len, bytes, err_msg.start, 0);
+                    if (err_msg.count != 1)
+                        len = len +% writeTimes(buf + len, err_msg.count);
+                    for (notes) |note|
+                        len = len +% writeError(buf + len, errors, note, note_s);
                 } else {
-                    // testing.print(.{ "[", err_msg_idx, "] ", about, "\x1b[0m has source location\n" });
-                    const src_start: u64 = array.len();
-                    const src_extra: types.SourceLocation.Extra = errors.extraData(types.SourceLocation, err_msg.src_loc);
-                    const src: *types.SourceLocation = src_extra.data;
-                    array.writeMany("\x1b[1m");
-                    writeSourceLocation(array, terminate(bytes[src.src_path..]), src.line + 1, src.column + 1);
-                    array.writeMany(": ");
-                    array.writeMany(about);
-                    array.writeMany(":\x1b[0;1m ");
-                    writeMessage(array, bytes, err_msg.start, array.len() -% (src_start +% 15));
-                    if (err_msg.count != 1) {
-                        writeTimes(array, err_msg.count);
-                    }
-                    if (src.src_line != 0) {
-                        const before_caret: u64 = src.span_main -% src.span_start;
-                        const indent: u64 = src.column -% before_caret;
-                        const after_caret: u64 = src.span_end -% src.span_main;
-                        writeCaret(array, terminate(bytes[src.src_line..]), indent, before_caret, after_caret);
-                    }
-                    for (errors.extra[note_start .. note_start +% err_msg.notes_len]) |note| {
-                        writeError(allocator, array, errors, note, tok.note_s);
-                    }
-                    if (src.ref_len > 0) {
-                        writeReferenceTrace(array, errors, bytes, src_extra.end, src.ref_len);
-                    }
+                    const src: *types.SourceLocation = errors.cast(types.SourceLocation, err_msg.src_loc);
+                    const src_end: u64 = err_msg.src_loc +% types.SourceLocation.len;
+                    const src_file: [:0]u8 = terminate(bytes[src.src_path..]);
+                    @memcpy(buf + len, "\x1b[1m", 4);
+                    len = len +% 4;
+                    len = len +% writeSourceLocation(buf + len, src_file, src.line +% 1, src.column +% 1);
+                    @memcpy(buf + len, ": ", 2);
+                    len = len +% 2;
+                    len = len +% writeAbout(buf + len, about);
+                    len = len +% writeMessage(buf + len, bytes, err_msg.start, len -% 15);
+                    if (err_msg.count != 1)
+                        len = len +% writeTimes(buf + len, err_msg.count);
+                    if (src.src_line != 0)
+                        len = len +% writeCaret(buf + len, terminate(bytes[src.src_line..]), src);
+                    for (notes) |note|
+                        len = len +% writeError(buf + len, errors, note, note_s);
+                    if (src.ref_len > 0)
+                        len = len +% writeReferenceTrace(buf + len, errors, bytes, src_end, src.ref_len);
                 }
+                return len;
             }
-            fn writeSourceLocation(array: *Builder.Args, pathname: [:0]const u8, line: u64, column: u64) void {
-                array.writeMany(pathname);
-                array.writeMany(":");
-                array.writeFormat(fmt.ud64(line));
-                array.writeMany(":");
-                array.writeFormat(fmt.ud64(column));
+            fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: u64, column: u64) u64 {
+                @setRuntimeSafety(false);
+                const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
+                const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
+                @memcpy(buf, pathname.ptr, pathname.len);
+                var len: u64 = pathname.len;
+                buf[len] = ':';
+                len = len +% 1;
+                @memcpy(buf + len, line_s.ptr, line_s.len);
+                len = len +% line_s.len;
+                buf[len] = ':';
+                len = len +% 1;
+                @memcpy(buf + len, column_s.ptr, column_s.len);
+                len = len +% column_s.len;
+                return len;
             }
-            fn writeTimes(array: *Builder.Args, count: u64) void {
-                array.writeMany("\x1b[2m (");
-                array.writeFormat(fmt.ud64(count));
-                array.writeMany(" times)\x1b[0m\n");
+            fn writeTimes(buf: [*]u8, count: u64) u64 {
+                @setRuntimeSafety(false);
+                const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
+                @memcpy(buf, "\x1b[2m (", 6);
+                var len: u64 = 6;
+                @memcpy(buf + len, count_s.ptr, count_s.len);
+                len = len +% count_s.len;
+                @memcpy(buf + len, " times)\x1b[0m\n", 12);
+                len = len +% 12;
+                return len;
             }
-            fn writeCaret(array: *Builder.Args, line: [:0]const u8, indent: u64, before_caret: u64, after_caret: u64) void {
-                array.writeMany(line);
-                array.writeOne('\n');
-                writeRepeat(array, ' ', indent);
-                array.writeMany("\x1b[92m");
-                writeRepeat(array, '~', before_caret);
-                array.writeOne('^');
-                writeRepeat(array, '~', after_caret -% @boolToInt(after_caret != 0));
-                array.writeMany("\x1b[0m\n");
+            fn writeCaret(buf: [*]u8, line: [:0]const u8, src: *types.SourceLocation) u64 {
+                @setRuntimeSafety(false);
+                const before_caret: u64 = src.span_main -% src.span_start;
+                const indent: u64 = src.column -% before_caret;
+                const after_caret: u64 = src.span_end -% src.span_main -| 1;
+                @memcpy(buf, line.ptr, line.len);
+                var len: u64 = line.len;
+                buf[len] = '\n';
+                len = len +% 1;
+                @memset(buf + len, ' ', indent);
+                len = len +% indent;
+                @memcpy(buf + len, "\x1b[95m", 5);
+                len = len +% 5;
+                @memset(buf + len, '~', before_caret);
+                len = len +% before_caret;
+                buf[len] = '^';
+                len = len +% 1;
+                @memset(buf + len, '~', after_caret);
+                len = len +% after_caret;
+                @memcpy(buf + len, "\x1b[0m", 4);
+                len = len +% 4;
+                buf[len] = '\n';
+                return len +% 1;
             }
-            fn writeMessage(array: *Builder.Args, bytes: []u8, start: u64, indent: u64) void {
+            fn writeMessage(buf: [*]u8, bytes: []u8, start: u64, indent: u64) u64 {
+                @setRuntimeSafety(false);
+                var len: u64 = 0;
                 var next: u64 = start;
                 var idx: u64 = start;
                 while (bytes[idx] != 0) : (idx +%= 1) {
                     if (bytes[idx] == '\n') {
-                        array.writeMany(bytes[next .. idx +% 1]);
-                        writeRepeat(array, ' ', indent);
+                        const line: []u8 = bytes[next .. idx +% 1];
+                        @memcpy(buf + len, line.ptr, line.len);
+                        len = len +% line.len;
+                        @memset(buf + len, ' ', indent);
+                        len = len +% indent;
                         next = idx +% 1;
                     }
                 }
-                array.writeMany(bytes[next..idx]);
-                array.writeMany("\x1b[0m\n");
+                const line: []u8 = bytes[next..idx];
+                @memcpy(buf + len, line.ptr, line.len);
+                len = len +% line.len;
+                @memcpy(buf + len, "\x1b[0m", 4);
+                len = len +% 4;
+                buf[len] = '\n';
+                return len +% 1;
             }
-            fn writeReferenceTrace(array: *Builder.Args, errors: types.Errors, bytes: []u8, start: u64, len: u64) void {
-                array.writeMany("\x1b[0m\x1b[2mreferenced by:\n");
+            fn writeReferenceTrace(buf: [*]u8, errors: types.Errors, bytes: []u8, start: u64, ref_len: u64) u64 {
+                @setRuntimeSafety(false);
                 var ref_idx: u64 = start;
-                for (0..len) |_| {
-                    const ref_trace: types.ReferenceTrace.Extra = errors.extraData(types.ReferenceTrace, ref_idx);
-                    ref_idx = ref_trace.end;
-                    if (ref_trace.data.src_loc != 0) {
-                        const ref_src: types.SourceLocation.Extra = errors.extraData(types.SourceLocation, ref_trace.data.src_loc);
-                        writeRepeat(array, ' ', 4);
-                        array.writeMany(terminate(bytes[ref_trace.data.decl_name..]));
-                        array.writeMany(": ");
-                        writeSourceLocation(array, terminate(bytes[ref_src.data.src_path..]), ref_src.data.line + 1, ref_src.data.column + 1);
-                        array.writeMany("\n");
+                var idx: u64 = 0;
+                @memcpy(buf, "\x1b[2m", 4);
+                var len: u64 = 4;
+                @memcpy(buf + len, "referenced by:\n", 15);
+                len = len +% 15;
+                while (idx != ref_len) : (idx +%= 1) {
+                    const ref_trc: *types.ReferenceTrace =
+                        errors.cast(types.ReferenceTrace, ref_idx);
+                    const src_idx: u64 = ref_trc.src_loc;
+                    if (src_idx != 0) {
+                        const ref_src: *types.SourceLocation =
+                            errors.cast(types.SourceLocation, src_idx);
+                        const src_file: [:0]u8 = terminate(bytes[ref_src.src_path..]);
+                        const decl_name: [:0]u8 = terminate(bytes[ref_trc.decl_name..]);
+                        @memset(buf + len, ' ', 4);
+                        len = len +% 4;
+                        @memcpy(buf + len, decl_name.ptr, decl_name.len);
+                        len = len +% decl_name.len;
+                        @memcpy(buf + len, ": ", 2);
+                        len = len +% 2;
+                        len = len +% writeSourceLocation(buf + len, src_file, ref_src.line + 1, ref_src.column + 1);
+                        buf[len] = '\n';
+                        len = len +% 1;
                     }
+                    ref_idx +%= types.ReferenceTrace.len;
                 }
-                array.writeMany("\x1b[0m\n");
+                @memcpy(buf + len, "\x1b[0m\n", 5);
+                len = len +% 5;
+                return len;
             }
-            fn writeRepeat(array: *Builder.Args, value: u8, count: u64) void {
-                for (0..count) |_| array.writeOne(value);
-            }
-            fn writeErrors(allocator: *Builder.Allocator, errors: types.Errors) void {
-                var array: Builder.Args = Builder.Args.init(allocator, 1024 *% 1024);
-                const list: types.ErrorMessageList.Extra = errors.extraData(types.ErrorMessageList, 0);
-                for (errors.extra[list.data.start .. list.data.start +% list.data.len]) |err_msg_idx| {
-                    writeError(allocator, &array, errors, err_msg_idx, tok.error_s);
+            fn writeErrors(allocator: *Allocator, errors: types.Errors) void {
+                @setRuntimeSafety(false);
+                var buf: []u8 = allocate(allocator, u8, 1024 *% 1024);
+                var len: u64 = 0;
+                const list: *types.ErrorMessageList = errors.cast(types.ErrorMessageList, 0);
+                for (errors.extra[list.start .. list.start +% list.len]) |err_msg_idx| {
+                    len = len +% writeError(buf.ptr, errors, err_msg_idx, error_s);
                 }
-                builtin.debug.write(array.readAll());
+                builtin.debug.write(buf[0..len]);
             }
-            fn terminate(bytes: []u8) [:0]const u8 {
+            fn terminate(bytes: []u8) [:0]u8 {
                 return meta.manyToSlice(@ptrCast([*:0]u8, bytes.ptr));
             }
         };
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
+            @setRuntimeSafety(false);
             const addr: u64 = builtin.addr(values);
-            if (addr < stack_lb_addr or
-                addr >= allocator.lb_addr and addr < allocator.ub_addr)
-            {
+            if (addr < stack_lb_addr or addr >= allocator.lb_addr and addr < allocator.ub_addr) {
                 return @constCast(values.ptr[0..values.len :0]);
             } else {
                 var buf: [:0]u8 = @ptrCast([:0]u8, allocate(allocator, u8, values.len));
@@ -1309,6 +1371,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn strdup2(allocator: *Allocator, values: []const []const u8) [][:0]const u8 {
+            @setRuntimeSafety(false);
             var buf: [][:0]u8 = @ptrCast([][:0]u8, allocate(allocator, [:0]u8, values.len));
             var idx: u64 = 0;
             for (values) |value| {
@@ -1317,8 +1380,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn concatenate(allocator: *Allocator, values: []const []const u8) [:0]u8 {
+            @setRuntimeSafety(false);
             var len: u64 = 0;
-            for (values) |value| len +%= value.len;
+            for (values) |value| len = len +% value.len;
             const buf: [:0]u8 = @ptrCast([:0]u8, allocate(allocator, u8, len));
             var idx: u64 = 0;
             for (values) |value| {
@@ -1328,6 +1392,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return buf;
         }
         fn makeArgPtrs(allocator: *Allocator, args: [:0]u8) [][*:0]u8 {
+            @setRuntimeSafety(false);
             var count: u64 = 0;
             for (args) |value| count +%= @boolToInt(value == 0);
             const ptrs: [][*:0]u8 = allocate(allocator, [*:0]u8, count +% 1);
@@ -1337,7 +1402,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             while (idx != args.len) : (idx +%= 1) {
                 if (args[idx] == 0) {
                     ptrs[len] = args[pos..idx :0];
-                    len +%= 1;
+                    len = len +% 1;
                     pos = idx +% 1;
                 }
             }
@@ -1349,9 +1414,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @field(build_cmd, field.name) = @field(extra, field.name);
             }
         }
-        fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []T {
+        fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []align(@max(@alignOf(T), 8)) T {
             @setRuntimeSafety(false);
-            const ret: []T = allocate(allocator, T, count);
+            const ret: []align(@max(@alignOf(T), 8)) T = allocate(allocator, T, count);
             @memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
             return ret;
         }
@@ -1363,16 +1428,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             allocator.allocate(s_up_addr +% size_of);
             return s_ab_addr;
         }
-        fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
+        fn allocate(allocator: *Allocator, comptime T: type, count: u64) []align(@max(@alignOf(T), 8)) T {
             @setRuntimeSafety(false);
             const s_ab_addr: u64 = allocateInternal(allocator, count, @sizeOf(T), @max(@alignOf(T), 8));
-            return mem.pointerSlice(T, s_ab_addr, count);
+            return mem.pointerSliceAligned(T, s_ab_addr, count, @max(@alignOf(T), 8));
         }
-        fn create(allocator: *Allocator, comptime T: type) *T {
+        fn create(allocator: *Allocator, comptime T: type) *align(@max(@alignOf(T), 8)) T {
             @setRuntimeSafety(false);
             const s_ab_addr: u64 = allocator.alignAbove(@alignOf(T));
             allocator.allocate(s_ab_addr +% @sizeOf(T));
-            return mem.pointerOne(T, s_ab_addr);
+            return mem.pointerOneAligned(T, s_ab_addr, @max(@alignOf(T), 8));
         }
     };
     return Type;
