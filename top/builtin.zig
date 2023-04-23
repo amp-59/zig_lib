@@ -544,15 +544,15 @@ pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
-pub fn zero(comptime T: type) T {
+pub inline fn zero(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
-pub fn all(comptime T: type) T {
+pub inline fn all(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{~@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
-pub fn addr(any: anytype) usize {
+pub inline fn addr(any: anytype) usize {
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
         return @ptrToInt(any.ptr);
     } else {
@@ -2408,6 +2408,7 @@ pub const Version = struct {
         };
     }
 };
+
 pub const SourceLocation = Src();
 pub const Mode = @TypeOf(config.zig.mode);
 pub const Type = @TypeOf(@typeInfo(void));
